@@ -60,9 +60,9 @@ jobs:
           set -euo pipefail
           slug="$(bash .ci/infra/scripts/preview-slug.sh '${{ inputs.branch_ref }}')"
           host="pr-${slug}.anchorapidev.nanostack.dev"
-	          db_name="pr_${slug//-/_}_nanostack"
-	          stack_name="preview-anchor-${slug}"
-	          service_name="${stack_name}_anchor"
+          db_name="pr_${slug//-/_}_nanostack"
+          stack_name="preview-anchor-${slug}"
+          service_name="${stack_name}_anchor"
           {
             echo "branch_slug=${slug}"
             echo "preview_host=${host}"
