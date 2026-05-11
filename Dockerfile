@@ -9,14 +9,23 @@ ARG BUILD_DATE
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Configure Git for private repositories if CI_PAT is provided
+# Configure Git for private repositories from CI_PAT or the legacy READ_PAT_GITHUB contract.
 ARG CI_PAT
-RUN --mount=type=secret,id=CI_PAT \
+ARG READ_PAT_GITHUB
+RUN --mount=type=secret,id=CI_PAT,required=false \
+    --mount=type=secret,id=READ_PAT_GITHUB,required=false \
+    token="" && \
     if [ -f /run/secrets/CI_PAT ]; then \
-        CI_PAT=$(cat /run/secrets/CI_PAT) && \
-        git config --global url."https://${CI_PAT}@github.com/".insteadOf "https://github.com/"; \
+        token=$(cat /run/secrets/CI_PAT); \
+    elif [ -f /run/secrets/READ_PAT_GITHUB ]; then \
+        token=$(cat /run/secrets/READ_PAT_GITHUB); \
     elif [ -n "$CI_PAT" ]; then \
-        git config --global url."https://${CI_PAT}@github.com/".insteadOf "https://github.com/"; \
+        token="$CI_PAT"; \
+    elif [ -n "$READ_PAT_GITHUB" ]; then \
+        token="$READ_PAT_GITHUB"; \
+    fi && \
+    if [ -n "$token" ]; then \
+        git config --global url."https://${token}@github.com/".insteadOf "https://github.com/"; \
     fi
 
 # Set GOPRIVATE for private modules

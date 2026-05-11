@@ -46,4 +46,4 @@ jobs:
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' }}
     secrets:
-      CI_PAT: ${{ secrets.CI_PAT }}
+      READ_PAT_GITHUB: ${{ secrets.CI_PAT }}
