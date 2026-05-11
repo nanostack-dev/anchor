@@ -1,50 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <defs>
-    <!-- Master Gradients -->
-    <linearGradient id="slateFront" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F5272" />
-      <stop offset="100%" stop-color="#2A2C3F" />
-    </linearGradient>
-    <linearGradient id="slateMid" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#3A3C55" />
-      <stop offset="100%" stop-color="#1A1B26" />
-    </linearGradient>
-    <linearGradient id="slateBack" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#242636" />
-      <stop offset="100%" stop-color="#0a0a0f" />
-    </linearGradient>
-    
-    <!-- Glowing Sphere -->
-    <radialGradient id="sphere" cx="30%" cy="20%" r="80%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
-      <stop offset="60%" stop-color="#e2e2ec" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#6F7399" stop-opacity="0.8" />
-    </radialGradient>
-
-    <!-- Filters -->
-    <filter id="layerShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="6" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.4" />
-    </filter>
-    <filter id="orbGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.4" />
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
-
-    <!-- The Mathematical Cradle Mask -->
-    <mask id="cradle">
-      <rect x="0" y="0" width="200" height="200" fill="white" />
-      <!-- The exact gap cutout (Radius 30, center 85,50) -->
-      <circle cx="85" cy="50" r="30" fill="black" />
-    </mask>
-  </defs>
-
-  <!-- The Structural N masked by the cradle -->
-  <g mask="url(#cradle)">
-    <rect x="135" y="30" width="35" height="140" fill="url(#slateBack)" />
-    <polygon points="30,30 65,30 170,170 135,170" fill="url(#slateMid)" filter="url(#layerShadow)"/>
-    <rect x="30" y="30" width="35" height="140" fill="url(#slateFront)" filter="url(#layerShadow)"/>
-  </g>
-  <!-- The Glowing Application Core -->
-  <circle cx="85" cy="50" r="22" fill="url(#sphere)" filter="url(#orbGlow)" />
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 1100 1254" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-77.322325,0)">
+        <g id="anchor-logo" transform="matrix(1.534633,0,0,1.534633,-172.595943,-181.359813)">
+            <path d="M515.95,433.448C515.705,431.996 514.552,420.385 508.187,410.709C506.762,408.542 499.217,397.073 483.266,389.978C431.019,366.741 404.027,391.45 383.566,384.303C364.629,377.687 364.233,353.623 364.182,350.507C363.137,286.819 467.613,320.036 497.452,324.774C536.164,330.921 541.301,299.382 530.22,282.686C486.953,217.498 524.235,159.858 552.847,138.989C630.473,82.37 732.6,149.849 717.784,238.547C709.046,290.852 665.4,311.975 665.232,312.086C663.261,313.389 648.385,323.226 650.21,337.518C655.327,377.594 723.628,358.79 772.143,394.974C805.386,419.768 774.826,451.669 769.154,456.034C740.864,477.804 730.974,439.203 680.429,428.865C623.55,417.232 605.934,460.721 605.924,460.738C588.968,490.237 561.436,652.198 562.429,685.5C565.182,777.832 684.363,783.798 753.408,704.419C770.212,685.1 726.532,689.663 719.511,680.492C709.981,668.042 764.551,675.54 833.166,604.171C851.892,584.693 866.568,558.229 874.028,582.635C893.083,644.967 855.447,739.127 829.006,773.117C806.645,801.861 825.021,755.364 821.614,735.482C818.514,717.385 803.813,744.086 778.338,768.318C687.744,854.49 624.299,819.837 595.29,804.888C525.864,769.111 512.507,767.588 429.442,778.076C271.428,798.028 226.219,691.763 205.267,648.621C200.593,638.997 194.285,643.197 192.739,645.653C185.327,657.431 182.051,679.337 180.194,687.428C177.51,699.131 172.877,688.335 171.995,685.342C143.736,589.451 188.331,491.993 206.638,478.691C227.894,463.246 213.962,523.73 285.76,597.255C301.729,613.608 317.055,622.618 307.564,625.701C289.831,631.461 253.145,612.43 261.337,637.553C284.537,708.7 384.245,755.06 444.044,677.158C449.77,669.699 462.093,653.646 486.052,567.372C504.72,500.154 518.906,466.889 515.95,433.448ZM662.837,204.367C662.148,202.759 657.273,191.385 651.068,185.938C605.699,146.111 552.366,194.577 565.261,235.583C586.582,303.379 685.525,269.477 662.837,204.367Z" style="fill:rgb(0,84,231);"/>
+            <path d="M601.455,867.956C604.872,868.385 604.826,868.356 613.517,869.313C628.613,870.975 646.128,876.137 632.704,869.181C517.715,809.599 454.861,862.739 395.549,872.767C220.741,902.321 170.368,700.482 184.122,723.88C197.067,745.902 211.573,768.508 250.757,794.095C320.721,839.783 400.662,819.296 413.378,816.037C476.74,799.799 499.375,777.299 595.726,825.058C617.982,836.09 715.087,892.091 799.247,811.218C817.058,794.104 790.967,829.445 782.054,839.1C682.329,947.12 517.224,947.2 425.458,920.644C422.251,919.716 377.787,906.849 386.538,905.591C389.229,905.205 389.288,908.405 420.496,904.463C498.319,894.635 493.174,858.828 601.455,867.956Z" style="fill:rgb(0,83,230);"/>
+        </g>
+    </g>
 </svg>

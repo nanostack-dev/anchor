@@ -9,7 +9,7 @@ import (
 
 const (
 	validAPIKey             = "anchor_prd_apikey_9X6jJUsSGSfbqL0bqawCPQK19rl2OIJSTvKOk8zeuTMqz3CZ_86cd7e60"
-	hashedAPIKey            = "f78ac1010653f4f8eeacc3cdc64ce01e846a51bd946cd74da659535389579d04"
+	hashedAPIKey            = "495b1076e751b344586f162deeea2f7e419ab692378514195aec517640ed96bd"
 	validOrganizationAPIKey = "anchor_org_apikey_9X6jJUsSGSfbqL0bqawCPQK19rl2OIJSTvKOk8zeuTMqz3CZ_86cd7e60"
 )
 
