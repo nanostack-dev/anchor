@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/users/count",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer sk_test_abc"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "bodyFileName": "users_count.json"
+  }
+}

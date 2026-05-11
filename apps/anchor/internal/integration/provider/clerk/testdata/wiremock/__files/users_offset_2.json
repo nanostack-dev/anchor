@@ -1,0 +1,11 @@
+[
+  {
+    "id": "user_3",
+    "first_name": "Grace",
+    "last_name": "Hopper",
+    "primary_email_address_id": "e3",
+    "email_addresses": [
+      {"id": "e3", "email_address": "grace@example.com"}
+    ]
+  }
+]

@@ -1,0 +1,40 @@
+locals {
+  all_permissions = sort(distinct(concat(var.permissions_admin, var.api_only_permissions)))
+}
+
+resource "nanostack_product_permission" "permission" {
+  for_each = toset(local.all_permissions)
+
+  product_id  = var.nanostack_product_id
+  name        = each.value
+  description = replace(title(replace(each.value, ":", " ")), "_", " ")
+}
+
+resource "nanostack_product_role" "admin" {
+  product_id  = var.nanostack_product_id
+  name        = "admin"
+  description = "Administrator role"
+  permissions = sort(var.permissions_admin)
+}
+
+resource "terraform_data" "sync_echopoint_runtime_fields" {
+  count = var.sync_runtime_fields ? 1 : 0
+
+  triggers_replace = [
+    var.nanostack_product_id,
+    nanostack_product_role.admin.id,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      op item edit "${var.op_item_ref}" --vault "${var.op_vault_id}" \
+        "ANCHOR_PRODUCT_ID[text]=${var.nanostack_product_id}" \
+        "NANOSTACK_ADMIN_ROLE_ID[text]=${nanostack_product_role.admin.id}" \
+        "NANOSTACK_PRODUCT_API_KEY[text]=$NANOSTACK_PRODUCT_API_KEY"
+    EOT
+
+    environment = {
+      NANOSTACK_PRODUCT_API_KEY = var.product_api_key_for_sync
+    }
+  }
+}

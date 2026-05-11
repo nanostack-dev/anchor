@@ -1,0 +1,41 @@
+project_name: terraform-provider-anchor
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: terraform-provider
+    main: ./main.go
+    binary: terraform-provider-anchor
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: terraform-provider
+    builds:
+      - terraform-provider
+    format: zip
+    name_template: >-
+      terraform-provider-nanostack_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE*
+      - README.md
+
+checksum:
+  name_template: terraform-provider-nanostack_{{ .Version }}_SHA256SUMS
+
+release:
+  github:
+    owner: anchor-dev
+    name: anchor
+  prerelease: false
+
+changelog:
+  disable: true

@@ -1,0 +1,48 @@
+# ./application.yaml
+postgres:
+  host: ${POSTGRES_HOST:localhost} # Default to localhost if env var not set
+  port: ${POSTGRES_PORT:5432}    # Default to 5432 if env var not set
+  user: ${POSTGRES_USER:anchor}          # Required env var
+  password: ${POSTGRES_PASSWORD:anchor}    # Required env var
+  dbname: ${POSTGRES_DB:anchor}          # Required env var
+  sslmode: ${POSTGRES_SSLMODE:disable} # Default to disable
+
+# Migrations configuration
+migrations:
+  enabled: true
+  basePath: "../../../migrations"
+  validate: true
+  # Enable this to automatically fix dirty migration states
+  autoFixDirty: false
+  # Set this to a specific version to force that version number
+  # forceVersion: 0
+
+# PgLock configuration
+pglock:
+  tableName: "pglock_locks"
+  autoCreateTable: true
+  leaseDuration: "10s"
+  heartbeatFrequency: "1s"
+  testOnStartup: true
+core:
+  auth:
+    refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:84600}
+    access_token_lifetime: ${ACCESS_TOKEN_LIFETIME:3600}
+    admin_jwt_secret: "${ADMIN_JWT_SECRET:secret}"
+  encryption:
+    global_key: "${APP_ENCRYPTION_KEY}"
+    global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
+  integration:
+    reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
+  environment: "${ENVIRONMENT:production}"
+
+
+# Redis cache configuration
+cache:
+  address: ${REDIS_ADDRESS:localhost:6379}
+  password: ${REDIS_PASSWORD:}
+  db: ${REDIS_DB:0}
+# Example of another config section
+server:
+  port: ${SERVER_PORT:8080}
+  allowed_origin: "*"

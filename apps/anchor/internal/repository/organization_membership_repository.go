@@ -1,0 +1,521 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/organization"
+	"anchor/internal/domain/product/user"
+
+	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/rs/zerolog"
+)
+
+var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)(nil)
+
+// userOrgMembershipRow is the composite struct for scanning the joined query result
+// from the product user's perspective.
+type userOrgMembershipRow struct {
+	model.OrganizationMemberships
+	Organization model.Organizations                    `alias:"organizations"`
+	Role         model.ProductRoles                     `alias:"product_roles"`
+	Permissions  []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
+}
+
+// orgMembershipRow is the composite struct for scanning the joined query result
+// from the organization's perspective (includes product user details).
+type orgMembershipRow struct {
+	model.OrganizationMemberships
+	ProductUser model.ProductUsers                     `alias:"product_users"`
+	Role        model.ProductRoles                     `alias:"product_roles"`
+	Permissions []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
+}
+
+// OrganizationMembershipRepository provides access to organization memberships.
+type OrganizationMembershipRepository interface {
+	// FindByProductUserID returns all organizations a product user belongs to,
+	// including role details. When includePermissions is true, role permissions are included.
+	FindByProductUserID(
+		ctx context.Context,
+		productID string,
+		productUserID string,
+		includePermissions bool,
+		options *toolkit.DBOptions,
+	) ([]user.OrganizationMembership, error)
+
+	// FindByProductUserIDAndOrgID returns a specific organization membership for a product user.
+	// When includePermissions is true, role permissions are included.
+	FindByProductUserIDAndOrgID(
+		ctx context.Context,
+		productID string,
+		productUserID string,
+		organizationID string,
+		includePermissions bool,
+		options *toolkit.DBOptions,
+	) (*user.OrganizationMembership, error)
+
+	// FindByOrgIDAndUserID returns a specific member of an organization.
+	// When includePermissions is true, role permissions are included.
+	FindByOrgIDAndUserID(
+		ctx context.Context,
+		productID string,
+		orgID string,
+		productUserID string,
+		includePermissions bool,
+		options *toolkit.DBOptions,
+	) (*organization.Membership, error)
+
+	// FindByOrgID returns all members of an organization.
+	// When includePermissions is true, role permissions are included.
+	FindByOrgID(
+		ctx context.Context,
+		productID string,
+		orgID string,
+		includePermissions bool,
+		options *toolkit.DBOptions,
+	) ([]organization.Membership, error)
+
+	// SearchByOrgID returns paginated, filtered members of an organization.
+	// Supports filtering by product_user_ids, external_ids, emails, and role_ids.
+	SearchByOrgID(
+		ctx context.Context,
+		productID string,
+		orgID string,
+		req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
+		options *toolkit.DBOptions,
+	) (search.Result[organization.Membership], error)
+
+	Create(
+		ctx context.Context,
+		productID string,
+		organizationID string,
+		productUserID string,
+		roleID string,
+		options *toolkit.DBOptions,
+	) (organization.Membership, error)
+
+	Update(
+		ctx context.Context,
+		productID string,
+		organizationID string,
+		productUserID string,
+		roleID string,
+		options *toolkit.DBOptions,
+	) (organization.Membership, error)
+
+	Delete(
+		ctx context.Context,
+		organizationID string,
+		productUserID string,
+		options *toolkit.DBOptions,
+	) error
+}
+
+type organizationMembershipRepositoryImpl struct {
+	db     *sql.DB
+	logger zerolog.Logger
+}
+
+func NewOrganizationMembershipRepository(
+	db *sql.DB,
+	logger zerolog.Logger,
+) OrganizationMembershipRepository {
+	return &organizationMembershipRepositoryImpl{
+		db: db,
+		logger: logger.With().Str(
+			"component", "organization_membership_repository",
+		).Logger(),
+	}
+}
+
+func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
+	ctx context.Context,
+	productID string,
+	productUserID string,
+	includePermissions bool,
+	options *toolkit.DBOptions,
+) ([]user.OrganizationMembership, error) {
+	stmt := r.buildQuery(includePermissions).WHERE(
+		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
+			table.Organizations.ProductID.EQ(postgres.String(productID)),
+		),
+	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC())
+
+	return toolkit.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(row userOrgMembershipRow) user.OrganizationMembership {
+			return r.toDomain(row)
+		}, options,
+	)
+}
+
+func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
+	ctx context.Context,
+	productID string,
+	productUserID string,
+	organizationID string,
+	includePermissions bool,
+	options *toolkit.DBOptions,
+) (*user.OrganizationMembership, error) {
+	stmt := r.buildQuery(includePermissions).WHERE(
+		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
+			table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)),
+		).AND(
+			table.Organizations.ProductID.EQ(postgres.String(productID)),
+		),
+	)
+
+	return toolkit.QueryOptionalMap(
+		ctx, r.db, stmt,
+		func(row userOrgMembershipRow) user.OrganizationMembership {
+			return r.toDomain(row)
+		}, options,
+	)
+}
+
+func (r *organizationMembershipRepositoryImpl) Create(
+	ctx context.Context,
+	productID string,
+	organizationID string,
+	productUserID string,
+	roleID string,
+	options *toolkit.DBOptions,
+) (organization.Membership, error) {
+	entity := model.OrganizationMemberships{
+		OrganizationID: organizationID,
+		ProductUserID:  productUserID,
+		ProductRoleID:  roleID,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	stmt := table.OrganizationMemberships.INSERT(
+		table.OrganizationMemberships.AllColumns,
+	).MODEL(entity)
+
+	if err := toolkit.Exec(ctx, r.db, stmt, options); err != nil {
+		return organization.Membership{}, err
+	}
+
+	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false, options)
+	if err != nil {
+		return organization.Membership{}, err
+	}
+	if membership == nil {
+		return organization.Membership{}, toolkit.ErrNotFound
+	}
+
+	return *membership, nil
+}
+
+func (r *organizationMembershipRepositoryImpl) Update(
+	ctx context.Context,
+	productID string,
+	organizationID string,
+	productUserID string,
+	roleID string,
+	options *toolkit.DBOptions,
+) (organization.Membership, error) {
+	entity := model.OrganizationMemberships{
+		OrganizationID: organizationID,
+		ProductUserID:  productUserID,
+		ProductRoleID:  roleID,
+		UpdatedAt:      time.Now(),
+	}
+
+	stmt := table.OrganizationMemberships.UPDATE(
+		table.OrganizationMemberships.ProductRoleID,
+		table.OrganizationMemberships.UpdatedAt,
+	).MODEL(
+		entity,
+	).WHERE(
+		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).AND(
+			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),
+		),
+	)
+
+	if err := toolkit.Exec(ctx, r.db, stmt, options); err != nil {
+		return organization.Membership{}, err
+	}
+
+	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false, options)
+	if err != nil {
+		return organization.Membership{}, err
+	}
+	if membership == nil {
+		return organization.Membership{}, toolkit.ErrNotFound
+	}
+
+	return *membership, nil
+}
+
+func (r *organizationMembershipRepositoryImpl) Delete(
+	ctx context.Context,
+	organizationID string,
+	productUserID string,
+	options *toolkit.DBOptions,
+) error {
+	stmt := table.OrganizationMemberships.DELETE().WHERE(
+		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).AND(
+			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),
+		),
+	)
+
+	return toolkit.Exec(ctx, r.db, stmt, options)
+}
+
+func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions bool) postgres.SelectStatement {
+	joinExpr := table.OrganizationMemberships.
+		INNER_JOIN(
+			table.Organizations,
+			table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
+		).
+		INNER_JOIN(
+			table.ProductRoles,
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		)
+
+	if includePermissions {
+		joinExpr = joinExpr.LEFT_JOIN(
+			table.ProductRoleResourcePermissions,
+			table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+		)
+		return postgres.SELECT(
+			table.OrganizationMemberships.AllColumns,
+			table.Organizations.AllColumns,
+			table.ProductRoles.AllColumns,
+			table.ProductRoleResourcePermissions.AllColumns,
+		).FROM(joinExpr)
+	}
+
+	return postgres.SELECT(
+		table.OrganizationMemberships.AllColumns,
+		table.Organizations.AllColumns,
+		table.ProductRoles.AllColumns,
+	).FROM(joinExpr)
+}
+
+func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow) user.OrganizationMembership {
+	var permissions []string
+	for _, p := range row.Permissions {
+		permissions = append(permissions, p.PermissionName)
+	}
+
+	return user.OrganizationMembership{
+		OrganizationID:          row.Organization.ID,
+		OrganizationName:        row.Organization.Name,
+		OrganizationDescription: row.Organization.Description,
+		RoleID:                  row.Role.ID,
+		RoleName:                row.Role.Name,
+		RolePermissions:         permissions,
+		JoinedAt:                row.OrganizationMemberships.CreatedAt,
+	}
+}
+
+// toDomainMembership maps an orgMembershipRow (org-perspective join) to organization.Membership.
+func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembershipRow) organization.Membership {
+	var permissions []string
+	for _, p := range row.Permissions {
+		permissions = append(permissions, p.PermissionName)
+	}
+
+	var userName string
+	if row.ProductUser.Name != nil {
+		userName = *row.ProductUser.Name
+	}
+
+	return organization.Membership{
+		OrganizationID:  row.OrganizationMemberships.OrganizationID,
+		ProductUserID:   row.OrganizationMemberships.ProductUserID,
+		UserEmail:       row.ProductUser.Email,
+		UserName:        userName,
+		UserExternalID:  row.ProductUser.ExternalID,
+		RoleID:          row.Role.ID,
+		RoleName:        row.Role.Name,
+		RolePermissions: permissions,
+		JoinedAt:        row.OrganizationMemberships.CreatedAt,
+	}
+}
+
+// buildOrgQuery builds the base SELECT for org-perspective membership queries.
+// It joins: organization_memberships → product_users → product_roles [→ product_role_resource_permissions].
+func (r *organizationMembershipRepositoryImpl) buildOrgQuery(includePermissions bool) postgres.SelectStatement {
+	joinExpr := table.OrganizationMemberships.
+		INNER_JOIN(
+			table.ProductUsers,
+			table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
+		).
+		INNER_JOIN(
+			table.ProductRoles,
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		)
+
+	if includePermissions {
+		joinExpr = joinExpr.LEFT_JOIN(
+			table.ProductRoleResourcePermissions,
+			table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+		)
+		return postgres.SELECT(
+			table.OrganizationMemberships.AllColumns,
+			table.ProductUsers.AllColumns,
+			table.ProductRoles.AllColumns,
+			table.ProductRoleResourcePermissions.AllColumns,
+		).FROM(joinExpr)
+	}
+
+	return postgres.SELECT(
+		table.OrganizationMemberships.AllColumns,
+		table.ProductUsers.AllColumns,
+		table.ProductRoles.AllColumns,
+	).FROM(joinExpr)
+}
+
+func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
+	ctx context.Context,
+	productID string,
+	orgID string,
+	productUserID string,
+	includePermissions bool,
+	options *toolkit.DBOptions,
+) (*organization.Membership, error) {
+	stmt := r.buildOrgQuery(includePermissions).WHERE(
+		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
+			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),
+		).AND(
+			table.ProductUsers.ProductID.EQ(postgres.String(productID)),
+		),
+	)
+
+	return toolkit.QueryOptionalMap(
+		ctx, r.db, stmt,
+		func(row orgMembershipRow) organization.Membership {
+			return r.toDomainMembership(row)
+		}, options,
+	)
+}
+
+func (r *organizationMembershipRepositoryImpl) FindByOrgID(
+	ctx context.Context,
+	productID string,
+	orgID string,
+	includePermissions bool,
+	options *toolkit.DBOptions,
+) ([]organization.Membership, error) {
+	stmt := r.buildOrgQuery(includePermissions).WHERE(
+		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
+			table.ProductUsers.ProductID.EQ(postgres.String(productID)),
+		),
+	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC())
+
+	return toolkit.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(row orgMembershipRow) organization.Membership {
+			return r.toDomainMembership(row)
+		}, options,
+	)
+}
+
+func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
+	ctx context.Context,
+	productID string,
+	orgID string,
+	req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
+	options *toolkit.DBOptions,
+) (search.Result[organization.Membership], error) {
+	whereStmt := table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
+		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
+	)
+
+	if req.Filter != nil {
+		filterBuilder := search.NewFilterBuilder()
+
+		if ids := filterBuilder.BuildIDFilter(
+			table.OrganizationMemberships.ProductUserID, req.Filter.ProductUserIDs,
+		); ids != nil {
+			whereStmt = whereStmt.AND(ids)
+		}
+		if extIDs := filterBuilder.BuildIDFilter(
+			table.ProductUsers.ExternalID, req.Filter.ExternalIDs,
+		); extIDs != nil {
+			whereStmt = whereStmt.AND(extIDs)
+		}
+		if emails := filterBuilder.BuildStringArrayFilter(
+			table.ProductUsers.Email, req.Filter.Emails,
+		); emails != nil {
+			whereStmt = whereStmt.AND(emails)
+		}
+		if roleIDs := filterBuilder.BuildIDFilter(
+			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
+		); roleIDs != nil {
+			whereStmt = whereStmt.AND(roleIDs)
+		}
+	}
+
+	if req.FullTextSearch != nil && *req.FullTextSearch != "" {
+		filterBuilder := search.NewFilterBuilder()
+		searchColumns := []postgres.ColumnString{
+			table.ProductUsers.Email,
+			table.ProductUsers.Name,
+		}
+		fullTextFilter := filterBuilder.BuildFullTextSearchFilter(searchColumns, *req.FullTextSearch)
+		if fullTextFilter != nil {
+			whereStmt = whereStmt.AND(fullTextFilter)
+		}
+	}
+
+	// Build the base join expression for count and data queries.
+	joinExpr := table.OrganizationMemberships.
+		INNER_JOIN(
+			table.ProductUsers,
+			table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
+		).
+		INNER_JOIN(
+			table.ProductRoles,
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		)
+
+	countStmt := postgres.SELECT(
+		postgres.COUNT(postgres.STAR).AS("count_result.count"),
+	).FROM(joinExpr).WHERE(whereStmt)
+
+	total, err := toolkit.QueryCountWithStatement(ctx, r.db, countStmt, options)
+	if err != nil {
+		return search.Result[organization.Membership]{}, err
+	}
+
+	query := r.buildOrgQuery(false).WHERE(whereStmt)
+
+	if len(req.Sort) > 0 {
+		for _, sort := range req.Sort {
+			switch sort.Field {
+			case organization.SortFieldMemberJoinedAt:
+				query = query.ORDER_BY(search.OrderBy(table.OrganizationMemberships.CreatedAt, sort.Direction))
+			case organization.SortFieldMemberEmail:
+				query = query.ORDER_BY(search.OrderBy(table.ProductUsers.Email, sort.Direction))
+			}
+		}
+	}
+
+	query = query.LIMIT(int64(req.Pagination.Limit)).OFFSET(int64(req.Pagination.Offset))
+
+	entities, err := toolkit.QueryMapSlice(
+		ctx, r.db, query,
+		func(row orgMembershipRow) organization.Membership {
+			return r.toDomainMembership(row)
+		}, options,
+	)
+	if err != nil {
+		return search.Result[organization.Membership]{}, err
+	}
+
+	return search.Result[organization.Membership]{
+		Items: entities,
+		Total: total,
+		Count: len(entities),
+	}, nil
+}

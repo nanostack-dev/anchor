@@ -1,0 +1,7 @@
+ALTER TABLE product_role_resource_permissions
+DROP CONSTRAINT IF EXISTS product_role_resource_permissions_product_id_permission_name_fkey;
+
+ALTER TABLE product_role_resource_permissions
+ADD CONSTRAINT product_role_resource_permissions_product_id_permission_name_fkey
+FOREIGN KEY (product_id, permission_name)
+REFERENCES product_resource_permissions(product_id, name);

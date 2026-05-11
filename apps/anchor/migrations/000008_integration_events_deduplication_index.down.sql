@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_integration_events_deduplication;

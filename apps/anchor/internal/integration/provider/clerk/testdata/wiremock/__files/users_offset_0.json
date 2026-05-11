@@ -1,0 +1,20 @@
+[
+  {
+    "id": "user_1",
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+    "primary_email_address_id": "e1",
+    "email_addresses": [
+      {"id": "e1", "email_address": "ada@example.com"}
+    ]
+  },
+  {
+    "id": "user_2",
+    "first_name": "Alan",
+    "last_name": "Turing",
+    "primary_email_address_id": "e2",
+    "email_addresses": [
+      {"id": "e2", "email_address": "alan@example.com"}
+    ]
+  }
+]

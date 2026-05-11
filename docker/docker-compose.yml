@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      # Base PostgreSQL configuration
+      POSTGRES_USER: anchor
+      POSTGRES_PASSWORD: anchor
+      # List of databases to create on startup
+      # To add a new database, just add its name to this list (comma-separated)
+      # Example: platform,talos,newdb
+      POSTGRES_MULTIPLE_DATABASES: anchor
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent data storage
+      - data:/var/lib/postgresql/data
+      # Mount initialization scripts
+      # Any .sh or .sql files in this directory will be executed on container first start
+      # The create-multiple-dbs.sh script runs automatically to create the databases
+      - ./postgres:/docker-entrypoint-initdb.d
+
+volumes:
+  data:
+    name: anchor_postgres_data_2

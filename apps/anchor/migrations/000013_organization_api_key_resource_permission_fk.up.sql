@@ -1,0 +1,11 @@
+ALTER TABLE organization_api_key_permissions
+DROP CONSTRAINT IF EXISTS organization_api_key_permissions_product_id_permission_name_fkey;
+
+ALTER TABLE organization_api_key_permissions
+DROP CONSTRAINT IF EXISTS organization_api_key_permission_product_id_permission_name_fkey;
+
+ALTER TABLE organization_api_key_permissions
+ADD CONSTRAINT organization_api_key_permissions_permission_fk
+FOREIGN KEY (product_id, permission_name)
+REFERENCES product_resource_permissions(product_id, name)
+ON DELETE CASCADE;

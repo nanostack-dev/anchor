@@ -1,0 +1,20 @@
+# Agent Configuration
+
+## Code Style Guidelines
+
+### Comments Policy
+**NEVER ADD COMMENTS** in code unless explicitly requested by the user. Code should be self-explanatory and well-structured. If you feel comments are needed, refactor the code to be clearer instead.
+
+### Magic Numbers Policy
+**AVOID MAGIC NUMBERS** - Replace numeric literals with named constants or well-named variables. Use descriptive names that explain the purpose or meaning of the value.
+
+Examples:
+- Instead of `if len(name) < 2` use `const MinNameLength = 2` and `if len(name) < MinNameLength`
+- Instead of `timeout := 5000` use `const DefaultTimeoutMs = 5000` and `timeout := DefaultTimeoutMs`
+
+### General Principles
+- Write clean, readable, self-documenting code
+- Use descriptive variable and function names
+- Prefer clear code structure over explanatory comments
+- Replace magic numbers with named constants
+- Only add comments when explicitly asked by the user

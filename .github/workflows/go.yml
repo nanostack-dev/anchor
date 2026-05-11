@@ -1,0 +1,49 @@
+name: Go Build and Test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - 'Dockerfile'
+      - '.github/workflows/go.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - 'Dockerfile'
+      - '.github/workflows/go.yml'
+  workflow_dispatch:
+
+jobs:
+  go-build-test:
+    uses: nanostack-dev/github-actions/.github/workflows/go-build-test.yml@main
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      app_name: anchor
+      go_version: '1.26.1'
+      cache_dependency_path: apps/anchor/go.sum
+      download_dependencies_dir: apps/anchor
+      lint_working_directory: ./apps/anchor
+      lint_args: --timeout 5m --path-mode=abs
+      lint_skip_cache: true
+      lint_skip_save_cache: true
+      test_suites_json: >-
+        [{"name":"Component Tests","working_directory":"./apps/anchor/cmd/it/ct","command":"gotestsum --format github-actions -- ./..."},{"name":"Service Tests","working_directory":"./apps/anchor/cmd/it/service","command":"gotestsum --format github-actions -- ./..."},{"name":"Unit Tests","working_directory":"./apps/anchor/internal","command":"gotestsum --format github-actions -- ./..."}]
+      image_repository: ghcr.io/${{ github.repository_owner }}/anchor
+      image_title: anchor
+      image_description: Multi-tenant service platform
+      docker_context: .
+      dockerfile_path: ./Dockerfile
+      build_platforms: linux/amd64
+      sha_tag_format: short
+      publish_image: ${{ github.event_name != 'pull_request' }}
+    secrets:
+      READ_PAT_GITHUB: ${{ secrets.READ_PAT_GITHUB }}

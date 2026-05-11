@@ -1,0 +1,283 @@
+package service
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/shared/toolkit/search"
+
+	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/repository"
+
+	"github.com/rs/zerolog"
+)
+
+type ResourcePermissionService interface {
+	Create(
+		ctx context.Context, input resourcepermission.CreateProductResourcePermissionInput,
+	) (resourcepermission.ProductResourcePermission, error)
+
+	GetByID(
+		ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
+	) (*resourcepermission.ProductResourcePermission, error)
+
+	Update(
+		ctx context.Context, input resourcepermission.UpdateProductResourcePermissionInput,
+	) (resourcepermission.ProductResourcePermission, error)
+
+	Delete(
+		ctx context.Context, input resourcepermission.DeleteProductResourcePermissionInput,
+	) error
+
+	SearchByProduct(
+		ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
+	) (search.Result[resourcepermission.ProductResourcePermission], error)
+	GetByRole(
+		ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
+	) ([]resourcepermission.ProductResourcePermission, error)
+}
+
+type resourcePermissionService struct {
+	resourcePermissionRepo repository.ProductResourcePermissionRepository
+	apiKeyRepo             repository.ProductAPIKeyRepository
+	db                     *sql.DB
+	logger                 zerolog.Logger
+}
+
+func NewResourcePermissionService(
+	resourcePermissionRepo repository.ProductResourcePermissionRepository,
+	apiKeyRepo repository.ProductAPIKeyRepository,
+	db *sql.DB,
+	logger zerolog.Logger,
+) ResourcePermissionService {
+	return &resourcePermissionService{
+		resourcePermissionRepo: resourcePermissionRepo,
+		apiKeyRepo:             apiKeyRepo,
+		db:                     db,
+		logger: logger.With().Str(
+			"component", "resource_permission_service",
+		).Logger(),
+	}
+}
+
+func (s *resourcePermissionService) Create(
+	ctx context.Context, input resourcepermission.CreateProductResourcePermissionInput,
+) (resourcepermission.ProductResourcePermission, error) {
+	logger := s.logger.With().Str("operation", "Create").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return resourcepermission.ProductResourcePermission{}, err
+	}
+
+	now := time.Now()
+	resourcePermission := resourcepermission.ProductResourcePermission{
+		ProductID:     input.ProductID,
+		Name:          input.Name,
+		Description:   input.Description,
+		ScopeModifier: input.ScopeModifier,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name, nil)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to check existing resource permission")
+		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+	}
+	if permByName != nil {
+		return resourcepermission.ProductResourcePermission{}, NewResourcePermissionAlreadyExistsError(
+			input.Name,
+		)
+	}
+
+	created, err := s.resourcePermissionRepo.Create(ctx, resourcePermission, nil)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to create resource permission")
+		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+	}
+
+	logger.Info().
+		Str("product_id", input.ProductID).
+		Str("name", created.Name).
+		Msg("resource permission created")
+
+	return created, nil
+}
+
+func (s *resourcePermissionService) GetByID(
+	ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
+) (*resourcepermission.ProductResourcePermission, error) {
+	logger := s.logger.With().Str("operation", "GetByID").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return nil, err
+	}
+
+	resourcePermission, err := s.resourcePermissionRepo.FindByName(
+		ctx, input.ProductID, input.PermissionName, nil,
+	)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("permission_name", input.PermissionName).
+			Err(err).
+			Msg("failed to get resource permission")
+		return nil, toolkit.ErrUnexpected
+	}
+
+	return resourcePermission, nil
+}
+
+func (s *resourcePermissionService) Update(
+	ctx context.Context, input resourcepermission.UpdateProductResourcePermissionInput,
+) (resourcepermission.ProductResourcePermission, error) {
+	logger := s.logger.With().Str("operation", "Update").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return resourcepermission.ProductResourcePermission{}, err
+	}
+
+	// Get existing resource permission
+	existing, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name, nil)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to find existing resource permission")
+		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+	}
+
+	if existing == nil {
+		return resourcepermission.ProductResourcePermission{}, toolkit.ErrNotFound
+	}
+
+	updated := *existing
+	updated.UpdatedAt = time.Now()
+	updated.Description = input.Description
+
+	result, err := s.resourcePermissionRepo.Update(ctx, updated, nil)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to update resource permission")
+		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+	}
+
+	logger.Info().
+		Str("product_id", input.ProductID).
+		Str("name", input.Name).
+		Msg("resource permission updated")
+
+	return result, nil
+}
+
+func (s *resourcePermissionService) Delete(
+	ctx context.Context, input resourcepermission.DeleteProductResourcePermissionInput,
+) error {
+	logger := s.logger.With().Str("operation", "Delete").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return err
+	}
+
+	name, err := s.resourcePermissionRepo.FindByName(
+		ctx, input.ProductID, input.Name, nil,
+	)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to find resource permission by name")
+		return toolkit.ErrUnexpected
+	}
+	if name == nil {
+		logger.Debug().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Msg("resource permission not found for deletion")
+		return toolkit.ErrNotFound
+	}
+	err = toolkit.WithTx(s.db, func(tx *sql.Tx) error {
+		txOptions := &toolkit.DBOptions{Tx: tx}
+
+		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
+			ctx, input.ProductID, input.Name, txOptions,
+		); apiKeyDeleteErr != nil {
+			return apiKeyDeleteErr
+		}
+
+		return s.resourcePermissionRepo.DeleteByID(ctx, input.ProductID, input.Name, txOptions)
+	})
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("name", input.Name).
+			Err(err).
+			Msg("failed to delete resource permission with cascading cleanup")
+		return toolkit.ErrUnexpected
+	}
+
+	logger.Info().
+		Str("product_id", input.ProductID).
+		Str("name", input.Name).
+		Msg("resource permission deleted")
+
+	return nil
+}
+
+func (s *resourcePermissionService) SearchByProduct(
+	ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
+) (search.Result[resourcepermission.ProductResourcePermission], error) {
+	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return search.Result[resourcepermission.ProductResourcePermission]{}, err
+	}
+
+	result, err := s.resourcePermissionRepo.SearchByProduct(
+		ctx, input.ProductID, input.Request, nil,
+	)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Err(err).
+			Msg("failed to search resource permissions")
+		return search.Result[resourcepermission.ProductResourcePermission]{}, toolkit.ErrUnexpected
+	}
+
+	return result, nil
+}
+
+func (s *resourcePermissionService) GetByRole(
+	ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
+) ([]resourcepermission.ProductResourcePermission, error) {
+	logger := s.logger.With().Str("operation", "GetByRole").Logger()
+
+	if err := toolkit.ValidateStruct(input); err != nil {
+		return nil, err
+	}
+
+	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID, nil)
+	if err != nil {
+		logger.Error().
+			Str("product_role_id", input.ProductRoleID).
+			Err(err).
+			Msg("failed to get resource permissions by role")
+		return nil, toolkit.ErrUnexpected
+	}
+
+	return permissions, nil
+}

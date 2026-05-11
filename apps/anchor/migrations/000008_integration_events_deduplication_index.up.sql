@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_integration_events_deduplication
+ON integration_events(integration_instance_id, external_event_id);

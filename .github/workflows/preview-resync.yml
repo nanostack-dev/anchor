@@ -1,0 +1,151 @@
+name: Preview Re-sync with dev db
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to re-sync
+        required: true
+        type: string
+      branch_ref:
+        description: PR branch ref to target
+        required: true
+        type: string
+      restart_preview:
+        description: Restart the current preview deployment after syncing the DB
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: write
+
+concurrency:
+  group: preview-resync-anchor-${{ inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  resync:
+    name: Re-sync preview database
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST_DEV }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER_DEV }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${DEPLOY_HOST}" || -z "${DEPLOY_USER}" ]]; then
+            echo "DEPLOY_HOST_DEV and DEPLOY_USER_DEV org vars must be set on the dev environment" >&2
+            exit 1
+          fi
+
+      - name: Checkout infra repository
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: nanostack-dev/infra
+          token: ${{ secrets.READ_PAT_GITHUB }}
+          path: .ci/infra
+
+      - name: Compute preview metadata
+        id: compute
+        shell: bash
+        run: |
+          set -euo pipefail
+          slug="$(bash .ci/infra/scripts/preview-slug.sh '${{ inputs.branch_ref }}')"
+          host="pr-${slug}.anchorapidev.nanostack.dev"
+	          db_name="pr_${slug//-/_}_nanostack"
+	          stack_name="preview-anchor-${slug}"
+	          service_name="${stack_name}_anchor"
+          {
+            echo "branch_slug=${slug}"
+            echo "preview_host=${host}"
+            echo "preview_db=${db_name}"
+            echo "stack_name=${stack_name}"
+            echo "service_name=${service_name}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ env.DEPLOY_HOST }}
+          use-cache: 'true'
+
+      - name: Re-sync preview database from dev
+        uses: nanostack-dev/github-actions/.github/actions/preview-db-sync@main
+        with:
+          db_template: nanostack
+          preview_db: ${{ steps.compute.outputs.preview_db }}
+          replace_existing: 'true'
+          db_admin_url: ${{ secrets.DB_ADMIN_URL_DEV }}
+
+      - name: Restart preview service
+        if: ${{ inputs.restart_preview }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' '${{ secrets.DEPLOY_SSH_PRIVATE_KEY_DEV }}' > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+          ssh -i "$HOME/.ssh/id_ed25519" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo docker service update --force '${{ steps.compute.outputs.service_name }}'"
+
+      - name: Wait for preview health after restart
+        if: ${{ inputs.restart_preview }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$DEPLOY_USER@$DEPLOY_HOST" sudo bash -s -- \
+            "${{ steps.compute.outputs.service_name }}" 180 <<'EOF'
+          set -euo pipefail
+          SERVICE_NAME="$1"
+          TIMEOUT="$2"
+          deadline=$((SECONDS + TIMEOUT))
+          while (( SECONDS < deadline )); do
+            replicas="$(docker service ls --filter "name=${SERVICE_NAME}" --format '{{.Replicas}}' || true)"
+            if [[ -n "$replicas" ]]; then
+              desired="${replicas#*/}"
+              running="${replicas%/*}"
+              if [[ "$desired" == "$running" && "$desired" != "0" ]]; then
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          docker service ps "$SERVICE_NAME" --no-trunc >&2 || true
+          docker service logs "$SERVICE_NAME" --raw --timestamps --tail 100 >&2 || true
+          echo "preview ${SERVICE_NAME} failed to become ready in ${TIMEOUT}s" >&2
+          exit 1
+          EOF
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v3.0.4
+        with:
+          header: preview-anchor
+          number: ${{ inputs.pr_number }}
+          append: true
+          message: |
+            Preview DB re-sync completed for `${{ steps.compute.outputs.preview_db }}`.
+
+            - Backend Preview: https://${{ steps.compute.outputs.preview_host }}
+            - Restarted Preview: `${{ inputs.restart_preview }}`
+
+      - name: Cleanup local secrets
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"

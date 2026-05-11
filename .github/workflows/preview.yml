@@ -1,0 +1,122 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to associate with the preview comment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+concurrency:
+  group: preview-anchor-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event.action != 'closed'
+    name: Build & push image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Compute image tag
+        id: tag
+        shell: bash
+        run: echo "image_tag=pr-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Build and push
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/anchor:${{ steps.tag.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          secrets: |
+            READ_PAT_GITHUB=${{ secrets.READ_PAT_GITHUB }}
+
+  up:
+    if: github.event.action != 'closed'
+    needs: build
+    uses: nanostack-dev/github-actions/.github/workflows/preview-pr.yml@main
+    with:
+      app_name: anchor
+      service_name: anchor
+      image_repository: ghcr.io/${{ github.repository_owner }}/anchor
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      preview_base_domain: anchorapidev.nanostack.dev
+      db_template: nanostack
+      db_env_key: DB_NAME_NANOSTACK
+      host_env_key: NANOSTACK_HOST
+      allowed_origin_env_key: NANOSTACK_ALLOWED_ORIGIN
+      sentry_release_env_key: SENTRY_RELEASE_NANOSTACK
+      action: up
+      pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
+      branch_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      frontend_preview_domain: preview.anchordev.nanostack.dev
+      required_env_keys: |
+        NANOSTACK_ADMIN_JWT_SECRET
+        DB_HOST
+        DB_PORT
+        DB_USER
+        DB_PASSWORD
+        REDIS_ADDRESS
+        REDIS_PASSWORD
+        APP_ENCRYPTION_KEY
+    secrets:
+      READ_PAT_GITHUB: ${{ secrets.READ_PAT_GITHUB }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY_DEV }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      APP_ENV_FILE: ${{ secrets.NANOSTACK_ENV_FILE }}
+      DB_ADMIN_URL_DEV: ${{ secrets.DB_ADMIN_URL_DEV }}
+
+  down:
+    if: github.event.action == 'closed'
+    uses: nanostack-dev/github-actions/.github/workflows/preview-pr.yml@main
+    with:
+      app_name: anchor
+      service_name: anchor
+      image_repository: ghcr.io/${{ github.repository_owner }}/anchor
+      image_tag: pr-${{ github.event.pull_request.number }}
+      preview_base_domain: anchorapidev.nanostack.dev
+      db_template: nanostack
+      db_env_key: DB_NAME_NANOSTACK
+      host_env_key: NANOSTACK_HOST
+      allowed_origin_env_key: NANOSTACK_ALLOWED_ORIGIN
+      sentry_release_env_key: SENTRY_RELEASE_NANOSTACK
+      action: down
+      pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
+      branch_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      frontend_preview_domain: preview.anchordev.nanostack.dev
+    secrets:
+      READ_PAT_GITHUB: ${{ secrets.READ_PAT_GITHUB }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY_DEV }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      APP_ENV_FILE: ${{ secrets.NANOSTACK_ENV_FILE }}

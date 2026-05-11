@@ -1,0 +1,5213 @@
+openapi: 3.0.3
+info:
+  title: Anchor API (V1) # Renamed title
+  version: 1.0.0 # Initial version
+  description: |- # Updated description based on our design
+    API for managing organizational structures including Products, Organizations,
+    Workspaces, Users (Platform & Product), Roles, Permissions, and API Keys.
+    V1 focuses on a single-PlatformTenant deployment model (Open Source).
+tags:
+- name: PlatformAuth
+  description: Platform User authentication operations (Login, User Info).
+- name: PlatformInvitation
+  description: Manage Platform User invitations
+  # Product
+- name: Product
+  description: Manage Products within the PlatformTenant. (Admin operation)
+- name: ProductPermission
+  description: >-
+    View the built-in permissions that control access to the product itself
+    (e.g. product:settings:read, product:billing:update). These are
+    system-defined and read-only via the API. (Admin operation)
+- name: ProductResourcePermission
+  description: >-
+    Manage domain-resource permissions defined by the product owner for their
+    own application resources (e.g. document:read, file:delete for a Google
+    Drive-like product). Full CRUD. (Admin + Product API Key operation)
+- name: ProductRole
+  description: Manage Roles per Product. (Admin operation)
+- name: ProductAPIKey
+  description: Manage API Keys per Product. (Admin operation)
+- name: OrganizationAPIKey
+  description: Manage Organization API Keys. (Admin operation)
+- name: Organization
+  description: Manage Organizations within a Product. (Requires Product API Key)
+- name: Workspace
+  description: Manage Workspaces within an Organization. (Requires Product API 
+    Key)
+- name: ProductUser
+  description: Manage Product Users (end-users). (Requires Product API Key)
+- name: Membership
+  description: Manage Product User memberships in Organizations and Workspaces. 
+    (Requires Product API Key)
+- name: Permissions
+  description: Check and list effective permissions for Product Users. (Requires
+    Product API Key)
+- name: ProductOrganization
+  description: Manage Organizations within a Product. (Requires Product API Key)
+- name: OrganizationMember
+  description: Manage members within an Organization. (Requires Product API Key)
+- name: Integration
+  description: Manage integration instances and process inbound webhooks for 
+    Products. (Admin + public webhook endpoint)
+components:
+  parameters:
+    # --- Define Path Parameters for re-use ---
+    PlatformInvitationIdParameter:
+      name: invitation_id
+      in: path
+      description: The KSUID of the platform invitation.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "pinv_9sTUV..."
+      required: true
+    PlatformUserIdParameter:
+      name: platform_user_id
+      in: path
+      required: true
+      description: The KSUID of the platform invitation.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "puser_9sTUV..."
+    ProductIdParameter:
+      name: product_id
+      in: path
+      required: true
+      description: The KSUID of the product.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "prod_2iABC..."
+    OrganizationIdParameter:
+      name: organization_id
+      in: path
+      required: true
+      description: The KSUID of the organization.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+      example: "org_6jKLM..."
+    WorkspaceIdParameter:
+      name: workspace_id
+      in: path
+      required: true
+      description: The KSUID of the workspace.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+      example: "ws_6jKLM..."
+    ProductUserIdParameter:
+      name: product_user_id
+      in: path
+      required: true
+      description: The KSUID of the product Product User.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "pusr_8nOPQ..."
+    ProductRoleIdParameter:
+      name: role_id
+      in: path
+      required: true
+      description: The KSUID of the product role.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "role_5mNOP..."
+    ResourcePermissionNameParameter:
+      name: permission_name
+      in: path
+      required: true
+      description: The resource permission name (e.g., file:read, 
+        document:edit).
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 200
+        example: "file:read"
+    ProductPermissionIdParameter:
+      name: permission_id
+      in: path
+      required: true
+      description: permission name
+      schema:
+        type: string
+        example: "file:read"
+    ProductAPIKeyIdParameter:
+      name: api_key_id
+      in: path
+      required: true
+      description: The KSUID of the product API key.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "product_apikey_5mNOP..."
+    OrganizationAPIKeyIdParameter:
+      name: api_key_id
+      in: path
+      required: true
+      description: The KSUID of the organization API key.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "organization_apikey_5mNOP..."
+    IntegrationInstanceIdParameter:
+      name: integration_instance_id
+      in: path
+      required: true
+      description: The KSUID of the integration instance.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "iin_7pRST..."
+    ProviderTypeParameter:
+      name: provider_type
+      in: path
+      required: true
+      description: The integration provider type (e.g., CLERK).
+      schema:
+        $ref: "#/components/schemas/IntegrationProviderType"
+    EmailTemplateIdParameter:
+      name: email_template_id
+      in: path
+      required: true
+      description: The KSUID of the email template.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "etpl_2iABC..."
+  securitySchemes:
+    platformBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        JWT Bearer token obtained via the /auth/login endpoint for Platform User authentication.
+
+    # This API key is issued to the software (product backend) that calls Anchor
+    # to manage its product. It carries two distinct permission namespaces:
+    #
+    # 1. NANOSTACK permissions — built-in scopes that govern what the product
+    #    backend can do within Anchor itself (e.g. organization:create,
+    #    product_user:read, resources_permissions:write). These are the security
+    #    scopes declared on each endpoint below.
+    #
+    # 2. PRODUCT resource permissions — domain-specific permissions defined by
+    #    the product owner for their own application resources (e.g. document:read,
+    #    file:delete). These are managed via the /resource-permissions endpoints
+    #    and are assigned to ProductRoles, which are then attached to end-user
+    #    organization memberships.
+    #
+    # The key distinction: Anchor permissions control what the product backend
+    # can do *in Anchor*; product resource permissions control what end-users
+    # can do *inside the product*.
+    productApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Product-API-Key
+  schemas:
+    # Generic
+    ksuid:
+      type: string
+      description: Unique identifier using KSUID format with a resource-specific
+        prefix.
+      example: "prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb"
+      pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: A machine-readable error code.
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: A human-readable error message.
+          example: "Request validation failed"
+        field:
+          type: string
+          description: The specific field that caused the error (optional).
+          example: "name"
+        details:
+          type: object # Allow richer details
+          additionalProperties: true
+          description: Additional details about the error (optional).
+          example: {"minLength": 2}
+      required:
+      - code
+      - message
+
+    ApiErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiError"
+      required:
+      - errors
+    PagedListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of matching items.
+        count:
+          type: integer
+          description: The number of items returned in this response.
+      required:
+      - total
+      - count
+    SearchRequest:
+      type: object
+      properties:
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+        full_text_search:
+          type: string
+          description: Full-text search term to match against searchable fields.
+        sort_direction:
+          $ref: "#/components/schemas/SortDirection"
+          description: Sorting direction
+      description: Generic search request template
+
+    PaginationRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Maximum number of items per page.
+        offset:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+          description: Number of items to skip.
+      x-go-type: search.Pagination
+      x-go-type-import:
+        path: github.com/nanostack-dev/shared/toolkit/search
+    SortDirection:
+      type: string
+      enum: [ASC, DESC]
+      default: DESC
+      x-go-type: search.SortDirection
+      x-go-type-import:
+        path: github.com/nanostack-dev/shared/toolkit/search
+    Metadata:
+      type: object
+      additionalProperties: true
+      description: Optional key-value metadata. Values can be string, number, 
+        boolean.
+      example: {"billing_ref": "cust_abc123", "region": "us-east-1", "sla_level": "gold"}
+    # Auth
+    AuthTokenResponse:
+      additionalProperties: false
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      required:
+      - accessToken
+      - refreshToken
+      type: object
+    LoginRequest:
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+        password:
+          type: string
+      required:
+      - email
+      - password
+    RegisterRequest:
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+        password:
+          type: string
+        invitation_code:
+          type: string
+          description: Optional invitation code for registration.
+          example: "INVITE123"
+        tenant_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Optional tenantservice name for the initial setup. If not
+            provided, defaults to "Default".
+          example: "Acme Corporation"
+      required:
+      - email
+      - password
+      type: object
+
+    # Platform Invitation Schemas
+    PlatformInvitationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          description: The email address of the Product User being invited to 
+            the platform.
+          example: "new.admin@example.com"
+      required:
+      - email
+    PlatformInvitationResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the platform invitation (e.g., 
+            prefix 'pinv_').
+          example: "pinv_9sTUV..."
+        code:
+          type: string
+          description: The unique invitation code that the Product User will use
+            to register.
+          example: "PLATFORMINVITEABC"
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          description: The email address the invitation was sent to.
+          example: "new.admin@example.com"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the invitation was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the invitation was last updated.
+        tenant_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The ID of the PlatformTenant this invitation is 
+            associated with.
+          example: "ptnt_1single..."
+      required:
+      - id
+      - code
+      - email
+      - created_at
+      - updated_at
+      - tenant_id
+    PlatformInvitationListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/PlatformInvitationResponse"
+        required:
+        - items
+    PlatformInvitationFilter:
+      type: object
+      properties:
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+            x-go-type: string
+          description: Filter by email addresses (can specify multiple).
+          x-go-type-skip-optional-pointer: true
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific invitation IDs (can specify multiple).
+          x-go-type-skip-optional-pointer: true
+    PlatformInvitationSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/PlatformInvitationFilter"
+            description: Filter criteria for platform invitations
+          sort_by:
+            type: string
+            enum:
+            - email
+            - created_at
+            - updated_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: invitation.SortFieldPlatformInvitation
+            x-go-type-import:
+              path: anchor/internal/domain/invitation
+
+    # Platform User Schemas
+    PlatformUserRole:
+      type: string
+      enum: [OWNER, ADMIN]
+      description: The role of the platform user.
+      x-go-type: platform.TenantRole
+      x-go-type-import:
+        path: anchor/internal/domain/platform
+    PlatformUserResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the platform Product User (e.g., 
+            prefix 'puser_').
+          example: "puser_9sTUV..."
+        user_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the Product User (e.g., prefix 
+            'user_').
+          example: "user_9sTUV..."
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          description: The email address the invitation was sent to.
+          example: "new.admin@example.com"
+        role:
+          $ref: "#/components/schemas/PlatformUserRole"
+          description: The role of the platform Product User.
+          example: "ADMIN"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the invitation was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the invitation was last updated.
+        tenant_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The ID of the PlatformTenant this invitation is 
+            associated with.
+          example: "tenant_1single..."
+      required:
+      - id
+      - email
+      - created_at
+      - updated_at
+      - role
+      - user_id
+      - tenant_id
+    PlatformUserFilter:
+      type: object
+      properties:
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+            x-go-type: string
+          description: Filter by email addresses (can specify multiple).
+          x-go-type-skip-optional-pointer: true
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformUserRole"
+          description: Filter by Product User roles (can select multiple).
+          x-go-type-skip-optional-pointer: true
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific Product User IDs (can specify 
+            multiple).
+          x-go-type-skip-optional-pointer: true
+    PlatformUserSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/PlatformUserFilter"
+            description: Filter criteria for platform invitations
+          sort_by:
+            type: string
+            enum:
+            - email
+            - created_at
+            - updated_at
+            - role
+            default: created_at
+            description: Field to sort by
+            x-go-type: platform.SortFieldPlatformUser
+            x-go-type-import:
+              path: anchor/internal/domain/platform
+    PlatformUserListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/PlatformUserResponse"
+        required:
+        - items
+
+    # Product
+    ProductFilter:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by product names (can specify multiple).
+          x-go-type-skip-optional-pointer: true
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product IDs (can specify multiple).
+          x-go-type-skip-optional-pointer: true
+    ProductSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/ProductFilter"
+            description: Filter criteria for platform invitations
+          sort_by:
+            type: string
+            enum:
+            - name
+            - created_at
+            - updated_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: product.SortFieldProduct
+            x-go-type-import:
+              path: anchor/internal/domain/product
+    ProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the product. Must be unique within the 
+            PlatformTenant.
+          example: "My Super App"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Optional description for the product.
+          example: "Real-time Product User analytics."
+      required:
+      - name
+    ProductResponse: # Response Schema
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the product (e.g., prefix 'prod_').
+          example: "prod_2iABC..."
+        tenant_id: # Included for clarity, even if fixed in OS V1
+          $ref: "#/components/schemas/ksuid"
+          description: Identifier of the PlatformTenant this product belongs to.
+          example: "ptnt_1single..."
+        name:
+          type: string
+          description: Name of the product.
+          example: "Analytics Dashboard"
+        description:
+          type: string
+          nullable: true
+          description: Description of the product.
+          example: "Real-time Product User analytics."
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the product was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the product was last updated.
+      required:
+      - id
+      - tenant_id
+      - name
+      - created_at
+      - updated_at
+    ProductListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductResponse"
+        required:
+        - items
+    ProductPermissionResponse: # Response Schema
+      description: >-
+        A built-in permission that controls access to the product itself within
+        Anchor (e.g. product:settings:read, product:billing:update). These
+        permissions are system-defined — they cannot be created or deleted via
+        the API. Use the search endpoint to discover which permissions are
+        available for a product.
+      type: object
+      properties:
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this permission is defined for.
+          example: "prod_2iABC..."
+        name:
+          type: string
+          description: >-
+            The permission string identifier. This is the value used when
+            assigning the permission to a role (e.g. "product:settings:read").
+          example: "product:settings:read"
+        description:
+          type: string
+          nullable: true
+          description: Human-readable description of what this permission grants.
+          example: "Allows reading the product settings."
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - product_id
+      - name
+      - created_at
+      - updated_at
+
+    ProductPermissionListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductPermissionResponse"
+        required:
+        - items
+    CreateProductResourcePermissionRequest:
+      description: >-
+        Request body for defining a new domain-resource permission for the
+        product's own application resources. For example, if you are building a
+        Google Drive-like product you might define permissions such as
+        "document:read", "document:create", or "file:delete". These permissions
+        are later assigned to ProductRoles, which are attached to end-user
+        organization memberships.
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+          description: >-
+            The resource permission identifier, using the format
+            "<resource>:<action>" (e.g. "document:read", "file:delete",
+            "workspace:invite"). Must be unique within the product.
+          example: "document:read"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional human-readable description of what this permission grants.
+          example: "Allows reading document contents."
+        scope_modifier:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: >-
+            Optional scope qualifier that narrows the permission to a subset of
+            matching resources (e.g. "own" to restrict to resources the user
+            owns, "team" to restrict to resources shared within their team).
+          example: "own"
+      required:
+      - name
+
+    UpdateProductResourcePermissionRequest:
+      description: Request body for updating a product resource permission's metadata.
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Updated human-readable description of what this permission grants.
+          example: "Allows updating document contents."
+
+    ProductResourcePermissionResponse:
+      description: >-
+        A domain-resource permission defined by the product owner for their own
+        application resources. These permissions are created by the product
+        (e.g. "document:read", "file:delete" for a Google Drive-like product)
+        and assigned to ProductRoles. They control what end-users can do
+        *inside the product*, as opposed to ProductPermissions which control
+        access to the product itself within Anchor.
+      type: object
+      properties:
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this resource permission belongs to.
+          example: "prod_2iABC..."
+        name:
+          type: string
+          description: >-
+            The resource permission identifier (e.g. "document:read"). This
+            value is used as the primary key and path parameter.
+          example: "document:read"
+        description:
+          type: string
+          nullable: true
+          description: Human-readable description of what this permission grants.
+          example: "Allows reading document contents."
+        scope_modifier:
+          type: string
+          nullable: true
+          description: >-
+            Optional scope qualifier that narrows the permission (e.g. "own"
+            restricts to resources owned by the user, "team" to resources
+            shared within their team).
+          example: "own"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the resource permission was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the resource permission was last updated.
+      required:
+      - product_id
+      - name
+      - created_at
+      - updated_at
+    ProductResourcePermissionFilter:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by resource permission names.
+          x-go-type-skip-optional-pointer: true
+    ProductResourcePermissionSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/ProductResourcePermissionFilter"
+          sort_by:
+            type: string
+            enum: ["created_at", "updated_at", "name"]
+            default: "created_at"
+            description: Field to sort by
+            x-go-type: resourcepermission.SortFieldProductResourcePermission
+            x-go-type-import:
+              path: anchor/internal/domain/product/resourcepermission
+
+    ProductResourcePermissionListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductResourcePermissionResponse"
+        required:
+        - items
+    ProductRoleCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the product role. Must be unique within the 
+            Product.
+          example: "Editor"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the role's purpose.
+          example: "Can view and edit resources within assigned organizations/workspaces."
+        permissions:
+          type: array
+          description: Optional list of permission names (strings) to assign 
+            initially.
+          items:
+            type: string
+            example: "document:edit"
+          x-go-type-skip-optional-pointer: true
+      required:
+      - name
+    ProductRoleUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the product role. Must be unique within the 
+            Product.
+          example: "Editor"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the role's purpose.
+          example: "Can view and edit resources within assigned organizations/workspaces."
+        permissions:
+          type: array
+          description: Optional list of permission names (strings) to assign 
+            initially.
+          items:
+            type: string
+            example: "document:edit"
+          x-go-type-skip-optional-pointer: true
+    ProductRoleResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the product role (e.g., prefix 
+            'role_').
+          example: "role_5mNOP..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this role belongs to.
+          example: "prod_2iABC..."
+        name:
+          type: string
+          description: Name of the product role.
+          example: "Editor"
+        description:
+          type: string
+          nullable: true
+          description: Description of the role.
+          example: "Can view and edit resources within assigned organizations/workspaces."
+        # scope: # Revisit if needed - we initially decided scope ('Org'/'WS') was implicit via Membership
+        #   type: string
+        #   enum: [Organization, Workspace]
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductRolePermissionResponse"
+          description: List of permissions assigned to this role.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - product_id
+      - name
+      - permissions
+      - created_at
+      - updated_at
+    ProductRolePermissionResponse: # Response Schema
+      description: >-
+        Represents a product resource permission (e.g. "document:read") that
+        has been assigned to a ProductRole. These are domain-specific
+        permissions defined by the product owner for their own application
+        resources, not to be confused with the built-in ProductPermissions
+        that govern access to the product within Anchor.
+      type: object
+      properties:
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this permission is defined for.
+          example: "prod_2iABC..."
+        permission_name:
+          type: string
+          description: >-
+            The product resource permission name (e.g. "document:read",
+            "file:delete"). References an existing ProductResourcePermission.
+          example: "document:read"
+        product_role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the ProductRole this permission is assigned to.
+          example: "role_5mNOP..."
+      required:
+      - product_id
+      - product_role_id
+      - permission_name
+    ProductRoleListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductRoleResponse"
+        required:
+        - items
+    ProductPermissionsResponse:
+      type: object
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductPermissionResponse"
+      required:
+      - permissions
+    AssignPermissionRequest:
+      description: >-
+        Request body for assigning a product resource permission to a role.
+        The permission must already exist under the product's resource
+        permissions (see /resource-permissions endpoints).
+      type: object
+      properties:
+        permission_name:
+          type: string
+          description: >-
+            The name of the product resource permission to assign
+            (e.g. "document:read"). Must match an existing
+            ProductResourcePermission for this product.
+          example: "document:read"
+      required:
+      - permission_name
+    #Api key
+    ProductAPIKeyStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+      x-go-type: apikey.Status
+      x-go-type-import:
+        path: anchor/internal/domain/product/apikey
+    ProductAPIKeyCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the product API key. Must be unique within the 
+            Product.
+          example: "Production Integration Key"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the API key's purpose.
+          example: "API key for production environment integration."
+        mutable:
+          type: boolean
+          description: Whether this API key is allowed to update its assigned
+            permissions later through the management API.
+          default: false
+          example: false
+        permissions:
+          type: array
+          description: Optional list of permission names (strings) to assign 
+            initially.
+          items:
+            type: string
+            example: "organization:create"
+          x-go-type-skip-optional-pointer: true
+      required:
+      - name
+    ProductAPIKeyResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the product API key (e.g., prefix 
+            'pkey_').
+          example: "product_apikey_5mNOP..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this API key belongs to.
+          example: "prod_2iABC..."
+        name:
+          type: string
+          description: Name of the product API key.
+          example: "Production Integration Key"
+        description:
+          type: string
+          nullable: true
+          description: Description of the API key.
+          example: "API key for production environment integration."
+        mutable:
+          type: boolean
+          description: Whether the API key allows permission updates.
+          example: false
+        obfuscated_value:
+          type: string
+          description: Obfuscated API key value for display purposes (showing 
+            only first/last characters).
+          example: "product_apikey_**********************aBc"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration date for the API key.
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time the API key was used.
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductAPIKeyPermissionResponse"
+          description: List of permissions assigned to this API key.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ProductAPIKeyStatus"
+      required:
+      - id
+      - product_id
+      - name
+      - mutable
+      - obfuscated_value
+      - permissions
+      - created_at
+      - updated_at
+      - status
+    CreatedProductAPIKeyResponse:
+      allOf:
+      - $ref: "#/components/schemas/ProductAPIKeyResponse"
+      - type: object
+        properties:
+          value:
+            type: string
+            description: The clear API key value (only shown once at creation 
+              time).
+            example: "anchor_prd_apikey_5mNOP1234567890abcdefg"
+        required:
+        - value
+        - id
+        - product_id
+        - name
+        - obfuscated_value
+        - permissions
+        - created_at
+        - updated_at
+        - status
+    ProductAPIKeyPermissionResponse: # Response Schema
+      description: >-
+        Represents a Anchor built-in scope granted to a Product API Key.
+        These are the operational permissions that control what the product
+        backend can do within Anchor itself (e.g. "organization:create",
+        "product_user:read"). Not to be confused with ProductResourcePermissions,
+        which are domain-specific permissions defined by the product owner for
+        their own end-users.
+      type: object
+      properties:
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this permission is defined for.
+          example: "prod_2iABC..."
+        permission_name:
+          type: string
+          description: >-
+            The Anchor built-in scope granted to this API key
+            (e.g. "organization:create", "product_user:read").
+          example: "organization:create"
+        product_api_key_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the ProductAPIKey this permission is granted to.
+          example: "product_apikey_5mNOP..."
+      required:
+      - product_id
+      - product_api_key_id
+      - permission_name
+    ProductAPIKeyListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductAPIKeyResponse"
+        required:
+        - items
+    OrganizationAPIKeyStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+      x-go-type: orgapikey.Status
+      x-go-type-import:
+        path: anchor/internal/domain/organization/apikey
+    OrganizationAPIKeyCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the organization API key. Must be unique within the organization.
+          example: "Runner Access Key"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the API key's purpose.
+          example: "Key used by the product backend to access org-scoped operations."
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional expiration date for the API key.
+        permissions:
+          type: array
+          description: Required list of permission names (strings) to assign initially.
+          items:
+            type: string
+            example: "organization:read"
+          x-go-type-skip-optional-pointer: true
+      required:
+      - name
+      - permissions
+    OrganizationAPIKeyResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the organization API key.
+          example: "organization_apikey_5mNOP..."
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the organization this API key belongs to.
+          example: "org_6jKLM..."
+        name:
+          type: string
+          description: Name of the organization API key.
+          example: "Runner Access Key"
+        description:
+          type: string
+          nullable: true
+          description: Description of the API key.
+          example: "Key used by the product backend to access org-scoped operations."
+        obfuscated_value:
+          type: string
+          description: Obfuscated API key value for display purposes.
+          example: "anchor_org_apikey_***_a1b2c3d4"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration date for the API key.
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time the API key was used.
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationAPIKeyPermissionResponse"
+          description: List of permissions assigned to this API key.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/OrganizationAPIKeyStatus"
+      required:
+      - id
+      - organization_id
+      - name
+      - obfuscated_value
+      - permissions
+      - created_at
+      - updated_at
+      - status
+    CreatedOrganizationAPIKeyResponse:
+      allOf:
+      - $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+      - type: object
+        properties:
+          value:
+            type: string
+            description: The clear API key value (only shown once at creation time).
+            example: "anchor_org_apikey_5mNOP1234567890abcdefg"
+        required:
+        - value
+        - id
+        - organization_id
+        - name
+        - obfuscated_value
+        - permissions
+        - created_at
+        - updated_at
+        - status
+    OrganizationAPIKeyPermissionResponse:
+      description: Represents a Anchor built-in scope granted to an Organization API Key.
+      type: object
+      properties:
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the organization this permission grant belongs to.
+          example: "org_6jKLM..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the product this permission is defined for.
+          example: "prod_2iABC..."
+        permission_name:
+          type: string
+          description: The Anchor built-in scope granted to this API key.
+          example: "organization:read"
+        organization_api_key_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the OrganizationAPIKey this permission is granted to.
+          example: "organization_apikey_5mNOP..."
+      required:
+      - organization_id
+      - product_id
+      - permission_name
+      - organization_api_key_id
+    OrganizationAPIKeyListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+        required:
+        - items
+
+    # Product User Schemas
+    ProductUserStatus:
+      type: string
+      enum: [active, invited, suspended]   # Define possible statuses
+      description: The status of the product Product User account.
+      example: active
+    ProductUserRequest: # For Create and Update (PATCH)
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          description: User's email address. Must be unique within the Product.
+          example: "end.Product User@example.com"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+          description: User's display name.
+          example: "Jane Doe"
+        status:
+          $ref: "#/components/schemas/ProductUserStatus"
+          description: Set the status (e.g., create as 'invited' or 'active', 
+            update to 'suspended').
+    ProductUserResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the product Product User (e.g., 
+            prefix 'pusr_').
+          example: "pusr_8nOPQ..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this Product User belongs to.
+          example: "prod_2iABC..."
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          description: User's email address.
+          example: "end.Product User@example.com"
+        name:
+          type: string
+          nullable: true
+          description: User's display name.
+          example: "Jane Doe"
+        external_id:
+          type: string
+          nullable: true
+          description: External identifier for the user, typically from an 
+            external identity provider.
+          example: "user_2nTFC..."
+        status:
+          $ref: "#/components/schemas/ProductUserStatus"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the Product User record was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the Product User record was last updated.
+      required:
+      - id
+      - product_id
+      - email
+      - status
+      - created_at
+      - updated_at
+    ProductUserListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductUserResponse"
+        required:
+        - items
+    ProductPermissionFilter:
+      description: Filter criteria for searching built-in product permissions.
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by exact permission name strings (e.g. "product:settings:read").
+          x-go-type-skip-optional-pointer: true
+    ProductRoleFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific role IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by role names (exact matches).
+          x-go-type-skip-optional-pointer: true
+        name_contains:
+          type: string
+          description: Filter by roles whose names contain this substring.
+    ProductAPIKeyFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific API key IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by API key names (exact matches).
+          x-go-type-skip-optional-pointer: true
+        status:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductAPIKeyStatus"
+          description: Filter by  status.
+        expires_before:
+          type: string
+          format: date-time
+          description: Filter by API keys that expire before this date.
+        expires_after:
+          type: string
+          format: date-time
+          description: Filter by API keys that expire after this date.
+    OrganizationAPIKeyFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific API key IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by API key names (exact matches).
+          x-go-type-skip-optional-pointer: true
+        status:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationAPIKeyStatus"
+          description: Filter by status.
+        last_used_before:
+          type: string
+          format: date-time
+          description: Filter by API keys last used before this date.
+        last_used_after:
+          type: string
+          format: date-time
+          description: Filter by API keys last used after this date.
+    WorkspaceMembershipFilter:
+      type: object
+      properties:
+        workspace_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific workspace IDs.
+          x-go-type-skip-optional-pointer: true
+        organization_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by parent organization IDs.
+          x-go-type-skip-optional-pointer: true
+        product_user_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product Product User IDs.
+          x-go-type-skip-optional-pointer: true
+        user_emails:
+          type: array
+          items:
+            type: string
+            format: email
+            x-go-type: string
+          description: Filter by Product User email addresses.
+          x-go-type-skip-optional-pointer: true
+        product_role_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product role IDs.
+          x-go-type-skip-optional-pointer: true
+        role_names:
+          type: array
+          items:
+            type: string
+          description: Filter by role names.
+          x-go-type-skip-optional-pointer: true
+    OrganizationFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific organization IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by organization names (exact matches).
+          x-go-type-skip-optional-pointer: true
+    WorkspaceFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific workspace IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by workspace names (exact matches).
+          x-go-type-skip-optional-pointer: true
+    ProductUserFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product Product User IDs.
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+            x-go-type: string
+          description: Filter by exact email addresses.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by names containing these substrings.
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductUserStatus"
+          description: Filter by Product User statuses.
+        external_ids:
+          type: array
+          items:
+            type: string
+          description: Filter by external identifiers (exact matches).
+          x-go-type-skip-optional-pointer: true
+    ProductUserSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/ProductUserFilter"
+            description: Filter criteria for product users
+          sort_by:
+            type: string
+            enum:
+            - email
+            - name
+            - status
+            - created_at
+            - updated_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: user.SortFieldProductUser
+            x-go-type-import:
+              path: anchor/internal/domain/product/user
+    UserOrganizationInclude:
+      type: string
+      enum: [role_permissions]
+      description: Optional include parameter for user organization endpoints.
+    UserOrganizationRoleResponse:
+      type: object
+      description: The user's role within an organization.
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the role.
+          example: "role_5mNOP..."
+        name:
+          type: string
+          description: Name of the role.
+          example: "Editor"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: >-
+            List of product resource permission names assigned to this role
+            (e.g. "document:read", "file:delete"). These are domain-specific
+            permissions defined by the product owner. Only included when
+            `include=role_permissions` is set.
+          example: ["document:read", "document:create"]
+      required:
+      - id
+      - name
+    UserOrganizationResponse:
+      type: object
+      description: Organization details from the perspective of a product user, 
+        including their membership and role.
+      properties:
+        organization:
+          type: object
+          properties:
+            id:
+              $ref: "#/components/schemas/ksuid"
+              description: Unique identifier for the organization.
+              example: "org_3iXYZ..."
+            name:
+              type: string
+              description: Name of the organization.
+              example: "Acme Corporation"
+            description:
+              type: string
+              nullable: true
+              description: Description of the organization.
+              example: "Leading provider of innovative solutions."
+            metadata:
+              $ref: "#/components/schemas/Metadata"
+              description: Key-value metadata for the organization.
+          required:
+          - id
+          - name
+        role:
+          $ref: "#/components/schemas/UserOrganizationRoleResponse"
+        joined_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user joined this organization.
+      required:
+      - organization
+      - role
+      - joined_at
+    OrganizationMembershipRequest:
+      type: object
+      description: Request body for adding a product user to an organization 
+        with a specific role.
+      properties:
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The organization to add the user to.
+          example: "org_3iXYZ..."
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The role to assign to the user within the organization.
+          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+      required:
+      - organization_id
+      - role_id
+    OrganizationMembershipUpdateRequest:
+      type: object
+      description: Request body for updating a product user's role within an 
+        organization.
+      properties:
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The new role to assign to the user within the 
+            organization.
+          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+      required:
+      - role_id
+    UserOrganizationListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserOrganizationResponse"
+      required:
+      - items
+    ProductPermissionSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/ProductPermissionFilter"
+            description: Filter criteria for app permissions
+          sort_by:
+            type: string
+            enum:
+            - id
+            - name
+            - resource
+            - created_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: permission.SortFieldProductPermission
+            x-go-type-import:
+              path: anchor/internal/domain/permission
+    ProductRoleSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/ProductRoleFilter"
+            description: Filter criteria for app roles
+          sort_by:
+            type: string
+            enum:
+            - id
+            - name
+            - created_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: role.SortFieldProductRole
+            x-go-type-import:
+              path: anchor/internal/domain/product/role
+    ProductAPIKeySearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/ProductAPIKeyFilter"
+            description: Filter criteria for product API keys
+          sort_by:
+            type: string
+            enum:
+            - id
+            - name
+            - created_at
+            - last_used_at
+            - status
+            default: created_at
+            description: Field to sort by
+            x-go-type: apikey.SortFieldProductAPIKey
+            x-go-type-import:
+              path: anchor/internal/domain/product/apikey
+    OrganizationAPIKeySearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/OrganizationAPIKeyFilter"
+            description: Filter criteria for organization API keys
+          sort_by:
+            type: string
+            enum:
+            - id
+            - name
+            - created_at
+            - last_used_at
+            - status
+            default: created_at
+            description: Field to sort by
+            x-go-type: orgapikey.SortFieldOrganizationAPIKey
+            x-go-type-import:
+              path: anchor/internal/domain/organization/apikey
+    ProductAPIKeyUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the product API key. Must be unique within the 
+            Product.
+          example: "Production Integration Key"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the API key's purpose.
+          example: "API key for production environment integration."
+        permissions:
+          type: array
+          description: Optional full replacement set of permission names.
+            This update is allowed only when the API key is mutable.
+          items:
+            type: string
+            example: "organization:create"
+    OrganizationAPIKeyUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the organization API key. Must be unique within the organization.
+          example: "Runner Access Key"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the API key's purpose.
+          example: "Updated description for org API key."
+        status:
+          $ref: "#/components/schemas/OrganizationAPIKeyStatus"
+
+    OrganizationAPIKeyValidateRequest:
+      type: object
+      required: [api_key, required_scopes]
+      properties:
+        api_key:
+          type: string
+          description: Raw organization API key value to validate.
+        required_scopes:
+          type: array
+          description: Required permission scopes that the API key must satisfy.
+          items:
+            type: string
+
+    OrganizationAPIKeyValidateResponse:
+      type: object
+      required:
+        - api_key
+        - permissions
+        - missing_privileges
+      properties:
+        api_key:
+          $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+        permissions:
+          type: array
+          description: Permission names currently assigned to the organization API key.
+          items:
+            type: string
+        missing_privileges:
+          type: array
+          description: Required permission names that were requested but missing.
+          items:
+            type: string
+
+    OrganizationAPIKeyValidateForbiddenResponse:
+      type: object
+      required:
+        - api_key
+        - permissions
+        - missing_privileges
+      properties:
+        api_key:
+          $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+        permissions:
+          type: array
+          description: Permission names currently assigned to the organization API key.
+          items:
+            type: string
+        missing_privileges:
+          type: array
+          description: Required permission names that were requested but missing.
+          items:
+            type: string
+    UserResponse:
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+        id:
+          type: string
+        role:
+          type: string
+      required:
+      - id
+      - email
+      - role
+      type: object
+    # Organization Schemas
+    ProductOrganizationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the organization. Must be unique within the 
+            Product.
+          example: "Acme Corporation"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the organization.
+          example: "Leading provider of innovative solutions."
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+          description: Optional key-value metadata for the organization.
+        founding_member:
+          $ref: "#/components/schemas/FoundingMemberRequest"
+          description: >-
+            Optional founding member assignment. When provided, organization creation
+            and membership assignment happen atomically in one transaction.
+      required:
+      - name
+    FoundingMemberRequest:
+      type: object
+      properties:
+        product_user_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the product user to assign as founding member.
+          example: "pusr_3iXYZ..."
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Role to assign to the founding member.
+          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+      required:
+      - product_user_id
+      - role_id
+    ProductOrganizationResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the organization (e.g., prefix 
+            'org_').
+          example: "org_3iXYZ..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this organization belongs to.
+          example: "prod_2iABC..."
+        name:
+          type: string
+          description: Name of the organization.
+          example: "Acme Corporation"
+        description:
+          type: string
+          nullable: true
+          description: Description of the organization.
+          example: "Leading provider of innovative solutions."
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+          description: Key-value metadata for the organization.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the organization was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the organization was last updated.
+      required:
+      - id
+      - product_id
+      - name
+      - created_at
+      - updated_at
+    ProductOrganizationSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/OrganizationFilter"
+            description: Filter criteria for organizations
+          sort_by:
+            type: string
+            enum:
+            - name
+            - created_at
+            - updated_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: organization.SortFieldProductOrganization
+            x-go-type-import:
+              path: anchor/internal/domain/organization
+    ProductOrganizationListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+                $ref: "#/components/schemas/ProductOrganizationResponse"
+        required:
+        - items
+
+    ProductWorkspaceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Name of the workspace. Must be unique within the organization.
+          example: "Production"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional description of the workspace.
+          example: "Workspace for production users and resources."
+      required:
+      - name
+    ProductWorkspaceResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the workspace.
+          example: "ws_3iXYZ..."
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the organization this workspace belongs to.
+          example: "org_3iXYZ..."
+        name:
+          type: string
+          description: Name of the workspace.
+          example: "Production"
+        description:
+          type: string
+          nullable: true
+          description: Description of the workspace.
+          example: "Workspace for production users and resources."
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the workspace was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the workspace was last updated.
+      required:
+      - id
+      - organization_id
+      - name
+      - created_at
+      - updated_at
+    ProductWorkspaceSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/WorkspaceFilter"
+            description: Filter criteria for workspaces.
+          sort_by:
+            type: string
+            enum:
+            - name
+            - created_at
+            - updated_at
+            default: created_at
+            description: Field to sort by.
+            x-go-type: workspace.SortFieldProductWorkspace
+            x-go-type-import:
+              path: anchor/internal/domain/workspace
+    ProductWorkspaceListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductWorkspaceResponse"
+        required:
+        - items
+
+    OrganizationMemberResponse:
+      type: object
+      description: Represents a member of an organization with their role 
+        details.
+      properties:
+        product_user_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier of the product user.
+          example: "pusr_3iXYZ..."
+        email:
+          type: string
+          format: email
+          description: Email address of the member.
+          example: "alice@example.com"
+        name:
+          type: string
+          nullable: true
+          description: Display name of the member.
+          example: "Alice Smith"
+        external_id:
+          type: string
+          nullable: true
+          description: External (Clerk) user ID of the member.
+          example: "user_2NNEqL2nrIRdJ194ndJqow38MB1"
+        role:
+          type: object
+          description: Role assigned to the member within the organization.
+          properties:
+            id:
+              $ref: "#/components/schemas/ksuid"
+              description: Unique identifier of the role.
+              example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+            name:
+              type: string
+              description: Display name of the role.
+              example: "Admin"
+            permissions:
+              type: array
+              items:
+                type: string
+              description: >-
+                Product resource permission names assigned to this role
+                (e.g. "document:read", "file:delete"). Only populated when
+                include=role_permissions.
+              example: ["org:read", "org:write"]
+          required:
+          - id
+          - name
+        joined_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user joined this organization.
+      required:
+      - product_user_id
+      - email
+      - role
+      - joined_at
+    OrganizationMemberListResponse:
+      type: object
+      description: Paginated list of organization members.
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/OrganizationMemberResponse"
+        required:
+        - items
+    OrganizationMemberRequest:
+      type: object
+      description: Request body for adding a member to an organization.
+      properties:
+        product_user_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The product user to add to the organization.
+          example: "pusr_3iXYZ..."
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The role to assign to the member.
+          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+      required:
+      - product_user_id
+      - role_id
+    OrganizationMemberRoleRequest:
+      type: object
+      description: Request body for updating a member's role within an 
+        organization.
+      properties:
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The new role to assign to the member.
+          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+      required:
+      - role_id
+    OrganizationMemberSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/OrganizationMemberFilter"
+            description: Filter criteria for organization members.
+          sort_by:
+            type: string
+            enum:
+            - joined_at
+            - email
+            default: joined_at
+            description: Field to sort by.
+            x-go-type: organization.SortFieldMember
+            x-go-type-import:
+              path: anchor/internal/domain/organization
+    OrganizationMemberFilter:
+      type: object
+      description: Filter criteria for searching organization members.
+      properties:
+        product_user_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product user IDs.
+        external_ids:
+          type: array
+          items:
+            type: string
+          description: Filter by external (Clerk) user IDs.
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Filter by email addresses.
+        role_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by role IDs.
+    OrganizationMemberInclude:
+      type: string
+      enum: [role_permissions]
+      description: Additional fields to include in organization member 
+        responses.
+
+    # Integration Schemas
+    IntegrationProviderType:
+      type: string
+      enum: [CLERK, SMTP]
+      description: The type of integration provider.
+      x-go-type: integration.ProviderType
+      x-go-type-import:
+        path: anchor/internal/domain/integration
+    IntegrationInstanceStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, CONFIGURING, ERROR]
+      description: The status of the integration instance.
+      x-go-type: integration.Status
+      x-go-type-import:
+        path: anchor/internal/domain/integration
+    IntegrationEventStatus:
+      type: string
+      enum: [PENDING, PROCESSING, PROCESSED, FAILED]
+      x-enum-varnames:
+        - IntegrationEventStatusPENDING
+        - IntegrationEventStatusPROCESSING
+        - IntegrationEventStatusPROCESSED
+        - IntegrationEventStatusFAILED
+      description: The processing status of an integration event.
+      x-go-type: integration.EventStatus
+      x-go-type-import:
+        path: anchor/internal/domain/integration
+    ClerkIntegrationConfig:
+      type: object
+      description: Provider-specific configuration for Clerk integration.
+      properties:
+        api_key:
+          type: string
+          description: Optional Clerk API key used for reconciliation/backfill 
+            workflows.
+        issue_reason:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Optional operator note about integration issues.
+      additionalProperties: false
+    SmtpIntegrationConfig:
+      type: object
+      description: Provider-specific configuration for SMTP email integration.
+      properties:
+        host:
+          type: string
+          description: SMTP server hostname (e.g. smtp.protonmail.ch)
+        port:
+          type: integer
+          description: SMTP port (587 for STARTTLS, 465 for TLS)
+          default: 587
+        encryption:
+          type: string
+          enum: [STARTTLS, TLS, NONE]
+          default: STARTTLS
+        auth_method:
+          type: string
+          enum: [PLAIN, LOGIN]
+          default: PLAIN
+        username:
+          type: string
+          description: SMTP authentication username (usually your email address)
+        password:
+          type: string
+          description: SMTP password or app token. Write-only — leave blank to keep existing value.
+        from_address:
+          type: string
+          description: From email address for outgoing mail
+        from_name:
+          type: string
+          description: Display name for the From field
+        reply_to:
+          type: string
+          description: Optional Reply-To address
+      additionalProperties: false
+    IntegrationProviderConfig:
+      oneOf:
+      - $ref: "#/components/schemas/ClerkIntegrationConfig"
+      - $ref: "#/components/schemas/SmtpIntegrationConfig"
+      description: Provider-specific configuration payload.
+    SmtpIntegrationPublicConfig:
+      type: object
+      description: Non-sensitive SMTP configuration fields returned in API responses. Password is never included.
+      properties:
+        host:
+          type: string
+          description: SMTP server hostname.
+        port:
+          type: integer
+          description: SMTP port.
+          default: 587
+        encryption:
+          type: string
+          enum: [STARTTLS, TLS, NONE]
+        auth_method:
+          type: string
+          enum: [PLAIN, LOGIN]
+        username:
+          type: string
+          description: SMTP authentication username.
+        from_address:
+          type: string
+          description: From email address for outgoing mail.
+        from_name:
+          type: string
+          description: Display name for the From field.
+        reply_to:
+          type: string
+          description: Optional Reply-To address.
+      additionalProperties: false
+    IntegrationProviderPublicConfig:
+      oneOf:
+      - $ref: "#/components/schemas/SmtpIntegrationPublicConfig"
+      description: Non-sensitive provider configuration returned in API responses.
+    SmtpIntegrationInstanceCreateRequest:
+      type: object
+      required: [provider_type, config]
+      additionalProperties: false
+      properties:
+        provider_type:
+          type: string
+          enum: [SMTP]
+        config:
+          $ref: "#/components/schemas/SmtpIntegrationConfig"
+    ClerkIntegrationInstanceCreateRequest:
+      type: object
+      properties:
+        provider_type:
+          type: string
+          enum: [CLERK]
+        config:
+          $ref: "#/components/schemas/ClerkIntegrationConfig"
+      required:
+      - provider_type
+      additionalProperties: false
+    IntegrationInstanceCreateRequest:
+      oneOf:
+      - $ref: "#/components/schemas/ClerkIntegrationInstanceCreateRequest"
+      - $ref: "#/components/schemas/SmtpIntegrationInstanceCreateRequest"
+      discriminator:
+        propertyName: provider_type
+        mapping:
+          CLERK: "#/components/schemas/ClerkIntegrationInstanceCreateRequest"
+          SMTP: "#/components/schemas/SmtpIntegrationInstanceCreateRequest"
+      description: Create request for a provider integration instance.
+    IntegrationInstanceUpdateRequest:
+      type: object
+      properties:
+        is_enabled:
+          type: boolean
+          description: Whether ingestion is enabled for this integration 
+            instance. Setting this to false forces status to INACTIVE. Setting 
+            this to true only auto-promotes INACTIVE to ACTIVE. Other status 
+            transitions are managed by the integration state machine.
+        webhook_secret:
+          type: string
+          nullable: true
+          description: The webhook signing secret for signature validation.
+          example: "whsec_..."
+        config:
+          $ref: "#/components/schemas/IntegrationProviderConfig"
+          nullable: true
+          description: Updated provider-specific configuration (JSON object).
+    IntegrationInstanceResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the integration instance (prefix 
+            'iin_').
+          example: "iin_7pRST..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+          description: ID of the Product this integration instance belongs to.
+          example: "prod_2iABC..."
+        provider_type:
+          $ref: "#/components/schemas/IntegrationProviderType"
+        config_version:
+          type: integer
+          format: int32
+          description: The version of the provider configuration schema.
+        is_enabled:
+          type: boolean
+          description: Whether ingestion is enabled for this integration 
+            instance.
+        status:
+          $ref: "#/components/schemas/IntegrationInstanceStatus"
+        last_error:
+          type: string
+          nullable: true
+          description: Optional operator note or latest error reason.
+        webhook_secret_obfuscated:
+          type: string
+          nullable: true
+          description: Obfuscated marker shown when a webhook secret is stored.
+          example: "********"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the integration instance was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the integration instance was last updated.
+        public_config:
+          $ref: "#/components/schemas/IntegrationProviderPublicConfig"
+          nullable: true
+          description: Non-sensitive provider configuration. Password and secrets are never included.
+      required:
+      - id
+      - product_id
+      - provider_type
+      - config_version
+      - is_enabled
+      - status
+      - created_at
+      - updated_at
+    IntegrationInstanceListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntegrationInstanceResponse"
+        count:
+          type: integer
+          description: The number of items returned.
+      required:
+      - items
+      - count
+    IntegrationWebhookResponse:
+      type: object
+      properties:
+        event_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The ID of the created integration event (prefix 'iev_').
+          example: "iev_8qUVW..."
+        status:
+          $ref: "#/components/schemas/IntegrationEventStatus"
+          description: Processing status of the event.
+          example: "PROCESSED"
+      required:
+      - event_id
+      - status
+    IntegrationAuditLogSeverity:
+      type: string
+      enum: [INFO, SUCCESS, WARNING, ERROR]
+      description: Severity level for integration audit events.
+      x-go-type: integration.AuditSeverity
+      x-go-type-import:
+        path: anchor/internal/domain/integration
+    IntegrationAuditLogEntryResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the audit log entry (prefix 
+            'ial_').
+          example: "ial_9rXYZ..."
+        integration_instance_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Integration instance ID this audit record belongs to.
+        action:
+          type: string
+          description: Canonical action code for the event.
+          example: "WEBHOOK_RECEIVED"
+        severity:
+          $ref: "#/components/schemas/IntegrationAuditLogSeverity"
+        message:
+          type: string
+          description: Human-readable summary for this audit record.
+          example: "Webhook accepted and queued for processing"
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Optional structured context for this event.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the audit entry was recorded.
+      required:
+      - id
+      - integration_instance_id
+      - action
+      - severity
+      - message
+      - created_at
+    IntegrationAuditLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntegrationAuditLogEntryResponse"
+        count:
+          type: integer
+          description: The number of audit log items returned.
+      required:
+      - items
+      - count
+    # Email schemas
+    EmailVariableType:
+      type: string
+      enum: [STRING, NUMBER, BOOL, LIST, OBJECT]
+      x-go-type: email.VariableType
+      x-go-type-import:
+        path: anchor/internal/domain/email
+
+    EmailVariableSchemaProperty:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/EmailVariableType'
+
+    EmailVariableSchemaItems:
+      type: object
+      required: [type]
+      properties:
+        type:
+          $ref: '#/components/schemas/EmailVariableType'
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailVariableSchemaProperty'
+
+    EmailVariableSchema:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/EmailVariableType'
+        required:
+          type: boolean
+          default: false
+        help:
+          type: string
+        items:
+          $ref: '#/components/schemas/EmailVariableSchemaItems'
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailVariableSchemaProperty'
+
+    EmailTemplateVersionStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+      x-go-type: email.TemplateVersionStatus
+      x-go-type-import:
+        path: anchor/internal/domain/email
+
+    EmailSendStatus:
+      type: string
+      enum: [QUEUED, SENDING, SENT, FAILED]
+      x-go-type: email.SendStatus
+      x-go-type-import:
+        path: anchor/internal/domain/email
+
+    EmailTemplateCreateRequest:
+      type: object
+      required: [slug, name, subject, body_html]
+      properties:
+        slug:
+          type: string
+          maxLength: 120
+        name:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        body_html:
+          type: string
+        body_text:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailVariableSchema'
+
+    EmailTemplateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+
+    EmailTemplateDraftUpdateRequest:
+      type: object
+      properties:
+        subject:
+          type: string
+        body_html:
+          type: string
+        body_text:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailVariableSchema'
+
+    EmailTemplateResponse:
+      type: object
+      required: [id, product_id, slug, name, is_active, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        draft_version_id:
+          type: string
+          nullable: true
+        published_version_id:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EmailTemplateVersionResponse:
+      type: object
+      required: [id, template_id, version_number, subject, body_html, status, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        template_id:
+          $ref: '#/components/schemas/ksuid'
+        version_number:
+          type: integer
+        subject:
+          type: string
+        body_html:
+          type: string
+        body_text:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailVariableSchema'
+        status:
+          $ref: '#/components/schemas/EmailTemplateVersionStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    EmailTemplateListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailTemplateResponse'
+        count:
+          type: integer
+
+    TemplateExample:
+      type: object
+      required: [id, name, variables]
+      properties:
+        id:
+          type: string
+          description: Client-generated UUID for this example set
+        name:
+          type: string
+          description: Human-readable label (e.g. "Happy path")
+        variables:
+          type: object
+          additionalProperties: true
+          description: Map of variable name to value
+
+    TemplateExampleListRequest:
+      type: object
+      required: [examples]
+      properties:
+        examples:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateExample'
+
+    TemplateExampleListResponse:
+      type: object
+      required: [examples]
+      properties:
+        examples:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateExample'
+
+    EmailTemplatePreviewRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties: true
+        use_published:
+          type: boolean
+          default: false
+
+    EmailTemplatePreviewResponse:
+      type: object
+      required: [subject, body_html, body_text, warnings]
+      properties:
+        subject:
+          type: string
+        body_html:
+          type: string
+        body_text:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-fatal render issues (unknown vars, missing values, placeholders used).
+
+    EmailSendRequest:
+      type: object
+      required: [to_address]
+      properties:
+        template_id:
+          type: string
+          nullable: true
+        template_slug:
+          type: string
+          nullable: true
+        to_address:
+          type: string
+          format: email
+        to_name:
+          type: string
+        variables:
+          type: object
+          additionalProperties: true
+        dedupe_key:
+          type: string
+          nullable: true
+        use_draft:
+          type: boolean
+          default: false
+
+    EmailSendRecordResponse:
+      type: object
+      required: [id, product_id, to_address, from_address, subject, status, attempts, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        integration_instance_id:
+          type: string
+        template_id:
+          type: string
+          nullable: true
+        template_version_id:
+          type: string
+          nullable: true
+        dedupe_key:
+          type: string
+          nullable: true
+        to_address:
+          type: string
+        to_name:
+          type: string
+        from_address:
+          type: string
+        from_name:
+          type: string
+        subject:
+          type: string
+        status:
+          $ref: '#/components/schemas/EmailSendStatus'
+        attempts:
+          type: integer
+        last_error:
+          type: string
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EmailSendRecordListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailSendRecordResponse'
+        count:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad Request (e.g., validation error)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Unauthorized:
+      description: Unauthorized (Authentication required or invalid)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Forbidden:
+      description: Forbidden (Authenticated Product User lacks permission)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+          example:
+            errors: [{"code": "FORBIDDEN", "message": "Insufficient permissions."}]
+    Conflict:
+      description: Conflict (e.g., resource already exists)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    NotFound:
+      description: Resource Not Found
+
+paths:
+  # --- Auth API for platform ---
+  /v1/auth/logout:
+    post:
+      security: []
+      summary: User logout
+      description: |
+        Logs out the user and invalidates the refresh token.
+        This endpoint does not require authentication to allow logout even with expired tokens.
+      operationId: logout
+      tags:
+      - Authentication
+      responses:
+        "204":
+          description: |
+            Successfully logged out.
+            The refresh token cookie is removed.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: |
+                Header used to remove the refresh token cookie
+                by setting an expired value for the cookie.
+  /v1/auth/login:
+    post:
+      security: []
+      summary: User login
+      description: Allows users to login to the system and receive an 
+        authentication token.
+      operationId: login
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/auth/refresh:
+    post:
+      security: []
+      summary: Refresh token
+      description: Refreshes the authentication token for the user.
+      operationId: refresh-token
+      tags:
+      - Authentication
+      parameters:
+      - in: cookie
+        name: refresh_token
+        schema:
+          type: string
+        description: Refresh token cookie to refresh the authentication token.
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Unauthorized
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /v1/auth/register:
+    post:
+      security: []
+      summary: User registration
+      description: Allows new users to register and receive an authentication 
+        token.
+      operationId: register
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/me:
+    get:
+      security:
+      - platformBearerAuth: []
+      summary: Get current user
+      description: Retrieves the current logged-in user.
+      operationId: get-current-user
+      tags:
+      - User
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # PLATFORM RELATED API
+  # --- Product Management (Platform Admin Auth) ---
+  /v1/products:
+    post:
+      summary: Create Product
+      description: Creates a new product within the PlatformTenant (single 
+        tenantservice in OS V1). Requires Platform Bearer token.
+      operationId: createProduct
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Product details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "201":
+          description: Product created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/search:
+    post:
+      summary: Search Products
+      description: Searches for products based on criteria. Requires Platform 
+        Bearer token.
+      operationId: searchProducts
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductSearchRequest"
+      responses:
+        "200":
+          description: List of matching products.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    get:
+      summary: Get Product
+      description: Retrieves details of a specific product. Requires Platform 
+        Bearer token.
+      operationId: getProduct
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      summary: Update Product
+      description: Partially updates a product's details. Requires Platform 
+        Bearer token.
+      operationId: updateProduct
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest" # Reuse input, but fields are optional for PATCH
+      responses:
+        "200":
+          description: Product updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: Delete Product
+      description: Deletes a product. This is a destructive operation. Requires 
+        Platform Bearer token.
+      operationId: deleteProduct
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Product deleted successfully.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # --- Integration Instance Management (Platform Admin Auth) ---
+  /v1/products/{product_id}/integrations:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Create Integration Instance
+      description: |-
+        Creates a new integration instance for the specified product and provider type.
+        Only one instance per provider type is allowed per product.
+        Requires Platform Bearer token.
+      operationId: createIntegrationInstance
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Integration instance details (provider type, optional 
+          config).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationInstanceCreateRequest"
+      responses:
+        "201":
+          description: Integration instance created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstanceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      summary: List Integration Instances
+      description: |-
+        Lists all integration instances for the specified product.
+        Requires Platform Bearer token.
+      operationId: listIntegrationInstances
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: List of integration instances.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstanceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/products/{product_id}/integrations/{integration_instance_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/IntegrationInstanceIdParameter"
+
+    get:
+      summary: Get Integration Instance
+      description: |-
+        Retrieves details of a specific integration instance.
+        Requires Platform Bearer token.
+      operationId: getIntegrationInstance
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Integration instance details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstanceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: Update Integration Instance
+      description: |-
+        Updates an integration instance's webhook secret, config, or status.
+        Requires Platform Bearer token.
+      operationId: updateIntegrationInstance
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationInstanceUpdateRequest"
+      responses:
+        "200":
+          description: Integration instance updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstanceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: Delete Integration Instance
+      description: |-
+        Deletes an integration instance. This removes the provider configuration
+        and stops processing webhooks for this provider.
+        Requires Platform Bearer token.
+      operationId: deleteIntegrationInstance
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Integration instance deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/IntegrationInstanceIdParameter"
+
+    get:
+      summary: List Integration Audit Logs
+      description: |-
+        Lists audit log entries for a specific integration instance.
+        Entries are returned in reverse chronological order (newest first).
+        Requires Platform Bearer token.
+      operationId: listIntegrationAuditLogs
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: List of audit log entries for the integration instance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationAuditLogListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Webhook Ingress (Public, No Auth) ---
+  /v1/products/{product_id}/integrations/webhooks/{provider_type}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProviderTypeParameter"
+
+    post:
+      summary: Ingest Webhook
+      description: |-
+        Public endpoint for receiving webhook payloads from integration providers (e.g., Clerk).
+        Authentication is handled via webhook signature validation (provider-specific).
+        No bearer token or API key is required.
+      operationId: ingestWebhook
+      tags: [Integration]
+      security: []
+      requestBody:
+        description: Raw webhook payload from the provider.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: The raw webhook payload (provider-specific format).
+      responses:
+        "200":
+          description: Webhook processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Webhook signature validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Product Resource Permission Management ---
+  # ProductResourcePermissions are domain-specific permissions defined by the
+  # product owner for their own application resources. For example, if you are
+  # building a Google Drive-like product you would define permissions such as
+  # "document:read", "file:delete", "workspace:invite". These are distinct from
+  # the built-in ProductPermissions that govern access to the product within
+  # Anchor. Resource permissions are assigned to ProductRoles, which are
+  # then attached to end-user organization memberships to control what those
+  # users can do inside your product.
+  /v1/products/{product_id}/resource-permissions:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Create Product Resource Permission
+      description: >-
+        Defines a new domain-resource permission for the product's own
+        application resources (e.g. "document:read", "file:delete"). Requires
+        Platform Bearer token or Product API Key with
+        resources_permissions:create scope.
+      operationId: createProductResourcePermission
+      tags: [ProductResourcePermission]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resources_permissions:create"]
+      requestBody:
+        description: Resource permission details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductResourcePermissionRequest"
+      responses:
+        "201":
+          description: Resource permission created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourcePermissionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/products/{product_id}/resource-permissions/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Search Product Resource Permissions
+      description: Searches for resource permissions within a product. Requires 
+        Platform Bearer token or Product API Key with permissions:read.
+      operationId: searchProductResourcePermissions
+      tags: [ProductResourcePermission]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resources_permissions:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductResourcePermissionSearchRequest"
+      responses:
+        "200":
+          description: List of matching resource permissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourcePermissionListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/products/{product_id}/resource-permissions/{permission_name}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ResourcePermissionNameParameter"
+    get:
+      summary: Get Product Resource Permission
+      description: Retrieves details of a specific resource permission. Requires
+        Platform Bearer token or Product API Key with permissions:read.
+      operationId: getProductResourcePermission
+      tags: [ProductResourcePermission]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resources_permissions:read"]
+      responses:
+        "200":
+          description: Resource permission details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourcePermissionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: Update Product Resource Permission
+      description: Updates a resource permission's details. Requires Platform 
+        Bearer token or Product API Key with permissions:update.
+      operationId: updateProductResourcePermission
+      tags: [ProductResourcePermission]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resources_permissions:update"]
+      requestBody:
+        description: Updated resource permission details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductResourcePermissionRequest"
+      responses:
+        "200":
+          description: Resource permission updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourcePermissionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: Delete Product Resource Permission
+      description: Deletes a resource permission. Cannot delete if assigned to 
+        roles. Requires Platform Bearer token or Product API Key with 
+        permissions:delete.
+      operationId: deleteProductResourcePermission
+      tags: [ProductResourcePermission]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resources_permissions:delete"]
+      responses:
+        "204":
+          description: Resource permission deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # Platform Invitation Management (Authenticated via Platform Bearer Token)
+  /v1/platform-invitations:
+    post:
+      summary: Create Platform Invitation
+      description: |-
+        Creates a new invitation for a user to register as a Platform User.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:create`).
+      operationId: createPlatformInvitation
+      tags: [PlatformInvitation]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Platform Invitation details (email, optional expiry).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformInvitationRequest"
+      responses:
+        "201":
+          description: Platform Invitation created successfully. Includes the 
+            invitation code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformInvitationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/platform-invitations/search:
+    post:
+      summary: Search Platform Invitations
+      description: |-
+        Retrieves a list of platform invitations, allowing filtering and pagination.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+      operationId: searchPlatformInvitations
+      tags: [PlatformInvitation]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformInvitationSearchRequest"
+      responses:
+        "200":
+          description: A list of platform invitations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformInvitationListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Invalid search/pagination params
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/platform-invitations/{invitation_id}:
+    parameters:
+    - $ref: "#/components/parameters/PlatformInvitationIdParameter"
+    delete:
+      summary: Delete Platform Invitation
+      description: |-
+        Deletes a specific platform invitation using its ID. This operation is idempotent -
+        it returns 204 No Content regardless of whether the invitation exists or not.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:delete`).
+      operationId: deletePlatformInvitation
+      tags: [PlatformInvitation]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Platform Invitation deleted successfully, or invitation 
+            did not exist (idempotent operation).
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      summary: Get Platform Invitation
+      description: |-
+        Retrieves details of a specific platform invitation.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+      operationId: getPlatformInvitation
+      tags: [PlatformInvitation]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Platform Invitation details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformInvitationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Platform User Management (Authenticated via Platform Bearer Token)
+  /v1/platform-users/search:
+    post:
+      summary: Search Platform Users
+      description: |-
+        Retrieves a list of platform Users, allowing filtering and pagination.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+      operationId: searchPlatformUsers
+      tags: [PlatformUser]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformUserSearchRequest"
+      responses:
+        "200":
+          description: A list of platform Users.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformUserListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Invalid search/pagination params
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/platform-users/{platform_user_id}:
+    parameters:
+    - $ref: "#/components/parameters/PlatformUserIdParameter"
+    delete:
+      summary: Delete Platform User
+      description: |-
+        Deletes a specific platform User using its ID. This operation is idempotent -
+        it returns 204 No Content regardless of whether the User exists or not.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:delete`).
+      operationId: deletePlatformUser
+      tags: [PlatformUser]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Platform User deleted successfully, or User did not exist
+            (idempotent operation).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      summary: Get Platform User
+      description: |-
+        Retrieves details of a specific platform User.
+        Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+      operationId: getPlatformUser
+      tags: [PlatformUser]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Platform User details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformUserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # PRODUCT RELATED API
+
+  # --- ProductPermission Management (Platform Admin Auth) ---
+  # ProductPermissions are built-in Anchor permissions that control access
+  # to the product itself (e.g. product:settings:read, product:billing:update).
+  # They are system-defined and read-only — the API only exposes search/get.
+  # To define permissions for your own application resources (e.g. document:read),
+  # use the /resource-permissions endpoints instead.
+  /v1/products/{product_id}/permissions/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Search built-in Product Permissions
+      description: >-
+        Searches the built-in Anchor permissions available for a product.
+        These permissions govern access to the product itself within Anchor
+        (e.g. product:settings:read). They are system-defined and cannot be
+        created or deleted via the API. Requires Platform Bearer token.
+      operationId: searchProductPermissions
+      tags: [ProductPermission]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPermissionSearchRequest"
+      responses:
+        "200":
+          description: A list of built-in product permissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPermissionListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/permissions/{permission_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductPermissionIdParameter"
+
+    get:
+      summary: Get built-in Product Permission
+      description: >-
+        Retrieves a specific built-in Anchor permission for a product by its
+        name. These permissions govern access to the product itself within
+        Anchor and are system-defined (read-only). Requires Platform Bearer
+        token.
+      operationId: getProductPermission
+      tags: [ProductPermission]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Built-in product permission details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPermissionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- ProductRole Management ---
+  /v1/products/{product_id}/roles/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Search ProductRoles for Product
+      description: Searches for product roles defined for a specific product 
+        based on criteria. Requires Platform Bearer token or Product API Key
+        with product_role:read scope.
+      operationId: searchProductRoles
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRoleSearchRequest"
+      responses:
+        "200":
+          description: A list of product roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/roles:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Create ProductRole for Product
+      description: Creates a new product role within a specific product. Can 
+        optionally assign initial permissions. Requires Platform Bearer token
+        or Product API Key with product_role:create scope.
+      operationId: createProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:create"]
+      requestBody:
+        description: Role details (name, description, initial permissions).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRoleCreateRequest"
+      responses:
+        "201":
+          description: Application role created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/roles/{role_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductRoleIdParameter"
+    get:
+      summary: Get ProductRole
+      description: Retrieves details of a specific product role. Requires 
+        Platform Bearer token or Product API Key with product_role:read scope.
+      operationId: getProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:read"]
+      responses:
+        "200":
+          description: Product role details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound" # Product or Role not found
+
+    put:
+      summary: Update ProductRole
+      description: Updates a product role's details (name, description, 
+        permissions). Requires Platform Bearer token or Product API Key with
+        product_role:update scope.
+      operationId: updateProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:update"]
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRoleUpdateRequest"
+      responses:
+        "200":
+          description: Application role updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: Delete ProductRole
+      description: Deletes an application role. Fails if the role is currently 
+        assigned to any users via memberships. Requires Platform Bearer token
+        or Product API Key with product_role:delete scope.
+      operationId: deleteProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:delete"]
+      responses:
+        "204":
+          description: Application role deleted successfully.
+        "400": # Bad Request if role is in use
+          description: Bad Request (Role is currently assigned via memberships)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              example:
+                errors: [{"code": "ROLE_IN_USE", "message": "Cannot delete role as
+                      it is currently assigned to users."}]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/roles/{role_id}/permissions:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductRoleIdParameter"
+
+    post:
+      summary: Assign Resource Permission to ProductRole
+      description: >-
+        Assigns an existing product resource permission to a product role.
+        The permission must be a ProductResourcePermission (a domain-specific
+        permission defined by the product owner, e.g. "document:read") — not
+        a built-in Anchor ProductPermission. Requires Platform Bearer token
+        or Product API Key with product_role:update scope.
+      operationId: assignPermissionToProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:update"]
+      requestBody:
+        description: The name of the product resource permission to assign.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignPermissionRequest"
+      responses:
+        "204": # Successfully assigned, no content needed
+          description: Permission assigned successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest" # e.g., Permission already assigned
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Not Found (Product, Role, or ProductResourcePermission not found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+  /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductRoleIdParameter"
+    - $ref: "#/components/parameters/ProductPermissionIdParameter"
+
+    delete:
+      summary: Unassign Resource Permission from ProductRole
+      description: >-
+        Removes a product resource permission assignment from a product role.
+        The permission_name path parameter must match a ProductResourcePermission
+        name (e.g. "document:read"), not a built-in Anchor ProductPermission.
+        Requires Platform Bearer token or Product API Key with
+        product_role:update scope.
+      operationId: unassignPermissionFromProductRole
+      tags: [ProductRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_role:update"]
+      responses:
+        "204":
+          description: Permission unassigned successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          description: Bad Request (e.g., Permission not assigned to this role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- ProductAPIKey Management  ---
+  /v1/products/{product_id}/api-keys/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Search Product API Keys
+      description: Searches for product API keys defined for a specific product 
+        based on criteria. Requires Platform Bearer token.
+      operationId: searchProductAPIKeys
+      tags: [ProductAPIKey]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductAPIKeySearchRequest"
+      responses:
+        "200":
+          description: A list of product API keys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAPIKeyListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/api-keys:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Create Product API Key
+      description: Creates a new product API key within a specific product. Can 
+        optionally assign initial permissions. Requires Platform Bearer token.
+      operationId: createProductAPIKey
+      tags: [ProductAPIKey]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: API key details (name, description, initial permissions).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductAPIKeyCreateRequest"
+      responses:
+        "201":
+          description: Product API key created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedProductAPIKeyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/api-keys/{api_key_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductAPIKeyIdParameter"
+    get:
+      summary: Get Product API Key
+      description: Retrieves details of a specific product API key. Requires 
+        Platform Bearer token.
+      operationId: getProductAPIKey
+      tags: [ProductAPIKey]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Product API key details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAPIKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update Product API Key
+      description: Updates a product API key's details. Requires Platform Bearer
+        token.
+      operationId: updateProductAPIKey
+      tags: [ProductAPIKey]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductAPIKeyUpdateRequest"
+      responses:
+        "200":
+          description: Product API key updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAPIKeyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Product API Key
+      description: Permanently deletes a product API key. This action cannot be 
+        undone. Requires Platform Bearer token.
+      operationId: deleteProductAPIKey
+      tags: [ProductAPIKey]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Product API key deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+  # --- ProductUser Management ---
+  /v1/products/{product_id}/product-users:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Create Product User
+      description: |-
+        Creates a new user record associated with the specified Product.
+        This only creates the user profile; authentication must be handled externally.
+        Requires an API Key with `product_user:create` permission.
+      operationId: createProductUser
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:create"]
+      requestBody:
+        description: Product user details (email required, name/status 
+          optional).
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  x-go-type: string
+                  description: User's email address. Must be unique within the 
+                    Product.
+                  example: "new.user@company.com"
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  nullable: true
+                  description: User's display name.
+                  example: "New User"
+                status:
+                  $ref: "#/components/schemas/ProductUserStatus"
+                  description: Initial status (e.g., 'active' or 'invited'). 
+                    Defaults might apply.
+              required:
+              - email
+      responses:
+        "201":
+          description: Product user created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductUserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Validation errors
+        "401":
+          $ref: "#/components/responses/Unauthorized" # Invalid/missing API Key
+        "403":
+          $ref: "#/components/responses/Forbidden" # API Key lacks permission
+  /v1/products/{product_id}/product-users/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Search Product Users
+      description: |-
+        Retrieves a list of users associated with the specified Product,
+        allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+      operationId: searchProductUsers
+      tags: [ProductUser]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["product_user:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUserSearchRequest"
+      responses:
+        "200":
+          description: A list of product users for the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductUserListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Invalid search/pagination params
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/product-users/{product_user_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductUserIdParameter"
+    get:
+      summary: Get Product User
+      description: |-
+        Retrieves details of a specific product user within the specified Product.
+        Requires API Key with `product_user:read` permission.
+      operationId: getProductUser
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:read"]
+      responses:
+        "200":
+          description: Product Product User details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductUserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden" # Includes case where User doesn't belong to API Key's Product
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Product User
+      description: |-
+        Deletes a product user record. This may cascade to remove memberships.
+        Requires API Key with `product_user:delete` permission.
+      operationId: deleteProductUser
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:delete"]
+      responses:
+        "204":
+          description: Product user deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Product User Organization Memberships (User Perspective) ---
+  /v1/products/{product_id}/product-users/{product_user_id}/organizations:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductUserIdParameter"
+    get:
+      summary: List User Organizations
+      description: |-
+        Lists all organizations that the specified product user belongs to,
+        including their role and membership details in each organization.
+        Requires an API Key with `product_user:read` permission.
+      operationId: listUserOrganizations
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:read"]
+      parameters:
+      - name: include
+        in: query
+        required: false
+        description: Comma-separated list of additional fields to include.
+        schema:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserOrganizationInclude"
+        style: form
+        explode: false
+      responses:
+        "200":
+          description: List of organizations the user belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserOrganizationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/product-users/{product_user_id}/organizations/{organization_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductUserIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    get:
+      summary: Get User Organization
+      description: |-
+        Retrieves details of a specific organization that the product user belongs to,
+        including their role and membership details.
+        Requires an API Key with `product_user:read` permission.
+      operationId: getUserOrganization
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:read"]
+      parameters:
+      - name: include
+        in: query
+        required: false
+        description: Comma-separated list of additional fields to include.
+        schema:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserOrganizationInclude"
+        style: form
+        explode: false
+      responses:
+        "200":
+          description: Organization details from the user's perspective.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserOrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- OrganizationAPIKey Management ---
+  /v1/products/{product_id}/organizations/{organization_id}/api-keys/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+
+    post:
+      summary: Search Organization API Keys
+      description: Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+      operationId: searchOrganizationAPIKeys
+      tags: [OrganizationAPIKey]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_api_key:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationAPIKeySearchRequest"
+      responses:
+        "200":
+          description: A list of organization API keys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/api-keys:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+
+    post:
+      summary: Create Organization API Key
+      description: Creates a new organization API key within a specific organization. Requires Product API Key with `organization_api_key:create` scope.
+      operationId: createOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - productApiKeyAuth: ["organization_api_key:create"]
+      requestBody:
+        description: API key details (name, description, initial permissions).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationAPIKeyCreateRequest"
+      responses:
+        "201":
+          description: Organization API key created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedOrganizationAPIKeyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/OrganizationAPIKeyIdParameter"
+
+    get:
+      summary: Get Organization API Key
+      description: Retrieves details of a specific organization API key. Requires Product API Key with `organization_api_key:read` scope.
+      operationId: getOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_api_key:read"]
+      responses:
+        "200":
+          description: Organization API key details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update Organization API Key
+      description: Updates an organization API key's details. Requires Product API Key with `organization_api_key:update` scope.
+      operationId: updateOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - productApiKeyAuth: ["organization_api_key:update"]
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationAPIKeyUpdateRequest"
+      responses:
+        "200":
+          description: Organization API key updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Organization API Key
+      description: Permanently deletes an organization API key. This action cannot be undone. Requires Product API Key with `organization_api_key:delete` scope.
+      operationId: deleteOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - productApiKeyAuth: ["organization_api_key:delete"]
+      responses:
+        "204":
+          description: Organization API key deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/products/{product_id}/organizations/{organization_id}/api-keys/validate:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+
+    post:
+      summary: Validate Organization API Key
+      description: Validates a raw organization API key, checks it against required scopes, updates last_used_at on success, and returns any missing privileges.
+      operationId: validateOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - productApiKeyAuth: ["organization_api_key:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationAPIKeyValidateRequest"
+      responses:
+        "200":
+          description: Organization API key validation result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyValidateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Organization API key is valid but lacks one or more required scopes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyValidateForbiddenResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Product Organization Management ---
+  /v1/products/{product_id}/organizations:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Create Product Organization
+      description: |-
+        Creates a new organization record associated with the specified Product.
+        Optionally accepts `founding_member` to atomically add an initial member with role.
+        Requires an API Key with `product_organization:create` permission or Platform Bearer token.
+      operationId: createProductOrganization
+      tags: [ProductOrganization]
+      security:
+      - productApiKeyAuth: ["organization:create"]
+      requestBody:
+        description: Organization details (name, optional description).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductOrganizationRequest"
+      responses:
+        "201":
+          description: Product organization created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductOrganizationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/organizations/search:
+    post:
+      parameters:
+      - $ref: "#/components/parameters/ProductIdParameter"
+      summary: Search Product Organizations
+      description: |-
+        Retrieves a list of organizations associated with the specified Product,
+        allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+      operationId: searchProductOrganizations
+      tags: [ProductOrganization]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductOrganizationSearchRequest"
+      responses:
+        "200":
+          description: A list of product organizations for the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductOrganizationListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Invalid search/pagination params
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/organizations/{organization_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    put:
+      summary: Update Product Organization
+      description: |-
+        Updates an existing organization record within the specified Product.
+        Only API Key authentication is supported (no bearer token access).
+        Requires an API Key with `organization:update` permission.
+      operationId: updateProductOrganization
+      tags: [ProductOrganization]
+      security:
+      - productApiKeyAuth: ["organization:update"]
+      requestBody:
+        description: Organization update details (name, description).
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductOrganizationRequest"
+      responses:
+        "200":
+          description: Product organization updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductOrganizationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/workspaces:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Create Organization Workspace
+      description: Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
+      operationId: createOrganizationWorkspace
+      tags: [Workspace]
+      security:
+      - productApiKeyAuth: ["workspace:create"]
+      requestBody:
+        description: Workspace details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWorkspaceRequest"
+      responses:
+        "201":
+          description: Workspace created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductWorkspaceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/workspaces/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Search Organization Workspaces
+      description: Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+      operationId: searchOrganizationWorkspaces
+      tags: [Workspace]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["workspace:read"]
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWorkspaceSearchRequest"
+      responses:
+        "200":
+          description: A list of workspaces for the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductWorkspaceListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/WorkspaceIdParameter"
+    get:
+      summary: Get Organization Workspace
+      description: Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+      operationId: getOrganizationWorkspace
+      tags: [Workspace]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["workspace:read"]
+      responses:
+        "200":
+          description: Workspace details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductWorkspaceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update Organization Workspace
+      description: Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission.
+      operationId: updateOrganizationWorkspace
+      tags: [Workspace]
+      security:
+      - productApiKeyAuth: ["workspace:update"]
+      requestBody:
+        description: Workspace update details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWorkspaceRequest"
+      responses:
+        "200":
+          description: Workspace updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductWorkspaceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Organization Workspace
+      description: Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
+      operationId: deleteOrganizationWorkspace
+      tags: [Workspace]
+      security:
+      - productApiKeyAuth: ["workspace:delete"]
+      responses:
+        "204":
+          description: Workspace deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/members:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Add Organization Member
+      description: Adds a user to an organization.
+      operationId: addOrganizationMember
+      tags:
+      - OrganizationMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberRequest'
+      responses:
+        '201':
+          description: Member successfully added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberResponse'
+  /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    - name: product_user_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ksuid'
+    get:
+      summary: Get Organization Member
+      description: Get a single organization member.
+      operationId: getOrganizationMember
+      tags:
+      - OrganizationMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:read
+      parameters:
+      - name: include
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/OrganizationMemberInclude'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberResponse'
+    put:
+      summary: Update Member Role
+      description: Update the role of an organization member.
+      operationId: updateOrganizationMemberRole
+      tags:
+      - OrganizationMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberRoleRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberResponse'
+    delete:
+      summary: Remove Organization Member
+      description: Removes a user from an organization.
+      operationId: removeOrganizationMember
+      tags:
+      - OrganizationMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:delete
+      responses:
+        '204':
+          description: Successfully removed
+  /v1/products/{product_id}/organizations/{organization_id}/members/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Search Organization Members
+      description: Search members in an organization.
+      operationId: searchOrganizationMembers
+      tags:
+      - OrganizationMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberListResponse'
+
+  # ---------------------------------------------------------------------------
+  # Email
+  # ---------------------------------------------------------------------------
+  /v1/products/{product_id}/email/templates:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Create Email Template
+      operationId: createEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List Email Templates
+      operationId: listEmailTemplates
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int64
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          format: int64
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateListResponse'
+
+  /v1/products/{product_id}/email/templates/{email_template_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/EmailTemplateIdParameter'
+    get:
+      summary: Get Email Template
+      operationId: getEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Email Template
+      description: Updates envelope fields (name, description, is_active). To edit content use the draft endpoint.
+      operationId: updateEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateUpdateRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete Email Template
+      operationId: deleteEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/email/templates/{email_template_id}/draft:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/EmailTemplateIdParameter'
+    get:
+      summary: Get Template Draft
+      description: Returns the current DRAFT version of the template, creating one from the published version if none exists.
+      operationId: getEmailTemplateDraft
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateVersionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Template Draft
+      description: Edits the template's current DRAFT version. If no draft exists it is cloned from the published version.
+      operationId: updateEmailTemplateDraft
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateDraftUpdateRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateVersionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/email/templates/{email_template_id}/publish:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/EmailTemplateIdParameter'
+    post:
+      summary: Publish Template
+      description: Promotes the current draft to published. Archives the previous published version and opens a fresh draft.
+      operationId: publishEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Published version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateVersionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/email/templates/{email_template_id}/preview:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/EmailTemplateIdParameter'
+    post:
+      summary: Preview Template
+      description: Renders the template with the supplied variables. Never dispatches. Renders the draft by default.
+      operationId: previewEmailTemplate
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplatePreviewRequest'
+      responses:
+        '200':
+          description: Rendered preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplatePreviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/email/templates/{email_template_id}/examples:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/EmailTemplateIdParameter'
+    get:
+      summary: Get Template Examples
+      description: Returns the saved variable example sets for this template.
+      operationId: getEmailTemplateExamples
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Example list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateExampleListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Save Template Examples
+      description: Replaces the full list of variable example sets for this template.
+      operationId: saveEmailTemplateExamples
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateExampleListRequest'
+      responses:
+        '200':
+          description: Updated example list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateExampleListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/email/sends:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Send Email
+      description: Dispatches a transactional email through the product's configured SMTP integration.
+      operationId: sendEmail
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email:send
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailSendRequest'
+      responses:
+        '201':
+          description: Send record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSendRecordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List Send Records
+      operationId: listEmailSends
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      parameters:
+      - name: template_id
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/EmailSendStatus'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int64
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          format: int64
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSendRecordListResponse'
+
+

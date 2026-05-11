@@ -1,0 +1,113 @@
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
+
+services:
+  postgres:
+    image: timescale/timescaledb:2.16.1-pg16
+    container_name: anchor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-anchor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anchor}
+      POSTGRES_DB: ${POSTGRES_DB:-anchor}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - anchor_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - anchor-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-anchor} -d ${POSTGRES_DB:-anchor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: anchor-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-anchor}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-anchor}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - anchor-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-anchor}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-ui:
+    image: redis/redisinsight:latest
+    container_name: anchor-redis-ui
+    restart: unless-stopped
+    environment:
+      RI_REDIS_HOST: redis
+      RI_REDIS_PASSWORD: 
+    ports:
+      - "5540:5540"
+    networks:
+      - anchor-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  anchor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - github_token
+    container_name: anchor-app
+    restart: unless-stopped
+    environment:
+      # Database connection
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-anchor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anchor}
+      POSTGRES_DB: ${POSTGRES_DB:-anchor}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
+
+      # Application settings
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      SERVER_PORT: 8080
+
+      # JWT Configuration (REQUIRED)
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-anchor}
+
+      # Token lifetimes (optional with defaults)
+      REFRESH_TOKEN_LIFETIME: ${REFRESH_TOKEN_LIFETIME:-84600}
+      ACCESS_TOKEN_LIFETIME: ${ACCESS_TOKEN_LIFETIME:-3600}
+
+      # Redis cache connection
+      REDIS_ADDRESS: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - anchor-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  anchor_postgres_data:
+    driver: local
+
+networks:
+  anchor-network:
+    driver: bridge

@@ -1,0 +1,311 @@
+package service_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"anchor/internal/domain/organization"
+	orgapikey "anchor/internal/domain/organization/apikey"
+)
+
+func TestOrganizationAPIKeyValidation(t *testing.T) {
+	t.Run("Valid API Key", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			orgapikey.StatusActive,
+			nil,
+		)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			},
+		)
+		require.NoError(t, err)
+		assert.True(t, result.Authorized)
+		assert.False(t, result.Inactive)
+		assert.Equal(t, createdKey.ID, result.APIKey.ID)
+		assert.ElementsMatch(
+			t,
+			[]string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			result.Permissions,
+		)
+		assert.Empty(t, result.MissingPrivileges)
+
+		reloaded, reloadErr := OrgAPIKeyRepository.GetByID(
+			t.Context(),
+			ctxData.Organization.ID,
+			createdKey.ID,
+			nil,
+		)
+		require.NoError(t, reloadErr)
+		require.NotNil(t, reloaded)
+		assert.NotNil(t, reloaded.LastUsedAt)
+	})
+
+	t.Run("Missing Privileges", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead},
+			orgapikey.StatusActive,
+			nil,
+		)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileCreate},
+			},
+		)
+		require.NoError(t, err)
+		assert.False(t, result.Authorized)
+		assert.False(t, result.Inactive)
+		assert.Equal(t, createdKey.ID, result.APIKey.ID)
+		assert.ElementsMatch(t, []string{ctxData.PermissionSet.FileRead}, result.Permissions)
+		assert.Equal(t, []string{ctxData.PermissionSet.FileCreate}, result.MissingPrivileges)
+	})
+
+	t.Run("Inactive API Key", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			orgapikey.StatusInactive,
+			nil,
+		)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.NoError(t, err)
+		assert.False(t, result.Authorized)
+		assert.True(t, result.Inactive)
+		assert.Equal(t, createdKey.ID, result.APIKey.ID)
+		assert.Empty(t, result.MissingPrivileges)
+	})
+
+	t.Run("Expired API Key", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			orgapikey.StatusActive,
+			nil,
+		)
+
+		expiresAt := time.Now().Add(-time.Minute)
+		createdKey.ExpiresAt = &expiresAt
+		updatedKey, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey, nil)
+		require.NoError(t, updateErr)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.NoError(t, err)
+		assert.False(t, result.Authorized)
+		assert.True(t, result.Inactive)
+		assert.Equal(t, updatedKey.ID, result.APIKey.ID)
+		assert.Equal(t, orgapikey.StatusInactive, result.APIKey.Status)
+		assert.Empty(t, result.MissingPrivileges)
+		assert.Nil(t, result.APIKey.LastUsedAt)
+
+		reloaded, reloadErr := OrgAPIKeyRepository.GetByID(
+			t.Context(),
+			ctxData.Organization.ID,
+			updatedKey.ID,
+			nil,
+		)
+		require.NoError(t, reloadErr)
+		require.NotNil(t, reloaded)
+		assert.Equal(t, orgapikey.StatusInactive, reloaded.Status)
+	})
+
+	t.Run("Invalid API Key", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+
+		_, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    "invalid-api-key-value",
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Product API key is invalid")
+	})
+
+	t.Run("Organization Does Not Belong To Product", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		_, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead},
+			orgapikey.StatusActive,
+			nil,
+		)
+
+		otherTenantAndProduct := GivenATenantAndProduct(t)
+
+		_, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      otherTenantAndProduct.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, toolkit.ErrNotFound)
+	})
+
+	t.Run("Last Used At Is Not Updated Within One Hour", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead},
+			orgapikey.StatusActive,
+			nil,
+		)
+
+		firstResult, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.NoError(t, err)
+		require.NotNil(t, firstResult.APIKey.LastUsedAt)
+
+		firstReload, reloadErr := OrgAPIKeyRepository.GetByID(
+			t.Context(),
+			ctxData.Organization.ID,
+			createdKey.ID,
+			nil,
+		)
+		require.NoError(t, reloadErr)
+		require.NotNil(t, firstReload)
+		require.NotNil(t, firstReload.LastUsedAt)
+
+		secondResult, secondErr := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.NoError(t, secondErr)
+		require.NotNil(t, secondResult.APIKey.LastUsedAt)
+
+		secondReload, secondReloadErr := OrgAPIKeyRepository.GetByID(
+			t.Context(),
+			ctxData.Organization.ID,
+			createdKey.ID,
+			nil,
+		)
+		require.NoError(t, secondReloadErr)
+		require.NotNil(t, secondReload)
+		require.NotNil(t, secondReload.LastUsedAt)
+
+		assert.WithinDuration(t, *firstReload.LastUsedAt, *secondReload.LastUsedAt, time.Second)
+	})
+}
+
+type organizationAPIKeyContextData struct {
+	Product       TenantAndProduct
+	Organization  organization.Organization
+	PermissionSet organizationAPIKeyResourcePermissions
+}
+
+func givenOrganizationAPIKeyContext(t *testing.T) organizationAPIKeyContextData {
+	t.Helper()
+
+	tenantAndProduct := GivenATenantAndProduct(t)
+	GivenBasicProductResourcePermissions(t, tenantAndProduct.Product.ID)
+
+	org := organization.Organization{
+		ProductID:   tenantAndProduct.Product.ID,
+		Name:        Faker.Company().Name(),
+		Description: toolkit.Ptr("Organization API key validation test organization"),
+	}
+	org.GenerateID()
+
+	createdOrg, err := OrganizationRepo.Create(t.Context(), org, nil)
+	require.NoError(t, err)
+
+	return organizationAPIKeyContextData{
+		Product:       tenantAndProduct,
+		Organization:  createdOrg,
+		PermissionSet: GivenOrganizationAPIKeyResourcePermissionSet(),
+	}
+}
+
+func givenOrganizationAPIKey(
+	t *testing.T,
+	ctxData organizationAPIKeyContextData,
+	permissions []string,
+	status orgapikey.Status,
+	expiresAt *time.Time,
+) (orgapikey.OrganizationAPIKey, string) {
+	t.Helper()
+
+	createdKey, clearValue, err := OrgAPIKeyService.Create(
+		t.Context(),
+		orgapikey.CreateOrganizationAPIKeyInput{
+			ProductID:      ctxData.Product.Product.ID,
+			OrganizationID: ctxData.Organization.ID,
+			Name:           "Org Key " + Faker.UUID().V4(),
+			Description:    toolkit.Ptr("Organization API key for tests"),
+			ExpiresAt:      expiresAt,
+			Permissions:    permissions,
+		},
+	)
+	require.NoError(t, err)
+
+	if status == orgapikey.StatusInactive {
+		createdKey.Status = orgapikey.StatusInactive
+		updated, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey, nil)
+		require.NoError(t, updateErr)
+		createdKey = updated
+	}
+
+	return createdKey, clearValue
+}

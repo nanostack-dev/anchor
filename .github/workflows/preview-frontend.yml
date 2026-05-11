@@ -1,0 +1,245 @@
+name: Frontend PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-anchor-frontend-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  preview_up:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Compute preview metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branch_ref='${{ github.event.pull_request.head.ref }}'
+          slug="$(printf '%s' "$branch_ref" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's|^[a-z]+/||' \
+            | sed -E 's|[^a-z0-9-]+|-|g' \
+            | sed -E 's|-+|-|g' \
+            | sed -E 's|^-||; s|-$||' \
+            | cut -c1-30 \
+            | sed -E 's|-$||')"
+
+          if [[ -z "$slug" ]]; then
+            echo "computed slug is empty for branch: ${branch_ref}" >&2
+            exit 1
+          fi
+
+          worker_name="anchor-frontend-pr-${slug}"
+          frontend_preview_host="pr-${slug}.preview.anchordev.nanostack.dev"
+          frontend_preview_url="https://${frontend_preview_host}"
+          backend_preview_url="https://pr-${slug}.anchorapidev.nanostack.dev"
+          paired_demo_url="${frontend_preview_url}?baseUrl=https%3A%2F%2Fpr-${slug}.anchorapidev.nanostack.dev"
+
+          echo "branch_ref=${branch_ref}" >> "$GITHUB_OUTPUT"
+          echo "slug=${slug}" >> "$GITHUB_OUTPUT"
+          echo "worker_name=${worker_name}" >> "$GITHUB_OUTPUT"
+          echo "frontend_preview_host=${frontend_preview_host}" >> "$GITHUB_OUTPUT"
+          echo "frontend_preview_url=${frontend_preview_url}" >> "$GITHUB_OUTPUT"
+          echo "backend_preview_url=${backend_preview_url}" >> "$GITHUB_OUTPUT"
+          echo "paired_demo_url=${paired_demo_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.0.6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: anchor-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          cd anchor-ui
+          pnpm install --frozen-lockfile
+
+      - name: Build frontend preview
+        env:
+          VITE_API_BASE_URL: https://anchorapidev.nanostack.dev
+          VITE_ENVIRONMENT: development
+        run: |
+          cd anchor-ui
+          pnpm build
+
+      - name: Deploy preview worker
+        uses: cloudflare/wrangler-action@v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: anchor-ui
+          command: deploy --name=${{ steps.meta.outputs.worker_name }}
+
+      - name: Attach preview domain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FRONTEND_PREVIEW_HOST: ${{ steps.meta.outputs.frontend_preview_host }}
+          WORKER_NAME: ${{ steps.meta.outputs.worker_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            CLOUDFLARE_ACCOUNT_ID="$(curl --fail --silent --show-error \
+              --url "https://api.cloudflare.com/client/v4/memberships" \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              | jq -r '.result[] | select(.status == "accepted") | .account.id' \
+              | head -n1)"
+          fi
+
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "Could not resolve a Cloudflare account ID from the available token" >&2
+            exit 1
+          fi
+
+          existing_domain="$(curl --fail --silent --show-error \
+            --url "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains?hostname=${FRONTEND_PREVIEW_HOST}" \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")"
+          existing_domain_id="$(printf '%s' "$existing_domain" | jq -r '.result[0].id // empty')"
+          existing_service="$(printf '%s' "$existing_domain" | jq -r '.result[0].service // empty')"
+
+          if [[ -n "$existing_domain_id" ]]; then
+            if [[ "$existing_service" == "$WORKER_NAME" ]]; then
+              exit 0
+            fi
+
+            curl --fail --silent --show-error \
+              --request DELETE \
+              --url "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains/${existing_domain_id}" \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" >/dev/null
+          fi
+
+          curl --fail --silent --show-error \
+            --request PUT \
+            --url "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains" \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data "$(jq -n --arg hostname "$FRONTEND_PREVIEW_HOST" --arg service "$WORKER_NAME" '{hostname: $hostname, service: $service}')" >/dev/null
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v3.0.4
+        with:
+          header: anchor-frontend-preview
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            Frontend preview deployed with Wrangler.
+
+            - Frontend Preview: ${{ steps.meta.outputs.frontend_preview_url }}
+            - Paired Demo: ${{ steps.meta.outputs.paired_demo_url }}
+            - Backend Preview: ${{ steps.meta.outputs.backend_preview_url }}
+            - Worker: `${{ steps.meta.outputs.worker_name }}`
+
+  preview_down:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Compute preview metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branch_ref='${{ github.event.pull_request.head.ref }}'
+          slug="$(printf '%s' "$branch_ref" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's|^[a-z]+/||' \
+            | sed -E 's|[^a-z0-9-]+|-|g' \
+            | sed -E 's|-+|-|g' \
+            | sed -E 's|^-||; s|-$||' \
+            | cut -c1-30 \
+            | sed -E 's|-$||')"
+
+          if [[ -z "$slug" ]]; then
+            echo "computed slug is empty for branch: ${branch_ref}" >&2
+            exit 1
+          fi
+
+          worker_name="anchor-frontend-pr-${slug}"
+          frontend_preview_host="pr-${slug}.preview.anchordev.nanostack.dev"
+          echo "worker_name=${worker_name}" >> "$GITHUB_OUTPUT"
+          echo "frontend_preview_host=${frontend_preview_host}" >> "$GITHUB_OUTPUT"
+
+      - name: Detach preview domain
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FRONTEND_PREVIEW_HOST: ${{ steps.meta.outputs.frontend_preview_host }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            CLOUDFLARE_ACCOUNT_ID="$(curl --fail --silent --show-error \
+              --url "https://api.cloudflare.com/client/v4/memberships" \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              | jq -r '.result[] | select(.status == "accepted") | .account.id' \
+              | head -n1)"
+          fi
+
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "Could not resolve a Cloudflare account ID from the available token" >&2
+            exit 1
+          fi
+
+          domain_id="$(curl --fail --silent --show-error \
+            --url "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains?hostname=${FRONTEND_PREVIEW_HOST}" \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            | jq -r '.result[0].id // empty')"
+
+          if [[ -n "$domain_id" ]]; then
+            curl --fail --silent --show-error \
+              --request DELETE \
+              --url "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains/${domain_id}" \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" >/dev/null
+          fi
+
+      - name: Delete preview worker
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: anchor-ui
+          command: delete --name=${{ steps.meta.outputs.worker_name }} --force
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v3.0.4
+        with:
+          header: anchor-frontend-preview
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            Frontend preview removed.
+
+            - Frontend Preview: https://${{ steps.meta.outputs.frontend_preview_host }}
+            - Worker: `${{ steps.meta.outputs.worker_name }}`

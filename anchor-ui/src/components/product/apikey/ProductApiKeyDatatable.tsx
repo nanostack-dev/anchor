@@ -1,0 +1,297 @@
+import {
+	type Options,
+	type ProductApiKeyResponse,
+	type ProductApiKeySearchRequest,
+	ProductApiKeyStatus,
+	type SearchProductApiKeysData,
+	SortDirection,
+} from "@/client";
+import { searchProductApiKeysOptions } from "@/client/@tanstack/react-query.gen";
+import { DeleteProductAPIKeyDialog } from "@/components/product/apikey/DeleteProductApiKeyDialog";
+import { ProductApiKeyDialog } from "@/components/product/apikey/ProductApiKeyDialog";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
+import { useDebounce } from "@uidotdev/usehooks";
+import dayjs from "dayjs";
+import { PenLine, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
+import { Button } from "../../ui/button";
+
+const columnHelper = createColumnHelper<ProductApiKeyResponse>();
+
+type ProductApiKeyFilters = {
+	name: string[];
+	status: ProductApiKeyStatus[];
+};
+
+interface ProductApiKeyDatatableProps {
+	productId: string;
+}
+
+export function ProductApiKeyDatatable({
+	productId,
+}: ProductApiKeyDatatableProps) {
+	const [total, setTotal] = useState(0);
+
+	const [pagination, setPagination] = useState<PaginationState>({
+		pageIndex: 0,
+		pageSize: 10,
+	});
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "created_at", desc: true },
+	]);
+	const [fullTextSearch, setFullTextSearch] = useState("");
+	const debouncedFullTextSearch = useDebounce(fullTextSearch, 300);
+
+	const [nameFilter, setNameFilter] = useState<string[]>([]);
+	const debouncedName = useDebounce(nameFilter, 100);
+	const [statusFilter, setStatusFilter] = useState<ProductApiKeyStatus[]>([]);
+	const debouncedStatus = useDebounce(statusFilter, 100);
+	const [
+		searchProductApiKeysOptionsParams,
+		setSearchProductApiKeysOptionsParams,
+	] = useState<Options<SearchProductApiKeysData>>(() => ({
+		path: {
+			product_id: productId,
+		},
+		body: {
+			pagination: {
+				limit: pagination.pageSize,
+				offset: pagination.pageIndex * pagination.pageSize,
+			},
+			sort_by: mapSortingToApiField<ProductApiKeySearchRequest["sort_by"]>(
+				sorting[0]?.id,
+				"created_at",
+			),
+			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
+			full_text_search: debouncedFullTextSearch || undefined,
+			filter: {
+				names: debouncedName.length > 0 ? debouncedName : undefined,
+				status: debouncedStatus.length > 0 ? debouncedStatus : undefined,
+			},
+		},
+	}));
+	const {
+		data: apiKeyData,
+		isLoading,
+		error,
+	} = useQuery({
+		...searchProductApiKeysOptions(searchProductApiKeysOptionsParams),
+		placeholderData: keepPreviousData,
+	});
+
+	const { items = [], total: fetchedTotal = 0 } = apiKeyData ?? {};
+	useMemo(() => {
+		setTotal(fetchedTotal);
+	}, [fetchedTotal]);
+
+	useEffect(() => {
+		setSearchProductApiKeysOptionsParams({
+			path: {
+				product_id: productId,
+			},
+			body: {
+				pagination: {
+					limit: pagination.pageSize,
+					offset: pagination.pageIndex * pagination.pageSize,
+				},
+				sort_by: mapSortingToApiField<
+					"id" | "name" | "created_at" | "last_used_at" | "status"
+				>(sorting[0]?.id, "created_at"),
+				sort_direction: sorting[0]?.desc
+					? SortDirection.DESC
+					: SortDirection.ASC,
+				full_text_search: debouncedFullTextSearch || undefined,
+				filter: {
+					names: debouncedName.length > 0 ? debouncedName : undefined,
+					status: debouncedStatus.length > 0 ? debouncedStatus : undefined,
+				},
+			},
+		});
+	}, [
+		productId,
+		pagination,
+		sorting,
+		debouncedFullTextSearch,
+		debouncedName,
+		debouncedStatus,
+	]);
+
+	const columns = useMemo(
+		() => [
+			columnHelper.accessor("name", {
+				header: () => <span>Name</span>,
+				cell: (info) => info.getValue(),
+				enableSorting: true,
+			}),
+			columnHelper.accessor("description", {
+				header: () => <span>Description</span>,
+				cell: (info) => {
+					const description = info.getValue();
+					return (
+						<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+							{description || "No description"}
+						</span>
+					);
+				},
+				enableSorting: false,
+			}),
+			columnHelper.accessor("created_at", {
+				header: () => <span>Created At</span>,
+				cell: (info) => dayjs(info.getValue()).format("D MMMM YYYY H:mm"),
+				enableSorting: true,
+			}),
+			columnHelper.accessor("last_used_at", {
+				header: () => <span>Last Used</span>,
+				cell: (info) => {
+					const lastUsed = info.getValue();
+					return lastUsed
+						? dayjs(lastUsed).format("D MMMM YYYY H:mm")
+						: "Never";
+				},
+				enableSorting: true,
+			}),
+			columnHelper.accessor("status", {
+				header: () => <span>Status</span>,
+				cell: (info) => {
+					const status = info.getValue();
+					return (
+						<span
+							className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+								status === ProductApiKeyStatus.ACTIVE
+									? "bg-green-100 text-green-800"
+									: status === ProductApiKeyStatus.INACTIVE
+										? "bg-gray-100 text-gray-800"
+										: "bg-yellow-100 text-yellow-800"
+							}`}
+						>
+							{status}
+						</span>
+					);
+				},
+				enableSorting: true,
+			}),
+			columnHelper.accessor("mutable", {
+				header: () => <span>Mutable</span>,
+				cell: (info) => (
+					<span
+						className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+							info.getValue()
+								? "bg-blue-100 text-blue-800"
+								: "bg-slate-100 text-slate-700"
+						}`}
+					>
+						{info.getValue() ? "Yes" : "No"}
+					</span>
+				),
+				enableSorting: false,
+			}),
+			columnHelper.display({
+				id: "actions",
+				header: () => <span>Actions</span>,
+				cell: ({ row }) => (
+					<div className={"flex gap-2"}>
+						<ProductApiKeyDialog
+							productId={productId}
+							mode="edit"
+							existingApiKey={row.original}
+							trigger={
+								<Button variant="outline" size="icon">
+									<span className="sr-only">Edit API key</span>
+									<PenLine className="h-4 w-4" />
+								</Button>
+							}
+						/>
+						<DeleteProductAPIKeyDialog
+							productId={productId}
+							apiKey={row.original}
+						/>
+					</div>
+				),
+			}),
+		],
+		[productId],
+	);
+
+	const nameOptions = useMemo(
+		() =>
+			Array.from(
+				new Set((items as ProductApiKeyResponse[]).map((item) => item.name)),
+			).map((name) => ({ label: name, value: name })),
+		[items],
+	);
+
+	const statusOptions = useMemo(
+		() => [
+			{ label: "Active", value: ProductApiKeyStatus.ACTIVE },
+			{ label: "Inactive", value: ProductApiKeyStatus.INACTIVE },
+		],
+		[],
+	);
+
+	return (
+		<>
+			<div className="flex items-center justify-between mb-4">
+				<div className="flex items-center gap-2">
+					<ProductApiKeyDialog
+						productId={productId}
+						mode="create"
+						trigger={
+							<Button>
+								<Plus />
+								Create API Key
+							</Button>
+						}
+					/>
+				</div>
+			</div>
+			<AnchorDataTable<ProductApiKeyResponse, ProductApiKeyFilters>
+				columns={columns}
+				data={items}
+				loading={isLoading}
+				total={total}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				fullTextSearch={fullTextSearch}
+				onFullTextSearchChange={setFullTextSearch}
+				fullTextSearchPlaceHolder="Search API keys"
+				filters={[
+					{
+						key: "name",
+						label: "Name",
+						type: "select",
+						value: nameFilter,
+						options: nameOptions,
+						placeholder: "Filter by name",
+						multi: true,
+					},
+					{
+						key: "status",
+						label: "Status",
+						type: "select",
+						value: statusFilter,
+						options: statusOptions,
+						placeholder: "Filter by status",
+						multi: true,
+					},
+				]}
+				onFiltersChange={(filters) => {
+					setPagination((p) => ({ ...p, pageIndex: 0 }));
+					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
+					setStatusFilter(Array.isArray(filters.status) ? filters.status : []);
+				}}
+				enableRowSelection={false}
+			/>
+			{error && (
+				<div style={{ color: "red", marginTop: 8 }}>
+					Failed to load API keys: {error.message}
+				</div>
+			)}
+		</>
+	);
+}

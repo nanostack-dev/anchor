@@ -1,0 +1,2 @@
+ALTER TABLE product_api_keys
+  ADD COLUMN mutable BOOLEAN NOT NULL DEFAULT FALSE;
