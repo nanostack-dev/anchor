@@ -24,7 +24,7 @@ variable "sync_runtime_fields" {
 variable "op_vault_id" {
   description = "1Password vault ID where runtime fields are stored"
   type        = string
-  default     = "yjntbdb73no2xsinyuzpwizmpm"
+  default     = "d6744hn5rykbbbynw6zgm2ttmy"
 }
 
 variable "op_item_ref" {
