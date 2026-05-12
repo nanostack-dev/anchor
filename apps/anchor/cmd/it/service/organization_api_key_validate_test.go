@@ -153,6 +153,35 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		assert.Equal(t, orgapikey.StatusInactive, reloaded.Status)
 	})
 
+	t.Run("Near Future Expiration Uses Second Precision Boundary", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		expiresAt := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
+
+		createdKey, value := givenOrganizationAPIKey(
+			t,
+			ctxData,
+			[]string{ctxData.PermissionSet.FileRead},
+			orgapikey.StatusActive,
+			&expiresAt,
+		)
+
+		assert.WithinDuration(t, expiresAt, *createdKey.ExpiresAt, time.Second)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    value,
+				Scopes:         []string{ctxData.PermissionSet.FileRead},
+			},
+		)
+		require.NoError(t, err)
+		assert.True(t, result.Authorized)
+		assert.False(t, result.Inactive)
+		assert.Equal(t, createdKey.ID, result.APIKey.ID)
+	})
+
 	t.Run("Legacy Prefix API Key", func(t *testing.T) {
 		ctxData := givenOrganizationAPIKeyContext(t)
 		permissions := []string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate}

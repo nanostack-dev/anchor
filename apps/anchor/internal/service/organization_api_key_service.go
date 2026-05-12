@@ -85,7 +85,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", err
 	}
 
-	if input.ExpiresAt != nil && !input.ExpiresAt.After(time.Now()) {
+	if input.ExpiresAt != nil && !input.ExpiresAt.After(nowUTC().Truncate(time.Second)) {
 		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyExpiresAtInPastError()
 	}
 
@@ -247,7 +247,7 @@ func (s *organizationAPIKeyService) Update(
 		updatedAPIKey.Description = input.Description
 	}
 	if input.Status != nil {
-		if *input.Status == orgapikey.StatusActive && existingAPIKey.IsExpiredAt(time.Now()) {
+		if *input.Status == orgapikey.StatusActive && existingAPIKey.IsExpiredAt(nowUTC()) {
 			return orgapikey.OrganizationAPIKey{}, NewOrganizationAPIKeyInactiveOrExpiredError(input.ID)
 		}
 		updatedAPIKey.Status = *input.Status
@@ -448,7 +448,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
 	}
 
-	now := time.Now()
+	now := nowUTC()
 	if foundAPIKey.IsExpiredAt(now) {
 		if foundAPIKey.Status == orgapikey.StatusActive {
 			if updateErr := s.apiKeyRepo.UpdateStatus(
