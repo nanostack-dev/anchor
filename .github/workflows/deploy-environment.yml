@@ -58,10 +58,9 @@ jobs:
         APP_ENCRYPTION_KEY
     secrets:
       APP_ENV_FILE: ${{ secrets.NANOSTACK_ENV_FILE }}
-      READ_PAT_GITHUB: ${{ secrets.CI_PAT }}
+      CI_PAT: ${{ secrets.CI_PAT }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ inputs.environment == 'prod' && secrets.DEPLOY_SSH_PRIVATE_KEY_PROD || secrets.DEPLOY_SSH_PRIVATE_KEY_DEV }}
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-      GHCR_PAT: ${{ secrets.CI_PAT }}
       TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
       TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       CI_CD_DISCORD_WEBHOOK_URL: ${{ secrets.CI_CD_DISCORD_WEBHOOK_URL }}
