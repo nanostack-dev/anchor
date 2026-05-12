@@ -1,0 +1,13 @@
+packages:
+  - "anchor-ui"
+
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+resolutionMode: time-based
+minimumReleaseAgeExclude:
+  - "@types/*"
+  - "typescript"
+allowBuilds:
+  '@biomejs/biome': true
+  esbuild: true
