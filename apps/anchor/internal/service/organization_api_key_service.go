@@ -434,7 +434,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	apiKey string,
 	logger zerolog.Logger,
 ) (orgapikey.OrganizationAPIKey, bool, error) {
-	if !security.IsValidOrganizationAPIKey(apiKey) {
+	if apiKey == "" {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
 	}
 

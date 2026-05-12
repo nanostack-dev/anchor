@@ -378,7 +378,7 @@ func (s *productAPIKeyService) Search(
 func (s *productAPIKeyService) validateAPIKey(
 	ctx context.Context, productID string, apiKey string, logger zerolog.Logger,
 ) (apikey.ProductAPIKey, error) {
-	if !security.IsValidProductAPIKey(apiKey) {
+	if apiKey == "" {
 		return apikey.ProductAPIKey{}, ErrInvalidAPIKey
 	}
 

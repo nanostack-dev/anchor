@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"anchor/internal/security"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -40,6 +42,55 @@ func TestApiKeyValidation(t *testing.T) {
 			require.NoError(t, err, "Failed to validate API key scopes")
 			assert.Equal(t, validatedAPIKey.ProductID, tenantAndProduct.Product.ID)
 			assert.Equal(t, validatedAPIKey.ID, apiKey.ID)
+		},
+	)
+	t.Run(
+		"Legacy Prefix API Key", func(t *testing.T) {
+			tenantAndProduct := GivenATenantAndProduct(t)
+			permissions := GivenBasicAnchorPermissions(
+				t, tenantAndProduct.Product.ID,
+			)
+			anchorValue, err := security.GenerateProductAPIKey()
+			require.NoError(t, err)
+
+			legacyValue := strings.Replace(
+				anchorValue,
+				security.DefaultProductAPIKeyPrefix,
+				"nanostack_prd_apikey_",
+				1,
+			)
+			apiKey := apikey.ProductAPIKey{
+				ProductID:       tenantAndProduct.Product.ID,
+				Name:            Faker.RandomStringWithLength(20),
+				Mutable:         true,
+				HashedValue:     security.HashSecret(legacyValue),
+				ObfuscatedValue: "nanostack_prd_apikey_***_legacy",
+				Status:          apikey.StatusActive,
+			}
+			apiKey.GenerateID()
+			apiKey.Permissions = toolkit.TransformSlice(
+				permissions,
+				func(perm string) apikey.ProductAPIKeyPermission {
+					return apikey.ProductAPIKeyPermission{
+						APIKeyID:       apiKey.ID,
+						ProductID:      tenantAndProduct.Product.ID,
+						PermissionName: perm,
+					}
+				},
+			)
+			createdAPIKey, createErr := APIKeyRepository.Create(t.Context(), apiKey, nil)
+			require.NoError(t, createErr)
+
+			validatedAPIKey, err := APIKeyService.ValidateAPIKeyAndScopes(
+				t.Context(), apikey.ValidateAPIKeyScopesInput{
+					ProductID:   tenantAndProduct.Product.ID,
+					APIKeyValue: legacyValue,
+					Scopes:      permissions,
+				},
+			)
+			require.NoError(t, err, "Failed to validate legacy-prefixed API key scopes")
+			assert.Equal(t, tenantAndProduct.Product.ID, validatedAPIKey.ProductID)
+			assert.Equal(t, createdAPIKey.ID, validatedAPIKey.ID)
 		},
 	)
 	t.Run(

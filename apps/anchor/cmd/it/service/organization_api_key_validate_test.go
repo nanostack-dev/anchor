@@ -1,8 +1,11 @@
 package service_test
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"anchor/internal/security"
 
 	"github.com/nanostack-dev/shared/toolkit"
 	"github.com/stretchr/testify/assert"
@@ -148,6 +151,55 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, reloadErr)
 		require.NotNil(t, reloaded)
 		assert.Equal(t, orgapikey.StatusInactive, reloaded.Status)
+	})
+
+	t.Run("Legacy Prefix API Key", func(t *testing.T) {
+		ctxData := givenOrganizationAPIKeyContext(t)
+		permissions := []string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate}
+		anchorValue, err := security.GenerateOrganizationAPIKey()
+		require.NoError(t, err)
+
+		legacyValue := strings.Replace(
+			anchorValue,
+			security.DefaultOrganizationAPIKeyPrefix,
+			"nanostack_org_apikey_",
+			1,
+		)
+		createdKey := orgapikey.OrganizationAPIKey{
+			OrganizationID:  ctxData.Organization.ID,
+			Name:            "Org Key " + Faker.UUID().V4(),
+			Description:     toolkit.Ptr("Legacy organization API key for tests"),
+			HashedValue:     security.HashSecret(legacyValue),
+			ObfuscatedValue: "nanostack_org_apikey_***_legacy",
+			Status:          orgapikey.StatusActive,
+		}
+		createdKey.GenerateID()
+		createdKey.Permissions = toolkit.TransformSlice(
+			permissions,
+			func(perm string) orgapikey.OrganizationAPIKeyPermission {
+				return orgapikey.OrganizationAPIKeyPermission{
+					APIKeyID:       createdKey.ID,
+					OrganizationID: ctxData.Organization.ID,
+					ProductID:      ctxData.Product.Product.ID,
+					PermissionName: perm,
+				}
+			},
+		)
+		persistedKey, createErr := OrgAPIKeyRepository.Create(t.Context(), createdKey, nil)
+		require.NoError(t, createErr)
+
+		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
+			t.Context(),
+			orgapikey.ValidateOrganizationAPIKeyScopesInput{
+				ProductID:      ctxData.Product.Product.ID,
+				OrganizationID: ctxData.Organization.ID,
+				APIKeyValue:    legacyValue,
+				Scopes:         []string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate},
+			},
+		)
+		require.NoError(t, err)
+		assert.True(t, result.Authorized)
+		assert.Equal(t, persistedKey.ID, result.APIKey.ID)
 	})
 
 	t.Run("Invalid API Key", func(t *testing.T) {
