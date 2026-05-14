@@ -1,13 +1,13 @@
 
 # 🚀 Organization Infrastructure Service (Anchor OaaS) 🚀
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: FSL-1.1-ALv2](https://img.shields.io/badge/License-FSL--1.1--ALv2-blue.svg)](./LICENSE)
 
-**Tired of rebuilding multi-tenancy, organizational structures, user roles, and permissions for every new product?** This project provides a foundational, open-source service to manage it all, letting you focus on your core application logic.
+**Tired of rebuilding multi-tenancy, organizational structures, user roles, and permissions for every new product?** This project provides a foundational, source-available service to manage it all, letting you focus on your core application logic.
 
-Built for developers and organizations creating multi-product platforms or complex internal tools, V1 (Apache 2.0) offers a robust solution designed for a single `PlatformTenant` deployment, with an architecture ready for multi-tenant SaaS scaling.
+Built for developers and organizations creating multi-product platforms or complex internal tools, Anchor offers a robust solution designed for a single `PlatformTenant` deployment, with an architecture ready for multi-tenant SaaS scaling.
 
-## ✨ Key Features (V1 Open Source)
+## ✨ Key Features
 
 * **Hierarchical Structure:** Manage `Product` -> `Organization` -> `Workspace` relationships out-of-the-box.
 * **User Directory:** Separate management for `PlatformUser` (admins) and `ProductUser` (end-users, directory-only).
@@ -22,7 +22,7 @@ Built for developers and organizations creating multi-product platforms or compl
 
 This service revolves around a clear hierarchy and distinct user types:
 
-1.  **Platform Tenant:** Your top-level instance (V1 OS = 1 instance).
+1.  **Platform Tenant:** Your top-level instance.
 2.  **Product:** Your distinct applications/services managed by the Platform Tenant.
 3.  **Organization:** Your Product's customers or tenants.
 4.  **Workspace:** Sub-units within an Organization (teams, projects, etc.).
@@ -38,10 +38,10 @@ And the users:
 * **Tech:** Go | Uber FX | PostgreSQL | go-jet | KSUIDs | OpenAPI 3.0 | oapi-codegen
 * **API:** Versioned (`/v1`), RESTful endpoints.
 * **Auth:** Bearer Tokens (Platform Admins) & `X-Product-API-Key` (Product Backends).
-* **Tenancy:** Architecture supports multi-tenant platforms, but V1 OS uses Dependency Injection to run in single-tenant mode.
+* **Tenancy:** Architecture supports multi-tenant platforms, while the current self-hosted shape uses Dependency Injection to run in single-tenant mode.
 
 
-## 🚀 Getting Started (V1 Open Source)
+## 🚀 Getting Started
 
 *(High-level steps - provide details later)*
 
@@ -57,10 +57,13 @@ And the users:
 * The full API is defined in the [openapi.yaml](https://www.google.com/search?q=openapi.yaml) specification file.
 * (Optional: Link to generated HTML documentation if available).
 
-## 🌍 Open Source & Community
+## 🌍 Licensing & Community
 
-* **License:** Apache 2.0
-* **V1 Scope:** Single Platform Tenant mode. Multi-tenant platform support is planned for a separate SaaS offering.
+* **License:** Functional Source License 1.1 with Apache 2.0 future license (`FSL-1.1-ALv2`)
+* **Usage:** Free for permitted uses under the FSL, including internal use, non-commercial education and research, and professional services delivered to a valid licensee.
+* **Commercial restriction:** You may not offer Anchor itself, or a substantially similar competing service, as a commercial product under the FSL terms.
+* **Future license:** Each version converts to Apache 2.0 two years after it is made available.
+* **Current scope:** Single Platform Tenant mode. Broader multi-tenant platform support may be offered separately.
 * **Contribute:** We welcome contributions\! Please see [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTING.md) (TBD) and use GitHub Issues/Pull Requests.
 
 ## 🔮 Roadmap (Potential Future Features)
