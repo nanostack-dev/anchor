@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ func TestGetProductUser(t *testing.T) {
 		"GetNonExistentProductUser", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
-			nonExistentUserID := toolkit.NewID("puser")
+			nonExistentUserID := ids.MustNew("puser")
 
 			// Use API key client with product_user:read scope
 			apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:read"})

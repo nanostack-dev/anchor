@@ -17,49 +17,51 @@ import (
 	intrepo "anchor/internal/repository"
 
 	"github.com/lib/pq"
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 
 var (
-	ErrEmailIntegrationNotFound = toolkit.NewNanostackErrorsWithStatus(
+	ErrEmailIntegrationNotFound = apierror.NewWithStatus(
 		"EMAIL_INTEGRATION_NOT_FOUND",
 		"No email integration is configured for this product",
 		http.StatusFailedDependency,
 	)
-	ErrEmailIntegrationInactive = toolkit.NewNanostackBadRequestError(
+	ErrEmailIntegrationInactive = apierror.NewBadRequest(
 		"EMAIL_INTEGRATION_INACTIVE",
 		"The email integration is not in an ACTIVE state",
 	)
-	ErrEmailTemplateNotFound = toolkit.NewNanostackErrorsWithStatus(
+	ErrEmailTemplateNotFound = apierror.NewWithStatus(
 		"EMAIL_TEMPLATE_NOT_FOUND",
 		"Email template not found",
 		http.StatusNotFound,
 	)
-	ErrEmailTemplateNotPublished = toolkit.NewNanostackBadRequestError(
+	ErrEmailTemplateNotPublished = apierror.NewBadRequest(
 		"EMAIL_TEMPLATE_NOT_PUBLISHED",
 		"This template has no published version; publish it before sending",
 	)
-	ErrEmailTemplateNoDraft = toolkit.NewNanostackBadRequestError(
+	ErrEmailTemplateNoDraft = apierror.NewBadRequest(
 		"EMAIL_TEMPLATE_NO_DRAFT",
 		"This template has no draft version available",
 	)
-	ErrEmailTemplateSlugTaken = toolkit.NewNanostackBadRequestError(
+	ErrEmailTemplateSlugTaken = apierror.NewBadRequest(
 		"EMAIL_TEMPLATE_SLUG_TAKEN",
 		"An email template with this slug already exists for the product",
 	)
-	ErrEmailRateLimitExceeded = toolkit.NewNanostackErrorsWithStatus(
+	ErrEmailRateLimitExceeded = apierror.NewWithStatus(
 		"EMAIL_RATE_LIMIT_EXCEEDED",
 		"Sends for this product exceeded the configured rate limit",
 		http.StatusTooManyRequests,
 	)
-	ErrEmailMailerCapabilityMissing = toolkit.NewNanostackBadRequestError(
+	ErrEmailMailerCapabilityMissing = apierror.NewBadRequest(
 		"EMAIL_MAILER_CAPABILITY_MISSING",
 		"The configured integration does not support outbound email",
 	)
-	ErrEmailTemplateSelectorMissing = toolkit.NewNanostackBadRequestError(
+	ErrEmailTemplateSelectorMissing = apierror.NewBadRequest(
 		"EMAIL_TEMPLATE_SELECTOR_MISSING",
 		"Either template_id or template_slug must be supplied",
 	)
@@ -212,7 +214,7 @@ func (s *emailService) resolveSendVersion(
 func (s *emailService) CreateTemplate(
 	ctx context.Context, in email.CreateTemplateInput,
 ) (email.Template, error) {
-	if err := toolkit.ValidateStruct(in); err != nil {
+	if err := validateStruct(in); err != nil {
 		return email.Template{}, err
 	}
 
@@ -441,8 +443,8 @@ func (s *emailService) PublishTemplate(
 	publishedAt := time.Now()
 	prevPublishedID := tpl.PublishedVersionID
 
-	if err = toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-		opts := &toolkit.DBOptions{Tx: tx}
+	if err = jetx.WithTx(s.db, func(tx *sql.Tx) error {
+		opts := &jetx.DBOptions{Tx: tx}
 		if prevPublishedID != nil {
 			if err = s.versionRepo.UpdateStatus(
 				ctx, *prevPublishedID, email.TemplateVersionStatusArchived, nil, opts,
@@ -570,7 +572,7 @@ func (s *emailService) Preview(
 	}
 	res, err := s.renderer.Render(v, in.Variables)
 	if err != nil {
-		return email.PreviewResult{}, toolkit.NewNanostackBadRequestError(
+		return email.PreviewResult{}, apierror.NewBadRequest(
 			"EMAIL_TEMPLATE_RENDER_ERROR",
 			err.Error(),
 		)
@@ -668,7 +670,7 @@ func (s *emailService) Send(
 	}
 	rec.GenerateID()
 
-	messageID := toolkit.NewID("emid")
+	messageID := ids.MustNew("emid")
 	rec.MessageID = messageID
 
 	persisted, createdNew, err := s.createSendRecord(ctx, in, rec)

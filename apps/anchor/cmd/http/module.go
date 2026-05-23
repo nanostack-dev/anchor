@@ -3,7 +3,7 @@ package httpserver
 import (
 	_ "embed"
 
-	"github.com/nanostack-dev/shared/fxmodules/config"
+	"github.com/nanostack-dev/nanostack-framework/modules/config"
 
 	"go.uber.org/fx"
 )

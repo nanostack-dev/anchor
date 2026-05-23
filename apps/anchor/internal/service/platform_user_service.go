@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/repository"
@@ -49,7 +49,7 @@ func (s *platformUserService) SearchPlatformUsers(
 ) (search.Result[platform.User], error) {
 	logger := s.logger.With().Str("operation", "SearchPlatformUsers").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[platform.User]{}, err
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request, nil)
@@ -68,7 +68,7 @@ func (s *platformUserService) GetPlatformUserByUserID(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetPlatformUserByUserID").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 	user, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID, nil)
@@ -88,7 +88,7 @@ func (s *platformUserService) GetPlatformUser(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetPlatformUser").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 	user, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID, nil)
@@ -108,7 +108,7 @@ func (s *platformUserService) DeletePlatformUser(
 ) error {
 	logger := s.logger.With().Str("operation", "DeletePlatformUser").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 	//TODO: we should add member id in the jwt
@@ -129,7 +129,7 @@ func (s *platformUserService) DeletePlatformUser(
 
 	// Prevent self-deletion
 	if currentPlatformUser != nil && currentPlatformUser.ID == input.PlatformUserID {
-		return toolkit.NewNanostackErrorsWithStatus(
+		return apierror.NewWithStatus(
 			"SELF_DELETION_NOT_ALLOWED",
 			"You cannot delete yourself",
 			http.StatusBadRequest,

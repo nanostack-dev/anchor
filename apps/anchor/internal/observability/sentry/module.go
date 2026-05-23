@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/nanostack-dev/shared/fxmodules/config"
+	"github.com/nanostack-dev/nanostack-framework/modules/config"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )

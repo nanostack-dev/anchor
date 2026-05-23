@@ -6,11 +6,10 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/nanostack-dev/shared/toolkit"
 )
 
 func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
@@ -20,8 +19,8 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:          "file:read",
-		Description:   toolkit.Ptr("Read file contents"),
-		ScopeModifier: toolkit.Ptr("own"),
+		Description:   ptr.Ptr("Read file contents"),
+		ScopeModifier: ptr.Ptr("own"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -36,7 +35,7 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 	permissionName := createResp.JSON201.Name
 
 	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: toolkit.Ptr("Updated read file contents"),
+		Description: ptr.Ptr("Updated read file contents"),
 	}
 
 	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
@@ -66,7 +65,7 @@ func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
 
 	nonExistentPermissionName := "non:existent"
 	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: toolkit.Ptr("Updated description"),
+		Description: ptr.Ptr("Updated description"),
 	}
 
 	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
@@ -79,10 +78,10 @@ func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
 func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
 	ctx := context.Background()
 
-	nonExistentProductID := toolkit.NewID("prod")
+	nonExistentProductID := ids.MustNew("prod")
 	permissionName := "file:read"
 	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: toolkit.Ptr("Updated description"),
+		Description: ptr.Ptr("Updated description"),
 	}
 
 	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
@@ -101,7 +100,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: toolkit.Ptr("Read file contents"),
+		Description: ptr.Ptr("Read file contents"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -123,7 +122,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 		{
 			name: "description too long",
 			input: ct.UpdateProductResourcePermissionRequest{
-				Description: toolkit.Ptr(string(make([]byte, 501))),
+				Description: ptr.Ptr(string(make([]byte, 501))),
 			},
 			expectedErr: "description must be at most 500 characters",
 		},
@@ -152,7 +151,7 @@ func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: toolkit.Ptr("Original description"),
+		Description: ptr.Ptr("Original description"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -192,7 +191,7 @@ func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: toolkit.Ptr("Original description"),
+		Description: ptr.Ptr("Original description"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -236,7 +235,7 @@ func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: toolkit.Ptr("Original description"),
+		Description: ptr.Ptr("Original description"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -251,7 +250,7 @@ func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
 	permissionName := createResp.JSON201.Name
 
 	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: toolkit.Ptr("Completely updated description with more details"),
+		Description: ptr.Ptr("Completely updated description with more details"),
 	}
 
 	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(

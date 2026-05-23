@@ -22,7 +22,7 @@ func mapAuthUserToAPIUserResponse(user *platform.User) UserResponse {
 	}
 }
 
-func (s *AnchorAPI) setRefreshTokenCookie(token string, lifetimeSeconds int64) string {
+func (s *AnchorAPI) setRefreshTokenCookie(token string, lifetimeSeconds int64) *string {
 	isDev := s.CoreConfig.IsDevelopment()
 
 	if isDev {
@@ -44,10 +44,11 @@ func (s *AnchorAPI) setRefreshTokenCookie(token string, lifetimeSeconds int64) s
 			return http.SameSiteNoneMode // Required for cross-origin in production
 		}(),
 	}
-	return cookie.String()
+	value := cookie.String()
+	return &value
 }
 
-func (s *AnchorAPI) clearRefreshTokenCookie() string {
+func (s *AnchorAPI) clearRefreshTokenCookie() *string {
 	isDev := s.CoreConfig.IsDevelopment()
 
 	//nolint:gosec // Local development needs a non-Secure refresh cookie on localhost.
@@ -65,7 +66,8 @@ func (s *AnchorAPI) clearRefreshTokenCookie() string {
 			return http.SameSiteNoneMode
 		}(),
 	}
-	return cookie.String()
+	value := cookie.String()
+	return &value
 }
 
 func (s *AnchorAPI) Login(ctx context.Context, request LoginRequestObject) (

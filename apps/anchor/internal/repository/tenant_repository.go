@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -25,15 +25,15 @@ func platformTenantsUpdatableColumns() postgres.ColumnList {
 }
 
 type TenantRepository interface {
-	FindByID(ctx context.Context, id string, options *toolkit.DBOptions) (
+	FindByID(ctx context.Context, id string, options *jetx.DBOptions) (
 		*tenant.PlatformTenant, error,
 	)
 	Create(
-		ctx context.Context, tenant tenant.PlatformTenant, options *toolkit.DBOptions,
+		ctx context.Context, tenant tenant.PlatformTenant, options *jetx.DBOptions,
 	) (tenant.PlatformTenant, error)
-	DeleteByID(ctx context.Context, id string, options *toolkit.DBOptions) error
-	Count(ctx context.Context, options *toolkit.DBOptions) (int64, error)
-	FindAll(ctx context.Context, t *toolkit.DBOptions) ([]tenant.PlatformTenant, error)
+	DeleteByID(ctx context.Context, id string, options *jetx.DBOptions) error
+	Count(ctx context.Context, options *jetx.DBOptions) (int64, error)
+	FindAll(ctx context.Context, t *jetx.DBOptions) ([]tenant.PlatformTenant, error)
 }
 
 type tenantRepositoryImpl struct {
@@ -55,7 +55,7 @@ func NewTenantRepository(
 }
 
 func (r *tenantRepositoryImpl) FindByID(
-	ctx context.Context, id string, options *toolkit.DBOptions,
+	ctx context.Context, id string, options *jetx.DBOptions,
 ) (*tenant.PlatformTenant, error) {
 	stmt := table.PlatformTenants.SELECT(
 		table.PlatformTenants.AllColumns,
@@ -65,14 +65,14 @@ func (r *tenantRepositoryImpl) FindByID(
 		table.PlatformTenants.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.PlatformTenants, tenant.PlatformTenant](
+	return jetx.QueryOptionalMap[model.PlatformTenants, tenant.PlatformTenant](
 		ctx, r.db, stmt,
 		r.tenantMapper.ToDomain, options, // Pass options correctly
 	)
 }
 
 func (r *tenantRepositoryImpl) Create(
-	ctx context.Context, t tenant.PlatformTenant, options *toolkit.DBOptions,
+	ctx context.Context, t tenant.PlatformTenant, options *jetx.DBOptions,
 ) (tenant.PlatformTenant, error) {
 	// Name generation and timestamp setting should be handled elsewhere
 	entity := r.tenantMapper.ToEntity(t)
@@ -81,31 +81,31 @@ func (r *tenantRepositoryImpl) Create(
 		platformTenantsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.PlatformTenants.AllColumns)
 
-	return toolkit.QueryMap[model.PlatformTenants, tenant.PlatformTenant](
+	return jetx.QueryMap[model.PlatformTenants, tenant.PlatformTenant](
 		ctx, r.db, stmt, r.tenantMapper.ToDomain, options,
 	) // Pass options correctly
 }
 
 func (r *tenantRepositoryImpl) DeleteByID(
-	ctx context.Context, id string, options *toolkit.DBOptions,
+	ctx context.Context, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.PlatformTenants.DELETE().WHERE(table.PlatformTenants.ID.EQ(postgres.String(id)))
 
-	return toolkit.Exec(ctx, r.db, stmt, options) // Pass options correctly
+	return jetx.Exec(ctx, r.db, stmt, options) // Pass options correctly
 }
 
-func (r *tenantRepositoryImpl) Count(ctx context.Context, options *toolkit.DBOptions) (
+func (r *tenantRepositoryImpl) Count(ctx context.Context, options *jetx.DBOptions) (
 	int64, error,
 ) {
-	return toolkit.QueryCount(ctx, r.db, table.PlatformTenants, options)
+	return jetx.QueryCount(ctx, r.db, table.PlatformTenants, options)
 }
 
 func (r *tenantRepositoryImpl) FindAll(
-	ctx context.Context, options *toolkit.DBOptions,
+	ctx context.Context, options *jetx.DBOptions,
 ) ([]tenant.PlatformTenant, error) {
 	stmt := table.PlatformTenants.SELECT(table.PlatformTenants.AllColumns)
 
-	return toolkit.QueryMap[[]model.PlatformTenants, []tenant.PlatformTenant](
+	return jetx.QueryMap[[]model.PlatformTenants, []tenant.PlatformTenant](
 		ctx, r.db, stmt, r.tenantMapper.ToDomainList, options,
 	)
 }

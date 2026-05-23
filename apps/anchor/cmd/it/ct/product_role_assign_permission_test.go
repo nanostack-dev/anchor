@@ -6,13 +6,12 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
-
-	itshared "anchor/cmd/it/shared"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itshared "anchor/cmd/it/shared"
 )
 
 func TestProductRole_AssignPermission(t *testing.T) {
@@ -25,7 +24,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignPermissionToProductRole", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -61,7 +60,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignMultiplePermissionsToProductRole", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "MultiPermRole_" + toolkit.NewID("test"),
+					Name: "MultiPermRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -119,7 +118,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignDuplicatePermissionToProductRole", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "DuplicatePermRole_" + toolkit.NewID("test"),
+					Name: "DuplicatePermRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -154,7 +153,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignNonexistentPermissionToProductRole", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -182,7 +181,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionToNonexistentProductRole", func(t *testing.T) {
-			nonExistentRoleID := toolkit.NewID("productroleservice")
+			nonExistentRoleID := ids.MustNew("productroleservice")
 
 			permissionName := testCtx.DefaultResourcePermissions[0].Name
 
@@ -217,7 +216,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignPermissionWithEmptyPermissionName", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -242,7 +241,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"AssignPermissionForNonexistentProduct", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -251,7 +250,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 				createRoleResp.StatusCode(),
 			)
 
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 			permissionName := testCtx.DefaultResourcePermissions[0].Name
 
 			assignResp, err := testCtx.OwnerAuthenticatedClient().AssignPermissionToProductRoleWithResponse(

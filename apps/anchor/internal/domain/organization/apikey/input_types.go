@@ -3,7 +3,7 @@ package orgapikey
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 type CreateOrganizationAPIKeyInput struct {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func TestIntegrationAuditLogs_DoNotLeakSecrets(t *testing.T) {
 
 	cfg := ct.IntegrationProviderConfig{}
 	require.NoError(t, cfg.FromClerkIntegrationConfig(ct.ClerkIntegrationConfig{
-		ApiKey: toolkit.Ptr(apiKey),
+		ApiKey: ptr.Ptr(apiKey),
 	}))
 
 	_ = updateClerkIntegrationInstance(
@@ -27,7 +27,7 @@ func TestIntegrationAuditLogs_DoNotLeakSecrets(t *testing.T) {
 		productContext,
 		instance.Id,
 		ct.UpdateIntegrationInstanceJSONRequestBody{
-			WebhookSecret: toolkit.Ptr(webhookSecret),
+			WebhookSecret: ptr.Ptr(webhookSecret),
 			Config:        &cfg,
 		},
 	)

@@ -1,13 +1,13 @@
 package app
 
 import (
-	"github.com/nanostack-dev/shared/fxmodules/cache"
-	"github.com/nanostack-dev/shared/fxmodules/config"
-	"github.com/nanostack-dev/shared/fxmodules/database/postgres"
-	"github.com/nanostack-dev/shared/fxmodules/logging"
-	"github.com/nanostack-dev/shared/fxmodules/migrations"
-	"github.com/nanostack-dev/shared/fxmodules/pglock"
-	sharedsentry "github.com/nanostack-dev/shared/fxmodules/sentry"
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+	"github.com/nanostack-dev/nanostack-framework/modules/config"
+	"github.com/nanostack-dev/nanostack-framework/modules/logging"
+	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
+	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
+	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
+	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
 
 	httpserver "anchor/cmd/http"
 	"anchor/internal/api"

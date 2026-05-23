@@ -8,7 +8,7 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -20,7 +20,7 @@ func WriteAuditLog(
 	logger zerolog.Logger,
 	repo repository.IntegrationAuditLogRepository,
 	auditLog integration.AuditLog,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) {
 	if auditLog.ID == "" {
 		auditLog.GenerateID()

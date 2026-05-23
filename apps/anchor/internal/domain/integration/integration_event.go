@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type EventStatus string
@@ -32,5 +32,5 @@ type Event struct {
 
 // GenerateID sets the event's ID to a new prefixed KSUID.
 func (e *Event) GenerateID() {
-	e.ID = toolkit.NewID("iev")
+	e.ID = ids.MustNew("iev")
 }

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestProductUpdate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        productName,
-					Description: toolkit.Ptr("This is a test product"),
+					Description: ptr.Ptr("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -44,7 +44,7 @@ func TestProductUpdate(t *testing.T) {
 				productID,
 				ct.UpdateProductJSONRequestBody{
 					Name:        updatedName,
-					Description: toolkit.Ptr(updatedDesc),
+					Description: ptr.Ptr(updatedDesc),
 				},
 			)
 			require.NoError(t, err, "update product request should not error")
@@ -65,7 +65,7 @@ func TestProductUpdate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        productName,
-					Description: toolkit.Ptr("This is a test product"),
+					Description: ptr.Ptr("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -82,7 +82,7 @@ func TestProductUpdate(t *testing.T) {
 				productID,
 				ct.UpdateProductJSONRequestBody{
 					Name:        "",
-					Description: toolkit.Ptr("Updated description"),
+					Description: ptr.Ptr("Updated description"),
 				},
 			)
 			require.NoError(t, err, "update product with empty name should not error")
@@ -103,7 +103,7 @@ func TestProductUpdate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        productName,
-					Description: toolkit.Ptr("This is a test product"),
+					Description: ptr.Ptr("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -120,7 +120,7 @@ func TestProductUpdate(t *testing.T) {
 				productID,
 				ct.UpdateProductJSONRequestBody{
 					Name:        "Updated Name",
-					Description: toolkit.Ptr(strings.Repeat("a", 1001)),
+					Description: ptr.Ptr(strings.Repeat("a", 1001)),
 				},
 			)
 			require.NoError(t, err, "update product with invalid description should not error")
@@ -138,14 +138,14 @@ func TestProductUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateNonExistentProduct", func(t *testing.T) {
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 
 			updateResp, err := testOwnerClient(t).UpdateProductWithResponse(
 				ctx,
 				nonExistentProductID,
 				ct.UpdateProductJSONRequestBody{
 					Name:        "Updated Name",
-					Description: toolkit.Ptr("Updated description"),
+					Description: ptr.Ptr("Updated description"),
 				},
 			)
 			require.NoError(t, err, "update non-existent product request should not error")
@@ -164,7 +164,7 @@ func TestProductUpdate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        product1Name,
-					Description: toolkit.Ptr("This is the first test product"),
+					Description: ptr.Ptr("This is the first test product"),
 				},
 			)
 			require.NoError(t, err, "create first product request should not error")
@@ -178,7 +178,7 @@ func TestProductUpdate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        product2Name,
-					Description: toolkit.Ptr("This is the second test product"),
+					Description: ptr.Ptr("This is the second test product"),
 				},
 			)
 			require.NoError(t, err, "create second product request should not error")
@@ -192,7 +192,7 @@ func TestProductUpdate(t *testing.T) {
 				createResp2.JSON201.Id,
 				ct.UpdateProductJSONRequestBody{
 					Name:        product1Name,
-					Description: toolkit.Ptr("Attempting to use duplicate name"),
+					Description: ptr.Ptr("Attempting to use duplicate name"),
 				},
 			)
 			require.NoError(t, err, "update product with duplicate name should not error")

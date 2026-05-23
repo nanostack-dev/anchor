@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
@@ -90,14 +91,14 @@ func (s *authService) Register(
 	logger := s.logger.With().Str("operation", "Register").Logger()
 
 	logger.Info().Str("email", input.Email).Msg("registering platform user")
-	if validationErr := toolkit.ValidateStruct(input); validationErr != nil {
+	if validationErr := validateStruct(input); validationErr != nil {
 		logger.Warn().Err(validationErr).Msg("registration input validation failed")
 		return platform.User{}, validationErr
 	}
-	return toolkit.WithTxReturn(
+	return jetx.WithTxReturn(
 		s.db, func(tx *sql.Tx) (platform.User, error) {
 			optUserByEmail, err := s.userRepo.FindByEmail(
-				ctx, input.Email, &toolkit.DBOptions{Tx: tx},
+				ctx, input.Email, &jetx.DBOptions{Tx: tx},
 			)
 			if err != nil {
 				logger.Error().
@@ -132,7 +133,7 @@ func (s *authService) Register(
 			}
 			newUser.GenerateID()
 
-			newUser, err = s.userRepo.Create(ctx, newUser, &toolkit.DBOptions{Tx: tx})
+			newUser, err = s.userRepo.Create(ctx, newUser, &jetx.DBOptions{Tx: tx})
 			if err != nil {
 				logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
 				return platform.User{}, fmt.Errorf("failed to create user: %w", err)
@@ -154,7 +155,7 @@ func (s *authService) Register(
 
 			// Use the repository Create method to persist the platform user
 			createdPlatformUser, err := s.platformTenantUserRepo.Create(
-				ctx, platformUser, &toolkit.DBOptions{Tx: tx},
+				ctx, platformUser, &jetx.DBOptions{Tx: tx},
 			)
 			if err != nil {
 				logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
@@ -182,7 +183,7 @@ func (s *authService) handleInvitation(
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
 	optInvitation, err := s.invitationRepo.FindByCodeAndEmail(
-		ctx, code, email, &toolkit.DBOptions{Tx: tx},
+		ctx, code, email, &jetx.DBOptions{Tx: tx},
 	)
 	if err != nil {
 		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
@@ -194,7 +195,7 @@ func (s *authService) handleInvitation(
 	}
 	// then delete the invitation because it is used
 	if err = s.invitationRepo.DeleteByTenantIDAndID(
-		ctx, optInvitation.PlatformTenantID, optInvitation.ID, &toolkit.DBOptions{Tx: tx},
+		ctx, optInvitation.PlatformTenantID, optInvitation.ID, &jetx.DBOptions{Tx: tx},
 	); err != nil {
 		logger.Error().
 			Str("invitation_id", optInvitation.ID).
@@ -211,7 +212,7 @@ func (s *authService) Login(
 ) (auth.LoginOutput, error) {
 	logger := s.logger.With().Str("operation", "Login").Logger()
 
-	if validationErr := toolkit.ValidateStruct(input); validationErr != nil {
+	if validationErr := validateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
 	}
 
@@ -261,7 +262,7 @@ func (s *authService) Login(
 	)
 	if err != nil {
 		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to generate tokens")
-		return auth.LoginOutput{}, toolkit.ErrUnexpected
+		return auth.LoginOutput{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
@@ -278,7 +279,7 @@ func (s *authService) RefreshToken(
 ) (auth.LoginOutput, error) {
 	logger := s.logger.With().Str("operation", "RefreshToken").Logger()
 
-	if validationErr := toolkit.ValidateStruct(input); validationErr != nil {
+	if validationErr := validateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
 	}
 
@@ -295,7 +296,7 @@ func (s *authService) RefreshToken(
 			Str("user_id", claims.UserID).
 			Err(err).
 			Msg("failed to generate new tokens during refresh")
-		return auth.LoginOutput{}, toolkit.ErrUnexpected
+		return auth.LoginOutput{}, apierror.ErrUnexpected
 	}
 
 	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
@@ -327,7 +328,7 @@ func (s *authService) setupTenantForRegistration(
 	ctx context.Context, tx *sql.Tx, invitationCode *string, email string, tenantName *string,
 	logger zerolog.Logger,
 ) (string, platform.TenantRole, error) {
-	count, err := s.tenantRepo.Count(ctx, &toolkit.DBOptions{Tx: tx})
+	count, err := s.tenantRepo.Count(ctx, &jetx.DBOptions{Tx: tx})
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to count tenants")
 		return "", "", fmt.Errorf("failed to count tenants: %w", err)
@@ -354,7 +355,7 @@ func (s *authService) setupTenantForRegistration(
 		t.GenerateID()
 		currentTenant, createErr := s.tenantRepo.Create(
 			ctx,
-			t, &toolkit.DBOptions{Tx: tx},
+			t, &jetx.DBOptions{Tx: tx},
 		)
 		if createErr != nil {
 			logger.Error().Str("tenant_name", tenantNameToUse).Err(createErr).Msg("failed to create tenant")

@@ -3,7 +3,7 @@ package platform
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 // TenantRole defines the role of a user within a tenant.
@@ -38,5 +38,5 @@ type User struct {
 
 // GenerateID sets the platform user's ID to a new prefixed KSUID.
 func (u *User) GenerateID() {
-	u.ID = toolkit.NewID("puser")
+	u.ID = ids.MustNew("puser")
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +16,12 @@ func TestProductSearch(t *testing.T) {
 	ctx := t.Context()
 	productsCreated := make([]ct.ProductResponse, 0)
 	for range 5 {
-		productName := "Test Product " + toolkit.NewID("prd")
+		productName := "Test Product " + ids.MustNew("prd")
 		createResp, err := testOwnerClient(t).CreateProductWithResponse(
 			ctx,
 			ct.CreateProductJSONRequestBody{
 				Name:        productName,
-				Description: toolkit.Ptr("This is a test product " + productName),
+				Description: ptr.Ptr("This is a test product " + productName),
 			},
 		)
 		require.NoError(t, err, "create product request should not error")
@@ -46,8 +46,8 @@ func TestProductSearch(t *testing.T) {
 						},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -71,8 +71,8 @@ func TestProductSearch(t *testing.T) {
 						},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)

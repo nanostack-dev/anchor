@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider/smtp"
@@ -83,7 +84,7 @@ func obfuscateSecret(secret *string) *string {
 		return nil
 	}
 
-	masked := toolkit.ObfuscateSecret(*secret)
+	masked := secrets.Obfuscate(*secret)
 	return &masked
 }
 
@@ -155,7 +156,7 @@ func (s *AnchorAPI) CreateIntegrationInstance(
 			return nil, err
 		}
 	default:
-		return nil, toolkit.NewNanostackBadRequestError(
+		return nil, apierror.NewBadRequest(
 			"INTEGRATION_PROVIDER_INVALID",
 			"Unsupported integration provider type",
 		)

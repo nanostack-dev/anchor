@@ -3,9 +3,10 @@ package service_test
 import (
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/require"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product"
@@ -32,7 +33,7 @@ type PlatformUserTest struct {
 func GivenARandomTenant(t *testing.T) tenant.PlatformTenant {
 	tenantCreated, err := TenantRepository.Create(
 		t.Context(), tenant.PlatformTenant{
-			ID:     toolkit.NewID("tenant"),
+			ID:     ids.MustNew("tenant"),
 			Name:   Faker.RandomStringWithLength(20),
 			Status: tenant.Active,
 		}, nil,
@@ -43,7 +44,7 @@ func GivenARandomTenant(t *testing.T) tenant.PlatformTenant {
 
 func GivenARandomProduct(t *testing.T, tenantID string) product.Product {
 	product := product.Product{
-		ID:               toolkit.NewID("product"),
+		ID:               ids.MustNew("product"),
 		PlatformTenantID: tenantID,
 		Name:             Faker.RandomStringWithLength(20),
 	}
@@ -82,7 +83,7 @@ func GivenATenantAndProduct(t *testing.T) TenantAndProduct {
 }
 
 func GivenBasicAnchorPermissions(t *testing.T, productID string) []string {
-	permissions := toolkit.TransformSlice(
+	permissions := slicex.Map(
 		service.GeneratePermissions(), func(t permission.ProductPermission) string {
 			return t.Name
 		},
@@ -112,8 +113,8 @@ func GivenBasicProductResourcePermissions(t *testing.T, productID string) []stri
 			t.Context(), resourcepermission.ProductResourcePermission{
 				ProductID:     productID,
 				Name:          perm,
-				Description:   toolkit.Ptr("Test resource permission"),
-				ScopeModifier: toolkit.Ptr("GLOBAL"),
+				Description:   ptr.Ptr("Test resource permission"),
+				ScopeModifier: ptr.Ptr("GLOBAL"),
 			}, nil,
 		)
 		require.NoError(t, err, "Failed to create resource permission '%s'", perm)

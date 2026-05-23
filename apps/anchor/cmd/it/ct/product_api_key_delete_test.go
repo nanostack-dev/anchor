@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +27,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName,
-					Description: toolkit.Ptr("Key to be deleted"),
+					Description: ptr.Ptr("Key to be deleted"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -87,14 +87,14 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				},
 				{
 					name:           "Invalid product ID",
-					productID:      toolkit.NewID("prd"),
+					productID:      ids.MustNew("prd"),
 					apiKeyID:       createResp.JSON201.Id,
 					expectedStatus: 404,
 				},
 				{
 					name:           "Invalid API key ID",
 					productID:      product.ProductID,
-					apiKeyID:       toolkit.NewID("product_apikey"),
+					apiKeyID:       ids.MustNew("product_apikey"),
 					expectedStatus: 404,
 				},
 			}
@@ -121,7 +121,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName,
-					Description: toolkit.Ptr("Key for verification test"),
+					Description: ptr.Ptr("Key for verification test"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -179,7 +179,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName1,
-					Description: toolkit.Ptr("First key for multi-delete test"),
+					Description: ptr.Ptr("First key for multi-delete test"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -194,7 +194,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName2,
-					Description: toolkit.Ptr("Second key for multi-delete test"),
+					Description: ptr.Ptr("Second key for multi-delete test"),
 					Permissions: []string{permission1},
 				},
 			)

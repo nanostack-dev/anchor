@@ -1,6 +1,6 @@
 package product
 
-import "github.com/nanostack-dev/shared/toolkit/search"
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 type CreateProductInput struct {
 	TenantID    string `json:"tenant_id"   validate:"required,notblank"`

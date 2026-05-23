@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 			Name:     "Preview Template",
 			Subject:  "Hello {{ .name }}",
 			BodyHtml: "<p>Hi {{ .name }}</p>",
-			BodyText: toolkit.Ptr("Hi {{ .name }}"),
+			BodyText: ptr.Ptr("Hi {{ .name }}"),
 		},
 	)
 	require.NoError(t, err)
@@ -62,7 +63,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			toolkit.NewID("etpl"),
+			ids.MustNew("etpl"),
 			ct.PreviewEmailTemplateJSONRequestBody{Variables: &vars},
 		)
 		require.NoError(t, previewErr)

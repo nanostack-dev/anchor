@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/pgkit/pgqueue"
-	"github.com/nanostack-dev/shared/toolkit"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -106,7 +106,7 @@ func createInstanceWithAPIKey(
 	// Attach the API key via update so that maybeStartReconcileScheduler runs post-tx.
 	cfg := ct.IntegrationProviderConfig{}
 	require.NoError(t, cfg.FromClerkIntegrationConfig(ct.ClerkIntegrationConfig{
-		ApiKey: toolkit.Ptr(apiKey),
+		ApiKey: ptr.Ptr(apiKey),
 	}))
 
 	updateResp, err := productContext.OwnerAuthenticatedClient().UpdateIntegrationInstanceWithResponse(

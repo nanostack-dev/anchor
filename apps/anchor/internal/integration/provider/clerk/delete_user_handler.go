@@ -7,7 +7,7 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -20,7 +20,7 @@ func (p *Provider) executeDeleteUser(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	data any,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) error {
 	deleteData, ok := data.(DeleteUserData)
 	if !ok {

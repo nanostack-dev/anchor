@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ func TestProductRole_Get(t *testing.T) {
 
 	t.Run(
 		"GetExistingProductRole", func(t *testing.T) {
-			roleName := "TestRole_" + toolkit.NewID("test")
+			roleName := "TestRole_" + ids.MustNew("test")
 			roleDesc := "Test role description"
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -62,7 +61,7 @@ func TestProductRole_Get(t *testing.T) {
 			permissions := []string{perm1, perm2}
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + toolkit.NewID("test"),
+					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
 					Permissions: permissions,
 				},
 			)
@@ -93,7 +92,7 @@ func TestProductRole_Get(t *testing.T) {
 
 	t.Run(
 		"GetNonexistentProductRole", func(t *testing.T) {
-			nonExistentRoleID := toolkit.NewID("productroleservice")
+			nonExistentRoleID := ids.MustNew("productroleservice")
 			getResp, err := testCtx.OwnerAuthenticatedClient().GetProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID,
 			)
@@ -117,7 +116,7 @@ func TestProductRole_Get(t *testing.T) {
 		"GetProductRoleForNonexistentProduct", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -126,7 +125,7 @@ func TestProductRole_Get(t *testing.T) {
 				createResp.StatusCode(),
 			)
 
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 			getResp, err := testCtx.OwnerAuthenticatedClient().GetProductRoleWithResponse(
 				ctx, nonExistentProductID, createResp.JSON201.Id,
 			)
@@ -142,7 +141,7 @@ func TestProductRole_Get(t *testing.T) {
 
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

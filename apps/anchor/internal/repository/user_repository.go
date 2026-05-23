@@ -9,9 +9,8 @@ import (
 	"anchor/internal/domain/auth"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"anchor/internal/mapper"
 )
@@ -26,11 +25,11 @@ func usersUpdatableColumns() postgres.ColumnList {
 var _ UserRepository = (*userRepositoryImpl)(nil)
 
 type UserRepository interface {
-	FindByEmail(ctx context.Context, email string, options *toolkit.DBOptions) (*auth.User, error)
-	Count(ctx context.Context, options *toolkit.DBOptions) (int64, error)
+	FindByEmail(ctx context.Context, email string, options *jetx.DBOptions) (*auth.User, error)
+	Count(ctx context.Context, options *jetx.DBOptions) (int64, error)
 	Create(
 		ctx context.Context,
-		user auth.User, options *toolkit.DBOptions,
+		user auth.User, options *jetx.DBOptions,
 	) (auth.User, error)
 }
 
@@ -43,7 +42,7 @@ type userRepositoryImpl struct {
 }
 
 func (u *userRepositoryImpl) FindByEmail(
-	ctx context.Context, email string, options *toolkit.DBOptions,
+	ctx context.Context, email string, options *jetx.DBOptions,
 ) (*auth.User, error) {
 	stmt := table.Users.SELECT(
 		table.Users.AllColumns,
@@ -53,27 +52,27 @@ func (u *userRepositoryImpl) FindByEmail(
 		table.Users.Email.EQ(postgres.String(email)),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.Users, auth.User](
+	return jetx.QueryOptionalMap[model.Users, auth.User](
 		ctx, u.db, stmt,
 
 		u.userMapper.ToDomain, options,
 	)
 }
 
-func (u *userRepositoryImpl) Count(ctx context.Context, options *toolkit.DBOptions) (
+func (u *userRepositoryImpl) Count(ctx context.Context, options *jetx.DBOptions) (
 	int64, error,
 ) {
-	return toolkit.QueryCount(ctx, u.db, table.Users, options)
+	return jetx.QueryCount(ctx, u.db, table.Users, options)
 }
 
 func (u *userRepositoryImpl) Create(
-	ctx context.Context, user auth.User, options *toolkit.DBOptions,
+	ctx context.Context, user auth.User, options *jetx.DBOptions,
 ) (auth.User, error) {
 	stmt := table.Users.INSERT(
 		usersUpdatableColumns(),
 	).MODEL(u.userMapper.ToEntity(user)).RETURNING(table.Users.AllColumns)
 
-	return toolkit.QueryMap(
+	return jetx.QueryMap(
 		ctx, u.db, stmt, u.userMapper.ToDomain, options,
 	)
 }

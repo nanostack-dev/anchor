@@ -4,11 +4,10 @@ import (
 	"context"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"net/http"
 	"testing"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,8 +62,8 @@ func TestGetCurrentUserPlatformUser(t *testing.T) {
 						},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(1)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(1)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)

@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,7 @@ func TestListUserOrganizations(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Test Org for Membership",
-				Description: toolkit.Ptr("Organization for membership testing"),
+				Description: ptr.Ptr("Organization for membership testing"),
 			},
 		)
 		require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestListUserOrganizations(t *testing.T) {
 		require.NotNil(t, orgResp.JSON201)
 
 		// Create a role
-		role := createDSLProductRole(t, productCtx, "Member Role", toolkit.Ptr("A member role"))
+		role := createDSLProductRole(t, productCtx, "Member Role", ptr.Ptr("A member role"))
 		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
 
 		// List user organizations
@@ -97,7 +97,7 @@ func TestListUserOrganizations(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "First Organization",
-				Description: toolkit.Ptr("First org"),
+				Description: ptr.Ptr("First org"),
 			},
 		)
 		require.NoError(t, err)
@@ -108,15 +108,15 @@ func TestListUserOrganizations(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Second Organization",
-				Description: toolkit.Ptr("Second org"),
+				Description: ptr.Ptr("Second org"),
 			},
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, org2Resp.StatusCode())
 
 		// Create roles
-		role1 := createDSLProductRole(t, productCtx, "Admin", toolkit.Ptr("Admin role"))
-		role2 := createDSLProductRole(t, productCtx, "Viewer", toolkit.Ptr("Viewer role"))
+		role1 := createDSLProductRole(t, productCtx, "Admin", ptr.Ptr("Admin role"))
+		role2 := createDSLProductRole(t, productCtx, "Viewer", ptr.Ptr("Viewer role"))
 		createDSLMembership(t, productCtx, productUser.ID, org1Resp.JSON201.Id, role1.ID)
 		createDSLMembership(t, productCtx, productUser.ID, org2Resp.JSON201.Id, role2.ID)
 
@@ -147,7 +147,7 @@ func TestListUserOrganizations(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Permissions Test Org",
-				Description: toolkit.Ptr("Org for permissions testing"),
+				Description: ptr.Ptr("Org for permissions testing"),
 			},
 		)
 		require.NoError(t, err)
@@ -158,7 +158,7 @@ func TestListUserOrganizations(t *testing.T) {
 			t,
 			productCtx,
 			"Editor",
-			toolkit.Ptr("Editor role with permissions"),
+			ptr.Ptr("Editor role with permissions"),
 			[]string{"file:read", "file:update"},
 		)
 		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
@@ -196,7 +196,7 @@ func TestListUserOrganizations(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
-		nonExistentUserID := toolkit.NewID("puser")
+		nonExistentUserID := ids.MustNew("puser")
 		resp, err := apiKeyClient.ListUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,

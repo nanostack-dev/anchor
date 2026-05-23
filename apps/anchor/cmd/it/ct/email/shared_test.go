@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -92,7 +92,7 @@ func seedSMTPInstance(t *testing.T, tc testCtx, mp *mailpit.Mailpit) {
 }
 
 func uniqueSlug() string {
-	return "tpl-" + toolkit.NewID("ct")
+	return "tpl-" + ids.MustNew("ct")
 }
 
 func assertAPIError(t *testing.T, errs []ct.ApiError, code, message string) {

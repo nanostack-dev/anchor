@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -40,31 +40,31 @@ func NewTemplateVersionRepository(
 }
 
 func (r *templateVersionRepositoryImpl) FindByID(
-	ctx context.Context, id string, options *toolkit.DBOptions,
+	ctx context.Context, id string, options *jetx.DBOptions,
 ) (*email.TemplateVersion, error) {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
 		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
 		LIMIT(1)
-	return toolkit.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return jetx.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
-	ctx context.Context, templateID string, options *toolkit.DBOptions,
+	ctx context.Context, templateID string, options *jetx.DBOptions,
 ) (*email.TemplateVersion, error) {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusDraft, options)
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentPublished(
-	ctx context.Context, templateID string, options *toolkit.DBOptions,
+	ctx context.Context, templateID string, options *jetx.DBOptions,
 ) (*email.TemplateVersion, error) {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusPublished, options)
 }
 
 func (r *templateVersionRepositoryImpl) findByStatus(
-	ctx context.Context, templateID string, status email.TemplateVersionStatus, options *toolkit.DBOptions,
+	ctx context.Context, templateID string, status email.TemplateVersionStatus, options *jetx.DBOptions,
 ) (*email.TemplateVersion, error) {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
@@ -72,13 +72,13 @@ func (r *templateVersionRepositoryImpl) findByStatus(
 			table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID)).
 				AND(table.EmailTemplateVersions.Status.EQ(postgres.String(string(status)))),
 		).LIMIT(1)
-	return toolkit.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return jetx.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateVersionRepositoryImpl) List(
-	ctx context.Context, templateID string, limit int64, offset int64, options *toolkit.DBOptions,
+	ctx context.Context, templateID string, limit int64, offset int64, options *jetx.DBOptions,
 ) ([]email.TemplateVersion, error) {
 	if limit <= 0 {
 		limit = 50
@@ -88,11 +88,11 @@ func (r *templateVersionRepositoryImpl) List(
 		WHERE(table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID))).
 		ORDER_BY(table.EmailTemplateVersions.VersionNumber.DESC()).
 		LIMIT(limit).OFFSET(offset)
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }
 
 func (r *templateVersionRepositoryImpl) Create(
-	ctx context.Context, v email.TemplateVersion, options *toolkit.DBOptions,
+	ctx context.Context, v email.TemplateVersion, options *jetx.DBOptions,
 ) (email.TemplateVersion, error) {
 	if v.CreatedAt.IsZero() {
 		v.CreatedAt = time.Now()
@@ -104,13 +104,13 @@ func (r *templateVersionRepositoryImpl) Create(
 	stmt := table.EmailTemplateVersions.INSERT(emailTemplateVersionsUpdatableColumns()).
 		MODEL(entity).
 		RETURNING(table.EmailTemplateVersions.AllColumns)
-	return toolkit.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return jetx.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateVersionRepositoryImpl) Update(
-	ctx context.Context, v email.TemplateVersion, options *toolkit.DBOptions,
+	ctx context.Context, v email.TemplateVersion, options *jetx.DBOptions,
 ) (email.TemplateVersion, error) {
 	v.UpdatedAt = time.Now()
 	entity := r.mapper.ToEntity(v)
@@ -123,7 +123,7 @@ func (r *templateVersionRepositoryImpl) Update(
 	).MODEL(entity).WHERE(
 		table.EmailTemplateVersions.ID.EQ(postgres.String(v.ID)),
 	).RETURNING(table.EmailTemplateVersions.AllColumns)
-	return toolkit.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return jetx.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
@@ -133,7 +133,7 @@ func (r *templateVersionRepositoryImpl) UpdateStatus(
 	id string,
 	status email.TemplateVersionStatus,
 	publishedAt *time.Time,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 	entity := model.EmailTemplateVersions{
@@ -149,14 +149,14 @@ func (r *templateVersionRepositoryImpl) UpdateStatus(
 	stmt := table.EmailTemplateVersions.UPDATE(cols).MODEL(entity).WHERE(
 		table.EmailTemplateVersions.ID.EQ(postgres.String(id)),
 	)
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 // NextVersionNumber issues monotonically increasing version numbers per
 // template. We pick MAX+1 from the existing versions; the unique index
 // (template_id, version_number) catches concurrent inserts.
 func (r *templateVersionRepositoryImpl) NextVersionNumber(
-	ctx context.Context, templateID string, options *toolkit.DBOptions,
+	ctx context.Context, templateID string, options *jetx.DBOptions,
 ) (int32, error) {
 	type versionRow struct {
 		Max *int32
@@ -166,7 +166,7 @@ func (r *templateVersionRepositoryImpl) NextVersionNumber(
 	).FROM(table.EmailTemplateVersions).WHERE(
 		table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID)),
 	)
-	rows, err := toolkit.QueryMapSlice(ctx, r.db, stmt, func(row versionRow) int32 {
+	rows, err := jetx.QueryMapSlice(ctx, r.db, stmt, func(row versionRow) int32 {
 		if row.Max == nil {
 			return 0
 		}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type AuditLog struct {
@@ -23,7 +23,7 @@ type AuditLog struct {
 
 // GenerateID sets the audit log's ID to a new prefixed KSUID.
 func (a *AuditLog) GenerateID() {
-	a.ID = toolkit.NewID("ial")
+	a.ID = ids.MustNew("ial")
 }
 
 type AuditSeverity string

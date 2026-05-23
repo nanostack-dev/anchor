@@ -11,7 +11,7 @@ import (
 	"anchor/internal/integration/provider"
 	"anchor/internal/security/encryption"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
@@ -39,7 +39,7 @@ var errMissingEncryptionKey = errors.New("global encryption key is not configure
 // STARTTLS or implicit TLS (SendGrid, Mailgun, Proton, AWS SES, self-hosted
 // relays, ...).
 type Provider struct {
-	configCipher    *toolkit.VersionedSecretCipher
+	configCipher    *secrets.VersionedCipher
 	configCipherErr error
 	logger          zerolog.Logger
 }
@@ -53,7 +53,7 @@ type NewProviderParams struct {
 
 func NewProvider(p NewProviderParams) *Provider {
 	var (
-		cipher *toolkit.VersionedSecretCipher
+		cipher *secrets.VersionedCipher
 		err    error
 	)
 	if p.EncryptionService == nil {
@@ -137,7 +137,7 @@ func (p *Provider) PrepareConfigForStorage(_ context.Context, configJSON []byte)
 	}
 
 	password := strings.TrimSpace(cfg.Password)
-	if password == "" || toolkit.IsVersionedEncryptedSecret(password) {
+	if password == "" || secrets.IsVersionedEncryptedSecret(password) {
 		return configJSON, nil
 	}
 
@@ -214,7 +214,7 @@ func (p *Provider) resolveConfig(configJSON []byte) (Config, error) {
 	if password == "" {
 		return cfg, nil
 	}
-	if !toolkit.IsVersionedEncryptedSecret(password) {
+	if !secrets.IsVersionedEncryptedSecret(password) {
 		return cfg, nil
 	}
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
@@ -56,7 +56,7 @@ func (s *permissionService) Create(
 ) (permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
 	}
 
@@ -69,7 +69,7 @@ func (s *permissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to check permission uniqueness")
-		return permission.ProductPermission{}, toolkit.ErrUnexpected
+		return permission.ProductPermission{}, apierror.ErrUnexpected
 	}
 
 	if exists != nil {
@@ -94,7 +94,7 @@ func (s *permissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to create permission")
-		return permission.ProductPermission{}, toolkit.ErrUnexpected
+		return permission.ProductPermission{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -110,7 +110,7 @@ func (s *permissionService) Update(
 ) (permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
 	}
 
@@ -123,7 +123,7 @@ func (s *permissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find permission for update")
-		return permission.ProductPermission{}, toolkit.ErrUnexpected
+		return permission.ProductPermission{}, apierror.ErrUnexpected
 	}
 
 	if existing == nil {
@@ -141,7 +141,7 @@ func (s *permissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to update permission")
-		return permission.ProductPermission{}, toolkit.ErrUnexpected
+		return permission.ProductPermission{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -157,7 +157,7 @@ func (s *permissionService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -170,7 +170,7 @@ func (s *permissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to check permission existence")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	if exists == nil {
@@ -184,7 +184,7 @@ func (s *permissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to count role assignments for permission")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	if roleCount > 0 {
@@ -200,7 +200,7 @@ func (s *permissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to delete permission")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -216,7 +216,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 ) (*permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "FindByProductAndPermissionName").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -229,7 +229,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find permission")
-		return nil, toolkit.ErrUnexpected
+		return nil, apierror.ErrUnexpected
 	}
 
 	if perm == nil {
@@ -244,7 +244,7 @@ func (s *permissionService) SearchByProductID(
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
 	}
 
@@ -254,7 +254,7 @@ func (s *permissionService) SearchByProductID(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search permissions")
-		return search.Result[permission.ProductPermission]{}, toolkit.ErrUnexpected
+		return search.Result[permission.ProductPermission]{}, apierror.ErrUnexpected
 	}
 
 	return result, nil
@@ -277,7 +277,7 @@ func (s *permissionService) CheckPermissionExists(
 			Int("permission_count", len(permissions)).
 			Err(err).
 			Msg("failed to check permissions existence")
-		return false, toolkit.ErrUnexpected
+		return false, apierror.ErrUnexpected
 	}
 	return len(perms) == len(permissions), nil
 }

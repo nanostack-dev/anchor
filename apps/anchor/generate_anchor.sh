@@ -92,7 +92,7 @@ generate_code() {
   sed -e '/x-go-type: string/!{/x-go-type:/d;}' \
         -e '/x-go-type-import:/d' \
         -e '/\s*path: anchor\/internal\/domain.*/d' \
-        -e '/\s*path: github\.com\/anchor-dev\/shared\/toolkit\/search.*/d' ./cmd/http/openapi.yaml > ./cmd/http/openapi-cleaned.yaml
+        -e '/\s*path: github\.com\/nanostack-dev\/nanostack-framework\/pkg\/search.*/d' ./cmd/http/openapi.yaml > ./cmd/http/openapi-cleaned.yaml
 
   go generate tools.go
 

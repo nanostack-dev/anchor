@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -87,20 +86,20 @@ func TestProductAPIKeyGet(t *testing.T) {
 				},
 				{
 					name:           "Invalid product ID",
-					productID:      toolkit.NewID("prd"),
+					productID:      ids.MustNew("prd"),
 					apiKeyID:       apiKeyID,
 					expectedStatus: 404,
 				},
 				{
 					name:           "Invalid API key ID",
 					productID:      product.ProductID,
-					apiKeyID:       toolkit.NewID("product_apikey"),
+					apiKeyID:       ids.MustNew("product_apikey"),
 					expectedStatus: 404,
 				},
 				{
 					name:           "Both IDs invalid",
-					productID:      toolkit.NewID("prd"),
-					apiKeyID:       toolkit.NewID("product_apikey"),
+					productID:      ids.MustNew("prd"),
+					apiKeyID:       ids.MustNew("product_apikey"),
 					expectedStatus: 404,
 				},
 			}

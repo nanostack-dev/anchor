@@ -1,6 +1,6 @@
 package organization
 
-import "github.com/nanostack-dev/shared/toolkit/search"
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 // AddMemberInput is the input for adding a product user to an organization with a role.
 type AddMemberInput struct {
