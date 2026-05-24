@@ -98,6 +98,9 @@ target/
 .kiro
 .DS_Store
 .env
+.env.dev
+.env.local
+.run/
 node_modules/
 
 # Build artifacts
