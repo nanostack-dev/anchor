@@ -17,6 +17,7 @@ import (
 	"anchor/internal/middleware"
 	"anchor/internal/repository"
 	"anchor/internal/service"
+	"anchor/internal/transactor"
 
 	"go.uber.org/fx"
 )
@@ -38,6 +39,7 @@ func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
 		logging.Module,
 		config.Module,
 		postgres.Module,
+		transactor.NewModule(),
 		cache.Module,
 		migrations.Module,
 		pglock.Module,

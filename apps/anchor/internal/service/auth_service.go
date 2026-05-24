@@ -16,6 +16,7 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/service/config"
+	"anchor/internal/transactor"
 
 	"github.com/rs/zerolog"
 
@@ -35,6 +36,7 @@ type AuthService interface {
 
 type authService struct {
 	db                     *sql.DB
+	transactor             transactor.Transactor
 	userRepo               repository.UserRepository
 	tenantRepo             repository.TenantRepository
 	invitationRepo         repository.InvitationRepository
@@ -47,6 +49,7 @@ type authService struct {
 
 func NewAuthService(
 	db *sql.DB,
+	transactor transactor.Transactor,
 	userRepo repository.UserRepository,
 	tenantRepo repository.TenantRepository,
 	invitationRepository repository.InvitationRepository,
@@ -57,6 +60,7 @@ func NewAuthService(
 ) AuthService {
 	return &authService{
 		db:                     db,
+		transactor:             transactor,
 		userRepo:               userRepo,
 		tenantRepo:             tenantRepo,
 		invitationRepo:         invitationRepository,
@@ -95,84 +99,87 @@ func (s *authService) Register(
 		logger.Warn().Err(validationErr).Msg("registration input validation failed")
 		return platform.User{}, validationErr
 	}
-	return jetx.WithTxReturn(
-		s.db, func(tx *sql.Tx) (platform.User, error) {
-			optUserByEmail, err := s.userRepo.FindByEmail(
-				ctx, input.Email, &jetx.DBOptions{Tx: tx},
-			)
-			if err != nil {
-				logger.Error().
-					Str("email", input.Email).
-					Err(err).
-					Msg("failed to find user by email")
-				return platform.User{}, fmt.Errorf("failed during user lookup: %w", err)
-			}
 
-			if optUserByEmail != nil {
-				logger.Warn().Str("email", input.Email).Msg("user already exists")
-				return platform.User{}, ErrUserAlreadyExists
-			}
-			currentTenantID, role, err := s.setupTenantForRegistration(
-				ctx, tx, input.InvitationCode, input.Email, input.TenantName, logger,
-			)
-			if err != nil {
-				return platform.User{}, err
-			}
+	var createdPlatformUser platform.User
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tx := transactor.CurrentTx(txCtx)
 
-			hashedPassword, err := bcrypt.GenerateFromPassword(
-				[]byte(input.Password), bcrypt.DefaultCost,
-			)
-			if err != nil {
-				logger.Error().Err(err).Msg("failed to hash password")
-				return platform.User{}, fmt.Errorf("failed to hash password: %w", err)
-			}
-
-			newUser := auth.User{
-				Email:          input.Email,
-				HashedPassword: string(hashedPassword),
-			}
-			newUser.GenerateID()
-
-			newUser, err = s.userRepo.Create(ctx, newUser, &jetx.DBOptions{Tx: tx})
-			if err != nil {
-				logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
-				return platform.User{}, fmt.Errorf("failed to create user: %w", err)
-			}
-
-			// Create the unified platform user record using the repository
-			platformUser := platform.User{
-				UserID:           newUser.ID,
-				ExternalID:       newUser.ExternalID,
-				Name:             newUser.Name,
-				Email:            newUser.Email,
-				HashedPassword:   newUser.HashedPassword,
-				CreatedAt:        newUser.CreatedAt,
-				UpdatedAt:        newUser.UpdatedAt,
-				PlatformTenantID: currentTenantID,
-				Role:             role,
-			}
-			platformUser.GenerateID()
-
-			// Use the repository Create method to persist the platform user
-			createdPlatformUser, err := s.platformTenantUserRepo.Create(
-				ctx, platformUser, &jetx.DBOptions{Tx: tx},
-			)
-			if err != nil {
-				logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
-				return platform.User{}, fmt.Errorf(
-					"failed to create platform user: %w", err,
-				)
-			}
-
-			logger.Info().
-				Str("user_id", createdPlatformUser.UserID).
-				Str("platform_user_id", createdPlatformUser.ID).
+		optUserByEmail, err := s.userRepo.FindByEmail(
+			txCtx, input.Email, &jetx.DBOptions{Tx: tx},
+		)
+		if err != nil {
+			logger.Error().
 				Str("email", input.Email).
-				Msg("platform user registered successfully")
+				Err(err).
+				Msg("failed to find user by email")
+			return fmt.Errorf("failed during user lookup: %w", err)
+		}
 
-			return createdPlatformUser, nil
-		},
-	)
+		if optUserByEmail != nil {
+			logger.Warn().Str("email", input.Email).Msg("user already exists")
+			return ErrUserAlreadyExists
+		}
+		currentTenantID, role, err := s.setupTenantForRegistration(
+			txCtx, input.InvitationCode, input.Email, input.TenantName, logger,
+		)
+		if err != nil {
+			return err
+		}
+
+		hashedPassword, err := bcrypt.GenerateFromPassword(
+			[]byte(input.Password), bcrypt.DefaultCost,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to hash password")
+			return fmt.Errorf("failed to hash password: %w", err)
+		}
+
+		newUser := auth.User{
+			Email:          input.Email,
+			HashedPassword: string(hashedPassword),
+		}
+		newUser.GenerateID()
+
+		newUser, err = s.userRepo.Create(txCtx, newUser, &jetx.DBOptions{Tx: tx})
+		if err != nil {
+			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		// Create the unified platform user record using the repository
+		platformUser := platform.User{
+			UserID:           newUser.ID,
+			ExternalID:       newUser.ExternalID,
+			Name:             newUser.Name,
+			Email:            newUser.Email,
+			HashedPassword:   newUser.HashedPassword,
+			CreatedAt:        newUser.CreatedAt,
+			UpdatedAt:        newUser.UpdatedAt,
+			PlatformTenantID: currentTenantID,
+			Role:             role,
+		}
+		platformUser.GenerateID()
+
+		// Use the repository Create method to persist the platform user
+		resUser, err := s.platformTenantUserRepo.Create(
+			txCtx, platformUser, &jetx.DBOptions{Tx: tx},
+		)
+		if err != nil {
+			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
+			return fmt.Errorf("failed to create platform user: %w", err)
+		}
+
+		createdPlatformUser = resUser
+		logger.Info().
+			Str("user_id", createdPlatformUser.UserID).
+			Str("platform_user_id", createdPlatformUser.ID).
+			Str("email", input.Email).
+			Msg("platform user registered successfully")
+
+		return nil
+	})
+
+	return createdPlatformUser, err
 }
 
 func (s *authService) handleInvitation(
@@ -239,7 +246,7 @@ func (s *authService) Login(
 	// This is a temporary solution - ideally login should include tenant context
 
 	// Get the first tenant (for now assuming single tenant setup)
-	tenants, err := s.tenantRepo.FindAll(ctx, nil)
+	tenants, err := s.tenantRepo.FindAll(ctx)
 	if err != nil || len(tenants) == 0 {
 		logger.Error().Err(err).Msg("no tenants found")
 		return auth.LoginOutput{}, errors.New("no tenant configuration found")
@@ -325,10 +332,10 @@ func (s *authService) RefreshToken(
 }
 
 func (s *authService) setupTenantForRegistration(
-	ctx context.Context, tx *sql.Tx, invitationCode *string, email string, tenantName *string,
+	ctx context.Context, invitationCode *string, email string, tenantName *string,
 	logger zerolog.Logger,
 ) (string, platform.TenantRole, error) {
-	count, err := s.tenantRepo.Count(ctx, &jetx.DBOptions{Tx: tx})
+	count, err := s.tenantRepo.Count(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to count tenants")
 		return "", "", fmt.Errorf("failed to count tenants: %w", err)
@@ -353,10 +360,7 @@ func (s *authService) setupTenantForRegistration(
 			Status: tenant.Active,
 		}
 		t.GenerateID()
-		currentTenant, createErr := s.tenantRepo.Create(
-			ctx,
-			t, &jetx.DBOptions{Tx: tx},
-		)
+		currentTenant, createErr := s.tenantRepo.Create(ctx, t)
 		if createErr != nil {
 			logger.Error().Str("tenant_name", tenantNameToUse).Err(createErr).Msg("failed to create tenant")
 			return "", "", fmt.Errorf("failed to create tenant: %w", createErr)
@@ -371,6 +375,7 @@ func (s *authService) setupTenantForRegistration(
 	}
 
 	logger.Info().Msg("using invitation code for registration")
+	tx := transactor.CurrentTx(ctx)
 	userInvitation, inviteErr := s.handleInvitation(ctx, tx, email, *invitationCode, logger)
 	if inviteErr != nil {
 		logger.Error().Err(inviteErr).Msg("failed to handle invitation")

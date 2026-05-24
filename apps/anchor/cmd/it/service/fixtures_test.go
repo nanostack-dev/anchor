@@ -36,7 +36,7 @@ func GivenARandomTenant(t *testing.T) tenant.PlatformTenant {
 			ID:     ids.MustNew("tenant"),
 			Name:   Faker.RandomStringWithLength(20),
 			Status: tenant.Active,
-		}, nil,
+		},
 	)
 	require.NoError(t, err, "Failed to create random tenant")
 	return tenantCreated
