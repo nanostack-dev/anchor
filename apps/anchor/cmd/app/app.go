@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
 	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
 	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
+	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
 
 	httpserver "anchor/cmd/http"
 	"anchor/internal/api"
@@ -17,7 +18,6 @@ import (
 	"anchor/internal/middleware"
 	"anchor/internal/repository"
 	"anchor/internal/service"
-	"anchor/internal/transactor"
 
 	"go.uber.org/fx"
 )
@@ -39,7 +39,7 @@ func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
 		logging.Module,
 		config.Module,
 		postgres.Module,
-		transactor.NewModule(),
+		transactor.Module,
 		cache.Module,
 		migrations.Module,
 		pglock.Module,

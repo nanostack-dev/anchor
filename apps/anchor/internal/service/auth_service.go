@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/domain/auth"
@@ -16,7 +17,6 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/service/config"
-	"anchor/internal/transactor"
 
 	"github.com/rs/zerolog"
 

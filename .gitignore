@@ -98,6 +98,7 @@ target/
 .kiro
 .DS_Store
 .env
+node_modules/
 
 # Build artifacts
 apps/anchor/cmd/http/openapi-cleaned.yaml
