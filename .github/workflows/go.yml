@@ -45,5 +45,3 @@ jobs:
       build_platforms: linux/amd64
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' }}
-    secrets:
-      CI_PAT: ${{ secrets.CI_PAT }}
