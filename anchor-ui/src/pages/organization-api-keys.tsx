@@ -89,8 +89,8 @@ export default function OrganizationApiKeysPage() {
 						<KeyRound className="mb-4 h-10 w-10 text-muted-foreground" />
 						<h3 className="text-lg font-medium">No Organization Selected</h3>
 						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
-							Select an organization to review its API keys and granted
-							Anchor permissions.
+							Select an organization to review its API keys and granted Anchor
+							permissions.
 						</p>
 					</div>
 				)}

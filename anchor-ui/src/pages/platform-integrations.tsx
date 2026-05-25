@@ -242,9 +242,13 @@ export default function PlatformIntegrationsPage() {
 									Live
 								</p>
 								<p className="text-2xl font-semibold text-emerald-600">
-									{[clerkInstance, smtpInstance].filter(
-										(i) => i?.is_enabled && i?.status === IntegrationInstanceStatus.ACTIVE,
-									).length}
+									{
+										[clerkInstance, smtpInstance].filter(
+											(i) =>
+												i?.is_enabled &&
+												i?.status === IntegrationInstanceStatus.ACTIVE,
+										).length
+									}
 								</p>
 							</div>
 						</div>
@@ -364,7 +368,9 @@ export default function PlatformIntegrationsPage() {
 										{smtpState.label}
 									</Badge>
 									<span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-										<span className={`h-2 w-2 rounded-full ${smtpState.dotClassName}`} />
+										<span
+											className={`h-2 w-2 rounded-full ${smtpState.dotClassName}`}
+										/>
 										Health
 									</span>
 								</div>
