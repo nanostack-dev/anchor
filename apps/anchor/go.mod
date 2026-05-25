@@ -130,5 +130,3 @@ require (
 )
 
 replace github.com/nanostack-dev/anchor/clients/go => ../../clients/go
-
-replace github.com/nanostack-dev/nanostack-framework => ../../../nanostack-framework

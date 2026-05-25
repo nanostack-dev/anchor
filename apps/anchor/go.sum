@@ -274,6 +274,7 @@ github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 h1:RWengNIwukTxcDr9
 github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
 github.com/morikuni/aec v1.1.0 h1:vBBl0pUnvi/Je71dsRrhMBtreIqNMYErSAbEeb8jrXQ=
 github.com/morikuni/aec v1.1.0/go.mod h1:xDRgiq/iw5l+zkao76YTKzKttOp2cwPEne25HDkJnBw=
+github.com/nanostack-dev/nanostack-framework v0.1.0/go.mod h1:epjjrAcX6v9U2WglCvK+Ja2JLHp+VeDlUTWSvlPyJlE=
 github.com/nanostack-dev/pgkit v0.0.10 h1:zNIqJzhL/stMrS3YUjMj6Y+MZjGLEgTEE0p3AZ6LiKs=
 github.com/nanostack-dev/pgkit v0.0.10/go.mod h1:ZVxrSJ+1qxZwgQHmuN+E2EiIS6ygPL5bxdBbNuFURSE=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=

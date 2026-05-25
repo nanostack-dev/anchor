@@ -42,6 +42,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    secrets:
+      GO_MODULES_TOKEN: ${{ secrets.GO_MODULES_TOKEN || secrets.READ_PAT_GITHUB || secrets.CI_PAT }}
     with:
       app_name: anchor
       go_version: '1.26.1'
