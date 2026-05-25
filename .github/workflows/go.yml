@@ -8,6 +8,7 @@ on:
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'anchor-ui/**'
       - '.github/workflows/go.yml'
   pull_request:
     branches: [ main ]
@@ -16,12 +17,27 @@ on:
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'anchor-ui/**'
       - '.github/workflows/go.yml'
   workflow_dispatch:
 
 jobs:
+  frontend-verify:
+    uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
+    with:
+      app_name: Anchor
+      working_directory: anchor-ui
+      cache_dependency_path: anchor-ui/pnpm-lock.yaml
+      pnpm_version: '11.1.0'
+      lint_command: pnpm check
+      test_command: pnpm test
+      build_command: pnpm build
+      build_env: |
+        VITE_API_BASE_URL=https://anchorapidev.nanostack.dev
+
   go-build-test:
-    uses: nanostack-dev/github-actions/.github/workflows/go-build-test.yml@main
+    needs: frontend-verify
+    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
     permissions:
       contents: read
       packages: write
