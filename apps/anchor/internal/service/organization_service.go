@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
@@ -71,7 +72,7 @@ func (s *organizationService) Find(
 ) (*organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +93,7 @@ func (s *organizationService) Create(
 ) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return organization.Organization{}, err
 	}
 
@@ -127,7 +128,7 @@ func (s *organizationService) CreateWithMember(
 ) (organization.OrganizationWithMemberResult, error) {
 	logger := s.logger.With().Str("operation", "CreateWithMember").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return organization.OrganizationWithMemberResult{}, err
 	}
 
@@ -149,7 +150,7 @@ func (s *organizationService) CreateWithMember(
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if org == nil {
-			return organization.OrganizationWithMemberResult{}, toolkit.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, apierror.ErrNotFound
 		}
 
 		membership, errGetOrg := s.orgMembershipRepo.FindByOrgIDAndUserID(
@@ -159,7 +160,7 @@ func (s *organizationService) CreateWithMember(
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if membership == nil {
-			return organization.OrganizationWithMemberResult{}, toolkit.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, apierror.ErrNotFound
 		}
 
 		logger.Info().
@@ -182,13 +183,14 @@ func (s *organizationService) CreateWithMember(
 	var createdMembership organization.Membership
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
-		txOpts := &toolkit.DBOptions{Tx: tx}
+		txOpts := &jetx.DBOptions{Tx: tx}
+		productUserTxOpts := &jetx.DBOptions{Tx: tx}
 
 		productUserEntity, lookupErr := s.productUserRepo.FindByProductIDAndID(
 			lockCtx,
 			input.ProductID,
 			input.ProductUserID,
-			txOpts,
+			productUserTxOpts,
 		)
 		if lookupErr != nil {
 			logger.Error().Err(lookupErr).
@@ -198,7 +200,7 @@ func (s *organizationService) CreateWithMember(
 			return lookupErr
 		}
 		if productUserEntity == nil {
-			return toolkit.ErrNotFound
+			return apierror.ErrNotFound
 		}
 
 		role, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
@@ -256,7 +258,7 @@ func (s *organizationService) CreateWithMember(
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("create-with-member lock was busy; concurrent request in progress")
-		return organization.OrganizationWithMemberResult{}, toolkit.ErrUnexpected
+		return organization.OrganizationWithMemberResult{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -278,7 +280,7 @@ func (s *organizationService) Update(
 ) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return organization.Organization{}, err
 	}
 
@@ -298,7 +300,7 @@ func (s *organizationService) Update(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for update")
-		return organization.Organization{}, toolkit.ErrNotFound
+		return organization.Organization{}, apierror.ErrNotFound
 	}
 
 	org := *optOrg
@@ -330,7 +332,7 @@ func (s *organizationService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -350,7 +352,7 @@ func (s *organizationService) Delete(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for deletion")
-		return toolkit.ErrNotFound
+		return apierror.ErrNotFound
 	}
 
 	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID, nil)
@@ -376,7 +378,7 @@ func (s *organizationService) Search(
 ) (search.Result[organization.Organization], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[organization.Organization]{}, err
 	}
 

@@ -3,7 +3,7 @@ package organization
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Organization struct {
@@ -17,5 +17,5 @@ type Organization struct {
 
 // GenerateID sets the organization's ID to a new prefixed KSUID.
 func (o *Organization) GenerateID() {
-	o.ID = toolkit.NewID("org")
+	o.ID = ids.MustNew("org")
 }

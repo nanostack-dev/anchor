@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 // SendStatus is the lifecycle of a single send record.
@@ -58,5 +58,5 @@ type SendRecord struct {
 
 // GenerateID sets the record's ID to a new prefixed KSUID.
 func (s *SendRecord) GenerateID() {
-	s.ID = toolkit.NewID("esnd")
+	s.ID = ids.MustNew("esnd")
 }

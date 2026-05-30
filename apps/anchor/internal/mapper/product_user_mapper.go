@@ -3,7 +3,6 @@ package mapper
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/user"
-	// "github.com/nanostack-dev/shared/toolkit/mapper" // Unused.
 )
 
 type ProductUserMapper struct{}

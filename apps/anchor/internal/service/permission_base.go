@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"anchor/internal/domain/permission"
 )
@@ -35,7 +35,7 @@ func GeneratePermissions() []permission.ProductPermission {
 			permissions = append(
 				permissions, permission.ProductPermission{
 					Name:        domain + ":" + verb,
-					Description: toolkit.Ptr(fmt.Sprintf(description, domain)),
+					Description: ptr.Ptr(fmt.Sprintf(description, domain)),
 				},
 			)
 		}
@@ -43,7 +43,7 @@ func GeneratePermissions() []permission.ProductPermission {
 
 	permissions = append(permissions, permission.ProductPermission{
 		Name:        "email:send",
-		Description: toolkit.Ptr("Allow sending transactional email for the product"),
+		Description: ptr.Ptr("Allow sending transactional email for the product"),
 	})
 
 	return permissions

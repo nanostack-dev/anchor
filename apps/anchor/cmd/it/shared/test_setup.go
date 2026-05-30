@@ -16,14 +16,13 @@ import (
 
 	"github.com/jaswdr/faker/v2"
 
-	"github.com/nanostack-dev/shared/toolkit/logger"
-
 	"anchor/cmd/app"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 
 	_ "github.com/lib/pq" // Required for PostgreSQL driver
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -85,7 +84,12 @@ func SetupTest(config TestConfig) func() {
 			logLevel = lvl
 		}
 	}
-	log := logger.GetLogger("shared_test_setup").Level(logLevel).With().Caller()
+	log := log.Logger.
+		Output(zerolog.ConsoleWriter{Out: os.Stderr}).
+		Level(logLevel).
+		With().
+		Str("service", "shared_test_setup").
+		Caller()
 	zerolog.SetGlobalLevel(logLevel)
 	TestLogger = log.Logger()
 	testLogger := log.Logger()

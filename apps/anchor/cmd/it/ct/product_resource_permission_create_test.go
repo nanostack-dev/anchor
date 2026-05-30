@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	itshared "anchor/cmd/it/shared"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	itshared "anchor/cmd/it/shared"
 )
 
 func TestProductResourcePermissionCreateSuccess(t *testing.T) {
@@ -22,8 +22,8 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:          "file:read",
-		Description:   toolkit.Ptr("Read file contents"),
-		ScopeModifier: toolkit.Ptr("own"),
+		Description:   ptr.Ptr("Read file contents"),
+		ScopeModifier: ptr.Ptr("own"),
 	}
 
 	resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -56,7 +56,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "empty name",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "",
-				Description: toolkit.Ptr("Test description"),
+				Description: ptr.Ptr("Test description"),
 			},
 			expectedErr: "name is required",
 		},
@@ -64,7 +64,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "name too short",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "a",
-				Description: toolkit.Ptr("Test description"),
+				Description: ptr.Ptr("Test description"),
 			},
 			expectedErr: "name must be at least 2 characters",
 		},
@@ -72,7 +72,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "name too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        string(make([]byte, 201)),
-				Description: toolkit.Ptr("Test description"),
+				Description: ptr.Ptr("Test description"),
 			},
 			expectedErr: "name must be at most 200 characters",
 		},
@@ -80,7 +80,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "description too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "valid:name",
-				Description: toolkit.Ptr(string(make([]byte, 501))),
+				Description: ptr.Ptr(string(make([]byte, 501))),
 			},
 			expectedErr: "description must be at most 500 characters",
 		},
@@ -88,8 +88,8 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "scope modifier too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:          "valid:name",
-				Description:   toolkit.Ptr("Test description"),
-				ScopeModifier: toolkit.Ptr(string(make([]byte, 101))),
+				Description:   ptr.Ptr("Test description"),
+				ScopeModifier: ptr.Ptr(string(make([]byte, 101))),
 			},
 			expectedErr: "scope_modifier must be at most 100 characters",
 		},
@@ -117,7 +117,7 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:duplicate",
-		Description: toolkit.Ptr("First permission"),
+		Description: ptr.Ptr("First permission"),
 	}
 
 	resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -141,11 +141,11 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
 	ctx := context.Background()
 
-	nonExistentProductID := toolkit.NewID("prod")
+	nonExistentProductID := ids.MustNew("prod")
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: toolkit.Ptr("Test permission"),
+		Description: ptr.Ptr("Test permission"),
 	}
 
 	resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
-
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"net/http"
+
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organization"
 )
@@ -17,7 +17,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 	request AddOrganizationMemberRequestObject,
 ) (AddOrganizationMemberResponseObject, error) {
 	if request.Body == nil {
-		return nil, toolkit.NewNanostackBadRequestError("INVALID_REQUEST", "request body is required")
+		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.AddMemberInput{
@@ -73,7 +73,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 	}
 
 	if membership == nil {
-		return nil, toolkit.NewNanostackErrorsWithStatus(
+		return nil, apierror.NewWithStatus(
 			"MEMBER_NOT_FOUND",
 			"Organization member not found",
 			http.StatusNotFound,
@@ -89,7 +89,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 	request UpdateOrganizationMemberRoleRequestObject,
 ) (UpdateOrganizationMemberRoleResponseObject, error) {
 	if request.Body == nil {
-		return nil, toolkit.NewNanostackBadRequestError("INVALID_REQUEST", "request body is required")
+		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.UpdateMemberRoleInput{
@@ -180,7 +180,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 	request SearchOrganizationMembersRequestObject,
 ) (SearchOrganizationMembersResponseObject, error) {
 	if request.Body == nil {
-		return nil, toolkit.NewNanostackBadRequestError("INVALID_REQUEST", "request body is required")
+		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.SearchMembersInput{
@@ -199,7 +199,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 	}
 
 	resp := OrganizationMemberListResponse{
-		Items: toolkit.TransformSlice(
+		Items: slicex.Map(
 			res.Items,
 			func(m organization.Membership) OrganizationMemberResponse {
 				return mapOrgMemberToResponse(m, false)

@@ -2,11 +2,10 @@ package middleware
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
-	sharedsentry "github.com/nanostack-dev/shared/fxmodules/sentry"
-	"github.com/nanostack-dev/shared/toolkit"
+	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
+	frameworkapierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 
 	"anchor/internal/api"
 
@@ -62,40 +61,50 @@ func (em *ErrorMiddleware) HandleResponseError(w http.ResponseWriter, _ *http.Re
 
 // prepareErrorResponse processes different types of errors and returns appropriate API response.
 func (em *ErrorMiddleware) prepareErrorResponse(err error) (api.ApiErrorResponse, int) {
-	var anchorErr *toolkit.NanostackError
-	if errors.As(err, &anchorErr) {
-		status := anchorErr.GetStatus()
-		if status == 0 {
-			status = http.StatusBadRequest
+	if frameworkErr, ok := frameworkapierror.As(err); ok {
+		if frameworkErr == nil {
+			frameworkErr = frameworkapierror.ErrUnexpected
 		}
-		apiResponse := mapAnchorErrorsToAPI(anchorErr)
+		status := frameworkErr.HTTPStatus()
+		apiResponse := mapFrameworkErrorsToAPI(frameworkErr)
 		em.logger.Debug().
 			Int("status", status).
-			Int("error_count", len(anchorErr.Errors)).
-			Msg("Mapped Anchor errors to API response")
+			Int("error_count", len(frameworkErr.Details)).
+			Msg("Mapped framework API errors to Anchor API response")
 		return apiResponse, status
 	}
 
 	em.logger.Error().Err(err).Msg("Unhandled internal server error")
 	sharedsentry.CaptureException(err)
-	apiResponse := mapAnchorErrorsToAPI(toolkit.ErrUnexpected)
+	apiResponse := mapFrameworkErrorsToAPI(frameworkapierror.ErrUnexpected)
 	return apiResponse, http.StatusInternalServerError
 }
 
-// mapAnchorErrorsToAPI converts shared toolkit errors to API response format.
-func mapAnchorErrorsToAPI(anchorErr *toolkit.NanostackError) api.ApiErrorResponse {
-	apiErrors := make([]api.ApiError, 0, len(anchorErr.Errors))
-	for _, detail := range anchorErr.Errors {
+func mapFrameworkErrorsToAPI(frameworkErr *frameworkapierror.Error) api.ApiErrorResponse {
+	if frameworkErr == nil {
+		frameworkErr = frameworkapierror.ErrUnexpected
+	}
+
+	apiErrors := make([]api.ApiError, 0, len(frameworkErr.Details))
+	for _, detail := range frameworkErr.Details {
 		apiErr := api.ApiError{
 			Code:    detail.Code,
 			Message: detail.Message,
 		}
 
 		if len(detail.Metadata) > 0 {
-			meta := detail.Metadata
+			meta := make(map[string]interface{}, len(detail.Metadata))
+			for key, value := range detail.Metadata {
+				meta[key] = value
+			}
 			apiErr.Details = &meta
+			if field, ok := meta["field"].(string); ok && field != "" {
+				apiErr.Field = &field
+			}
 		}
+
 		apiErrors = append(apiErrors, apiErr)
 	}
+
 	return api.ApiErrorResponse{Errors: apiErrors}
 }

@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestEmailTemplateGet(t *testing.T) {
 			Name:        "Get Template",
 			Subject:     "Subj",
 			BodyHtml:    "<p>Body</p>",
-			Description: toolkit.Ptr("desc"),
+			Description: ptr.Ptr("desc"),
 		},
 	)
 	require.NoError(t, err)
@@ -44,7 +45,7 @@ func TestEmailTemplateGet(t *testing.T) {
 		resp, getErr := client.GetEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			toolkit.NewID("etpl"),
+			ids.MustNew("etpl"),
 		)
 		require.NoError(t, getErr)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())

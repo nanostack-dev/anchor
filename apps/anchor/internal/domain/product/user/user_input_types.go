@@ -1,7 +1,7 @@
 //revive:disable-next-line:var-naming
 package user
 
-import "github.com/nanostack-dev/shared/toolkit/search"
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 type CreateProductUserInput struct {
 	ProductID string            `validate:"required,notblank"`

@@ -6,11 +6,9 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/nanostack-dev/shared/toolkit"
 )
 
 func TestDeletePlatformUser(t *testing.T) {
@@ -18,7 +16,7 @@ func TestDeletePlatformUser(t *testing.T) {
 
 	t.Run(
 		"DeleteNonExistentUser", func(t *testing.T) {
-			nonExistentUserID := toolkit.NewID("puser")
+			nonExistentUserID := ids.MustNew("puser")
 
 			resp, err := testOwnerClient(t).DeletePlatformUserWithResponse(
 				ctx, nonExistentUserID,

@@ -8,6 +8,7 @@ on:
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'anchor-ui/**'
       - '.github/workflows/go.yml'
   pull_request:
     branches: [ main ]
@@ -16,12 +17,27 @@ on:
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'anchor-ui/**'
       - '.github/workflows/go.yml'
   workflow_dispatch:
 
 jobs:
+  frontend-verify:
+    uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
+    with:
+      app_name: Anchor
+      working_directory: anchor-ui
+      cache_dependency_path: anchor-ui/pnpm-lock.yaml
+      pnpm_version: '11.1.0'
+      lint_command: pnpm check
+      test_command: pnpm test
+      build_command: pnpm build
+      build_env: |
+        VITE_API_BASE_URL=https://anchorapidev.nanostack.dev
+
   go-build-test:
-    uses: nanostack-dev/github-actions/.github/workflows/go-build-test.yml@main
+    needs: frontend-verify
+    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
     permissions:
       contents: read
       packages: write
@@ -44,6 +60,55 @@ jobs:
       dockerfile_path: ./Dockerfile
       build_platforms: linux/amd64
       sha_tag_format: short
-      publish_image: ${{ github.event_name != 'pull_request' }}
+      publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  dispatch-deploy-dev:
+    needs: [frontend-verify, go-build-test]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.go-build-test.result == 'success'
+    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
+    permissions:
+      contents: read
+    with:
+      deploy_repository: nanostack-dev/infra
+      event_type: deploy-service
+      payload: >-
+        {"service":"anchor","environment":"dev","source_repository":"${{ github.repository }}","source_ref":"${{ github.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","git_sha":"${{ github.sha }}"}
     secrets:
-      CI_PAT: ${{ secrets.CI_PAT }}
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+
+  dispatch-preview-upsert:
+    needs: [frontend-verify, go-build-test]
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.go-build-test.result == 'success'
+    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
+    permissions:
+      contents: read
+    with:
+      deploy_repository: nanostack-dev/infra
+      event_type: preview-upsert
+      payload: >-
+        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}","git_sha":"${{ github.event.pull_request.head.sha }}"}
+    secrets:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+
+  dispatch-preview-down:
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
+    permissions:
+      contents: read
+    with:
+      deploy_repository: nanostack-dev/infra
+      event_type: preview-destroy
+      payload: >-
+        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}"}
+    secrets:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Status string
@@ -64,7 +64,7 @@ func (i *Instance) CanIngest() bool {
 
 // GenerateID sets the instance's ID to a new prefixed KSUID.
 func (i *Instance) GenerateID() {
-	i.ID = toolkit.NewID("iin")
+	i.ID = ids.MustNew("iin")
 }
 
 // IngestionBlockReason provides a stable reason string when webhook processing

@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/permission"
 )
@@ -36,7 +36,7 @@ func (s *AnchorAPI) SearchProductPermissions(
 
 	response := ProductPermissionListResponse{
 		Count: result.Count,
-		Items: toolkit.TransformSlice(result.Items, mapProductPermissionToResponse),
+		Items: slicex.Map(result.Items, mapProductPermissionToResponse),
 		Total: result.Total,
 	}
 

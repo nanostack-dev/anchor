@@ -7,8 +7,8 @@ import (
 
 	"anchor/internal/domain/product/user"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -32,37 +32,37 @@ type ProductUserRepository interface {
 		ctx context.Context,
 		productID string,
 		id string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*user.ProductUser, error)
 	FindByProductID(
-		ctx context.Context, productID string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, options *jetx.DBOptions,
 	) ([]user.ProductUser, error)
 	FindByExternalID(
-		ctx context.Context, productID string, externalID string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, externalID string, options *jetx.DBOptions,
 	) (*user.ProductUser, error)
 	Create(
-		ctx context.Context, user user.ProductUser, options *toolkit.DBOptions,
+		ctx context.Context, user user.ProductUser, options *jetx.DBOptions,
 	) (user.ProductUser, error)
 	Update(
 		ctx context.Context,
 		productID string,
 		id string,
 		entity user.ProductUser,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (user.ProductUser, error)
 	// UpsertByExternalID inserts or updates a product user by external ID.
 	// The returned bool is true when a new row was inserted, false when an
 	// existing row was updated.
 	UpsertByExternalID(
-		ctx context.Context, entity user.ProductUser, options *toolkit.DBOptions,
+		ctx context.Context, entity user.ProductUser, options *jetx.DBOptions,
 	) (user.ProductUser, bool, error)
-	DeleteByID(ctx context.Context, productID string, id string, options *toolkit.DBOptions) error
-	DeleteByExternalID(ctx context.Context, productID string, externalID string, options *toolkit.DBOptions) error
+	DeleteByID(ctx context.Context, productID string, id string, options *jetx.DBOptions) error
+	DeleteByExternalID(ctx context.Context, productID string, externalID string, options *jetx.DBOptions) error
 	SearchByProductID(
 		ctx context.Context,
 		productID string,
 		request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[user.ProductUser], error)
 }
 
@@ -90,7 +90,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	ctx context.Context,
 	productID string,
 	id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -102,7 +102,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap(
+	return jetx.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain, options,
 	)
@@ -111,7 +111,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 func (r *productUserRepositoryImpl) FindByProductID(
 	ctx context.Context,
 	productID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -121,7 +121,7 @@ func (r *productUserRepositoryImpl) FindByProductID(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
 	)
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain, options,
 	)
@@ -131,7 +131,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -143,7 +143,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap(
+	return jetx.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain, options,
 	)
@@ -152,7 +152,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 func (r *productUserRepositoryImpl) Create(
 	ctx context.Context,
 	newUser user.ProductUser,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (user.ProductUser, error) {
 	entity := r.productUserMapper.ToEntity(newUser)
 
@@ -160,7 +160,7 @@ func (r *productUserRepositoryImpl) Create(
 		productUsersUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductUsers.AllColumns)
 
-	return toolkit.QueryMap[model.ProductUsers, user.ProductUser](
+	return jetx.QueryMap[model.ProductUsers, user.ProductUser](
 		ctx,
 		r.db,
 		stmt,
@@ -174,7 +174,7 @@ func (r *productUserRepositoryImpl) Update(
 	productID string,
 	id string,
 	entity user.ProductUser,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (user.ProductUser, error) {
 	entity.UpdatedAt = time.Now()
 	entityToUpdate := r.productUserMapper.ToEntity(entity)
@@ -192,7 +192,7 @@ func (r *productUserRepositoryImpl) Update(
 		),
 	).RETURNING(table.ProductUsers.AllColumns)
 
-	return toolkit.QueryMap[model.ProductUsers, user.ProductUser](
+	return jetx.QueryMap[model.ProductUsers, user.ProductUser](
 		ctx, r.db, updateStmt, r.productUserMapper.ToDomain, options,
 	)
 }
@@ -201,7 +201,7 @@ func (r *productUserRepositoryImpl) DeleteByID(
 	ctx context.Context,
 	productID string,
 	id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductUsers.DELETE().WHERE(
 		table.ProductUsers.ID.EQ(postgres.String(id)).AND(
@@ -209,13 +209,13 @@ func (r *productUserRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productUserRepositoryImpl) UpsertByExternalID(
 	ctx context.Context,
 	entity user.ProductUser,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (user.ProductUser, bool, error) {
 	dbEntity := r.productUserMapper.ToEntity(entity)
 
@@ -233,7 +233,7 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 		).
 		RETURNING(table.ProductUsers.AllColumns)
 
-	result, err := toolkit.QueryMap[model.ProductUsers, user.ProductUser](
+	result, err := jetx.QueryMap[model.ProductUsers, user.ProductUser](
 		ctx, r.db, stmt, r.productUserMapper.ToDomain, options,
 	)
 	if err != nil {
@@ -252,7 +252,7 @@ func (r *productUserRepositoryImpl) DeleteByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductUsers.DELETE().WHERE(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)).AND(
@@ -260,40 +260,40 @@ func (r *productUserRepositoryImpl) DeleteByExternalID(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productUserRepositoryImpl) SearchByProductID(
 	ctx context.Context,
 	productID string,
 	request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[user.ProductUser], error) {
 	whereStmt := table.ProductUsers.ProductID.EQ(postgres.String(productID))
 
 	if request.Filter != nil { //nolint:nestif // standard filter mapping pattern
 		if len(request.Filter.IDs) > 0 {
-			expressions := search.ToStringExpressions(request.Filter.IDs)
+			expressions := jetx.ToStringExpressions(request.Filter.IDs)
 			whereStmt = whereStmt.AND(table.ProductUsers.ID.IN(expressions...))
 		}
 
 		if len(request.Filter.Emails) > 0 {
-			expressions := search.ToStringExpressions(request.Filter.Emails)
+			expressions := jetx.ToStringExpressions(request.Filter.Emails)
 			whereStmt = whereStmt.AND(table.ProductUsers.Email.IN(expressions...))
 		}
 
 		if len(request.Filter.Names) > 0 {
-			expressions := search.ToStringExpressions(request.Filter.Names)
+			expressions := jetx.ToStringExpressions(request.Filter.Names)
 			whereStmt = whereStmt.AND(table.ProductUsers.Name.IN(expressions...))
 		}
 
 		if len(request.Filter.Statuses) > 0 {
-			expressions := search.ToStringExpressions(request.Filter.Statuses)
+			expressions := jetx.ToStringExpressions(request.Filter.Statuses)
 			whereStmt = whereStmt.AND(table.ProductUsers.Status.IN(expressions...))
 		}
 
 		if len(request.Filter.ExternalIDs) > 0 {
-			expressions := search.ToStringExpressions(request.Filter.ExternalIDs)
+			expressions := jetx.ToStringExpressions(request.Filter.ExternalIDs)
 			whereStmt = whereStmt.AND(table.ProductUsers.ExternalID.IN(expressions...))
 		}
 	}
@@ -309,7 +309,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		table.ProductUsers.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := toolkit.QueryCountWithBoolExpression(
+	resultCount, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.ProductUsers, whereStmt, options,
 	)
 	if err != nil {
@@ -322,7 +322,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 	query = r.applySorting(query, request.Sort)
 
 	query = query.LIMIT(int64(request.Pagination.Limit)).OFFSET(int64(request.Pagination.Offset))
-	slice, err := toolkit.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain, options)
+	slice, err := jetx.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain, options)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -347,15 +347,15 @@ func (r *productUserRepositoryImpl) applySorting(
 	for _, sort := range sorts {
 		switch sort.Field {
 		case user.SortFieldProductUserCreatedAt:
-			query = query.ORDER_BY(search.OrderBy(table.ProductUsers.CreatedAt, sort.Direction))
+			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.CreatedAt, sort.Direction))
 		case user.SortFieldProductUserUpdatedAt:
-			query = query.ORDER_BY(search.OrderBy(table.ProductUsers.UpdatedAt, sort.Direction))
+			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.UpdatedAt, sort.Direction))
 		case user.SortFieldProductUserEmail:
-			query = query.ORDER_BY(search.OrderBy(table.ProductUsers.Email, sort.Direction))
+			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Email, sort.Direction))
 		case user.SortFieldProductUserName:
-			query = query.ORDER_BY(search.OrderBy(table.ProductUsers.Name, sort.Direction))
+			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Name, sort.Direction))
 		case user.SortFieldProductUserStatus:
-			query = query.ORDER_BY(search.OrderBy(table.ProductUsers.Status, sort.Direction))
+			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Status, sort.Direction))
 		}
 	}
 	return query

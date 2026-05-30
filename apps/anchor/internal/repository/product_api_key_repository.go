@@ -7,8 +7,9 @@ import (
 
 	"anchor/internal/mapper"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -20,12 +21,12 @@ import (
 
 type ProductAPIKeyRepository interface {
 	// Create creates a new product API key
-	Create(ctx context.Context, apiKey apikey.ProductAPIKey, options *toolkit.DBOptions) (
+	Create(ctx context.Context, apiKey apikey.ProductAPIKey, options *jetx.DBOptions) (
 		apikey.
 			ProductAPIKey, error,
 	)
 	// Update updates an existing product API key (limited fields only)
-	Update(ctx context.Context, apiKey apikey.ProductAPIKey, options *toolkit.DBOptions) (
+	Update(ctx context.Context, apiKey apikey.ProductAPIKey, options *jetx.DBOptions) (
 		apikey.ProductAPIKey, error,
 	)
 
@@ -34,41 +35,41 @@ type ProductAPIKeyRepository interface {
 		ctx context.Context,
 		productID, apiKeyID string,
 		permissions []apikey.ProductAPIKeyPermission,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 
 	// DeletePermissionsByName removes a permission from all API keys of a product.
 	DeletePermissionsByName(
 		ctx context.Context,
 		productID, permissionName string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 
 	// GetByID retrieves a product API key by Name
-	GetByID(ctx context.Context, productID, id string, options *toolkit.DBOptions) (
+	GetByID(ctx context.Context, productID, id string, options *jetx.DBOptions) (
 		*apikey.ProductAPIKey, error,
 	)
 
 	// GetByProductIDAndName retrieves a product API key by product Name and name
 	GetByProductIDAndName(
-		ctx context.Context, productID, name string, options *toolkit.DBOptions,
+		ctx context.Context, productID, name string, options *jetx.DBOptions,
 	) (*apikey.ProductAPIKey, error)
 
 	// Delete deletes a product API key by Name
-	Delete(ctx context.Context, productID, id string, options *toolkit.DBOptions) error
+	Delete(ctx context.Context, productID, id string, options *jetx.DBOptions) error
 
 	// SearchByProductId searches for product API keys with filtering, sorting, and pagination
 	SearchByProductID(
 		ctx context.Context, input apikey.SearchProductAPIKeysInput,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[apikey.ProductAPIKey], error)
 
 	// UpdateLastUsedAt updates the last used timestamp for a product API key
-	UpdateLastUsedAt(ctx context.Context, productID, id string, options *toolkit.DBOptions) error
+	UpdateLastUsedAt(ctx context.Context, productID, id string, options *jetx.DBOptions) error
 
 	// GetByHashedValue retrieves a product API key by its hashed value
 	GetByProductIDAndHashedValue(
-		ctx context.Context, productID, hashedValue string, options *toolkit.DBOptions,
+		ctx context.Context, productID, hashedValue string, options *jetx.DBOptions,
 	) (*apikey.ProductAPIKey, error)
 }
 
@@ -113,10 +114,10 @@ func NewProductAPIKeyRepository(
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
 func (r *productAPIKeyRepository) Create(
-	ctx context.Context, apiKey apikey.ProductAPIKey, options *toolkit.DBOptions,
+	ctx context.Context, apiKey apikey.ProductAPIKey, options *jetx.DBOptions,
 ) (apikey.ProductAPIKey, error) {
-	return toolkit.WithTxReturn(
-		toolkit.GetExecutor(r.db, options), func(tx *sql.Tx) (apikey.ProductAPIKey, error) {
+	return jetx.WithTxReturn(
+		jetx.Executor(ctx, r.db, options), func(tx *sql.Tx) (apikey.ProductAPIKey, error) {
 			entity := r.mapper.ToEntity(apiKey)
 			stmt := table.ProductAPIKeys.INSERT(
 				table.ProductAPIKeys.AllColumns.Except(
@@ -143,7 +144,7 @@ func (r *productAPIKeyRepository) Create(
 					),
 				).MODELS(permissions)
 
-				err = toolkit.Exec(ctx, tx, permStmt, options)
+				err = jetx.Exec(ctx, tx, permStmt, nil)
 				if err != nil {
 					r.logger.Error().Err(err).
 						Str("api_key_id", apiKey.ID).
@@ -160,7 +161,7 @@ func (r *productAPIKeyRepository) Create(
 }
 
 func (r *productAPIKeyRepository) GetByID(
-	ctx context.Context, productID, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID, id string, options *jetx.DBOptions,
 ) (*apikey.ProductAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.ProductAPIKeys.AllColumns,
@@ -177,7 +178,7 @@ func (r *productAPIKeyRepository) GetByID(
 		),
 	)
 
-	return toolkit.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return jetx.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		}, options,
@@ -185,7 +186,7 @@ func (r *productAPIKeyRepository) GetByID(
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndName(
-	ctx context.Context, productID, name string, options *toolkit.DBOptions,
+	ctx context.Context, productID, name string, options *jetx.DBOptions,
 ) (*apikey.ProductAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.ProductAPIKeys.AllColumns,
@@ -201,7 +202,7 @@ func (r *productAPIKeyRepository) GetByProductIDAndName(
 			AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))),
 	)
 
-	return toolkit.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return jetx.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		}, options,
@@ -210,7 +211,7 @@ func (r *productAPIKeyRepository) GetByProductIDAndName(
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
 func (r *productAPIKeyRepository) Update(
-	ctx context.Context, apiKey apikey.ProductAPIKey, options *toolkit.DBOptions,
+	ctx context.Context, apiKey apikey.ProductAPIKey, options *jetx.DBOptions,
 ) (apikey.ProductAPIKey, error) {
 	stmt := table.ProductAPIKeys.UPDATE(
 		productAPIKeysUpdatableColumns(),
@@ -222,7 +223,7 @@ func (r *productAPIKeyRepository) Update(
 	).RETURNING(
 		table.ProductAPIKeys.AllColumns,
 	)
-	updated, err := toolkit.Query[model.ProductAPIKeys](
+	updated, err := jetx.Query[model.ProductAPIKeys](
 		ctx, r.db, stmt, options,
 	)
 	if err != nil {
@@ -241,10 +242,10 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 	ctx context.Context,
 	productID, apiKeyID string,
 	permissions []apikey.ProductAPIKeyPermission,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
-	return toolkit.WithTx(
-		toolkit.GetExecutor(r.db, options),
+	return jetx.WithTx(
+		jetx.Executor(ctx, r.db, options),
 		func(tx *sql.Tx) error {
 			deleteStmt := table.ProductAPIKeyPermissions.DELETE().WHERE(
 				table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(productID)).AND(
@@ -252,7 +253,7 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 				),
 			)
 
-			if err := toolkit.Exec(ctx, tx, deleteStmt, options); err != nil {
+			if err := jetx.Exec(ctx, tx, deleteStmt, nil); err != nil {
 				return err
 			}
 
@@ -267,7 +268,7 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 				),
 			).MODELS(entities)
 
-			return toolkit.Exec(ctx, tx, insertStmt, options)
+			return jetx.Exec(ctx, tx, insertStmt, nil)
 		},
 	)
 }
@@ -275,7 +276,7 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 func (r *productAPIKeyRepository) DeletePermissionsByName(
 	ctx context.Context,
 	productID, permissionName string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductAPIKeyPermissions.DELETE().WHERE(
 		table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(productID)).AND(
@@ -283,11 +284,11 @@ func (r *productAPIKeyRepository) DeletePermissionsByName(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productAPIKeyRepository) Delete(
-	ctx context.Context, productID, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductAPIKeys.DELETE().WHERE(
 		table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
@@ -295,12 +296,12 @@ func (r *productAPIKeyRepository) Delete(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productAPIKeyRepository) SearchByProductID(
 	ctx context.Context, input apikey.SearchProductAPIKeysInput,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[apikey.ProductAPIKey], error) {
 	whereStmt := table.ProductAPIKeys.ProductID.EQ(postgres.String(input.ProductID))
 
@@ -313,7 +314,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		whereStmt,
 	)
 
-	resultCount, err := toolkit.QueryCountWithBoolExpression(
+	resultCount, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.ProductAPIKeys, whereStmt, options,
 	)
 	if err != nil {
@@ -328,29 +329,29 @@ func (r *productAPIKeyRepository) SearchByProductID(
 			switch sort.Field {
 			case apikey.SortFieldProductAPIKeyCreatedAt:
 				query = query.ORDER_BY(
-					search.OrderBy(table.ProductAPIKeys.CreatedAt, sort.Direction),
+					jetx.OrderBy(table.ProductAPIKeys.CreatedAt, sort.Direction),
 				)
 			case apikey.SortFieldProductAPIKeyUpdatedAt:
 				query = query.ORDER_BY(
-					search.OrderBy(table.ProductAPIKeys.UpdatedAt, sort.Direction),
+					jetx.OrderBy(table.ProductAPIKeys.UpdatedAt, sort.Direction),
 				)
 			case apikey.SortFieldProductAPIKeyName:
 				query = query.ORDER_BY(
-					search.OrderBy(table.ProductAPIKeys.Name, sort.Direction),
+					jetx.OrderBy(table.ProductAPIKeys.Name, sort.Direction),
 				)
 			case apikey.SortFieldProductAPIKeyStatus:
 				query = query.ORDER_BY(
-					search.OrderBy(table.ProductAPIKeys.Status, sort.Direction),
+					jetx.OrderBy(table.ProductAPIKeys.Status, sort.Direction),
 				)
 			case apikey.SortFieldProductAPIKeyLastUsed:
 				query = query.ORDER_BY(
-					search.OrderBy(table.ProductAPIKeys.LastUsedAt, sort.Direction),
+					jetx.OrderBy(table.ProductAPIKeys.LastUsedAt, sort.Direction),
 				)
 			}
 		}
 	}
 	query = query.LIMIT(int64(input.Request.Pagination.Limit)).OFFSET(int64(input.Request.Pagination.Offset))
-	itemEntities, err := toolkit.QueryMapSlice(
+	itemEntities, err := jetx.QueryMapSlice(
 		ctx, r.db, query,
 		func(entity model.ProductAPIKeys) model.ProductAPIKeys {
 			return entity
@@ -371,7 +372,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		}, nil
 	}
 
-	apiKeyIDs := toolkit.TransformSlice(itemEntities, func(entity model.ProductAPIKeys) string {
+	apiKeyIDs := slicex.Map(itemEntities, func(entity model.ProductAPIKeys) string {
 		return entity.ID
 	})
 
@@ -393,7 +394,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		)
 	}
 
-	items := toolkit.TransformSlice(itemEntities, func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
+	items := slicex.Map(itemEntities, func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
 		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])
 	})
 
@@ -405,7 +406,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 }
 
 func (r *productAPIKeyRepository) UpdateLastUsedAt(
-	ctx context.Context, productID, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID, id string, options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 
@@ -423,11 +424,11 @@ func (r *productAPIKeyRepository) UpdateLastUsedAt(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
-	ctx context.Context, productID, hashedValue string, options *toolkit.DBOptions,
+	ctx context.Context, productID, hashedValue string, options *jetx.DBOptions,
 ) (*apikey.ProductAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.ProductAPIKeys.AllColumns,
@@ -444,14 +445,14 @@ func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
 		),
 	)
 
-	return toolkit.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return jetx.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		}, options,
 	)
 }
 func (r *productAPIKeyRepository) getPermissionEntities(
-	ctx context.Context, productID, apiKeyID string, options *toolkit.DBOptions,
+	ctx context.Context, productID, apiKeyID string, options *jetx.DBOptions,
 ) ([]model.ProductAPIKeyPermissions, error) {
 	stmt := table.ProductAPIKeyPermissions.SELECT(
 		table.ProductAPIKeyPermissions.AllColumns,
@@ -461,7 +462,7 @@ func (r *productAPIKeyRepository) getPermissionEntities(
 		),
 	)
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx, r.db, stmt,
 		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions {
 			return entity
@@ -470,13 +471,13 @@ func (r *productAPIKeyRepository) getPermissionEntities(
 }
 
 func (r *productAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
-	ctx context.Context, productID string, apiKeyIDs []string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, apiKeyIDs []string, options *jetx.DBOptions,
 ) ([]model.ProductAPIKeyPermissions, error) {
 	if len(apiKeyIDs) == 0 {
 		return []model.ProductAPIKeyPermissions{}, nil
 	}
 
-	apiKeyIDExpressions := toolkit.ToStringExpressions(apiKeyIDs)
+	apiKeyIDExpressions := jetx.ToStringExpressions(apiKeyIDs)
 	stmt := table.ProductAPIKeyPermissions.SELECT(
 		table.ProductAPIKeyPermissions.AllColumns,
 	).WHERE(
@@ -485,7 +486,7 @@ func (r *productAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 		),
 	)
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx, r.db, stmt,
 		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions {
 			return entity
@@ -503,17 +504,17 @@ func (r *productAPIKeyRepository) applyFilters(
 	}
 
 	if len(filter.ProductAPIKeyIDs) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.ProductAPIKeyIDs)
+		expressions := jetx.ToStringExpressions(filter.ProductAPIKeyIDs)
 		whereStmt = whereStmt.AND(table.ProductAPIKeys.ID.IN(expressions...))
 	}
 
 	if len(filter.Names) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.Names)
+		expressions := jetx.ToStringExpressions(filter.Names)
 		whereStmt = whereStmt.AND(table.ProductAPIKeys.Name.IN(expressions...))
 	}
 
 	if len(filter.Status) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.Status)
+		expressions := jetx.ToStringExpressions(filter.Status)
 		whereStmt = whereStmt.AND(table.ProductAPIKeys.Status.IN(expressions...))
 	}
 

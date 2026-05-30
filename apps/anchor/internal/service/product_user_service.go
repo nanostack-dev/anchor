@@ -9,8 +9,9 @@ import (
 
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/rs/zerolog"
 )
@@ -31,7 +32,7 @@ type ProductUserService interface {
 	) (*user.OrganizationMembership, error)
 }
 
-var ErrProductUserEmailAlreadyExists = toolkit.NewNanostackBadRequestError(
+var ErrProductUserEmailAlreadyExists = apierror.NewBadRequest(
 	"PRODUCT_USER_EMAIL_ALREADY_EXISTS",
 	"A product user with this email already exists in this product",
 )
@@ -62,7 +63,7 @@ func (s *productUserService) Find(
 ) (*user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -86,13 +87,13 @@ func (s *productUserService) Create(
 ) (user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return user.ProductUser{}, err
 	}
 
-	return toolkit.WithTxReturn(
+	return jetx.WithTxReturn(
 		s.db, func(tx *sql.Tx) (user.ProductUser, error) {
-			txOptions := &toolkit.DBOptions{Tx: tx}
+			txOptions := &jetx.DBOptions{Tx: tx}
 
 			existingUsers, err := s.productUserRepo.FindByProductID(ctx, input.ProductID, txOptions)
 			if err != nil {
@@ -146,7 +147,7 @@ func (s *productUserService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -173,7 +174,7 @@ func (s *productUserService) Search(
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[user.ProductUser]{}, err
 	}
 
@@ -199,7 +200,7 @@ func (s *productUserService) FindByExternalID(
 ) (*user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "FindByExternalID").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -223,7 +224,7 @@ func (s *productUserService) ListUserOrganizations(
 ) ([]user.OrganizationMembership, error) {
 	logger := s.logger.With().Str("operation", "ListUserOrganizations").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -240,7 +241,7 @@ func (s *productUserService) ListUserOrganizations(
 		return nil, err
 	}
 	if existingUser == nil {
-		return nil, toolkit.ErrNotFound
+		return nil, apierror.ErrNotFound
 	}
 
 	memberships, err := s.orgMembershipRepo.FindByProductUserID(
@@ -263,7 +264,7 @@ func (s *productUserService) GetUserOrganization(
 ) (*user.OrganizationMembership, error) {
 	logger := s.logger.With().Str("operation", "GetUserOrganization").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -280,7 +281,7 @@ func (s *productUserService) GetUserOrganization(
 		return nil, err
 	}
 	if existingUser == nil {
-		return nil, toolkit.ErrNotFound
+		return nil, apierror.ErrNotFound
 	}
 
 	membership, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(

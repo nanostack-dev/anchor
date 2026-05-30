@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	orgapikey "anchor/internal/domain/organization/apikey"
@@ -34,7 +34,7 @@ func (m *OrganizationAPIKeyMapper) ToDomainWithPermissions(
 	permissionEntities []model.OrganizationAPIKeyPermissions,
 ) orgapikey.OrganizationAPIKey {
 	domain := m.ToDomain(entity)
-	domain.Permissions = toolkit.TransformSlice(
+	domain.Permissions = slicex.Map(
 		permissionEntities,
 		func(perm model.OrganizationAPIKeyPermissions) orgapikey.OrganizationAPIKeyPermission {
 			return m.PermissionToDomain(perm)
@@ -88,7 +88,7 @@ func (m *OrganizationAPIKeyMapper) PermissionToDomain(
 func (m *OrganizationAPIKeyMapper) PermissionsToEntity(
 	domain []orgapikey.OrganizationAPIKeyPermission,
 ) []model.OrganizationAPIKeyPermissions {
-	return toolkit.TransformSlice(
+	return slicex.Map(
 		domain,
 		func(perm orgapikey.OrganizationAPIKeyPermission) model.OrganizationAPIKeyPermissions {
 			return m.PermissionToEntity(perm)

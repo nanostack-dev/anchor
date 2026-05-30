@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +43,7 @@ func TestEmailTemplateDelete(t *testing.T) {
 		resp, err := client.DeleteEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			toolkit.NewID("etpl"),
+			ids.MustNew("etpl"),
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())

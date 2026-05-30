@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -20,42 +20,42 @@ type ProductResourcePermissionRepository interface {
 	// Create creates a new resource permission
 	Create(
 		ctx context.Context, perm resourcepermission.ProductResourcePermission,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (resourcepermission.ProductResourcePermission, error)
 
 	// FindByName finds resource permission by Name
 	FindByName(
-		ctx context.Context, productID, id string, options *toolkit.DBOptions,
+		ctx context.Context, productID, id string, options *jetx.DBOptions,
 	) (*resourcepermission.ProductResourcePermission, error)
 
 	// Update updates an existing resource permission
 	Update(
 		ctx context.Context, perm resourcepermission.ProductResourcePermission,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (resourcepermission.ProductResourcePermission, error)
 
 	// DeleteByID deletes a resource permission by Name
 	DeleteByID(
-		ctx context.Context, productID, id string, options *toolkit.DBOptions,
+		ctx context.Context, productID, id string, options *jetx.DBOptions,
 	) error
 
 	// SearchByProduct searches resource permissions within a product
 	SearchByProduct(
 		ctx context.Context, productID string,
 		input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[resourcepermission.ProductResourcePermission], error)
 	// GetByRole gets resource permissions assigned to a role
 	GetByRole(
-		ctx context.Context, productRoleID string, options *toolkit.DBOptions,
+		ctx context.Context, productRoleID string, options *jetx.DBOptions,
 	) ([]resourcepermission.ProductResourcePermission, error)
 
 	// CountRoleAssignments counts how many roles use this resource permission
 	CountRoleAssignments(
-		ctx context.Context, productID, permissionName string, options *toolkit.DBOptions,
+		ctx context.Context, productID, permissionName string, options *jetx.DBOptions,
 	) (int, error)
 	FindByProductIDAndPermissionNames(
-		ctx context.Context, productID string, permissionNames []string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, permissionNames []string, options *jetx.DBOptions,
 	) ([]resourcepermission.ProductResourcePermission, error)
 }
 
@@ -85,7 +85,7 @@ func NewProductResourcePermissionRepository(
 
 func (r *productResourcePermissionRepository) Create(
 	ctx context.Context, perm resourcepermission.ProductResourcePermission,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (resourcepermission.ProductResourcePermission, error) {
 	entity := r.mapper.ToEntity(perm)
 
@@ -93,13 +93,13 @@ func (r *productResourcePermissionRepository) Create(
 		productResourcePermissionsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductResourcePermissions.AllColumns)
 
-	return toolkit.QueryMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
+	return jetx.QueryMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *productResourcePermissionRepository) FindByName(
-	ctx context.Context, productID, name string, options *toolkit.DBOptions,
+	ctx context.Context, productID, name string, options *jetx.DBOptions,
 ) (*resourcepermission.ProductResourcePermission, error) {
 	stmt := table.ProductResourcePermissions.SELECT(
 		table.ProductResourcePermissions.AllColumns,
@@ -108,14 +108,14 @@ func (r *productResourcePermissionRepository) FindByName(
 			AND(table.ProductResourcePermissions.Name.EQ(postgres.String(name))),
 	)
 
-	return toolkit.QueryOptionalMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
+	return jetx.QueryOptionalMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *productResourcePermissionRepository) Update(
 	ctx context.Context, perm resourcepermission.ProductResourcePermission,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (resourcepermission.ProductResourcePermission, error) {
 	entity := r.mapper.ToEntity(perm)
 
@@ -128,38 +128,38 @@ func (r *productResourcePermissionRepository) Update(
 			AND(table.ProductResourcePermissions.Name.EQ(postgres.String(entity.Name))),
 	).RETURNING(table.ProductResourcePermissions.AllColumns)
 
-	return toolkit.QueryMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
+	return jetx.QueryMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *productResourcePermissionRepository) DeleteByID(
-	ctx context.Context, productID, name string, options *toolkit.DBOptions,
+	ctx context.Context, productID, name string, options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductResourcePermissions.DELETE().WHERE(
 		table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
 			AND(table.ProductResourcePermissions.Name.EQ(postgres.String(name))),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productResourcePermissionRepository) SearchByProduct(
 	ctx context.Context,
 	productID string,
 	input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	whereStmt := table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {
-			expressions := search.ToStringExpressions(input.Filter.Names)
+			expressions := jetx.ToStringExpressions(input.Filter.Names)
 			whereStmt = whereStmt.AND(table.ProductResourcePermissions.Name.IN(expressions...))
 		}
 
 		if len(input.Filter.ScopeModifiers) > 0 {
-			expressions := search.ToStringExpressions(input.Filter.ScopeModifiers)
+			expressions := jetx.ToStringExpressions(input.Filter.ScopeModifiers)
 			whereStmt = whereStmt.AND(table.ProductResourcePermissions.ScopeModifier.IN(expressions...))
 		}
 	}
@@ -168,7 +168,7 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := toolkit.QueryCountWithBoolExpression(
+	resultCount, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.ProductResourcePermissions, whereStmt, options,
 	)
 	if err != nil {
@@ -181,15 +181,15 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 				switch sort.Field {
 				case resourcepermission.SortFieldProductResourcePermissionCreatedAt:
 					query = query.ORDER_BY(
-						search.OrderBy(table.ProductResourcePermissions.CreatedAt, sort.Direction),
+						jetx.OrderBy(table.ProductResourcePermissions.CreatedAt, sort.Direction),
 					)
 				case resourcepermission.SortFieldProductResourcePermissionUpdatedAt:
 					query = query.ORDER_BY(
-						search.OrderBy(table.ProductResourcePermissions.UpdatedAt, sort.Direction),
+						jetx.OrderBy(table.ProductResourcePermissions.UpdatedAt, sort.Direction),
 					)
 				case resourcepermission.SortFieldProductResourcePermissionName:
 					query = query.ORDER_BY(
-						search.OrderBy(table.ProductResourcePermissions.Name, sort.Direction),
+						jetx.OrderBy(table.ProductResourcePermissions.Name, sort.Direction),
 					)
 				}
 			}
@@ -198,7 +198,7 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	slice, err := toolkit.QueryMapSlice(
+	slice, err := jetx.QueryMapSlice(
 		ctx, r.db, query, r.mapper.ToDomain, options,
 	)
 	if err != nil {
@@ -213,7 +213,7 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 }
 
 func (r *productResourcePermissionRepository) GetByRole(
-	ctx context.Context, productRoleID string, options *toolkit.DBOptions,
+	ctx context.Context, productRoleID string, options *jetx.DBOptions,
 ) ([]resourcepermission.ProductResourcePermission, error) {
 	stmt := table.ProductResourcePermissions.SELECT(
 		table.ProductResourcePermissions.AllColumns,
@@ -230,18 +230,18 @@ func (r *productResourcePermissionRepository) GetByRole(
 		table.ProductRoleResourcePermissions.ProductRoleID.EQ(postgres.String(productRoleID)),
 	).ORDER_BY(table.ProductResourcePermissions.Name.ASC())
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *productResourcePermissionRepository) CountRoleAssignments(
-	ctx context.Context, productID, permissionName string, options *toolkit.DBOptions,
+	ctx context.Context, productID, permissionName string, options *jetx.DBOptions,
 ) (int, error) {
 	whereStmt := table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
 		AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName)))
 
-	count, err := toolkit.QueryCountWithBoolExpression(
+	count, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.ProductRoleResourcePermissions, whereStmt, options,
 	)
 	if err != nil {
@@ -254,7 +254,7 @@ func (r *productResourcePermissionRepository) FindByProductIDAndPermissionNames(
 	ctx context.Context,
 	productID string,
 	permissionNames []string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]resourcepermission.ProductResourcePermission, error) {
 	if len(permissionNames) == 0 {
 		return nil, nil
@@ -264,10 +264,10 @@ func (r *productResourcePermissionRepository) FindByProductIDAndPermissionNames(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(
 		table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductResourcePermissions.Name.IN(search.ToStringExpressions(permissionNames)...)),
+			AND(table.ProductResourcePermissions.Name.IN(jetx.ToStringExpressions(permissionNames)...)),
 	)
 
-	return toolkit.QueryMapSlice[
+	return jetx.QueryMapSlice[
 		model.ProductResourcePermissions,
 		resourcepermission.ProductResourcePermission,
 	](ctx, r.db, stmt, r.mapper.ToDomain, options)

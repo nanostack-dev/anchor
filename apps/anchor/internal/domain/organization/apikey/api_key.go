@@ -3,7 +3,7 @@ package orgapikey
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Status string
@@ -37,7 +37,7 @@ type OrganizationAPIKeyPermission struct {
 }
 
 func (s *OrganizationAPIKey) GenerateID() {
-	s.ID = toolkit.NewID("organization_apikey")
+	s.ID = ids.MustNew("organization_apikey")
 }
 
 func (s *OrganizationAPIKey) IsExpiredAt(now time.Time) bool {

@@ -6,8 +6,8 @@ import { organizationsRoute } from "@/routes/organizations/organizations";
 import { workspaceMembershipsRoute } from "@/routes/organizations/workspace-memberships";
 import { workspacesRoute } from "@/routes/organizations/workspaces";
 import { productIntegrationClerkRoute } from "@/routes/platform/$productId.integration-clerk";
-import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
 import { productIntegrationSmtpRoute } from "@/routes/platform/$productId.integration-smtp";
+import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
 import { initRoute } from "@/routes/platform/init";
 import { integrationClerkRoute } from "@/routes/platform/integration-clerk";
 import { platformIntegrationsRoute } from "@/routes/platform/integrations";
@@ -16,6 +16,9 @@ import { loginRoute } from "@/routes/platform/login";
 import { platformUsersRoute } from "@/routes/platform/platform-users";
 import { registerRoute } from "@/routes/platform/register";
 import { productEditRoute } from "@/routes/products/$productId.edit";
+import { emailSendsRoute } from "@/routes/products/email-sends";
+import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
+import { emailTemplatesRoute } from "@/routes/products/email-templates";
 import { productPermissionsRoute } from "@/routes/products/permissions";
 import { productApiKeysRoute } from "@/routes/products/product-api-keys";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
@@ -25,9 +28,6 @@ import { productsRoute } from "@/routes/products/products";
 import { settingsAppRoute } from "@/routes/settings/app";
 import { settingsUserRoute } from "@/routes/settings/user";
 import { createRouter } from "@tanstack/react-router";
-import { emailTemplatesRoute } from "@/routes/products/email-templates";
-import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
-import { emailSendsRoute } from "@/routes/products/email-sends";
 
 const routeTree = rootRoute.addChildren([
 	indexRoute,

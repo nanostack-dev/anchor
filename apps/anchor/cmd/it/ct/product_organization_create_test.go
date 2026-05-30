@@ -5,10 +5,9 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +25,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Test Organization",
-					Description: toolkit.Ptr("This is a test organization"),
+					Description: ptr.Ptr("This is a test organization"),
 				},
 			)
 
@@ -58,7 +57,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "",
-					Description: toolkit.Ptr("This organization has no name"),
+					Description: ptr.Ptr("This organization has no name"),
 				},
 			)
 
@@ -82,7 +81,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "A",
-					Description: toolkit.Ptr("This organization has a too short name"),
+					Description: ptr.Ptr("This organization has a too short name"),
 				},
 			)
 
@@ -109,7 +108,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Valid Organization Name",
-					Description: toolkit.Ptr(generateString(501)), // Too long (maximum is 500)
+					Description: ptr.Ptr(generateString(501)), // Too long (maximum is 500)
 				},
 			)
 
@@ -138,7 +137,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				nonExistentProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Organization for Non-existent Product",
-					Description: toolkit.Ptr("This should fail"),
+					Description: ptr.Ptr("This should fail"),
 				},
 			)
 
@@ -164,7 +163,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Test Organization",
-					Description: toolkit.Ptr("This is a test organization"),
+					Description: ptr.Ptr("This is a test organization"),
 				},
 			)
 

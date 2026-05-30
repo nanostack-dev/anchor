@@ -7,8 +7,10 @@ import (
 
 	"anchor/internal/security"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -68,7 +70,7 @@ func (s *productAPIKeyService) Create(
 ) (apikey.ProductAPIKey, string, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return apikey.ProductAPIKey{}, "", err
 	}
 
@@ -79,7 +81,7 @@ func (s *productAPIKeyService) Create(
 	clearAPIKey, err := security.GenerateProductAPIKey()
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate API key")
-		return apikey.ProductAPIKey{}, "", toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
@@ -110,7 +112,7 @@ func (s *productAPIKeyService) Create(
 			return apikey.ProductAPIKey{}, "", permErr
 		}
 
-		apiKeyPermissions = toolkit.TransformSlice(
+		apiKeyPermissions = slicex.Map(
 			input.Permissions, func(perm string) apikey.ProductAPIKeyPermission {
 				return apikey.ProductAPIKeyPermission{
 					APIKeyID:       productAPIKey.ID,
@@ -131,7 +133,7 @@ func (s *productAPIKeyService) Create(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to create product API key")
-		return apikey.ProductAPIKey{}, "", toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -148,7 +150,7 @@ func (s *productAPIKeyService) GetByID(
 ) (*apikey.ProductAPIKey, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -159,11 +161,11 @@ func (s *productAPIKeyService) GetByID(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key")
-		return nil, toolkit.ErrUnexpected
+		return nil, apierror.ErrUnexpected
 	}
 
 	if apiKey == nil {
-		return nil, toolkit.ErrNotFound
+		return nil, apierror.ErrNotFound
 	}
 
 	return apiKey, nil
@@ -174,7 +176,7 @@ func (s *productAPIKeyService) Update(
 ) (apikey.ProductAPIKey, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return apikey.ProductAPIKey{}, err
 	}
 	logger.Info().
@@ -189,11 +191,11 @@ func (s *productAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key for update")
-		return apikey.ProductAPIKey{}, toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return apikey.ProductAPIKey{}, toolkit.ErrNotFound
+		return apikey.ProductAPIKey{}, apierror.ErrNotFound
 	}
 
 	updatedAPIKey := *existingAPIKey
@@ -226,7 +228,7 @@ func (s *productAPIKeyService) Update(
 			}
 		}
 
-		updatedAPIKey.Permissions = toolkit.TransformSlice(
+		updatedAPIKey.Permissions = slicex.Map(
 			permissions,
 			func(perm string) apikey.ProductAPIKeyPermission {
 				return apikey.ProductAPIKeyPermission{
@@ -239,10 +241,10 @@ func (s *productAPIKeyService) Update(
 		)
 	}
 
-	updatedAPIKeyFromDB, err := toolkit.WithTxReturn(
+	updatedAPIKeyFromDB, err := jetx.WithTxReturn(
 		s.db,
 		func(tx *sql.Tx) (apikey.ProductAPIKey, error) {
-			dbOptions := &toolkit.DBOptions{Tx: tx}
+			dbOptions := &jetx.DBOptions{Tx: tx}
 
 			updated, updateErr := s.apiKeyRepo.Update(ctx, updatedAPIKey, dbOptions)
 			if updateErr != nil {
@@ -285,7 +287,7 @@ func (s *productAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to update API key transaction")
-		return apikey.ProductAPIKey{}, toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
 	}
 
 	err = s.cacheService.EvictAPIKeyByHashedValue(ctx, input.ProductID, existingAPIKey.HashedValue)
@@ -310,7 +312,7 @@ func (s *productAPIKeyService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -321,11 +323,11 @@ func (s *productAPIKeyService) Delete(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key for deletion")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return toolkit.ErrNotFound
+		return apierror.ErrNotFound
 	}
 	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID, nil); deleteErr != nil {
 		logger.Error().
@@ -333,7 +335,7 @@ func (s *productAPIKeyService) Delete(
 			Str("api_key_id", input.ID).
 			Err(deleteErr).
 			Msg("failed to delete API key")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 	err = s.cacheService.EvictAPIKeyByHashedValue(
 		ctx, input.ProductID, existingAPIKey.HashedValue,
@@ -359,7 +361,7 @@ func (s *productAPIKeyService) Search(
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -369,7 +371,7 @@ func (s *productAPIKeyService) Search(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search API keys")
-		return nil, toolkit.ErrUnexpected
+		return nil, apierror.ErrUnexpected
 	}
 
 	return &result, nil
@@ -393,7 +395,7 @@ func (s *productAPIKeyService) validateAPIKey(
 
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to validate API key")
-		return apikey.ProductAPIKey{}, toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
 	}
 
 	if foundAPIKey == nil {
@@ -433,7 +435,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Msg("every route authenticated with API key must have at least one scope, please check your configuration")
-		return apikey.ProductAPIKey{}, toolkit.ErrUnexpected
+		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
 	}
 
 	permissionMap := make(map[string]bool)
@@ -471,7 +473,7 @@ func (s *productAPIKeyService) nameUniqueValidation(
 			Str("name", name).
 			Err(err).
 			Msg("failed to search for API keys by name")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 	if existingAPIKey != nil {
 		return NewProductAPIKeyNameExistsError(name, productID)
@@ -495,7 +497,7 @@ func (s *productAPIKeyService) permissionsValidation(
 	}
 	if len(permsFound) != len(permissionNames) {
 		foundNames := s.permissionsToStrings(permsFound)
-		missingNames := toolkit.StringSliceDiff(foundNames, permissionNames)
+		missingNames := slicex.StringDiff(foundNames, permissionNames)
 		return NewPermissionsNotFoundError(productID, missingNames)
 	}
 	return nil
@@ -504,7 +506,7 @@ func (s *productAPIKeyService) permissionsValidation(
 func (s *productAPIKeyService) permissionsToStrings(
 	input []permission.ProductPermission,
 ) []string {
-	return toolkit.TransformSlice(
+	return slicex.Map(
 		input, func(permission permission.ProductPermission) string {
 			return permission.Name
 		},

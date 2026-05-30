@@ -1,7 +1,7 @@
 package config
 
 import (
-	fxconfig "github.com/nanostack-dev/shared/fxmodules/config"
+	fxconfig "github.com/nanostack-dev/nanostack-framework/modules/config"
 
 	"go.uber.org/fx"
 )

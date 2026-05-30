@@ -3,7 +3,7 @@ package user
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type ProductUserStatus string
@@ -26,7 +26,7 @@ type ProductUser struct {
 
 // GenerateID sets the product user's ID to a new prefixed KSUID.
 func (u *ProductUser) GenerateID() {
-	u.ID = toolkit.NewID("pusr")
+	u.ID = ids.MustNew("pusr")
 }
 
 // OrganizationMembership represents an organization from the user's perspective,

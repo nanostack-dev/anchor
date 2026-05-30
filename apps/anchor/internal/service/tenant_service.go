@@ -30,7 +30,7 @@ func NewTenantService(
 func (t *tenantService) IsTenantInit(ctx context.Context) (bool, error) {
 	logger := t.logger.With().Str("operation", "IsTenantInit").Logger()
 
-	count, err := t.tenantRepo.Count(ctx, nil)
+	count, err := t.tenantRepo.Count(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to count tenants")
 		return false, err

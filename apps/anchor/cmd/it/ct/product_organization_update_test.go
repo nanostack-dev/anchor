@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
-
-	"github.com/nanostack-dev/shared/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Original Organization",
-					Description: toolkit.Ptr("Original description"),
+					Description: ptr.Ptr("Original description"),
 				},
 			)
 
@@ -42,7 +42,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Updated Organization",
-					Description: toolkit.Ptr("Updated description"),
+					Description: ptr.Ptr("Updated description"),
 				},
 			)
 
@@ -87,7 +87,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Name Only Test",
-					Description: toolkit.Ptr("Original description"),
+					Description: ptr.Ptr("Original description"),
 				},
 			)
 
@@ -102,7 +102,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Updated Name Only",
-					Description: toolkit.Ptr("Original description"), // Keep same description
+					Description: ptr.Ptr("Original description"), // Keep same description
 				},
 			)
 
@@ -129,7 +129,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Description Only Test",
-					Description: toolkit.Ptr("Original description"),
+					Description: ptr.Ptr("Original description"),
 				},
 			)
 
@@ -144,7 +144,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Description Only Test", // Keep same name
-					Description: toolkit.Ptr("Updated description only"),
+					Description: ptr.Ptr("Updated description only"),
 				},
 			)
 
@@ -171,7 +171,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Valid Organization",
-					Description: toolkit.Ptr("Valid description"),
+					Description: ptr.Ptr("Valid description"),
 				},
 			)
 
@@ -185,7 +185,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "",
-					Description: toolkit.Ptr("Valid description"),
+					Description: ptr.Ptr("Valid description"),
 				},
 			)
 
@@ -211,7 +211,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Valid Name Length Test Org",
-					Description: toolkit.Ptr("Valid description"),
+					Description: ptr.Ptr("Valid description"),
 				},
 			)
 
@@ -225,7 +225,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "A",
-					Description: toolkit.Ptr("Valid description"),
+					Description: ptr.Ptr("Valid description"),
 				},
 			)
 
@@ -252,7 +252,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Valid Description Length Test Org",
-					Description: toolkit.Ptr("Valid description"),
+					Description: ptr.Ptr("Valid description"),
 				},
 			)
 
@@ -266,7 +266,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Valid Organization",
-					Description: toolkit.Ptr(generateString(501)), // Too long (maximum is 500)
+					Description: ptr.Ptr(generateString(501)), // Too long (maximum is 500)
 				},
 			)
 
@@ -288,7 +288,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateNonExistentOrganization", func(t *testing.T) {
-			nonExistentOrgID := toolkit.NewID("org")
+			nonExistentOrgID := ids.MustNew("org")
 
 			updateResponse, err := apiKeyClient.UpdateProductOrganizationWithResponse(
 				ctx,
@@ -296,7 +296,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				nonExistentOrgID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Updated Organization",
-					Description: toolkit.Ptr("This should fail"),
+					Description: ptr.Ptr("This should fail"),
 				},
 			)
 
@@ -316,7 +316,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Security Test Organization",
-					Description: toolkit.Ptr("Security test description"),
+					Description: ptr.Ptr("Security test description"),
 				},
 			)
 
@@ -335,7 +335,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 				organizationID,
 				ct.UpdateProductOrganizationJSONRequestBody{
 					Name:        "Should Not Update",
-					Description: toolkit.Ptr("This should fail"),
+					Description: ptr.Ptr("This should fail"),
 				},
 			)
 

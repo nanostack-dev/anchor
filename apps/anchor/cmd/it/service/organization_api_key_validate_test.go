@@ -7,7 +7,9 @@ import (
 
 	"anchor/internal/security"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -197,13 +199,13 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		createdKey := orgapikey.OrganizationAPIKey{
 			OrganizationID:  ctxData.Organization.ID,
 			Name:            "Org Key " + Faker.UUID().V4(),
-			Description:     toolkit.Ptr("Legacy organization API key for tests"),
+			Description:     ptr.Ptr("Legacy organization API key for tests"),
 			HashedValue:     security.HashSecret(legacyValue),
 			ObfuscatedValue: "nanostack_org_apikey_***_legacy",
 			Status:          orgapikey.StatusActive,
 		}
 		createdKey.GenerateID()
-		createdKey.Permissions = toolkit.TransformSlice(
+		createdKey.Permissions = slicex.Map(
 			permissions,
 			func(perm string) orgapikey.OrganizationAPIKeyPermission {
 				return orgapikey.OrganizationAPIKeyPermission{
@@ -269,7 +271,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			},
 		)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, toolkit.ErrNotFound)
+		assert.ErrorIs(t, err, apierror.ErrNotFound)
 	})
 
 	t.Run("Last Used At Is Not Updated Within One Hour", func(t *testing.T) {
@@ -345,7 +347,7 @@ func givenOrganizationAPIKeyContext(t *testing.T) organizationAPIKeyContextData 
 	org := organization.Organization{
 		ProductID:   tenantAndProduct.Product.ID,
 		Name:        Faker.Company().Name(),
-		Description: toolkit.Ptr("Organization API key validation test organization"),
+		Description: ptr.Ptr("Organization API key validation test organization"),
 	}
 	org.GenerateID()
 
@@ -374,7 +376,7 @@ func givenOrganizationAPIKey(
 			ProductID:      ctxData.Product.Product.ID,
 			OrganizationID: ctxData.Organization.ID,
 			Name:           "Org Key " + Faker.UUID().V4(),
-			Description:    toolkit.Ptr("Organization API key for tests"),
+			Description:    ptr.Ptr("Organization API key for tests"),
 			ExpiresAt:      expiresAt,
 			Permissions:    permissions,
 		},

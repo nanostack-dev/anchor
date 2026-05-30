@@ -3,7 +3,7 @@ postgres:
   host: ${POSTGRES_HOST} # Default to localhost if env var not set
   port: ${POSTGRES_PORT:5432}    # Default to 5432 if env var not set
   user: ${POSTGRES_USER}          # Required env var
-  password: ${POSTGRES_PASSWORD}    # Required env var
+  password: ${file:POSTGRES_PASSWORD_FILE}    # Required env var
   dbname: ${POSTGRES_DB}          # Required env var
   sslmode: ${POSTGRES_SSLMODE:disable} # Default to disable
 
@@ -29,9 +29,9 @@ core:
   auth:
     refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:84600}
     access_token_lifetime: ${ACCESS_TOKEN_LIFETIME:3600}
-    admin_jwt_secret: "${ADMIN_JWT_SECRET}"
+    admin_jwt_secret: "${file:ADMIN_JWT_SECRET_FILE}"
   encryption:
-    global_key: "${APP_ENCRYPTION_KEY}"
+    global_key: "${file:APP_ENCRYPTION_KEY_FILE}"
     global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
   integration:
     reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
@@ -40,7 +40,7 @@ core:
 # Redis cache configuration
 cache:
   address: ${REDIS_ADDRESS:localhost:6379}
-  password: ${REDIS_PASSWORD:anchor}
+  password: ${file:REDIS_PASSWORD_FILE:anchor}
   db: ${REDIS_DB:0}
 # Example of another config section
 server:

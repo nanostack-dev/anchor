@@ -16,6 +16,9 @@ Admin dashboard for the Anchor OaaS platform (Vite + React + TanStack Router/Que
 - `src/components/` — shared components
 - `openapi-ts.config.ts` — codegen config (plugins: Zod, TypeScript, TanStack Query)
 
+## Required Skills
+- Load `shadcn` before developing, adding, or significantly changing frontend components so registry search/import workflow is followed first.
+
 ## Generated Client Usage
 
 The codegen emits three artefacts into `src/client/`:

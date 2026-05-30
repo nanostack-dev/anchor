@@ -6,8 +6,8 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 )
 
@@ -47,7 +47,7 @@ func (s *organizationMembershipService) AddMember(
 ) (organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -79,7 +79,7 @@ func (s *organizationMembershipService) UpdateMemberRole(
 ) (organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "UpdateMemberRole").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -161,7 +161,7 @@ func (s *organizationMembershipService) applyMembership(
 	ctx context.Context,
 	productID, organizationID, productUserID, roleID string,
 	failMsg, successMsg string,
-	repoFn func(context.Context, string, string, string, string, *toolkit.DBOptions) (organization.Membership, error),
+	repoFn func(context.Context, string, string, string, string, *jetx.DBOptions) (organization.Membership, error),
 	logger zerolog.Logger,
 ) (organization.Membership, error) {
 	membership, err := repoFn(ctx, productID, organizationID, productUserID, roleID, nil)
@@ -190,7 +190,7 @@ func (s *organizationMembershipService) RemoveMember(
 ) error {
 	logger := s.logger.With().Str("operation", "RemoveMember").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -234,7 +234,7 @@ func (s *organizationMembershipService) GetMember(
 ) (*organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "GetMember").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -258,7 +258,7 @@ func (s *organizationMembershipService) ListMembers(
 ) ([]organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "ListMembers").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -281,7 +281,7 @@ func (s *organizationMembershipService) SearchMembers(
 ) (search.Result[organization.Membership], error) {
 	logger := s.logger.With().Str("operation", "SearchMembers").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
 

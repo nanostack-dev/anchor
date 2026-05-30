@@ -6,13 +6,12 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	itdsl "anchor/cmd/it/shared/dsl"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	itdsl "anchor/cmd/it/shared/dsl"
 )
 
 const (
@@ -31,7 +30,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"GetNonExistentUser", func(t *testing.T) {
-			nonExistentUserID := toolkit.NewID("puser")
+			nonExistentUserID := ids.MustNew("puser")
 
 			resp, err := ownerClient.GetPlatformUserWithResponse(
 				ctx, nonExistentUserID,

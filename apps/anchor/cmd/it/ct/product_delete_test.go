@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func TestProductDelete(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Test Product for Deletion",
-					Description: toolkit.Ptr("This is a test product"),
+					Description: ptr.Ptr("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -47,7 +47,7 @@ func TestProductDelete(t *testing.T) {
 
 	t.Run(
 		"DeleteNonExistentProduct", func(t *testing.T) {
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 
 			resp, err := testOwnerClient(t).DeleteProductWithResponse(
 				ctx, nonExistentProductID,
@@ -67,7 +67,7 @@ func TestProductDelete(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Test Product for Deletion with Associated Data",
-					Description: toolkit.Ptr("This is a test product"),
+					Description: ptr.Ptr("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")

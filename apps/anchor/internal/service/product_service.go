@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product"
 	"anchor/internal/repository"
@@ -58,7 +59,7 @@ func (s *productService) Get(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "Get").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 	prod, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID, nil)
@@ -88,7 +89,7 @@ func (s *productService) GetWithCache(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "GetWithCache").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 	cachedProduct, err := s.cacheService.GetOrElseProduct(
@@ -108,7 +109,7 @@ func (s *productService) Create(
 ) (product.Product, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return product.Product{}, err
 	}
 
@@ -144,11 +145,11 @@ func (s *productService) Create(
 	}
 	prod.GenerateID()
 
-	return toolkit.WithTxReturn(
+	return jetx.WithTxReturn(
 		s.db, func(tx *sql.Tx) (product.Product, error) {
 			defaultPermissions := GeneratePermissions()
 
-			productCreated, createErr := s.productRepo.Create(ctx, prod, &toolkit.DBOptions{Tx: tx})
+			productCreated, createErr := s.productRepo.Create(ctx, prod, &jetx.DBOptions{Tx: tx})
 			if createErr != nil {
 				logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 				return product.Product{}, createErr
@@ -156,7 +157,7 @@ func (s *productService) Create(
 			logger.Info().Str("product_id", productCreated.ID).Str("name", prod.Name).Msg("product created")
 			for _, perm := range defaultPermissions {
 				perm.ProductID = productCreated.ID
-				_, permErr := s.productPermissionRepo.Create(ctx, perm, &toolkit.DBOptions{Tx: tx})
+				_, permErr := s.productPermissionRepo.Create(ctx, perm, &jetx.DBOptions{Tx: tx})
 				if permErr != nil {
 					logger.Error().Str("permission", perm.Name).Err(permErr).Msg("failed to create default permission")
 					return product.Product{}, permErr
@@ -176,10 +177,10 @@ func (s *productService) Update(
 ) (product.Product, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return product.Product{}, err
 	}
-	return toolkit.WithTxReturn(
+	return jetx.WithTxReturn(
 		s.db, func(tx *sql.Tx) (product.Product, error) {
 			return s.updateProductInTransaction(ctx, input, tx, logger)
 		},
@@ -200,7 +201,7 @@ func (s *productService) updateProductInTransaction(
 	}
 
 	result, err := s.productRepo.Update(
-		ctx, input.TenantID, updatedProduct, &toolkit.DBOptions{Tx: tx},
+		ctx, input.TenantID, updatedProduct, &jetx.DBOptions{Tx: tx},
 	)
 	if err == nil {
 		s.evictProductFromCache(ctx, input.TenantID, input.ProductID, logger)
@@ -214,14 +215,14 @@ func (s *productService) updateProductInTransaction(
 func (s *productService) findProductForUpdate(
 	ctx context.Context, tenantID, productID string, tx *sql.Tx, logger zerolog.Logger,
 ) (*product.Product, error) {
-	optProduct, err := s.productRepo.FindByID(ctx, tenantID, productID, &toolkit.DBOptions{Tx: tx})
+	optProduct, err := s.productRepo.FindByID(ctx, tenantID, productID, &jetx.DBOptions{Tx: tx})
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
 	if optProduct == nil {
 		logger.Error().Str("product_id", productID).Msg("product not found for update")
-		return nil, toolkit.ErrNotFound
+		return nil, apierror.ErrNotFound
 	}
 	return optProduct, nil
 }
@@ -250,7 +251,7 @@ func (s *productService) validateNameUniqueness(
 			Filter:     &product.SearchProductFilter{Names: []string{name}},
 			Pagination: search.Pagination{Limit: int32(1), Offset: int32(0)},
 		},
-		&toolkit.DBOptions{Tx: tx},
+		&jetx.DBOptions{Tx: tx},
 	)
 	if err != nil {
 		logger.Error().Str("name", name).Err(err).Msg("failed to search for product")
@@ -274,7 +275,7 @@ func (s *productService) evictProductFromCache(
 func (s *productService) Delete(ctx context.Context, input product.DeleteProductInput) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -297,7 +298,7 @@ func (s *productService) Search(
 ) (search.Result[product.Product], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[product.Product]{}, err
 	}
 

@@ -60,7 +60,7 @@ func (b *Builder) Tenant(opts TenantOpts) *Builder {
 }
 
 func findDefaultTenantID(t require.TestingT) string {
-	tenants, err := itshared.TenantRepository.FindAll(context.Background(), nil)
+	tenants, err := itshared.TenantRepository.FindAll(context.Background())
 	require.NoError(t, err)
 	if len(tenants) == 0 {
 		createdTenant := createTenant(t, "")
@@ -82,7 +82,7 @@ func createTenant(t require.TestingT, name string) tenant.PlatformTenant {
 	}
 	newTenant.GenerateID()
 
-	createdTenant, err := itshared.TenantRepository.Create(context.Background(), newTenant, nil)
+	createdTenant, err := itshared.TenantRepository.Create(context.Background(), newTenant)
 	require.NoError(t, err)
 
 	return createdTenant

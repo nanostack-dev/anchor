@@ -3,7 +3,7 @@ package tenant
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Status string
@@ -22,5 +22,5 @@ type PlatformTenant struct {
 
 // GenerateID sets the platform tenant's ID to a new prefixed KSUID.
 func (t *PlatformTenant) GenerateID() {
-	t.ID = toolkit.NewID("tenant")
+	t.ID = ids.MustNew("tenant")
 }

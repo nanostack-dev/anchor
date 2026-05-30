@@ -15,7 +15,8 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/security/encryption"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	svix "github.com/svix/svix-webhooks/go"
 	"go.uber.org/fx"
@@ -49,7 +50,7 @@ const (
 type Provider struct {
 	productUserRepo repository.ProductUserRepository
 	auditLogRepo    repository.IntegrationAuditLogRepository
-	configCipher    *toolkit.VersionedSecretCipher
+	configCipher    *secrets.VersionedCipher
 	configCipherErr error
 	httpClient      *http.Client
 	baseURL         string
@@ -68,7 +69,7 @@ type NewProviderParams struct {
 // NewProvider creates a new Clerk provider.
 func NewProvider(p NewProviderParams) *Provider {
 	var (
-		cipher *toolkit.VersionedSecretCipher
+		cipher *secrets.VersionedCipher
 		err    error
 	)
 	if p.EncryptionService == nil {
@@ -142,7 +143,7 @@ func (p *Provider) PrepareConfigForStorage(_ context.Context, configJSON []byte)
 	if strings.TrimSpace(cfg.APIKey) == "" {
 		return configJSON, nil
 	}
-	if toolkit.IsVersionedEncryptedSecret(strings.TrimSpace(cfg.APIKey)) {
+	if secrets.IsVersionedEncryptedSecret(strings.TrimSpace(cfg.APIKey)) {
 		return configJSON, nil
 	}
 	if p.configCipherErr != nil {
@@ -188,7 +189,7 @@ func (p *Provider) resolveConfig(configJSON []byte) (Config, error) {
 	if strings.TrimSpace(cfg.APIKey) == "" {
 		return cfg, nil
 	}
-	if !toolkit.IsVersionedEncryptedSecret(strings.TrimSpace(cfg.APIKey)) {
+	if !secrets.IsVersionedEncryptedSecret(strings.TrimSpace(cfg.APIKey)) {
 		return cfg, nil
 	}
 	if p.configCipherErr != nil {
@@ -303,7 +304,7 @@ func (p *Provider) ExecuteCommand(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	cmd provider.Command,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) error {
 	switch cmd.Type {
 	case CommandUpsertUser:

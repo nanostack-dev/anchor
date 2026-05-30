@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -41,7 +41,7 @@ func NewTemplateRepository(
 }
 
 func (r *templateRepositoryImpl) FindByID(
-	ctx context.Context, tenantID string, productID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, id string, options *jetx.DBOptions,
 ) (*email.Template, error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
@@ -50,13 +50,13 @@ func (r *templateRepositoryImpl) FindByID(
 				AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return toolkit.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return jetx.QueryOptionalMap[model.EmailTemplates, email.Template](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateRepositoryImpl) FindBySlug(
-	ctx context.Context, tenantID string, productID string, slug string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, slug string, options *jetx.DBOptions,
 ) (*email.Template, error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
@@ -65,13 +65,13 @@ func (r *templateRepositoryImpl) FindBySlug(
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return toolkit.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return jetx.QueryOptionalMap[model.EmailTemplates, email.Template](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateRepositoryImpl) FindBySlugInternal(
-	ctx context.Context, productID string, slug string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, slug string, options *jetx.DBOptions,
 ) (*email.Template, error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
@@ -79,13 +79,13 @@ func (r *templateRepositoryImpl) FindBySlugInternal(
 			table.EmailTemplates.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return toolkit.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return jetx.QueryOptionalMap[model.EmailTemplates, email.Template](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateRepositoryImpl) List(
-	ctx context.Context, tenantID string, productID string, limit int64, offset int64, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, limit int64, offset int64, options *jetx.DBOptions,
 ) ([]email.Template, error) {
 	if limit <= 0 {
 		limit = 50
@@ -98,11 +98,11 @@ func (r *templateRepositoryImpl) List(
 		).
 		ORDER_BY(table.EmailTemplates.CreatedAt.DESC()).
 		LIMIT(limit).OFFSET(offset)
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }
 
 func (r *templateRepositoryImpl) Create(
-	ctx context.Context, t email.Template, options *toolkit.DBOptions,
+	ctx context.Context, t email.Template, options *jetx.DBOptions,
 ) (email.Template, error) {
 	if t.CreatedAt.IsZero() {
 		t.CreatedAt = time.Now()
@@ -114,13 +114,13 @@ func (r *templateRepositoryImpl) Create(
 	stmt := table.EmailTemplates.INSERT(emailTemplatesUpdatableColumns()).
 		MODEL(entity).
 		RETURNING(table.EmailTemplates.AllColumns)
-	return toolkit.QueryMap[model.EmailTemplates, email.Template](
+	return jetx.QueryMap[model.EmailTemplates, email.Template](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *templateRepositoryImpl) Update(
-	ctx context.Context, tenantID string, t email.Template, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, t email.Template, options *jetx.DBOptions,
 ) (email.Template, error) {
 	t.UpdatedAt = time.Now()
 	entity := r.mapper.ToEntity(t)
@@ -134,7 +134,7 @@ func (r *templateRepositoryImpl) Update(
 		table.EmailTemplates.ID.EQ(postgres.String(t.ID)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).RETURNING(table.EmailTemplates.AllColumns)
-	return toolkit.QueryMap[model.EmailTemplates, email.Template](
+	return jetx.QueryMap[model.EmailTemplates, email.Template](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
@@ -145,7 +145,7 @@ func (r *templateRepositoryImpl) SaveExamples(
 	productID string,
 	templateID string,
 	examples []email.TemplateExample,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	examplesJSON := "[]"
 	if len(examples) > 0 {
@@ -166,7 +166,7 @@ func (r *templateRepositoryImpl) SaveExamples(
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 			AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 	)
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *templateRepositoryImpl) SetVersionPointers(
@@ -175,7 +175,7 @@ func (r *templateRepositoryImpl) SetVersionPointers(
 	templateID string,
 	draftVersionID *string,
 	publishedVersionID *string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 	entity := model.EmailTemplates{
@@ -191,16 +191,16 @@ func (r *templateRepositoryImpl) SetVersionPointers(
 		table.EmailTemplates.ID.EQ(postgres.String(templateID)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
 	)
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *templateRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, productID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.EmailTemplates.DELETE().WHERE(
 		table.EmailTemplates.ID.EQ(postgres.String(id)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 			AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 	)
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }

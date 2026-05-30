@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 )
@@ -25,7 +25,7 @@ func mapOrganizationAPIKeyToResponse(
 		Status:          organizationAPIKey.Status,
 		CreatedAt:       organizationAPIKey.CreatedAt,
 		UpdatedAt:       organizationAPIKey.UpdatedAt,
-		Permissions: toolkit.TransformSlice(
+		Permissions: slicex.Map(
 			organizationAPIKey.Permissions,
 			func(perm orgapikey.OrganizationAPIKeyPermission) OrganizationAPIKeyPermissionResponse {
 				return OrganizationAPIKeyPermissionResponse{
@@ -101,7 +101,7 @@ func (s *AnchorAPI) SearchOrganizationAPIKeys(
 
 	response := OrganizationAPIKeyListResponse{
 		Count: result.Count,
-		Items: toolkit.TransformSlice(result.Items, mapOrganizationAPIKeyToResponse),
+		Items: slicex.Map(result.Items, mapOrganizationAPIKeyToResponse),
 		Total: result.Total,
 	}
 
@@ -182,7 +182,7 @@ func (s *AnchorAPI) ValidateOrganizationAPIKey(
 	if err != nil {
 		return nil, err
 	}
-	permissions := toolkit.TransformSlice(
+	permissions := slicex.Map(
 		result.APIKey.Permissions,
 		func(permission orgapikey.OrganizationAPIKeyPermission) string {
 			return permission.PermissionName
@@ -233,7 +233,7 @@ func mapToSearchOrganizationAPIKeyInput(
 			LastUsedAfter:         searchReqBody.Filter.LastUsedAfter,
 		}
 		if searchReqBody.Filter.Status != nil {
-			filter.Status = toolkit.TransformSlice(
+			filter.Status = slicex.Map(
 				*searchReqBody.Filter.Status,
 				func(s OrganizationAPIKeyStatus) string {
 					return string(s)

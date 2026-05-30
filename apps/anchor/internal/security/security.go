@@ -8,7 +8,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	frameworkcrypto "github.com/nanostack-dev/nanostack-framework/pkg/crypto"
 )
 
 const (
@@ -37,7 +38,7 @@ const (
 func GetCurrentUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(currentUserIDKey)
 	if value == nil {
-		return "", toolkit.NewNanostackErrorsWithStatus(
+		return "", apierror.NewWithStatus(
 			"UNAUTHORIZED_ACCESS",
 			"User authentication required",
 			httpStatusForbidden,
@@ -45,7 +46,7 @@ func GetCurrentUserID(ctx context.Context) (string, error) {
 	}
 	userID, ok := value.(string)
 	if !ok {
-		return "", toolkit.NewNanostackErrorsWithStatus(
+		return "", apierror.NewWithStatus(
 			"INVALID_USER_CONTEXT",
 			"Invalid user context data",
 			httpStatusForbidden,
@@ -58,7 +59,7 @@ func GetCurrentUserID(ctx context.Context) (string, error) {
 func GetTenantID(ctx context.Context) (string, error) {
 	value := ctx.Value(tenantIDKey)
 	if value == nil {
-		return "", toolkit.NewNanostackErrorsWithStatus(
+		return "", apierror.NewWithStatus(
 			"UNAUTHORIZED_ACCESS",
 			"Tenant authentication required",
 			httpStatusForbidden,
@@ -66,7 +67,7 @@ func GetTenantID(ctx context.Context) (string, error) {
 	}
 	tenantID, ok := value.(string)
 	if !ok {
-		return "", toolkit.NewNanostackErrorsWithStatus(
+		return "", apierror.NewWithStatus(
 			"INVALID_TENANT_CONTEXT",
 			"Invalid tenant context data",
 			httpStatusForbidden,
@@ -112,7 +113,7 @@ func generateSecret(prefix string) (string, error) {
 	for i := range bytes {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-			return "", toolkit.ErrUnexpected
+			return "", apierror.ErrUnexpected
 		}
 		bytes[i] = charset[n.Int64()]
 	}
@@ -122,7 +123,7 @@ func generateSecret(prefix string) (string, error) {
 }
 
 func HashSecret(apiKey string) string {
-	return toolkit.HashSHA256String(apiKey)
+	return frameworkcrypto.HashSHA256String(apiKey)
 }
 
 func apiKeyLength(prefix string) int {
@@ -154,7 +155,7 @@ func validateSecretFormat(prefix, apiKey string) bool {
 }
 
 func CompareAPIKey(apiKey, hashedAPIKey string) bool {
-	return toolkit.CompareSHA256Hash(apiKey, hashedAPIKey)
+	return frameworkcrypto.CompareSHA256Hash(apiKey, hashedAPIKey)
 }
 
 func ObfuscateProductAPIKey(apiKey string) string {

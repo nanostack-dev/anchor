@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"

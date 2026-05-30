@@ -18,7 +18,7 @@ import (
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +35,7 @@ func TestPrepareConfigForStorageEncryptsAPIKey(t *testing.T) {
 	var stored Config
 	require.NoError(t, json.Unmarshal(normalized, &stored))
 	require.NotEqual(t, "sk_test_123", stored.APIKey)
-	require.True(t, toolkit.IsVersionedEncryptedSecret(stored.APIKey))
+	require.True(t, secrets.IsVersionedEncryptedSecret(stored.APIKey))
 
 	resolved, err := p.resolveConfig(normalized)
 	require.NoError(t, err)

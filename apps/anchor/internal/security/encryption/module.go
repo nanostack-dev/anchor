@@ -7,7 +7,7 @@ import (
 
 	"anchor/internal/service/config"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"go.uber.org/fx"
 )
 
@@ -24,7 +24,7 @@ func NewService(coreCfg *config.CoreConfig) (*Service, error) {
 		version = defaultKeyVersion
 	}
 
-	if _, err := toolkit.NewVersionedSecretCipherWithSingleKey(
+	if _, err := secrets.NewVersionedCipherWithSingleKey(
 		version,
 		"validation",
 		coreCfg.Encryption.GlobalKey,
@@ -58,8 +58,8 @@ func normalizeValidationError(err error) error {
 // NewCipher returns a context-scoped cipher derived from the global app key.
 // Callers should pass a stable domain string (for example, "clerk-api-key") so
 // each secret class is cryptographically isolated by context.
-func (s *Service) NewCipher(context string) (*toolkit.VersionedSecretCipher, error) {
-	return toolkit.NewVersionedSecretCipherWithSingleKey(
+func (s *Service) NewCipher(context string) (*secrets.VersionedCipher, error) {
+	return secrets.NewVersionedCipherWithSingleKey(
 		s.globalKeyVersion,
 		context,
 		s.globalKey,

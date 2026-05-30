@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,7 +47,7 @@ func TestProductPermissions_Search(t *testing.T) {
 		"Search by multiple permissions", func(t *testing.T) {
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
-					FullTextSearch: toolkit.Ptr("organization_m"),
+					FullTextSearch: ptr.Ptr("organization_m"),
 				},
 			)
 			require.NoError(t, err, "search product permissions request should not error")
@@ -66,7 +66,7 @@ func TestProductPermissions_Search(t *testing.T) {
 					orgMemberUpdate,
 					orgMemberDelete,
 				},
-				toolkit.TransformSlice(
+				slicex.Map(
 					searchResp.JSON200.Items, func(item ct.ProductPermissionResponse) string {
 						return item.Name
 					},

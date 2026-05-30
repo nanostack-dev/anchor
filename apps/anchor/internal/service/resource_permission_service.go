@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/repository"
@@ -67,7 +68,7 @@ func (s *resourcePermissionService) Create(
 ) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
@@ -87,7 +88,7 @@ func (s *resourcePermissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to check existing resource permission")
-		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
 	}
 	if permByName != nil {
 		return resourcepermission.ProductResourcePermission{}, NewResourcePermissionAlreadyExistsError(
@@ -102,7 +103,7 @@ func (s *resourcePermissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to create resource permission")
-		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -118,7 +119,7 @@ func (s *resourcePermissionService) GetByID(
 ) (*resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -131,7 +132,7 @@ func (s *resourcePermissionService) GetByID(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to get resource permission")
-		return nil, toolkit.ErrUnexpected
+		return nil, apierror.ErrUnexpected
 	}
 
 	return resourcePermission, nil
@@ -142,7 +143,7 @@ func (s *resourcePermissionService) Update(
 ) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
@@ -154,11 +155,11 @@ func (s *resourcePermissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find existing resource permission")
-		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
 	}
 
 	if existing == nil {
-		return resourcepermission.ProductResourcePermission{}, toolkit.ErrNotFound
+		return resourcepermission.ProductResourcePermission{}, apierror.ErrNotFound
 	}
 
 	updated := *existing
@@ -172,7 +173,7 @@ func (s *resourcePermissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to update resource permission")
-		return resourcepermission.ProductResourcePermission{}, toolkit.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -188,7 +189,7 @@ func (s *resourcePermissionService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -201,17 +202,17 @@ func (s *resourcePermissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find resource permission by name")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 	if name == nil {
 		logger.Debug().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
 			Msg("resource permission not found for deletion")
-		return toolkit.ErrNotFound
+		return apierror.ErrNotFound
 	}
-	err = toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-		txOptions := &toolkit.DBOptions{Tx: tx}
+	err = jetx.WithTx(s.db, func(tx *sql.Tx) error {
+		txOptions := &jetx.DBOptions{Tx: tx}
 
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
 			ctx, input.ProductID, input.Name, txOptions,
@@ -219,7 +220,12 @@ func (s *resourcePermissionService) Delete(
 			return apiKeyDeleteErr
 		}
 
-		return s.resourcePermissionRepo.DeleteByID(ctx, input.ProductID, input.Name, txOptions)
+		return s.resourcePermissionRepo.DeleteByID(
+			ctx,
+			input.ProductID,
+			input.Name,
+			txOptions,
+		)
 	})
 	if err != nil {
 		logger.Error().
@@ -227,7 +233,7 @@ func (s *resourcePermissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to delete resource permission with cascading cleanup")
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -243,7 +249,7 @@ func (s *resourcePermissionService) SearchByProduct(
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
 	}
 
@@ -255,7 +261,7 @@ func (s *resourcePermissionService) SearchByProduct(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search resource permissions")
-		return search.Result[resourcepermission.ProductResourcePermission]{}, toolkit.ErrUnexpected
+		return search.Result[resourcepermission.ProductResourcePermission]{}, apierror.ErrUnexpected
 	}
 
 	return result, nil
@@ -266,7 +272,7 @@ func (s *resourcePermissionService) GetByRole(
 ) ([]resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByRole").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -276,7 +282,7 @@ func (s *resourcePermissionService) GetByRole(
 			Str("product_role_id", input.ProductRoleID).
 			Err(err).
 			Msg("failed to get resource permissions by role")
-		return nil, toolkit.ErrUnexpected
+		return nil, apierror.ErrUnexpected
 	}
 
 	return permissions, nil

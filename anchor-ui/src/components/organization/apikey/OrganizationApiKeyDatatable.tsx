@@ -224,10 +224,7 @@ export function OrganizationApiKeyDatatable({
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<AnchorDataTable<
-					OrganizationApiKeyResponse,
-					OrganizationApiKeyFilters
-				>
+				<AnchorDataTable<OrganizationApiKeyResponse, OrganizationApiKeyFilters>
 					columns={columns}
 					data={items}
 					total={total}

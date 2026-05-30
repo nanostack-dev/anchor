@@ -1,7 +1,7 @@
 package role
 
 import (
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 type CreateProductRoleInput struct {

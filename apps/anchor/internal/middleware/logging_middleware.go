@@ -3,16 +3,16 @@ package middleware
 import (
 	"net/http"
 
-	sharedMiddleware "github.com/nanostack-dev/shared/middlewares"
+	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/rs/zerolog"
 )
 
 const healthRoutePath = "/health"
 
-// NewRequestLoggingMiddleware wraps the shared request logger and skips high-frequency
+// NewRequestLoggingMiddleware wraps the framework request logger and skips high-frequency
 // endpoints that add noise to logs.
 func NewRequestLoggingMiddleware(logger zerolog.Logger) func(http.Handler) http.Handler {
-	baseLoggingMiddleware := sharedMiddleware.NewLoggingMiddleware(logger)
+	baseLoggingMiddleware := requestlog.NewFromEnv(logger)
 
 	return func(next http.Handler) http.Handler {
 		loggedHandler := baseLoggingMiddleware(next)

@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/nanostack-dev/shared/toolkit/search"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 

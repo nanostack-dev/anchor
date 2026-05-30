@@ -3,7 +3,7 @@ package product
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Product struct {
@@ -17,5 +17,5 @@ type Product struct {
 
 // GenerateID sets the product's ID to a new prefixed KSUID.
 func (p *Product) GenerateID() {
-	p.ID = toolkit.NewID("prd")
+	p.ID = ids.MustNew("prd")
 }

@@ -7,8 +7,8 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/security"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 func mapToSearchProductInput(request *SearchProductsRequestObject) search.
@@ -69,7 +69,7 @@ func (s *AnchorAPI) SearchProducts(
 	}
 
 	return SearchProducts200JSONResponse{
-		Items: toolkit.TransformSlice(result.Items, mapProductToResponse),
+		Items: slicex.Map(result.Items, mapProductToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
@@ -198,7 +198,7 @@ func mapToSearchProductUserInput(
 		filter = &user.SearchProductUserFilter{}
 
 		if request.Body.Filter.Ids != nil {
-			filter.IDs = toolkit.TransformSlice(
+			filter.IDs = slicex.Map(
 				*request.Body.Filter.Ids, func(id Ksuid) string { return id },
 			)
 		}
@@ -209,7 +209,7 @@ func mapToSearchProductUserInput(
 			filter.Names = *request.Body.Filter.Names
 		}
 		if request.Body.Filter.Statuses != nil {
-			filter.Statuses = toolkit.TransformSlice(
+			filter.Statuses = slicex.Map(
 				*request.Body.Filter.Statuses,
 				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) },
 			)
@@ -297,7 +297,7 @@ func (s *AnchorAPI) SearchProductUsers(
 
 	// Using consistent structure with other list responses (items field)
 	return SearchProductUsers200JSONResponse{
-		Items: toolkit.TransformSlice(result.Items, mapProductUserToResponse),
+		Items: slicex.Map(result.Items, mapProductUserToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
@@ -380,7 +380,7 @@ func (s *AnchorAPI) ListUserOrganizations(
 	}
 
 	return ListUserOrganizations200JSONResponse{
-		Items: toolkit.TransformSlice(
+		Items: slicex.Map(
 			memberships,
 			func(m user.OrganizationMembership) UserOrganizationResponse {
 				return mapUserOrgMembershipToResponse(m, includePermissions)
@@ -442,18 +442,12 @@ func mapUserOrgMembershipToResponse(
 		role.Permissions = &permissions
 	}
 
-	return UserOrganizationResponse{
+	response := UserOrganizationResponse{
 		JoinedAt: m.JoinedAt,
-		Organization: struct {
-			Description *string   `json:"description"`
-			Id          Ksuid     `json:"id"` //nolint:revive,staticcheck // matches generated struct field name
-			Metadata    *Metadata `json:"metadata,omitempty"`
-			Name        string    `json:"name"`
-		}{
-			Id:          m.OrganizationID,
-			Name:        m.OrganizationName,
-			Description: m.OrganizationDescription,
-		},
-		Role: role,
+		Role:     role,
 	}
+	response.Organization.Id = m.OrganizationID
+	response.Organization.Name = m.OrganizationName
+	response.Organization.Description = m.OrganizationDescription
+	return response
 }

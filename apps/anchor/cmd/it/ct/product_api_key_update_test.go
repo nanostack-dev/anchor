@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -228,7 +228,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Update non-existent API key returns 404", func(t *testing.T) {
-			nonExistentID := toolkit.NewID("product_apikey")
+			nonExistentID := ids.MustNew("product_apikey")
 			newName := "NewName"
 
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
@@ -379,12 +379,12 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 				},
 				{
 					name:        "Description is blank should be allowed",
-					inputDesc:   toolkit.Ptr("   "),
+					inputDesc:   ptr.Ptr("   "),
 					expectedMsg: "",
 				},
 				{
 					name:        "Description exceeds 500 characters",
-					inputDesc:   toolkit.Ptr(strings.Repeat("a", 501)),
+					inputDesc:   ptr.Ptr(strings.Repeat("a", 501)),
 					expectedMsg: "Description must be a maximum of 500 characters in length",
 				},
 			}

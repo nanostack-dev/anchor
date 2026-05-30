@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nanostack-dev/shared/fxmodules/cache"
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 
 	"anchor/internal/domain/product"
 

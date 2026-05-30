@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
-
-	itshared "anchor/cmd/it/shared"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itshared "anchor/cmd/it/shared"
 )
 
 func TestProductOrganizationSearch(t *testing.T) {
@@ -25,7 +24,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Engineering Team",
-			Description: toolkit.Ptr("Software engineering team"),
+			Description: ptr.Ptr("Software engineering team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -36,7 +35,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Marketing Team",
-			Description: toolkit.Ptr("Marketing and communications team"),
+			Description: ptr.Ptr("Marketing and communications team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -47,7 +46,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Sales Team",
-			Description: toolkit.Ptr("Customer sales team"),
+			Description: ptr.Ptr("Customer sales team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -60,8 +59,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -105,8 +104,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Ids: []ct.Ksuid{org1.JSON201.Id, org2.JSON201.Id},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -139,8 +138,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Names: []string{"Engineering Team", "Sales Team"},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -169,10 +168,10 @@ func TestProductOrganizationSearch(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					FullTextSearch: toolkit.Ptr("Team"),
+					FullTextSearch: ptr.Ptr("Team"),
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -199,11 +198,11 @@ func TestProductOrganizationSearch(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        toolkit.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: toolkit.Ptr(ct.ASC),
+					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -238,11 +237,11 @@ func TestProductOrganizationSearch(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        toolkit.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: toolkit.Ptr(ct.ASC),
+					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(2)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(2)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -254,11 +253,11 @@ func TestProductOrganizationSearch(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        toolkit.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: toolkit.Ptr(ct.ASC),
+					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(2)),
-						Offset: toolkit.Ptr(int32(2)),
+						Limit:  ptr.Ptr(int32(2)),
+						Offset: ptr.Ptr(int32(2)),
 					},
 				},
 			)
@@ -299,8 +298,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Names: []string{"Non-existent Organization"},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -323,8 +322,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(-1)), // Invalid limit
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(-1)), // Invalid limit
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -348,8 +347,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				nonExistentProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)
@@ -375,8 +374,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  toolkit.Ptr(int32(10)),
-						Offset: toolkit.Ptr(int32(0)),
+						Limit:  ptr.Ptr(int32(10)),
+						Offset: ptr.Ptr(int32(0)),
 					},
 				},
 			)

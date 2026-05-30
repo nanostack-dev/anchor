@@ -3,7 +3,7 @@ package workspace
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type Workspace struct {
@@ -17,5 +17,5 @@ type Workspace struct {
 
 // GenerateID sets the workspace's ID to a new prefixed KSUID.
 func (w *Workspace) GenerateID() {
-	w.ID = toolkit.NewID("ws")
+	w.ID = ids.MustNew("ws")
 }
