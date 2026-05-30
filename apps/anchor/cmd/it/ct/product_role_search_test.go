@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +17,9 @@ func TestProductRole_Search(t *testing.T) {
 	testCtx := createTestProductContext(t)
 	productID := testCtx.ProductID
 
-	role1Name := "Editor_" + toolkit.NewID("test")
-	role2Name := "Viewer_" + toolkit.NewID("test")
-	role3Name := "Admin_" + toolkit.NewID("test")
+	role1Name := "Editor_" + ids.MustNew("test")
+	role2Name := "Viewer_" + ids.MustNew("test")
+	role3Name := "Admin_" + ids.MustNew("test")
 
 	createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -203,7 +202,7 @@ func TestProductRole_Search(t *testing.T) {
 	//TODO: Good use case check for this later
 	// t.Run(
 	//	"SearchProductRolesForNonexistentProduct", func(t *testing.T) {
-	//		// nonExistentProductID := toolkit.NewID("prd")
+	//		// nonExistentProductID := ids.MustNew("prd")
 	//		// searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 	//		//	ctx, nonExistentProductID, client.SearchProductRolesJSONRequestBody{},
 	//		//)

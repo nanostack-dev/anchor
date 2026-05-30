@@ -13,7 +13,8 @@ import (
 	"testing"
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -101,8 +102,8 @@ func (fx *securityFixture) getOrCreateAPIKey(t *testing.T, scopes []string) apiK
 	}
 
 	req := nanostackClient.CreateProductAPIKeyJSONRequestBody{
-		Name:        "security-test-key-" + toolkit.NewID("key"),
-		Description: toolkit.Ptr("Security contract test key"),
+		Name:        "security-test-key-" + ids.MustNew("key"),
+		Description: ptr.Ptr("Security contract test key"),
 		Permissions: normalized,
 	}
 
@@ -271,7 +272,7 @@ func getRuntimePathParams(
 
 	productID := fx.productContext.ProductID
 	if route.OperationID == "deleteProduct" {
-		productID = toolkit.NewID("test")
+		productID = ids.MustNew("test")
 	}
 
 	return map[string]string{
@@ -289,7 +290,7 @@ func replacePathParams(path string, params map[string]string) string {
 			if value, ok := params[name]; ok {
 				return value
 			}
-			return toolkit.NewID("test")
+			return ids.MustNew("test")
 		},
 	)
 }
@@ -503,7 +504,7 @@ func fakeValueForSchema(schema, components map[string]interface{}) interface{} {
 
 	if ref, ok := schema["$ref"].(string); ok {
 		if ref == "#/components/schemas/ksuid" {
-			return toolkit.NewID("test")
+			return ids.MustNew("test")
 		}
 		if resolved := resolveSchemaRef(schema, components); resolved != nil {
 			return fakeValueForSchema(resolved, components)

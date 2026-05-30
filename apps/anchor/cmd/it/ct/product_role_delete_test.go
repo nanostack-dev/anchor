@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteExistingProductRole", func(t *testing.T) {
-			roleName := "RoleToDelete_" + toolkit.NewID("test")
+			roleName := "RoleToDelete_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: roleName,
@@ -57,7 +56,7 @@ func TestProductRole_Delete(t *testing.T) {
 			}
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + toolkit.NewID("test"),
+					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
 					Permissions: permissions,
 				},
 			)
@@ -85,7 +84,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteNonexistentProductRole", func(t *testing.T) {
-			nonExistentRoleID := toolkit.NewID("productroleservice")
+			nonExistentRoleID := ids.MustNew("productroleservice")
 			deleteResp, err := testCtx.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID,
 			)
@@ -109,7 +108,7 @@ func TestProductRole_Delete(t *testing.T) {
 		"DeleteProductRoleForNonexistentProduct", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -118,7 +117,7 @@ func TestProductRole_Delete(t *testing.T) {
 				createResp.StatusCode(),
 			)
 
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 			deleteResp, err := testCtx.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(
 				ctx, nonExistentProductID, createResp.JSON201.Id,
 			)
@@ -134,7 +133,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -163,7 +162,7 @@ func TestProductRole_Delete(t *testing.T) {
 		"DeleteProductRoleMultipleTimes", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "RoleToDeleteTwice_" + toolkit.NewID("test"),
+					Name: "RoleToDeleteTwice_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

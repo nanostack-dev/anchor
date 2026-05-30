@@ -1,6 +1,6 @@
 package workspace
 
-import "github.com/nanostack-dev/shared/toolkit/search"
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 type CreateWorkspaceInput struct {
 	ProductID      string  `validate:"required,notblank"`

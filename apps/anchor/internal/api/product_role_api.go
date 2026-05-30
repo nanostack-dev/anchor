@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/product/role"
 )
@@ -17,7 +17,7 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description: &productRole.Description,
 		CreatedAt:   productRole.CreatedAt,
 		UpdatedAt:   productRole.UpdatedAt,
-		Permissions: toolkit.TransformSlice(
+		Permissions: slicex.Map(
 			productRole.Permissions,
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
@@ -68,7 +68,7 @@ func (s *AnchorAPI) SearchProductRoles(
 
 	response := ProductRoleListResponse{
 		Count: result.Count,
-		Items: toolkit.TransformSlice(result.Items, mapProductRoleToResponse),
+		Items: slicex.Map(result.Items, mapProductRoleToResponse),
 		Total: result.Total,
 	}
 

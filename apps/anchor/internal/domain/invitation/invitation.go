@@ -3,7 +3,7 @@ package invitation
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type PlatformInvitation struct {
@@ -17,5 +17,5 @@ type PlatformInvitation struct {
 
 // GenerateID sets the invitation's ID to a new prefixed KSUID.
 func (i *PlatformInvitation) GenerateID() {
-	i.ID = toolkit.NewID("pinv")
+	i.ID = ids.MustNew("pinv")
 }

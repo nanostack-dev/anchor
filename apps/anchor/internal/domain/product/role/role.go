@@ -3,7 +3,7 @@ package role
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 type ProductRole struct {
@@ -18,7 +18,7 @@ type ProductRole struct {
 
 // GenerateID sets the role's ID to a new prefixed KSUID.
 func (r *ProductRole) GenerateID() {
-	r.ID = toolkit.NewID("product_role")
+	r.ID = ids.MustNew("product_role")
 }
 
 type ProductRolePermission struct {
@@ -30,5 +30,5 @@ type ProductRolePermission struct {
 
 // GenerateID sets the permission's ID to a new prefixed KSUID.
 func (p *ProductRolePermission) GenerateID() {
-	p.ID = toolkit.NewID("product_role_resource_permission")
+	p.ID = ids.MustNew("product_role_resource_permission")
 }

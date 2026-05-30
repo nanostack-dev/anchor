@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -27,20 +27,20 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 
 type OrganizationRepository interface {
 	FindByID(
-		ctx context.Context, productID string, id string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, id string, options *jetx.DBOptions,
 	) (*organization.Organization, error)
-	Create(ctx context.Context, org organization.Organization, options *toolkit.DBOptions) (
+	Create(ctx context.Context, org organization.Organization, options *jetx.DBOptions) (
 		organization.Organization, error,
 	)
 	Update(
 		ctx context.Context, productID string, organization organization.Organization,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (organization.Organization, error)
-	DeleteByID(ctx context.Context, productID string, id string, options *toolkit.DBOptions) error
+	DeleteByID(ctx context.Context, productID string, id string, options *jetx.DBOptions) error
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[organization.Organization], error)
 }
 
@@ -65,7 +65,7 @@ func NewOrganizationRepository(
 }
 
 func (r *organizationRepositoryImpl) FindByID(
-	ctx context.Context, productID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, id string, options *jetx.DBOptions,
 ) (*organization.Organization, error) {
 	stmt := table.Organizations.SELECT(
 		table.Organizations.AllColumns,
@@ -77,14 +77,14 @@ func (r *organizationRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.Organizations, organization.Organization](
+	return jetx.QueryOptionalMap[model.Organizations, organization.Organization](
 		ctx, r.db, stmt,
 		r.organizationMapper.ToDomain, options,
 	)
 }
 
 func (r *organizationRepositoryImpl) Create(
-	ctx context.Context, org organization.Organization, options *toolkit.DBOptions,
+	ctx context.Context, org organization.Organization, options *jetx.DBOptions,
 ) (organization.Organization, error) {
 	entity := r.organizationMapper.ToEntity(org)
 
@@ -92,14 +92,14 @@ func (r *organizationRepositoryImpl) Create(
 		organizationsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Organizations.AllColumns)
 
-	return toolkit.QueryMap[model.Organizations, organization.Organization](
+	return jetx.QueryMap[model.Organizations, organization.Organization](
 		ctx, r.db, stmt, r.organizationMapper.ToDomain, options,
 	)
 }
 
 func (r *organizationRepositoryImpl) Update(
 	ctx context.Context, productID string, currentOrg organization.Organization,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (organization.Organization, error) {
 	currentOrg.UpdatedAt = time.Now()
 	entityToUpdate := r.organizationMapper.ToEntity(currentOrg)
@@ -117,13 +117,13 @@ func (r *organizationRepositoryImpl) Update(
 		),
 	).RETURNING(table.Organizations.AllColumns)
 
-	return toolkit.QueryMap[model.Organizations, organization.Organization](
+	return jetx.QueryMap[model.Organizations, organization.Organization](
 		ctx, r.db, updateStmt, r.organizationMapper.ToDomain, options,
 	)
 }
 
 func (r *organizationRepositoryImpl) DeleteByID(
-	ctx context.Context, productID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.Organizations.DELETE().WHERE(
 		table.Organizations.ID.EQ(postgres.String(id)).AND(
@@ -131,18 +131,18 @@ func (r *organizationRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *organizationRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[organization.Organization], error) {
 	whereStmt := table.Organizations.ProductID.EQ(postgres.String(productID))
 
 	if input.Filter != nil {
-		filterBuilder := search.NewFilterBuilder()
+		filterBuilder := jetx.NewFilterBuilder()
 
 		if ids := filterBuilder.BuildIDFilter(
 			table.Organizations.ID, input.Filter.IDs,
@@ -157,7 +157,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		filterBuilder := search.NewFilterBuilder()
+		filterBuilder := jetx.NewFilterBuilder()
 		searchColumns := []postgres.ColumnString{
 			table.Organizations.Name,
 		}
@@ -173,7 +173,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		table.Organizations.AllColumns,
 	).WHERE(whereStmt)
 
-	total, err := toolkit.QueryCountWithBoolExpression(
+	total, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.Organizations, whereStmt, options,
 	)
 	if err != nil {
@@ -185,25 +185,25 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 			switch sort.Field {
 			case organization.SortFieldProductOrganizationCreatedAt:
 				query = query.ORDER_BY(
-					search.OrderBy(
+					jetx.OrderBy(
 						table.Organizations.CreatedAt, sort.Direction,
 					),
 				)
 			case organization.SortFieldProductOrganizationUpdatedAt:
 				query = query.ORDER_BY(
-					search.OrderBy(
+					jetx.OrderBy(
 						table.Organizations.UpdatedAt, sort.Direction,
 					),
 				)
 			case organization.SortFieldProductOrganizationName:
-				query = query.ORDER_BY(search.OrderBy(table.Organizations.Name, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.Organizations.Name, sort.Direction))
 			}
 		}
 	}
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	entities, err := toolkit.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain, options)
+	entities, err := jetx.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain, options)
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}

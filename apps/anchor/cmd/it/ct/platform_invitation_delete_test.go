@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,7 +46,7 @@ func TestDeletePlatformInvitation(t *testing.T) {
 	t.Run(
 		"NonexistentInvitation", func(t *testing.T) {
 			delResp, err := testOwnerClient(t).DeletePlatformInvitationWithResponse(
-				context.Background(), toolkit.NewID("pinv"),
+				context.Background(), ids.MustNew("pinv"),
 			)
 			require.NoError(t, err, "invitation deletion should not error")
 			assert.Equal(t, http.StatusNoContent, delResp.StatusCode())

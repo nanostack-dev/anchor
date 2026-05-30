@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -26,41 +26,41 @@ func integrationInstancesUpdatableColumns() postgres.ColumnList {
 
 type IntegrationInstanceRepository interface {
 	FindByID(
-		ctx context.Context, tenantID string, id string, options *toolkit.DBOptions,
+		ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
 	) (*integration.Instance, error)
 	// FindByIDInternal looks up an instance by its globally-unique ID without
 	// tenant scoping. Reserved for trusted system-internal paths (e.g. async
 	// queue workers, webhook ingress) where no authenticated tenant context
 	// exists. Must NOT be used from tenant-facing API handlers.
 	FindByIDInternal(
-		ctx context.Context, id string, options *toolkit.DBOptions,
+		ctx context.Context, id string, options *jetx.DBOptions,
 	) (*integration.Instance, error)
 	FindByProductAndProvider(
-		ctx context.Context, tenantID string, productID string, providerType string, options *toolkit.DBOptions,
+		ctx context.Context, tenantID string, productID string, providerType string, options *jetx.DBOptions,
 	) (*integration.Instance, error)
 	// FindByProductAndProviderInternal looks up an instance by product_id and
 	// provider_type without tenant scoping. Reserved for trusted system-internal
 	// paths (e.g. webhook ingress) where no authenticated tenant context exists.
 	// Must NOT be used from tenant-facing API handlers.
 	FindByProductAndProviderInternal(
-		ctx context.Context, productID string, providerType string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, providerType string, options *jetx.DBOptions,
 	) (*integration.Instance, error)
 	ListByProduct(
-		ctx context.Context, tenantID string, productID string, options *toolkit.DBOptions,
+		ctx context.Context, tenantID string, productID string, options *jetx.DBOptions,
 	) ([]integration.Instance, error)
 	// ListByProviderInternal lists instances by provider_type without tenant scoping.
 	// Reserved for trusted system-internal paths such as workers and schedulers.
 	ListByProviderInternal(
-		ctx context.Context, providerType string, options *toolkit.DBOptions,
+		ctx context.Context, providerType string, options *jetx.DBOptions,
 	) ([]integration.Instance, error)
 	Create(
-		ctx context.Context, instance integration.Instance, options *toolkit.DBOptions,
+		ctx context.Context, instance integration.Instance, options *jetx.DBOptions,
 	) (integration.Instance, error)
 	Update(
-		ctx context.Context, tenantID string, instance integration.Instance, options *toolkit.DBOptions,
+		ctx context.Context, tenantID string, instance integration.Instance, options *jetx.DBOptions,
 	) (integration.Instance, error)
 	DeleteByID(
-		ctx context.Context, tenantID string, id string, options *toolkit.DBOptions,
+		ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
 	) error
 }
 
@@ -81,7 +81,7 @@ func NewIntegrationInstanceRepository(
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByID(
-	ctx context.Context, tenantID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -93,13 +93,13 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
-	ctx context.Context, id string, options *toolkit.DBOptions,
+	ctx context.Context, id string, options *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -109,13 +109,13 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
-	ctx context.Context, tenantID string, productID string, providerType string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, providerType string, options *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -129,13 +129,13 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
-	ctx context.Context, productID string, providerType string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, providerType string, options *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -147,13 +147,13 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(
-	ctx context.Context, tenantID string, productID string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, productID string, options *jetx.DBOptions,
 ) ([]integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -167,13 +167,13 @@ func (r *integrationInstanceRepositoryImpl) ListByProduct(
 		table.IntegrationInstances.CreatedAt.DESC(),
 	)
 
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProviderInternal(
 	ctx context.Context,
 	providerType string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]integration.Instance, error) {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
@@ -185,11 +185,11 @@ func (r *integrationInstanceRepositoryImpl) ListByProviderInternal(
 		table.IntegrationInstances.CreatedAt.DESC(),
 	)
 
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }
 
 func (r *integrationInstanceRepositoryImpl) Create(
-	ctx context.Context, instance integration.Instance, options *toolkit.DBOptions,
+	ctx context.Context, instance integration.Instance, options *jetx.DBOptions,
 ) (integration.Instance, error) {
 	entity := r.mapper.ToEntity(instance)
 
@@ -197,13 +197,13 @@ func (r *integrationInstanceRepositoryImpl) Create(
 		integrationInstancesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return toolkit.QueryMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) Update(
-	ctx context.Context, tenantID string, instance integration.Instance, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, instance integration.Instance, options *jetx.DBOptions,
 ) (integration.Instance, error) {
 	instance.UpdatedAt = time.Now()
 	entity := r.mapper.ToEntity(instance)
@@ -221,13 +221,13 @@ func (r *integrationInstanceRepositoryImpl) Update(
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return toolkit.QueryMap[model.IntegrationInstances, integration.Instance](
+	return jetx.QueryMap[model.IntegrationInstances, integration.Instance](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.IntegrationInstances.DELETE().WHERE(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)).AND(
@@ -235,5 +235,5 @@ func (r *integrationInstanceRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }

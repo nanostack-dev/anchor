@@ -8,7 +8,8 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,7 @@ func TestEmailSendCreate(t *testing.T) {
 			ct.SendEmailJSONRequestBody{
 				TemplateId: &tplID,
 				ToAddress:  openapi_types.Email("bob@example.com"),
-				ToName:     toolkit.Ptr("Bob"),
+				ToName:     ptr.Ptr("Bob"),
 				Variables:  &vars,
 			},
 		)
@@ -69,7 +70,7 @@ func TestEmailSendCreate(t *testing.T) {
 	})
 
 	t.Run("same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
-		dedupeKey := toolkit.NewID("dkey")
+		dedupeKey := ids.MustNew("dkey")
 		vars := map[string]interface{}{}
 		body := ct.SendEmailJSONRequestBody{
 			TemplateId: &tplID,
@@ -99,7 +100,7 @@ func TestEmailSendCreate(t *testing.T) {
 	t.Run("concurrent same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
 		mp.Reset(t)
 
-		dedupeKey := toolkit.NewID("dkey")
+		dedupeKey := ids.MustNew("dkey")
 		vars := map[string]interface{}{"name": "Concurrent"}
 		body := ct.SendEmailJSONRequestBody{
 			TemplateId: &tplID,

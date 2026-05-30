@@ -16,7 +16,7 @@ import (
 
 	"anchor/internal/integration/provider"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 // Provider-agnostic SMTP transport. Speaks SMTP-AUTH (PLAIN or LOGIN) over
@@ -238,7 +238,7 @@ func buildRFC5322Message(
 		hdr.Set(k, v)
 	}
 
-	boundary := "anchor-bnd-" + toolkit.NewID("mp")
+	boundary := "anchor-bnd-" + ids.MustNew("mp")
 	hdr.Set("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 
 	for k, vs := range hdr {
@@ -328,7 +328,7 @@ func generateMessageID(fromEmail string) string {
 	if at := strings.LastIndex(fromEmail, "@"); at >= 0 && at < len(fromEmail)-1 {
 		domain = fromEmail[at+1:]
 	}
-	return toolkit.NewID("emid") + "@" + domain
+	return ids.MustNew("emid") + "@" + domain
 }
 
 func firstNonEmpty(values ...string) string {

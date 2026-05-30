@@ -3,7 +3,8 @@ package apikey
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 // Status represents the state of a product API key.
@@ -41,11 +42,11 @@ type ProductAPIKeyPermission struct {
 
 // GenerateID sets the API key's ID to a new prefixed KSUID.
 func (s *ProductAPIKey) GenerateID() {
-	s.ID = toolkit.NewID("product_apikey")
+	s.ID = ids.MustNew("product_apikey")
 }
 
 func (s *ProductAPIKey) ToStringsPermissions() []string {
-	return toolkit.TransformSlice(
+	return slicex.Map(
 		s.Permissions, func(perm ProductAPIKeyPermission) string {
 			return perm.PermissionName
 		},

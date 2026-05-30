@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +52,7 @@ func TestDeleteProductUser(t *testing.T) {
 		"DeleteNonExistentProductUser", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
-			nonExistentUserID := toolkit.NewID("puser")
+			nonExistentUserID := ids.MustNew("puser")
 
 			// Use API key client with product_user:delete scope
 			apiKeyDeleteClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:delete"})

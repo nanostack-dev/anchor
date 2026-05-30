@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +62,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 			ctx,
 			product.ProductID,
 			org.Id,
-			toolkit.NewID("organization_apikey"),
+			ids.MustNew("organization_apikey"),
 		)
 		require.NoError(t, deleteErr)
 		assert.Equal(t, http.StatusNotFound, deleteResp.StatusCode())

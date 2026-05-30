@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,7 +71,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			tplID,
-			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: toolkit.Ptr("v2")},
+			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: ptr.Ptr("v2")},
 		)
 		require.NoError(t, err)
 
@@ -89,7 +90,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 		resp, publishErr := client.PublishEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			toolkit.NewID("etpl"),
+			ids.MustNew("etpl"),
 		)
 		require.NoError(t, publishErr)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())

@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/workspace"
@@ -50,7 +51,7 @@ func (s *workspaceService) Find(
 	ctx context.Context,
 	input workspace.FindWorkspaceInput,
 ) (*workspace.Workspace, error) {
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -69,7 +70,7 @@ func (s *workspaceService) Create(
 ) (workspace.Workspace, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -88,8 +89,8 @@ func (s *workspaceService) Create(
 	}
 	newWorkspace.GenerateID()
 
-	created, err := toolkit.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
-		txOptions := &toolkit.DBOptions{Tx: tx}
+	created, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
+		txOptions := &jetx.DBOptions{Tx: tx}
 
 		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 			ctx,
@@ -125,7 +126,7 @@ func (s *workspaceService) Update(
 ) (workspace.Workspace, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -145,11 +146,11 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 	if currentWorkspace == nil {
-		return workspace.Workspace{}, toolkit.ErrNotFound
+		return workspace.Workspace{}, apierror.ErrNotFound
 	}
 
-	updated, err := toolkit.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
-		txOptions := &toolkit.DBOptions{Tx: tx}
+	updated, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
+		txOptions := &jetx.DBOptions{Tx: tx}
 
 		updatedWorkspace := *currentWorkspace
 		if input.Name != nil {
@@ -196,7 +197,7 @@ func (s *workspaceService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 
@@ -216,7 +217,7 @@ func (s *workspaceService) Delete(
 		return err
 	}
 	if currentWorkspace == nil {
-		return toolkit.ErrNotFound
+		return apierror.ErrNotFound
 	}
 
 	return s.workspaceRepo.DeleteByID(
@@ -234,7 +235,7 @@ func (s *workspaceService) Search(
 ) (search.Result[workspace.Workspace], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
 
@@ -270,7 +271,7 @@ func (s *workspaceService) ensureOrganizationExists(
 		return err
 	}
 	if org == nil {
-		return toolkit.ErrNotFound
+		return apierror.ErrNotFound
 	}
 
 	return nil

@@ -20,9 +20,10 @@ import (
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/pgqueue"
 
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
-
-	"github.com/nanostack-dev/shared/toolkit"
 )
 
 const (
@@ -103,45 +104,45 @@ type IntegrationService interface {
 }
 
 var (
-	ErrIntegrationInstanceNotFound = toolkit.NewNanostackErrorsWithStatus(
+	ErrIntegrationInstanceNotFound = apierror.NewWithStatus(
 		"INTEGRATION_INSTANCE_NOT_FOUND",
 		"Integration instance not found",
 		http.StatusNotFound,
 	)
-	ErrIntegrationInstanceAlreadyExists = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationInstanceAlreadyExists = apierror.NewBadRequest(
 		"INTEGRATION_INSTANCE_ALREADY_EXISTS",
 		"An integration instance for this provider already exists on this product",
 	)
-	ErrIntegrationProviderNotRegistered = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationProviderNotRegistered = apierror.NewBadRequest(
 		"INTEGRATION_PROVIDER_NOT_REGISTERED",
 		"The specified integration provider is not registered",
 	)
-	ErrIntegrationProviderNotWebhookIngestor = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationProviderNotWebhookIngestor = apierror.NewBadRequest(
 		"INTEGRATION_PROVIDER_NOT_WEBHOOK_INGESTOR",
 		"The specified integration provider does not accept inbound webhooks",
 	)
-	ErrIntegrationWebhookValidationFailed = toolkit.NewNanostackErrorsWithStatus(
+	ErrIntegrationWebhookValidationFailed = apierror.NewWithStatus(
 		"INTEGRATION_WEBHOOK_VALIDATION_FAILED",
 		"Webhook signature validation failed",
 		http.StatusUnauthorized,
 	)
-	ErrIntegrationInstanceDisabled = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationInstanceDisabled = apierror.NewBadRequest(
 		"INTEGRATION_INSTANCE_DISABLED",
 		"The integration instance is disabled",
 	)
-	ErrIntegrationInstanceConfiguring = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationInstanceConfiguring = apierror.NewBadRequest(
 		"INTEGRATION_INSTANCE_CONFIGURING",
 		"The integration instance is still configuring",
 	)
-	ErrIntegrationInstanceUnhealthy = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationInstanceUnhealthy = apierror.NewBadRequest(
 		"INTEGRATION_INSTANCE_UNHEALTHY",
 		"The integration instance is not ready to process webhook events",
 	)
-	ErrIntegrationWebhookSecretRequired = toolkit.NewNanostackBadRequestError(
+	ErrIntegrationWebhookSecretRequired = apierror.NewBadRequest(
 		"INTEGRATION_WEBHOOK_SECRET_REQUIRED",
 		"Webhook secret is required when integration instance is active",
 	)
-	ErrIntegrationWebhookEventIDMissing = toolkit.NewNanostackErrorsWithStatus(
+	ErrIntegrationWebhookEventIDMissing = apierror.NewWithStatus(
 		"INTEGRATION_WEBHOOK_EVENT_ID_MISSING",
 		"Webhook event id header is required",
 		http.StatusUnauthorized,
@@ -198,7 +199,7 @@ func (s *integrationService) CreateInstance(
 ) (integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "CreateInstance").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
 	}
 
@@ -225,7 +226,7 @@ func (s *integrationService) CreateInstance(
 		return integration.Instance{}, newInvalidConfigError(cfgErr)
 	}
 
-	created, err := toolkit.WithTxReturn(s.db, func(tx *sql.Tx) (integration.Instance, error) {
+	created, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (integration.Instance, error) {
 		return s.createInstanceTx(ctx, logger, tx, input, prov, configJSON)
 	})
 	if err != nil {
@@ -254,7 +255,7 @@ func (s *integrationService) createInstanceTx(
 	prov provider.Provider,
 	configJSON json.RawMessage,
 ) (integration.Instance, error) {
-	txOpts := &toolkit.DBOptions{Tx: tx}
+	txOpts := &jetx.DBOptions{Tx: tx}
 
 	// Check for duplicate (product + provider uniqueness).
 	existing, findErr := s.instanceRepo.FindByProductAndProvider(
@@ -332,7 +333,7 @@ func (s *integrationService) GetInstance(
 ) (*integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "GetInstance").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 
@@ -358,17 +359,17 @@ func (s *integrationService) UpdateInstance(
 ) (integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "UpdateInstance").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
 	}
 
 	var hadClerkAPIKey bool
 	var hasClerkAPIKeyNow bool
 
-	updated, err := toolkit.WithTxReturn(
+	updated, err := jetx.WithTxReturn(
 		s.db,
 		func(tx *sql.Tx) (integration.Instance, error) {
-			txOpts := &toolkit.DBOptions{Tx: tx}
+			txOpts := &jetx.DBOptions{Tx: tx}
 
 			existing, findErr := s.instanceRepo.FindByID(
 				ctx, input.TenantID, input.ID, txOpts,
@@ -583,7 +584,7 @@ func (s *integrationService) DeleteInstance(
 ) error {
 	logger := s.logger.With().Str("operation", "DeleteInstance").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return valErr
 	}
 
@@ -603,9 +604,9 @@ func (s *integrationService) DeleteInstance(
 
 	hadKey := hasClerkAPIKey(existing.ConfigJSON) && existing.ProviderType == integration.ProviderTypeClerk
 
-	delErr := toolkit.WithTx(
+	delErr := jetx.WithTx(
 		s.db, func(tx *sql.Tx) error {
-			txOpts := &toolkit.DBOptions{Tx: tx}
+			txOpts := &jetx.DBOptions{Tx: tx}
 
 			s.writeAuditLog(
 				ctx,
@@ -656,7 +657,7 @@ func (s *integrationService) ListInstances(
 ) ([]integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "ListInstances").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 
@@ -679,7 +680,7 @@ func (s *integrationService) ListAuditLogs(
 ) ([]integration.AuditLog, error) {
 	logger := s.logger.With().Str("operation", "ListAuditLogs").Logger()
 
-	if valErr := toolkit.ValidateStruct(input); valErr != nil {
+	if valErr := validateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 
@@ -760,10 +761,10 @@ func (s *integrationService) persistPendingEvent(
 	instance *integration.Instance,
 	event integration.Event,
 ) (integration.Event, error) {
-	return toolkit.WithTxReturn(
+	return jetx.WithTxReturn(
 		s.db,
 		func(tx *sql.Tx) (integration.Event, error) {
-			txOpts := &toolkit.DBOptions{Tx: tx}
+			txOpts := &jetx.DBOptions{Tx: tx}
 
 			// Idempotency: check for duplicate by (instance_id, external_event_id).
 			if existing, err := s.findDuplicateEvent(ctx, logger, instance, event, txOpts); err != nil {
@@ -990,8 +991,8 @@ func (s *integrationService) runInstanceReconcile(
 		return execErr
 	}
 
-	return toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &toolkit.DBOptions{Tx: tx}
+	return jetx.WithTx(s.db, func(tx *sql.Tx) error {
+		txOpts := &jetx.DBOptions{Tx: tx}
 		s.writeAuditLog(ctx, logger, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
 			Action:                integration.AuditActionReconcileCompleted,
@@ -1201,8 +1202,8 @@ func (s *integrationService) processOneEvent(
 	// Capture the resolved instance for use in phase 2 failure recording.
 	var resolvedInstance *integration.Instance
 
-	procErr := toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &toolkit.DBOptions{Tx: tx}
+	procErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
+		txOpts := &jetx.DBOptions{Tx: tx}
 		instance, txErr := s.executeEventTransaction(ctx, eventLogger, event, job, txOpts)
 		if instance != nil {
 			resolvedInstance = instance
@@ -1228,7 +1229,7 @@ func (s *integrationService) executeEventTransaction(
 	logger zerolog.Logger,
 	event *integration.Event,
 	job *pgqueue.Job,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	// Mark as PROCESSING.
 	if statusErr := s.eventRepo.UpdateStatusInternal(
@@ -1319,8 +1320,8 @@ func (s *integrationService) handleEventFailure(
 	instance *integration.Instance,
 	cause error,
 ) error {
-	failErr := toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &toolkit.DBOptions{Tx: tx}
+	failErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
+		txOpts := &jetx.DBOptions{Tx: tx}
 
 		if job.Attempts < job.MaxAttempts {
 			return s.scheduleRetry(ctx, logger, event, job, instance, cause, txOpts)
@@ -1373,7 +1374,7 @@ func (s *integrationService) scheduleRetry(
 	job *pgqueue.Job,
 	instance *integration.Instance,
 	cause error,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) error {
 	backoff := pgqueue.ExponentialBackoff(
 		integrationBackoffBase,
@@ -1564,7 +1565,7 @@ func (s *integrationService) buildWebhookEvent(
 			Str("instance_id", instance.ID).
 			Msg("failed to parse webhook event")
 		return integration.Event{}, nil,
-			toolkit.NewNanostackBadRequestError(
+			apierror.NewBadRequest(
 				"INTEGRATION_EVENT_PARSE_FAILED",
 				fmt.Sprintf(
 					"Failed to parse webhook event: %s",
@@ -1820,7 +1821,7 @@ func (s *integrationService) markEventFailed(
 	ctx context.Context,
 	eventID string,
 	cause error,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) {
 	errMsg := cause.Error()
 	_ = s.eventRepo.UpdateStatusInternal(ctx, eventID, integration.EventStatusFailed, &errMsg, txOpts)
@@ -1831,7 +1832,7 @@ func (s *integrationService) findDuplicateEvent(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	event integration.Event,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) (*integration.Event, error) {
 	existing, err := s.eventRepo.FindByExternalEventIDInternal(
 		ctx,
@@ -1856,7 +1857,7 @@ func (s *integrationService) writeAuditLog(
 	ctx context.Context,
 	logger zerolog.Logger,
 	auditLog integration.AuditLog,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) {
 	if auditLog.ID == "" {
 		auditLog.GenerateID()
@@ -1887,7 +1888,7 @@ func (s *integrationService) executeCommands(
 	prov provider.WebhookIngestor,
 	instance *integration.Instance,
 	commands []provider.Command,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) error {
 	for _, cmd := range commands {
 		if err := prov.ExecuteCommand(ctx, logger, instance, cmd, txOpts); err != nil {
@@ -1922,8 +1923,8 @@ func (s *integrationService) executeCommandsInBatches(
 		batchIndex := batchesProcessed + 1
 		batchCommands := commands[start:end]
 
-		txErr := toolkit.WithTx(s.db, func(tx *sql.Tx) error {
-			txOpts := &toolkit.DBOptions{Tx: tx}
+		txErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
+			txOpts := &jetx.DBOptions{Tx: tx}
 			if err := s.executeCommands(ctx, logger, prov, instance, batchCommands, txOpts); err != nil {
 				return err
 			}
@@ -1975,13 +1976,13 @@ func extractExternalEventID(
 		return externalEventID, nil
 	}
 
-	return toolkit.NewID("evt"), nil
+	return ids.MustNew("evt"), nil
 }
 
 // newInvalidConfigError creates a standardized bad-request error for invalid
 // provider configuration.
 func newInvalidConfigError(cause error) error {
-	return toolkit.NewNanostackBadRequestError(
+	return apierror.NewBadRequest(
 		"INTEGRATION_INVALID_CONFIG",
 		fmt.Sprintf("Invalid provider config: %s", cause.Error()),
 	)

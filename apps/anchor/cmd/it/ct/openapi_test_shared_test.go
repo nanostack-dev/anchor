@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"gopkg.in/yaml.v3"
 )
 
 // sendRequest sends an HTTP request for an operation, with optional headers.
@@ -211,7 +211,7 @@ func extractSingleOperation(
 	requiresBody := checkIfRequiresBody(opMap)
 	requiredPathParams, requiredQueryParams := extractParameters(opMap, paramDefs)
 
-	path := regexp.MustCompile(`\{[^}]+}`).ReplaceAllString(origPath, toolkit.NewID("test"))
+	path := regexp.MustCompile(`\{[^}]+}`).ReplaceAllString(origPath, ids.MustNew("test"))
 	url := buildURL(baseURL, path, requiredQueryParams)
 
 	return &extractedOp{
@@ -430,7 +430,7 @@ func resolveFakeValueRef(schema, components map[string]interface{}) interface{} 
 	}
 
 	if ref == "#/components/schemas/ksuid" {
-		return toolkit.NewID("test")
+		return ids.MustNew("test")
 	}
 
 	if !strings.HasPrefix(ref, "#/components/schemas/") {

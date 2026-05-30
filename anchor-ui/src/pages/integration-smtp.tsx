@@ -8,7 +8,6 @@ import {
 	type UpdateIntegrationInstanceData,
 	zSmtpIntegrationConfig,
 } from "@/client";
-import { z } from "zod";
 import {
 	createIntegrationInstanceMutation,
 	deleteIntegrationInstanceMutation,
@@ -54,6 +53,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Loader2, Plug, Shield, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 interface SmtpFormState {
 	host: string;
@@ -82,22 +82,42 @@ const API_TO_FORM_KEY: Partial<Record<string, keyof SmtpFormState>> = {
 // Augment the generated schema with required-field rules (all fields are optional in the spec).
 const smtpConfigSchema = zSmtpIntegrationConfig.superRefine((val, ctx) => {
 	if (!val.host?.trim()) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Host is required", path: ["host"] });
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Host is required",
+			path: ["host"],
+		});
 	}
 	if (!val.port || val.port < 1 || val.port > 65535) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Port must be 1–65535", path: ["port"] });
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Port must be 1–65535",
+			path: ["port"],
+		});
 	}
 	if (!val.username?.trim()) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Username is required", path: ["username"] });
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Username is required",
+			path: ["username"],
+		});
 	}
 	if (!val.from_address?.trim()) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: "From address is required", path: ["from_address"] });
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "From address is required",
+			path: ["from_address"],
+		});
 	}
 });
 
 const smtpConfigSchemaCreate = smtpConfigSchema.superRefine((val, ctx) => {
 	if (!val.password?.trim()) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Password is required for new instances", path: ["password"] });
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Password is required for new instances",
+			path: ["password"],
+		});
 	}
 });
 
@@ -116,7 +136,12 @@ const EMPTY_FORM: SmtpFormState = {
 
 export default function SmtpIntegrationPage() {
 	const { productId } = productIntegrationSmtpRoute.useParams();
-	const { currentProduct, products, selectProduct, isLoading: isProductsLoading } = useProduct();
+	const {
+		currentProduct,
+		products,
+		selectProduct,
+		isLoading: isProductsLoading,
+	} = useProduct();
 	const queryClient = useQueryClient();
 
 	const routeProduct = useMemo(
@@ -133,7 +158,9 @@ export default function SmtpIntegrationPage() {
 	}, [routeProduct, currentProduct, selectProduct]);
 
 	const [form, setForm] = useState<SmtpFormState>(EMPTY_FORM);
-	const [formErrors, setFormErrors] = useState<Partial<Record<keyof SmtpFormState, string>>>({});
+	const [formErrors, setFormErrors] = useState<
+		Partial<Record<keyof SmtpFormState, string>>
+	>({});
 	// Track whether the user has touched config fields — if so, include config in the update payload.
 	const configDirty = useRef(false);
 	// Guard: populate form from server only once — never reset after saves/invalidations.
@@ -149,7 +176,10 @@ export default function SmtpIntegrationPage() {
 	});
 
 	const smtpInstance = useMemo(
-		() => (listData?.items ?? []).find((i) => i.provider_type === IntegrationProviderType.SMTP) ?? null,
+		() =>
+			(listData?.items ?? []).find(
+				(i) => i.provider_type === IntegrationProviderType.SMTP,
+			) ?? null,
 		[listData],
 	);
 
@@ -157,19 +187,21 @@ export default function SmtpIntegrationPage() {
 	useEffect(() => {
 		if (smtpInstance && !enabledInitialized.current) {
 			const pc = smtpInstance.public_config;
-			setForm(prev => ({
+			setForm((prev) => ({
 				...prev,
 				enabled: smtpInstance.is_enabled,
-				...(pc ? {
-					host: pc.host ?? prev.host,
-					port: pc.port != null ? String(pc.port) : prev.port,
-					encryption: pc.encryption ?? prev.encryption,
-					authMethod: pc.auth_method ?? prev.authMethod,
-					username: pc.username ?? prev.username,
-					fromAddress: pc.from_address ?? prev.fromAddress,
-					fromName: pc.from_name ?? prev.fromName,
-					replyTo: pc.reply_to ?? prev.replyTo,
-				} : {}),
+				...(pc
+					? {
+							host: pc.host ?? prev.host,
+							port: pc.port != null ? String(pc.port) : prev.port,
+							encryption: pc.encryption ?? prev.encryption,
+							authMethod: pc.auth_method ?? prev.authMethod,
+							username: pc.username ?? prev.username,
+							fromAddress: pc.from_address ?? prev.fromAddress,
+							fromName: pc.from_name ?? prev.fromName,
+							replyTo: pc.reply_to ?? prev.replyTo,
+						}
+					: {}),
 			}));
 			enabledInitialized.current = true;
 		}
@@ -182,7 +214,9 @@ export default function SmtpIntegrationPage() {
 	}, [smtpInstance]);
 
 	const invalidateList = () => {
-		queryClient.invalidateQueries({ queryKey: listIntegrationInstancesQueryKey(listQueryOptions) });
+		queryClient.invalidateQueries({
+			queryKey: listIntegrationInstancesQueryKey(listQueryOptions),
+		});
 	};
 
 	const createMutation = useMutation({
@@ -190,7 +224,7 @@ export default function SmtpIntegrationPage() {
 		onSuccess: () => {
 			invalidateList();
 			// Reset password only after successful create so it's not re-submitted.
-			setForm(prev => ({ ...prev, password: "" }));
+			setForm((prev) => ({ ...prev, password: "" }));
 			configDirty.current = false;
 		},
 	});
@@ -200,7 +234,7 @@ export default function SmtpIntegrationPage() {
 		onSuccess: () => {
 			invalidateList();
 			// Reset password after save — never keep it in memory longer than needed.
-			setForm(prev => ({ ...prev, password: "" }));
+			setForm((prev) => ({ ...prev, password: "" }));
 			configDirty.current = false;
 		},
 	});
@@ -215,15 +249,21 @@ export default function SmtpIntegrationPage() {
 		},
 	});
 
-	const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+	const isMutating =
+		createMutation.isPending ||
+		updateMutation.isPending ||
+		deleteMutation.isPending;
 
 	function markConfigDirty() {
 		configDirty.current = true;
 	}
 
-	function setFormField<K extends keyof SmtpFormState>(key: K, value: SmtpFormState[K]) {
+	function setFormField<K extends keyof SmtpFormState>(
+		key: K,
+		value: SmtpFormState[K],
+	) {
 		if (key !== "enabled") markConfigDirty();
-		setForm(prev => ({ ...prev, [key]: value }));
+		setForm((prev) => ({ ...prev, [key]: value }));
 	}
 
 	function validate(): boolean {
@@ -245,7 +285,7 @@ export default function SmtpIntegrationPage() {
 	function buildConfig(): SmtpIntegrationConfig {
 		return {
 			host: form.host.trim(),
-			port: parseInt(form.port, 10) || 587,
+			port: Number.parseInt(form.port, 10) || 587,
 			encryption: form.encryption as SmtpIntegrationConfig["encryption"],
 			auth_method: form.authMethod as SmtpIntegrationConfig["auth_method"],
 			username: form.username.trim(),
@@ -260,7 +300,10 @@ export default function SmtpIntegrationPage() {
 		if (!validate()) return;
 		const opts: Options<CreateIntegrationInstanceData> = {
 			path: { product_id: productId },
-			body: { provider_type: IntegrationProviderType.SMTP, config: buildConfig() },
+			body: {
+				provider_type: IntegrationProviderType.SMTP,
+				config: buildConfig(),
+			},
 		};
 		createMutation.mutate(opts);
 	}
@@ -288,7 +331,11 @@ export default function SmtpIntegrationPage() {
 	}
 
 	if (!activeProduct && !isProductsLoading) {
-		return <div className="p-8 text-sm text-muted-foreground">Product not found.</div>;
+		return (
+			<div className="p-8 text-sm text-muted-foreground">
+				Product not found.
+			</div>
+		);
 	}
 
 	return (
@@ -304,7 +351,9 @@ export default function SmtpIntegrationPage() {
 						Provider SMTP
 					</Badge>
 					{smtpInstance?.id ? (
-						<Badge variant="outline" className="font-mono text-[10px]">{smtpInstance.id}</Badge>
+						<Badge variant="outline" className="font-mono text-[10px]">
+							{smtpInstance.id}
+						</Badge>
 					) : null}
 				</div>
 			}
@@ -312,7 +361,9 @@ export default function SmtpIntegrationPage() {
 				{
 					label: "Connection",
 					value: smtpInstance
-						? smtpInstance.is_enabled ? "Live" : "Paused"
+						? smtpInstance.is_enabled
+							? "Live"
+							: "Paused"
 						: "NOT_CONFIGURED",
 				},
 				{
@@ -350,11 +401,17 @@ export default function SmtpIntegrationPage() {
 					<CardHeader>
 						<CardTitle>Configure SMTP</CardTitle>
 						<CardDescription>
-							Enter your SMTP credentials to enable outbound email for this product.
+							Enter your SMTP credentials to enable outbound email for this
+							product.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-5">
-						<SmtpConfigForm form={form} setField={setFormField} errors={formErrors} isNew />
+						<SmtpConfigForm
+							form={form}
+							setField={setFormField}
+							errors={formErrors}
+							isNew
+						/>
 						<div className="flex items-center gap-2 border-t pt-4">
 							<Button onClick={handleCreate} disabled={isMutating}>
 								{createMutation.isPending ? (
@@ -366,7 +423,9 @@ export default function SmtpIntegrationPage() {
 							</Button>
 						</div>
 						{createMutation.isError ? (
-							<p className="text-xs text-destructive">Failed to create integration. Check credentials and try again.</p>
+							<p className="text-xs text-destructive">
+								Failed to create integration. Check credentials and try again.
+							</p>
 						) : null}
 					</CardContent>
 				</Card>
@@ -377,12 +436,16 @@ export default function SmtpIntegrationPage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Connection</CardTitle>
-							<CardDescription>Runtime state for the SMTP integration.</CardDescription>
+							<CardDescription>
+								Runtime state for the SMTP integration.
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-3 text-sm">
 							<div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
 								<span className="text-muted-foreground">Status</span>
-								<Badge variant={smtpInstance.is_enabled ? "default" : "secondary"}>
+								<Badge
+									variant={smtpInstance.is_enabled ? "default" : "secondary"}
+								>
 									{smtpInstance.is_enabled ? "Live" : "Paused"}
 								</Badge>
 							</div>
@@ -401,33 +464,47 @@ export default function SmtpIntegrationPage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Configuration</CardTitle>
-							<CardDescription>Update SMTP credentials and settings.</CardDescription>
+							<CardDescription>
+								Update SMTP credentials and settings.
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-5">
 							<div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
 								<div className="inline-flex items-center gap-1">
 									<Shield className="h-3.5 w-3.5" />
-									Password is write-only once saved. Leave blank to keep the existing value.
+									Password is write-only once saved. Leave blank to keep the
+									existing value.
 								</div>
 							</div>
 
 							<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
 								<div>
 									<Label htmlFor="smtp-enabled">Enabled</Label>
-									<p className="text-xs text-muted-foreground">Pause without deleting configuration.</p>
+									<p className="text-xs text-muted-foreground">
+										Pause without deleting configuration.
+									</p>
 								</div>
 								<Switch
 									id="smtp-enabled"
 									checked={form.enabled}
-									onCheckedChange={checked => setForm(prev => ({ ...prev, enabled: checked }))}
+									onCheckedChange={(checked) =>
+										setForm((prev) => ({ ...prev, enabled: checked }))
+									}
 								/>
 							</div>
 
-							<SmtpConfigForm form={form} setField={setFormField} errors={formErrors} isNew={false} />
+							<SmtpConfigForm
+								form={form}
+								setField={setFormField}
+								errors={formErrors}
+								isNew={false}
+							/>
 
 							<div className="flex items-center gap-2 border-t pt-4">
 								<Button onClick={handleUpdate} disabled={isMutating}>
-									{updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+									{updateMutation.isPending ? (
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									) : null}
 									Update Configuration
 								</Button>
 							</div>
@@ -463,14 +540,19 @@ export default function SmtpIntegrationPage() {
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
-										<AlertDialogTitle>Delete SMTP integration?</AlertDialogTitle>
+										<AlertDialogTitle>
+											Delete SMTP integration?
+										</AlertDialogTitle>
 										<AlertDialogDescription>
-											This removes the SMTP configuration. Emails cannot be sent until a new integration is created.
+											This removes the SMTP configuration. Emails cannot be sent
+											until a new integration is created.
 										</AlertDialogDescription>
 									</AlertDialogHeader>
 									<AlertDialogFooter>
 										<AlertDialogCancel>Cancel</AlertDialogCancel>
-										<AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+										<AlertDialogAction onClick={handleDelete}>
+											Delete
+										</AlertDialogAction>
 									</AlertDialogFooter>
 								</AlertDialogContent>
 							</AlertDialog>
@@ -489,7 +571,10 @@ function SmtpConfigForm({
 	isNew,
 }: {
 	form: SmtpFormState;
-	setField: <K extends keyof SmtpFormState>(key: K, value: SmtpFormState[K]) => void;
+	setField: <K extends keyof SmtpFormState>(
+		key: K,
+		value: SmtpFormState[K],
+	) => void;
 	errors: Partial<Record<keyof SmtpFormState, string>>;
 	isNew: boolean;
 }) {
@@ -502,10 +587,12 @@ function SmtpConfigForm({
 						id="smtp-host"
 						placeholder="smtp.protonmail.ch"
 						value={form.host}
-						onChange={e => setField("host", e.target.value)}
+						onChange={(e) => setField("host", e.target.value)}
 						className="font-mono text-sm"
 					/>
-					{errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
+					{errors.host && (
+						<p className="text-xs text-destructive">{errors.host}</p>
+					)}
 				</div>
 				<div className="space-y-1">
 					<Label htmlFor="smtp-port">Port *</Label>
@@ -513,18 +600,25 @@ function SmtpConfigForm({
 						id="smtp-port"
 						placeholder="587"
 						value={form.port}
-						onChange={e => setField("port", e.target.value)}
+						onChange={(e) => setField("port", e.target.value)}
 						className="font-mono text-sm"
 					/>
-					{errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
+					{errors.port && (
+						<p className="text-xs text-destructive">{errors.port}</p>
+					)}
 				</div>
 			</div>
 
 			<div className="grid grid-cols-2 gap-3">
 				<div className="space-y-1">
 					<Label>Encryption</Label>
-					<Select value={form.encryption} onValueChange={v => setField("encryption", v)}>
-						<SelectTrigger><SelectValue /></SelectTrigger>
+					<Select
+						value={form.encryption}
+						onValueChange={(v) => setField("encryption", v)}
+					>
+						<SelectTrigger>
+							<SelectValue />
+						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="STARTTLS">STARTTLS (587)</SelectItem>
 							<SelectItem value="TLS">Implicit TLS (465)</SelectItem>
@@ -534,8 +628,13 @@ function SmtpConfigForm({
 				</div>
 				<div className="space-y-1">
 					<Label>Auth Method</Label>
-					<Select value={form.authMethod} onValueChange={v => setField("authMethod", v)}>
-						<SelectTrigger><SelectValue /></SelectTrigger>
+					<Select
+						value={form.authMethod}
+						onValueChange={(v) => setField("authMethod", v)}
+					>
+						<SelectTrigger>
+							<SelectValue />
+						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="PLAIN">PLAIN</SelectItem>
 							<SelectItem value="LOGIN">LOGIN</SelectItem>
@@ -550,23 +649,33 @@ function SmtpConfigForm({
 					id="smtp-username"
 					placeholder="you@proton.me"
 					value={form.username}
-					onChange={e => setField("username", e.target.value)}
+					onChange={(e) => setField("username", e.target.value)}
 					className="font-mono text-sm"
 				/>
-				{errors.username && <p className="text-xs text-destructive">{errors.username}</p>}
+				{errors.username && (
+					<p className="text-xs text-destructive">{errors.username}</p>
+				)}
 			</div>
 
 			<div className="space-y-1">
-				<Label htmlFor="smtp-password">{isNew ? "Password *" : "Password"}</Label>
+				<Label htmlFor="smtp-password">
+					{isNew ? "Password *" : "Password"}
+				</Label>
 				<Input
 					id="smtp-password"
 					type="password"
-					placeholder={isNew ? "SMTP token or app password" : "Leave blank to keep existing"}
+					placeholder={
+						isNew
+							? "SMTP token or app password"
+							: "Leave blank to keep existing"
+					}
 					value={form.password}
-					onChange={e => setField("password", e.target.value)}
+					onChange={(e) => setField("password", e.target.value)}
 					className="font-mono text-sm"
 				/>
-				{errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+				{errors.password && (
+					<p className="text-xs text-destructive">{errors.password}</p>
+				)}
 			</div>
 
 			<div className="grid grid-cols-2 gap-3">
@@ -576,10 +685,12 @@ function SmtpConfigForm({
 						id="smtp-from"
 						placeholder="you@proton.me"
 						value={form.fromAddress}
-						onChange={e => setField("fromAddress", e.target.value)}
+						onChange={(e) => setField("fromAddress", e.target.value)}
 						className="font-mono text-sm"
 					/>
-					{errors.fromAddress && <p className="text-xs text-destructive">{errors.fromAddress}</p>}
+					{errors.fromAddress && (
+						<p className="text-xs text-destructive">{errors.fromAddress}</p>
+					)}
 				</div>
 				<div className="space-y-1">
 					<Label htmlFor="smtp-from-name">From Name</Label>
@@ -587,7 +698,7 @@ function SmtpConfigForm({
 						id="smtp-from-name"
 						placeholder="Your App"
 						value={form.fromName}
-						onChange={e => setField("fromName", e.target.value)}
+						onChange={(e) => setField("fromName", e.target.value)}
 						className="text-sm"
 					/>
 				</div>
@@ -599,7 +710,7 @@ function SmtpConfigForm({
 					id="smtp-reply-to"
 					placeholder="support@yourapp.com (optional)"
 					value={form.replyTo}
-					onChange={e => setField("replyTo", e.target.value)}
+					onChange={(e) => setField("replyTo", e.target.value)}
 					className="font-mono text-sm"
 				/>
 			</div>

@@ -1,30 +1,48 @@
-import { useMemo, useState } from "react";
-import dayjs from "dayjs";
+import type {
+	ApiErrorResponse,
+	EmailTemplateResponse,
+	ListEmailTemplatesData,
+	Options,
+} from "@/client";
+import {
+	createEmailTemplateMutation,
+	deleteEmailTemplateMutation,
+	listEmailTemplatesOptions,
+} from "@/client/@tanstack/react-query.gen";
+import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
+import { Button } from "@/components/ui/button";
+import { useProduct } from "@/context/product/ProductContext";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import {
 	keepPreviousData,
 	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Link, useNavigate } from "@tanstack/react-router";
-import {
-	createEmailTemplateMutation,
-	deleteEmailTemplateMutation,
-	listEmailTemplatesOptions,
-} from "@/client/@tanstack/react-query.gen";
-import type {
-	EmailTemplateResponse,
-	ListEmailTemplatesData,
-	Options,
-} from "@/client";
-import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
-import { useProduct } from "@/context/product/ProductContext";
-import { Button } from "@/components/ui/button";
-import { ROUTE_PATHS } from "@/routes/routePaths";
+import dayjs from "dayjs";
+import { useMemo, useState } from "react";
 
 const columnHelper = createColumnHelper<EmailTemplateResponse>();
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+	if (
+		typeof error === "object" &&
+		error !== null &&
+		"errors" in error &&
+		Array.isArray((error as ApiErrorResponse).errors)
+	) {
+		return (error as ApiErrorResponse).errors[0]?.message ?? fallback;
+	}
+
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	return fallback;
+}
 
 function uniqueSlug() {
 	return `template-${Date.now().toString(36)}`;
@@ -34,6 +52,7 @@ export function EmailTemplatesDatatable() {
 	const { currentProduct } = useProduct();
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
+	const productId = currentProduct?.id ?? "";
 
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -42,21 +61,20 @@ export function EmailTemplatesDatatable() {
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [createError, setCreateError] = useState<string | null>(null);
 
-	const queryOptions = useMemo((): Options<ListEmailTemplatesData> | null => {
-		if (!currentProduct) return null;
+	const queryOptions = useMemo((): Options<ListEmailTemplatesData> => {
 		return {
-			path: { product_id: currentProduct.id },
+			path: { product_id: productId },
 			query: {
 				limit: pagination.pageSize,
 				offset: pagination.pageIndex * pagination.pageSize,
 			},
 		};
-	}, [currentProduct, pagination]);
+	}, [pagination, productId]);
 
 	const { data, isLoading, error } = useQuery({
-		...listEmailTemplatesOptions(queryOptions!),
+		...listEmailTemplatesOptions(queryOptions),
 		placeholderData: keepPreviousData,
-		enabled: !!queryOptions,
+		enabled: !!currentProduct,
 	});
 
 	function invalidateTemplates() {
@@ -84,12 +102,8 @@ export function EmailTemplatesDatatable() {
 				params: { templateId: tpl.id },
 			});
 		},
-		onError: (err: any) => {
-			setCreateError(
-				err?.errors?.[0]?.message ??
-					err?.message ??
-					"Failed to create template",
-			);
+		onError: (err) => {
+			setCreateError(getApiErrorMessage(err, "Failed to create template"));
 		},
 	});
 

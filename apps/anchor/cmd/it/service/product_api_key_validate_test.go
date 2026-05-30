@@ -10,7 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -18,7 +19,7 @@ import (
 )
 
 func TestApiKeyValidation(t *testing.T) {
-	availableScopes := toolkit.TransformSlice(
+	availableScopes := slicex.Map(
 		service.GeneratePermissions(), func(t permission.ProductPermission) string {
 			return t.Name
 		},
@@ -68,7 +69,7 @@ func TestApiKeyValidation(t *testing.T) {
 				Status:          apikey.StatusActive,
 			}
 			apiKey.GenerateID()
-			apiKey.Permissions = toolkit.TransformSlice(
+			apiKey.Permissions = slicex.Map(
 				permissions,
 				func(perm string) apikey.ProductAPIKeyPermission {
 					return apikey.ProductAPIKeyPermission{
@@ -129,12 +130,12 @@ func TestApiKeyValidation(t *testing.T) {
 			)
 			require.Error(t, err, "Expected error for API key with extra scopes")
 			assert.Contains(t, err.Error(), "Product API key does not have sufficient permissions")
-			var anchorErr *toolkit.NanostackError
-			require.ErrorAs(t, err, &anchorErr)
+			var apiErr *apierror.Error
+			require.ErrorAs(t, err, &apiErr)
 			assert.Equal(
-				t, anchorErr, service.NewProductAPIKeyInsufficientPermissionsError(
+				t, service.NewProductAPIKeyInsufficientPermissionsError(
 					apiKeyCreated.ID, []string{"file:extra"}, availableScopes,
-				),
+				), apiErr,
 			)
 		},
 	)
@@ -155,12 +156,12 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for API key with extra scopes")
-			var anchorErr *toolkit.NanostackError
-			require.ErrorAs(t, err, &anchorErr)
+			var apiErr *apierror.Error
+			require.ErrorAs(t, err, &apiErr)
 			assert.Equal(
-				t, anchorErr, service.NewProductAPIKeyInsufficientPermissionsError(
+				t, service.NewProductAPIKeyInsufficientPermissionsError(
 					apiKeyCreated.ID, availableScopes[1:2], availableScopes[0:1],
-				),
+				), apiErr,
 			)
 		},
 	)
@@ -250,7 +251,7 @@ func TestApiKeyValidation(t *testing.T) {
 			_, value := GivenAPIKey(
 				t, tenantAndProduct.Product.ID, permissions,
 			)
-			uppercaseScopes := toolkit.TransformSlice(permissions, strings.ToUpper)
+			uppercaseScopes := slicex.Map(permissions, strings.ToUpper)
 			_, err := APIKeyService.ValidateAPIKeyAndScopes(
 				t.Context(), apikey.ValidateAPIKeyScopesInput{
 					ProductID:   tenantAndProduct.Product.ID,

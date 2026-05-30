@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +20,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 	organization := productCtx.CreateOrganization(
 		t,
 		"workspace-org-"+itshared.Faker.UUID().V4(),
-		toolkit.Ptr("Workspace route test organization"),
+		ptr.Ptr("Workspace route test organization"),
 	)
 
 	t.Run("CreateGetSearchUpdateAndDeleteWorkspace", func(t *testing.T) {
@@ -55,10 +55,10 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 					Ids:   []string{created.Id},
 					Names: []string{created.Name},
 				},
-				FullTextSearch: toolkit.Ptr(created.Name),
+				FullTextSearch: ptr.Ptr(created.Name),
 				Pagination: &ct.PaginationRequest{
-					Limit:  toolkit.Ptr(int32(10)),
-					Offset: toolkit.Ptr(int32(0)),
+					Limit:  ptr.Ptr(int32(10)),
+					Offset: ptr.Ptr(int32(0)),
 				},
 				SortBy:        &sortBy,
 				SortDirection: &sortDirection,
@@ -78,7 +78,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 			created.Id,
 			ct.UpdateOrganizationWorkspaceJSONRequestBody{
 				Name:        updatedName,
-				Description: toolkit.Ptr("Updated workspace description"),
+				Description: ptr.Ptr("Updated workspace description"),
 			},
 		)
 		require.NoError(t, err)
@@ -282,8 +282,8 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 			organization.Id,
 			ct.SearchOrganizationWorkspacesJSONRequestBody{
 				Pagination: &ct.PaginationRequest{
-					Limit:  toolkit.Ptr(int32(10)),
-					Offset: toolkit.Ptr(int32(0)),
+					Limit:  ptr.Ptr(int32(10)),
+					Offset: ptr.Ptr(int32(0)),
 				},
 			},
 		)
@@ -401,7 +401,7 @@ func createWorkspace(
 		organizationID,
 		ct.CreateOrganizationWorkspaceJSONRequestBody{
 			Name:        name,
-			Description: toolkit.Ptr("Workspace test description"),
+			Description: ptr.Ptr("Workspace test description"),
 		},
 	)
 	require.NoError(t, err)

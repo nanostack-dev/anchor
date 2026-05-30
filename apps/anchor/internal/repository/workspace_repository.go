@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -31,40 +32,40 @@ type WorkspaceRepository interface {
 		productID string,
 		organizationID string,
 		workspaceID string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*workspace.Workspace, error)
 	FindByOrganizationIDAndName(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		name string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*workspace.Workspace, error)
 	Create(
 		ctx context.Context,
 		workspace workspace.Workspace,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (workspace.Workspace, error)
 	Update(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		workspace workspace.Workspace,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (workspace.Workspace, error)
 	DeleteByID(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		workspaceID string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 	SearchByOrganizationID(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[workspace.Workspace], error)
 }
 
@@ -93,7 +94,7 @@ func (r *workspaceRepositoryImpl) FindByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*workspace.Workspace, error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
@@ -105,7 +106,7 @@ func (r *workspaceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return jetx.QueryOptionalMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
@@ -119,7 +120,7 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	productID string,
 	organizationID string,
 	name string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*workspace.Workspace, error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
@@ -131,7 +132,7 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 		),
 	).LIMIT(1)
 
-	return toolkit.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return jetx.QueryOptionalMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
@@ -143,7 +144,7 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 func (r *workspaceRepositoryImpl) Create(
 	ctx context.Context,
 	newWorkspace workspace.Workspace,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (workspace.Workspace, error) {
 	entity := r.workspaceMapper.ToEntity(newWorkspace)
 
@@ -151,7 +152,7 @@ func (r *workspaceRepositoryImpl) Create(
 		workspacesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Workspaces.AllColumns)
 
-	created, err := toolkit.QueryMap[model.Workspaces, workspace.Workspace](
+	created, err := jetx.QueryMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
@@ -170,7 +171,7 @@ func (r *workspaceRepositoryImpl) Update(
 	productID string,
 	organizationID string,
 	currentWorkspace workspace.Workspace,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (workspace.Workspace, error) {
 	currentWorkspace.UpdatedAt = time.Now()
 	entityToUpdate := r.workspaceMapper.ToEntity(currentWorkspace)
@@ -191,7 +192,7 @@ func (r *workspaceRepositoryImpl) Update(
 		),
 	)
 
-	if err := toolkit.Exec(ctx, r.db, updateStmt, options); err != nil {
+	if err := jetx.Exec(ctx, r.db, updateStmt, options); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -200,7 +201,7 @@ func (r *workspaceRepositoryImpl) Update(
 		return workspace.Workspace{}, err
 	}
 	if updated == nil {
-		return workspace.Workspace{}, toolkit.ErrNotFound
+		return workspace.Workspace{}, apierror.ErrNotFound
 	}
 
 	return *updated, nil
@@ -211,7 +212,7 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	deleteStmt := table.Workspaces.DELETE().USING(table.Organizations).WHERE(
 		table.Workspaces.ID.EQ(postgres.String(workspaceID)).AND(
@@ -219,7 +220,7 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		),
 	)
 
-	if err := toolkit.Exec(ctx, r.db, deleteStmt, options); err != nil {
+	if err := jetx.Exec(ctx, r.db, deleteStmt, options); err != nil {
 		return err
 	}
 
@@ -228,7 +229,7 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		return err
 	}
 	if found != nil {
-		return toolkit.ErrUnexpected
+		return apierror.ErrUnexpected
 	}
 
 	return nil
@@ -239,12 +240,12 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	productID string,
 	organizationID string,
 	input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[workspace.Workspace], error) {
 	whereStmt := r.scopedWhere(productID, organizationID)
 
 	if input.Filter != nil {
-		filterBuilder := search.NewFilterBuilder()
+		filterBuilder := jetx.NewFilterBuilder()
 
 		if ids := filterBuilder.BuildIDFilter(table.Workspaces.ID, input.Filter.IDs); ids != nil {
 			whereStmt = whereStmt.AND(ids)
@@ -255,7 +256,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		filterBuilder := search.NewFilterBuilder()
+		filterBuilder := jetx.NewFilterBuilder()
 		fullTextFilter := filterBuilder.BuildFullTextSearchFilter(
 			[]postgres.ColumnString{table.Workspaces.Name},
 			*input.FullTextSearch,
@@ -269,7 +270,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		postgres.COUNT(postgres.STAR).AS("count_result.count"),
 	).FROM(r.joinOrganizations()).WHERE(whereStmt)
 
-	total, err := toolkit.QueryCountWithStatement(ctx, r.db, countStmt, options)
+	total, err := jetx.QueryCountWithStatement(ctx, r.db, countStmt, options)
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
@@ -284,18 +285,18 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		for _, sort := range input.Sort {
 			switch sort.Field {
 			case workspace.SortFieldProductWorkspaceCreatedAt:
-				query = query.ORDER_BY(search.OrderBy(table.Workspaces.CreatedAt, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.CreatedAt, sort.Direction))
 			case workspace.SortFieldProductWorkspaceUpdatedAt:
-				query = query.ORDER_BY(search.OrderBy(table.Workspaces.UpdatedAt, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.UpdatedAt, sort.Direction))
 			case workspace.SortFieldProductWorkspaceName:
-				query = query.ORDER_BY(search.OrderBy(table.Workspaces.Name, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.Name, sort.Direction))
 			}
 		}
 	}
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	items, err := toolkit.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain, options)
+	items, err := jetx.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain, options)
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}

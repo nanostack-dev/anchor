@@ -3,7 +3,7 @@ package apikey
 import (
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 // CreateProductAPIKeyInput represents input for creating a product API key.

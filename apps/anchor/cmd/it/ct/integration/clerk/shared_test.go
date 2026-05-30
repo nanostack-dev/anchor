@@ -16,7 +16,7 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -331,7 +331,7 @@ func createActiveClerkIntegrationInstance(
 		t,
 		productContext,
 		instance.Id,
-		ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: toolkit.Ptr(clerkTestWebhookSecret)},
+		ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: ptr.Ptr(clerkTestWebhookSecret)},
 	)
 }
 

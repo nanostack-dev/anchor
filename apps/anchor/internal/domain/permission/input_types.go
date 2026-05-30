@@ -1,6 +1,6 @@
 package permission
 
-import "github.com/nanostack-dev/shared/toolkit/search"
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 // CreateProductPermissionInput represents input for creating a new permission.
 type CreateProductPermissionInput struct {

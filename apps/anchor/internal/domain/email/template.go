@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 // VariableType describes the expected runtime type for a declared template
@@ -90,7 +90,7 @@ type Template struct {
 
 // GenerateID sets the template's ID to a new prefixed KSUID.
 func (t *Template) GenerateID() {
-	t.ID = toolkit.NewID("etpl")
+	t.ID = ids.MustNew("etpl")
 }
 
 // TemplateVersion is the immutable-once-published snapshot of a template's
@@ -114,7 +114,7 @@ type TemplateVersion struct {
 
 // GenerateID sets the version's ID to a new prefixed KSUID.
 func (v *TemplateVersion) GenerateID() {
-	v.ID = toolkit.NewID("etplv")
+	v.ID = ids.MustNew("etplv")
 }
 
 // VariablesJSON serialises the variable schema for storage in JSONB.

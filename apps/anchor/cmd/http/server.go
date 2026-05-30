@@ -16,9 +16,9 @@ import (
 	"anchor/internal/buildinfo"
 	"anchor/internal/middleware"
 
+	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
+	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
 	"github.com/nanostack-dev/pgkit/pgqueue"
-	sharedsentry "github.com/nanostack-dev/shared/fxmodules/sentry"
-	sharedhealth "github.com/nanostack-dev/shared/toolkit/health"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"

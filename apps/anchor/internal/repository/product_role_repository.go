@@ -7,9 +7,8 @@ import (
 
 	"anchor/internal/domain/product/role"
 
-	"github.com/nanostack-dev/shared/toolkit/search"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -28,30 +27,30 @@ type productRoleWithPermission struct {
 
 type ProductRoleRepository interface {
 	FindByProductIDAndRoleID(
-		ctx context.Context, productID, id string, options *toolkit.DBOptions,
+		ctx context.Context, productID, id string, options *jetx.DBOptions,
 	) (
 		*role.ProductRole, error,
 	)
 	Create(
 		ctx context.Context, productRole role.ProductRole,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (
 		role.ProductRole, error,
 	)
 	Update(
 		ctx context.Context, entity role.ProductRole,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (role.ProductRole, error)
 	DeleteByProductIDAndRoleID(
-		ctx context.Context, productID string, id string, options *toolkit.DBOptions,
+		ctx context.Context, productID string, id string, options *jetx.DBOptions,
 	) error
 	CountMembershipAssignments(
-		ctx context.Context, roleID string, options *toolkit.DBOptions,
+		ctx context.Context, roleID string, options *jetx.DBOptions,
 	) (int, error)
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[role.ProductRole], error)
 }
 
@@ -80,7 +79,7 @@ func productRolesUpdatableColumns() postgres.ColumnList {
 }
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
-	ctx context.Context, productID, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID, id string, options *jetx.DBOptions,
 ) (*role.ProductRole, error) {
 	stmt := postgres.SELECT(
 		table.ProductRoles.AllColumns,
@@ -97,7 +96,7 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 		),
 	)
 
-	return toolkit.QueryOptionalMap(
+	return jetx.QueryOptionalMap(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		}, options,
@@ -105,12 +104,10 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 }
 
 func (r *productRoleRepositoryImpl) Create(
-	ctx context.Context, productRole role.ProductRole, options *toolkit.DBOptions,
+	ctx context.Context, productRole role.ProductRole, options *jetx.DBOptions,
 ) (role.ProductRole, error) {
-	return toolkit.WithTxReturn(
-		toolkit.GetExecutor(
-			r.db, options,
-		), func(tx *sql.Tx) (role.ProductRole, error) {
+	return jetx.WithTxReturn(
+		jetx.Executor(ctx, r.db, options), func(tx *sql.Tx) (role.ProductRole, error) {
 			entity := r.productRoleMapper.ToEntity(productRole)
 			stmt := table.ProductRoles.INSERT(
 				productRolesUpdatableColumns(),
@@ -127,7 +124,7 @@ func (r *productRoleRepositoryImpl) Create(
 						table.ProductRoleResourcePermissions.CreatedAt,
 					),
 				).MODELS(permissions)
-				if err = toolkit.Exec(ctx, tx, permStmt, options); err != nil {
+				if err = jetx.Exec(ctx, tx, permStmt, &jetx.DBOptions{Tx: tx}); err != nil {
 					r.logger.Error().Err(err).
 						Str("product_role_id", productRole.ID).
 						Str("product_id", productRole.ProductID).
@@ -143,10 +140,10 @@ func (r *productRoleRepositoryImpl) Create(
 func (r *productRoleRepositoryImpl) Update(
 	ctx context.Context,
 	domainRole role.ProductRole,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (role.ProductRole, error) {
-	return toolkit.WithTxReturn(
-		toolkit.GetExecutor(r.db, options), func(tx *sql.Tx) (role.ProductRole, error) {
+	return jetx.WithTxReturn(
+		jetx.Executor(ctx, r.db, options), func(tx *sql.Tx) (role.ProductRole, error) {
 			domainRole.UpdatedAt = time.Now()
 			entityToUpdate := r.productRoleMapper.ToEntity(domainRole)
 			updateStmt := table.ProductRoles.UPDATE(
@@ -192,7 +189,7 @@ func (r *productRoleRepositoryImpl) Update(
 						AND(table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(domainRole.ProductID))).
 						AND(
 							table.ProductRoleResourcePermissions.PermissionName.IN(
-								toolkit.ToStringExpressionSliceMap(
+								jetx.ToStringExpressionSliceMap(
 									toRemove,
 									func(perm model.ProductRoleResourcePermissions) string {
 										return perm.PermissionName
@@ -201,7 +198,7 @@ func (r *productRoleRepositoryImpl) Update(
 							),
 						),
 				)
-				if err = toolkit.Exec(ctx, tx, removeStmt, options); err != nil {
+				if err = jetx.Exec(ctx, tx, removeStmt, &jetx.DBOptions{Tx: tx}); err != nil {
 					return role.ProductRole{}, err
 				}
 			}
@@ -212,7 +209,7 @@ func (r *productRoleRepositoryImpl) Update(
 					table.ProductRoleResourcePermissions.ProductID,
 					table.ProductRoleResourcePermissions.PermissionName,
 				).MODELS(toAdd)
-				if err = toolkit.Exec(ctx, tx, addStmt, options); err != nil {
+				if err = jetx.Exec(ctx, tx, addStmt, &jetx.DBOptions{Tx: tx}); err != nil {
 					return role.ProductRole{}, err
 				}
 			}
@@ -222,19 +219,19 @@ func (r *productRoleRepositoryImpl) Update(
 }
 
 func (r *productRoleRepositoryImpl) DeleteByProductIDAndRoleID(
-	ctx context.Context, productID string, id string, options *toolkit.DBOptions,
+	ctx context.Context, productID string, id string, options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductRoles.DELETE().WHERE(
 		table.ProductRoles.ID.EQ(postgres.String(id)).
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
 	)
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *productRoleRepositoryImpl) CountMembershipAssignments(
-	ctx context.Context, roleID string, options *toolkit.DBOptions,
+	ctx context.Context, roleID string, options *jetx.DBOptions,
 ) (int, error) {
-	orgCount, err := toolkit.QueryCountWithBoolExpression(
+	orgCount, err := jetx.QueryCountWithBoolExpression(
 		ctx,
 		r.db,
 		table.OrganizationMemberships,
@@ -245,7 +242,7 @@ func (r *productRoleRepositoryImpl) CountMembershipAssignments(
 		return 0, err
 	}
 
-	workspaceCount, err := toolkit.QueryCountWithBoolExpression(
+	workspaceCount, err := jetx.QueryCountWithBoolExpression(
 		ctx,
 		r.db,
 		table.WorkspaceMemberships,
@@ -288,13 +285,13 @@ func (r *productRoleRepositoryImpl) diffRolePermissions(
 func (r *productRoleRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[role.ProductRole], error) {
 	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID))
 
 	if input.Filter != nil {
 		if len(input.Filter.ProductRoleIDs) > 0 {
-			expressions := toolkit.ToStringExpressions(input.Filter.ProductRoleIDs)
+			expressions := jetx.ToStringExpressions(input.Filter.ProductRoleIDs)
 			whereStmt = whereStmt.AND(table.ProductRoles.ID.IN(expressions...))
 		}
 		if len(input.Filter.Names) > 0 {
@@ -317,7 +314,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 			),
 	).WHERE(whereStmt)
 
-	resultCount, err := toolkit.QueryCountWithBoolExpression(
+	resultCount, err := jetx.QueryCountWithBoolExpression(
 		ctx, r.db, table.ProductRoles, whereStmt, options,
 	)
 	if err != nil {
@@ -334,17 +331,17 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 				case role.SortFieldProductRoleCreatedAt:
 					fieldToOrderBy := table.ProductRoles.CreatedAt
 					query = query.ORDER_BY(
-						search.OrderBy(fieldToOrderBy, sort.Direction),
+						jetx.OrderBy(fieldToOrderBy, sort.Direction),
 					)
 				case role.SortFieldProductRoleUpdatedAt:
 					fieldToOrderBy := table.ProductRoles.UpdatedAt
 					query = query.ORDER_BY(
-						search.OrderBy(fieldToOrderBy, sort.Direction),
+						jetx.OrderBy(fieldToOrderBy, sort.Direction),
 					)
 				case role.SortFieldProductRoleName:
 					fieldToOrderBy := table.ProductRoles.Name
 					query = query.ORDER_BY(
-						search.OrderBy(fieldToOrderBy, sort.Direction),
+						jetx.OrderBy(fieldToOrderBy, sort.Direction),
 					)
 				}
 			}
@@ -353,7 +350,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	slice, err := toolkit.QueryMapSlice(
+	slice, err := jetx.QueryMapSlice(
 		ctx, r.db, query, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		}, options,

@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
@@ -55,7 +55,7 @@ func (s *invitationService) CreateInvitation(
 ) (invitation.PlatformInvitation, error) {
 	logger := s.logger.With().Str("operation", "CreateInvitation").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
 	optPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
@@ -68,14 +68,14 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to find user by email")
-		return invitation.PlatformInvitation{}, toolkit.ErrUnexpected
+		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
 	}
 	if optPlatformUser != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("user already exists")
-		return invitation.PlatformInvitation{}, toolkit.NewNanostackErrorsWithStatus(
+		return invitation.PlatformInvitation{}, apierror.NewWithStatus(
 			"INVITATION_USER_ALREADY_EXISTS",
 			"This email address is already associated with an existing user account. "+
 				"Please check if they are already a member, or try inviting a different email.",
@@ -91,14 +91,14 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to find invitation by email")
-		return invitation.PlatformInvitation{}, toolkit.ErrUnexpected
+		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
 	}
 	if optInvitation != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("invitation already exists")
-		return invitation.PlatformInvitation{}, toolkit.NewNanostackErrorsWithStatus(
+		return invitation.PlatformInvitation{}, apierror.NewWithStatus(
 			"INVITATION_ALREADY_EXISTS",
 			"This email address is already associated with an existing invitation. "+
 				"Please check if they are already a member, or try inviting a different email.",
@@ -111,7 +111,7 @@ func (s *invitationService) CreateInvitation(
 	code, err := generateSecureCode(invitationCodeLength)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate secure code")
-		return invitation.PlatformInvitation{}, toolkit.ErrUnexpected
+		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
 	}
 	inv := invitation.PlatformInvitation{
 		Email:            input.Email,
@@ -127,7 +127,7 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to create invitation")
-		return invitation.PlatformInvitation{}, toolkit.ErrUnexpected
+		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
 	}
 
 	logger.Info().
@@ -144,7 +144,7 @@ func (s *invitationService) DeleteInvitation(
 ) error {
 	logger := s.logger.With().Str("operation", "DeleteInvitation").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return err
 	}
 	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID, nil)
@@ -170,7 +170,7 @@ func (s *invitationService) SearchInvitation(
 ) (search.Result[invitation.PlatformInvitation], error) {
 	logger := s.logger.With().Str("operation", "SearchInvitation").Logger()
 
-	if err := toolkit.ValidateStruct(input); err != nil {
+	if err := validateStruct(input); err != nil {
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request, nil)

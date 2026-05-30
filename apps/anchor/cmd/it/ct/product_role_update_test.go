@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleName", func(t *testing.T) {
-			originalName := "OriginalRole_" + toolkit.NewID("test")
+			originalName := "OriginalRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: originalName,
@@ -35,7 +34,7 @@ func TestProductRole_Update(t *testing.T) {
 
 			roleID := createResp.JSON201.Id
 
-			updatedName := "UpdatedRole_" + toolkit.NewID("test")
+			updatedName := "UpdatedRole_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
 					Name: &updatedName,
@@ -53,7 +52,7 @@ func TestProductRole_Update(t *testing.T) {
 	t.Run(
 		"UpdateProductRoleDescription", func(t *testing.T) {
 			originalDesc := "Original description"
-			roleName := "TestRole_" + toolkit.NewID("test")
+			roleName := "TestRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name:        roleName,
@@ -86,7 +85,7 @@ func TestProductRole_Update(t *testing.T) {
 		"UpdateProductRoleNameAndDescription", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -97,7 +96,7 @@ func TestProductRole_Update(t *testing.T) {
 
 			roleID := createResp.JSON201.Id
 
-			updatedName := "UpdatedRole_" + toolkit.NewID("test")
+			updatedName := "UpdatedRole_" + ids.MustNew("test")
 			updatedDesc := "Updated description"
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
@@ -117,7 +116,7 @@ func TestProductRole_Update(t *testing.T) {
 		"UpdateProductRoleWithEmptyName", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -145,7 +144,7 @@ func TestProductRole_Update(t *testing.T) {
 		"UpdateProductRoleWithInvalidNameLength", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -173,7 +172,7 @@ func TestProductRole_Update(t *testing.T) {
 		"UpdateProductRoleWithInvalidDescriptionLength", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -204,8 +203,8 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithDuplicateName", func(t *testing.T) {
-			role1Name := "Role1_" + toolkit.NewID("test")
-			role2Name := "Role2_" + toolkit.NewID("test")
+			role1Name := "Role1_" + ids.MustNew("test")
+			role2Name := "Role2_" + ids.MustNew("test")
 
 			createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -247,8 +246,8 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateNonexistentProductRole", func(t *testing.T) {
-			nonExistentRoleID := toolkit.NewID("productroleservice")
-			updatedName := "UpdatedName_" + toolkit.NewID("test")
+			nonExistentRoleID := ids.MustNew("productroleservice")
+			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID, ct.UpdateProductRoleJSONRequestBody{
 					Name: &updatedName,
@@ -262,7 +261,7 @@ func TestProductRole_Update(t *testing.T) {
 	t.Run(
 		"UpdateProductRoleWithInvalidID", func(t *testing.T) {
 			invalidRoleID := "invalid-role-id"
-			updatedName := "UpdatedName_" + toolkit.NewID("test")
+			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, invalidRoleID, ct.UpdateProductRoleJSONRequestBody{
 					Name: &updatedName,
@@ -277,7 +276,7 @@ func TestProductRole_Update(t *testing.T) {
 		"UpdateProductRoleForNonexistentProduct", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -286,8 +285,8 @@ func TestProductRole_Update(t *testing.T) {
 				createResp.StatusCode(),
 			)
 
-			nonExistentProductID := toolkit.NewID("prd")
-			updatedName := "UpdatedName_" + toolkit.NewID("test")
+			nonExistentProductID := ids.MustNew("prd")
+			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, nonExistentProductID, createResp.JSON201.Id,
 				ct.UpdateProductRoleJSONRequestBody{

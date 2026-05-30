@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/product/apikey"
 )
@@ -21,7 +21,7 @@ func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKe
 		Status:          productAPIKey.Status,
 		CreatedAt:       productAPIKey.CreatedAt,
 		UpdatedAt:       productAPIKey.UpdatedAt,
-		Permissions: toolkit.TransformSlice(
+		Permissions: slicex.Map(
 			productAPIKey.Permissions,
 			func(perm apikey.ProductAPIKeyPermission) ProductAPIKeyPermissionResponse {
 				return ProductAPIKeyPermissionResponse{
@@ -91,7 +91,7 @@ func (s *AnchorAPI) SearchProductAPIKeys(
 
 	response := ProductAPIKeyListResponse{
 		Count: result.Count,
-		Items: toolkit.TransformSlice(result.Items, mapProductAPIKeyToResponse),
+		Items: slicex.Map(result.Items, mapProductAPIKeyToResponse),
 		Total: result.Total,
 	}
 
@@ -164,7 +164,7 @@ func mapToSearchProductAPIKeyInput(
 			Names:            searchReqBody.Filter.Names,
 		}
 		if searchReqBody.Filter.Status != nil {
-			filter.Status = toolkit.TransformSlice(
+			filter.Status = slicex.Map(
 				*searchReqBody.Filter.Status, func(s ProductAPIKeyStatus) string {
 					return string(s)
 				},

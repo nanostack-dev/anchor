@@ -281,14 +281,14 @@ components:
           description: Number of items to skip.
       x-go-type: search.Pagination
       x-go-type-import:
-        path: github.com/nanostack-dev/shared/toolkit/search
+        path: github.com/nanostack-dev/nanostack-framework/pkg/search
     SortDirection:
       type: string
       enum: [ASC, DESC]
       default: DESC
       x-go-type: search.SortDirection
       x-go-type-import:
-        path: github.com/nanostack-dev/shared/toolkit/search
+        path: github.com/nanostack-dev/nanostack-framework/pkg/search
     Metadata:
       type: object
       additionalProperties: true

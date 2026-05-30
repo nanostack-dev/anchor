@@ -16,25 +16,25 @@ variable "api_only_permissions" {
 }
 
 variable "sync_runtime_fields" {
-  description = "Whether to sync NANOSTACK_* runtime fields to 1Password"
+  description = "Whether to sync ANCHOR_* values into the target 1Password runtime note"
   type        = bool
   default     = false
 }
 
 variable "op_vault_id" {
-  description = "1Password vault ID where runtime fields are stored"
+  description = "1Password vault ID where the target runtime item is stored"
   type        = string
   default     = "d6744hn5rykbbbynw6zgm2ttmy"
 }
 
 variable "op_item_ref" {
-  description = "1Password item reference containing runtime fields"
+  description = "1Password item reference containing the runtime note to update"
   type        = string
-  default     = "anchor-infra-env"
+  default     = "echopoint-prod-runtime"
 }
 
 variable "product_api_key_for_sync" {
-  description = "Product API key value written to NANOSTACK_PRODUCT_API_KEY when sync_runtime_fields is enabled"
+  description = "Product API key value written into ANCHOR_PRODUCT_API_KEY inside the runtime note when sync_runtime_fields is enabled"
   type        = string
   default     = ""
   sensitive   = true

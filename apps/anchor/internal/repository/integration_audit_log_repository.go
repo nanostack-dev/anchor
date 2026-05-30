@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -19,14 +19,14 @@ var _ IntegrationAuditLogRepository = (*integrationAuditLogRepositoryImpl)(nil)
 
 type IntegrationAuditLogRepository interface {
 	Create(
-		ctx context.Context, log integration.AuditLog, options *toolkit.DBOptions,
+		ctx context.Context, log integration.AuditLog, options *jetx.DBOptions,
 	) (integration.AuditLog, error)
 	// ListByInstanceInternal lists audit logs by instance ID without tenant
 	// scoping. Reserved for trusted system-internal paths where no
 	// authenticated tenant context exists. Must NOT be called from
 	// tenant-facing API handlers. Use ListByInstanceScoped for API paths.
 	ListByInstanceInternal(
-		ctx context.Context, instanceID string, limit int64, options *toolkit.DBOptions,
+		ctx context.Context, instanceID string, limit int64, options *jetx.DBOptions,
 	) ([]integration.AuditLog, error)
 	ListByInstanceScoped(
 		ctx context.Context,
@@ -35,7 +35,7 @@ type IntegrationAuditLogRepository interface {
 		instanceID string,
 		limit int64,
 		offset int64,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) ([]integration.AuditLog, error)
 }
 
@@ -56,7 +56,7 @@ func NewIntegrationAuditLogRepository(
 }
 
 func (r *integrationAuditLogRepositoryImpl) Create(
-	ctx context.Context, log integration.AuditLog, options *toolkit.DBOptions,
+	ctx context.Context, log integration.AuditLog, options *jetx.DBOptions,
 ) (integration.AuditLog, error) {
 	entity := r.mapper.ToEntity(log)
 
@@ -65,13 +65,13 @@ func (r *integrationAuditLogRepositoryImpl) Create(
 		table.IntegrationAuditLogs.AllColumns.Except(table.IntegrationAuditLogs.CreatedAt),
 	).MODEL(entity).RETURNING(table.IntegrationAuditLogs.AllColumns)
 
-	return toolkit.QueryMap[model.IntegrationAuditLogs, integration.AuditLog](
+	return jetx.QueryMap[model.IntegrationAuditLogs, integration.AuditLog](
 		ctx, r.db, stmt, r.mapper.ToDomain, options,
 	)
 }
 
 func (r *integrationAuditLogRepositoryImpl) ListByInstanceInternal(
-	ctx context.Context, instanceID string, limit int64, options *toolkit.DBOptions,
+	ctx context.Context, instanceID string, limit int64, options *jetx.DBOptions,
 ) ([]integration.AuditLog, error) {
 	stmt := table.IntegrationAuditLogs.SELECT(
 		table.IntegrationAuditLogs.AllColumns,
@@ -83,7 +83,7 @@ func (r *integrationAuditLogRepositoryImpl) ListByInstanceInternal(
 		table.IntegrationAuditLogs.CreatedAt.DESC(),
 	).LIMIT(limit)
 
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }
 
 func (r *integrationAuditLogRepositoryImpl) ListByInstanceScoped(
@@ -93,7 +93,7 @@ func (r *integrationAuditLogRepositoryImpl) ListByInstanceScoped(
 	instanceID string,
 	limit int64,
 	offset int64,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]integration.AuditLog, error) {
 	auditLogsTable := table.IntegrationAuditLogs
 	instancesTable := table.IntegrationInstances
@@ -112,5 +112,5 @@ func (r *integrationAuditLogRepositoryImpl) ListByInstanceScoped(
 		auditLogsTable.CreatedAt.DESC(),
 	).LIMIT(limit).OFFSET(offset)
 
-	return toolkit.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
+	return jetx.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain, options)
 }

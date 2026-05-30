@@ -7,13 +7,12 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-
-	"github.com/nanostack-dev/shared/toolkit"
-
-	itshared "anchor/cmd/it/shared"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itshared "anchor/cmd/it/shared"
 )
 
 func TestProductRole_Create(t *testing.T) {
@@ -24,7 +23,7 @@ func TestProductRole_Create(t *testing.T) {
 
 	t.Run(
 		"SuccessfulCreateProductRole", func(t *testing.T) {
-			roleName := "Editor_" + toolkit.NewID("test")
+			roleName := "Editor_" + ids.MustNew("test")
 			roleDesc := "Can edit content"
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -86,7 +85,7 @@ func TestProductRole_Create(t *testing.T) {
 			longDesc := strings.Repeat("a", 501)
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "ValidRole_" + toolkit.NewID("test"),
+					Name:        "ValidRole_" + ids.MustNew("test"),
 					Description: &longDesc,
 				},
 			)
@@ -103,7 +102,7 @@ func TestProductRole_Create(t *testing.T) {
 
 	t.Run(
 		"CreateProductRoleWithDuplicateName", func(t *testing.T) {
-			roleName := "DuplicateRole_" + toolkit.NewID("test")
+			roleName := "DuplicateRole_" + ids.MustNew("test")
 
 			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -140,7 +139,7 @@ func TestProductRole_Create(t *testing.T) {
 			permissions := []string{perm1, perm2}
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + toolkit.NewID("test"),
+					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
 					Permissions: permissions,
 				},
 			)
@@ -159,7 +158,7 @@ func TestProductRole_Create(t *testing.T) {
 	t.Run("CreateProductRoleWithAPIKeyScope", func(t *testing.T) {
 		apiKeyClient, _ := testCtx.CreateAPIKeyClientWithScopes([]string{"product_role:create"})
 
-		roleName := "APIKeyRole_" + toolkit.NewID("test")
+		roleName := "APIKeyRole_" + ids.MustNew("test")
 		resp, err := apiKeyClient.CreateProductRoleWithResponse(
 			ctx,
 			productID,
@@ -176,7 +175,7 @@ func TestProductRole_Create(t *testing.T) {
 			permissions := []string{itshared.Faker.Lorem().Word() + ":" + itshared.Faker.Lorem().Word()}
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithBadPermissions_" + toolkit.NewID("test"),
+					Name:        "RoleWithBadPermissions_" + ids.MustNew("test"),
 					Permissions: permissions,
 				},
 			)
@@ -193,10 +192,10 @@ func TestProductRole_Create(t *testing.T) {
 
 	t.Run(
 		"CreateProductRoleForNonexistentProduct", func(t *testing.T) {
-			nonExistentProductID := toolkit.NewID("prd")
+			nonExistentProductID := ids.MustNew("prd")
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, nonExistentProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + toolkit.NewID("test"),
+					Name: "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

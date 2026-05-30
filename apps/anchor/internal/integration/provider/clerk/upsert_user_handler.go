@@ -9,7 +9,7 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/integration/provider"
 
-	"github.com/nanostack-dev/shared/toolkit"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -22,7 +22,7 @@ func (p *Provider) executeUpsertUser(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	data any,
-	txOpts *toolkit.DBOptions,
+	txOpts *jetx.DBOptions,
 ) error {
 	upsertData, ok := data.(UpsertUserData)
 	if !ok {

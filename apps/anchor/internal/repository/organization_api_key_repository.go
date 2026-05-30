@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/shared/toolkit"
-	"github.com/nanostack-dev/shared/toolkit/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -21,48 +22,48 @@ type OrganizationAPIKeyRepository interface {
 	Create(
 		ctx context.Context,
 		apiKey orgapikey.OrganizationAPIKey,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (orgapikey.OrganizationAPIKey, error)
 	Update(
 		ctx context.Context,
 		apiKey orgapikey.OrganizationAPIKey,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (orgapikey.OrganizationAPIKey, error)
 	GetByID(
 		ctx context.Context,
 		organizationID, id string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	GetByOrganizationIDAndName(
 		ctx context.Context,
 		organizationID, name string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	GetByOrganizationIDAndHashedValue(
 		ctx context.Context,
 		organizationID, hashedValue string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	SearchByOrganizationID(
 		ctx context.Context,
 		input orgapikey.SearchOrganizationAPIKeysInput,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (search.Result[orgapikey.OrganizationAPIKey], error)
 	Delete(
 		ctx context.Context,
 		organizationID, id string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 	UpdateLastUsedAt(
 		ctx context.Context,
 		organizationID, id string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 	UpdateStatus(
 		ctx context.Context,
 		organizationID, id string,
 		status orgapikey.Status,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) error
 	// GetByIDInternal fetches an API key by ID without tenant scoping.
 	// Reserved for async queue workers and other trusted system-internal paths
@@ -71,7 +72,7 @@ type OrganizationAPIKeyRepository interface {
 	GetByIDInternal(
 		ctx context.Context,
 		id string,
-		options *toolkit.DBOptions,
+		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 }
 
@@ -117,10 +118,10 @@ func NewOrganizationAPIKeyRepository(
 func (r *organizationAPIKeyRepository) Create(
 	ctx context.Context,
 	apiKey orgapikey.OrganizationAPIKey,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (orgapikey.OrganizationAPIKey, error) {
-	return toolkit.WithTxReturn(
-		toolkit.GetExecutor(r.db, options),
+	return jetx.WithTxReturn(
+		jetx.Executor(ctx, r.db, options),
 		func(tx *sql.Tx) (orgapikey.OrganizationAPIKey, error) {
 			entity := r.mapper.ToEntity(apiKey)
 			stmt := table.OrganizationAPIKeys.INSERT(
@@ -149,7 +150,7 @@ func (r *organizationAPIKeyRepository) Create(
 					),
 				).MODELS(permissions)
 
-				err = toolkit.Exec(ctx, tx, permStmt, options)
+				err = jetx.Exec(ctx, tx, permStmt, nil)
 				if err != nil {
 					r.logger.Error().Err(err).
 						Str("api_key_id", apiKey.ID).
@@ -167,7 +168,7 @@ func (r *organizationAPIKeyRepository) Create(
 func (r *organizationAPIKeyRepository) GetByID(
 	ctx context.Context,
 	organizationID, id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -183,7 +184,7 @@ func (r *organizationAPIKeyRepository) GetByID(
 		),
 	)
 
-	return toolkit.QueryOptionalMap[
+	return jetx.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -200,7 +201,7 @@ func (r *organizationAPIKeyRepository) GetByID(
 func (r *organizationAPIKeyRepository) GetByIDInternal(
 	ctx context.Context,
 	id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -214,7 +215,7 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)),
 	)
 
-	return toolkit.QueryOptionalMap[
+	return jetx.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -231,7 +232,7 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 	ctx context.Context,
 	organizationID, name string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -247,7 +248,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 		),
 	)
 
-	return toolkit.QueryOptionalMap[
+	return jetx.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -264,7 +265,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 	ctx context.Context,
 	organizationID, hashedValue string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -280,7 +281,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		),
 	)
 
-	return toolkit.QueryOptionalMap[
+	return jetx.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -298,7 +299,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 func (r *organizationAPIKeyRepository) Update(
 	ctx context.Context,
 	apiKey orgapikey.OrganizationAPIKey,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (orgapikey.OrganizationAPIKey, error) {
 	stmt := table.OrganizationAPIKeys.UPDATE(
 		organizationAPIKeysUpdatableColumns(),
@@ -312,7 +313,7 @@ func (r *organizationAPIKeyRepository) Update(
 		table.OrganizationAPIKeys.AllColumns,
 	)
 
-	updated, err := toolkit.Query[model.OrganizationAPIKeys](ctx, r.db, stmt, options)
+	updated, err := jetx.Query[model.OrganizationAPIKeys](ctx, r.db, stmt, options)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
@@ -328,7 +329,7 @@ func (r *organizationAPIKeyRepository) Update(
 func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	ctx context.Context,
 	input orgapikey.SearchOrganizationAPIKeysInput,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) (search.Result[orgapikey.OrganizationAPIKey], error) {
 	whereStmt := table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(input.OrganizationID))
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
@@ -338,7 +339,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		table.OrganizationAPIKeys.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := toolkit.QueryCountWithBoolExpression(
+	resultCount, err := jetx.QueryCountWithBoolExpression(
 		ctx,
 		r.db,
 		table.OrganizationAPIKeys,
@@ -356,24 +357,24 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		for _, sort := range input.Request.Sort {
 			switch sort.Field {
 			case orgapikey.SortFieldOrganizationAPIKeyID:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.ID, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.ID, sort.Direction))
 			case orgapikey.SortFieldOrganizationAPIKeyCreatedAt:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.CreatedAt, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.CreatedAt, sort.Direction))
 			case orgapikey.SortFieldOrganizationAPIKeyUpdatedAt:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.UpdatedAt, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.UpdatedAt, sort.Direction))
 			case orgapikey.SortFieldOrganizationAPIKeyName:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.Name, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.Name, sort.Direction))
 			case orgapikey.SortFieldOrganizationAPIKeyStatus:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.Status, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.Status, sort.Direction))
 			case orgapikey.SortFieldOrganizationAPIKeyLastUsed:
-				query = query.ORDER_BY(search.OrderBy(table.OrganizationAPIKeys.LastUsedAt, sort.Direction))
+				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.LastUsedAt, sort.Direction))
 			}
 		}
 	}
 
 	query = query.LIMIT(int64(input.Request.Pagination.Limit)).OFFSET(int64(input.Request.Pagination.Offset))
 
-	itemEntities, err := toolkit.QueryMapSlice(
+	itemEntities, err := jetx.QueryMapSlice(
 		ctx,
 		r.db,
 		query,
@@ -397,7 +398,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		}, nil
 	}
 
-	apiKeyIDs := toolkit.TransformSlice(itemEntities, func(entity model.OrganizationAPIKeys) string {
+	apiKeyIDs := slicex.Map(itemEntities, func(entity model.OrganizationAPIKeys) string {
 		return entity.ID
 	})
 
@@ -425,7 +426,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		)
 	}
 
-	items := toolkit.TransformSlice(itemEntities, func(entity model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
+	items := slicex.Map(itemEntities, func(entity model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
 		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])
 	})
 
@@ -439,7 +440,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 func (r *organizationAPIKeyRepository) Delete(
 	ctx context.Context,
 	organizationID, id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	stmt := table.OrganizationAPIKeys.DELETE().WHERE(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
@@ -447,13 +448,13 @@ func (r *organizationAPIKeyRepository) Delete(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 	ctx context.Context,
 	organizationID, id string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 
@@ -469,14 +470,14 @@ func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *organizationAPIKeyRepository) UpdateStatus(
 	ctx context.Context,
 	organizationID, id string,
 	status orgapikey.Status,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 
@@ -494,13 +495,13 @@ func (r *organizationAPIKeyRepository) UpdateStatus(
 		),
 	)
 
-	return toolkit.Exec(ctx, r.db, stmt, options)
+	return jetx.Exec(ctx, r.db, stmt, options)
 }
 
 func (r *organizationAPIKeyRepository) getPermissionEntities(
 	ctx context.Context,
 	organizationID, apiKeyID string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]model.OrganizationAPIKeyPermissions, error) {
 	stmt := table.OrganizationAPIKeyPermissions.SELECT(
 		table.OrganizationAPIKeyPermissions.AllColumns,
@@ -510,7 +511,7 @@ func (r *organizationAPIKeyRepository) getPermissionEntities(
 		),
 	)
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx,
 		r.db,
 		stmt,
@@ -525,13 +526,13 @@ func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 	ctx context.Context,
 	organizationID string,
 	apiKeyIDs []string,
-	options *toolkit.DBOptions,
+	options *jetx.DBOptions,
 ) ([]model.OrganizationAPIKeyPermissions, error) {
 	if len(apiKeyIDs) == 0 {
 		return []model.OrganizationAPIKeyPermissions{}, nil
 	}
 
-	apiKeyIDExpressions := toolkit.ToStringExpressions(apiKeyIDs)
+	apiKeyIDExpressions := jetx.ToStringExpressions(apiKeyIDs)
 	stmt := table.OrganizationAPIKeyPermissions.SELECT(
 		table.OrganizationAPIKeyPermissions.AllColumns,
 	).WHERE(
@@ -540,7 +541,7 @@ func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 		),
 	)
 
-	return toolkit.QueryMapSlice(
+	return jetx.QueryMapSlice(
 		ctx,
 		r.db,
 		stmt,
@@ -561,17 +562,17 @@ func (r *organizationAPIKeyRepository) applyFilters(
 	}
 
 	if len(filter.OrganizationAPIKeyIDs) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.OrganizationAPIKeyIDs)
+		expressions := jetx.ToStringExpressions(filter.OrganizationAPIKeyIDs)
 		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.ID.IN(expressions...))
 	}
 
 	if len(filter.Names) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.Names)
+		expressions := jetx.ToStringExpressions(filter.Names)
 		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.Name.IN(expressions...))
 	}
 
 	if len(filter.Status) > 0 {
-		expressions := toolkit.ToStringExpressions(filter.Status)
+		expressions := jetx.ToStringExpressions(filter.Status)
 		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.Status.IN(expressions...))
 	}
 
