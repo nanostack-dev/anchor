@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -27,20 +29,18 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 
 type OrganizationRepository interface {
 	FindByID(
-		ctx context.Context, productID string, id string, options *jetx.DBOptions,
+		ctx context.Context, productID string, id string,
 	) (*organization.Organization, error)
-	Create(ctx context.Context, org organization.Organization, options *jetx.DBOptions) (
+	Create(ctx context.Context, org organization.Organization) (
 		organization.Organization, error,
 	)
 	Update(
 		ctx context.Context, productID string, organization organization.Organization,
-		options *jetx.DBOptions,
 	) (organization.Organization, error)
-	DeleteByID(ctx context.Context, productID string, id string, options *jetx.DBOptions) error
+	DeleteByID(ctx context.Context, productID string, id string) error
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-		options *jetx.DBOptions,
 	) (search.Result[organization.Organization], error)
 }
 
@@ -65,7 +65,7 @@ func NewOrganizationRepository(
 }
 
 func (r *organizationRepositoryImpl) FindByID(
-	ctx context.Context, productID string, id string, options *jetx.DBOptions,
+	ctx context.Context, productID string, id string,
 ) (*organization.Organization, error) {
 	stmt := table.Organizations.SELECT(
 		table.Organizations.AllColumns,
@@ -77,14 +77,14 @@ func (r *organizationRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Organizations, organization.Organization](
+	return transactor.QueryOptionalMap[model.Organizations, organization.Organization](
 		ctx, r.db, stmt,
-		r.organizationMapper.ToDomain, options,
+		r.organizationMapper.ToDomain,
 	)
 }
 
 func (r *organizationRepositoryImpl) Create(
-	ctx context.Context, org organization.Organization, options *jetx.DBOptions,
+	ctx context.Context, org organization.Organization,
 ) (organization.Organization, error) {
 	entity := r.organizationMapper.ToEntity(org)
 
@@ -92,14 +92,13 @@ func (r *organizationRepositoryImpl) Create(
 		organizationsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Organizations.AllColumns)
 
-	return jetx.QueryMap[model.Organizations, organization.Organization](
-		ctx, r.db, stmt, r.organizationMapper.ToDomain, options,
+	return transactor.QueryMap[model.Organizations, organization.Organization](
+		ctx, r.db, stmt, r.organizationMapper.ToDomain,
 	)
 }
 
 func (r *organizationRepositoryImpl) Update(
 	ctx context.Context, productID string, currentOrg organization.Organization,
-	options *jetx.DBOptions,
 ) (organization.Organization, error) {
 	currentOrg.UpdatedAt = time.Now()
 	entityToUpdate := r.organizationMapper.ToEntity(currentOrg)
@@ -117,13 +116,13 @@ func (r *organizationRepositoryImpl) Update(
 		),
 	).RETURNING(table.Organizations.AllColumns)
 
-	return jetx.QueryMap[model.Organizations, organization.Organization](
-		ctx, r.db, updateStmt, r.organizationMapper.ToDomain, options,
+	return transactor.QueryMap[model.Organizations, organization.Organization](
+		ctx, r.db, updateStmt, r.organizationMapper.ToDomain,
 	)
 }
 
 func (r *organizationRepositoryImpl) DeleteByID(
-	ctx context.Context, productID string, id string, options *jetx.DBOptions,
+	ctx context.Context, productID string, id string,
 ) error {
 	stmt := table.Organizations.DELETE().WHERE(
 		table.Organizations.ID.EQ(postgres.String(id)).AND(
@@ -131,13 +130,12 @@ func (r *organizationRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *organizationRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-	options *jetx.DBOptions,
 ) (search.Result[organization.Organization], error) {
 	whereStmt := table.Organizations.ProductID.EQ(postgres.String(productID))
 
@@ -173,8 +171,10 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		table.Organizations.AllColumns,
 	).WHERE(whereStmt)
 
-	total, err := jetx.QueryCountWithBoolExpression(
-		ctx, r.db, table.Organizations, whereStmt, options,
+	total, err := transactor.QueryCount(
+		ctx,
+		r.db,
+		table.Organizations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
@@ -203,7 +203,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	entities, err := jetx.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain, options)
+	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain)
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -27,29 +29,27 @@ func productsUpdatableColumns() postgres.ColumnList {
 
 type ProductRepository interface {
 	FindByID(
-		ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, id string,
 	) (*product.Product, error)
 	// FindByIDInternal returns a product by ID without tenant scoping.
 	// Allowed only for trusted system-internal paths such as auth middleware
 	// resolving tenant context for authenticated product API keys.
-	FindByIDInternal(ctx context.Context, id string, options *jetx.DBOptions) (*product.Product, error)
-	Create(ctx context.Context, prod product.Product, options *jetx.DBOptions) (
+	FindByIDInternal(ctx context.Context, id string) (*product.Product, error)
+	Create(ctx context.Context, prod product.Product) (
 		product.Product, error,
 	)
 	Update(
 		ctx context.Context, tenantID string, product product.Product,
-		options *jetx.DBOptions,
 	) (product.Product, error)
-	DeleteByID(ctx context.Context, tenantID string, id string, options *jetx.DBOptions) error
+	DeleteByID(ctx context.Context, tenantID string, id string) error
 	SearchByTenantID(
 		ctx context.Context, tenantID string,
 		input search.Request[product.SearchProductFilter, product.SortFieldProduct],
-		options *jetx.DBOptions,
 	) (search.Result[product.Product], error)
 
 	// FindAllInternal returns all products without tenant scoping.
 	// Allowed only for trusted system-internal paths such as startup reconciliation.
-	FindAllInternal(ctx context.Context, options *jetx.DBOptions) ([]product.Product, error)
+	FindAllInternal(ctx context.Context) ([]product.Product, error)
 }
 
 type productRepositoryImpl struct {
@@ -69,7 +69,7 @@ func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logge
 }
 
 func (r *productRepositoryImpl) FindByID(
-	ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, id string,
 ) (*product.Product, error) {
 	stmt := table.Products.SELECT(
 		table.Products.AllColumns,
@@ -81,14 +81,14 @@ func (r *productRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Products, product.Product](
+	return transactor.QueryOptionalMap[model.Products, product.Product](
 		ctx, r.db, stmt,
-		r.productMapper.ToDomain, options,
+		r.productMapper.ToDomain,
 	)
 }
 
 func (r *productRepositoryImpl) FindByIDInternal(
-	ctx context.Context, id string, options *jetx.DBOptions,
+	ctx context.Context, id string,
 ) (*product.Product, error) {
 	stmt := table.Products.SELECT(
 		table.Products.AllColumns,
@@ -98,14 +98,14 @@ func (r *productRepositoryImpl) FindByIDInternal(
 		table.Products.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Products, product.Product](
+	return transactor.QueryOptionalMap[model.Products, product.Product](
 		ctx, r.db, stmt,
-		r.productMapper.ToDomain, options,
+		r.productMapper.ToDomain,
 	)
 }
 
 func (r *productRepositoryImpl) Create(
-	ctx context.Context, prod product.Product, options *jetx.DBOptions,
+	ctx context.Context, prod product.Product,
 ) (product.Product, error) {
 	// Name generation should be handled elsewhere
 	entity := r.productMapper.ToEntity(prod)
@@ -114,14 +114,13 @@ func (r *productRepositoryImpl) Create(
 		productsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Products.AllColumns)
 
-	return jetx.QueryMap[model.Products, product.Product](
-		ctx, r.db, stmt, r.productMapper.ToDomain, options,
+	return transactor.QueryMap[model.Products, product.Product](
+		ctx, r.db, stmt, r.productMapper.ToDomain,
 	)
 }
 
 func (r *productRepositoryImpl) Update(
 	ctx context.Context, tenantID string, currentProd product.Product,
-	options *jetx.DBOptions,
 ) (product.Product, error) {
 	currentProd.UpdatedAt = time.Now()
 	entityToUpdate := r.productMapper.ToEntity(currentProd)
@@ -139,13 +138,13 @@ func (r *productRepositoryImpl) Update(
 		),
 	).RETURNING(table.Products.AllColumns)
 
-	return jetx.QueryMap[model.Products, product.Product](
-		ctx, r.db, updateStmt, r.productMapper.ToDomain, options,
+	return transactor.QueryMap[model.Products, product.Product](
+		ctx, r.db, updateStmt, r.productMapper.ToDomain,
 	)
 }
 
 func (r *productRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, id string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, id string,
 ) error {
 	stmt := table.Products.DELETE().WHERE(
 		table.Products.ID.EQ(postgres.String(id)).AND(
@@ -153,13 +152,12 @@ func (r *productRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *productRepositoryImpl) SearchByTenantID(
 	ctx context.Context, tenantID string,
 	input search.Request[product.SearchProductFilter, product.SortFieldProduct],
-	options *jetx.DBOptions,
 ) (search.Result[product.Product], error) {
 	whereStmt := table.Products.PlatformTenantID.EQ(postgres.String(tenantID))
 
@@ -186,8 +184,10 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		table.Products.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := jetx.QueryCountWithBoolExpression(
-		ctx, r.db, table.Products, whereStmt, options,
+	resultCount, err := transactor.QueryCount(
+		ctx,
+		r.db,
+		table.Products.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -221,7 +221,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 	}
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-	slice, err := jetx.QueryMapSlice(ctx, r.db, query, r.productMapper.ToDomain, options)
+	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.productMapper.ToDomain)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -237,11 +237,11 @@ func (r *productRepositoryImpl) SearchByTenantID(
 }
 
 func (r *productRepositoryImpl) FindAllInternal(
-	ctx context.Context, options *jetx.DBOptions,
+	ctx context.Context,
 ) ([]product.Product, error) {
 	stmt := table.Products.SELECT(table.Products.AllColumns).FROM(table.Products)
 
-	return jetx.QueryMapSlice[model.Products, product.Product](
-		ctx, r.db, stmt, r.productMapper.ToDomain, options,
+	return transactor.QueryMapSlice[model.Products, product.Product](
+		ctx, r.db, stmt, r.productMapper.ToDomain,
 	)
 }

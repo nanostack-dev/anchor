@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/auth"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/mapper"
@@ -25,11 +26,11 @@ func usersUpdatableColumns() postgres.ColumnList {
 var _ UserRepository = (*userRepositoryImpl)(nil)
 
 type UserRepository interface {
-	FindByEmail(ctx context.Context, email string, options *jetx.DBOptions) (*auth.User, error)
-	Count(ctx context.Context, options *jetx.DBOptions) (int64, error)
+	FindByEmail(ctx context.Context, email string) (*auth.User, error)
+	Count(ctx context.Context) (int64, error)
 	Create(
 		ctx context.Context,
-		user auth.User, options *jetx.DBOptions,
+		user auth.User,
 	) (auth.User, error)
 }
 
@@ -42,7 +43,7 @@ type userRepositoryImpl struct {
 }
 
 func (u *userRepositoryImpl) FindByEmail(
-	ctx context.Context, email string, options *jetx.DBOptions,
+	ctx context.Context, email string,
 ) (*auth.User, error) {
 	stmt := table.Users.SELECT(
 		table.Users.AllColumns,
@@ -52,28 +53,28 @@ func (u *userRepositoryImpl) FindByEmail(
 		table.Users.Email.EQ(postgres.String(email)),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Users, auth.User](
+	return transactor.QueryOptionalMap[model.Users, auth.User](
 		ctx, u.db, stmt,
 
-		u.userMapper.ToDomain, options,
+		u.userMapper.ToDomain,
 	)
 }
 
-func (u *userRepositoryImpl) Count(ctx context.Context, options *jetx.DBOptions) (
+func (u *userRepositoryImpl) Count(ctx context.Context) (
 	int64, error,
 ) {
-	return jetx.QueryCount(ctx, u.db, table.Users, options)
+	return transactor.QueryCount(ctx, u.db, table.Users.SELECT(postgres.COUNT(postgres.STAR)))
 }
 
 func (u *userRepositoryImpl) Create(
-	ctx context.Context, user auth.User, options *jetx.DBOptions,
+	ctx context.Context, user auth.User,
 ) (auth.User, error) {
 	stmt := table.Users.INSERT(
 		usersUpdatableColumns(),
 	).MODEL(u.userMapper.ToEntity(user)).RETURNING(table.Users.AllColumns)
 
-	return jetx.QueryMap(
-		ctx, u.db, stmt, u.userMapper.ToDomain, options,
+	return transactor.QueryMap(
+		ctx, u.db, stmt, u.userMapper.ToDomain,
 	)
 }
 

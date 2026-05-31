@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -29,14 +29,14 @@ type IntegrationEventRepository interface {
 	// system-internal paths (webhook ingress) where no authenticated tenant
 	// context exists. Must NOT be called from tenant-facing API handlers.
 	CreateInternal(
-		ctx context.Context, event integration.Event, options *jetx.DBOptions,
+		ctx context.Context, event integration.Event,
 	) (integration.Event, error)
 	// FindByIDInternal looks up an event by its globally-unique ID without
 	// tenant scoping. Reserved for trusted system-internal paths (e.g. async
 	// queue workers) where no authenticated tenant context exists. Must NOT
 	// be called from tenant-facing API handlers.
 	FindByIDInternal(
-		ctx context.Context, id string, options *jetx.DBOptions,
+		ctx context.Context, id string,
 	) (*integration.Event, error)
 	// FindByExternalEventIDInternal looks up an event by instance ID and
 	// external event ID without tenant scoping. Reserved for trusted
@@ -44,14 +44,14 @@ type IntegrationEventRepository interface {
 	// authenticated tenant context exists. Must NOT be called from
 	// tenant-facing API handlers.
 	FindByExternalEventIDInternal(
-		ctx context.Context, instanceID string, externalEventID string, options *jetx.DBOptions,
+		ctx context.Context, instanceID string, externalEventID string,
 	) (*integration.Event, error)
 	// UpdateStatusInternal updates event status by ID without tenant scoping.
 	// Reserved for trusted system-internal paths (async queue workers, webhook
 	// ingress) where no authenticated tenant context exists. Must NOT be
 	// called from tenant-facing API handlers.
 	UpdateStatusInternal(
-		ctx context.Context, id string, status integration.EventStatus, errMsg *string, options *jetx.DBOptions,
+		ctx context.Context, id string, status integration.EventStatus, errMsg *string,
 	) error
 }
 
@@ -72,7 +72,7 @@ func NewIntegrationEventRepository(
 }
 
 func (r *integrationEventRepositoryImpl) CreateInternal(
-	ctx context.Context, event integration.Event, options *jetx.DBOptions,
+	ctx context.Context, event integration.Event,
 ) (integration.Event, error) {
 	entity := r.mapper.ToEntity(event)
 
@@ -80,13 +80,13 @@ func (r *integrationEventRepositoryImpl) CreateInternal(
 		integrationEventsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.IntegrationEvents.AllColumns)
 
-	return jetx.QueryMap[model.IntegrationEvents, integration.Event](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryMap[model.IntegrationEvents, integration.Event](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *integrationEventRepositoryImpl) FindByIDInternal(
-	ctx context.Context, id string, options *jetx.DBOptions,
+	ctx context.Context, id string,
 ) (*integration.Event, error) {
 	stmt := table.IntegrationEvents.SELECT(
 		table.IntegrationEvents.AllColumns,
@@ -96,13 +96,13 @@ func (r *integrationEventRepositoryImpl) FindByIDInternal(
 		table.IntegrationEvents.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.IntegrationEvents, integration.Event](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryOptionalMap[model.IntegrationEvents, integration.Event](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
-	ctx context.Context, instanceID string, externalEventID string, options *jetx.DBOptions,
+	ctx context.Context, instanceID string, externalEventID string,
 ) (*integration.Event, error) {
 	stmt := table.IntegrationEvents.SELECT(
 		table.IntegrationEvents.AllColumns,
@@ -114,13 +114,13 @@ func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.IntegrationEvents, integration.Event](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryOptionalMap[model.IntegrationEvents, integration.Event](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *integrationEventRepositoryImpl) UpdateStatusInternal(
-	ctx context.Context, id string, status integration.EventStatus, errMsg *string, options *jetx.DBOptions,
+	ctx context.Context, id string, status integration.EventStatus, errMsg *string,
 ) error {
 	now := time.Now()
 
@@ -150,5 +150,5 @@ func (r *integrationEventRepositoryImpl) UpdateStatusInternal(
 		table.IntegrationEvents.ID.EQ(postgres.String(id)),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }

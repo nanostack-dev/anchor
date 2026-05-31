@@ -52,7 +52,6 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
-			nil,
 		)
 		require.NoError(t, reloadErr)
 		require.NotNil(t, reloaded)
@@ -124,7 +123,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 
 		expiresAt := time.Now().Add(-time.Minute)
 		createdKey.ExpiresAt = &expiresAt
-		updatedKey, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey, nil)
+		updatedKey, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey)
 		require.NoError(t, updateErr)
 
 		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
@@ -148,7 +147,6 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			t.Context(),
 			ctxData.Organization.ID,
 			updatedKey.ID,
-			nil,
 		)
 		require.NoError(t, reloadErr)
 		require.NotNil(t, reloaded)
@@ -216,7 +214,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 				}
 			},
 		)
-		persistedKey, createErr := OrgAPIKeyRepository.Create(t.Context(), createdKey, nil)
+		persistedKey, createErr := OrgAPIKeyRepository.Create(t.Context(), createdKey)
 		require.NoError(t, createErr)
 
 		result, err := OrgAPIKeyService.ValidateAPIKeyAndScopes(
@@ -300,7 +298,6 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
-			nil,
 		)
 		require.NoError(t, reloadErr)
 		require.NotNil(t, firstReload)
@@ -322,7 +319,6 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
-			nil,
 		)
 		require.NoError(t, secondReloadErr)
 		require.NotNil(t, secondReload)
@@ -351,7 +347,7 @@ func givenOrganizationAPIKeyContext(t *testing.T) organizationAPIKeyContextData 
 	}
 	org.GenerateID()
 
-	createdOrg, err := OrganizationRepo.Create(t.Context(), org, nil)
+	createdOrg, err := OrganizationRepo.Create(t.Context(), org)
 	require.NoError(t, err)
 
 	return organizationAPIKeyContextData{
@@ -385,7 +381,7 @@ func givenOrganizationAPIKey(
 
 	if status == orgapikey.StatusInactive {
 		createdKey.Status = orgapikey.StatusInactive
-		updated, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey, nil)
+		updated, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey)
 		require.NoError(t, updateErr)
 		createdKey = updated
 	}

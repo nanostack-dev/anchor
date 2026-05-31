@@ -35,12 +35,12 @@ func CreateProductWithDefaultPermissions(
 	}
 	prod.GenerateID()
 
-	createdProduct, err := itshared.ProductRepository.Create(context.Background(), prod, nil)
+	createdProduct, err := itshared.ProductRepository.Create(context.Background(), prod)
 	require.NoError(t, err)
 
 	for _, perm := range service.GeneratePermissions() {
 		perm.ProductID = createdProduct.ID
-		_, permErr := itshared.PermissionRepository.Create(context.Background(), perm, nil)
+		_, permErr := itshared.PermissionRepository.Create(context.Background(), perm)
 		require.NoError(t, permErr)
 	}
 

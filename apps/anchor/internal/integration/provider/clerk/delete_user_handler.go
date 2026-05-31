@@ -7,7 +7,6 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -20,7 +19,6 @@ func (p *Provider) executeDeleteUser(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	data any,
-	txOpts *jetx.DBOptions,
 ) error {
 	deleteData, ok := data.(DeleteUserData)
 	if !ok {
@@ -28,7 +26,7 @@ func (p *Provider) executeDeleteUser(
 	}
 
 	delErr := p.productUserRepo.DeleteByExternalID(
-		ctx, instance.ProductID, deleteData.ExternalID, txOpts,
+		ctx, instance.ProductID, deleteData.ExternalID,
 	)
 	if delErr != nil {
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
@@ -39,7 +37,7 @@ func (p *Provider) executeDeleteUser(
 			MetadataJSON: provider.MustMarshalJSON(map[string]any{
 				clerkExternalIDKey: deleteData.ExternalID,
 			}),
-		}, txOpts)
+		})
 
 		logger.Error().Err(delErr).
 			Str(clerkExternalIDKey, deleteData.ExternalID).
@@ -61,7 +59,7 @@ func (p *Provider) executeDeleteUser(
 		MetadataJSON: provider.MustMarshalJSON(map[string]any{
 			clerkExternalIDKey: deleteData.ExternalID,
 		}),
-	}, txOpts)
+	})
 
 	return nil
 }

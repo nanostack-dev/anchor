@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -25,21 +27,20 @@ func platformInvitationsUpdatableColumns() postgres.ColumnList {
 
 type InvitationRepository interface {
 	Create(
-		ctx context.Context, inv invitation.PlatformInvitation, options *jetx.DBOptions,
+		ctx context.Context, inv invitation.PlatformInvitation,
 	) (invitation.PlatformInvitation, error)
 	FindByTenantIDAndEmail(
-		ctx context.Context, tenantID string, email string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, email string,
 	) (*invitation.PlatformInvitation, error)
 	FindByCodeAndEmail(
-		ctx context.Context, code string, email string, options *jetx.DBOptions,
+		ctx context.Context, code string, email string,
 	) (*invitation.PlatformInvitation, error)
 	DeleteByTenantIDAndID(
-		ctx context.Context, tenantID string, code string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, code string,
 	) error
 	SearchByTenantID(
 		ctx context.Context, tenantID string,
 		input search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation],
-		options *jetx.DBOptions,
 	) (search.Result[invitation.PlatformInvitation], error)
 }
 
@@ -64,7 +65,6 @@ func NewPlatformInvitationRepository(
 func (r *invitationRepositoryImpl) SearchByTenantID(
 	ctx context.Context, tenantID string,
 	input search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation],
-	options *jetx.DBOptions,
 ) (search.Result[invitation.PlatformInvitation], error) {
 	whereStmt := table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))
 
@@ -94,8 +94,10 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 		table.PlatformInvitations.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := jetx.QueryCountWithBoolExpression(
-		ctx, r.db, table.PlatformInvitations, whereStmt, options,
+	resultCount, err := transactor.QueryCount(
+		ctx,
+		r.db,
+		table.PlatformInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -128,7 +130,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 		}
 	}
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-	slice, err := jetx.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain, options)
+	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -143,20 +145,20 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 }
 
 func (r *invitationRepositoryImpl) Create(
-	ctx context.Context, inv invitation.PlatformInvitation, options *jetx.DBOptions,
+	ctx context.Context, inv invitation.PlatformInvitation,
 ) (invitation.PlatformInvitation, error) {
 	entity := r.mapper.ToEntity(inv)
 	stmt := table.PlatformInvitations.INSERT(
 		platformInvitationsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.PlatformInvitations.AllColumns)
 
-	return jetx.QueryMap[model.PlatformInvitations, invitation.PlatformInvitation](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryMap[model.PlatformInvitations, invitation.PlatformInvitation](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *invitationRepositoryImpl) FindByCodeAndEmail(
-	ctx context.Context, code string, email string, options *jetx.DBOptions,
+	ctx context.Context, code string, email string,
 ) (*invitation.PlatformInvitation, error) {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
@@ -165,13 +167,13 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 			AND(table.PlatformInvitations.Email.EQ(postgres.String(email))),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
-	ctx context.Context, tenantID string, email string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, email string,
 ) (*invitation.PlatformInvitation, error) {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
@@ -180,13 +182,13 @@ func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 			AND(table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
-		ctx, r.db, stmt, r.mapper.ToDomain, options,
+	return transactor.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
+		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
-	ctx context.Context, tenantID string, invitationID string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, invitationID string,
 ) error {
 	stmt := table.PlatformInvitations.DELETE().
 		WHERE(
@@ -194,5 +196,5 @@ func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
 				AND(table.PlatformInvitations.ID.EQ(postgres.String(invitationID))),
 		)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }

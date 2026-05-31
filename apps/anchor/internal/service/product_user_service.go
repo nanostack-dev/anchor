@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"anchor/internal/domain/product/user"
@@ -10,7 +9,7 @@ import (
 	"anchor/internal/repository"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/rs/zerolog"
@@ -40,20 +39,20 @@ var ErrProductUserEmailAlreadyExists = apierror.NewBadRequest(
 type productUserService struct {
 	productUserRepo   repository.ProductUserRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
-	db                *sql.DB
+	transactor        transactor.Transactor
 	logger            zerolog.Logger
 }
 
 func NewProductUserService(
 	productUserRepo repository.ProductUserRepository,
 	orgMembershipRepo repository.OrganizationMembershipRepository,
-	db *sql.DB,
+	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) ProductUserService {
 	return &productUserService{
 		productUserRepo:   productUserRepo,
 		orgMembershipRepo: orgMembershipRepo,
-		db:                db,
+		transactor:        transactor,
 		logger:            logger.With().Str("component", "product_user_service").Logger(),
 	}
 }
@@ -68,7 +67,7 @@ func (s *productUserService) Find(
 	}
 
 	productUser, err := s.productUserRepo.FindByProductIDAndID(
-		ctx, input.ProductID, input.ProductUserID, nil,
+		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
 		logger.Error().
@@ -91,55 +90,53 @@ func (s *productUserService) Create(
 		return user.ProductUser{}, err
 	}
 
-	return jetx.WithTxReturn(
-		s.db, func(tx *sql.Tx) (user.ProductUser, error) {
-			txOptions := &jetx.DBOptions{Tx: tx}
-
-			existingUsers, err := s.productUserRepo.FindByProductID(ctx, input.ProductID, txOptions)
-			if err != nil {
-				logger.Error().
-					Str("product_id", input.ProductID).
-					Str("email", input.Email).
-					Err(err).
-					Msg("failed to check for duplicate email")
-				return user.ProductUser{}, err
-			}
-
-			for _, existingUser := range existingUsers {
-				if existingUser.Email == input.Email {
-					return user.ProductUser{}, ErrProductUserEmailAlreadyExists
-				}
-			}
-
-			productUser := user.ProductUser{
-				ProductID: input.ProductID,
-				Email:     input.Email,
-				Name:      input.Name,
-				Status:    input.Status,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			}
-			productUser.GenerateID()
-
-			createdUser, err := s.productUserRepo.Create(ctx, productUser, txOptions)
-			if err != nil {
-				logger.Error().
-					Str("product_id", input.ProductID).
-					Str("email", input.Email).
-					Err(err).
-					Msg("failed to create product user")
-				return user.ProductUser{}, err
-			}
-
-			logger.Info().
-				Str("product_user_id", createdUser.ID).
+	var createdUser user.ProductUser
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existingUsers, err := s.productUserRepo.FindByProductID(txCtx, input.ProductID)
+		if err != nil {
+			logger.Error().
 				Str("product_id", input.ProductID).
 				Str("email", input.Email).
-				Msg("product user created successfully")
+				Err(err).
+				Msg("failed to check for duplicate email")
+			return err
+		}
 
-			return createdUser, nil
-		},
-	)
+		for _, existingUser := range existingUsers {
+			if existingUser.Email == input.Email {
+				return ErrProductUserEmailAlreadyExists
+			}
+		}
+
+		productUser := user.ProductUser{
+			ProductID: input.ProductID,
+			Email:     input.Email,
+			Name:      input.Name,
+			Status:    input.Status,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		productUser.GenerateID()
+
+		createdUser, err = s.productUserRepo.Create(txCtx, productUser)
+		if err != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("email", input.Email).
+				Err(err).
+				Msg("failed to create product user")
+			return err
+		}
+
+		logger.Info().
+			Str("product_user_id", createdUser.ID).
+			Str("product_id", input.ProductID).
+			Str("email", input.Email).
+			Msg("product user created successfully")
+
+		return nil
+	})
+	return createdUser, err
 }
 
 func (s *productUserService) Delete(
@@ -151,7 +148,7 @@ func (s *productUserService) Delete(
 		return err
 	}
 
-	err := s.productUserRepo.DeleteByID(ctx, input.ProductID, input.ProductUserID, nil)
+	err := s.productUserRepo.DeleteByID(ctx, input.ProductID, input.ProductUserID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -178,7 +175,7 @@ func (s *productUserService) Search(
 		return search.Result[user.ProductUser]{}, err
 	}
 
-	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request, nil)
+	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -205,7 +202,7 @@ func (s *productUserService) FindByExternalID(
 	}
 
 	productUser, err := s.productUserRepo.FindByExternalID(
-		ctx, input.ProductID, input.ExternalID, nil,
+		ctx, input.ProductID, input.ExternalID,
 	)
 	if err != nil {
 		logger.Error().
@@ -230,7 +227,7 @@ func (s *productUserService) ListUserOrganizations(
 
 	// Verify the product user exists
 	existingUser, err := s.productUserRepo.FindByProductIDAndID(
-		ctx, input.ProductID, input.ProductUserID, nil,
+		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
 		logger.Error().
@@ -245,7 +242,7 @@ func (s *productUserService) ListUserOrganizations(
 	}
 
 	memberships, err := s.orgMembershipRepo.FindByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions, nil,
+		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
 		logger.Error().
@@ -270,7 +267,7 @@ func (s *productUserService) GetUserOrganization(
 
 	// Verify the product user exists
 	existingUser, err := s.productUserRepo.FindByProductIDAndID(
-		ctx, input.ProductID, input.ProductUserID, nil,
+		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
 		logger.Error().
@@ -285,7 +282,7 @@ func (s *productUserService) GetUserOrganization(
 	}
 
 	membership, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
-		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions, nil,
+		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
 		logger.Error().

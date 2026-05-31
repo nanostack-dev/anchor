@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"anchor/internal/domain/product/user"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -32,37 +34,34 @@ type ProductUserRepository interface {
 		ctx context.Context,
 		productID string,
 		id string,
-		options *jetx.DBOptions,
 	) (*user.ProductUser, error)
 	FindByProductID(
-		ctx context.Context, productID string, options *jetx.DBOptions,
+		ctx context.Context, productID string,
 	) ([]user.ProductUser, error)
 	FindByExternalID(
-		ctx context.Context, productID string, externalID string, options *jetx.DBOptions,
+		ctx context.Context, productID string, externalID string,
 	) (*user.ProductUser, error)
 	Create(
-		ctx context.Context, user user.ProductUser, options *jetx.DBOptions,
+		ctx context.Context, user user.ProductUser,
 	) (user.ProductUser, error)
 	Update(
 		ctx context.Context,
 		productID string,
 		id string,
 		entity user.ProductUser,
-		options *jetx.DBOptions,
 	) (user.ProductUser, error)
 	// UpsertByExternalID inserts or updates a product user by external ID.
 	// The returned bool is true when a new row was inserted, false when an
 	// existing row was updated.
 	UpsertByExternalID(
-		ctx context.Context, entity user.ProductUser, options *jetx.DBOptions,
+		ctx context.Context, entity user.ProductUser,
 	) (user.ProductUser, bool, error)
-	DeleteByID(ctx context.Context, productID string, id string, options *jetx.DBOptions) error
-	DeleteByExternalID(ctx context.Context, productID string, externalID string, options *jetx.DBOptions) error
+	DeleteByID(ctx context.Context, productID string, id string) error
+	DeleteByExternalID(ctx context.Context, productID string, externalID string) error
 	SearchByProductID(
 		ctx context.Context,
 		productID string,
 		request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-		options *jetx.DBOptions,
 	) (search.Result[user.ProductUser], error)
 }
 
@@ -90,7 +89,6 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	ctx context.Context,
 	productID string,
 	id string,
-	options *jetx.DBOptions,
 ) (*user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -102,16 +100,15 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain, options,
+		r.productUserMapper.ToDomain,
 	)
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
 	ctx context.Context,
 	productID string,
-	options *jetx.DBOptions,
 ) ([]user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -121,9 +118,9 @@ func (r *productUserRepositoryImpl) FindByProductID(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
 	)
 
-	return jetx.QueryMapSlice(
+	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain, options,
+		r.productUserMapper.ToDomain,
 	)
 }
 
@@ -131,7 +128,6 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-	options *jetx.DBOptions,
 ) (*user.ProductUser, error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
@@ -143,16 +139,15 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain, options,
+		r.productUserMapper.ToDomain,
 	)
 }
 
 func (r *productUserRepositoryImpl) Create(
 	ctx context.Context,
 	newUser user.ProductUser,
-	options *jetx.DBOptions,
 ) (user.ProductUser, error) {
 	entity := r.productUserMapper.ToEntity(newUser)
 
@@ -160,12 +155,11 @@ func (r *productUserRepositoryImpl) Create(
 		productUsersUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductUsers.AllColumns)
 
-	return jetx.QueryMap[model.ProductUsers, user.ProductUser](
+	return transactor.QueryMap[model.ProductUsers, user.ProductUser](
 		ctx,
 		r.db,
 		stmt,
 		r.productUserMapper.ToDomain,
-		options,
 	)
 }
 
@@ -174,7 +168,6 @@ func (r *productUserRepositoryImpl) Update(
 	productID string,
 	id string,
 	entity user.ProductUser,
-	options *jetx.DBOptions,
 ) (user.ProductUser, error) {
 	entity.UpdatedAt = time.Now()
 	entityToUpdate := r.productUserMapper.ToEntity(entity)
@@ -192,8 +185,8 @@ func (r *productUserRepositoryImpl) Update(
 		),
 	).RETURNING(table.ProductUsers.AllColumns)
 
-	return jetx.QueryMap[model.ProductUsers, user.ProductUser](
-		ctx, r.db, updateStmt, r.productUserMapper.ToDomain, options,
+	return transactor.QueryMap[model.ProductUsers, user.ProductUser](
+		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
 	)
 }
 
@@ -201,7 +194,6 @@ func (r *productUserRepositoryImpl) DeleteByID(
 	ctx context.Context,
 	productID string,
 	id string,
-	options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductUsers.DELETE().WHERE(
 		table.ProductUsers.ID.EQ(postgres.String(id)).AND(
@@ -209,13 +201,12 @@ func (r *productUserRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *productUserRepositoryImpl) UpsertByExternalID(
 	ctx context.Context,
 	entity user.ProductUser,
-	options *jetx.DBOptions,
 ) (user.ProductUser, bool, error) {
 	dbEntity := r.productUserMapper.ToEntity(entity)
 
@@ -233,8 +224,8 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 		).
 		RETURNING(table.ProductUsers.AllColumns)
 
-	result, err := jetx.QueryMap[model.ProductUsers, user.ProductUser](
-		ctx, r.db, stmt, r.productUserMapper.ToDomain, options,
+	result, err := transactor.QueryMap[model.ProductUsers, user.ProductUser](
+		ctx, r.db, stmt, r.productUserMapper.ToDomain,
 	)
 	if err != nil {
 		return user.ProductUser{}, false, err
@@ -252,7 +243,6 @@ func (r *productUserRepositoryImpl) DeleteByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-	options *jetx.DBOptions,
 ) error {
 	stmt := table.ProductUsers.DELETE().WHERE(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)).AND(
@@ -260,14 +250,13 @@ func (r *productUserRepositoryImpl) DeleteByExternalID(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *productUserRepositoryImpl) SearchByProductID(
 	ctx context.Context,
 	productID string,
 	request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-	options *jetx.DBOptions,
 ) (search.Result[user.ProductUser], error) {
 	whereStmt := table.ProductUsers.ProductID.EQ(postgres.String(productID))
 
@@ -309,8 +298,10 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		table.ProductUsers.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := jetx.QueryCountWithBoolExpression(
-		ctx, r.db, table.ProductUsers, whereStmt, options,
+	resultCount, err := transactor.QueryCount(
+		ctx,
+		r.db,
+		table.ProductUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -322,7 +313,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 	query = r.applySorting(query, request.Sort)
 
 	query = query.LIMIT(int64(request.Pagination.Limit)).OFFSET(int64(request.Pagination.Offset))
-	slice, err := jetx.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain, options)
+	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,

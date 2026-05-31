@@ -49,7 +49,7 @@ func GivenARandomProduct(t *testing.T, tenantID string) product.Product {
 		Name:             Faker.RandomStringWithLength(20),
 	}
 	productCreated, err := ProductRepository.Create(
-		t.Context(), product, nil,
+		t.Context(), product,
 	)
 	require.NoError(t, err, "Failed to create random product")
 	return productCreated
@@ -94,7 +94,7 @@ func GivenBasicAnchorPermissions(t *testing.T, productID string) []string {
 				ProductID:   productID,
 				Name:        perm,
 				Description: nil,
-			}, nil,
+			},
 		)
 		require.NoError(t, err, "Failed to create permission '%s'", perm)
 	}
@@ -115,7 +115,7 @@ func GivenBasicProductResourcePermissions(t *testing.T, productID string) []stri
 				Name:          perm,
 				Description:   ptr.Ptr("Test resource permission"),
 				ScopeModifier: ptr.Ptr("GLOBAL"),
-			}, nil,
+			},
 		)
 		require.NoError(t, err, "Failed to create resource permission '%s'", perm)
 	}
@@ -152,7 +152,7 @@ func GivenADeactivatedAPIKey(t *testing.T, productID string, permissions []strin
 ) {
 	apiKey, value := GivenAPIKey(t, productID, permissions)
 	apiKey.Status = apikey.StatusInactive
-	updatedAPIKey, err := APIKeyRepository.Update(t.Context(), apiKey, nil)
+	updatedAPIKey, err := APIKeyRepository.Update(t.Context(), apiKey)
 	require.NoError(t, err, "Failed to deactivate API key")
 	return updatedAPIKey, value
 }

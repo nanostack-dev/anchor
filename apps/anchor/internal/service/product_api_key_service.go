@@ -2,13 +2,12 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"anchor/internal/security"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
@@ -41,7 +40,7 @@ type ProductAPIKeyService interface {
 }
 
 type productAPIKeyService struct {
-	db             *sql.DB
+	transactor     transactor.Transactor
 	apiKeyRepo     repository.ProductAPIKeyRepository
 	permissionRepo repository.ProductPermissionRepository
 	cacheService   ProductAPIKeyCacheService
@@ -49,13 +48,13 @@ type productAPIKeyService struct {
 }
 
 func NewProductAPIKeyService(
-	db *sql.DB,
+	transactor transactor.Transactor,
 	apiKeyRepo repository.ProductAPIKeyRepository,
 	permissionRepo repository.ProductPermissionRepository,
 	cacheService ProductAPIKeyCacheService, logger zerolog.Logger,
 ) ProductAPIKeyService {
 	return &productAPIKeyService{
-		db:             db,
+		transactor:     transactor,
 		apiKeyRepo:     apiKeyRepo,
 		permissionRepo: permissionRepo,
 		cacheService:   cacheService,
@@ -126,7 +125,7 @@ func (s *productAPIKeyService) Create(
 
 	productAPIKey.Permissions = apiKeyPermissions
 
-	created, err := s.apiKeyRepo.Create(ctx, productAPIKey, nil)
+	created, err := s.apiKeyRepo.Create(ctx, productAPIKey)
 	if err != nil {
 		logger.Error().
 			Str("product_api_key_id", productAPIKey.ID).
@@ -154,7 +153,7 @@ func (s *productAPIKeyService) GetByID(
 		return nil, err
 	}
 
-	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID, nil)
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -184,7 +183,7 @@ func (s *productAPIKeyService) Update(
 		Str("product_id", input.ProductID).
 		Msg("updating product API key")
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -241,46 +240,43 @@ func (s *productAPIKeyService) Update(
 		)
 	}
 
-	updatedAPIKeyFromDB, err := jetx.WithTxReturn(
-		s.db,
-		func(tx *sql.Tx) (apikey.ProductAPIKey, error) {
-			dbOptions := &jetx.DBOptions{Tx: tx}
+	var updatedAPIKeyFromDB apikey.ProductAPIKey
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		updated, updateErr := s.apiKeyRepo.Update(txCtx, updatedAPIKey)
+		if updateErr != nil {
+			return updateErr
+		}
 
-			updated, updateErr := s.apiKeyRepo.Update(ctx, updatedAPIKey, dbOptions)
-			if updateErr != nil {
-				return apikey.ProductAPIKey{}, updateErr
-			}
+		if !permissionsUpdated {
+			updatedAPIKeyFromDB = updated
+			return nil
+		}
 
-			if !permissionsUpdated {
-				return updated, nil
-			}
+		if replaceErr := s.apiKeyRepo.ReplacePermissions(
+			txCtx,
+			input.ProductID,
+			input.ID,
+			updatedAPIKey.Permissions,
+		); replaceErr != nil {
+			return replaceErr
+		}
 
-			if replaceErr := s.apiKeyRepo.ReplacePermissions(
-				ctx,
-				input.ProductID,
-				input.ID,
-				updatedAPIKey.Permissions,
-				dbOptions,
-			); replaceErr != nil {
-				return apikey.ProductAPIKey{}, replaceErr
-			}
+		refetched, fetchErr := s.apiKeyRepo.GetByID(
+			txCtx,
+			input.ProductID,
+			input.ID,
+		)
+		if fetchErr != nil {
+			return fetchErr
+		}
+		if refetched != nil {
+			updatedAPIKeyFromDB = *refetched
+			return nil
+		}
 
-			refetched, fetchErr := s.apiKeyRepo.GetByID(
-				ctx,
-				input.ProductID,
-				input.ID,
-				dbOptions,
-			)
-			if fetchErr != nil {
-				return apikey.ProductAPIKey{}, fetchErr
-			}
-			if refetched != nil {
-				return *refetched, nil
-			}
-
-			return updated, nil
-		},
-	)
+		updatedAPIKeyFromDB = updated
+		return nil
+	})
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -316,7 +312,7 @@ func (s *productAPIKeyService) Delete(
 		return err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -329,7 +325,7 @@ func (s *productAPIKeyService) Delete(
 	if existingAPIKey == nil {
 		return apierror.ErrNotFound
 	}
-	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID, nil); deleteErr != nil {
+	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
@@ -365,7 +361,7 @@ func (s *productAPIKeyService) Search(
 		return nil, err
 	}
 
-	result, err := s.apiKeyRepo.SearchByProductID(ctx, input, nil)
+	result, err := s.apiKeyRepo.SearchByProductID(ctx, input)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -389,7 +385,7 @@ func (s *productAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	foundAPIKey, err := s.cacheService.GetOrElseAPIKeyHashedValue(
 		ctx, productID, hashedKey, func() (*apikey.ProductAPIKey, error) {
-			return s.apiKeyRepo.GetByProductIDAndHashedValue(ctx, productID, hashedKey, nil)
+			return s.apiKeyRepo.GetByProductIDAndHashedValue(ctx, productID, hashedKey)
 		},
 	)
 
@@ -406,7 +402,6 @@ func (s *productAPIKeyService) validateAPIKey(
 	if shouldUpdate {
 		if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
 			ctx, foundAPIKey.ProductID, foundAPIKey.ID,
-			nil,
 		); updateErr != nil {
 			logger.Error().
 				Str("product_id", productID).
@@ -466,7 +461,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 func (s *productAPIKeyService) nameUniqueValidation(
 	ctx context.Context, productID, name string, logger zerolog.Logger,
 ) error {
-	existingAPIKey, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -485,7 +480,7 @@ func (s *productAPIKeyService) permissionsValidation(
 	ctx context.Context, productID string, permissionNames []string, logger zerolog.Logger,
 ) error {
 	permsFound, err := s.permissionRepo.FindByProductIDAndPermissionNames(
-		ctx, productID, permissionNames, nil,
+		ctx, productID, permissionNames,
 	)
 	if err != nil {
 		logger.Error().

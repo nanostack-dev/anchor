@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"github.com/go-jet/jet/v2/postgres"
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -32,40 +34,34 @@ type WorkspaceRepository interface {
 		productID string,
 		organizationID string,
 		workspaceID string,
-		options *jetx.DBOptions,
 	) (*workspace.Workspace, error)
 	FindByOrganizationIDAndName(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		name string,
-		options *jetx.DBOptions,
 	) (*workspace.Workspace, error)
 	Create(
 		ctx context.Context,
 		workspace workspace.Workspace,
-		options *jetx.DBOptions,
 	) (workspace.Workspace, error)
 	Update(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		workspace workspace.Workspace,
-		options *jetx.DBOptions,
 	) (workspace.Workspace, error)
 	DeleteByID(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		workspaceID string,
-		options *jetx.DBOptions,
 	) error
 	SearchByOrganizationID(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
-		options *jetx.DBOptions,
 	) (search.Result[workspace.Workspace], error)
 }
 
@@ -94,7 +90,6 @@ func (r *workspaceRepositoryImpl) FindByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-	options *jetx.DBOptions,
 ) (*workspace.Workspace, error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
@@ -106,12 +101,11 @@ func (r *workspaceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return transactor.QueryOptionalMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-		options,
 	)
 }
 
@@ -120,7 +114,6 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	productID string,
 	organizationID string,
 	name string,
-	options *jetx.DBOptions,
 ) (*workspace.Workspace, error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
@@ -132,19 +125,17 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return transactor.QueryOptionalMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-		options,
 	)
 }
 
 func (r *workspaceRepositoryImpl) Create(
 	ctx context.Context,
 	newWorkspace workspace.Workspace,
-	options *jetx.DBOptions,
 ) (workspace.Workspace, error) {
 	entity := r.workspaceMapper.ToEntity(newWorkspace)
 
@@ -152,12 +143,11 @@ func (r *workspaceRepositoryImpl) Create(
 		workspacesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Workspaces.AllColumns)
 
-	created, err := jetx.QueryMap[model.Workspaces, workspace.Workspace](
+	created, err := transactor.QueryMap[model.Workspaces, workspace.Workspace](
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-		options,
 	)
 	if err != nil {
 		return workspace.Workspace{}, err
@@ -171,7 +161,6 @@ func (r *workspaceRepositoryImpl) Update(
 	productID string,
 	organizationID string,
 	currentWorkspace workspace.Workspace,
-	options *jetx.DBOptions,
 ) (workspace.Workspace, error) {
 	currentWorkspace.UpdatedAt = time.Now()
 	entityToUpdate := r.workspaceMapper.ToEntity(currentWorkspace)
@@ -192,11 +181,11 @@ func (r *workspaceRepositoryImpl) Update(
 		),
 	)
 
-	if err := jetx.Exec(ctx, r.db, updateStmt, options); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt); err != nil {
 		return workspace.Workspace{}, err
 	}
 
-	updated, err := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID, options)
+	updated, err := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID)
 	if err != nil {
 		return workspace.Workspace{}, err
 	}
@@ -212,7 +201,6 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-	options *jetx.DBOptions,
 ) error {
 	deleteStmt := table.Workspaces.DELETE().USING(table.Organizations).WHERE(
 		table.Workspaces.ID.EQ(postgres.String(workspaceID)).AND(
@@ -220,11 +208,11 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		),
 	)
 
-	if err := jetx.Exec(ctx, r.db, deleteStmt, options); err != nil {
+	if err := transactor.Exec(ctx, r.db, deleteStmt); err != nil {
 		return err
 	}
 
-	found, err := r.FindByID(ctx, productID, organizationID, workspaceID, options)
+	found, err := r.FindByID(ctx, productID, organizationID, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -240,7 +228,6 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	productID string,
 	organizationID string,
 	input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
-	options *jetx.DBOptions,
 ) (search.Result[workspace.Workspace], error) {
 	whereStmt := r.scopedWhere(productID, organizationID)
 
@@ -270,7 +257,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		postgres.COUNT(postgres.STAR).AS("count_result.count"),
 	).FROM(r.joinOrganizations()).WHERE(whereStmt)
 
-	total, err := jetx.QueryCountWithStatement(ctx, r.db, countStmt, options)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt)
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
@@ -296,7 +283,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	items, err := jetx.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain, options)
+	items, err := transactor.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain)
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}

@@ -58,7 +58,7 @@ func CreatePlatformUserWithRole(
 	}
 	newUser.GenerateID()
 
-	createdUser, userErr := itshared.UserRepository.Create(context.Background(), newUser, nil)
+	createdUser, userErr := itshared.UserRepository.Create(context.Background(), newUser)
 	require.NoError(t, userErr)
 
 	platformUser := platformdomain.User{
@@ -75,7 +75,7 @@ func CreatePlatformUserWithRole(
 	platformUser.GenerateID()
 
 	createdPlatformUser, platformUserErr := itshared.PlatformTenantUserRepo.Create(
-		context.Background(), platformUser, nil,
+		context.Background(), platformUser,
 	)
 	require.NoError(t, platformUserErr)
 

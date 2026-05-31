@@ -163,7 +163,6 @@ func (b *Builder) ProductUserExternalID(opts ProductUserExternalIDOpts) *Builder
 		context.Background(),
 		productCtx.ProductID,
 		productUser.ID,
-		nil,
 	)
 	require.NoError(b.t, err, "failed to load product user")
 	require.NotNil(b.t, foundUser, "product user not found")
@@ -174,7 +173,6 @@ func (b *Builder) ProductUserExternalID(opts ProductUserExternalIDOpts) *Builder
 		productCtx.ProductID,
 		productUser.ID,
 		*foundUser,
-		nil,
 	)
 	require.NoError(b.t, err, "failed to update product user external_id")
 	return b
@@ -342,7 +340,6 @@ func (b *Builder) Membership(opts MembershipOpts) *Builder {
 		organization.ID,
 		productUser.ID,
 		role.ID,
-		nil,
 	)
 	require.NoError(b.t, err)
 

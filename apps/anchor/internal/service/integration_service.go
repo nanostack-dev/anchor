@@ -21,8 +21,8 @@ import (
 	"github.com/nanostack-dev/pgkit/pgqueue"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -157,6 +157,7 @@ type integrationService struct {
 	queue                     *pgqueue.Client
 	lock                      *pglock.Client
 	db                        *sql.DB
+	transactor                transactor.Transactor
 	logger                    zerolog.Logger
 	reconcileScheduleInterval time.Duration
 	verificationMu            sync.Mutex
@@ -171,6 +172,7 @@ func NewIntegrationService(
 	queue *pgqueue.Client,
 	lock *pglock.Client,
 	db *sql.DB,
+	transactor transactor.Transactor,
 	logger zerolog.Logger,
 	coreCfg *serviceconfig.CoreConfig,
 ) IntegrationService {
@@ -182,6 +184,7 @@ func NewIntegrationService(
 		queue:                     queue,
 		lock:                      lock,
 		db:                        db,
+		transactor:                transactor,
 		reconcileScheduleInterval: parseScheduleInterval(logger, coreCfg),
 		verificationRuns:          map[string]*verificationRun{},
 		logger: logger.With().
@@ -226,8 +229,11 @@ func (s *integrationService) CreateInstance(
 		return integration.Instance{}, newInvalidConfigError(cfgErr)
 	}
 
-	created, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (integration.Instance, error) {
-		return s.createInstanceTx(ctx, logger, tx, input, prov, configJSON)
+	var created integration.Instance
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.createInstanceTx(txCtx, logger, input, prov, configJSON)
+		return createErr
 	})
 	if err != nil {
 		return integration.Instance{}, err
@@ -250,20 +256,16 @@ func (s *integrationService) CreateInstance(
 func (s *integrationService) createInstanceTx(
 	ctx context.Context,
 	logger zerolog.Logger,
-	tx *sql.Tx,
 	input integration.CreateInstanceInput,
 	prov provider.Provider,
 	configJSON json.RawMessage,
 ) (integration.Instance, error) {
-	txOpts := &jetx.DBOptions{Tx: tx}
-
 	// Check for duplicate (product + provider uniqueness).
 	existing, findErr := s.instanceRepo.FindByProductAndProvider(
 		ctx,
 		input.TenantID,
 		input.ProductID,
 		string(input.ProviderType),
-		txOpts,
 	)
 	if findErr != nil {
 		logger.Error().Err(findErr).
@@ -291,7 +293,7 @@ func (s *integrationService) createInstanceTx(
 	}
 	instance.GenerateID()
 
-	created, createErr := s.instanceRepo.Create(ctx, instance, txOpts)
+	created, createErr := s.instanceRepo.Create(ctx, instance)
 	if createErr != nil {
 		logger.Error().Err(createErr).
 			Msg("failed to create integration instance")
@@ -301,7 +303,7 @@ func (s *integrationService) createInstanceTx(
 	hasKey := hasClerkAPIKey(created.ConfigJSON)
 
 	if enqueueErr := s.enqueueReconcileJobIfRequired(
-		ctx, logger, created, hasKey, tx,
+		ctx, logger, created, hasKey, transactor.CurrentTx(ctx),
 	); enqueueErr != nil {
 		return integration.Instance{}, enqueueErr
 	}
@@ -322,7 +324,7 @@ func (s *integrationService) createInstanceTx(
 			fieldProviderTypeKey: string(created.ProviderType),
 			fieldStatusKey:       string(created.Status),
 		}),
-	}, txOpts)
+	})
 
 	return created, nil
 }
@@ -338,7 +340,7 @@ func (s *integrationService) GetInstance(
 	}
 
 	instance, findErr := s.instanceRepo.FindByID(
-		ctx, input.TenantID, input.ID, nil,
+		ctx, input.TenantID, input.ID,
 	)
 	if findErr != nil {
 		logger.Error().Err(findErr).
@@ -366,90 +368,83 @@ func (s *integrationService) UpdateInstance(
 	var hadClerkAPIKey bool
 	var hasClerkAPIKeyNow bool
 
-	updated, err := jetx.WithTxReturn(
-		s.db,
-		func(tx *sql.Tx) (integration.Instance, error) {
-			txOpts := &jetx.DBOptions{Tx: tx}
+	var updated integration.Instance
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := s.instanceRepo.FindByID(
+			txCtx, input.TenantID, input.ID,
+		)
+		if findErr != nil {
+			logger.Error().Err(findErr).
+				Str("instance_id", input.ID).
+				Msg("failed to find instance for update")
+			return findErr
+		}
+		if existing == nil {
+			return ErrIntegrationInstanceNotFound
+		}
 
-			existing, findErr := s.instanceRepo.FindByID(
-				ctx, input.TenantID, input.ID, txOpts,
-			)
-			if findErr != nil {
-				logger.Error().Err(findErr).
-					Str("instance_id", input.ID).
-					Msg("failed to find instance for update")
-				return integration.Instance{}, findErr
-			}
-			if existing == nil {
-				return integration.Instance{},
-					ErrIntegrationInstanceNotFound
-			}
+		prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
+		if provErr != nil {
+			return ErrIntegrationProviderNotRegistered
+		}
 
-			prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
-			if provErr != nil {
-				return integration.Instance{}, ErrIntegrationProviderNotRegistered
-			}
+		hadClerkAPIKey = hasClerkAPIKey(existing.ConfigJSON)
 
-			hadClerkAPIKey = hasClerkAPIKey(existing.ConfigJSON)
+		if applyErr := s.applyInstanceUpdates(txCtx, existing, input, prov); applyErr != nil {
+			return applyErr
+		}
 
-			if applyErr := s.applyInstanceUpdates(
-				ctx, existing, input, prov,
-			); applyErr != nil {
-				return integration.Instance{}, applyErr
-			}
+		result, updateErr := s.instanceRepo.Update(
+			txCtx, input.TenantID, *existing,
+		)
+		if updateErr != nil {
+			logger.Error().Err(updateErr).
+				Str("instance_id", input.ID).
+				Msg("failed to update instance")
+			return updateErr
+		}
 
-			result, updateErr := s.instanceRepo.Update(
-				ctx, input.TenantID, *existing, txOpts,
-			)
-			if updateErr != nil {
-				logger.Error().Err(updateErr).
-					Str("instance_id", input.ID).
-					Msg("failed to update instance")
-				return integration.Instance{}, updateErr
-			}
+		hasClerkAPIKeyNow = hasClerkAPIKey(result.ConfigJSON)
+		// Trigger reconcile when a key is added, removed, OR changed (rotation).
+		// When configJSON is provided and a key is present we always reconcile;
+		// when the key is absent we only reconcile if it was previously present
+		// (to clean up / mark as unconfigured).
+		shouldTriggerReconcile := input.ConfigJSON != nil && (hasClerkAPIKeyNow || hadClerkAPIKey)
 
-			hasClerkAPIKeyNow = hasClerkAPIKey(result.ConfigJSON)
-			// Trigger reconcile when a key is added, removed, OR changed (rotation).
-			// When configJSON is provided and a key is present we always reconcile;
-			// when the key is absent we only reconcile if it was previously present
-			// (to clean up / mark as unconfigured).
-			shouldTriggerReconcile := input.ConfigJSON != nil && (hasClerkAPIKeyNow || hadClerkAPIKey)
+		if enqueueErr := s.enqueueReconcileJobIfRequired(
+			txCtx,
+			logger,
+			result,
+			shouldTriggerReconcile,
+			transactor.CurrentTx(txCtx),
+		); enqueueErr != nil {
+			return enqueueErr
+		}
 
-			if enqueueErr := s.enqueueReconcileJobIfRequired(
-				ctx,
-				logger,
-				result,
-				shouldTriggerReconcile,
-				tx,
-			); enqueueErr != nil {
-				return integration.Instance{}, enqueueErr
-			}
+		logger.Info().
+			Str("instance_id", result.ID).
+			Msg("integration instance updated")
 
-			logger.Info().
-				Str("instance_id", result.ID).
-				Msg("integration instance updated")
+		s.writeAuditLog(
+			txCtx,
+			logger,
+			integration.AuditLog{
+				IntegrationInstanceID: result.ID,
+				Action:                integration.AuditActionConfigUpdated,
+				Severity:              integration.AuditSeverityInfo,
+				Message:               "Integration configuration updated",
+				MetadataJSON: provider.MustMarshalJSON(
+					map[string]any{
+						fieldStatusKey:   string(result.Status),
+						"config_version": result.ConfigVersion,
+					},
+				),
+			},
+		)
 
-			s.writeAuditLog(
-				ctx,
-				logger,
-				integration.AuditLog{
-					IntegrationInstanceID: result.ID,
-					Action:                integration.AuditActionConfigUpdated,
-					Severity:              integration.AuditSeverityInfo,
-					Message:               "Integration configuration updated",
-					MetadataJSON: provider.MustMarshalJSON(
-						map[string]any{
-							fieldStatusKey:   string(result.Status),
-							"config_version": result.ConfigVersion,
-						},
-					),
-				},
-				txOpts,
-			)
-
-			return result, nil
-		},
-	)
+		updated = result
+		return nil
+	})
 	if err != nil {
 		return integration.Instance{}, err
 	}
@@ -590,7 +585,7 @@ func (s *integrationService) DeleteInstance(
 
 	// Verify it exists first.
 	existing, findErr := s.instanceRepo.FindByID(
-		ctx, input.TenantID, input.ID, nil,
+		ctx, input.TenantID, input.ID,
 	)
 	if findErr != nil {
 		logger.Error().Err(findErr).
@@ -604,32 +599,27 @@ func (s *integrationService) DeleteInstance(
 
 	hadKey := hasClerkAPIKey(existing.ConfigJSON) && existing.ProviderType == integration.ProviderTypeClerk
 
-	delErr := jetx.WithTx(
-		s.db, func(tx *sql.Tx) error {
-			txOpts := &jetx.DBOptions{Tx: tx}
+	delErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		s.writeAuditLog(
+			txCtx,
+			logger,
+			integration.AuditLog{
+				IntegrationInstanceID: input.ID,
+				Action:                integration.AuditActionIntegrationDeleted,
+				Severity:              integration.AuditSeverityWarning,
+				Message:               "Integration instance deleted",
+				MetadataJSON: provider.MustMarshalJSON(
+					map[string]any{
+						fieldProductIDKey: existing.ProductID,
+					},
+				),
+			},
+		)
 
-			s.writeAuditLog(
-				ctx,
-				logger,
-				integration.AuditLog{
-					IntegrationInstanceID: input.ID,
-					Action:                integration.AuditActionIntegrationDeleted,
-					Severity:              integration.AuditSeverityWarning,
-					Message:               "Integration instance deleted",
-					MetadataJSON: provider.MustMarshalJSON(
-						map[string]any{
-							fieldProductIDKey: existing.ProductID,
-						},
-					),
-				},
-				txOpts,
-			)
-
-			return s.instanceRepo.DeleteByID(
-				ctx, input.TenantID, input.ID, txOpts,
-			)
-		},
-	)
+		return s.instanceRepo.DeleteByID(
+			txCtx, input.TenantID, input.ID,
+		)
+	})
 	if delErr != nil {
 		logger.Error().Err(delErr).
 			Str("instance_id", input.ID).
@@ -662,7 +652,7 @@ func (s *integrationService) ListInstances(
 	}
 
 	instances, listErr := s.instanceRepo.ListByProduct(
-		ctx, input.TenantID, input.ProductID, nil,
+		ctx, input.TenantID, input.ProductID,
 	)
 	if listErr != nil {
 		logger.Error().Err(listErr).
@@ -690,7 +680,7 @@ func (s *integrationService) ListAuditLogs(
 	}
 
 	instance, findErr := s.instanceRepo.FindByID(
-		ctx, input.TenantID, input.IntegrationInstanceID, nil,
+		ctx, input.TenantID, input.IntegrationInstanceID,
 	)
 	if findErr != nil {
 		logger.Error().Err(findErr).
@@ -710,7 +700,6 @@ func (s *integrationService) ListAuditLogs(
 		input.IntegrationInstanceID,
 		limit,
 		input.Offset,
-		nil,
 	)
 	if listErr != nil {
 		logger.Error().Err(listErr).
@@ -761,67 +750,65 @@ func (s *integrationService) persistPendingEvent(
 	instance *integration.Instance,
 	event integration.Event,
 ) (integration.Event, error) {
-	return jetx.WithTxReturn(
-		s.db,
-		func(tx *sql.Tx) (integration.Event, error) {
-			txOpts := &jetx.DBOptions{Tx: tx}
+	var created integration.Event
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// Idempotency: check for duplicate by (instance_id, external_event_id).
+		if existing, err := s.findDuplicateEvent(txCtx, logger, instance, event); err != nil {
+			return err
+		} else if existing != nil {
+			created = *existing
+			return nil
+		}
 
-			// Idempotency: check for duplicate by (instance_id, external_event_id).
-			if existing, err := s.findDuplicateEvent(ctx, logger, instance, event, txOpts); err != nil {
-				return integration.Event{}, err
-			} else if existing != nil {
-				return *existing, nil
-			}
+		var createErr error
+		created, createErr = s.eventRepo.CreateInternal(txCtx, event)
+		if createErr != nil {
+			logger.Error().Err(createErr).Msg("failed to store integration event")
+			return createErr
+		}
 
-			created, createErr := s.eventRepo.CreateInternal(ctx, event, txOpts)
-			if createErr != nil {
-				logger.Error().Err(createErr).Msg("failed to store integration event")
-				return integration.Event{}, createErr
-			}
+		payload, payloadErr := json.Marshal(integrationQueuePayload{EventID: created.ID})
+		if payloadErr != nil {
+			logger.Error().Err(payloadErr).Msg("failed to marshal queue payload")
+			return payloadErr
+		}
 
-			payload, payloadErr := json.Marshal(integrationQueuePayload{EventID: created.ID})
-			if payloadErr != nil {
-				logger.Error().Err(payloadErr).Msg("failed to marshal queue payload")
-				return integration.Event{}, payloadErr
-			}
+		_, enqueueErr := s.queue.EnqueueTx(txCtx, transactor.CurrentTx(txCtx), pgqueue.EnqueueParams{
+			QueueName:   integrationQueueName,
+			Payload:     payload,
+			MaxAttempts: integrationMaxAttempts,
+		})
+		if enqueueErr != nil {
+			logger.Error().Err(enqueueErr).Msg("failed to enqueue integration event")
+			return enqueueErr
+		}
 
-			_, enqueueErr := s.queue.EnqueueTx(ctx, tx, pgqueue.EnqueueParams{
-				QueueName:   integrationQueueName,
-				Payload:     payload,
-				MaxAttempts: integrationMaxAttempts,
-			})
-			if enqueueErr != nil {
-				logger.Error().Err(enqueueErr).Msg("failed to enqueue integration event")
-				return integration.Event{}, enqueueErr
-			}
+		s.writeAuditLog(
+			txCtx,
+			logger,
+			integration.AuditLog{
+				IntegrationInstanceID: instance.ID,
+				Action:                integration.AuditActionWebhookReceived,
+				Severity:              integration.AuditSeverityInfo,
+				Message:               "Webhook accepted and queued for processing",
+				MetadataJSON: provider.MustMarshalJSON(
+					map[string]any{
+						fieldEventIDKey:     created.ID,
+						"external_event_id": created.ExternalEventID,
+						fieldEventTypeKey:   created.EventType,
+					},
+				),
+			},
+		)
 
-			s.writeAuditLog(
-				ctx,
-				logger,
-				integration.AuditLog{
-					IntegrationInstanceID: instance.ID,
-					Action:                integration.AuditActionWebhookReceived,
-					Severity:              integration.AuditSeverityInfo,
-					Message:               "Webhook accepted and queued for processing",
-					MetadataJSON: provider.MustMarshalJSON(
-						map[string]any{
-							fieldEventIDKey:     created.ID,
-							"external_event_id": created.ExternalEventID,
-							fieldEventTypeKey:   created.EventType,
-						},
-					),
-				},
-				txOpts,
-			)
+		logger.Info().
+			Str(fieldEventIDKey, created.ID).
+			Str(fieldEventTypeKey, created.EventType).
+			Msg("webhook ingested and queued as PENDING")
 
-			logger.Info().
-				Str(fieldEventIDKey, created.ID).
-				Str(fieldEventTypeKey, created.EventType).
-				Msg("webhook ingested and queued as PENDING")
-
-			return created, nil
-		},
-	)
+		return nil
+	})
+	return created, err
 }
 
 // ---------------------------------------------------------------------------
@@ -869,7 +856,6 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 	instances, err := s.instanceRepo.ListByProviderInternal(
 		ctx,
 		string(integration.ProviderTypeClerk),
-		nil,
 	)
 	if err != nil {
 		return err
@@ -936,7 +922,7 @@ func (s *integrationService) runInstanceReconcile(
 	logger zerolog.Logger,
 	instanceID string,
 ) error {
-	instance, findErr := s.instanceRepo.FindByIDInternal(ctx, instanceID, nil)
+	instance, findErr := s.instanceRepo.FindByIDInternal(ctx, instanceID)
 	if findErr != nil {
 		return findErr
 	}
@@ -991,9 +977,8 @@ func (s *integrationService) runInstanceReconcile(
 		return execErr
 	}
 
-	return jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &jetx.DBOptions{Tx: tx}
-		s.writeAuditLog(ctx, logger, integration.AuditLog{
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		s.writeAuditLog(txCtx, logger, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
 			Action:                integration.AuditActionReconcileCompleted,
 			Severity:              integration.AuditSeveritySuccess,
@@ -1002,7 +987,7 @@ func (s *integrationService) runInstanceReconcile(
 				"commands": len(commands),
 				"batches":  batchesProcessed,
 			}),
-		}, txOpts)
+		})
 
 		return nil
 	})
@@ -1017,7 +1002,7 @@ func (s *integrationService) runInstanceReconcile(
 // is used by system-internal paths (startup seeding, scheduler start/stop logic).
 func (s *integrationService) countClerkInstancesWithKey(ctx context.Context) (int, error) {
 	instances, err := s.instanceRepo.ListByProviderInternal(
-		ctx, string(integration.ProviderTypeClerk), nil,
+		ctx, string(integration.ProviderTypeClerk),
 	)
 	if err != nil {
 		return 0, err
@@ -1182,7 +1167,7 @@ func (s *integrationService) processOneEvent(
 		return pgqueue.NonRetryable(errors.New("queue payload missing event_id"))
 	}
 
-	event, findErr := s.eventRepo.FindByIDInternal(ctx, payload.EventID, nil)
+	event, findErr := s.eventRepo.FindByIDInternal(ctx, payload.EventID)
 	if findErr != nil {
 		return findErr
 	}
@@ -1202,9 +1187,8 @@ func (s *integrationService) processOneEvent(
 	// Capture the resolved instance for use in phase 2 failure recording.
 	var resolvedInstance *integration.Instance
 
-	procErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &jetx.DBOptions{Tx: tx}
-		instance, txErr := s.executeEventTransaction(ctx, eventLogger, event, job, txOpts)
+	procErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		instance, txErr := s.executeEventTransaction(txCtx, eventLogger, event, job)
 		if instance != nil {
 			resolvedInstance = instance
 		}
@@ -1229,17 +1213,16 @@ func (s *integrationService) executeEventTransaction(
 	logger zerolog.Logger,
 	event *integration.Event,
 	job *pgqueue.Job,
-	txOpts *jetx.DBOptions,
 ) (*integration.Instance, error) {
 	// Mark as PROCESSING.
 	if statusErr := s.eventRepo.UpdateStatusInternal(
-		ctx, event.ID, integration.EventStatusProcessing, nil, txOpts,
+		ctx, event.ID, integration.EventStatusProcessing, nil,
 	); statusErr != nil {
 		return nil, statusErr
 	}
 
 	// Resolve the instance (unscoped — worker has no tenant context).
-	instance, instanceErr := s.instanceRepo.FindByIDInternal(ctx, event.IntegrationInstanceID, txOpts)
+	instance, instanceErr := s.instanceRepo.FindByIDInternal(ctx, event.IntegrationInstanceID)
 	if instanceErr != nil {
 		return nil, fmt.Errorf("failed to find integration instance: %w", instanceErr)
 	}
@@ -1277,13 +1260,13 @@ func (s *integrationService) executeEventTransaction(
 	}
 
 	// Execute commands.
-	if execErr := s.executeCommands(ctx, logger, webhookProv, instance, commands, txOpts); execErr != nil {
+	if execErr := s.executeCommands(ctx, logger, webhookProv, instance, commands); execErr != nil {
 		return instance, execErr
 	}
 
 	// Mark PROCESSED.
 	if markErr := s.eventRepo.UpdateStatusInternal(
-		ctx, event.ID, integration.EventStatusProcessed, nil, txOpts,
+		ctx, event.ID, integration.EventStatusProcessed, nil,
 	); markErr != nil {
 		return instance, markErr
 	}
@@ -1300,7 +1283,7 @@ func (s *integrationService) executeEventTransaction(
 			fieldQueueAttemptKey:     job.Attempts,
 			fieldQueueMaxAttemptsKey: job.MaxAttempts,
 		}),
-	}, txOpts)
+	})
 
 	logger.Info().
 		Int("commands", len(commands)).
@@ -1320,18 +1303,16 @@ func (s *integrationService) handleEventFailure(
 	instance *integration.Instance,
 	cause error,
 ) error {
-	failErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &jetx.DBOptions{Tx: tx}
-
+	failErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if job.Attempts < job.MaxAttempts {
-			return s.scheduleRetry(ctx, logger, event, job, instance, cause, txOpts)
+			return s.scheduleRetry(txCtx, logger, event, job, instance, cause)
 		}
 
 		// Exhausted retries — mark FAILED.
-		s.markEventFailed(ctx, event.ID, cause, txOpts)
+		s.markEventFailed(txCtx, event.ID, cause)
 
 		if instance != nil {
-			s.writeAuditLog(ctx, logger, integration.AuditLog{
+			s.writeAuditLog(txCtx, logger, integration.AuditLog{
 				IntegrationInstanceID: instance.ID,
 				Action:                integration.AuditActionWebhookFailed,
 				Severity:              integration.AuditSeverityError,
@@ -1343,7 +1324,7 @@ func (s *integrationService) handleEventFailure(
 					fieldQueueMaxAttemptsKey: job.MaxAttempts,
 					"error":                  cause.Error(),
 				}),
-			}, txOpts)
+			})
 		}
 
 		logger.Warn().
@@ -1374,7 +1355,6 @@ func (s *integrationService) scheduleRetry(
 	job *pgqueue.Job,
 	instance *integration.Instance,
 	cause error,
-	txOpts *jetx.DBOptions,
 ) error {
 	backoff := pgqueue.ExponentialBackoff(
 		integrationBackoffBase,
@@ -1388,7 +1368,6 @@ func (s *integrationService) scheduleRetry(
 		event.ID,
 		integration.EventStatusPending,
 		&errMsg,
-		txOpts,
 	); retryErr != nil {
 		logger.Error().Err(retryErr).Msg("failed to schedule retry")
 		return retryErr
@@ -1408,7 +1387,7 @@ func (s *integrationService) scheduleRetry(
 				"backoff_seconds":        int(backoff.Seconds()),
 				"error":                  cause.Error(),
 			}),
-		}, txOpts)
+		})
 	}
 
 	logger.Info().
@@ -1451,7 +1430,6 @@ func (s *integrationService) resolveWebhookTarget(
 		ctx,
 		input.ProductID,
 		string(input.ProviderType),
-		nil,
 	)
 	if findErr != nil {
 		logger.Error().Err(findErr).
@@ -1480,7 +1458,6 @@ func (s *integrationService) resolveWebhookTarget(
 					},
 				),
 			},
-			nil,
 		)
 
 		logger.Warn().
@@ -1521,7 +1498,6 @@ func (s *integrationService) resolveWebhookTarget(
 						},
 					),
 				},
-				nil,
 			)
 
 			logger.Warn().Err(sigErr).
@@ -1558,7 +1534,6 @@ func (s *integrationService) buildWebhookEvent(
 					},
 				),
 			},
-			nil,
 		)
 
 		logger.Error().Err(parseErr).
@@ -1595,7 +1570,6 @@ func (s *integrationService) buildWebhookEvent(
 					},
 				),
 			},
-			nil,
 		)
 
 		logger.Warn().Err(eventIDErr).
@@ -1698,7 +1672,7 @@ func (s *integrationService) verifyAndActivate(
 	defer cancel()
 
 	// Re-fetch the live instance so we update current state, not a stale snapshot.
-	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID, nil)
+	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
 	if findErr != nil || live == nil {
 		logger.Error().Err(findErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
@@ -1719,7 +1693,7 @@ func (s *integrationService) verifyAndActivate(
 		live.LastError = nil
 	}
 
-	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live, nil); updateErr != nil {
+	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live); updateErr != nil {
 		logger.Error().Err(updateErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to persist verification result")
 	}
@@ -1821,10 +1795,9 @@ func (s *integrationService) markEventFailed(
 	ctx context.Context,
 	eventID string,
 	cause error,
-	txOpts *jetx.DBOptions,
 ) {
 	errMsg := cause.Error()
-	_ = s.eventRepo.UpdateStatusInternal(ctx, eventID, integration.EventStatusFailed, &errMsg, txOpts)
+	_ = s.eventRepo.UpdateStatusInternal(ctx, eventID, integration.EventStatusFailed, &errMsg)
 }
 
 func (s *integrationService) findDuplicateEvent(
@@ -1832,13 +1805,11 @@ func (s *integrationService) findDuplicateEvent(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	event integration.Event,
-	txOpts *jetx.DBOptions,
 ) (*integration.Event, error) {
 	existing, err := s.eventRepo.FindByExternalEventIDInternal(
 		ctx,
 		instance.ID,
 		event.ExternalEventID,
-		txOpts,
 	)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to check for duplicate event")
@@ -1857,7 +1828,6 @@ func (s *integrationService) writeAuditLog(
 	ctx context.Context,
 	logger zerolog.Logger,
 	auditLog integration.AuditLog,
-	txOpts *jetx.DBOptions,
 ) {
 	if auditLog.ID == "" {
 		auditLog.GenerateID()
@@ -1872,7 +1842,7 @@ func (s *integrationService) writeAuditLog(
 		auditLog.Message = "Integration activity recorded"
 	}
 
-	if _, auditErr := s.auditLogRepo.Create(ctx, auditLog, txOpts); auditErr != nil {
+	if _, auditErr := s.auditLogRepo.Create(ctx, auditLog); auditErr != nil {
 		logger.Error().Err(auditErr).
 			Str("integration_instance_id", auditLog.IntegrationInstanceID).
 			Str("action", auditLog.Action).
@@ -1888,10 +1858,9 @@ func (s *integrationService) executeCommands(
 	prov provider.WebhookIngestor,
 	instance *integration.Instance,
 	commands []provider.Command,
-	txOpts *jetx.DBOptions,
 ) error {
 	for _, cmd := range commands {
-		if err := prov.ExecuteCommand(ctx, logger, instance, cmd, txOpts); err != nil {
+		if err := prov.ExecuteCommand(ctx, logger, instance, cmd); err != nil {
 			return err
 		}
 	}
@@ -1923,13 +1892,12 @@ func (s *integrationService) executeCommandsInBatches(
 		batchIndex := batchesProcessed + 1
 		batchCommands := commands[start:end]
 
-		txErr := jetx.WithTx(s.db, func(tx *sql.Tx) error {
-			txOpts := &jetx.DBOptions{Tx: tx}
-			if err := s.executeCommands(ctx, logger, prov, instance, batchCommands, txOpts); err != nil {
+		txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+			if err := s.executeCommands(txCtx, logger, prov, instance, batchCommands); err != nil {
 				return err
 			}
 
-			s.writeAuditLog(ctx, logger, integration.AuditLog{
+			s.writeAuditLog(txCtx, logger, integration.AuditLog{
 				IntegrationInstanceID: instance.ID,
 				Action:                integration.AuditActionReconcileBatch,
 				Severity:              integration.AuditSeverityInfo,
@@ -1940,7 +1908,7 @@ func (s *integrationService) executeCommandsInBatches(
 					"range_start": start,
 					"range_end":   end,
 				}),
-			}, txOpts)
+			})
 
 			return nil
 		})

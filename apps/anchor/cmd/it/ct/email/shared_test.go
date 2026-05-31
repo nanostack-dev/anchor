@@ -87,7 +87,7 @@ func seedSMTPInstance(t *testing.T, tc testCtx, mp *mailpit.Mailpit) {
 		Status:           domainintegration.StatusActive,
 	}
 	inst.GenerateID()
-	_, err = IntegrationRepo.Create(context.Background(), inst, nil)
+	_, err = IntegrationRepo.Create(context.Background(), inst)
 	require.NoError(t, err)
 }
 

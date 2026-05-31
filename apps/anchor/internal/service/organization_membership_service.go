@@ -6,7 +6,6 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 )
@@ -113,7 +112,7 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	logger zerolog.Logger,
 ) error {
 	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false, nil,
+		ctx, productID, organizationID, productUserID, false,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -137,7 +136,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 	logger zerolog.Logger,
 ) error {
 	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false, nil,
+		ctx, productID, organizationID, productUserID, false,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -161,10 +160,10 @@ func (s *organizationMembershipService) applyMembership(
 	ctx context.Context,
 	productID, organizationID, productUserID, roleID string,
 	failMsg, successMsg string,
-	repoFn func(context.Context, string, string, string, string, *jetx.DBOptions) (organization.Membership, error),
+	repoFn func(context.Context, string, string, string, string) (organization.Membership, error),
 	logger zerolog.Logger,
 ) (organization.Membership, error) {
-	membership, err := repoFn(ctx, productID, organizationID, productUserID, roleID, nil)
+	membership, err := repoFn(ctx, productID, organizationID, productUserID, roleID)
 	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
@@ -195,7 +194,7 @@ func (s *organizationMembershipService) RemoveMember(
 	}
 
 	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false, nil,
+		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -210,7 +209,7 @@ func (s *organizationMembershipService) RemoveMember(
 	}
 
 	if err = s.orgMembershipRepo.Delete(
-		ctx, input.OrganizationID, input.ProductUserID, nil,
+		ctx, input.OrganizationID, input.ProductUserID,
 	); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
@@ -239,7 +238,7 @@ func (s *organizationMembershipService) GetMember(
 	}
 
 	membership, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions, nil,
+		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -263,7 +262,7 @@ func (s *organizationMembershipService) ListMembers(
 	}
 
 	memberships, err := s.orgMembershipRepo.FindByOrgID(
-		ctx, input.ProductID, input.OrganizationID, input.IncludePermissions, nil,
+		ctx, input.ProductID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -286,7 +285,7 @@ func (s *organizationMembershipService) SearchMembers(
 	}
 
 	result, err := s.orgMembershipRepo.SearchByOrgID(
-		ctx, input.ProductID, input.OrganizationID, input.Request, nil,
+		ctx, input.ProductID, input.OrganizationID, input.Request,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -308,7 +307,7 @@ func (s *organizationMembershipService) validateRole(
 	roleID string,
 	logger zerolog.Logger,
 ) error {
-	role, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID, nil)
+	role, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
 	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).

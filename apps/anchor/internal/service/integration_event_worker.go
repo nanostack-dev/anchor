@@ -220,7 +220,7 @@ func seedReconcileScheduler(
 	acquired, err := lock.TryWithLock(ctx, lockKeyReconcileSchedulerSeed, func(ctx context.Context, _ *sql.Tx) error {
 		// Inside the lock: check whether at least one Clerk instance has an API key.
 		instances, listErr := instanceRepo.ListByProviderInternal(
-			ctx, string(domainintegration.ProviderTypeClerk), nil,
+			ctx, string(domainintegration.ProviderTypeClerk),
 		)
 		if listErr != nil {
 			return listErr

@@ -2,14 +2,13 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"time"
 
 	"anchor/internal/security"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/nanostack-dev/pgkit/pgqueue"
@@ -49,7 +48,7 @@ type OrganizationAPIKeyService interface {
 }
 
 type organizationAPIKeyService struct {
-	db               *sql.DB
+	transactor       transactor.Transactor
 	queue            *pgqueue.Client
 	apiKeyRepo       repository.OrganizationAPIKeyRepository
 	organizationRepo repository.OrganizationRepository
@@ -58,7 +57,7 @@ type organizationAPIKeyService struct {
 }
 
 func NewOrganizationAPIKeyService(
-	db *sql.DB,
+	transactor transactor.Transactor,
 	queue *pgqueue.Client,
 	apiKeyRepo repository.OrganizationAPIKeyRepository,
 	organizationRepo repository.OrganizationRepository,
@@ -66,7 +65,7 @@ func NewOrganizationAPIKeyService(
 	logger zerolog.Logger,
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
-		db:               db,
+		transactor:       transactor,
 		queue:            queue,
 		apiKeyRepo:       apiKeyRepo,
 		organizationRepo: organizationRepo,
@@ -91,7 +90,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyExpiresAtInPastError()
 	}
 
-	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID, nil)
+	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
 	}
@@ -150,19 +149,19 @@ func (s *organizationAPIKeyService) Create(
 		},
 	)
 
-	created, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (orgapikey.OrganizationAPIKey, error) {
-		txOptions := &jetx.DBOptions{Tx: tx}
-
-		created, createErr := s.apiKeyRepo.Create(ctx, organizationAPIKey, txOptions)
+	var created orgapikey.OrganizationAPIKey
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.apiKeyRepo.Create(txCtx, organizationAPIKey)
 		if createErr != nil {
-			return orgapikey.OrganizationAPIKey{}, createErr
+			return createErr
 		}
 
-		if enqueueErr := s.enqueueExpirationEvent(ctx, tx, created); enqueueErr != nil {
-			return orgapikey.OrganizationAPIKey{}, enqueueErr
+		if enqueueErr := s.enqueueExpirationEvent(txCtx, created); enqueueErr != nil {
+			return enqueueErr
 		}
 
-		return created, nil
+		return nil
 	})
 	if err != nil {
 		logger.Error().
@@ -189,7 +188,7 @@ func (s *organizationAPIKeyService) GetByID(
 		return nil, err
 	}
 
-	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID, nil)
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -219,7 +218,7 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -255,7 +254,7 @@ func (s *organizationAPIKeyService) Update(
 		updatedAPIKey.Status = *input.Status
 	}
 
-	updated, err := s.apiKeyRepo.Update(ctx, updatedAPIKey, nil)
+	updated, err := s.apiKeyRepo.Update(ctx, updatedAPIKey)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -281,7 +280,7 @@ func (s *organizationAPIKeyService) Search(
 		return nil, err
 	}
 
-	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input, nil)
+	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -306,7 +305,7 @@ func (s *organizationAPIKeyService) Delete(
 		return err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -320,10 +319,8 @@ func (s *organizationAPIKeyService) Delete(
 		return apierror.ErrNotFound
 	}
 
-	return jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		txOpts := &jetx.DBOptions{Tx: tx}
-
-		if deleteErr := s.apiKeyRepo.Delete(ctx, input.OrganizationID, input.ID, txOpts); deleteErr != nil {
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
 			logger.Error().
 				Str("organization_id", input.OrganizationID).
 				Str("api_key_id", input.ID).
@@ -336,7 +333,7 @@ func (s *organizationAPIKeyService) Delete(
 			return nil
 		}
 
-		jobs, listErr := s.queue.ListJobs(ctx, pgqueue.ListJobsParams{
+		jobs, listErr := s.queue.ListJobs(txCtx, pgqueue.ListJobsParams{
 			QueueName: organizationAPIKeyEventQueueName,
 			Status:    pgqueue.StatusPending,
 			Limit:     organizationAPIKeyEventListLimit,
@@ -357,7 +354,7 @@ func (s *organizationAPIKeyService) Delete(
 			if p.APIKeyID != input.ID {
 				continue
 			}
-			if cancelErr := s.queue.DeleteJob(ctx, job.ID); cancelErr != nil {
+			if cancelErr := s.queue.DeleteJob(txCtx, job.ID); cancelErr != nil {
 				logger.Error().
 					Str("api_key_id", input.ID).
 					Int64("job_id", job.ID).
@@ -441,7 +438,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	}
 
 	hashedKey := security.HashSecret(apiKey)
-	foundAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey, nil)
+	foundAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
 		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, apierror.ErrUnexpected
@@ -458,7 +455,6 @@ func (s *organizationAPIKeyService) validateAPIKey(
 				foundAPIKey.OrganizationID,
 				foundAPIKey.ID,
 				orgapikey.StatusInactive,
-				nil,
 			); updateErr != nil {
 				logger.Error().
 					Str("organization_id", organizationID).
@@ -481,7 +477,6 @@ func (s *organizationAPIKeyService) validateAPIKey(
 			ctx,
 			foundAPIKey.OrganizationID,
 			foundAPIKey.ID,
-			nil,
 		); updateErr != nil {
 			logger.Error().
 				Str("organization_id", organizationID).
@@ -498,7 +493,6 @@ func (s *organizationAPIKeyService) validateAPIKey(
 
 func (s *organizationAPIKeyService) enqueueExpirationEvent(
 	ctx context.Context,
-	tx *sql.Tx,
 	apiKey orgapikey.OrganizationAPIKey,
 ) error {
 	if apiKey.ExpiresAt == nil {
@@ -514,7 +508,7 @@ func (s *organizationAPIKeyService) enqueueExpirationEvent(
 		return err
 	}
 
-	_, err = s.queue.EnqueueTx(ctx, tx, pgqueue.EnqueueParams{
+	_, err = s.queue.EnqueueTx(ctx, transactor.CurrentTx(ctx), pgqueue.EnqueueParams{
 		QueueName:   organizationAPIKeyEventQueueName,
 		Payload:     payload,
 		AvailableAt: apiKey.ExpiresAt,
@@ -529,7 +523,7 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 	organizationID, name string,
 	logger zerolog.Logger,
 ) error {
-	existingAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name, nil)
+	existingAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", organizationID).
@@ -548,7 +542,7 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 	ctx context.Context,
 	productID, organizationID string,
 ) error {
-	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID, nil)
+	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
 		return apierror.ErrUnexpected
 	}
@@ -565,7 +559,7 @@ func (s *organizationAPIKeyService) permissionsValidation(
 	logger zerolog.Logger,
 ) error {
 	permsFound, err := s.permissionRepo.FindByProductIDAndPermissionNames(
-		ctx, productID, permissionNames, nil,
+		ctx, productID, permissionNames,
 	)
 	if err != nil {
 		logger.Error().

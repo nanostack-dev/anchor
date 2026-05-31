@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
 	"github.com/nanostack-dev/nanostack-framework/modules/logging"
@@ -17,6 +19,7 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/middleware"
 	"anchor/internal/repository"
+	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
 
 	"go.uber.org/fx"
@@ -35,6 +38,10 @@ func StartAnchorWithPopulate(target ...interface{}) {
 }
 
 func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
+	if err := runtimeenv.HydrateFileBackedEnv(); err != nil {
+		panic(fmt.Sprintf("failed to hydrate file-backed runtime env: %v", err))
+	}
+
 	app := fx.New(
 		logging.Module,
 		config.Module,

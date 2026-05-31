@@ -98,7 +98,7 @@ func (s *productRoleService) CreateProductRole(
 
 	productRole.Permissions = productRolePermission
 
-	created, err := s.roleRepo.Create(ctx, productRole, nil)
+	created, err := s.roleRepo.Create(ctx, productRole)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -126,7 +126,7 @@ func (s *productRoleService) SearchProductRoles(
 		return search.Result[role.ProductRole]{}, err
 	}
 
-	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request, nil)
+	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -147,7 +147,7 @@ func (s *productRoleService) GetProductRole(
 		return nil, err
 	}
 
-	productRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID, nil)
+	productRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -174,7 +174,7 @@ func (s *productRoleService) UpdateProductRole(
 		Str("product_id", input.ProductID).
 		Msg("updating product role")
 
-	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID, nil)
+	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -206,7 +206,7 @@ func (s *productRoleService) UpdateProductRole(
 		updatedRole.Permissions = input.Permissions
 	}
 
-	updated, err := s.roleRepo.Update(ctx, updatedRole, nil)
+	updated, err := s.roleRepo.Update(ctx, updatedRole)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -233,7 +233,7 @@ func (s *productRoleService) DeleteProductRole(
 		return err
 	}
 
-	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID, nil)
+	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -246,7 +246,7 @@ func (s *productRoleService) DeleteProductRole(
 		return apierror.ErrNotFound
 	}
 
-	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID, nil)
+	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -259,7 +259,7 @@ func (s *productRoleService) DeleteProductRole(
 		return NewRoleInUseError(input.ID)
 	}
 
-	err = s.roleRepo.DeleteByProductIDAndRoleID(ctx, input.ProductID, input.ID, nil)
+	err = s.roleRepo.DeleteByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -292,7 +292,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		Msg("assigning permission to product role")
 
 	productRole, err := s.roleRepo.FindByProductIDAndRoleID(
-		ctx, input.ProductID, input.ProductRoleID, nil,
+		ctx, input.ProductID, input.ProductRoleID,
 	)
 	if err != nil {
 		logger.Error().
@@ -335,7 +335,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 
 	productRole.Permissions = append(productRole.Permissions, newPermission)
 
-	updated, err := s.roleRepo.Update(ctx, *productRole, nil)
+	updated, err := s.roleRepo.Update(ctx, *productRole)
 	if err != nil {
 		logger.Error().
 			Str("product_role_id", input.ProductRoleID).
@@ -368,7 +368,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		Msg("unassigning permission from product role")
 
 	productRole, err := s.roleRepo.FindByProductIDAndRoleID(
-		ctx, input.ProductID, input.ProductRoleID, nil,
+		ctx, input.ProductID, input.ProductRoleID,
 	)
 	if err != nil {
 		logger.Error().
@@ -383,7 +383,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 	}
 
 	permissionFound, err := s.productResourcePermissionRepo.FindByName(
-		ctx, input.ProductID, input.PermissionName, nil,
+		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
 		logger.Error().
@@ -419,7 +419,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 
 	productRole.Permissions = updatedPermissions
 
-	updated, err := s.roleRepo.Update(ctx, *productRole, nil)
+	updated, err := s.roleRepo.Update(ctx, *productRole)
 	if err != nil {
 		logger.Error().
 			Str("product_role_id", input.ProductRoleID).
@@ -447,7 +447,6 @@ func (s *productRoleService) nameDuplicationValidation(
 				Names: []string{roleName},
 			},
 		).One(),
-		nil,
 	)
 	if err != nil {
 		logger.Error().
@@ -495,7 +494,7 @@ func (s *productRoleService) permissionsValidation(
 		})
 
 	result, err := s.productResourcePermissionRepo.SearchByProduct(
-		ctx, productID, searchReq, nil,
+		ctx, productID, searchReq,
 	)
 	if err != nil {
 		logger.Error().
