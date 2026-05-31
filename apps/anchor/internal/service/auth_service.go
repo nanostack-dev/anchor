@@ -2,13 +2,11 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
@@ -35,7 +33,6 @@ type AuthService interface {
 }
 
 type authService struct {
-	db                     *sql.DB
 	transactor             transactor.Transactor
 	userRepo               repository.UserRepository
 	tenantRepo             repository.TenantRepository
@@ -48,7 +45,6 @@ type authService struct {
 }
 
 func NewAuthService(
-	db *sql.DB,
 	transactor transactor.Transactor,
 	userRepo repository.UserRepository,
 	tenantRepo repository.TenantRepository,
@@ -59,7 +55,6 @@ func NewAuthService(
 	logger zerolog.Logger,
 ) AuthService {
 	return &authService{
-		db:                     db,
 		transactor:             transactor,
 		userRepo:               userRepo,
 		tenantRepo:             tenantRepo,
@@ -77,7 +72,7 @@ func (s *authService) GetUserByTenantIDAndID(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetUserByTenantIDAndID").Logger()
 
-	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID, nil)
+	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", tenantID).
@@ -102,11 +97,7 @@ func (s *authService) Register(
 
 	var createdPlatformUser platform.User
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		tx := transactor.CurrentTx(txCtx)
-
-		optUserByEmail, err := s.userRepo.FindByEmail(
-			txCtx, input.Email, &jetx.DBOptions{Tx: tx},
-		)
+		optUserByEmail, err := s.userRepo.FindByEmail(txCtx, input.Email)
 		if err != nil {
 			logger.Error().
 				Str("email", input.Email).
@@ -140,7 +131,7 @@ func (s *authService) Register(
 		}
 		newUser.GenerateID()
 
-		newUser, err = s.userRepo.Create(txCtx, newUser, &jetx.DBOptions{Tx: tx})
+		newUser, err = s.userRepo.Create(txCtx, newUser)
 		if err != nil {
 			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
 			return fmt.Errorf("failed to create user: %w", err)
@@ -161,9 +152,7 @@ func (s *authService) Register(
 		platformUser.GenerateID()
 
 		// Use the repository Create method to persist the platform user
-		resUser, err := s.platformTenantUserRepo.Create(
-			txCtx, platformUser, &jetx.DBOptions{Tx: tx},
-		)
+		resUser, err := s.platformTenantUserRepo.Create(txCtx, platformUser)
 		if err != nil {
 			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
 			return fmt.Errorf("failed to create platform user: %w", err)
@@ -183,15 +172,13 @@ func (s *authService) Register(
 }
 
 func (s *authService) handleInvitation(
-	ctx context.Context, tx *sql.Tx, email string, code string, logger zerolog.Logger,
+	ctx context.Context, email string, code string, logger zerolog.Logger,
 ) (invitation.PlatformInvitation, error) {
 	if code == "" {
 		logger.Error().Msg("invitation code is empty")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
-	optInvitation, err := s.invitationRepo.FindByCodeAndEmail(
-		ctx, code, email, &jetx.DBOptions{Tx: tx},
-	)
+	optInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
 	if err != nil {
 		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
@@ -202,7 +189,7 @@ func (s *authService) handleInvitation(
 	}
 	// then delete the invitation because it is used
 	if err = s.invitationRepo.DeleteByTenantIDAndID(
-		ctx, optInvitation.PlatformTenantID, optInvitation.ID, &jetx.DBOptions{Tx: tx},
+		ctx, optInvitation.PlatformTenantID, optInvitation.ID,
 	); err != nil {
 		logger.Error().
 			Str("invitation_id", optInvitation.ID).
@@ -223,7 +210,7 @@ func (s *authService) Login(
 		return auth.LoginOutput{}, validationErr
 	}
 
-	user, err := s.userRepo.FindByEmail(ctx, input.Email, nil)
+	user, err := s.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
 		logger.Error().Str("email", input.Email).Err(err).Msg("failed to find user by email")
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
@@ -254,7 +241,7 @@ func (s *authService) Login(
 
 	// Try to find platform user in the first tenant
 	platformUser, err := s.platformTenantUserRepo.FindByTenantIDAndEmail(
-		ctx, tenants[0].ID, user.Email, nil,
+		ctx, tenants[0].ID, user.Email,
 	)
 	if err != nil {
 		return auth.LoginOutput{}, err
@@ -307,7 +294,7 @@ func (s *authService) RefreshToken(
 	}
 
 	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
-		ctx, claims.TenantID, claims.UserID, nil,
+		ctx, claims.TenantID, claims.UserID,
 	)
 	if err != nil {
 		logger.Error().
@@ -375,8 +362,7 @@ func (s *authService) setupTenantForRegistration(
 	}
 
 	logger.Info().Msg("using invitation code for registration")
-	tx := transactor.CurrentTx(ctx)
-	userInvitation, inviteErr := s.handleInvitation(ctx, tx, email, *invitationCode, logger)
+	userInvitation, inviteErr := s.handleInvitation(ctx, email, *invitationCode, logger)
 	if inviteErr != nil {
 		logger.Error().Err(inviteErr).Msg("failed to handle invitation")
 		return "", "", fmt.Errorf("failed to handle invitation: %w", inviteErr)

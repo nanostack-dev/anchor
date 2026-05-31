@@ -61,7 +61,7 @@ func (s *permissionService) Create(
 	}
 
 	exists, err := s.permissionRepo.FindByProductIDAndPermissionName(
-		ctx, input.ProductID, input.Name, nil,
+		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
 		logger.Error().
@@ -87,7 +87,7 @@ func (s *permissionService) Create(
 		UpdatedAt:   now,
 	}
 
-	createdPerm, err := s.permissionRepo.Create(ctx, perm, nil)
+	createdPerm, err := s.permissionRepo.Create(ctx, perm)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -115,7 +115,7 @@ func (s *permissionService) Update(
 	}
 
 	existing, err := s.permissionRepo.FindByProductIDAndPermissionName(
-		ctx, input.ProductID, input.Name, nil,
+		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
 		logger.Error().
@@ -134,7 +134,7 @@ func (s *permissionService) Update(
 	updated.Description = input.Description
 	updated.UpdatedAt = time.Now()
 
-	result, err := s.permissionRepo.Update(ctx, updated, nil)
+	result, err := s.permissionRepo.Update(ctx, updated)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -162,7 +162,7 @@ func (s *permissionService) Delete(
 	}
 
 	exists, err := s.permissionRepo.FindByProductIDAndPermissionName(
-		ctx, input.ProductID, input.Name, nil,
+		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
 		logger.Error().
@@ -177,7 +177,7 @@ func (s *permissionService) Delete(
 		return nil
 	}
 
-	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, input.Name, nil)
+	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, input.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -193,7 +193,7 @@ func (s *permissionService) Delete(
 		)
 	}
 
-	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, input.Name, nil)
+	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, input.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -221,7 +221,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 	}
 
 	perm, err := s.permissionRepo.FindByProductIDAndPermissionName(
-		ctx, input.ProductID, input.Name, nil,
+		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
 		logger.Error().
@@ -248,7 +248,7 @@ func (s *permissionService) SearchByProductID(
 		return search.Result[permission.ProductPermission]{}, err
 	}
 
-	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request, nil)
+	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -269,7 +269,7 @@ func (s *permissionService) CheckPermissionExists(
 		return false, nil
 	}
 	perms, err := s.permissionRepo.FindByProductIDAndPermissionNames(
-		ctx, productID, permissions, nil,
+		ctx, productID, permissions,
 	)
 	if err != nil {
 		logger.Error().

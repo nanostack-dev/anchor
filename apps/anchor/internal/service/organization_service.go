@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
@@ -43,7 +43,6 @@ type organizationService struct {
 	productUserRepo   repository.ProductUserRepository
 	productRoleRepo   repository.ProductRoleRepository
 	lock              *pglock.Client
-	db                *sql.DB
 	logger            zerolog.Logger
 }
 
@@ -53,7 +52,6 @@ func NewOrganizationService(
 	productUserRepo repository.ProductUserRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	lock *pglock.Client,
-	db *sql.DB,
 	logger zerolog.Logger,
 ) OrganizationService {
 	return &organizationService{
@@ -62,7 +60,6 @@ func NewOrganizationService(
 		productUserRepo:   productUserRepo,
 		productRoleRepo:   productRoleRepo,
 		lock:              lock,
-		db:                db,
 		logger:            logger.With().Str("component", "organization_service").Logger(),
 	}
 }
@@ -76,7 +73,7 @@ func (s *organizationService) Find(
 		return nil, err
 	}
 
-	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID, nil)
+	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -104,7 +101,7 @@ func (s *organizationService) Create(
 	}
 	org.GenerateID()
 
-	created, err := s.organizationRepo.Create(ctx, org, nil)
+	created, err := s.organizationRepo.Create(ctx, org)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -133,7 +130,7 @@ func (s *organizationService) CreateWithMember(
 	}
 
 	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, false, nil,
+		ctx, input.ProductID, input.ProductUserID, false,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -145,7 +142,7 @@ func (s *organizationService) CreateWithMember(
 	if len(existingMemberships) > 0 {
 		existing := existingMemberships[0]
 
-		org, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID, nil)
+		org, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
 		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
@@ -154,7 +151,7 @@ func (s *organizationService) CreateWithMember(
 		}
 
 		membership, errGetOrg := s.orgMembershipRepo.FindByOrgIDAndUserID(
-			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false, nil,
+			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false,
 		)
 		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
@@ -183,14 +180,12 @@ func (s *organizationService) CreateWithMember(
 	var createdMembership organization.Membership
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
-		txOpts := &jetx.DBOptions{Tx: tx}
-		productUserTxOpts := &jetx.DBOptions{Tx: tx}
+		lockCtx = transactor.WithTx(lockCtx, tx)
 
 		productUserEntity, lookupErr := s.productUserRepo.FindByProductIDAndID(
 			lockCtx,
 			input.ProductID,
 			input.ProductUserID,
-			productUserTxOpts,
 		)
 		if lookupErr != nil {
 			logger.Error().Err(lookupErr).
@@ -207,7 +202,6 @@ func (s *organizationService) CreateWithMember(
 			lockCtx,
 			input.ProductID,
 			input.RoleID,
-			txOpts,
 		)
 		if roleErr != nil {
 			logger.Error().Err(roleErr).
@@ -227,7 +221,7 @@ func (s *organizationService) CreateWithMember(
 		}
 		org.GenerateID()
 
-		createdOrg, err = s.organizationRepo.Create(lockCtx, org, txOpts)
+		createdOrg, err = s.organizationRepo.Create(lockCtx, org)
 		if err != nil {
 			logger.Error().Err(err).
 				Str("product_id", input.ProductID).
@@ -237,7 +231,7 @@ func (s *organizationService) CreateWithMember(
 		}
 
 		createdMembership, err = s.orgMembershipRepo.Create(
-			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID, txOpts,
+			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID,
 		)
 		if err != nil {
 			logger.Error().Err(err).
@@ -285,7 +279,7 @@ func (s *organizationService) Update(
 	}
 
 	optOrg, err := s.organizationRepo.FindByID(
-		ctx, input.ProductID, input.OrganizationID, nil,
+		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
 		logger.Error().
@@ -309,7 +303,7 @@ func (s *organizationService) Update(
 	}
 	org.Description = input.Description
 
-	updated, err := s.organizationRepo.Update(ctx, input.ProductID, org, nil)
+	updated, err := s.organizationRepo.Update(ctx, input.ProductID, org)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -337,7 +331,7 @@ func (s *organizationService) Delete(
 	}
 
 	optOrg, err := s.organizationRepo.FindByID(
-		ctx, input.ProductID, input.OrganizationID, nil,
+		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
 		logger.Error().
@@ -355,7 +349,7 @@ func (s *organizationService) Delete(
 		return apierror.ErrNotFound
 	}
 
-	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID, nil)
+	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -382,7 +376,7 @@ func (s *organizationService) Search(
 		return search.Result[organization.Organization]{}, err
 	}
 
-	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request, nil)
+	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).

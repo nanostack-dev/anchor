@@ -5,7 +5,6 @@ import (
 
 	"anchor/internal/domain/integration"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -95,7 +94,6 @@ type WebhookIngestor interface {
 		logger zerolog.Logger,
 		instance *integration.Instance,
 		cmd Command,
-		txOpts *jetx.DBOptions,
 	) error
 }
 

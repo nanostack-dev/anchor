@@ -52,7 +52,7 @@ func (s *platformUserService) SearchPlatformUsers(
 	if err := validateStruct(input); err != nil {
 		return search.Result[platform.User]{}, err
 	}
-	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request, nil)
+	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
@@ -71,7 +71,7 @@ func (s *platformUserService) GetPlatformUserByUserID(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	user, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID, nil)
+	user, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
@@ -91,7 +91,7 @@ func (s *platformUserService) GetPlatformUser(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	user, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID, nil)
+	user, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
@@ -136,7 +136,7 @@ func (s *platformUserService) DeletePlatformUser(
 		)
 	}
 
-	err = s.platformUserRepo.DeleteByID(ctx, input.TenantID, input.PlatformUserID, nil)
+	err = s.platformUserRepo.DeleteByID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).

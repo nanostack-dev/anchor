@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -18,8 +17,8 @@ import (
 
 	"github.com/lib/pq"
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -94,7 +93,7 @@ type EmailService interface {
 }
 
 type emailService struct {
-	db           *sql.DB
+	transactor   transactor.Transactor
 	templateRepo emailrepo.TemplateRepository
 	versionRepo  emailrepo.TemplateVersionRepository
 	sendRepo     emailrepo.SendRecordRepository
@@ -109,7 +108,7 @@ type emailService struct {
 // windows are a hard-coded default for v1; switch to per-product config when
 // real customers ask.
 func NewEmailService(
-	db *sql.DB,
+	transactor transactor.Transactor,
 	templateRepo emailrepo.TemplateRepository,
 	versionRepo emailrepo.TemplateVersionRepository,
 	sendRepo emailrepo.SendRecordRepository,
@@ -119,7 +118,7 @@ func NewEmailService(
 	logger zerolog.Logger,
 ) EmailService {
 	return &emailService{
-		db:           db,
+		transactor:   transactor,
 		templateRepo: templateRepo,
 		versionRepo:  versionRepo,
 		sendRepo:     sendRepo,
@@ -138,7 +137,7 @@ func (s *emailService) resolveMailer(
 	tenantID, productID string,
 ) (provider.Mailer, *domainintegration.Instance, error) {
 	instance, err := s.instanceRepo.FindByProductAndProvider(
-		ctx, tenantID, productID, string(domainintegration.ProviderTypeSMTP), nil,
+		ctx, tenantID, productID, string(domainintegration.ProviderTypeSMTP),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -165,7 +164,7 @@ func (s *emailService) resolveTemplate(
 	ctx context.Context, tenantID, productID string, idPtr, slugPtr *string,
 ) (*email.Template, error) {
 	if idPtr != nil && strings.TrimSpace(*idPtr) != "" {
-		t, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr, nil)
+		t, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +174,7 @@ func (s *emailService) resolveTemplate(
 		return t, nil
 	}
 	if slugPtr != nil && strings.TrimSpace(*slugPtr) != "" {
-		t, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr, nil)
+		t, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +191,7 @@ func (s *emailService) resolveSendVersion(
 	ctx context.Context, templateID string, useDraft bool,
 ) (*email.TemplateVersion, error) {
 	if useDraft {
-		v, err := s.versionRepo.FindCurrentDraft(ctx, templateID, nil)
+		v, err := s.versionRepo.FindCurrentDraft(ctx, templateID)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +200,7 @@ func (s *emailService) resolveSendVersion(
 		}
 		return v, nil
 	}
-	v, err := s.versionRepo.FindCurrentPublished(ctx, templateID, nil)
+	v, err := s.versionRepo.FindCurrentPublished(ctx, templateID)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +217,7 @@ func (s *emailService) CreateTemplate(
 		return email.Template{}, err
 	}
 
-	existing, err := s.templateRepo.FindBySlug(ctx, in.TenantID, in.ProductID, in.Slug, nil)
+	existing, err := s.templateRepo.FindBySlug(ctx, in.TenantID, in.ProductID, in.Slug)
 	if err != nil {
 		return email.Template{}, err
 	}
@@ -235,7 +234,7 @@ func (s *emailService) CreateTemplate(
 		IsActive:         true,
 	}
 	tpl.GenerateID()
-	created, err := s.templateRepo.Create(ctx, tpl, nil)
+	created, err := s.templateRepo.Create(ctx, tpl)
 	if err != nil {
 		return email.Template{}, err
 	}
@@ -250,13 +249,13 @@ func (s *emailService) CreateTemplate(
 		Status:        email.TemplateVersionStatusDraft,
 	}
 	ver.GenerateID()
-	draft, err := s.versionRepo.Create(ctx, ver, nil)
+	draft, err := s.versionRepo.Create(ctx, ver)
 	if err != nil {
 		return email.Template{}, err
 	}
 
 	if err = s.templateRepo.SetVersionPointers(
-		ctx, in.TenantID, created.ID, &draft.ID, nil, nil,
+		ctx, in.TenantID, created.ID, &draft.ID, nil,
 	); err != nil {
 		return email.Template{}, err
 	}
@@ -267,7 +266,7 @@ func (s *emailService) CreateTemplate(
 func (s *emailService) UpdateTemplate(
 	ctx context.Context, in email.UpdateTemplateInput,
 ) (email.Template, error) {
-	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID, nil)
+	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return email.Template{}, err
 	}
@@ -283,13 +282,13 @@ func (s *emailService) UpdateTemplate(
 	if in.IsActive != nil {
 		existing.IsActive = *in.IsActive
 	}
-	return s.templateRepo.Update(ctx, in.TenantID, *existing, nil)
+	return s.templateRepo.Update(ctx, in.TenantID, *existing)
 }
 
 func (s *emailService) UpdateTemplateDraft(
 	ctx context.Context, in email.UpdateTemplateDraftInput,
 ) (email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return email.TemplateVersion{}, err
 	}
@@ -299,7 +298,7 @@ func (s *emailService) UpdateTemplateDraft(
 
 	var draft *email.TemplateVersion
 	if tpl.DraftVersionID != nil {
-		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID, nil)
+		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
@@ -310,7 +309,7 @@ func (s *emailService) UpdateTemplateDraft(
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
 		var pub *email.TemplateVersion
-		pub, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID, nil)
+		pub, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
@@ -318,7 +317,7 @@ func (s *emailService) UpdateTemplateDraft(
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
 		var next int32
-		next, err = s.versionRepo.NextVersionNumber(ctx, tpl.ID, nil)
+		next, err = s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
@@ -333,12 +332,12 @@ func (s *emailService) UpdateTemplateDraft(
 		}
 		newDraft.GenerateID()
 		var createdDraft email.TemplateVersion
-		createdDraft, err = s.versionRepo.Create(ctx, newDraft, nil)
+		createdDraft, err = s.versionRepo.Create(ctx, newDraft)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
 		if err = s.templateRepo.SetVersionPointers(
-			ctx, in.TenantID, tpl.ID, &createdDraft.ID, tpl.PublishedVersionID, nil,
+			ctx, in.TenantID, tpl.ID, &createdDraft.ID, tpl.PublishedVersionID,
 		); err != nil {
 			return email.TemplateVersion{}, err
 		}
@@ -357,7 +356,7 @@ func (s *emailService) UpdateTemplateDraft(
 	if in.Variables != nil {
 		draft.Variables = *in.Variables
 	}
-	return s.versionRepo.Update(ctx, *draft, nil)
+	return s.versionRepo.Update(ctx, *draft)
 }
 
 // GetTemplateDraft returns the current DRAFT version of a template. If no
@@ -367,7 +366,7 @@ func (s *emailService) UpdateTemplateDraft(
 func (s *emailService) GetTemplateDraft(
 	ctx context.Context, in email.GetTemplateDraftInput,
 ) (*email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +376,7 @@ func (s *emailService) GetTemplateDraft(
 
 	if tpl.DraftVersionID != nil {
 		var draft *email.TemplateVersion
-		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID, nil)
+		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +387,7 @@ func (s *emailService) GetTemplateDraft(
 		return nil, nil
 	}
 
-	pub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID, nil)
+	pub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +395,7 @@ func (s *emailService) GetTemplateDraft(
 		return nil, nil
 	}
 
-	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID, nil)
+	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -410,12 +409,12 @@ func (s *emailService) GetTemplateDraft(
 		Status:        email.TemplateVersionStatusDraft,
 	}
 	newDraft.GenerateID()
-	created, err := s.versionRepo.Create(ctx, newDraft, nil)
+	created, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
 		return nil, err
 	}
 	if err = s.templateRepo.SetVersionPointers(
-		ctx, in.TenantID, tpl.ID, &created.ID, tpl.PublishedVersionID, nil,
+		ctx, in.TenantID, tpl.ID, &created.ID, tpl.PublishedVersionID,
 	); err != nil {
 		return nil, err
 	}
@@ -428,7 +427,7 @@ func (s *emailService) GetTemplateDraft(
 func (s *emailService) PublishTemplate(
 	ctx context.Context, in email.PublishTemplateInput,
 ) (email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return email.TemplateVersion{}, err
 	}
@@ -443,28 +442,27 @@ func (s *emailService) PublishTemplate(
 	publishedAt := time.Now()
 	prevPublishedID := tpl.PublishedVersionID
 
-	if err = jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		opts := &jetx.DBOptions{Tx: tx}
+	if err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if prevPublishedID != nil {
 			if err = s.versionRepo.UpdateStatus(
-				ctx, *prevPublishedID, email.TemplateVersionStatusArchived, nil, opts,
+				txCtx, *prevPublishedID, email.TemplateVersionStatusArchived, nil,
 			); err != nil {
 				return err
 			}
 		}
 		if err = s.versionRepo.UpdateStatus(
-			ctx, publishedID, email.TemplateVersionStatusPublished, &publishedAt, opts,
+			txCtx, publishedID, email.TemplateVersionStatusPublished, &publishedAt,
 		); err != nil {
 			return err
 		}
 		return s.templateRepo.SetVersionPointers(
-			ctx, in.TenantID, tpl.ID, nil, &publishedID, opts,
+			txCtx, in.TenantID, tpl.ID, nil, &publishedID,
 		)
 	}); err != nil {
 		return email.TemplateVersion{}, err
 	}
 
-	published, err := s.versionRepo.FindByID(ctx, publishedID, nil)
+	published, err := s.versionRepo.FindByID(ctx, publishedID)
 	if err != nil || published == nil {
 		return email.TemplateVersion{}, err
 	}
@@ -472,7 +470,7 @@ func (s *emailService) PublishTemplate(
 	// Open a fresh DRAFT cloned from the just-published row so further edits
 	// do not mutate the live version. Best-effort post-tx; failure here does
 	// not roll back the publish.
-	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID, nil)
+	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
@@ -487,13 +485,13 @@ func (s *emailService) PublishTemplate(
 		Status:        email.TemplateVersionStatusDraft,
 	}
 	newDraft.GenerateID()
-	createdDraft, err := s.versionRepo.Create(ctx, newDraft, nil)
+	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
 	}
 	if err = s.templateRepo.SetVersionPointers(
-		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID, nil,
+		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
 	); err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
 	}
@@ -503,19 +501,19 @@ func (s *emailService) PublishTemplate(
 func (s *emailService) GetTemplate(
 	ctx context.Context, in email.GetTemplateInput,
 ) (*email.Template, error) {
-	return s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID, nil)
+	return s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
 }
 
 func (s *emailService) ListTemplates(
 	ctx context.Context, in email.ListTemplatesInput,
 ) ([]email.Template, error) {
-	return s.templateRepo.List(ctx, in.TenantID, in.ProductID, in.Limit, in.Offset, nil)
+	return s.templateRepo.List(ctx, in.TenantID, in.ProductID, in.Limit, in.Offset)
 }
 
 func (s *emailService) DeleteTemplate(
 	ctx context.Context, in email.DeleteTemplateInput,
 ) error {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return err
 	}
@@ -523,20 +521,20 @@ func (s *emailService) DeleteTemplate(
 		return ErrEmailTemplateNotFound
 	}
 
-	return s.templateRepo.DeleteByID(ctx, in.TenantID, in.ProductID, in.ID, nil)
+	return s.templateRepo.DeleteByID(ctx, in.TenantID, in.ProductID, in.ID)
 }
 
 func (s *emailService) SaveTemplateExamples(
 	ctx context.Context, in email.SaveTemplateExamplesInput,
 ) ([]email.TemplateExample, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return nil, err
 	}
 	if tpl == nil {
 		return nil, ErrEmailTemplateNotFound
 	}
-	if err = s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples, nil); err != nil {
+	if err = s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples); err != nil {
 		return nil, err
 	}
 	return in.Examples, nil
@@ -545,7 +543,7 @@ func (s *emailService) SaveTemplateExamples(
 func (s *emailService) Preview(
 	ctx context.Context, in email.PreviewInput,
 ) (email.PreviewResult, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID, nil)
+	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
@@ -557,12 +555,12 @@ func (s *emailService) Preview(
 		if tpl.PublishedVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNotPublished
 		}
-		v, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID, nil)
+		v, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 	} else {
 		if tpl.DraftVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNoDraft
 		}
-		v, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID, nil)
+		v, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 	}
 	if err != nil {
 		return email.PreviewResult{}, err
@@ -595,7 +593,7 @@ func (s *emailService) Send(
 	ctx context.Context, in email.SendInput,
 ) (email.SendRecord, error) {
 	if in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != "" {
-		existing, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey, nil)
+		existing, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
 		if err != nil {
 			return email.SendRecord{}, err
 		}
@@ -641,7 +639,7 @@ func (s *emailService) Send(
 	for _, w := range s.rateLimits {
 		since := time.Now().Add(-w.WindowDuration)
 		var count int64
-		count, err = s.sendRepo.CountSince(ctx, in.TenantID, in.ProductID, since, nil)
+		count, err = s.sendRepo.CountSince(ctx, in.TenantID, in.ProductID, since)
 		if err != nil {
 			return email.SendRecord{}, err
 		}
@@ -693,7 +691,7 @@ func (s *emailService) Send(
 	if dispatchErr := mailer.Send(ctx, instance, msg); dispatchErr != nil {
 		errMsg := dispatchErr.Error()
 		if updErr := s.sendRepo.UpdateStatus(
-			ctx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil, nil,
+			ctx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
 			s.logger.Error().Err(updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
 		}
@@ -704,7 +702,7 @@ func (s *emailService) Send(
 
 	now := time.Now()
 	if err = s.sendRepo.UpdateStatus(
-		ctx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now, nil,
+		ctx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
 		s.logger.Error().Err(err).Str("send_id", persisted.ID).Msg("update SENT status")
 	}
@@ -723,7 +721,7 @@ func (s *emailService) createSendRecord(
 	in email.SendInput,
 	rec email.SendRecord,
 ) (email.SendRecord, bool, error) {
-	persisted, err := s.sendRepo.Create(ctx, in.TenantID, in.ProductID, rec, nil)
+	persisted, err := s.sendRepo.Create(ctx, in.TenantID, in.ProductID, rec)
 	if err == nil {
 		return persisted, true, nil
 	}
@@ -731,7 +729,7 @@ func (s *emailService) createSendRecord(
 		return email.SendRecord{}, false, err
 	}
 
-	existing, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey, nil)
+	existing, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
 	if findErr != nil {
 		return email.SendRecord{}, false, findErr
 	}
@@ -760,5 +758,5 @@ func (s *emailService) TestSend(
 func (s *emailService) ListSends(
 	ctx context.Context, in email.ListSendsInput,
 ) ([]email.SendRecord, error) {
-	return s.sendRepo.List(ctx, in, nil)
+	return s.sendRepo.List(ctx, in)
 }

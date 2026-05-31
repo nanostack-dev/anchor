@@ -15,7 +15,6 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/security/encryption"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	svix "github.com/svix/svix-webhooks/go"
@@ -304,13 +303,12 @@ func (p *Provider) ExecuteCommand(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	cmd provider.Command,
-	txOpts *jetx.DBOptions,
 ) error {
 	switch cmd.Type {
 	case CommandUpsertUser:
-		return p.executeUpsertUser(ctx, logger, instance, cmd.Data, txOpts)
+		return p.executeUpsertUser(ctx, logger, instance, cmd.Data)
 	case CommandDeleteUser:
-		return p.executeDeleteUser(ctx, logger, instance, cmd.Data, txOpts)
+		return p.executeDeleteUser(ctx, logger, instance, cmd.Data)
 	default:
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
@@ -320,7 +318,7 @@ func (p *Provider) ExecuteCommand(
 			MetadataJSON: provider.MustMarshalJSON(map[string]any{
 				"command_type": string(cmd.Type),
 			}),
-		}, txOpts)
+		})
 
 		logger.Warn().
 			Str("command_type", string(cmd.Type)).

@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -43,20 +42,20 @@ type ResourcePermissionService interface {
 type resourcePermissionService struct {
 	resourcePermissionRepo repository.ProductResourcePermissionRepository
 	apiKeyRepo             repository.ProductAPIKeyRepository
-	db                     *sql.DB
+	transactor             transactor.Transactor
 	logger                 zerolog.Logger
 }
 
 func NewResourcePermissionService(
 	resourcePermissionRepo repository.ProductResourcePermissionRepository,
 	apiKeyRepo repository.ProductAPIKeyRepository,
-	db *sql.DB,
+	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) ResourcePermissionService {
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
 		apiKeyRepo:             apiKeyRepo,
-		db:                     db,
+		transactor:             transactor,
 		logger: logger.With().Str(
 			"component", "resource_permission_service",
 		).Logger(),
@@ -81,7 +80,7 @@ func (s *resourcePermissionService) Create(
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name, nil)
+	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -96,7 +95,7 @@ func (s *resourcePermissionService) Create(
 		)
 	}
 
-	created, err := s.resourcePermissionRepo.Create(ctx, resourcePermission, nil)
+	created, err := s.resourcePermissionRepo.Create(ctx, resourcePermission)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -124,7 +123,7 @@ func (s *resourcePermissionService) GetByID(
 	}
 
 	resourcePermission, err := s.resourcePermissionRepo.FindByName(
-		ctx, input.ProductID, input.PermissionName, nil,
+		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
 		logger.Error().
@@ -148,7 +147,7 @@ func (s *resourcePermissionService) Update(
 	}
 
 	// Get existing resource permission
-	existing, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name, nil)
+	existing, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -166,7 +165,7 @@ func (s *resourcePermissionService) Update(
 	updated.UpdatedAt = time.Now()
 	updated.Description = input.Description
 
-	result, err := s.resourcePermissionRepo.Update(ctx, updated, nil)
+	result, err := s.resourcePermissionRepo.Update(ctx, updated)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -194,7 +193,7 @@ func (s *resourcePermissionService) Delete(
 	}
 
 	name, err := s.resourcePermissionRepo.FindByName(
-		ctx, input.ProductID, input.Name, nil,
+		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
 		logger.Error().
@@ -211,20 +210,17 @@ func (s *resourcePermissionService) Delete(
 			Msg("resource permission not found for deletion")
 		return apierror.ErrNotFound
 	}
-	err = jetx.WithTx(s.db, func(tx *sql.Tx) error {
-		txOptions := &jetx.DBOptions{Tx: tx}
-
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
-			ctx, input.ProductID, input.Name, txOptions,
+			txCtx, input.ProductID, input.Name,
 		); apiKeyDeleteErr != nil {
 			return apiKeyDeleteErr
 		}
 
 		return s.resourcePermissionRepo.DeleteByID(
-			ctx,
+			txCtx,
 			input.ProductID,
 			input.Name,
-			txOptions,
 		)
 	})
 	if err != nil {
@@ -254,7 +250,7 @@ func (s *resourcePermissionService) SearchByProduct(
 	}
 
 	result, err := s.resourcePermissionRepo.SearchByProduct(
-		ctx, input.ProductID, input.Request, nil,
+		ctx, input.ProductID, input.Request,
 	)
 	if err != nil {
 		logger.Error().
@@ -276,7 +272,7 @@ func (s *resourcePermissionService) GetByRole(
 		return nil, err
 	}
 
-	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID, nil)
+	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID)
 	if err != nil {
 		logger.Error().
 			Str("product_role_id", input.ProductRoleID).

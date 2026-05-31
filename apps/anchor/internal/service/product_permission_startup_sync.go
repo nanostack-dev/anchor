@@ -34,7 +34,7 @@ func RegisterProductPermissionStartupSync(p productPermissionStartupSyncParams) 
 				ctx,
 				productPermissionStartupSyncLockKey,
 				func(lockCtx context.Context, _ *sql.Tx) error {
-					products, listErr := p.ProductRepo.FindAllInternal(lockCtx, nil)
+					products, listErr := p.ProductRepo.FindAllInternal(lockCtx)
 					if listErr != nil {
 						return listErr
 					}
@@ -93,7 +93,7 @@ func syncProductPermissions(
 		if _, ok := existingByName[name]; ok {
 			continue
 		}
-		_, createErr := permRepo.Create(ctx, perm, nil)
+		_, createErr := permRepo.Create(ctx, perm)
 		if createErr != nil {
 			return createErr
 		}
@@ -107,7 +107,7 @@ func syncProductPermissions(
 		if _, ok := desired[name]; ok {
 			continue
 		}
-		deleteErr := permRepo.DeleteByID(ctx, prod.ID, name, nil)
+		deleteErr := permRepo.DeleteByID(ctx, prod.ID, name)
 		if deleteErr != nil {
 			return deleteErr
 		}
@@ -139,7 +139,7 @@ func listAllProductPermissions(
 			Pagination: search.Pagination{Limit: pageSize, Offset: offset},
 		}
 
-		result, err := permRepo.SearchByProduct(ctx, productID, request, nil)
+		result, err := permRepo.SearchByProduct(ctx, productID, request)
 		if err != nil {
 			return nil, err
 		}

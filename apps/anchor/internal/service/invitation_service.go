@@ -60,7 +60,6 @@ func (s *invitationService) CreateInvitation(
 	}
 	optPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
-		nil,
 	)
 	if err != nil {
 		logger.Error().
@@ -83,7 +82,7 @@ func (s *invitationService) CreateInvitation(
 		)
 	}
 	optInvitation, err := s.invitationRepo.FindByTenantIDAndEmail(
-		ctx, input.TenantID, input.Email, nil,
+		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
 		logger.Error().
@@ -120,7 +119,7 @@ func (s *invitationService) CreateInvitation(
 	}
 	inv.GenerateID()
 
-	createdEntity, err := s.invitationRepo.Create(ctx, inv, nil)
+	createdEntity, err := s.invitationRepo.Create(ctx, inv)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
@@ -147,7 +146,7 @@ func (s *invitationService) DeleteInvitation(
 	if err := validateStruct(input); err != nil {
 		return err
 	}
-	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID, nil)
+	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
@@ -173,7 +172,7 @@ func (s *invitationService) SearchInvitation(
 	if err := validateStruct(input); err != nil {
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}
-	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request, nil)
+	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).

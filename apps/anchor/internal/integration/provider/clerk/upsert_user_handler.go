@@ -9,7 +9,6 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/integration/provider"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -22,7 +21,6 @@ func (p *Provider) executeUpsertUser(
 	logger zerolog.Logger,
 	instance *integration.Instance,
 	data any,
-	txOpts *jetx.DBOptions,
 ) error {
 	upsertData, ok := data.(UpsertUserData)
 	if !ok {
@@ -40,7 +38,7 @@ func (p *Provider) executeUpsertUser(
 	}
 	productUser.GenerateID()
 
-	upserted, created, upsertErr := p.productUserRepo.UpsertByExternalID(ctx, productUser, txOpts)
+	upserted, created, upsertErr := p.productUserRepo.UpsertByExternalID(ctx, productUser)
 	if upsertErr != nil {
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
@@ -50,7 +48,7 @@ func (p *Provider) executeUpsertUser(
 			MetadataJSON: provider.MustMarshalJSON(map[string]any{
 				clerkExternalIDKey: upsertData.ExternalID,
 			}),
-		}, txOpts)
+		})
 
 		logger.Error().Err(upsertErr).
 			Str(clerkExternalIDKey, upsertData.ExternalID).
@@ -75,7 +73,7 @@ func (p *Provider) executeUpsertUser(
 				"user_id":          upserted.ID,
 				clerkExternalIDKey: upsertData.ExternalID,
 			}),
-		}, txOpts)
+		})
 	} else {
 		logger.Debug().
 			Str("user_id", upserted.ID).

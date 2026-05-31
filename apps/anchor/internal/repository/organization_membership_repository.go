@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
@@ -46,7 +48,6 @@ type OrganizationMembershipRepository interface {
 		productID string,
 		productUserID string,
 		includePermissions bool,
-		options *jetx.DBOptions,
 	) ([]user.OrganizationMembership, error)
 
 	// FindByProductUserIDAndOrgID returns a specific organization membership for a product user.
@@ -57,7 +58,6 @@ type OrganizationMembershipRepository interface {
 		productUserID string,
 		organizationID string,
 		includePermissions bool,
-		options *jetx.DBOptions,
 	) (*user.OrganizationMembership, error)
 
 	// FindByOrgIDAndUserID returns a specific member of an organization.
@@ -68,7 +68,6 @@ type OrganizationMembershipRepository interface {
 		orgID string,
 		productUserID string,
 		includePermissions bool,
-		options *jetx.DBOptions,
 	) (*organization.Membership, error)
 
 	// FindByOrgID returns all members of an organization.
@@ -78,7 +77,6 @@ type OrganizationMembershipRepository interface {
 		productID string,
 		orgID string,
 		includePermissions bool,
-		options *jetx.DBOptions,
 	) ([]organization.Membership, error)
 
 	// SearchByOrgID returns paginated, filtered members of an organization.
@@ -88,7 +86,6 @@ type OrganizationMembershipRepository interface {
 		productID string,
 		orgID string,
 		req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
-		options *jetx.DBOptions,
 	) (search.Result[organization.Membership], error)
 
 	Create(
@@ -97,7 +94,6 @@ type OrganizationMembershipRepository interface {
 		organizationID string,
 		productUserID string,
 		roleID string,
-		options *jetx.DBOptions,
 	) (organization.Membership, error)
 
 	Update(
@@ -106,14 +102,12 @@ type OrganizationMembershipRepository interface {
 		organizationID string,
 		productUserID string,
 		roleID string,
-		options *jetx.DBOptions,
 	) (organization.Membership, error)
 
 	Delete(
 		ctx context.Context,
 		organizationID string,
 		productUserID string,
-		options *jetx.DBOptions,
 	) error
 }
 
@@ -139,7 +133,6 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 	productID string,
 	productUserID string,
 	includePermissions bool,
-	options *jetx.DBOptions,
 ) ([]user.OrganizationMembership, error) {
 	stmt := r.buildQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
@@ -147,11 +140,11 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 		),
 	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC())
 
-	return jetx.QueryMapSlice(
+	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
-		}, options,
+		},
 	)
 }
 
@@ -161,7 +154,6 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 	productUserID string,
 	organizationID string,
 	includePermissions bool,
-	options *jetx.DBOptions,
 ) (*user.OrganizationMembership, error) {
 	stmt := r.buildQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
@@ -171,11 +163,11 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 		),
 	)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
-		}, options,
+		},
 	)
 }
 
@@ -185,7 +177,6 @@ func (r *organizationMembershipRepositoryImpl) Create(
 	organizationID string,
 	productUserID string,
 	roleID string,
-	options *jetx.DBOptions,
 ) (organization.Membership, error) {
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
@@ -199,11 +190,11 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		table.OrganizationMemberships.AllColumns,
 	).MODEL(entity)
 
-	if err := jetx.Exec(ctx, r.db, stmt, options); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt); err != nil {
 		return organization.Membership{}, err
 	}
 
-	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false, options)
+	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -220,7 +211,6 @@ func (r *organizationMembershipRepositoryImpl) Update(
 	organizationID string,
 	productUserID string,
 	roleID string,
-	options *jetx.DBOptions,
 ) (organization.Membership, error) {
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
@@ -240,11 +230,11 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		),
 	)
 
-	if err := jetx.Exec(ctx, r.db, stmt, options); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt); err != nil {
 		return organization.Membership{}, err
 	}
 
-	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false, options)
+	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -259,7 +249,6 @@ func (r *organizationMembershipRepositoryImpl) Delete(
 	ctx context.Context,
 	organizationID string,
 	productUserID string,
-	options *jetx.DBOptions,
 ) error {
 	stmt := table.OrganizationMemberships.DELETE().WHERE(
 		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).AND(
@@ -267,7 +256,7 @@ func (r *organizationMembershipRepositoryImpl) Delete(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions bool) postgres.SelectStatement {
@@ -382,7 +371,6 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 	orgID string,
 	productUserID string,
 	includePermissions bool,
-	options *jetx.DBOptions,
 ) (*organization.Membership, error) {
 	stmt := r.buildOrgQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
@@ -392,11 +380,11 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 		),
 	)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
-		}, options,
+		},
 	)
 }
 
@@ -405,7 +393,6 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 	productID string,
 	orgID string,
 	includePermissions bool,
-	options *jetx.DBOptions,
 ) ([]organization.Membership, error) {
 	stmt := r.buildOrgQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
@@ -413,11 +400,11 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 		),
 	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC())
 
-	return jetx.QueryMapSlice(
+	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
-		}, options,
+		},
 	)
 }
 
@@ -426,7 +413,6 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 	productID string,
 	orgID string,
 	req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
-	options *jetx.DBOptions,
 ) (search.Result[organization.Membership], error) {
 	whereStmt := table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
@@ -484,7 +470,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		postgres.COUNT(postgres.STAR).AS("count_result.count"),
 	).FROM(joinExpr).WHERE(whereStmt)
 
-	total, err := jetx.QueryCountWithStatement(ctx, r.db, countStmt, options)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt)
 	if err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
@@ -504,11 +490,11 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 
 	query = query.LIMIT(int64(req.Pagination.Limit)).OFFSET(int64(req.Pagination.Offset))
 
-	entities, err := jetx.QueryMapSlice(
+	entities, err := transactor.QueryMapSlice(
 		ctx, r.db, query,
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
-		}, options,
+		},
 	)
 	if err != nil {
 		return search.Result[organization.Membership]{}, err

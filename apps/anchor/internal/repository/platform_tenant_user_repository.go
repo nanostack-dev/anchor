@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -25,24 +27,23 @@ func platformUsersUpdatableColumns() postgres.ColumnList {
 
 type PlatformTenantUserRepository interface {
 	Create(
-		ctx context.Context, platformUser platform.User, options *jetx.DBOptions,
+		ctx context.Context, platformUser platform.User,
 	) (platform.User, error)
 	FindByTenantIDAndUserID(
-		ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, userID string,
 	) (*platform.User, error)
 	FindByTenantIDAndID(
-		ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, userID string,
 	) (*platform.User, error)
 	FindByTenantIDAndEmail(
-		ctx context.Context, tenantID string, email string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, email string,
 	) (*platform.User, error)
 	DeleteByID(
-		ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+		ctx context.Context, tenantID string, userID string,
 	) error
 	SearchByTenantID(
 		ctx context.Context, tenantID string,
 		input search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser],
-		options *jetx.DBOptions,
 	) (search.Result[platform.User], error)
 }
 
@@ -53,7 +54,7 @@ type platformTenantUserRepositoryImpl struct {
 }
 
 func (r *platformTenantUserRepositoryImpl) Create(
-	ctx context.Context, platformUser platform.User, options *jetx.DBOptions,
+	ctx context.Context, platformUser platform.User,
 ) (platform.User, error) {
 	// Convert domain object to database entity using mapper
 	entity := r.platformUserMapper.ToEntity(platformUser)
@@ -62,11 +63,11 @@ func (r *platformTenantUserRepositoryImpl) Create(
 		platformUsersUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.PlatformUsers.AllColumns)
 
-	result, err := jetx.QueryMap(
+	result, err := transactor.QueryMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
-		}, options,
+		},
 	)
 	if err != nil {
 		r.logger.Error().Err(err).
@@ -80,7 +81,7 @@ func (r *platformTenantUserRepositoryImpl) Create(
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
-	ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, userID string,
 ) (*platform.User, error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
@@ -90,16 +91,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
-		}, options,
+		},
 	)
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
-	ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, userID string,
 ) (*platform.User, error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
@@ -109,16 +110,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
-		}, options,
+		},
 	)
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
-	ctx context.Context, tenantID string, email string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, email string,
 ) (*platform.User, error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
@@ -128,16 +129,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
 		),
 	).LIMIT(1)
 
-	return jetx.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
-		}, options,
+		},
 	)
 }
 
 func (r *platformTenantUserRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, userID string, options *jetx.DBOptions,
+	ctx context.Context, tenantID string, userID string,
 ) error {
 	stmt := table.PlatformUsers.DELETE().WHERE(
 		table.PlatformUsers.ID.EQ(postgres.String(userID)).AND(
@@ -145,13 +146,12 @@ func (r *platformTenantUserRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 	ctx context.Context, tenantID string,
 	input search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser],
-	options *jetx.DBOptions,
 ) (search.Result[platform.User], error) {
 	whereStmt := table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID))
 
@@ -180,8 +180,10 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 	query := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
 	).WHERE(whereStmt)
-	total, err := jetx.QueryCountWithBoolExpression(
-		ctx, r.db, table.PlatformUsers, whereStmt, options,
+	total, err := transactor.QueryCount(
+		ctx,
+		r.db,
+		table.PlatformUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		return search.Result[platform.User]{}, err
@@ -217,7 +219,7 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
 	// Execute query
-	entities, err := jetx.QueryMapSlice(ctx, r.db, query, r.platformUserMapper.ToDomain, options)
+	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.platformUserMapper.ToDomain)
 	if err != nil {
 		return search.Result[platform.User]{}, err
 	}

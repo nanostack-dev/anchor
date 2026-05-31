@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
@@ -22,48 +23,39 @@ type OrganizationAPIKeyRepository interface {
 	Create(
 		ctx context.Context,
 		apiKey orgapikey.OrganizationAPIKey,
-		options *jetx.DBOptions,
 	) (orgapikey.OrganizationAPIKey, error)
 	Update(
 		ctx context.Context,
 		apiKey orgapikey.OrganizationAPIKey,
-		options *jetx.DBOptions,
 	) (orgapikey.OrganizationAPIKey, error)
 	GetByID(
 		ctx context.Context,
 		organizationID, id string,
-		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	GetByOrganizationIDAndName(
 		ctx context.Context,
 		organizationID, name string,
-		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	GetByOrganizationIDAndHashedValue(
 		ctx context.Context,
 		organizationID, hashedValue string,
-		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 	SearchByOrganizationID(
 		ctx context.Context,
 		input orgapikey.SearchOrganizationAPIKeysInput,
-		options *jetx.DBOptions,
 	) (search.Result[orgapikey.OrganizationAPIKey], error)
 	Delete(
 		ctx context.Context,
 		organizationID, id string,
-		options *jetx.DBOptions,
 	) error
 	UpdateLastUsedAt(
 		ctx context.Context,
 		organizationID, id string,
-		options *jetx.DBOptions,
 	) error
 	UpdateStatus(
 		ctx context.Context,
 		organizationID, id string,
 		status orgapikey.Status,
-		options *jetx.DBOptions,
 	) error
 	// GetByIDInternal fetches an API key by ID without tenant scoping.
 	// Reserved for async queue workers and other trusted system-internal paths
@@ -72,7 +64,6 @@ type OrganizationAPIKeyRepository interface {
 	GetByIDInternal(
 		ctx context.Context,
 		id string,
-		options *jetx.DBOptions,
 	) (*orgapikey.OrganizationAPIKey, error)
 }
 
@@ -118,57 +109,49 @@ func NewOrganizationAPIKeyRepository(
 func (r *organizationAPIKeyRepository) Create(
 	ctx context.Context,
 	apiKey orgapikey.OrganizationAPIKey,
-	options *jetx.DBOptions,
 ) (orgapikey.OrganizationAPIKey, error) {
-	return jetx.WithTxReturn(
-		jetx.Executor(ctx, r.db, options),
-		func(tx *sql.Tx) (orgapikey.OrganizationAPIKey, error) {
-			entity := r.mapper.ToEntity(apiKey)
-			stmt := table.OrganizationAPIKeys.INSERT(
-				table.OrganizationAPIKeys.AllColumns.Except(
-					table.OrganizationAPIKeys.CreatedAt,
-					table.OrganizationAPIKeys.UpdatedAt,
-				),
-			).MODEL(entity).RETURNING(table.OrganizationAPIKeys.AllColumns)
+	entity := r.mapper.ToEntity(apiKey)
+	stmt := table.OrganizationAPIKeys.INSERT(
+		table.OrganizationAPIKeys.AllColumns.Except(
+			table.OrganizationAPIKeys.CreatedAt,
+			table.OrganizationAPIKeys.UpdatedAt,
+		),
+	).MODEL(entity).RETURNING(table.OrganizationAPIKeys.AllColumns)
 
-			var created model.OrganizationAPIKeys
-			err := stmt.QueryContext(ctx, tx, &created)
-			if err != nil {
-				r.logger.Error().Err(err).
-					Str("api_key_id", apiKey.ID).
-					Str("organization_id", apiKey.OrganizationID).
-					Msg("Failed to create organization API key")
-				return orgapikey.OrganizationAPIKey{}, err
-			}
+	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt)
+	if err != nil {
+		r.logger.Error().Err(err).
+			Str("api_key_id", apiKey.ID).
+			Str("organization_id", apiKey.OrganizationID).
+			Msg("Failed to create organization API key")
+		return orgapikey.OrganizationAPIKey{}, err
+	}
 
-			var permissions []model.OrganizationAPIKeyPermissions
-			if len(apiKey.Permissions) > 0 {
-				permissions = r.mapper.PermissionsToEntity(apiKey.Permissions)
-				permStmt := table.OrganizationAPIKeyPermissions.INSERT(
-					table.OrganizationAPIKeyPermissions.AllColumns.Except(
-						table.OrganizationAPIKeyPermissions.CreatedAt,
-					),
-				).MODELS(permissions)
+	var permissions []model.OrganizationAPIKeyPermissions
+	if len(apiKey.Permissions) > 0 {
+		permissions = r.mapper.PermissionsToEntity(apiKey.Permissions)
+		permStmt := table.OrganizationAPIKeyPermissions.INSERT(
+			table.OrganizationAPIKeyPermissions.AllColumns.Except(
+				table.OrganizationAPIKeyPermissions.CreatedAt,
+			),
+		).MODELS(permissions)
 
-				err = jetx.Exec(ctx, tx, permStmt, nil)
-				if err != nil {
-					r.logger.Error().Err(err).
-						Str("api_key_id", apiKey.ID).
-						Str("organization_id", apiKey.OrganizationID).
-						Msg("Failed to create organization API key permissions")
-					return orgapikey.OrganizationAPIKey{}, err
-				}
-			}
+		err = transactor.Exec(ctx, r.db, permStmt)
+		if err != nil {
+			r.logger.Error().Err(err).
+				Str("api_key_id", apiKey.ID).
+				Str("organization_id", apiKey.OrganizationID).
+				Msg("Failed to create organization API key permissions")
+			return orgapikey.OrganizationAPIKey{}, err
+		}
+	}
 
-			return r.mapper.ToDomainWithPermissions(created, permissions), nil
-		},
-	)
+	return r.mapper.ToDomainWithPermissions(created, permissions), nil
 }
 
 func (r *organizationAPIKeyRepository) GetByID(
 	ctx context.Context,
 	organizationID, id string,
-	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -184,7 +167,7 @@ func (r *organizationAPIKeyRepository) GetByID(
 		),
 	)
 
-	return jetx.QueryOptionalMap[
+	return transactor.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -194,14 +177,12 @@ func (r *organizationAPIKeyRepository) GetByID(
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-		options,
 	)
 }
 
 func (r *organizationAPIKeyRepository) GetByIDInternal(
 	ctx context.Context,
 	id string,
-	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -215,7 +196,7 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)),
 	)
 
-	return jetx.QueryOptionalMap[
+	return transactor.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -225,14 +206,12 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-		options,
 	)
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 	ctx context.Context,
 	organizationID, name string,
-	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -248,7 +227,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 		),
 	)
 
-	return jetx.QueryOptionalMap[
+	return transactor.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -258,14 +237,12 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-		options,
 	)
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 	ctx context.Context,
 	organizationID, hashedValue string,
-	options *jetx.DBOptions,
 ) (*orgapikey.OrganizationAPIKey, error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
@@ -281,7 +258,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		),
 	)
 
-	return jetx.QueryOptionalMap[
+	return transactor.QueryOptionalMap[
 		organizationAPIKeyWithPermissions,
 		orgapikey.OrganizationAPIKey,
 	](
@@ -291,7 +268,6 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-		options,
 	)
 }
 
@@ -299,7 +275,6 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 func (r *organizationAPIKeyRepository) Update(
 	ctx context.Context,
 	apiKey orgapikey.OrganizationAPIKey,
-	options *jetx.DBOptions,
 ) (orgapikey.OrganizationAPIKey, error) {
 	stmt := table.OrganizationAPIKeys.UPDATE(
 		organizationAPIKeysUpdatableColumns(),
@@ -313,12 +288,12 @@ func (r *organizationAPIKeyRepository) Update(
 		table.OrganizationAPIKeys.AllColumns,
 	)
 
-	updated, err := jetx.Query[model.OrganizationAPIKeys](ctx, r.db, stmt, options)
+	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
-	permissions, err := r.getPermissionEntities(ctx, apiKey.OrganizationID, updated.ID, options)
+	permissions, err := r.getPermissionEntities(ctx, apiKey.OrganizationID, updated.ID)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
@@ -329,7 +304,6 @@ func (r *organizationAPIKeyRepository) Update(
 func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	ctx context.Context,
 	input orgapikey.SearchOrganizationAPIKeysInput,
-	options *jetx.DBOptions,
 ) (search.Result[orgapikey.OrganizationAPIKey], error) {
 	whereStmt := table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(input.OrganizationID))
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
@@ -339,12 +313,10 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		table.OrganizationAPIKeys.AllColumns,
 	).WHERE(whereStmt)
 
-	resultCount, err := jetx.QueryCountWithBoolExpression(
+	resultCount, err := transactor.QueryCount(
 		ctx,
 		r.db,
-		table.OrganizationAPIKeys,
-		whereStmt,
-		options,
+		table.OrganizationAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -374,14 +346,13 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 
 	query = query.LIMIT(int64(input.Request.Pagination.Limit)).OFFSET(int64(input.Request.Pagination.Offset))
 
-	itemEntities, err := jetx.QueryMapSlice(
+	itemEntities, err := transactor.QueryMapSlice(
 		ctx,
 		r.db,
 		query,
 		func(entity model.OrganizationAPIKeys) model.OrganizationAPIKeys {
 			return entity
 		},
-		options,
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -406,7 +377,6 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		ctx,
 		input.OrganizationID,
 		apiKeyIDs,
-		options,
 	)
 	if err != nil {
 		r.logger.Error().Err(err).Str(
@@ -440,7 +410,6 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 func (r *organizationAPIKeyRepository) Delete(
 	ctx context.Context,
 	organizationID, id string,
-	options *jetx.DBOptions,
 ) error {
 	stmt := table.OrganizationAPIKeys.DELETE().WHERE(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
@@ -448,13 +417,12 @@ func (r *organizationAPIKeyRepository) Delete(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 	ctx context.Context,
 	organizationID, id string,
-	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 
@@ -470,14 +438,13 @@ func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *organizationAPIKeyRepository) UpdateStatus(
 	ctx context.Context,
 	organizationID, id string,
 	status orgapikey.Status,
-	options *jetx.DBOptions,
 ) error {
 	now := time.Now()
 
@@ -495,13 +462,12 @@ func (r *organizationAPIKeyRepository) UpdateStatus(
 		),
 	)
 
-	return jetx.Exec(ctx, r.db, stmt, options)
+	return transactor.Exec(ctx, r.db, stmt)
 }
 
 func (r *organizationAPIKeyRepository) getPermissionEntities(
 	ctx context.Context,
 	organizationID, apiKeyID string,
-	options *jetx.DBOptions,
 ) ([]model.OrganizationAPIKeyPermissions, error) {
 	stmt := table.OrganizationAPIKeyPermissions.SELECT(
 		table.OrganizationAPIKeyPermissions.AllColumns,
@@ -511,14 +477,13 @@ func (r *organizationAPIKeyRepository) getPermissionEntities(
 		),
 	)
 
-	return jetx.QueryMapSlice(
+	return transactor.QueryMapSlice(
 		ctx,
 		r.db,
 		stmt,
 		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions {
 			return entity
 		},
-		options,
 	)
 }
 
@@ -526,7 +491,6 @@ func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 	ctx context.Context,
 	organizationID string,
 	apiKeyIDs []string,
-	options *jetx.DBOptions,
 ) ([]model.OrganizationAPIKeyPermissions, error) {
 	if len(apiKeyIDs) == 0 {
 		return []model.OrganizationAPIKeyPermissions{}, nil
@@ -541,14 +505,13 @@ func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 		),
 	)
 
-	return jetx.QueryMapSlice(
+	return transactor.QueryMapSlice(
 		ctx,
 		r.db,
 		stmt,
 		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions {
 			return entity
 		},
-		options,
 	)
 }
 

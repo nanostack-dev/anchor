@@ -2,10 +2,9 @@ package service
 
 import (
 	"context"
-	"database/sql"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
@@ -27,20 +26,20 @@ type WorkspaceService interface {
 type workspaceService struct {
 	workspaceRepo    repository.WorkspaceRepository
 	organizationRepo repository.OrganizationRepository
-	db               *sql.DB
+	transactor       transactor.Transactor
 	logger           zerolog.Logger
 }
 
 func NewWorkspaceService(
-	db *sql.DB,
 	workspaceRepo repository.WorkspaceRepository,
 	organizationRepo repository.OrganizationRepository,
+	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) WorkspaceService {
 	return &workspaceService{
 		workspaceRepo:    workspaceRepo,
 		organizationRepo: organizationRepo,
-		db:               db,
+		transactor:       transactor,
 		logger: logger.With().Str(
 			"component", "workspace_service",
 		).Logger(),
@@ -60,7 +59,6 @@ func (s *workspaceService) Find(
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
-		nil,
 	)
 }
 
@@ -89,24 +87,24 @@ func (s *workspaceService) Create(
 	}
 	newWorkspace.GenerateID()
 
-	created, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
-		txOptions := &jetx.DBOptions{Tx: tx}
-
+	var created workspace.Workspace
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
-			ctx,
+			txCtx,
 			input.ProductID,
 			input.OrganizationID,
 			input.Name,
-			txOptions,
 		)
 		if findErr != nil {
-			return workspace.Workspace{}, findErr
+			return findErr
 		}
 		if existing != nil {
-			return workspace.Workspace{}, workspace.NewNameExistsError(input.Name, input.OrganizationID)
+			return workspace.NewNameExistsError(input.Name, input.OrganizationID)
 		}
 
-		return s.workspaceRepo.Create(ctx, newWorkspace, txOptions)
+		var createErr error
+		created, createErr = s.workspaceRepo.Create(txCtx, newWorkspace)
+		return createErr
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -135,7 +133,6 @@ func (s *workspaceService) Update(
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
-		nil,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -149,35 +146,34 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, apierror.ErrNotFound
 	}
 
-	updated, err := jetx.WithTxReturn(s.db, func(tx *sql.Tx) (workspace.Workspace, error) {
-		txOptions := &jetx.DBOptions{Tx: tx}
-
+	var updated workspace.Workspace
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		updatedWorkspace := *currentWorkspace
 		if input.Name != nil {
 			existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
-				ctx,
+				txCtx,
 				input.ProductID,
 				input.OrganizationID,
 				*input.Name,
-				txOptions,
 			)
 			if findErr != nil {
-				return workspace.Workspace{}, findErr
+				return findErr
 			}
 			if existing != nil && existing.ID != input.WorkspaceID {
-				return workspace.Workspace{}, workspace.NewNameExistsError(*input.Name, input.OrganizationID)
+				return workspace.NewNameExistsError(*input.Name, input.OrganizationID)
 			}
 			updatedWorkspace.Name = *input.Name
 		}
 		updatedWorkspace.Description = input.Description
 
-		return s.workspaceRepo.Update(
-			ctx,
+		var updateErr error
+		updated, updateErr = s.workspaceRepo.Update(
+			txCtx,
 			input.ProductID,
 			input.OrganizationID,
 			updatedWorkspace,
-			txOptions,
 		)
+		return updateErr
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -206,7 +202,6 @@ func (s *workspaceService) Delete(
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
-		nil,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -225,7 +220,6 @@ func (s *workspaceService) Delete(
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
-		nil,
 	)
 }
 
@@ -248,7 +242,6 @@ func (s *workspaceService) Search(
 		input.ProductID,
 		input.OrganizationID,
 		input.Request,
-		nil,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -266,7 +259,7 @@ func (s *workspaceService) ensureOrganizationExists(
 	productID string,
 	organizationID string,
 ) error {
-	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID, nil)
+	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
 		return err
 	}
@@ -289,7 +282,6 @@ func (s *workspaceService) ensureNameAvailable(
 		productID,
 		organizationID,
 		name,
-		nil,
 	)
 	if err != nil {
 		return err

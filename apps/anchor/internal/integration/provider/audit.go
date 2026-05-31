@@ -8,7 +8,6 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 )
 
@@ -20,7 +19,6 @@ func WriteAuditLog(
 	logger zerolog.Logger,
 	repo repository.IntegrationAuditLogRepository,
 	auditLog integration.AuditLog,
-	txOpts *jetx.DBOptions,
 ) {
 	if auditLog.ID == "" {
 		auditLog.GenerateID()
@@ -35,7 +33,7 @@ func WriteAuditLog(
 		auditLog.Message = "Integration activity recorded"
 	}
 
-	if _, auditErr := repo.Create(ctx, auditLog, txOpts); auditErr != nil {
+	if _, auditErr := repo.Create(ctx, auditLog); auditErr != nil {
 		logger.Error().Err(auditErr).
 			Str("integration_instance_id", auditLog.IntegrationInstanceID).
 			Str("action", auditLog.Action).

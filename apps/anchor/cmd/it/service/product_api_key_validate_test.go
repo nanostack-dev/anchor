@@ -79,7 +79,7 @@ func TestApiKeyValidation(t *testing.T) {
 					}
 				},
 			)
-			createdAPIKey, createErr := APIKeyRepository.Create(t.Context(), apiKey, nil)
+			createdAPIKey, createErr := APIKeyRepository.Create(t.Context(), apiKey)
 			require.NoError(t, createErr)
 
 			validatedAPIKey, err := APIKeyService.ValidateAPIKeyAndScopes(
