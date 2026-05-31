@@ -11,3 +11,4 @@ minimumReleaseAgeExclude:
 allowBuilds:
   '@biomejs/biome': true
   esbuild: true
+  workerd: true
