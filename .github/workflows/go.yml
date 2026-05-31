@@ -75,7 +75,7 @@ jobs:
       deploy_repository: nanostack-dev/infra
       event_type: deploy-service
       payload: >-
-        {"service":"anchor","environment":"dev","source_repository":"${{ github.repository }}","source_ref":"${{ github.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","git_sha":"${{ github.sha }}"}
+        {"service":"anchor","environment":"dev","promote_to_prod":true,"source_repository":"${{ github.repository }}","source_ref":"${{ github.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","git_sha":"${{ github.sha }}"}
     secrets:
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
 
