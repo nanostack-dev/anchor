@@ -1924,7 +1924,7 @@ export type GetProductResponse = GetProductResponses[keyof GetProductResponses];
 
 export type UpdateProductData = {
     /**
-     * Fields to update.
+     * Full product representation (name required).
      */
     body: ProductRequest;
     path: {
@@ -4019,6 +4019,90 @@ export type SearchProductOrganizationsResponses = {
 };
 
 export type SearchProductOrganizationsResponse = SearchProductOrganizationsResponses[keyof SearchProductOrganizationsResponses];
+
+export type DeleteProductOrganizationData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}';
+};
+
+export type DeleteProductOrganizationErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeleteProductOrganizationError = DeleteProductOrganizationErrors[keyof DeleteProductOrganizationErrors];
+
+export type DeleteProductOrganizationResponses = {
+    /**
+     * Product organization deleted successfully.
+     */
+    204: void;
+};
+
+export type DeleteProductOrganizationResponse = DeleteProductOrganizationResponses[keyof DeleteProductOrganizationResponses];
+
+export type GetProductOrganizationData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}';
+};
+
+export type GetProductOrganizationErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetProductOrganizationError = GetProductOrganizationErrors[keyof GetProductOrganizationErrors];
+
+export type GetProductOrganizationResponses = {
+    /**
+     * Product organization details.
+     */
+    200: ProductOrganizationResponse;
+};
+
+export type GetProductOrganizationResponse = GetProductOrganizationResponses[keyof GetProductOrganizationResponses];
 
 export type UpdateProductOrganizationData = {
     /**

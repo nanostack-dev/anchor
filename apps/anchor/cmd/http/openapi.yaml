@@ -3071,21 +3071,21 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-    patch:
+    put:
       summary: Update Product
-      description: Partially updates a product's details. Requires Platform 
-        Bearer token.
+      description: Updates a product with a full representation. Requires
+        Platform Bearer token.
       operationId: updateProduct
       tags: [Product]
       security:
       - platformBearerAuth: []
       requestBody:
-        description: Fields to update.
+        description: Full product representation (name required).
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProductRequest" # Reuse input, but fields are optional for PATCH
+              $ref: "#/components/schemas/ProductRequest"
       responses:
         "200":
           description: Product updated successfully.
@@ -4593,6 +4593,49 @@ paths:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
     - $ref: "#/components/parameters/OrganizationIdParameter"
+    get:
+      summary: Get Product Organization
+      description: |-
+        Retrieves a single organization within the specified Product.
+        Only API Key authentication is supported (no bearer token access).
+        Requires an API Key with `organization:read` permission.
+      operationId: getProductOrganization
+      tags: [ProductOrganization]
+      security:
+      - productApiKeyAuth: ["organization:read"]
+      responses:
+        "200":
+          description: Product organization details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductOrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Product Organization
+      description: |-
+        Deletes an organization within the specified Product. This is a
+        destructive operation. Only API Key authentication is supported (no
+        bearer token access). Requires an API Key with `organization:delete`
+        permission.
+      operationId: deleteProductOrganization
+      tags: [ProductOrganization]
+      security:
+      - productApiKeyAuth: ["organization:delete"]
+      responses:
+        "204":
+          description: Product organization deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
     put:
       summary: Update Product Organization
       description: |-
