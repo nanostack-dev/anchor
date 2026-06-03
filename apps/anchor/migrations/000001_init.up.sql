@@ -149,7 +149,7 @@ CREATE TRIGGER update_product_users_updated_at BEFORE UPDATE ON product_users FO
 CREATE TABLE organization_memberships (
 	organization_id VARCHAR(255) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     product_user_id VARCHAR(255) NOT NULL REFERENCES product_users(id) ON DELETE CASCADE,
-    product_role_id VARCHAR(255) NOT NULL REFERENCES product_roles(id) ON DELETE RESTRICT,
+    product_role_id VARCHAR(255) NOT NULL REFERENCES product_roles(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (organization_id, product_user_id)
@@ -165,7 +165,7 @@ CREATE TRIGGER update_organization_memberships_updated_at BEFORE UPDATE ON organ
 CREATE TABLE workspace_memberships (
 	workspace_id VARCHAR(255) NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     product_user_id VARCHAR(255) NOT NULL REFERENCES product_users(id) ON DELETE CASCADE,
-    product_role_id VARCHAR(255) NOT NULL REFERENCES product_roles(id) ON DELETE RESTRICT,
+    product_role_id VARCHAR(255) NOT NULL REFERENCES product_roles(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (workspace_id, product_user_id)
@@ -243,4 +243,3 @@ CREATE TRIGGER update_platform_users_updated_at
     BEFORE UPDATE ON platform_users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
