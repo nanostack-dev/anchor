@@ -2015,6 +2015,34 @@ export const zSearchProductOrganizationsData = z.object({
  */
 export const zSearchProductOrganizationsResponse = zProductOrganizationListResponse;
 
+export const zDeleteProductOrganizationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Product organization deleted successfully.
+ */
+export const zDeleteProductOrganizationResponse = z.void();
+
+export const zGetProductOrganizationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Product organization details.
+ */
+export const zGetProductOrganizationResponse = zProductOrganizationResponse;
+
 export const zUpdateProductOrganizationData = z.object({
     body: zProductOrganizationRequest,
     path: z.object({
