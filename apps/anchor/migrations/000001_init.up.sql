@@ -105,8 +105,7 @@ CREATE TABLE organizations (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (product_id, name)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_organizations_product_id ON organizations(product_id);
@@ -244,5 +243,4 @@ CREATE TRIGGER update_platform_users_updated_at
     BEFORE UPDATE ON platform_users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
 
