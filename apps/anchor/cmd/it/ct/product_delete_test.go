@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"testing"
 
-	itshared "anchor/cmd/it/shared"
-	itdsl "anchor/cmd/it/shared/dsl"
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+
+	itshared "anchor/cmd/it/shared"
+	itdsl "anchor/cmd/it/shared/dsl"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
