@@ -4,12 +4,16 @@ generate-client:
 	@echo "Generating Anchor Go client..."
 	cd apps/anchor && sed -e '/x-go-type: string/!{/x-go-type:/d;}' \
 		-e '/x-go-type-import:/d' \
-		-e '/\s*path: anchor\/internal\/domain.*/d' \
-		-e '/\s*path: github\.com\/anchor-dev\/shared\/toolkit\/search.*/d' \
+		-e '/^[[:space:]]*path:[[:space:]]/d' \
 		./cmd/http/openapi.yaml > ./cmd/http/openapi-cleaned.yaml
 	cd apps/anchor && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
 		-package nanoclient \
-		-generate types,client \
+		-generate types \
+		-o ../../clients/go/types.gen.go \
+		./cmd/http/openapi-cleaned.yaml
+	cd apps/anchor && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
+		-package nanoclient \
+		-generate client \
 		-o ../../clients/go/client.gen.go \
 		./cmd/http/openapi-cleaned.yaml
 	cd clients/go && go mod tidy

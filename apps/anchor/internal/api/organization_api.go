@@ -92,6 +92,45 @@ func (s *AnchorAPI) SearchProductOrganizations(
 	}, nil
 }
 
+func (s *AnchorAPI) GetProductOrganization(
+	ctx context.Context, request GetProductOrganizationRequestObject,
+) (GetProductOrganizationResponseObject, error) {
+	org, err := s.OrganizationService.Find(ctx, organization.FindOrganizationInput{
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).
+			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Msg("failed to get organization")
+		return nil, err
+	}
+	if org == nil {
+		return GetProductOrganization404Response{}, nil
+	}
+
+	return GetProductOrganization200JSONResponse(mapOrganizationToResponse(*org)), nil
+}
+
+func (s *AnchorAPI) DeleteProductOrganization(
+	ctx context.Context, request DeleteProductOrganizationRequestObject,
+) (DeleteProductOrganizationResponseObject, error) {
+	err := s.OrganizationService.Delete(ctx, organization.DeleteOrganizationInput{
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).
+			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Msg("failed to delete organization")
+		return nil, err
+	}
+
+	return DeleteProductOrganization204Response{}, nil
+}
+
 func (s *AnchorAPI) UpdateProductOrganization(
 	ctx context.Context, request UpdateProductOrganizationRequestObject,
 ) (UpdateProductOrganizationResponseObject, error) {

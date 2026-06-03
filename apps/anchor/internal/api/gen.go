@@ -2214,7 +2214,7 @@ type ServerInterface interface {
 	// (GET /v1/products/{product_id})
 	GetProduct(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// Update Product
-	// (PATCH /v1/products/{product_id})
+	// (PUT /v1/products/{product_id})
 	UpdateProduct(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// Create Product API Key
 	// (POST /v1/products/{product_id}/api-keys)
@@ -2297,6 +2297,12 @@ type ServerInterface interface {
 	// Search Product Organizations
 	// (POST /v1/products/{product_id}/organizations/search)
 	SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// Delete Product Organization
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id})
+	DeleteProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Get Product Organization
+	// (GET /v1/products/{product_id}/organizations/{organization_id})
+	GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// Update Product Organization
 	// (PUT /v1/products/{product_id}/organizations/{organization_id})
 	UpdateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -2511,7 +2517,7 @@ func (_ Unimplemented) GetProduct(w http.ResponseWriter, r *http.Request, produc
 }
 
 // Update Product
-// (PATCH /v1/products/{product_id})
+// (PUT /v1/products/{product_id})
 func (_ Unimplemented) UpdateProduct(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -2675,6 +2681,18 @@ func (_ Unimplemented) CreateProductOrganization(w http.ResponseWriter, r *http.
 // Search Product Organizations
 // (POST /v1/products/{product_id}/organizations/search)
 func (_ Unimplemented) SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete Product Organization
+// (DELETE /v1/products/{product_id}/organizations/{organization_id})
+func (_ Unimplemented) DeleteProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get Product Organization
+// (GET /v1/products/{product_id}/organizations/{organization_id})
+func (_ Unimplemented) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4420,6 +4438,88 @@ func (siw *ServerInterfaceWrapper) SearchProductOrganizations(w http.ResponseWri
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductOrganizations(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProductOrganization operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProductOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:delete"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProductOrganization(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProductOrganization operation middleware
+func (siw *ServerInterfaceWrapper) GetProductOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:read"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProductOrganization(w, r, productId, organizationId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6236,7 +6336,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/products/{product_id}", wrapper.GetProduct)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/v1/products/{product_id}", wrapper.UpdateProduct)
+		r.Put(options.BaseURL+"/v1/products/{product_id}", wrapper.UpdateProduct)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/api-keys", wrapper.CreateProductAPIKey)
@@ -6318,6 +6418,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/search", wrapper.SearchProductOrganizations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}", wrapper.DeleteProductOrganization)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}", wrapper.GetProductOrganization)
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}", wrapper.UpdateProductOrganization)
@@ -8722,6 +8828,116 @@ func (response SearchProductOrganizations403JSONResponse) VisitSearchProductOrga
 	return err
 }
 
+type DeleteProductOrganizationRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type DeleteProductOrganizationResponseObject interface {
+	VisitDeleteProductOrganizationResponse(w http.ResponseWriter) error
+}
+
+type DeleteProductOrganization204Response struct {
+}
+
+func (response DeleteProductOrganization204Response) VisitDeleteProductOrganizationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteProductOrganization401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteProductOrganization401JSONResponse) VisitDeleteProductOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductOrganization403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteProductOrganization403JSONResponse) VisitDeleteProductOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductOrganization404Response = NotFoundResponse
+
+func (response DeleteProductOrganization404Response) VisitDeleteProductOrganizationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetProductOrganizationRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type GetProductOrganizationResponseObject interface {
+	VisitGetProductOrganizationResponse(w http.ResponseWriter) error
+}
+
+type GetProductOrganization200JSONResponse ProductOrganizationResponse
+
+func (response GetProductOrganization200JSONResponse) VisitGetProductOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductOrganization401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetProductOrganization401JSONResponse) VisitGetProductOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductOrganization403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProductOrganization403JSONResponse) VisitGetProductOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductOrganization404Response = NotFoundResponse
+
+func (response GetProductOrganization404Response) VisitGetProductOrganizationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type UpdateProductOrganizationRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -10983,7 +11199,7 @@ type StrictServerInterface interface {
 	// (GET /v1/products/{product_id})
 	GetProduct(ctx context.Context, request GetProductRequestObject) (GetProductResponseObject, error)
 	// Update Product
-	// (PATCH /v1/products/{product_id})
+	// (PUT /v1/products/{product_id})
 	UpdateProduct(ctx context.Context, request UpdateProductRequestObject) (UpdateProductResponseObject, error)
 	// Create Product API Key
 	// (POST /v1/products/{product_id}/api-keys)
@@ -11066,6 +11282,12 @@ type StrictServerInterface interface {
 	// Search Product Organizations
 	// (POST /v1/products/{product_id}/organizations/search)
 	SearchProductOrganizations(ctx context.Context, request SearchProductOrganizationsRequestObject) (SearchProductOrganizationsResponseObject, error)
+	// Delete Product Organization
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id})
+	DeleteProductOrganization(ctx context.Context, request DeleteProductOrganizationRequestObject) (DeleteProductOrganizationResponseObject, error)
+	// Get Product Organization
+	// (GET /v1/products/{product_id}/organizations/{organization_id})
+	GetProductOrganization(ctx context.Context, request GetProductOrganizationRequestObject) (GetProductOrganizationResponseObject, error)
 	// Update Product Organization
 	// (PUT /v1/products/{product_id}/organizations/{organization_id})
 	UpdateProductOrganization(ctx context.Context, request UpdateProductOrganizationRequestObject) (UpdateProductOrganizationResponseObject, error)
@@ -12500,6 +12722,60 @@ func (sh *strictHandler) SearchProductOrganizations(w http.ResponseWriter, r *ht
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SearchProductOrganizationsResponseObject); ok {
 		if err := validResponse.VisitSearchProductOrganizationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteProductOrganization operation middleware
+func (sh *strictHandler) DeleteProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request DeleteProductOrganizationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteProductOrganization(ctx, request.(DeleteProductOrganizationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteProductOrganization")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteProductOrganizationResponseObject); ok {
+		if err := validResponse.VisitDeleteProductOrganizationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProductOrganization operation middleware
+func (sh *strictHandler) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request GetProductOrganizationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProductOrganization(ctx, request.(GetProductOrganizationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProductOrganization")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProductOrganizationResponseObject); ok {
+		if err := validResponse.VisitGetProductOrganizationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
