@@ -51,6 +51,39 @@ func TestProductOrganizationCreate(t *testing.T) {
 	)
 
 	t.Run(
+		"CreateOrganizationsWithDuplicateName", func(t *testing.T) {
+			firstResponse, firstErr := apiKeyClient.CreateProductOrganizationWithResponse(
+				ctx,
+				testProduct.ProductID,
+				ct.CreateProductOrganizationJSONRequestBody{
+					Name:        "Duplicate Organization",
+					Description: ptr.Ptr("This is the first duplicate-name organization"),
+				},
+			)
+			require.NoError(t, firstErr, "first duplicate-name create should not error")
+			require.NotNil(t, firstResponse, "first response should not be nil")
+			require.Equal(t, 201, firstResponse.StatusCode())
+			require.NotNil(t, firstResponse.JSON201, "first response body should not be nil")
+
+			secondResponse, secondErr := apiKeyClient.CreateProductOrganizationWithResponse(
+				ctx,
+				testProduct.ProductID,
+				ct.CreateProductOrganizationJSONRequestBody{
+					Name:        "Duplicate Organization",
+					Description: ptr.Ptr("This is the second duplicate-name organization"),
+				},
+			)
+			require.NoError(t, secondErr, "second duplicate-name create should not error")
+			require.NotNil(t, secondResponse, "second response should not be nil")
+			require.Equal(t, 201, secondResponse.StatusCode())
+			require.NotNil(t, secondResponse.JSON201, "second response body should not be nil")
+
+			assert.Equal(t, firstResponse.JSON201.Name, secondResponse.JSON201.Name)
+			assert.NotEqual(t, firstResponse.JSON201.Id, secondResponse.JSON201.Id)
+		},
+	)
+
+	t.Run(
 		"CreateOrganizationWithEmptyName", func(t *testing.T) {
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
