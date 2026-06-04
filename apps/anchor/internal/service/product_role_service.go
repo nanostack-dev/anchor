@@ -440,23 +440,18 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 func (s *productRoleService) nameDuplicationValidation(
 	ctx context.Context, productID, roleName string, logger zerolog.Logger,
 ) error {
-	productRoles, err := s.roleRepo.SearchByProductID(
-		ctx, productID, search.NewRequest[role.SearchProductRoleFilter,
-			role.SortFieldProductRole]().WithFilter(
-			&role.SearchProductRoleFilter{
-				Names: []string{roleName},
-			},
-		).One(),
-	)
+	// Exact-name lookup. The search filter matches names as substrings, which
+	// would wrongly flag e.g. "role" as a duplicate of "role-admin".
+	existingRole, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
 			Str("role_name", roleName).
 			Err(err).
-			Msg("failed to search for product roles")
+			Msg("failed to look up product role by name")
 		return apierror.ErrUnexpected
 	}
-	if productRoles.Count > 0 {
+	if existingRole != nil {
 		return NewRoleWithAlreadyExistingNameError(
 			roleName, productID,
 		)
