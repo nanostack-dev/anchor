@@ -33,6 +33,11 @@ type ProductRoleRepository interface {
 	) (
 		*role.ProductRole, error,
 	)
+	GetByProductIDAndName(
+		ctx context.Context, productID, name string,
+	) (
+		*role.ProductRole, error,
+	)
 	Create(
 		ctx context.Context, productRole role.ProductRole,
 	) (
@@ -91,6 +96,34 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 			),
 	).WHERE(
 		table.ProductRoles.ID.EQ(postgres.String(id)).AND(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+		),
+	)
+
+	return transactor.QueryOptionalMap(
+		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
+			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
+		},
+	)
+}
+
+// GetByProductIDAndName looks up a role by its exact name within a product.
+// Used for uniqueness checks — exact match, not the substring match the search
+// filter applies.
+func (r *productRoleRepositoryImpl) GetByProductIDAndName(
+	ctx context.Context, productID, name string,
+) (*role.ProductRole, error) {
+	stmt := postgres.SELECT(
+		table.ProductRoles.AllColumns,
+		table.ProductRoleResourcePermissions.AllColumns,
+	).FROM(
+		table.ProductRoles.
+			LEFT_JOIN(
+				table.ProductRoleResourcePermissions,
+				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+			),
+	).WHERE(
+		table.ProductRoles.Name.EQ(postgres.String(name)).AND(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 		),
 	)
