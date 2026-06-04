@@ -103,6 +103,14 @@ func NewRoleNotFoundError(roleID string) *apierror.Error {
 	)
 }
 
+func NewProductUserNotFoundError(productUserID string) *apierror.Error {
+	return apierror.NewWithStatus(
+		"PRODUCT_USER_NOT_FOUND",
+		fmt.Sprintf("Product user %s does not exist", productUserID),
+		http.StatusNotFound,
+	)
+}
+
 func NewRoleWithAlreadyExistingNameError(roleName, productID string) *apierror.Error {
 	return apierror.NewBadRequestWithMetadata(
 		"ROLE_NAME_DUPLICATE",
