@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,6 +60,26 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		require.NoError(t, json.Unmarshal(dupResp.Body, &errResp))
 		require.NotEmpty(t, errResp.Errors)
 		assert.Equal(t, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS", errResp.Errors[0].Code)
+	})
+
+	t.Run("AddMemberWithNonExistentProductUserReturnsNotFound", func(t *testing.T) {
+		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
+			ctx,
+			productCtx.ProductID,
+			orgResp.JSON201.Id,
+			ct.AddOrganizationMemberJSONRequestBody{
+				ProductUserId: ids.MustNew("pusr"),
+				RoleId:        role.ID,
+			},
+		)
+		require.NoError(t, addErr)
+		// Previously this hit a FK violation and returned 500.
+		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
+
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(addResp.Body, &errResp))
+		require.NotEmpty(t, errResp.Errors)
+		assert.Equal(t, "PRODUCT_USER_NOT_FOUND", errResp.Errors[0].Code)
 	})
 
 	t.Run("SearchMembersByExternalID", func(t *testing.T) {
