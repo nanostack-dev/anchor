@@ -26,17 +26,20 @@ type OrganizationMembershipService interface {
 type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productRoleRepo   repository.ProductRoleRepository
+	productUserRepo   repository.ProductUserRepository
 	logger            zerolog.Logger
 }
 
 func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productRoleRepo repository.ProductRoleRepository,
+	productUserRepo repository.ProductUserRepository,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		productRoleRepo:   productRoleRepo,
+		productUserRepo:   productUserRepo,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
 	}
 }
@@ -47,6 +50,10 @@ func (s *organizationMembershipService) AddMember(
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.Membership{}, err
+	}
+
+	if err := s.validateProductUser(ctx, input.ProductID, input.ProductUserID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -301,6 +308,27 @@ func (s *organizationMembershipService) SearchMembers(
 // validateRole checks that the role exists within the given product.
 // The product itself is verified by the auth middleware, and the org/user are
 // validated implicitly by the membership repo queries that follow.
+func (s *organizationMembershipService) validateProductUser(
+	ctx context.Context,
+	productID string,
+	productUserID string,
+	logger zerolog.Logger,
+) error {
+	user, err := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", productID).
+			Str("product_user_id", productUserID).
+			Msg("failed to verify product user exists")
+		return err
+	}
+	if user == nil {
+		return NewProductUserNotFoundError(productUserID)
+	}
+
+	return nil
+}
+
 func (s *organizationMembershipService) validateRole(
 	ctx context.Context,
 	productID string,
