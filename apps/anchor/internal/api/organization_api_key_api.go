@@ -135,7 +135,7 @@ func (s *AnchorAPI) UpdateOrganizationAPIKey(
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
 		ID:             request.ApiKeyId,
-		Name:           request.Body.Name,
+		Name:           &request.Body.Name,
 		Description:    request.Body.Description,
 		Status:         request.Body.Status,
 	}

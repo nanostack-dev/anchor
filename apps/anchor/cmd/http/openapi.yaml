@@ -847,6 +847,8 @@ components:
       - name
     ProductRoleUpdateRequest:
       type: object
+      required:
+      - name
       properties:
         name:
           type: string
@@ -1161,14 +1163,14 @@ components:
           description: Optional expiration date for the API key.
         permissions:
           type: array
-          description: Required list of permission names (strings) to assign initially.
+          description: Optional list of permission names (strings) to assign
+            initially. Defaults to an empty set.
           items:
             type: string
             example: "organization:read"
           x-go-type-skip-optional-pointer: true
       required:
       - name
-      - permissions
     OrganizationAPIKeyResponse:
       type: object
       properties:
@@ -1752,6 +1754,8 @@ components:
               path: anchor/internal/domain/organization/apikey
     ProductAPIKeyUpdateRequest:
       type: object
+      required:
+      - name
       properties:
         name:
           type: string
@@ -1775,6 +1779,8 @@ components:
             example: "organization:create"
     OrganizationAPIKeyUpdateRequest:
       type: object
+      required:
+      - name
       properties:
         name:
           type: string

@@ -12,7 +12,7 @@ type CreateOrganizationAPIKeyInput struct {
 	Name           string  `validate:"required,notblank,max=100"`
 	Description    *string `validate:"omitempty,max=500"`
 	ExpiresAt      *time.Time
-	Permissions    []string `validate:"required,dive,notblank,min=1"`
+	Permissions    []string `validate:"omitempty,dive,notblank"`
 }
 
 type GetOrganizationAPIKeyInput struct {
@@ -25,7 +25,7 @@ type UpdateOrganizationAPIKeyInput struct {
 	ProductID      string  `validate:"required,notblank"`
 	OrganizationID string  `validate:"required,notblank"`
 	ID             string  `validate:"required,notblank"`
-	Name           *string `validate:"omitempty,notblank,max=100"`
+	Name           *string `validate:"required,notblank,max=100"`
 	Description    *string `validate:"omitempty,max=500"`
 	Status         *Status
 }

@@ -37,7 +37,7 @@ func TestProductRole_Update(t *testing.T) {
 			updatedName := "UpdatedRole_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
-					Name: &updatedName,
+					Name: updatedName,
 				},
 			)
 			require.NoError(t, err)
@@ -68,8 +68,11 @@ func TestProductRole_Update(t *testing.T) {
 			roleID := createResp.JSON201.Id
 
 			updatedDesc := "Updated description"
+			// PUT is a full representation: name is required even when only the
+			// description changes; sending the existing name leaves it unchanged.
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
+					Name:        roleName,
 					Description: &updatedDesc,
 				},
 			)
@@ -100,7 +103,7 @@ func TestProductRole_Update(t *testing.T) {
 			updatedDesc := "Updated description"
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
-					Name:        &updatedName,
+					Name:        updatedName,
 					Description: &updatedDesc,
 				},
 			)
@@ -130,7 +133,7 @@ func TestProductRole_Update(t *testing.T) {
 			emptyName := ""
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
-					Name: &emptyName,
+					Name: emptyName,
 				},
 			)
 			require.NoError(t, err)
@@ -158,7 +161,7 @@ func TestProductRole_Update(t *testing.T) {
 			longName := strings.Repeat("a", 101)
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
-					Name: &longName,
+					Name: longName,
 				},
 			)
 			require.NoError(t, err)
@@ -186,6 +189,7 @@ func TestProductRole_Update(t *testing.T) {
 			longDesc := strings.Repeat("a", 501)
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, roleID, ct.UpdateProductRoleJSONRequestBody{
+					Name:        "ValidRoleName",
 					Description: &longDesc,
 				},
 			)
@@ -230,7 +234,7 @@ func TestProductRole_Update(t *testing.T) {
 
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, createResp2.JSON201.Id, ct.UpdateProductRoleJSONRequestBody{
-					Name: &role1Name,
+					Name: role1Name,
 				},
 			)
 			require.NoError(t, err)
@@ -250,7 +254,7 @@ func TestProductRole_Update(t *testing.T) {
 			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID, ct.UpdateProductRoleJSONRequestBody{
-					Name: &updatedName,
+					Name: updatedName,
 				},
 			)
 			require.NoError(t, err)
@@ -264,7 +268,7 @@ func TestProductRole_Update(t *testing.T) {
 			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, productID, invalidRoleID, ct.UpdateProductRoleJSONRequestBody{
-					Name: &updatedName,
+					Name: updatedName,
 				},
 			)
 			require.NoError(t, err)
@@ -290,7 +294,7 @@ func TestProductRole_Update(t *testing.T) {
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
 				ctx, nonExistentProductID, createResp.JSON201.Id,
 				ct.UpdateProductRoleJSONRequestBody{
-					Name: &updatedName,
+					Name: updatedName,
 				},
 			)
 			require.NoError(t, err)

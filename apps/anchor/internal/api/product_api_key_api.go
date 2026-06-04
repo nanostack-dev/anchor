@@ -124,7 +124,7 @@ func (s *AnchorAPI) UpdateProductAPIKey(
 	input := apikey.UpdateProductAPIKeyInput{
 		ProductID:   request.ProductId,
 		ID:          request.ApiKeyId,
-		Name:        request.Body.Name,
+		Name:        &request.Body.Name,
 		Description: request.Body.Description,
 		Permissions: request.Body.Permissions,
 	}

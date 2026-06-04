@@ -47,7 +47,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
-					Name:        &newName,
+					Name:        newName,
 					Description: &newDescription,
 				},
 			)
@@ -92,7 +92,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
-					Name: &newName,
+					Name: newName,
 				},
 			)
 			require.NoError(t, err)
@@ -127,9 +127,11 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 			newDescription := "Updated description only"
 
+			// PUT is a full representation: resend the existing name unchanged.
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
+					Name:        apiKeyName,
 					Description: &newDescription,
 				},
 			)
@@ -163,7 +165,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			nameUpdateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
-					Name: &newName,
+					Name: newName,
 				},
 			)
 			require.NoError(t, err)
@@ -176,6 +178,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			permissionUpdateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
+					Name:        newName,
 					Permissions: &updatedPermissions,
 				},
 			)
@@ -214,6 +217,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
+					Name:        apiKeyName,
 					Permissions: &updatedPermissions,
 				},
 			)
@@ -234,7 +238,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, nonExistentID,
 				ct.UpdateProductAPIKeyJSONRequestBody{
-					Name: &newName,
+					Name: newName,
 				},
 			)
 			require.NoError(t, err)
@@ -277,7 +281,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			updateResp, err := product.OwnerAuthenticatedClient().UpdateProductAPIKeyWithResponse(
 				ctx, product.ProductID, createResp2.JSON201.Id,
 				ct.UpdateProductAPIKeyJSONRequestBody{
-					Name: &key1Name,
+					Name: key1Name,
 				},
 			)
 			require.NoError(t, err)
@@ -330,7 +334,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 								product.ProductID,
 								createResp.JSON201.Id,
 								ct.UpdateProductAPIKeyJSONRequestBody{
-									Name: &tc.inputName,
+									Name: tc.inputName,
 								},
 							)
 						require.NoError(t, nameValidationErr)
@@ -398,6 +402,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 								product.ProductID,
 								createResp.JSON201.Id,
 								ct.UpdateProductAPIKeyJSONRequestBody{
+									Name:        apiKeyName,
 									Description: tc.inputDesc,
 								},
 							)
