@@ -49,7 +49,7 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 			org.Id,
 			createResp.JSON201.Id,
 			ct.UpdateOrganizationAPIKeyJSONRequestBody{
-				Name:        &newName,
+				Name:        newName,
 				Description: &newDescription,
 			},
 		)
@@ -63,6 +63,20 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 		assert.Equal(t, permissions.FileRead, updateResp.JSON200.Permissions[0].PermissionName)
 	})
 
+	t.Run("Update organization API key with blank name returns bad request", func(t *testing.T) {
+		updateResp, updateErr := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
+			ctx,
+			product.ProductID,
+			org.Id,
+			createResp.JSON201.Id,
+			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: "   "},
+		)
+		require.NoError(t, updateErr)
+		assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
+		require.NotNil(t, updateResp.JSON400)
+		assert.Contains(t, updateResp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+	})
+
 	t.Run("Update non-existent organization API key returns not found", func(t *testing.T) {
 		newName := "Missing-" + uuid.NewString()
 		updateResp, updateErr := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
@@ -70,7 +84,7 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 			product.ProductID,
 			org.Id,
 			ids.MustNew("organization_apikey"),
-			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: &newName},
+			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: newName},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusNotFound, updateResp.StatusCode())

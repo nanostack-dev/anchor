@@ -639,8 +639,8 @@ type OrganizationAPIKeyCreateRequest struct {
 	// Name Name of the organization API key. Must be unique within the organization.
 	Name string `json:"name"`
 
-	// Permissions Required list of permission names (strings) to assign initially.
-	Permissions []string `json:"permissions"`
+	// Permissions Optional list of permission names (strings) to assign initially. Defaults to an empty set.
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // OrganizationAPIKeyFilter defines model for OrganizationAPIKeyFilter.
@@ -739,7 +739,7 @@ type OrganizationAPIKeyUpdateRequest struct {
 	Description *string `json:"description,omitempty"`
 
 	// Name Name of the organization API key. Must be unique within the organization.
-	Name   *string                   `json:"name,omitempty"`
+	Name   string                    `json:"name"`
 	Status *OrganizationAPIKeyStatus `json:"status,omitempty"`
 }
 
@@ -1114,7 +1114,7 @@ type ProductAPIKeyUpdateRequest struct {
 	Description *string `json:"description,omitempty"`
 
 	// Name Name of the product API key. Must be unique within the Product.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Permissions Optional full replacement set of permission names. This update is allowed only when the API key is mutable.
 	Permissions *[]string `json:"permissions,omitempty"`
@@ -1410,7 +1410,7 @@ type ProductRoleUpdateRequest struct {
 	Description *string `json:"description,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Permissions Optional list of permission names (strings) to assign initially.
 	Permissions []string `json:"permissions,omitempty"`

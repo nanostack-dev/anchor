@@ -259,7 +259,7 @@ export const zProductRoleCreateRequest = z.object({
 });
 
 export const zProductRoleUpdateRequest = z.object({
-    name: z.optional(z.string().min(2).max(100)),
+    name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
         z.null()
@@ -375,7 +375,7 @@ export const zOrganizationApiKeyCreateRequest = z.object({
         z.iso.datetime(),
         z.null()
     ])),
-    permissions: z.array(z.string())
+    permissions: z.optional(z.array(z.string()))
 });
 
 /**
@@ -619,7 +619,7 @@ export const zOrganizationApiKeySearchRequest = zSearchRequest.and(z.object({
 }));
 
 export const zProductApiKeyUpdateRequest = z.object({
-    name: z.optional(z.string().min(2).max(100)),
+    name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
         z.null()
@@ -628,7 +628,7 @@ export const zProductApiKeyUpdateRequest = z.object({
 });
 
 export const zOrganizationApiKeyUpdateRequest = z.object({
-    name: z.optional(z.string().min(2).max(100)),
+    name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
         z.null()

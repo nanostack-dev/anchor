@@ -67,6 +67,27 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 	)
 
 	t.Run(
+		"Create organization API key without permissions is allowed", func(t *testing.T) {
+			description := itshared.Faker.Lorem().Sentence(4)
+			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
+
+			resp, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
+				ctx,
+				product.ProductID,
+				org.Id,
+				ct.CreateOrganizationAPIKeyJSONRequestBody{
+					Name: "OrgKeyNoPerms-" + uuid.NewString(),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode())
+			require.NotNil(t, resp.JSON201)
+			assert.NotEmpty(t, resp.JSON201.Value)
+			assert.Empty(t, resp.JSON201.Permissions)
+		},
+	)
+
+	t.Run(
 		"Duplicate name in same organization returns bad request", func(t *testing.T) {
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)

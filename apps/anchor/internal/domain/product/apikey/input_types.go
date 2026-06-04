@@ -23,7 +23,7 @@ type GetProductAPIKeyInput struct {
 type UpdateProductAPIKeyInput struct {
 	ProductID   string    `validate:"required,notblank"`
 	ID          string    `validate:"required,notblank"`
-	Name        *string   `validate:"omitempty,notblank,max=100"`
+	Name        *string   `validate:"required,notblank,max=100"`
 	Description *string   `validate:"omitempty,max=500"`
 	Permissions *[]string `validate:"omitempty,dive,notblank"`
 }
