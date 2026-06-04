@@ -67,23 +67,25 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 	)
 
 	t.Run(
-		"Create organization API key without permissions is allowed", func(t *testing.T) {
+		"Create organization API key without permissions returns bad request", func(t *testing.T) {
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 
+			// Org API key permissions are immutable after creation, so at least
+			// one must be supplied; an empty/omitted list is rejected.
 			resp, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
 				ctx,
 				product.ProductID,
 				org.Id,
 				ct.CreateOrganizationAPIKeyJSONRequestBody{
-					Name: "OrgKeyNoPerms-" + uuid.NewString(),
+					Name:        "OrgKeyNoPerms-" + uuid.NewString(),
+					Permissions: []string{},
 				},
 			)
 			require.NoError(t, err)
-			require.Equal(t, http.StatusCreated, resp.StatusCode())
-			require.NotNil(t, resp.JSON201)
-			assert.NotEmpty(t, resp.JSON201.Value)
-			assert.Empty(t, resp.JSON201.Permissions)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+			require.NotNil(t, resp.JSON400)
+			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
 		},
 	)
 
