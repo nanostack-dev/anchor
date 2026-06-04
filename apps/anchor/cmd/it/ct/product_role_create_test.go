@@ -47,6 +47,36 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
+		"CreateProductRoleNameThatIsSubstringOfExistingIsAllowed", func(t *testing.T) {
+			// Regression: role-name uniqueness must be an exact match, not a
+			// substring match. Creating "<base>-admin" must not block "<base>".
+			base := "Lead_" + ids.MustNew("test")
+			longer := base + "-admin"
+
+			respLonger, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: longer},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, respLonger.StatusCode())
+
+			respBase, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: base},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, respBase.StatusCode(),
+				"a name that is a substring of an existing role must not be a duplicate")
+
+			// And an exact duplicate is still rejected.
+			respDup, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: base},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, respDup.StatusCode(),
+				"an exact-name duplicate must still be rejected")
+		},
+	)
+
+	t.Run(
 		"CreateProductRoleWithEmptyName", func(t *testing.T) {
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
