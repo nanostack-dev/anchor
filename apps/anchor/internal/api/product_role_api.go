@@ -101,9 +101,7 @@ func (s *AnchorAPI) UpdateProductRole(
 	input := role.UpdateProductRoleInput{
 		ProductID: request.ProductId,
 		ID:        request.RoleId,
-	}
-	if request.Body.Name != nil {
-		input.Name = request.Body.Name
+		Name:      &request.Body.Name,
 	}
 	if request.Body.Description != nil {
 		input.Description = request.Body.Description

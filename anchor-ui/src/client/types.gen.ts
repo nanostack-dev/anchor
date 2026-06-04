@@ -373,7 +373,7 @@ export type ProductRoleUpdateRequest = {
     /**
      * Name of the product role. Must be unique within the Product.
      */
-    name?: string;
+    name: string;
     /**
      * Optional description of the role's purpose.
      */
@@ -535,9 +535,9 @@ export type OrganizationApiKeyCreateRequest = {
      */
     expires_at?: string | null;
     /**
-     * Required list of permission names (strings) to assign initially.
+     * Optional list of permission names (strings) to assign initially. Defaults to an empty set.
      */
-    permissions: Array<string>;
+    permissions?: Array<string>;
 };
 
 export type OrganizationApiKeyResponse = {
@@ -898,7 +898,7 @@ export type ProductApiKeyUpdateRequest = {
     /**
      * Name of the product API key. Must be unique within the Product.
      */
-    name?: string;
+    name: string;
     /**
      * Optional description of the API key's purpose.
      */
@@ -913,7 +913,7 @@ export type OrganizationApiKeyUpdateRequest = {
     /**
      * Name of the organization API key. Must be unique within the organization.
      */
-    name?: string;
+    name: string;
     /**
      * Optional description of the API key's purpose.
      */
