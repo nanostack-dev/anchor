@@ -105,14 +105,15 @@ func (s *productAPIKeyService) Create(
 
 	var apiKeyPermissions []apikey.ProductAPIKeyPermission
 	if len(input.Permissions) > 0 {
-		if permErr := s.permissionsValidation(
+		canonicalPermissions, permErr := s.permissionsValidation(
 			ctx, input.ProductID, input.Permissions, logger,
-		); permErr != nil {
+		)
+		if permErr != nil {
 			return apikey.ProductAPIKey{}, "", permErr
 		}
 
 		apiKeyPermissions = slicex.Map(
-			input.Permissions, func(perm string) apikey.ProductAPIKeyPermission {
+			canonicalPermissions, func(perm string) apikey.ProductAPIKeyPermission {
 				return apikey.ProductAPIKeyPermission{
 					APIKeyID:       productAPIKey.ID,
 					ProductID:      input.ProductID,
@@ -217,14 +218,16 @@ func (s *productAPIKeyService) Update(
 
 		permissions := *input.Permissions
 		if len(permissions) > 0 {
-			if permErr := s.permissionsValidation(
+			canonicalPermissions, permErr := s.permissionsValidation(
 				ctx,
 				input.ProductID,
 				permissions,
 				logger,
-			); permErr != nil {
+			)
+			if permErr != nil {
 				return apikey.ProductAPIKey{}, permErr
 			}
+			permissions = canonicalPermissions
 		}
 
 		updatedAPIKey.Permissions = slicex.Map(
@@ -478,7 +481,7 @@ func (s *productAPIKeyService) nameUniqueValidation(
 
 func (s *productAPIKeyService) permissionsValidation(
 	ctx context.Context, productID string, permissionNames []string, logger zerolog.Logger,
-) error {
+) ([]string, error) {
 	permsFound, err := s.permissionRepo.FindByProductIDAndPermissionNames(
 		ctx, productID, permissionNames,
 	)
@@ -488,22 +491,19 @@ func (s *productAPIKeyService) permissionsValidation(
 			Int("permission_count", len(permissionNames)).
 			Err(err).
 			Msg("failed to find permissions by names")
-		return err
+		return nil, err
 	}
-	if len(permsFound) != len(permissionNames) {
-		foundNames := s.permissionsToStrings(permsFound)
-		missingNames := slicex.StringDiff(foundNames, permissionNames)
-		return NewPermissionsNotFoundError(productID, missingNames)
+	foundNames := s.permissionsToNames(permsFound)
+	canonicalPermissions, missingNames := canonicalizePermissionNames(foundNames, permissionNames)
+	if len(missingNames) > 0 {
+		return nil, NewPermissionsNotFoundError(productID, missingNames)
 	}
-	return nil
+
+	return canonicalPermissions, nil
 }
 
-func (s *productAPIKeyService) permissionsToStrings(
-	input []permission.ProductPermission,
-) []string {
-	return slicex.Map(
-		input, func(permission permission.ProductPermission) string {
-			return permission.Name
-		},
-	)
+func (s *productAPIKeyService) permissionsToNames(input []permission.ProductPermission) []string {
+	return slicex.Map(input, func(permission permission.ProductPermission) string {
+		return permission.Name
+	})
 }

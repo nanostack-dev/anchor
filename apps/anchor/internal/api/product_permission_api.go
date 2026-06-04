@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
@@ -48,7 +49,7 @@ func (s *AnchorAPI) GetProductPermission(
 ) (GetProductPermissionResponseObject, error) {
 	input := permission.FindProductPermissionInput{
 		ProductID: request.ProductId,
-		Name:      request.PermissionId,
+		Name:      strings.ToLower(request.PermissionId),
 	}
 
 	perm, nanostackErr := s.PermissionService.FindByProductAndPermissionName(ctx, input)
@@ -68,7 +69,7 @@ func mapToSearchProductPermissionInput(
 	var filter *permission.SearchProductPermissionFilter
 	if searchReqBody.Filter != nil {
 		filter = &permission.SearchProductPermissionFilter{
-			Names: searchReqBody.Filter.Names,
+			Names: lowerPermissionNames(searchReqBody.Filter.Names),
 		}
 	}
 	var req search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]
@@ -79,4 +80,12 @@ func mapToSearchProductPermissionInput(
 		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
 		searchReqBody.Pagination,
 	)
+}
+
+func lowerPermissionNames(names []string) []string {
+	lowered := make([]string, len(names))
+	for i, name := range names {
+		lowered[i] = strings.ToLower(name)
+	}
+	return lowered
 }

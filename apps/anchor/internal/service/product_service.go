@@ -112,25 +112,12 @@ func (s *productService) Create(
 		return product.Product{}, err
 	}
 
-	searchRes, err := s.Search(
-		ctx, product.SearchProductInput{
-			TenantID: input.TenantID,
-			Request: search.Request[product.SearchProductFilter, product.SortFieldProduct]{
-				Filter: &product.SearchProductFilter{
-					Names: []string{input.Name},
-				},
-				Pagination: search.Pagination{
-					Limit:  int32(1),
-					Offset: int32(0),
-				},
-			},
-		},
-	)
+	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
 	if err != nil {
-		logger.Error().Str("name", input.Name).Err(err).Msg("failed to search for existing product")
+		logger.Error().Str("name", input.Name).Err(err).Msg("failed to look up existing product")
 		return product.Product{}, err
 	}
-	if searchRes.Count > 0 {
+	if existingProduct != nil {
 		logger.Error().Str("name", input.Name).Msg("product already exists")
 		return product.Product{}, ErrProductAlreadyExists
 	}
@@ -231,7 +218,7 @@ func (s *productService) updateProductFields(
 	ctx context.Context, input product.UpdateProductInput, prod *product.Product, logger zerolog.Logger,
 ) error {
 	if input.Name != nil && *input.Name != prod.Name {
-		if err := s.validateNameUniqueness(ctx, input.TenantID, *input.Name, logger); err != nil {
+		if err := s.validateNameUniqueness(ctx, input.TenantID, input.ProductID, *input.Name, logger); err != nil {
 			return err
 		}
 		prod.Name = *input.Name
@@ -243,20 +230,14 @@ func (s *productService) updateProductFields(
 }
 
 func (s *productService) validateNameUniqueness(
-	ctx context.Context, tenantID, name string, logger zerolog.Logger,
+	ctx context.Context, tenantID, productID, name string, logger zerolog.Logger,
 ) error {
-	searchProduct, err := s.productRepo.SearchByTenantID(
-		ctx, tenantID,
-		search.Request[product.SearchProductFilter, product.SortFieldProduct]{
-			Filter:     &product.SearchProductFilter{Names: []string{name}},
-			Pagination: search.Pagination{Limit: int32(1), Offset: int32(0)},
-		},
-	)
+	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
 	if err != nil {
-		logger.Error().Str("name", name).Err(err).Msg("failed to search for product")
+		logger.Error().Str("name", name).Err(err).Msg("failed to look up product")
 		return err
 	}
-	if searchProduct.Count > 0 {
+	if existingProduct != nil && existingProduct.ID != productID {
 		logger.Error().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
 		return ErrProductAlreadyExists
 	}

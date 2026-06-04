@@ -162,6 +162,26 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
+		"CreateProductRoleWithDuplicateNameDifferentCase", func(t *testing.T) {
+			roleName := "DuplicateRoleCase_" + ids.MustNew("test")
+
+			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: roleName},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, resp1.StatusCode())
+
+			resp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: strings.ToLower(roleName)},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp2.StatusCode())
+			assert.NotNil(t, resp2.JSON400)
+			assert.Contains(t, resp2.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+		},
+	)
+
+	t.Run(
 		"CreateProductRoleWithPermissions", func(t *testing.T) {
 			perm1 := testCtx.DefaultResourcePermissions[0].Name
 			perm2 := testCtx.DefaultResourcePermissions[1].Name
@@ -181,6 +201,24 @@ func TestProductRole_Create(t *testing.T) {
 			if assert.NotNil(t, resp.JSON201) {
 				assert.NotNil(t, resp.JSON201.Permissions)
 				assert.Len(t, resp.JSON201.Permissions, 2)
+			}
+		},
+	)
+
+	t.Run(
+		"CreateProductRoleWithPermissionsDifferentCase", func(t *testing.T) {
+			permissionName := testCtx.DefaultResourcePermissions[0].Name
+
+			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{
+					Name:        "RoleWithPermissionsCase_" + ids.MustNew("test"),
+					Permissions: []string{strings.ToUpper(permissionName)},
+				},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, resp.StatusCode())
+			if assert.NotNil(t, resp.JSON201) && assert.Len(t, resp.JSON201.Permissions, 1) {
+				assert.Equal(t, permissionName, resp.JSON201.Permissions[0].PermissionName)
 			}
 		},
 	)

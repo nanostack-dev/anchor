@@ -44,6 +44,23 @@ func TestProductPermissions_Search(t *testing.T) {
 	)
 
 	t.Run(
+		"Search existing permissions with different case", func(t *testing.T) {
+			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
+				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
+					Filter: &ct.ProductPermissionFilter{
+						Names: []string{"ORGANIZATION:READ"},
+					},
+				},
+			)
+			require.NoError(t, err, "search product permissions request should not error")
+			assert.Equal(t, 200, searchResp.StatusCode())
+			if assert.NotEmpty(t, searchResp.JSON200, "search results should not be empty") {
+				assert.Equal(t, orgRead, searchResp.JSON200.Items[0].Name)
+			}
+		},
+	)
+
+	t.Run(
 		"Search by multiple permissions", func(t *testing.T) {
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -103,7 +104,7 @@ func (r *productResourcePermissionRepository) FindByName(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(
 		table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductResourcePermissions.Name.EQ(postgres.String(name))),
+			AND(postgres.LOWER(table.ProductResourcePermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	)
 
 	return transactor.QueryOptionalMap[model.ProductResourcePermissions, resourcepermission.ProductResourcePermission](
@@ -150,8 +151,8 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Names)
-			whereStmt = whereStmt.AND(table.ProductResourcePermissions.Name.IN(expressions...))
+			expressions := jetx.ToStringExpressions(lowerResourcePermissionStrings(input.Filter.Names))
+			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductResourcePermissions.Name).IN(expressions...))
 		}
 
 		if len(input.Filter.ScopeModifiers) > 0 {
@@ -263,11 +264,19 @@ func (r *productResourcePermissionRepository) FindByProductIDAndPermissionNames(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(
 		table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductResourcePermissions.Name.IN(jetx.ToStringExpressions(permissionNames)...)),
+			AND(postgres.LOWER(table.ProductResourcePermissions.Name).IN(jetx.ToStringExpressions(lowerResourcePermissionStrings(permissionNames))...)),
 	)
 
 	return transactor.QueryMapSlice[
 		model.ProductResourcePermissions,
 		resourcepermission.ProductResourcePermission,
 	](ctx, r.db, stmt, r.mapper.ToDomain)
+}
+
+func lowerResourcePermissionStrings(values []string) []string {
+	lowered := make([]string, len(values))
+	for i, value := range values {
+		lowered[i] = strings.ToLower(value)
+	}
+	return lowered
 }

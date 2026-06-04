@@ -212,7 +212,7 @@ func (s *resourcePermissionService) Delete(
 	}
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
-			txCtx, input.ProductID, input.Name,
+			txCtx, input.ProductID, name.Name,
 		); apiKeyDeleteErr != nil {
 			return apiKeyDeleteErr
 		}
@@ -220,7 +220,7 @@ func (s *resourcePermissionService) Delete(
 		return s.resourcePermissionRepo.DeleteByID(
 			txCtx,
 			input.ProductID,
-			input.Name,
+			name.Name,
 		)
 	})
 	if err != nil {
