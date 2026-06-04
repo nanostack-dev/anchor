@@ -375,7 +375,7 @@ export const zOrganizationApiKeyCreateRequest = z.object({
         z.iso.datetime(),
         z.null()
     ])),
-    permissions: z.optional(z.array(z.string()))
+    permissions: z.array(z.string()).min(1)
 });
 
 /**

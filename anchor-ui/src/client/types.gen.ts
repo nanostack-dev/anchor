@@ -535,9 +535,9 @@ export type OrganizationApiKeyCreateRequest = {
      */
     expires_at?: string | null;
     /**
-     * Optional list of permission names (strings) to assign initially. Defaults to an empty set.
+     * Required, non-empty list of permission names (strings) to assign. Organization API key permissions are immutable after creation, so at least one must be supplied here.
      */
-    permissions?: Array<string>;
+    permissions: Array<string>;
 };
 
 export type OrganizationApiKeyResponse = {

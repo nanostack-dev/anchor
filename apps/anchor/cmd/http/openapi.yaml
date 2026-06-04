@@ -1163,14 +1163,17 @@ components:
           description: Optional expiration date for the API key.
         permissions:
           type: array
-          description: Optional list of permission names (strings) to assign
-            initially. Defaults to an empty set.
+          minItems: 1
+          description: Required, non-empty list of permission names (strings) to
+            assign. Organization API key permissions are immutable after
+            creation, so at least one must be supplied here.
           items:
             type: string
             example: "organization:read"
           x-go-type-skip-optional-pointer: true
       required:
       - name
+      - permissions
     OrganizationAPIKeyResponse:
       type: object
       properties:
