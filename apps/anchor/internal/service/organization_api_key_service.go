@@ -127,17 +127,18 @@ func (s *organizationAPIKeyService) Create(
 	}
 	organizationAPIKey.GenerateID()
 
-	if permissionValidationErr := s.permissionsValidation(
+	canonicalPermissions, permissionValidationErr := s.permissionsValidation(
 		ctx,
 		org.ProductID,
 		input.Permissions,
 		logger,
-	); permissionValidationErr != nil {
+	)
+	if permissionValidationErr != nil {
 		return orgapikey.OrganizationAPIKey{}, "", permissionValidationErr
 	}
 
 	organizationAPIKey.Permissions = slicex.Map(
-		input.Permissions,
+		canonicalPermissions,
 		func(perm string) orgapikey.OrganizationAPIKeyPermission {
 			return orgapikey.OrganizationAPIKeyPermission{
 				APIKeyID:       organizationAPIKey.ID,
@@ -557,7 +558,7 @@ func (s *organizationAPIKeyService) permissionsValidation(
 	productID string,
 	permissionNames []string,
 	logger zerolog.Logger,
-) error {
+) ([]string, error) {
 	permsFound, err := s.permissionRepo.FindByProductIDAndPermissionNames(
 		ctx, productID, permissionNames,
 	)
@@ -567,23 +568,19 @@ func (s *organizationAPIKeyService) permissionsValidation(
 			Int("permission_count", len(permissionNames)).
 			Err(err).
 			Msg("failed to find permissions by names")
-		return err
+		return nil, err
 	}
-	if len(permsFound) != len(permissionNames) {
-		foundNames := resourcePermissionsToStrings(permsFound)
-		missingNames := slicex.StringDiff(permissionNames, foundNames)
-		return NewPermissionsNotFoundError(productID, missingNames)
+	foundNames := resourcePermissionsToNames(permsFound)
+	canonicalPermissions, missingNames := canonicalizePermissionNames(foundNames, permissionNames)
+	if len(missingNames) > 0 {
+		return nil, NewPermissionsNotFoundError(productID, missingNames)
 	}
-	return nil
+
+	return canonicalPermissions, nil
 }
 
-func resourcePermissionsToStrings(
-	input []resourcepermission.ProductResourcePermission,
-) []string {
-	return slicex.Map(
-		input,
-		func(permission resourcepermission.ProductResourcePermission) string {
-			return permission.Name
-		},
-	)
+func resourcePermissionsToNames(input []resourcepermission.ProductResourcePermission) []string {
+	return slicex.Map(input, func(permission resourcepermission.ProductResourcePermission) string {
+		return permission.Name
+	})
 }

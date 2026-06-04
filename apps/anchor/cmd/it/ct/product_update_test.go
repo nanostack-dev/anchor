@@ -203,4 +203,41 @@ func TestProductUpdate(t *testing.T) {
 			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
 		},
 	)
+
+	t.Run(
+		"UpdateProductWithDuplicateNameDifferentCase", func(t *testing.T) {
+			product1Name := "Product One Case " + ids.MustNew("test")
+			createResp1, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        product1Name,
+					Description: ptr.Ptr("This is the first test product"),
+				},
+			)
+			require.NoError(t, err, "create first product request should not error")
+			assert.Equal(t, http.StatusCreated, createResp1.StatusCode())
+
+			createResp2, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "Product Two Case " + ids.MustNew("test"),
+					Description: ptr.Ptr("This is the second test product"),
+				},
+			)
+			require.NoError(t, err, "create second product request should not error")
+			assert.Equal(t, http.StatusCreated, createResp2.StatusCode())
+
+			updateResp, err := testOwnerClient(t).UpdateProductWithResponse(
+				ctx,
+				createResp2.JSON201.Id,
+				ct.UpdateProductJSONRequestBody{
+					Name:        strings.ToLower(product1Name),
+					Description: ptr.Ptr("Attempting to use duplicate name"),
+				},
+			)
+			require.NoError(t, err, "update product with duplicate name should not error")
+			assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
+			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
+		},
+	)
 }

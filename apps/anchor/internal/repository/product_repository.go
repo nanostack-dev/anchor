@@ -31,6 +31,9 @@ type ProductRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, id string,
 	) (*product.Product, error)
+	FindByTenantIDAndName(
+		ctx context.Context, tenantID string, name string,
+	) (*product.Product, error)
 	// FindByIDInternal returns a product by ID without tenant scoping.
 	// Allowed only for trusted system-internal paths such as auth middleware
 	// resolving tenant context for authenticated product API keys.
@@ -96,6 +99,25 @@ func (r *productRepositoryImpl) FindByIDInternal(
 		table.Products,
 	).WHERE(
 		table.Products.ID.EQ(postgres.String(id)),
+	).LIMIT(1)
+
+	return transactor.QueryOptionalMap[model.Products, product.Product](
+		ctx, r.db, stmt,
+		r.productMapper.ToDomain,
+	)
+}
+
+func (r *productRepositoryImpl) FindByTenantIDAndName(
+	ctx context.Context, tenantID string, name string,
+) (*product.Product, error) {
+	stmt := table.Products.SELECT(
+		table.Products.AllColumns,
+	).FROM(
+		table.Products,
+	).WHERE(
+		table.Products.PlatformTenantID.EQ(postgres.String(tenantID)).AND(
+			postgres.LOWER(table.Products.Name).EQ(postgres.LOWER(postgres.String(name))),
+		),
 	).LIMIT(1)
 
 	return transactor.QueryOptionalMap[model.Products, product.Product](

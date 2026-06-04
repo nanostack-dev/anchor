@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -92,7 +93,7 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 		table.ProductPermissions,
 	).WHERE(
 		table.ProductPermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductPermissions.Name.EQ(postgres.String(name))),
+			AND(postgres.LOWER(table.ProductPermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	).LIMIT(1)
 
 	return transactor.QueryOptionalMap[model.ProductPermissions, permission.ProductPermission](
@@ -158,8 +159,12 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Names)
-			whereStmt = whereStmt.AND(table.ProductPermissions.Name.IN(expressions...))
+			lowerNames := make([]string, len(input.Filter.Names))
+			for i, name := range input.Filter.Names {
+				lowerNames[i] = strings.ToLower(name)
+			}
+			expressions := jetx.ToStringExpressions(lowerNames)
+			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductPermissions.Name).IN(expressions...))
 		}
 	}
 
@@ -258,10 +263,18 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionNames(
 		table.ProductPermissions,
 	).WHERE(
 		table.ProductPermissions.ProductID.EQ(postgres.String(id)).
-			AND(table.ProductPermissions.Name.IN(jetx.ToStringExpressions(permissions)...)),
+			AND(postgres.LOWER(table.ProductPermissions.Name).IN(jetx.ToStringExpressions(lowerStrings(permissions))...)),
 	)
 
 	return transactor.QueryMapSlice[model.ProductPermissions, permission.ProductPermission](
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
 	)
+}
+
+func lowerStrings(values []string) []string {
+	lowered := make([]string, len(values))
+	for i, value := range values {
+		lowered[i] = strings.ToLower(value)
+	}
+	return lowered
 }

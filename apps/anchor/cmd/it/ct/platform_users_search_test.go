@@ -103,6 +103,27 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
+		"SearchWithRoleFilterDifferentCase", func(t *testing.T) {
+			filter := ct.PlatformUserFilter{
+				Roles: []ct.PlatformUserRole{ct.PlatformUserRole("owner")},
+			}
+			searchReq := ct.SearchPlatformUsersJSONRequestBody{
+				Filter: &filter,
+			}
+
+			resp, err := testOwnerClient(t).SearchPlatformUsersWithResponse(
+				ctx, searchReq,
+			)
+			require.NoError(t, err, "search platform users with role filter should not error")
+			assert.Equal(t, http.StatusOK, resp.StatusCode())
+			assert.NotNil(t, resp.JSON200)
+			if len(resp.JSON200.Items) > 0 {
+				assert.Equal(t, ct.OWNER, resp.JSON200.Items[0].Role)
+			}
+		},
+	)
+
+	t.Run(
 		"SearchWithSorting", func(t *testing.T) {
 			sortBy := ct.PlatformUserSearchRequestSortByEmail
 			sortDirection := ct.ASC

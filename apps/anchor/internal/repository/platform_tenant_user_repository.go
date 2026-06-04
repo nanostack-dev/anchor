@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -167,8 +168,12 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 		}
 
 		if len(input.Filter.Roles) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Roles)
-			whereStmt = whereStmt.AND(table.PlatformUsers.Role.IN(expressions...))
+			roles := make([]string, len(input.Filter.Roles))
+			for i, role := range input.Filter.Roles {
+				roles[i] = strings.ToLower(string(role))
+			}
+			expressions := jetx.ToStringExpressions(roles)
+			whereStmt = whereStmt.AND(postgres.LOWER(table.PlatformUsers.Role).IN(expressions...))
 		}
 	}
 	if input.FullTextSearch != nil {

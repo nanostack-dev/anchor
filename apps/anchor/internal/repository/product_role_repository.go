@@ -123,7 +123,7 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
 			),
 	).WHERE(
-		table.ProductRoles.Name.EQ(postgres.String(name)).AND(
+		postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 		),
 	)
