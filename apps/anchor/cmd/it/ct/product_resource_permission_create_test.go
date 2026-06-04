@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -134,6 +135,39 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
 		"Resource permission with name 'file:duplicate' already exists", map[string]interface{}{
 			"name": input.Name,
+		},
+	)
+}
+
+func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
+	ctx := context.Background()
+
+	testProduct := createTestProductContext(t)
+	permissionName := "File:DuplicateCase:" + ids.MustNew("test")
+
+	input := ct.CreateProductResourcePermissionRequest{
+		Name:        permissionName,
+		Description: ptr.Ptr("First permission"),
+	}
+
+	resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+		ctx, testProduct.ProductID, input,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp1.StatusCode())
+
+	duplicateName := strings.ToLower(permissionName)
+	resp2, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+		ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{
+			Name:        duplicateName,
+			Description: ptr.Ptr("Second permission"),
+		},
+	)
+	require.NoError(t, err, "request should not error")
+	itshared.AssertAnchorBadRequestError(
+		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
+		"Resource permission with name '"+duplicateName+"' already exists", map[string]interface{}{
+			"name": duplicateName,
 		},
 	)
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -66,7 +67,7 @@ func (s *productRoleService) CreateProductRole(
 	if err := validateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
-	if err := s.nameDuplicationValidation(ctx, input.ProductID, input.Name, logger); err != nil {
+	if err := s.nameDuplicationValidation(ctx, input.ProductID, input.Name, "", logger); err != nil {
 		return role.ProductRole{}, err
 	}
 	productRole := role.ProductRole{
@@ -190,7 +191,7 @@ func (s *productRoleService) UpdateProductRole(
 	updatedRole := *existingRole
 
 	if input.Name != nil && *input.Name != updatedRole.Name {
-		err = s.nameDuplicationValidation(ctx, input.ProductID, *input.Name, logger)
+		err = s.nameDuplicationValidation(ctx, input.ProductID, *input.Name, input.ID, logger)
 		if err != nil {
 			return role.ProductRole{}, err
 		}
@@ -313,20 +314,16 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	}
 	newPermission.GenerateID()
 
-	if err = s.permissionsValidation(
-		ctx, input.ProductID,
-		[]role.ProductRolePermission{
-			newPermission,
-		},
-		logger,
-	); err != nil {
+	permissions := []role.ProductRolePermission{newPermission}
+	if err = s.permissionsValidation(ctx, input.ProductID, permissions, logger); err != nil {
 		return role.ProductRole{}, err
 	}
+	newPermission = permissions[0]
 
 	for _, perm := range productRole.Permissions {
-		if perm.PermissionName == input.PermissionName {
+		if strings.EqualFold(perm.PermissionName, newPermission.PermissionName) {
 			logger.Debug().
-				Str("permission_name", input.PermissionName).
+				Str("permission_name", newPermission.PermissionName).
 				Str("product_role_id", input.ProductRoleID).
 				Msg("permission already assigned to role")
 			return *productRole, nil
@@ -347,7 +344,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 
 	logger.Info().
 		Str("product_role_id", input.ProductRoleID).
-		Str("permission_name", input.PermissionName).
+		Str("permission_name", newPermission.PermissionName).
 		Msg("permission assigned to product role")
 
 	return updated, nil
@@ -402,7 +399,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 	found := false
 	var updatedPermissions []role.ProductRolePermission
 	for _, perm := range productRole.Permissions {
-		if perm.PermissionName != input.PermissionName {
+		if !strings.EqualFold(perm.PermissionName, permissionFound.Name) {
 			updatedPermissions = append(updatedPermissions, perm)
 		} else {
 			found = true
@@ -438,7 +435,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 }
 
 func (s *productRoleService) nameDuplicationValidation(
-	ctx context.Context, productID, roleName string, logger zerolog.Logger,
+	ctx context.Context, productID, roleName, currentRoleID string, logger zerolog.Logger,
 ) error {
 	// Exact-name lookup. The search filter matches names as substrings, which
 	// would wrongly flag e.g. "role" as a duplicate of "role-admin".
@@ -451,7 +448,7 @@ func (s *productRoleService) nameDuplicationValidation(
 			Msg("failed to look up product role by name")
 		return apierror.ErrUnexpected
 	}
-	if existingRole != nil {
+	if existingRole != nil && existingRole.ID != currentRoleID {
 		return NewRoleWithAlreadyExistingNameError(
 			roleName, productID,
 		)
@@ -499,16 +496,20 @@ func (s *productRoleService) permissionsValidation(
 		return apierror.ErrUnexpected
 	}
 
-	foundMap := make(map[string]bool)
+	foundMap := make(map[string]string)
 	for _, p := range result.Items {
-		foundMap[p.Name] = true
+		foundMap[strings.ToLower(p.Name)] = p.Name
 	}
 
 	var notFoundPermissions []string
-	for _, name := range permissionNames {
-		if !foundMap[name] {
+	for i := range input {
+		name := input[i].PermissionName
+		canonicalName, ok := foundMap[strings.ToLower(name)]
+		if !ok {
 			notFoundPermissions = append(notFoundPermissions, name)
+			continue
 		}
+		input[i].PermissionName = canonicalName
 	}
 
 	if len(notFoundPermissions) > 0 {

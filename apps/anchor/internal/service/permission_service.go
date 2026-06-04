@@ -177,7 +177,7 @@ func (s *permissionService) Delete(
 		return nil
 	}
 
-	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, input.Name)
+	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, exists.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -193,7 +193,7 @@ func (s *permissionService) Delete(
 		)
 	}
 
-	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, input.Name)
+	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, exists.Name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).

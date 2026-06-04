@@ -249,6 +249,35 @@ func TestProductRole_Update(t *testing.T) {
 	)
 
 	t.Run(
+		"UpdateProductRoleWithDuplicateNameDifferentCase", func(t *testing.T) {
+			role1Name := "Role1Case_" + ids.MustNew("test")
+			role2Name := "Role2Case_" + ids.MustNew("test")
+
+			createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: role1Name},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createResp1.StatusCode())
+
+			createResp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: role2Name},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createResp2.StatusCode())
+
+			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
+				ctx, productID, createResp2.JSON201.Id, ct.UpdateProductRoleJSONRequestBody{
+					Name: strings.ToLower(role1Name),
+				},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
+			assert.NotNil(t, updateResp.JSON400)
+			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+		},
+	)
+
+	t.Run(
 		"UpdateNonexistentProductRole", func(t *testing.T) {
 			nonExistentRoleID := ids.MustNew("productroleservice")
 			updatedName := "UpdatedName_" + ids.MustNew("test")
