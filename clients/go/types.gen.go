@@ -1126,8 +1126,8 @@ type OrganizationAPIKeyCreateRequest struct {
 	// Name Name of the organization API key. Must be unique within the organization.
 	Name string `json:"name"`
 
-	// Permissions Optional list of permission names (strings) to assign initially. Defaults to an empty set.
-	Permissions []string `json:"permissions,omitempty"`
+	// Permissions Required, non-empty list of permission names (strings) to assign. Organization API key permissions are immutable after creation, so at least one must be supplied here.
+	Permissions []string `json:"permissions"`
 }
 
 // OrganizationAPIKeyFilter defines model for OrganizationAPIKeyFilter.
