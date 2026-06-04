@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -55,6 +56,40 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 			t, resp.JSON200.UpdatedAt.After(resp.JSON200.CreatedAt),
 			"updated_at should be after created_at",
 		)
+	}
+}
+
+func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
+	ctx := context.Background()
+
+	testProduct := createTestProductContext(t)
+	permissionName := "File:ReadCase:" + ids.MustNew("test")
+
+	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+		ctx,
+		testProduct.ProductID,
+		ct.CreateProductResourcePermissionRequest{
+			Name:        permissionName,
+			Description: ptr.Ptr("Read file contents"),
+		},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+	assert.NotNil(t, createResp.JSON201)
+
+	updateInput := ct.UpdateProductResourcePermissionRequest{
+		Description: ptr.Ptr("Updated read file contents"),
+	}
+
+	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+		ctx, testProduct.ProductID, strings.ToLower(permissionName), updateInput,
+	)
+	require.NoError(t, err, "update product resource permission request should not error")
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+	if assert.NotNil(t, resp.JSON200) {
+		assert.Equal(t, permissionName, resp.JSON200.Name)
+		assert.Equal(t, updateInput.Description, resp.JSON200.Description)
 	}
 }
 

@@ -590,8 +590,8 @@ components:
           type: string
           minLength: 2
           maxLength: 100
-          description: Name of the product. Must be unique within the 
-            PlatformTenant.
+          description: Name of the product. Must be unique within the
+            PlatformTenant using case-insensitive matching.
           example: "My Super App"
         description:
           type: string
@@ -661,8 +661,9 @@ components:
         name:
           type: string
           description: >-
-            The permission string identifier. This is the value used when
-            assigning the permission to a role (e.g. "product:settings:read").
+            The permission string identifier. Permission name filters and
+            validation use case-insensitive matching and return the canonical
+            stored casing.
           example: "product:settings:read"
         description:
           type: string
@@ -708,7 +709,8 @@ components:
           description: >-
             The resource permission identifier, using the format
             "<resource>:<action>" (e.g. "document:read", "file:delete",
-            "workspace:invite"). Must be unique within the product.
+            "workspace:invite"). Must be unique within the product using
+            case-insensitive matching.
           example: "document:read"
         description:
           type: string
@@ -826,8 +828,8 @@ components:
           type: string
           minLength: 2
           maxLength: 100
-          description: Name of the product role. Must be unique within the 
-            Product.
+          description: Name of the product role. Must be unique within the
+            Product using case-insensitive matching.
           example: "Editor"
         description:
           type: string
@@ -854,8 +856,8 @@ components:
           type: string
           minLength: 2
           maxLength: 100
-          description: Name of the product role. Must be unique within the 
-            Product.
+          description: Name of the product role. Must be unique within the
+            Product using case-insensitive matching.
           example: "Editor"
         description:
           type: string
@@ -5261,5 +5263,4 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailSendRecordListResponse'
-
 

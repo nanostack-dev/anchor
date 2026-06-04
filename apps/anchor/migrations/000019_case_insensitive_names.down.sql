@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_product_resource_permissions_product_lower_name_unique;
+DROP INDEX IF EXISTS idx_product_roles_product_lower_name_unique;
+DROP INDEX IF EXISTS idx_product_permissions_product_lower_name_unique;
+DROP INDEX IF EXISTS idx_products_tenant_lower_name_unique;
