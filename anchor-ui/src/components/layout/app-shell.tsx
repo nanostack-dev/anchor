@@ -1,3 +1,4 @@
+import { Slot, Slottable } from "@radix-ui/react-slot";
 import type * as React from "react";
 
 import {
@@ -144,8 +145,89 @@ function AppShellContent({
 	);
 }
 
+type AppShellBrandProps = React.ComponentProps<"button"> & {
+	/** Brand mark, e.g. a white logo `<img>` or `<svg>`. Rendered inside the tile. */
+	logo?: React.ReactNode;
+	/** Primary brand name. */
+	name: React.ReactNode;
+	/** Optional secondary line under the name. */
+	description?: React.ReactNode;
+	/** Render as the child element (e.g. a router `Link`) instead of a button. */
+	asChild?: boolean;
+	/** Override the tile classes (defaults to the sidebar-primary tile). */
+	tileClassName?: string;
+};
+
+/**
+ * Brand row for the app shell sidebar header: a colored tile holding the brand
+ * mark, plus a name and an optional sub-line. The text collapses away when the
+ * sidebar is in icon mode. Render as a link/button via `asChild`.
+ */
+function AppShellBrand({
+	logo,
+	name,
+	description,
+	asChild = false,
+	className,
+	tileClassName,
+	children,
+	...props
+}: AppShellBrandProps) {
+	const brandClassName = cn(
+		"group/brand flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+		"group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0",
+		className,
+	);
+	const inner = (
+		<>
+			<span
+				data-slot="app-shell-brand-tile"
+				className={cn(
+					"grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground [&_img]:size-[22px] [&_svg]:size-[22px]",
+					tileClassName,
+				)}
+			>
+				{logo}
+			</span>
+			<span className="grid min-w-0 group-data-[collapsible=icon]:hidden">
+				<span className="truncate text-sm font-semibold leading-tight">
+					{name}
+				</span>
+				{description ? (
+					<span className="truncate text-[11px] leading-tight text-muted-foreground">
+						{description}
+					</span>
+				) : null}
+			</span>
+		</>
+	);
+
+	// asChild renders the caller's element (e.g. a router Link) as the row and
+	// injects the tile + text into it via Slottable.
+	if (asChild) {
+		return (
+			<Slot data-slot="app-shell-brand" className={brandClassName} {...props}>
+				{inner}
+				<Slottable>{children}</Slottable>
+			</Slot>
+		);
+	}
+
+	return (
+		<button
+			type="button"
+			data-slot="app-shell-brand"
+			className={brandClassName}
+			{...props}
+		>
+			{inner}
+		</button>
+	);
+}
+
 export {
 	AppShell,
+	AppShellBrand,
 	AppShellContent,
 	AppShellInset,
 	AppShellSidebar,
