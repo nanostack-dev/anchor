@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type * as React from "react";
 
+import { AppShellBrand } from "@/components/layout/app-shell";
 import {
 	Sidebar,
 	SidebarContent,
@@ -43,7 +44,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	teams: TeamData[];
 }
 
-import { useSidebar } from "@/components/ui/sidebar";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useLocation } from "@tanstack/react-router";
 
@@ -58,8 +58,6 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 		return null;
 	};
 
-	const { state } = useSidebar();
-	const collapsed = state === "collapsed";
 	const location = useLocation();
 
 	// Helper to check if a path is active
@@ -79,25 +77,14 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 	return (
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
-				<Link
-					to={ROUTE_PATHS.PRODUCT_PERMISSIONS}
-					className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}
+				<AppShellBrand
+					asChild
+					name="Anchor"
+					description="Organization-as-a-Service"
+					logo={<img src="/logo.svg" alt="" className="brightness-0 invert" />}
 				>
-					<img
-						src="/logo.svg"
-						alt="App Logo"
-						className={
-							collapsed
-								? "h-6 w-6 transition-all duration-200"
-								: "h-8 w-auto transition-all duration-200"
-						}
-					/>
-					{!collapsed && (
-						<h4 className="scroll-m-20 text-xl font-semibold tracking-tight transition-all duration-200">
-							Anchor
-						</h4>
-					)}
-				</Link>
+					<Link to={ROUTE_PATHS.PRODUCT_PERMISSIONS} aria-label="Anchor home" />
+				</AppShellBrand>
 			</SidebarHeader>
 			<SidebarContent>
 				{sidebarConfig.map((group: SidebarConfigGroup) => (

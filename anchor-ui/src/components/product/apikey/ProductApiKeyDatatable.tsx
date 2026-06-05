@@ -7,6 +7,7 @@ import {
 	SortDirection,
 } from "@/client";
 import { searchProductApiKeysOptions } from "@/client/@tanstack/react-query.gen";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { DeleteProductAPIKeyDialog } from "@/components/product/apikey/DeleteProductApiKeyDialog";
 import { ProductApiKeyDialog } from "@/components/product/apikey/ProductApiKeyDialog";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
@@ -158,34 +159,22 @@ export function ProductApiKeyDatatable({
 				header: () => <span>Status</span>,
 				cell: (info) => {
 					const status = info.getValue();
-					return (
-						<span
-							className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-								status === ProductApiKeyStatus.ACTIVE
-									? "bg-green-100 text-green-800"
-									: status === ProductApiKeyStatus.INACTIVE
-										? "bg-gray-100 text-gray-800"
-										: "bg-yellow-100 text-yellow-800"
-							}`}
-						>
-							{status}
-						</span>
-					);
+					const tone =
+						status === ProductApiKeyStatus.ACTIVE
+							? "success"
+							: status === ProductApiKeyStatus.INACTIVE
+								? "neutral"
+								: "warning";
+					return <StatusBadge tone={tone}>{status}</StatusBadge>;
 				},
 				enableSorting: true,
 			}),
 			columnHelper.accessor("mutable", {
 				header: () => <span>Mutable</span>,
 				cell: (info) => (
-					<span
-						className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-							info.getValue()
-								? "bg-blue-100 text-blue-800"
-								: "bg-slate-100 text-slate-700"
-						}`}
-					>
+					<StatusBadge tone={info.getValue() ? "info" : "neutral"}>
 						{info.getValue() ? "Yes" : "No"}
-					</span>
+					</StatusBadge>
 				),
 				enableSorting: false,
 			}),
@@ -288,7 +277,7 @@ export function ProductApiKeyDatatable({
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load API keys: {error.message}
 				</div>
 			)}

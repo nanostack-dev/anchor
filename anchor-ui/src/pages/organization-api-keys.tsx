@@ -73,7 +73,7 @@ export default function OrganizationApiKeysPage() {
 							{organizations.map((organization) => (
 								<SelectItem key={organization.id} value={organization.id}>
 									<div className="flex items-center gap-2">
-										<Building2 className="h-4 w-4" />
+										<Building2 className="size-4" />
 										<span>{organization.name}</span>
 									</div>
 								</SelectItem>
@@ -85,8 +85,8 @@ export default function OrganizationApiKeysPage() {
 				{selectedOrgId ? (
 					<OrganizationApiKeyDatatable organizationId={selectedOrgId} />
 				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border bg-slate-50 p-12 text-center">
-						<KeyRound className="mb-4 h-10 w-10 text-muted-foreground" />
+					<div className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted p-12 text-center">
+						<KeyRound className="mb-4 size-10 text-muted-foreground" />
 						<h3 className="text-lg font-medium">No Organization Selected</h3>
 						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
 							Select an organization to review its API keys and granted Anchor

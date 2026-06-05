@@ -14,12 +14,11 @@ import { type Options, SortDirection } from "@/client";
 import { searchOrganizationMembersOptions } from "@/client/@tanstack/react-query.gen";
 import { Badge } from "@/components/ui/badge";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@/components/ui/empty";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { AnchorDataTable } from "../common/datatable/AnchorDataTable";
@@ -106,40 +105,32 @@ export function OrganizationMembershipDatatable({
 
 	if (!organizationId) {
 		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Organization Memberships</CardTitle>
-					<CardDescription>
+			<Empty>
+				<EmptyHeader>
+					<EmptyTitle>Organization Memberships</EmptyTitle>
+					<EmptyDescription>
 						Select an organization to view its members.
-					</CardDescription>
-				</CardHeader>
-			</Card>
+					</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
 		);
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Members</CardTitle>
-				<CardDescription>
-					View and manage members in this organization.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<AnchorDataTable<OrganizationMemberResponse>
-					columns={columns}
-					data={data?.items ?? []}
-					total={data?.total ?? 0}
-					pagination={pagination}
-					onPaginationChange={setPagination}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					fullTextSearch={globalFilter}
-					onFullTextSearchChange={setGlobalFilter}
-					loading={isLoading}
-					fullTextSearchPlaceHolder="Search by email or name..."
-				/>
-			</CardContent>
-		</Card>
+		<>
+			<AnchorDataTable<OrganizationMemberResponse>
+				columns={columns}
+				data={data?.items ?? []}
+				total={data?.total ?? 0}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				fullTextSearch={globalFilter}
+				onFullTextSearchChange={setGlobalFilter}
+				loading={isLoading}
+				fullTextSearchPlaceHolder="Search by email or name..."
+			/>
+		</>
 	);
 }

@@ -33,6 +33,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../ui/select";
+import { Skeleton } from "../../ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -312,8 +313,8 @@ export function AnchorDataTable<
 	});
 
 	return (
-		<div className="w-full">
-			<div className="flex flex-col gap-2 py-4">
+		<div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			<div className="flex flex-col gap-2 p-4">
 				<div className="flex items-center gap-2">
 					{onFullTextSearchChange && (
 						<Input
@@ -354,9 +355,9 @@ export function AnchorDataTable<
 				</div>
 				{renderFilters()}
 			</div>
-			<div className="rounded-md border">
+			<div className="border-y border-border">
 				<Table>
-					<TableHeader>
+					<TableHeader className="bg-card">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -379,11 +380,11 @@ export function AnchorDataTable<
 												{header.column.getCanSort() && (
 													<span className="ml-1">
 														{header.column.getIsSorted() === "desc" ? (
-															<ArrowDown className="h-4 w-4" />
+															<ArrowDown className="size-4" />
 														) : header.column.getIsSorted() === "asc" ? (
-															<ArrowUp className="h-4 w-4" />
+															<ArrowUp className="size-4" />
 														) : (
-															<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+															<ArrowUpDown className="size-4 text-muted-foreground" />
 														)}
 													</span>
 												)}
@@ -396,16 +397,24 @@ export function AnchorDataTable<
 					</TableHeader>
 					<TableBody>
 						{loading ? (
-							<TableRow>
-								<TableCell
-									colSpan={
-										enableRowSelection ? columns.length + 1 : columns.length
-									}
-									className="text-center"
+							Array.from({ length: 5 }).map((_, rowIndex) => (
+								<TableRow
+									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder rows have no stable id.
+									key={`skeleton-row-${rowIndex}`}
 								>
-									Loading...
-								</TableCell>
-							</TableRow>
+									{(enableRowSelection
+										? [{ id: "select" }, ...columns]
+										: columns
+									).map((column, cellIndex) => (
+										<TableCell
+											// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder cells have no stable id.
+											key={`skeleton-cell-${rowIndex}-${column.id ?? cellIndex}`}
+										>
+											<Skeleton className="h-4 w-full" />
+										</TableCell>
+									))}
+								</TableRow>
+							))
 						) : table.getRowModel().rows.length ? (
 							table.getRowModel().rows.map((row) => (
 								<TableRow
@@ -428,7 +437,7 @@ export function AnchorDataTable<
 									colSpan={
 										enableRowSelection ? columns.length + 1 : columns.length
 									}
-									className="h-24 text-center"
+									className="h-24 text-center text-sm text-muted-foreground"
 								>
 									No results.
 								</TableCell>
@@ -437,7 +446,7 @@ export function AnchorDataTable<
 					</TableBody>
 				</Table>
 			</div>
-			<div className="flex items-center justify-end gap-2 py-4">
+			<div className="flex items-center justify-end gap-2 p-4">
 				{enableRowSelection && (
 					<div className="flex-1 text-sm text-muted-foreground">
 						{Object.keys(rowSelection).length} of{" "}

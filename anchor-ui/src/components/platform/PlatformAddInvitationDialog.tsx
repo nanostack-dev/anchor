@@ -18,6 +18,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Spinner } from "../ui/spinner";
 
 const invitationFormSchema = z.object({
 	email: z
@@ -219,8 +220,8 @@ export function PlatformAddInvitationDialog({
 										className="h-11"
 									>
 										{isCreating || isSubmitting ? (
-											<div className="flex items-center space-x-2">
-												<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+											<div className="flex items-center gap-2">
+												<Spinner className="text-current" />
 												<span>Sending...</span>
 											</div>
 										) : (

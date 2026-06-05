@@ -13,7 +13,7 @@ import {
 	listIntegrationInstancesQueryKey,
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -22,6 +22,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
 import { ROUTE_PATHS } from "@/routes/routePaths";
@@ -32,7 +33,6 @@ import {
 	Check,
 	Copy,
 	Fingerprint,
-	Loader2,
 	Mail,
 	Plug,
 	Sparkles,
@@ -47,21 +47,21 @@ function getWebhookUrl(productId: string, providerType: string): string {
 function getLiveState(instance: IntegrationInstanceResponse | null): {
 	label: string;
 	dotClassName: string;
-	badgeVariant: "default" | "secondary" | "destructive";
+	tone: StatusTone;
 } {
 	if (!instance) {
 		return {
 			label: "Not configured",
-			dotClassName: "bg-slate-400",
-			badgeVariant: "secondary",
+			dotClassName: "bg-muted-foreground",
+			tone: "neutral",
 		};
 	}
 
 	if (!instance.is_enabled) {
 		return {
 			label: "Disabled",
-			dotClassName: "bg-slate-400",
-			badgeVariant: "secondary",
+			dotClassName: "bg-muted-foreground",
+			tone: "neutral",
 		};
 	}
 
@@ -69,26 +69,26 @@ function getLiveState(instance: IntegrationInstanceResponse | null): {
 		case IntegrationInstanceStatus.ACTIVE:
 			return {
 				label: "Live",
-				dotClassName: "bg-emerald-500",
-				badgeVariant: "default",
+				dotClassName: "bg-success",
+				tone: "success",
 			};
 		case IntegrationInstanceStatus.ERROR:
 			return {
 				label: "Needs attention",
-				dotClassName: "bg-rose-500",
-				badgeVariant: "destructive",
+				dotClassName: "bg-destructive",
+				tone: "destructive",
 			};
 		case IntegrationInstanceStatus.CONFIGURING:
 			return {
 				label: "Configuring",
-				dotClassName: "bg-amber-500",
-				badgeVariant: "secondary",
+				dotClassName: "bg-warning",
+				tone: "warning",
 			};
 		default:
 			return {
 				label: "Paused",
-				dotClassName: "bg-amber-500",
-				badgeVariant: "secondary",
+				dotClassName: "bg-warning",
+				tone: "warning",
 			};
 	}
 }
@@ -107,14 +107,14 @@ function CopyButton({ value }: { value: string }) {
 		<Button
 			variant="ghost"
 			size="sm"
-			className="h-6 w-6 p-0 shrink-0"
+			className="size-6 p-0 shrink-0"
 			onClick={handleCopy}
 			title="Copy to clipboard"
 		>
 			{copied ? (
-				<Check className="h-3 w-3 text-green-600" />
+				<Check className="size-3 text-success" />
 			) : (
-				<Copy className="h-3 w-3 text-muted-foreground" />
+				<Copy className="size-3 text-muted-foreground" />
 			)}
 		</Button>
 	);
@@ -216,11 +216,11 @@ export default function PlatformIntegrationsPage() {
 			description={`Manage provider connections for ${activeProduct?.name ?? productId}`}
 		>
 			<div className="space-y-6 pb-6">
-				<section className="rounded-2xl border bg-gradient-to-br from-background via-background to-muted/40 p-6">
+				<section className="rounded-2xl border bg-card p-6">
 					<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 						<div className="space-y-2">
 							<h2 className="inline-flex items-center gap-2 text-xl font-semibold md:text-2xl">
-								<Sparkles className="h-5 w-5 text-amber-500" />
+								<Sparkles className="size-5 text-warning" />
 								Integrations
 							</h2>
 							<p className="max-w-2xl text-sm text-muted-foreground">
@@ -241,7 +241,7 @@ export default function PlatformIntegrationsPage() {
 								<p className="text-xs uppercase tracking-wide text-muted-foreground">
 									Live
 								</p>
-								<p className="text-2xl font-semibold text-emerald-600">
+								<p className="text-2xl font-semibold text-success">
 									{
 										[clerkInstance, smtpInstance].filter(
 											(i) =>
@@ -256,25 +256,25 @@ export default function PlatformIntegrationsPage() {
 				</section>
 
 				{error ? (
-					<div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+					<div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 						Failed to load integration instances.
 					</div>
 				) : null}
 
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-					<Card className="border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
+					<Card className="border-primary/20 bg-card">
 						<CardHeader>
 							<div className="flex items-start justify-between gap-3">
-								<div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground">
-									<Fingerprint className="h-5 w-5" />
+								<div className="inline-flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
+									<Fingerprint className="size-5" />
 								</div>
 								<div className="flex flex-col items-end gap-2">
-									<Badge variant={clerkState.badgeVariant}>
+									<StatusBadge tone={clerkState.tone}>
 										{clerkState.label}
-									</Badge>
+									</StatusBadge>
 									<span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
 										<span
-											className={`h-2 w-2 rounded-full ${clerkState.dotClassName}`}
+											className={`size-2 rounded-full ${clerkState.dotClassName}`}
 										/>
 										Health
 									</span>
@@ -288,7 +288,7 @@ export default function PlatformIntegrationsPage() {
 						<CardContent className="space-y-3">
 							{isLoading ? (
 								<div className="flex items-center gap-2 text-sm text-muted-foreground">
-									<Loader2 className="h-4 w-4 animate-spin" />
+									<Spinner className="size-4 text-current" />
 									Loading status...
 								</div>
 							) : clerkInstance ? (
@@ -312,7 +312,7 @@ export default function PlatformIntegrationsPage() {
 										/>
 									</div>
 									{clerkInstance.last_error ? (
-										<p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+										<p className="rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] text-warning">
 											{clerkInstance.last_error}
 										</p>
 									) : null}
@@ -332,7 +332,7 @@ export default function PlatformIntegrationsPage() {
 										className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
 									>
 										Open details
-										<ArrowRight className="h-3.5 w-3.5" />
+										<ArrowRight className="size-3.5" />
 									</Link>
 								) : (
 									<Button
@@ -340,9 +340,9 @@ export default function PlatformIntegrationsPage() {
 										disabled={createMutation.isPending}
 									>
 										{createMutation.isPending ? (
-											<Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+											<Spinner className="mr-1 size-3.5 text-current" />
 										) : (
-											<Plug className="mr-1 h-3.5 w-3.5" />
+											<Plug className="mr-1 size-3.5" />
 										)}
 										Create and configure
 									</Button>
@@ -357,19 +357,19 @@ export default function PlatformIntegrationsPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
+					<Card className="border-primary/20 bg-card">
 						<CardHeader>
 							<div className="flex items-start justify-between gap-3">
-								<div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground">
-									<Mail className="h-5 w-5" />
+								<div className="inline-flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
+									<Mail className="size-5" />
 								</div>
 								<div className="flex flex-col items-end gap-2">
-									<Badge variant={smtpState.badgeVariant}>
+									<StatusBadge tone={smtpState.tone}>
 										{smtpState.label}
-									</Badge>
+									</StatusBadge>
 									<span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
 										<span
-											className={`h-2 w-2 rounded-full ${smtpState.dotClassName}`}
+											className={`size-2 rounded-full ${smtpState.dotClassName}`}
 										/>
 										Health
 									</span>
@@ -383,7 +383,7 @@ export default function PlatformIntegrationsPage() {
 						<CardContent className="space-y-3">
 							{isLoading ? (
 								<div className="flex items-center gap-2 text-sm text-muted-foreground">
-									<Loader2 className="h-4 w-4 animate-spin" />
+									<Spinner className="size-4 text-current" />
 									Loading status...
 								</div>
 							) : smtpInstance ? (
@@ -395,7 +395,7 @@ export default function PlatformIntegrationsPage() {
 										</span>
 									</div>
 									{smtpInstance.last_error ? (
-										<p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+										<p className="rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] text-warning">
 											{smtpInstance.last_error}
 										</p>
 									) : null}
@@ -413,7 +413,7 @@ export default function PlatformIntegrationsPage() {
 									className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
 								>
 									{smtpInstance ? "Open details" : "Configure"}
-									<ArrowRight className="h-3.5 w-3.5" />
+									<ArrowRight className="size-3.5" />
 								</Link>
 							</div>
 						</CardContent>

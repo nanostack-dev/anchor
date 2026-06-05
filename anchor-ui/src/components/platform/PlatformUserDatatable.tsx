@@ -10,6 +10,7 @@ import {
 	searchPlatformUsersOptions,
 	searchPlatformUsersQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import { Badge } from "@/components/ui/badge";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import {
 	keepPreviousData,
@@ -123,15 +124,13 @@ export function PlatformUserDatatable() {
 				cell: (info) => {
 					const role = info.getValue();
 					return (
-						<span
-							className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-								role === PlatformUserRole.OWNER
-									? "bg-purple-100 text-purple-800"
-									: "bg-blue-100 text-blue-800"
-							}`}
+						<Badge
+							variant={
+								role === PlatformUserRole.OWNER ? "default" : "secondary"
+							}
 						>
 							{role}
-						</span>
+						</Badge>
 					);
 				},
 				enableSorting: true,
@@ -233,7 +232,7 @@ export function PlatformUserDatatable() {
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load users: {error.message}
 				</div>
 			)}

@@ -7,7 +7,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Clock3, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { Clock3 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface IntegrationAuditEntry {
@@ -40,13 +41,13 @@ function severityClassName(
 ): string {
 	switch (severity) {
 		case "success":
-			return "bg-emerald-500";
+			return "bg-success";
 		case "warning":
-			return "bg-amber-500";
+			return "bg-warning";
 		case "error":
-			return "bg-rose-500";
+			return "bg-destructive";
 		default:
-			return "bg-slate-400";
+			return "bg-muted-foreground";
 	}
 }
 
@@ -87,7 +88,7 @@ export function IntegrationDetailPage({
 				<Card>
 					<CardHeader>
 						<CardTitle className="inline-flex items-center gap-2">
-							<Clock3 className="h-4 w-4" />
+							<Clock3 className="size-4" />
 							{auditTitle}
 						</CardTitle>
 						<CardDescription>
@@ -97,11 +98,11 @@ export function IntegrationDetailPage({
 					<CardContent>
 						{auditIsLoading ? (
 							<div className="flex items-center gap-2 rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-								<Loader2 className="h-4 w-4 animate-spin" />
+								<Spinner className="size-4 text-current" />
 								Loading audit activity...
 							</div>
 						) : auditErrorMessage ? (
-							<div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+							<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
 								{auditErrorMessage}
 							</div>
 						) : sortedAuditEntries.length === 0 ? (
@@ -115,7 +116,7 @@ export function IntegrationDetailPage({
 										<div className="flex items-start justify-between gap-3">
 											<div className="flex items-start gap-2">
 												<span
-													className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${severityClassName(entry.severity)}`}
+													className={`mt-1 size-2.5 shrink-0 rounded-full ${severityClassName(entry.severity)}`}
 												/>
 												<div>
 													<p className="text-sm font-medium">{entry.title}</p>

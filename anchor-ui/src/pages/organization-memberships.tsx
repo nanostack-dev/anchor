@@ -60,7 +60,7 @@ export default function OrganizationMembershipsPage() {
 							{organizations.map((org) => (
 								<SelectItem key={org.id} value={org.id}>
 									<div className="flex items-center gap-2">
-										<Building2 className="h-4 w-4" />
+										<Building2 className="size-4" />
 										<span>{org.name}</span>
 									</div>
 								</SelectItem>
@@ -72,8 +72,8 @@ export default function OrganizationMembershipsPage() {
 				{selectedOrgId ? (
 					<OrganizationMembershipDatatable organizationId={selectedOrgId} />
 				) : (
-					<div className="flex flex-col items-center justify-center p-12 text-center border rounded-lg bg-slate-50">
-						<Building2 className="h-10 w-10 text-muted-foreground mb-4" />
+					<div className="flex flex-col items-center justify-center p-12 text-center border border-border rounded-lg bg-muted">
+						<Building2 className="size-10 text-muted-foreground mb-4" />
 						<h3 className="text-lg font-medium">No Organization Selected</h3>
 						<p className="text-sm text-muted-foreground mt-1 max-w-sm">
 							Please select an organization from the dropdown above to view its

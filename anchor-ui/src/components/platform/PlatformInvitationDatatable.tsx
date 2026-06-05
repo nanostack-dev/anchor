@@ -246,7 +246,7 @@ export function PlatformInvitationDatatable() {
 				</Button>
 			</AnchorDataTable>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load invitations: {error.message}
 				</div>
 			)}

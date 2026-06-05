@@ -8,9 +8,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { FormAlert } from "../FormAlert";
@@ -98,8 +99,8 @@ export function DeleteDialog({
 	);
 
 	const warningContent = warningMessage && (
-		<div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-			<p className="text-sm text-yellow-800">
+		<div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+			<p className="text-sm text-warning">
 				<strong>Warning:</strong> {warningMessage}
 			</p>
 		</div>
@@ -114,9 +115,9 @@ export function DeleteDialog({
 					<Button disabled={disabled} variant="outlineDestructive" size="icon">
 						<span className="sr-only">Delete {entityType}</span>
 						{deleteMutation.isPending ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
+							<Spinner className="text-current" />
 						) : (
-							<Trash2 className="h-4 w-4" />
+							<Trash2 className="size-4" />
 						)}
 					</Button>
 				)}
@@ -159,12 +160,12 @@ export function DeleteDialog({
 					>
 						{deleteMutation.isPending ? (
 							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								<Spinner className="mr-2 text-current" />
 								Deleting...
 							</>
 						) : (
 							<>
-								<Trash2 className="mr-2 h-4 w-4" />
+								<Trash2 className="mr-2 size-4" />
 								Delete {entityType}
 							</>
 						)}

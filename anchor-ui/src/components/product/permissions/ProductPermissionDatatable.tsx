@@ -183,7 +183,7 @@ export function ProductPermissionDatatable({
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load permissions: {error.message}
 				</div>
 			)}
