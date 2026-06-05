@@ -77,10 +77,10 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-muted py-12 px-4 sm:px-6 lg:px-8">
-			<Card className="w-full max-w-md">
+		<div className="flex min-h-screen items-center justify-center bg-muted px-4 py-12 sm:px-6 lg:px-8">
+			<Card className="w-72 min-w-0 max-w-[calc(100vw-2rem)] sm:w-full sm:max-w-md">
 				<CardHeader className="text-center">
-					<div className="mx-auto flex items-center justify-center size-12 rounded-full bg-destructive/10 text-destructive mb-4">
+					<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
 						{getErrorIcon()}
 					</div>
 					<CardTitle className="text-lg font-medium text-foreground">
@@ -91,13 +91,13 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
-					<Alert variant="destructive">
+					<Alert variant="destructive" className="min-w-0">
 						<AlertTriangle className="size-4" />
 						<AlertTitle>Error Details</AlertTitle>
-						<AlertDescription className="text-xs">
+						<AlertDescription className="min-w-0 break-words text-xs">
 							{error.message}
 							<br />
-							<span className="text-muted-foreground">
+							<span className="text-muted-foreground break-words">
 								Occurred at: {new Date(error.timestamp).toLocaleString()}
 							</span>
 						</AlertDescription>
@@ -106,13 +106,13 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 					<div className="flex flex-col gap-2">
 						{shouldShowRetry && (
 							<Button onClick={onRetry} className="w-full" variant="default">
-								<RefreshCw className="mr-2 size-4" data-icon="inline-start" />
+								<RefreshCw data-icon="inline-start" />
 								Try Again
 							</Button>
 						)}
 
 						<Button onClick={onLogout} variant="outline" className="w-full">
-							<LogOut className="mr-2 size-4" data-icon="inline-start" />
+							<LogOut data-icon="inline-start" />
 							Logout
 						</Button>
 
@@ -122,7 +122,7 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 								variant="secondary"
 								className="w-full"
 							>
-								<LogIn className="mr-2 size-4" data-icon="inline-start" />
+								<LogIn data-icon="inline-start" />
 								Go to Login
 							</Button>
 						)}
