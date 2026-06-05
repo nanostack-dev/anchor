@@ -1,3 +1,4 @@
+import { SortDirection } from "@/client";
 import {
 	getCurrentUserOptions,
 	searchPlatformInvitationsOptions,
@@ -19,6 +20,7 @@ import { useProduct } from "@/hooks/useProduct";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import {
 	ArrowUpRight,
 	Boxes,
@@ -30,8 +32,16 @@ import {
 } from "lucide-react";
 
 const ONE = { pagination: { limit: 1, offset: 0 } } as const;
+const RECENT = {
+	pagination: { limit: 5, offset: 0 },
+	sort_by: "created_at",
+	sort_direction: SortDirection.DESC,
+} as const;
 
 const formatCount = (value?: number) => (value ?? 0).toLocaleString();
+const formatDate = (value?: string) =>
+	value ? dayjs(value).format("MMM D") : "";
+const initial = (value: string) => value.trim().charAt(0).toUpperCase() || "?";
 
 type Stat = {
 	to: string;
@@ -92,6 +102,60 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 	);
 }
 
+function ResourceList({
+	title,
+	viewAllTo,
+	isLoading,
+	isEmpty,
+	emptyText,
+	children,
+}: {
+	title: string;
+	viewAllTo: string;
+	isLoading: boolean;
+	isEmpty: boolean;
+	emptyText: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+			<div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+				<Link
+					to={viewAllTo}
+					className="inline-flex items-center gap-1 rounded-md text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+				>
+					View all
+					<ArrowUpRight className="size-3.5" />
+				</Link>
+			</div>
+			{isLoading ? (
+				<ul className="divide-y divide-border">
+					{Array.from({ length: 4 }).map((_, i) => (
+						<li
+							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
+							key={i}
+							className="flex items-center gap-3 px-5 py-3"
+						>
+							<Skeleton className="size-8 shrink-0 rounded-lg" />
+							<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+								<Skeleton className="h-3.5 w-1/2" />
+								<Skeleton className="h-3 w-3/4" />
+							</div>
+						</li>
+					))}
+				</ul>
+			) : isEmpty ? (
+				<p className="px-5 py-10 text-center text-sm text-muted-foreground">
+					{emptyText}
+				</p>
+			) : (
+				<ul className="divide-y divide-border">{children}</ul>
+			)}
+		</div>
+	);
+}
+
 export default function DashboardPage() {
 	const { currentProduct } = useProduct();
 	const { data: user } = useQuery({ ...getCurrentUserOptions() });
@@ -102,6 +166,13 @@ export default function DashboardPage() {
 	});
 	const invitations = useQuery({
 		...searchPlatformInvitationsOptions({ body: ONE }),
+	});
+
+	const recentProducts = useQuery({
+		...searchProductsOptions({ body: RECENT }),
+	});
+	const recentUsers = useQuery({
+		...searchPlatformUsersOptions({ body: RECENT }),
 	});
 
 	const productId = currentProduct?.id ?? "";
@@ -175,6 +246,9 @@ export default function DashboardPage() {
 		},
 	];
 
+	const recentProductItems = recentProducts.data?.items ?? [];
+	const recentUserItems = recentUsers.data?.items ?? [];
+
 	return (
 		<Page breadCrumbs={false}>
 			<div className="flex flex-col gap-8">
@@ -232,6 +306,71 @@ export default function DashboardPage() {
 							</EmptyHeader>
 						</Empty>
 					)}
+				</section>
+
+				<section className="flex flex-col gap-4">
+					<SectionLabel>Recent</SectionLabel>
+					<div className="grid gap-4 lg:grid-cols-2">
+						<ResourceList
+							title="Products"
+							viewAllTo={ROUTE_PATHS.PRODUCTS}
+							isLoading={recentProducts.isLoading}
+							isEmpty={recentProductItems.length === 0}
+							emptyText="No products yet."
+						>
+							{recentProductItems.map((product) => (
+								<li
+									key={product.id}
+									className="flex items-center gap-3 px-5 py-3"
+								>
+									<span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-xs font-semibold text-primary">
+										{initial(product.name)}
+									</span>
+									<span className="flex min-w-0 flex-1 flex-col">
+										<span className="truncate text-sm font-medium text-foreground">
+											{product.name}
+										</span>
+										<span className="truncate text-xs text-muted-foreground">
+											{product.description || "No description"}
+										</span>
+									</span>
+									<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+										{formatDate(product.created_at)}
+									</span>
+								</li>
+							))}
+						</ResourceList>
+
+						<ResourceList
+							title="Platform users"
+							viewAllTo={ROUTE_PATHS.PLATFORM_USERS}
+							isLoading={recentUsers.isLoading}
+							isEmpty={recentUserItems.length === 0}
+							emptyText="No platform users yet."
+						>
+							{recentUserItems.map((member) => (
+								<li
+									key={member.id}
+									className="flex items-center gap-3 px-5 py-3"
+								>
+									<span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-xs font-semibold text-primary">
+										{initial(member.email)}
+									</span>
+									<span className="flex min-w-0 flex-1 flex-col">
+										<span className="truncate text-sm font-medium text-foreground">
+											{member.email}
+										</span>
+										<span className="truncate text-xs text-muted-foreground">
+											{member.role}
+										</span>
+									</span>
+									<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+										{formatDate(member.created_at)}
+									</span>
+								</li>
+							))}
+						</ResourceList>
+					</div>
 				</section>
 			</div>
 		</Page>
