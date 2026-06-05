@@ -75,6 +75,15 @@ React best practices, Vercel composition patterns, and the web interface
 guidelines (focus, keyboard nav, accessible dialog titles, labels, responsive
 behavior).
 
+**Surfaces — no box-in-a-box (nested cards).** AI tooling tends to stack
+containers and produce double borders. Keep one elevation per region: a
+component that already draws a bordered/elevated surface (a `Card`, the
+`AnchorDataTable` card, an `Alert`, `Empty`) must not be wrapped in another
+`Card`. Pick a single surface owner — the reusable component *or* the page,
+never both. `AnchorDataTable` owns its card, so render it bare (no wrapping
+`Card`); the `<Page>` supplies the title/description (don't duplicate it inside
+the table). Use `Empty` for placeholder states, not a title-only `Card`.
+
 ## Verification
 
 `pnpm check` (biome) · `pnpm build` (vite + tsc) · `pnpm test` (vitest) all

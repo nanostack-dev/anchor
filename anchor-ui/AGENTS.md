@@ -67,9 +67,23 @@ Then `pnpm generate` inside `anchor-ui` regenerates `src/client/` from the updat
 - Write-only fields (e.g. passwords, secrets): never pre-populate from server response; use `useRef` guards to prevent form reset on query invalidation
 
 ## Design Rules
-- Light mode only — no dark mode
-- Use existing shadcn components; check `src/components/` before creating new ones
-- Framer Motion for transitions
+- Light mode only — no dark mode. Never author `dark:` classes in product/route code.
+- Use existing shadcn components; check `src/components/` before creating new ones.
+- Framer Motion for transitions.
+
+### Surfaces — no box-in-a-box (nested cards)
+AI tooling frequently stacks containers, producing double borders. Don't.
+- **One elevation per region.** A component that already renders a bordered/elevated surface (a `Card`, the `AnchorDataTable` card, an `Alert`, `Empty`) must NOT be wrapped in another `Card`/bordered container. A thing is *either* the card *or* inside one — never both.
+- **Single surface owner.** Decide who draws the card: either the reusable component owns it, or the page/section does. Not both.
+- **`AnchorDataTable` owns its card.** Do NOT wrap it in `<Card>`. The `<Page>` provides the title/description — do not repeat the title inside the table component.
+- **No touching/stacked borders, shadows, or rounded boxes.** If two adjacent surfaces both have borders, collapse to one.
+- **Placeholders/empty states** use `Empty`, not a title-only `Card` that duplicates the page heading.
+
+### Tokens & feedback
+- Use **semantic tokens/variants only** — no hard-coded palette classes (`bg-blue-500`, `text-green-700`, `bg-slate-100`, etc.). Use `primary`/`muted`/`accent`/`success`/`warning`/`destructive` + `-foreground`.
+- Statuses use the `StatusBadge` (`@/components/common/StatusBadge`) or a `Badge` variant — never raw colored `<span>` pills.
+- Loading → `Skeleton`/`Spinner`; errors → `Alert variant="destructive"`/`text-destructive`; empty → `Empty`. No custom `animate-pulse` colored blocks or `style={{ color }}` literals.
+- Prefer `gap-*` over `space-x/y-*`, and `size-N` over equal `h-N w-N`.
 
 ## Dev Commands
 ```sh
