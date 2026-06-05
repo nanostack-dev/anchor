@@ -355,9 +355,9 @@ export function AnchorDataTable<
 				</div>
 				{renderFilters()}
 			</div>
-			<div className="rounded-xl border border-border">
+			<div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
 				<Table>
-					<TableHeader>
+					<TableHeader className="bg-muted/50">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
