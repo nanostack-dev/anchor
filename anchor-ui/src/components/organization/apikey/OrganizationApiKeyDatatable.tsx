@@ -15,13 +15,6 @@ import {
 } from "@/client";
 import { searchOrganizationApiKeysOptions } from "@/client/@tanstack/react-query.gen";
 import { Badge } from "@/components/ui/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
@@ -215,62 +208,51 @@ export function OrganizationApiKeyDatatable({
 	);
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Organization API Keys</CardTitle>
-				<CardDescription>
-					View API keys issued for this organization. Creation and updates stay
-					in product-side apps.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<AnchorDataTable<OrganizationApiKeyResponse, OrganizationApiKeyFilters>
-					columns={columns}
-					data={items}
-					total={total}
-					pagination={pagination}
-					onPaginationChange={setPagination}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					fullTextSearch={fullTextSearch}
-					onFullTextSearchChange={setFullTextSearch}
-					fullTextSearchPlaceHolder="Search organization API keys"
-					filters={[
-						{
-							key: "name",
-							label: "Name",
-							type: "select",
-							value: nameFilter,
-							options: nameOptions,
-							placeholder: "Filter by name",
-							multi: true,
-						},
-						{
-							key: "status",
-							label: "Status",
-							type: "select",
-							value: statusFilter,
-							options: statusOptions,
-							placeholder: "Filter by status",
-							multi: true,
-						},
-					]}
-					onFiltersChange={(filters) => {
-						setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-						setNameFilter(Array.isArray(filters.name) ? filters.name : []);
-						setStatusFilter(
-							Array.isArray(filters.status) ? filters.status : [],
-						);
-					}}
-					loading={isLoading}
-					enableRowSelection={false}
-				/>
-				{error ? (
-					<div className="mt-4 text-sm text-destructive">
-						Failed to load organization API keys: {error.message}
-					</div>
-				) : null}
-			</CardContent>
-		</Card>
+		<>
+			<AnchorDataTable<OrganizationApiKeyResponse, OrganizationApiKeyFilters>
+				columns={columns}
+				data={items}
+				total={total}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				fullTextSearch={fullTextSearch}
+				onFullTextSearchChange={setFullTextSearch}
+				fullTextSearchPlaceHolder="Search organization API keys"
+				filters={[
+					{
+						key: "name",
+						label: "Name",
+						type: "select",
+						value: nameFilter,
+						options: nameOptions,
+						placeholder: "Filter by name",
+						multi: true,
+					},
+					{
+						key: "status",
+						label: "Status",
+						type: "select",
+						value: statusFilter,
+						options: statusOptions,
+						placeholder: "Filter by status",
+						multi: true,
+					},
+				]}
+				onFiltersChange={(filters) => {
+					setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
+					setStatusFilter(Array.isArray(filters.status) ? filters.status : []);
+				}}
+				loading={isLoading}
+				enableRowSelection={false}
+			/>
+			{error ? (
+				<div className="mt-4 text-sm text-destructive">
+					Failed to load organization API keys: {error.message}
+				</div>
+			) : null}
+		</>
 	);
 }

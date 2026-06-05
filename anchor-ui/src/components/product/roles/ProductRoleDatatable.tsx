@@ -227,7 +227,7 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load roles: {error.message}
 				</div>
 			)}

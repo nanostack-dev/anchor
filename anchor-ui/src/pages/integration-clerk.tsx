@@ -54,6 +54,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationClerkRoute } from "@/routes/platform/$productId.integration-clerk";
@@ -63,7 +64,6 @@ import {
 	Check,
 	Copy,
 	Info,
-	Loader2,
 	Plug,
 	Shield,
 	Trash2,
@@ -136,14 +136,14 @@ function CopyButton({ value }: { value: string }) {
 		<Button
 			variant="ghost"
 			size="sm"
-			className="h-6 w-6 p-0 shrink-0"
+			className="size-6 p-0 shrink-0"
 			onClick={handleCopy}
 			title="Copy to clipboard"
 		>
 			{copied ? (
-				<Check className="h-3 w-3 text-green-600" />
+				<Check className="size-3 text-success" />
 			) : (
-				<Copy className="h-3 w-3 text-muted-foreground" />
+				<Copy className="size-3 text-muted-foreground" />
 			)}
 		</Button>
 	);
@@ -449,7 +449,7 @@ export default function ClerkIntegrationPage() {
 		>
 			{clerkInstance?.last_error ? (
 				<Alert variant="destructive">
-					<TriangleAlert className="h-4 w-4" />
+					<TriangleAlert className="size-4" />
 					<AlertTitle>Clerk reported a recent failure</AlertTitle>
 					<AlertDescription>{clerkInstance.last_error}</AlertDescription>
 				</Alert>
@@ -461,7 +461,7 @@ export default function ClerkIntegrationPage() {
 						<Skeleton className="h-6 w-44" />
 						<Skeleton className="h-4 w-72" />
 					</CardHeader>
-					<CardContent className="space-y-3">
+					<CardContent className="flex flex-col gap-3">
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
@@ -473,7 +473,7 @@ export default function ClerkIntegrationPage() {
 				<Card className="border-dashed">
 					<CardContent className="flex min-h-64 flex-col items-center justify-center text-center">
 						<div className="rounded-full border bg-muted/40 p-3">
-							<Plug className="h-6 w-6 text-muted-foreground" />
+							<Plug className="size-6 text-muted-foreground" />
 						</div>
 						<p className="mt-4 text-base font-semibold">
 							No Clerk instance configured
@@ -488,9 +488,9 @@ export default function ClerkIntegrationPage() {
 							disabled={createMutation.isPending}
 						>
 							{createMutation.isPending ? (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								<Spinner className="mr-2 size-4 text-current" />
 							) : (
-								<Plug className="mr-1 h-3.5 w-3.5" />
+								<Plug className="mr-1 size-3.5" />
 							)}
 							Create Clerk Instance
 						</Button>
@@ -512,7 +512,7 @@ export default function ClerkIntegrationPage() {
 								Identity sync endpoint and runtime state.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-3 text-sm">
+						<CardContent className="flex flex-col gap-3 text-sm">
 							<div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
 								<span className="text-muted-foreground">Connection</span>
 								<Badge variant={form.enabled ? "default" : "secondary"}>
@@ -555,10 +555,10 @@ export default function ClerkIntegrationPage() {
 								Update runtime settings and credentials for Clerk.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-5">
+						<CardContent className="flex flex-col gap-5">
 							<div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
 								<div className="inline-flex items-center gap-1">
-									<Shield className="h-3.5 w-3.5" />
+									<Shield className="size-3.5" />
 									Credential visibility
 								</div>
 								<p className="mt-2 text-[11px] leading-5">
@@ -587,7 +587,7 @@ export default function ClerkIntegrationPage() {
 								/>
 							</div>
 
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="webhook-secret">Webhook Secret</Label>
 								<Input
 									id="webhook-secret"
@@ -623,7 +623,7 @@ export default function ClerkIntegrationPage() {
 								) : null}
 							</div>
 
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="api-key">Clerk API Key</Label>
 								<Input
 									id="api-key"
@@ -651,7 +651,7 @@ export default function ClerkIntegrationPage() {
 							<div className="flex flex-wrap items-center gap-2 border-t pt-4">
 								<Button onClick={handleSave} disabled={isMutating || !isDirty}>
 									{isMutating ? (
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										<Spinner className="mr-2 size-4 text-current" />
 									) : null}
 									Update Configuration
 								</Button>
@@ -666,7 +666,7 @@ export default function ClerkIntegrationPage() {
 
 							{updateMutation.isError ? (
 								<Alert variant="destructive">
-									<Info className="h-4 w-4" />
+									<Info className="size-4" />
 									<AlertTitle>Update failed</AlertTitle>
 									<AlertDescription>
 										Failed to update Clerk integration settings.
@@ -676,9 +676,9 @@ export default function ClerkIntegrationPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="border-rose-200/70">
+					<Card className="border-destructive/30">
 						<CardHeader>
-							<CardTitle className="text-rose-600">Danger Zone</CardTitle>
+							<CardTitle className="text-destructive">Danger Zone</CardTitle>
 							<CardDescription>
 								Delete this integration instance and stop Clerk ingestion.
 							</CardDescription>
@@ -687,14 +687,13 @@ export default function ClerkIntegrationPage() {
 							<AlertDialog>
 								<AlertDialogTrigger asChild>
 									<Button
-										variant="outline"
-										className="border-rose-300 text-rose-600 hover:bg-rose-50"
+										variant="outlineDestructive"
 										disabled={deleteMutation.isPending}
 									>
 										{deleteMutation.isPending ? (
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											<Spinner className="mr-2 size-4 text-current" />
 										) : (
-											<Trash2 className="mr-2 h-4 w-4" />
+											<Trash2 className="mr-2 size-4" />
 										)}
 										Delete Instance
 									</Button>

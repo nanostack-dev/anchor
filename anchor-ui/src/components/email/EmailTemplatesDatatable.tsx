@@ -9,6 +9,7 @@ import {
 	deleteEmailTemplateMutation,
 	listEmailTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import { Button } from "@/components/ui/button";
 import { useProduct } from "@/context/product/ProductContext";
@@ -153,22 +154,18 @@ export function EmailTemplatesDatatable() {
 			columnHelper.accessor("is_active", {
 				header: () => <span>Status</span>,
 				cell: (info) => (
-					<span
-						className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${info.getValue() ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}
-					>
+					<StatusBadge tone={info.getValue() ? "success" : "neutral"}>
 						{info.getValue() ? "Active" : "Inactive"}
-					</span>
+					</StatusBadge>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("published_version_id", {
 				header: () => <span>Published</span>,
 				cell: (info) => (
-					<span
-						className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${info.getValue() ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"}`}
-					>
-						{info.getValue() ? "Yes" : "Draft only"}
-					</span>
+					<StatusBadge tone={info.getValue() ? "info" : "warning"}>
+						{info.getValue() ? "Published" : "Draft"}
+					</StatusBadge>
 				),
 				enableSorting: false,
 			}),
@@ -217,7 +214,7 @@ export function EmailTemplatesDatatable() {
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			<div className="flex items-center justify-between">
 				{createError && (
 					<p className="text-sm text-destructive">{createError}</p>

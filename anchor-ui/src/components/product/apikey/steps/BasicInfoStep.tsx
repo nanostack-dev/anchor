@@ -60,9 +60,9 @@ export function BasicInfoStep({
 			<div className="flex flex-col h-full">
 				<div className="px-6 pt-6 pb-4">
 					<DialogHeader className="space-y-3">
-						<DialogTitle className="flex items-center space-x-3">
+						<DialogTitle className="flex items-center gap-3">
 							<div className="p-2 rounded-lg bg-primary text-primary-foreground">
-								<Key className="h-5 w-5" />
+								<Key className="size-5" />
 							</div>
 							<span className="text-xl">Basic Info</span>
 							{isEditMode && (
@@ -153,7 +153,7 @@ export function BasicInfoStep({
 						{isEditMode &&
 							apiKey?.permissions &&
 							apiKey.permissions.length > 0 && (
-								<div className="p-4 rounded-xl border bg-muted/50">
+								<div className="p-4 rounded-xl border border-border bg-muted/50">
 									<div className="space-y-3">
 										<Label className="text-sm font-semibold text-foreground">
 											Current Permissions ({apiKey.permissions.length})
@@ -179,10 +179,10 @@ export function BasicInfoStep({
 							)}
 
 						{!isEditMode && (
-							<div className="p-4 rounded-xl border bg-muted/50">
-								<div className="flex items-start space-x-3">
+							<div className="p-4 rounded-xl border border-border bg-muted/50">
+								<div className="flex items-start gap-3">
 									<div className="p-2 rounded-lg bg-primary/10">
-										<AlertCircle className="h-5 w-5 text-primary" />
+										<AlertCircle className="size-5 text-primary" />
 									</div>
 									<div>
 										<p className="text-sm font-semibold text-foreground">
@@ -203,7 +203,7 @@ export function BasicInfoStep({
 						<div className="flex justify-between w-full">
 							<div />
 
-							<div className="flex space-x-3">
+							<div className="flex gap-3">
 								<Button
 									type="button"
 									variant="outline"
@@ -233,7 +233,7 @@ export function BasicInfoStep({
 											className="px-6"
 										>
 											Next
-											<ChevronRight className="ml-2 h-4 w-4" />
+											<ChevronRight data-icon="inline-end" className="size-4" />
 										</Button>
 									)}
 								</form.Subscribe>

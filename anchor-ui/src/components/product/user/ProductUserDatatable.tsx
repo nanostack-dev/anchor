@@ -7,6 +7,7 @@ import {
 	SortDirection,
 } from "@/client";
 import { searchProductUsersOptions } from "@/client/@tanstack/react-query.gen";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -121,18 +122,15 @@ export function ProductUserDatatable() {
 				header: () => <span>Status</span>,
 				cell: (info) => {
 					const status = info.getValue();
-					const statusColors: Record<ProductUserStatus, string> = {
-						[ProductUserStatus.ACTIVE]: "bg-green-100 text-green-800",
-						[ProductUserStatus.INVITED]: "bg-yellow-100 text-yellow-800",
-						[ProductUserStatus.SUSPENDED]: "bg-red-100 text-red-800",
+					const statusTones: Record<
+						ProductUserStatus,
+						"success" | "warning" | "destructive"
+					> = {
+						[ProductUserStatus.ACTIVE]: "success",
+						[ProductUserStatus.INVITED]: "warning",
+						[ProductUserStatus.SUSPENDED]: "destructive",
 					};
-					return (
-						<span
-							className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[status]}`}
-						>
-							{status}
-						</span>
-					);
+					return <StatusBadge tone={statusTones[status]}>{status}</StatusBadge>;
 				},
 				enableSorting: true,
 			}),
@@ -254,7 +252,7 @@ export function ProductUserDatatable() {
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load users: {error.message}
 				</div>
 			)}

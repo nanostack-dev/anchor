@@ -5,6 +5,7 @@ import type {
 	Options,
 } from "@/client";
 import { listEmailSendsOptions } from "@/client/@tanstack/react-query.gen";
+import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import { useProduct } from "@/context/product/ProductContext";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -15,12 +16,12 @@ import { useMemo, useState } from "react";
 
 const columnHelper = createColumnHelper<EmailSendRecordResponse>();
 
-const statusColors: Record<string, string> = {
-	SENT: "bg-green-100 text-green-800",
-	SUPPRESSED: "bg-yellow-100 text-yellow-800",
-	FAILED: "bg-red-100 text-red-800",
-	QUEUED: "bg-gray-100 text-gray-600",
-	SENDING: "bg-blue-100 text-blue-800",
+const statusTones: Record<string, StatusTone> = {
+	SENT: "success",
+	SUPPRESSED: "warning",
+	FAILED: "destructive",
+	QUEUED: "neutral",
+	SENDING: "info",
 };
 
 export function EmailSendsDatatable() {
@@ -81,11 +82,9 @@ export function EmailSendsDatatable() {
 			columnHelper.accessor("status", {
 				header: () => <span>Status</span>,
 				cell: (info) => (
-					<span
-						className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[info.getValue()] ?? "bg-gray-100 text-gray-600"}`}
-					>
+					<StatusBadge tone={statusTones[info.getValue()] ?? "neutral"}>
 						{info.getValue()}
-					</span>
+					</StatusBadge>
 				),
 				enableSorting: false,
 			}),

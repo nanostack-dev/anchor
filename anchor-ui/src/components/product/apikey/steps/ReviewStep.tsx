@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Spinner } from "@/components/ui/spinner";
 import { VerticalStepperStep } from "@/components/ui/vertical-stepper";
 import { Check, ClipboardCheck, Edit, Lock, Plus } from "lucide-react";
 
@@ -35,9 +36,9 @@ export function ReviewStep({
 			<div className="flex flex-col h-full">
 				<div className="px-6 pt-6 pb-4">
 					<DialogHeader className="space-y-3">
-						<DialogTitle className="flex items-center space-x-3">
+						<DialogTitle className="flex items-center gap-3">
 							<div className="p-2 rounded-lg bg-primary text-primary-foreground">
-								<ClipboardCheck className="h-5 w-5" />
+								<ClipboardCheck className="size-5" />
 							</div>
 							<span className="text-xl">Review</span>
 							{isEditMode && (
@@ -57,16 +58,16 @@ export function ReviewStep({
 				{/* Scrollable Content */}
 				<ScrollArea className="flex-1 px-6">
 					<div className="space-y-6 pb-6">
-						<div className="p-6 rounded-xl border bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
-							<div className="flex items-center space-x-3 mb-3">
-								<div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-									<Check className="h-5 w-5 text-green-600" />
+						<div className="p-6 rounded-xl border border-border bg-success/10">
+							<div className="flex items-center gap-3 mb-3">
+								<div className="p-2 rounded-lg bg-success/10">
+									<Check className="size-5 text-success" />
 								</div>
-								<h4 className="text-lg font-semibold text-green-800 dark:text-green-200">
+								<h4 className="text-lg font-semibold text-success">
 									Ready to {isEditMode ? "Update" : "Create"} API Key
 								</h4>
 							</div>
-							<p className="text-sm text-green-600 dark:text-green-300">
+							<p className="text-sm text-success">
 								Review the configuration below and click{" "}
 								{isEditMode ? "update" : "create"} when ready.
 							</p>
@@ -156,8 +157,8 @@ export function ReviewStep({
 											{apiKeyFormData.selectedPermissions.map((permission) => (
 												<Badge
 													key={permission}
-													variant="outline"
-													className="text-sm px-3 py-1 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300"
+													variant="success"
+													className="text-sm px-3 py-1"
 												>
 													<code>{permission}</code>
 												</Badge>
@@ -169,16 +170,16 @@ export function ReviewStep({
 						</div>
 
 						{!isEditMode && apiKeyFormData.selectedPermissions.length > 0 && (
-							<div className="p-4 rounded-xl border bg-yellow-50/50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
-								<div className="flex items-start space-x-3">
-									<div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-										<Lock className="h-5 w-5 text-yellow-600" />
+							<div className="p-4 rounded-xl border border-border bg-warning/10">
+								<div className="flex items-start gap-3">
+									<div className="p-2 rounded-lg bg-warning/10">
+										<Lock className="size-5 text-warning" />
 									</div>
 									<div>
-										<p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+										<p className="text-sm font-semibold text-warning">
 											API Key Value
 										</p>
-										<p className="text-sm mt-2 text-yellow-600 dark:text-yellow-300">
+										<p className="text-sm mt-2 text-warning">
 											The API key value will be shown only once after creation.
 											Make sure to copy and store it securely.
 										</p>
@@ -202,7 +203,7 @@ export function ReviewStep({
 								Previous
 							</Button>
 
-							<div className="flex space-x-3">
+							<div className="flex gap-3">
 								<Button
 									onClick={onSubmit}
 									disabled={isLoading}
@@ -210,15 +211,18 @@ export function ReviewStep({
 								>
 									{isLoading ? (
 										<>
-											<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+											<Spinner
+												data-icon="inline-start"
+												className="text-current"
+											/>
 											{isEditMode ? "Updating..." : "Creating..."}
 										</>
 									) : (
 										<>
 											{isEditMode ? (
-												<Edit className="mr-2 h-4 w-4" />
+												<Edit data-icon="inline-start" className="size-4" />
 											) : (
-												<Plus className="mr-2 h-4 w-4" />
+												<Plus data-icon="inline-start" className="size-4" />
 											)}
 											{isEditMode ? "Update API Key" : "Create API Key"}
 										</>

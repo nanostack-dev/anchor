@@ -1,6 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "@tanstack/react-router";
-import { Info } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 
 export interface PageInfoProps {
 	title: string;
@@ -16,17 +16,17 @@ export function PageInfo({
 	linkText,
 }: PageInfoProps) {
 	return (
-		<Alert className="border-blue-200 bg-blue-50/50">
-			<Info className="text-blue-600" />
-			<AlertTitle className="text-blue-900">{title}</AlertTitle>
-			<AlertDescription className="text-blue-800">
+		<Alert className="border-border bg-accent-soft text-accent-foreground">
+			<InfoIcon className="text-primary" />
+			<AlertTitle>{title}</AlertTitle>
+			<AlertDescription className="text-accent-foreground/90">
 				{description}
 				{linkTo && linkText && (
 					<>
 						{" "}
 						<Link
 							to={linkTo}
-							className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+							className="inline-flex items-center gap-1 text-primary underline underline-offset-4 hover:text-primary/80"
 						>
 							{linkText}
 						</Link>

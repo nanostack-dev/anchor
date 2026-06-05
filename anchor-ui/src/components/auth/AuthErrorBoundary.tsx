@@ -27,15 +27,15 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 	const getErrorIcon = () => {
 		switch (error.type) {
 			case "network":
-				return <WifiOff className="h-4 w-4" />;
+				return <WifiOff className="size-4" />;
 			case "auth":
-				return <AlertTriangle className="h-4 w-4" />;
+				return <AlertTriangle className="size-4" />;
 			case "tenantservice":
-				return <AlertTriangle className="h-4 w-4" />;
+				return <AlertTriangle className="size-4" />;
 			case "token":
-				return <AlertTriangle className="h-4 w-4" />;
+				return <AlertTriangle className="size-4" />;
 			default:
-				return <AlertTriangle className="h-4 w-4" />;
+				return <AlertTriangle className="size-4" />;
 		}
 	};
 
@@ -77,42 +77,42 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+		<div className="min-h-screen flex items-center justify-center bg-muted py-12 px-4 sm:px-6 lg:px-8">
 			<Card className="w-full max-w-md">
 				<CardHeader className="text-center">
-					<div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+					<div className="mx-auto flex items-center justify-center size-12 rounded-full bg-destructive/10 text-destructive mb-4">
 						{getErrorIcon()}
 					</div>
-					<CardTitle className="text-lg font-medium text-gray-900">
+					<CardTitle className="text-lg font-medium text-foreground">
 						{getErrorTitle()}
 					</CardTitle>
-					<CardDescription className="text-sm text-gray-600">
+					<CardDescription className="text-sm text-muted-foreground">
 						{getErrorDescription()}
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-4">
+				<CardContent className="flex flex-col gap-4">
 					<Alert variant="destructive">
-						<AlertTriangle className="h-4 w-4" />
+						<AlertTriangle className="size-4" />
 						<AlertTitle>Error Details</AlertTitle>
 						<AlertDescription className="text-xs">
 							{error.message}
 							<br />
-							<span className="text-gray-500">
+							<span className="text-muted-foreground">
 								Occurred at: {new Date(error.timestamp).toLocaleString()}
 							</span>
 						</AlertDescription>
 					</Alert>
 
-					<div className="flex flex-col space-y-2">
+					<div className="flex flex-col gap-2">
 						{shouldShowRetry && (
 							<Button onClick={onRetry} className="w-full" variant="default">
-								<RefreshCw className="mr-2 h-4 w-4" />
+								<RefreshCw className="mr-2 size-4" data-icon="inline-start" />
 								Try Again
 							</Button>
 						)}
 
 						<Button onClick={onLogout} variant="outline" className="w-full">
-							<LogOut className="mr-2 h-4 w-4" />
+							<LogOut className="mr-2 size-4" data-icon="inline-start" />
 							Logout
 						</Button>
 
@@ -122,7 +122,7 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 								variant="secondary"
 								className="w-full"
 							>
-								<LogIn className="mr-2 h-4 w-4" />
+								<LogIn className="mr-2 size-4" data-icon="inline-start" />
 								Go to Login
 							</Button>
 						)}

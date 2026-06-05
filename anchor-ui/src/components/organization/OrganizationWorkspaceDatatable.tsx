@@ -15,12 +15,11 @@ import { SortDirection } from "@/client";
 import { searchOrganizationWorkspacesOptions } from "@/client/@tanstack/react-query.gen";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@/components/ui/empty";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 
@@ -155,71 +154,63 @@ export function OrganizationWorkspaceDatatable({
 
 	if (!organizationId) {
 		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Workspaces</CardTitle>
-					<CardDescription>
+			<Empty>
+				<EmptyHeader>
+					<EmptyTitle>Workspaces</EmptyTitle>
+					<EmptyDescription>
 						Select an organization to view its workspaces.
-					</CardDescription>
-				</CardHeader>
-			</Card>
+					</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
 		);
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Workspaces</CardTitle>
-				<CardDescription>
-					Read-only workspace inventory for the selected organization.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<AnchorDataTable<ProductWorkspaceResponse>
-					columns={columns}
-					data={items}
-					loading={isLoading}
-					total={data?.total ?? 0}
-					pagination={pagination}
-					onPaginationChange={setPagination}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					fullTextSearch={fullTextSearch}
-					onFullTextSearchChange={setFullTextSearch}
-					fullTextSearchPlaceHolder="Search workspaces"
-					filters={[
-						{
-							key: "name",
-							label: "Name",
-							type: "select",
-							value: nameFilter,
-							options: nameOptions,
-							placeholder: "Filter by name",
-							multi: true,
-						},
-						{
-							key: "id",
-							label: "ID",
-							type: "select",
-							value: idFilter,
-							options: idOptions,
-							placeholder: "Filter by ID",
-							multi: true,
-						},
-					]}
-					onFiltersChange={(filters) => {
-						setPagination((p) => ({ ...p, pageIndex: 0 }));
-						setNameFilter(Array.isArray(filters.name) ? filters.name : []);
-						setIdFilter(Array.isArray(filters.id) ? filters.id : []);
-					}}
-					enableRowSelection={false}
-				/>
-				{error ? (
-					<div className="mt-3 text-sm text-red-600">
-						Failed to load workspaces: {error.message}
-					</div>
-				) : null}
-			</CardContent>
-		</Card>
+		<>
+			<AnchorDataTable<ProductWorkspaceResponse>
+				columns={columns}
+				data={items}
+				loading={isLoading}
+				total={data?.total ?? 0}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				fullTextSearch={fullTextSearch}
+				onFullTextSearchChange={setFullTextSearch}
+				fullTextSearchPlaceHolder="Search workspaces"
+				filters={[
+					{
+						key: "name",
+						label: "Name",
+						type: "select",
+						value: nameFilter,
+						options: nameOptions,
+						placeholder: "Filter by name",
+						multi: true,
+					},
+					{
+						key: "id",
+						label: "ID",
+						type: "select",
+						value: idFilter,
+						options: idOptions,
+						placeholder: "Filter by ID",
+						multi: true,
+					},
+				]}
+				onFiltersChange={(filters) => {
+					setPagination((p) => ({ ...p, pageIndex: 0 }));
+					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
+					setIdFilter(Array.isArray(filters.id) ? filters.id : []);
+				}}
+				enableRowSelection={false}
+			/>
+			{error ? (
+				<div className="mt-3 text-sm text-destructive">
+					Failed to load workspaces: {error.message}
+				</div>
+			) : null}
+		</>
 	);
 }

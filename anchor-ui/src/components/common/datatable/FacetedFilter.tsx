@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 // FacetedFilter.tsx
 import * as React from "react";
 import { Badge } from "../../ui/badge";
@@ -125,7 +125,7 @@ export function FacetedFilter({
 								>
 									<span>{opt.label}</span>
 									{selected.includes(opt.value) && (
-										<span className="ml-auto text-primary">✓</span>
+										<Check className="ml-auto size-4 text-primary" />
 									)}
 								</CommandItem>
 							))}
@@ -148,7 +148,7 @@ export function FacetedFilter({
 							onClick={() => handleClear(v)}
 							aria-label={`Remove ${opt?.label || v}`}
 						>
-							<X className="w-3 h-3" />
+							<X className="size-3" />
 						</button>
 					</Badge>
 				);

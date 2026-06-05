@@ -20,7 +20,7 @@ import {
 	updateEmailTemplateDraftMutation,
 	updateEmailTemplateMutation,
 } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -328,7 +328,7 @@ function PropertyListEditor({
 	}
 
 	return (
-		<div className="space-y-1.5">
+		<div className="flex flex-col gap-1.5">
 			{properties.map((p, i) => (
 				<div
 					key={propertyKeysRef.current[i]}
@@ -424,7 +424,7 @@ function VariableEditor({
 	}
 
 	return (
-		<div className="space-y-2">
+		<div className="flex flex-col gap-2">
 			{variables.map((v, i) => (
 				<div
 					key={variableKeysRef.current[i]}
@@ -464,7 +464,7 @@ function VariableEditor({
 
 					{/* LIST sub-schema */}
 					{v.type === EmailVariableType.LIST && (
-						<div className="border-t border-border px-3 py-2.5 space-y-2 bg-muted/30 rounded-b-lg">
+						<div className="border-t border-border px-3 py-2.5 flex flex-col gap-2 bg-muted/30 rounded-b-lg">
 							<div className="flex items-center gap-2">
 								<span className="text-xs text-muted-foreground">
 									Each item is
@@ -500,7 +500,7 @@ function VariableEditor({
 
 					{/* OBJECT sub-schema */}
 					{v.type === EmailVariableType.OBJECT && (
-						<div className="border-t border-border px-3 py-2.5 space-y-1.5 bg-muted/30 rounded-b-lg">
+						<div className="border-t border-border px-3 py-2.5 flex flex-col gap-1.5 bg-muted/30 rounded-b-lg">
 							<p className="text-[10px] text-muted-foreground uppercase tracking-wider">
 								Properties
 							</p>
@@ -599,7 +599,7 @@ function ListObjectInput({
 	}
 
 	return (
-		<div className="space-y-1.5">
+		<div className="flex flex-col gap-1.5">
 			<div className="rounded-md border border-border overflow-hidden">
 				{/* Header */}
 				<div
@@ -769,7 +769,7 @@ function ExampleVarInput({
 	}
 
 	return (
-		<div className="space-y-1">
+		<div className="flex flex-col gap-1">
 			<div className="flex items-center gap-1.5">
 				<span className="font-mono text-xs text-foreground">{name}</span>
 				{typeLabel() && (
@@ -984,24 +984,24 @@ function ExampleManager({
 	}, [activeId, onActiveChange, schemaNames]);
 
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<LayoutTemplate className="h-4 w-4 text-muted-foreground" />
+					<LayoutTemplate className="size-4 text-muted-foreground" />
 					<p className="text-sm text-muted-foreground">
 						Named variable sets for preview and test sends
 					</p>
 				</div>
 				<Button variant="outline" size="sm" onClick={handleNewExample}>
-					<Plus className="h-3.5 w-3.5 mr-1" />
+					<Plus className="size-3.5 mr-1" />
 					New Example
 				</Button>
 			</div>
 
 			{examples.length === 0 ? (
 				<div className="border rounded-lg p-8 text-center">
-					<FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+					<FileText className="size-8 text-muted-foreground mx-auto mb-3" />
 					<p className="text-sm text-muted-foreground mb-1">No examples yet</p>
 					<p className="text-xs text-muted-foreground">
 						Create an example to pre-fill variables for preview and test sends
@@ -1014,7 +1014,7 @@ function ExampleManager({
 						<div className="text-xs font-medium text-muted-foreground mb-1.5 px-1">
 							Examples ({examples.length})
 						</div>
-						<div className="space-y-0.5">
+						<div className="flex flex-col gap-0.5">
 							{examples.map((ex) => (
 								<button
 									type="button"
@@ -1026,7 +1026,7 @@ function ExampleManager({
 											: "hover:bg-muted text-muted-foreground"
 									}`}
 								>
-									<FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+									<FileText className="size-3.5 shrink-0 opacity-70" />
 									<span className="truncate">{ex.name || "Unnamed"}</span>
 								</button>
 							))}
@@ -1035,7 +1035,7 @@ function ExampleManager({
 
 					{/* Active example editor */}
 					{activeExample && (
-						<div className="flex-1 bg-muted/30 rounded-lg border p-4 space-y-3">
+						<div className="flex-1 bg-muted/30 rounded-lg border p-4 flex flex-col gap-3">
 							{/* Editor toolbar */}
 							<div className="flex items-center gap-2">
 								<Input
@@ -1052,7 +1052,7 @@ function ExampleManager({
 									className="h-8 px-2 text-muted-foreground hover:text-foreground"
 									onClick={() => toggleRawMode(!rawMode)}
 								>
-									<Code2 className="h-3.5 w-3.5 mr-1" />
+									<Code2 className="size-3.5 mr-1" />
 									{rawMode ? "Form" : "Raw"}
 								</Button>
 								<Button
@@ -1061,13 +1061,13 @@ function ExampleManager({
 									className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
 									onClick={() => handleDeleteExample(activeExample.id)}
 								>
-									<Trash2 className="h-3.5 w-3.5" />
+									<Trash2 className="size-3.5" />
 								</Button>
 							</div>
 
 							{/* Editor content */}
 							{rawMode ? (
-								<div className="space-y-1">
+								<div className="flex flex-col gap-1">
 									<Textarea
 										value={rawText}
 										onChange={(e) => handleRawChange(e.target.value)}
@@ -1077,7 +1077,7 @@ function ExampleManager({
 									/>
 									{rawError && (
 										<div className="flex items-center gap-1.5 text-xs text-destructive font-mono">
-											<AlertCircle className="h-3 w-3" />
+											<AlertCircle className="size-3" />
 											{rawError}
 										</div>
 									)}
@@ -1093,7 +1093,7 @@ function ExampleManager({
 									</p>
 								</div>
 							) : (
-								<div className="space-y-3">
+								<div className="flex flex-col gap-3">
 									{varNames.map((name) => {
 										const schema = variables.find((v) => v.name === name);
 										return (
@@ -1120,18 +1120,18 @@ function ExampleManager({
 					onClick={handleSave}
 					disabled={saveStatus === "saving"}
 				>
-					<Save className="h-3.5 w-3.5 mr-1" />
+					<Save className="size-3.5 mr-1" />
 					{saveStatus === "saving" ? "Saving…" : "Save Examples"}
 				</Button>
 				{saveStatus === "saved" && (
-					<span className="text-xs text-green-600 flex items-center gap-1">
-						<Check className="h-3 w-3" />
+					<span className="text-xs text-success flex items-center gap-1">
+						<Check className="size-3" />
 						Saved
 					</span>
 				)}
 				{saveStatus === "error" && (
 					<span className="text-xs text-destructive flex items-center gap-1">
-						<AlertCircle className="h-3 w-3" />
+						<AlertCircle className="size-3" />
 						Save failed
 					</span>
 				)}
@@ -1229,8 +1229,8 @@ function TestSendDialog({
 				<DialogHeader>
 					<DialogTitle>Send Test Email</DialogTitle>
 				</DialogHeader>
-				<form onSubmit={handleSend} className="space-y-4">
-					<div className="space-y-1">
+				<form onSubmit={handleSend} className="flex flex-col gap-4">
+					<div className="flex flex-col gap-1">
 						<Label htmlFor="to">Recipient</Label>
 						<Input
 							id="to"
@@ -1242,7 +1242,7 @@ function TestSendDialog({
 						/>
 					</div>
 					{variables.length > 0 && (
-						<div className="space-y-2">
+						<div className="flex flex-col gap-2">
 							<Label>Variables</Label>
 							{variables.map((v) => (
 								<div key={v.name} className="flex items-center gap-2">
@@ -1266,7 +1266,7 @@ function TestSendDialog({
 					)}
 					{error && <p className="text-sm text-destructive">{error}</p>}
 					{result && (
-						<p className="text-sm text-green-700">
+						<p className="text-sm text-success">
 							Sent — status: <strong>{result.status}</strong> (ID: {result.id})
 						</p>
 					)}
@@ -1428,16 +1428,16 @@ function PreviewPane({
 						<span className="text-muted-foreground">{preview.subject}</span>
 					</div>
 					{preview.warnings.length > 0 && (
-						<div className="rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 space-y-1">
-							<p className="text-xs font-medium text-yellow-800">
+						<div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 flex flex-col gap-1">
+							<p className="text-xs font-medium text-warning">
 								{preview.warnings.length} render warning
 								{preview.warnings.length > 1 ? "s" : ""}
 							</p>
-							<ul className="space-y-0.5">
+							<ul className="flex flex-col gap-0.5">
 								{preview.warnings.map((w, i) => (
 									<li
 										key={previewWarningKeys[i] ?? `${w}-${i}`}
-										className="text-xs text-yellow-700 font-mono"
+										className="text-xs text-warning font-mono"
 									>
 										· {w}
 									</li>
@@ -1640,19 +1640,9 @@ export function EmailTemplateBuilder({
 						/{template.slug}
 					</span>
 					{template.published_version_id ? (
-						<Badge
-							variant="outline"
-							className="text-xs text-blue-700 border-blue-300"
-						>
-							Published
-						</Badge>
+						<StatusBadge tone="info">Published</StatusBadge>
 					) : (
-						<Badge
-							variant="outline"
-							className="text-xs text-yellow-700 border-yellow-300"
-						>
-							Draft only
-						</Badge>
+						<StatusBadge tone="warning">Draft only</StatusBadge>
 					)}
 				</div>
 				<div className="flex items-center gap-2">
@@ -1704,7 +1694,7 @@ export function EmailTemplateBuilder({
 							value="content"
 							className="flex flex-col flex-1 min-h-0 px-4 pb-4 gap-3"
 						>
-							<div className="space-y-1 shrink-0">
+							<div className="flex flex-col gap-1 shrink-0">
 								<Label htmlFor="subject">Subject</Label>
 								<Input
 									id="subject"
@@ -1741,7 +1731,7 @@ export function EmailTemplateBuilder({
 							value="variables"
 							className="flex-1 min-h-0 overflow-y-auto px-4 pb-4"
 						>
-							<div className="space-y-4">
+							<div className="flex flex-col gap-4">
 								<p className="text-sm text-muted-foreground">
 									Define the variables your template expects. These appear in
 									the preview and test-send panels.
@@ -1778,7 +1768,7 @@ export function EmailTemplateBuilder({
 									}
 
 									return (
-										<div className="border rounded-md p-3 space-y-2 bg-muted/40">
+										<div className="border rounded-md p-3 flex flex-col gap-2 bg-muted/40">
 											<div className="flex items-center justify-between">
 												<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
 													Detected in template
@@ -1792,7 +1782,7 @@ export function EmailTemplateBuilder({
 													Push all ({unpushed.length})
 												</Button>
 											</div>
-											<div className="space-y-1.5">
+											<div className="flex flex-col gap-1.5">
 												{unpushed.map((s) => {
 													const isListObj =
 														s.type === EmailVariableType.LIST &&
@@ -1814,9 +1804,9 @@ export function EmailTemplateBuilder({
 																<span
 																	className={`text-[10px] px-1.5 py-0 rounded font-medium ${
 																		s.type === EmailVariableType.LIST
-																			? "bg-blue-50 text-blue-600 border border-blue-200"
+																			? "bg-accent-soft text-accent-foreground border border-border"
 																			: s.type === EmailVariableType.OBJECT
-																				? "bg-purple-50 text-purple-600 border border-purple-200"
+																				? "bg-secondary text-secondary-foreground border border-border"
 																				: "bg-muted text-muted-foreground border border-border"
 																	}`}
 																>

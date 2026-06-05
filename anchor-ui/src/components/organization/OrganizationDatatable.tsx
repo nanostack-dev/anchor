@@ -206,7 +206,7 @@ export function OrganizationDatatable() {
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load organizations: {error.message}
 				</div>
 			)}
