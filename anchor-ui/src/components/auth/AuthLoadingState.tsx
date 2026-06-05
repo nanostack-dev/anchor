@@ -51,10 +51,10 @@ export const AuthLoadingState: React.FC<AuthLoadingStateProps> = ({
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-muted py-12 px-4 sm:px-6 lg:px-8">
-			<Card className="w-full max-w-md">
+		<div className="flex min-h-screen items-center justify-center bg-muted px-4 py-12 sm:px-6 lg:px-8">
+			<Card className="w-72 min-w-0 max-w-[calc(100vw-2rem)] sm:w-full sm:max-w-md">
 				<CardHeader className="text-center">
-					<div className="mx-auto flex items-center justify-center size-12 rounded-full bg-accent-soft text-accent-foreground mb-4">
+					<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent-foreground">
 						{getLoadingIcon()}
 					</div>
 					<CardTitle className="text-lg font-medium text-foreground">
