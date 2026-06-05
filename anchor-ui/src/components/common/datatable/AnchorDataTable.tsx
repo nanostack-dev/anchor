@@ -313,8 +313,8 @@ export function AnchorDataTable<
 	});
 
 	return (
-		<div className="w-full">
-			<div className="flex flex-col gap-2 py-4">
+		<div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			<div className="flex flex-col gap-2 p-4">
 				<div className="flex items-center gap-2">
 					{onFullTextSearchChange && (
 						<Input
@@ -355,9 +355,9 @@ export function AnchorDataTable<
 				</div>
 				{renderFilters()}
 			</div>
-			<div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			<div className="border-y border-border">
 				<Table>
-					<TableHeader className="bg-muted/50">
+					<TableHeader className="bg-card">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -446,7 +446,7 @@ export function AnchorDataTable<
 					</TableBody>
 				</Table>
 			</div>
-			<div className="flex items-center justify-end gap-2 py-4">
+			<div className="flex items-center justify-end gap-2 p-4">
 				{enableRowSelection && (
 					<div className="flex-1 text-sm text-muted-foreground">
 						{Object.keys(rowSelection).length} of{" "}

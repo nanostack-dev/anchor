@@ -128,22 +128,6 @@
 	body {
 		@apply m-0 bg-background text-foreground antialiased;
 		font-family: var(--font-sans);
-		background-image: radial-gradient(
-				circle at top,
-				color-mix(in oklab, var(--color-primary) 8%, transparent) 0%,
-				transparent 35%
-			),
-			radial-gradient(
-				circle at 85% 12%,
-				color-mix(in oklab, var(--color-accent-foreground) 6%, transparent) 0%,
-				transparent 18%
-			),
-			linear-gradient(
-				180deg,
-				color-mix(in oklab, var(--color-background) 94%, var(--color-accent) 6%)
-					0%,
-				var(--color-background) 100%
-			);
 	}
 
 	h1,
