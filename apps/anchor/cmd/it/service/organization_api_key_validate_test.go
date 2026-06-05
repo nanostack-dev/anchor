@@ -155,7 +155,11 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 
 	t.Run("Near Future Expiration Uses Second Precision Boundary", func(t *testing.T) {
 		ctxData := givenOrganizationAPIKeyContext(t)
-		expiresAt := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
+		// Truncate to the second to exercise the second-precision boundary, but
+		// keep a comfortable future margin so the key cannot expire during the
+		// create + validate round-trip (a 1s margin truncated down can leave
+		// well under a second and flakes under CI load).
+		expiresAt := time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)
 
 		createdKey, value := givenOrganizationAPIKey(
 			t,
