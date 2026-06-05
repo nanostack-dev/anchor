@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { type AuthClaims, useAuth } from "@/context/auth/AuthContext";
 import { loginRoute } from "@/routes/platform/login";
 import { useForm } from "@tanstack/react-form";
@@ -164,10 +165,10 @@ export function SignupForm({
 		<Card className={className} {...props}>
 			<CardContent className="p-8">
 				<div className="mb-6">
-					<h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+					<h2 className="text-xl font-semibold text-foreground mb-2">
 						{title || defaultTitle}
 					</h2>
-					<p className="text-sm text-gray-600 dark:text-gray-400">
+					<p className="text-sm text-muted-foreground">
 						{description || defaultDescription}
 					</p>
 				</div>
@@ -228,7 +229,7 @@ export function SignupForm({
 									disabled={isRegistering}
 								/>
 								<FormValidationError field={field} />
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-muted-foreground">
 									Must contain uppercase, lowercase, and number. At least 8
 									characters.
 								</p>
@@ -274,14 +275,14 @@ export function SignupForm({
 								className="w-full h-11"
 							>
 								{isRegistering || isSubmitting ? (
-									<div className="flex items-center space-x-2">
-										<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+									<div className="flex items-center gap-2">
+										<Spinner className="text-current" />
 										<span>
 											{isInit ? "Setting up Anchor..." : "Creating Account..."}
 										</span>
 									</div>
 								) : (
-									<div className="flex items-center space-x-2">
+									<div className="flex items-center gap-2">
 										<span>{submitText || defaultSubmitText}</span>
 									</div>
 								)}
@@ -296,7 +297,7 @@ export function SignupForm({
 						<Link
 							to={loginRoute.fullPath}
 							search={redirect ? { redirect } : {}}
-							className="underline underline-offset-4 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300"
+							className="underline underline-offset-4 text-primary hover:opacity-80"
 						>
 							Sign in
 						</Link>

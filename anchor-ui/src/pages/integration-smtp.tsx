@@ -46,12 +46,13 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationSmtpRoute } from "@/routes/platform/$productId.integration-smtp";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Loader2, Plug, Shield, Trash2 } from "lucide-react";
+import { Plug, Shield, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -388,7 +389,7 @@ export default function SmtpIntegrationPage() {
 						<Skeleton className="h-6 w-44" />
 						<Skeleton className="h-4 w-72" />
 					</CardHeader>
-					<CardContent className="space-y-3">
+					<CardContent className="flex flex-col gap-3">
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
@@ -405,7 +406,7 @@ export default function SmtpIntegrationPage() {
 							product.
 						</CardDescription>
 					</CardHeader>
-					<CardContent className="space-y-5">
+					<CardContent className="flex flex-col gap-5">
 						<SmtpConfigForm
 							form={form}
 							setField={setFormField}
@@ -415,9 +416,9 @@ export default function SmtpIntegrationPage() {
 						<div className="flex items-center gap-2 border-t pt-4">
 							<Button onClick={handleCreate} disabled={isMutating}>
 								{createMutation.isPending ? (
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									<Spinner className="mr-2 text-current" />
 								) : (
-									<Plug className="mr-1 h-3.5 w-3.5" />
+									<Plug data-icon="inline-start" className="mr-1 size-3.5" />
 								)}
 								Create SMTP Integration
 							</Button>
@@ -440,7 +441,7 @@ export default function SmtpIntegrationPage() {
 								Runtime state for the SMTP integration.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-3 text-sm">
+						<CardContent className="flex flex-col gap-3 text-sm">
 							<div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
 								<span className="text-muted-foreground">Status</span>
 								<Badge
@@ -454,7 +455,7 @@ export default function SmtpIntegrationPage() {
 								<span className="font-mono text-xs">{smtpInstance.id}</span>
 							</div>
 							{smtpInstance.last_error ? (
-								<div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+								<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
 									{smtpInstance.last_error}
 								</div>
 							) : null}
@@ -468,10 +469,10 @@ export default function SmtpIntegrationPage() {
 								Update SMTP credentials and settings.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-5">
+						<CardContent className="flex flex-col gap-5">
 							<div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
 								<div className="inline-flex items-center gap-1">
-									<Shield className="h-3.5 w-3.5" />
+									<Shield className="size-3.5" />
 									Password is write-only once saved. Leave blank to keep the
 									existing value.
 								</div>
@@ -503,7 +504,7 @@ export default function SmtpIntegrationPage() {
 							<div className="flex items-center gap-2 border-t pt-4">
 								<Button onClick={handleUpdate} disabled={isMutating}>
 									{updateMutation.isPending ? (
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										<Spinner className="mr-2 text-current" />
 									) : null}
 									Update Configuration
 								</Button>
@@ -512,14 +513,14 @@ export default function SmtpIntegrationPage() {
 								<p className="text-xs text-destructive">Update failed.</p>
 							) : null}
 							{updateMutation.isSuccess ? (
-								<p className="text-xs text-green-700">Configuration updated.</p>
+								<p className="text-xs text-success">Configuration updated.</p>
 							) : null}
 						</CardContent>
 					</Card>
 
-					<Card className="border-rose-200/70">
+					<Card className="border-destructive/30">
 						<CardHeader>
-							<CardTitle className="text-rose-600">Danger Zone</CardTitle>
+							<CardTitle className="text-destructive">Danger Zone</CardTitle>
 							<CardDescription>Delete this SMTP integration.</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -527,13 +528,19 @@ export default function SmtpIntegrationPage() {
 								<AlertDialogTrigger asChild>
 									<Button
 										variant="outline"
-										className="border-rose-300 text-rose-600 hover:bg-rose-50"
+										className="border-destructive/40 text-destructive hover:bg-destructive/10"
 										disabled={deleteMutation.isPending}
 									>
 										{deleteMutation.isPending ? (
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											<Spinner
+												data-icon="inline-start"
+												className="mr-2 text-current"
+											/>
 										) : (
-											<Trash2 className="mr-2 h-4 w-4" />
+											<Trash2
+												data-icon="inline-start"
+												className="mr-2 size-4"
+											/>
 										)}
 										Delete Integration
 									</Button>
@@ -579,9 +586,9 @@ function SmtpConfigForm({
 	isNew: boolean;
 }) {
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			<div className="grid grid-cols-[1fr_120px] gap-3">
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label htmlFor="smtp-host">Host *</Label>
 					<Input
 						id="smtp-host"
@@ -594,7 +601,7 @@ function SmtpConfigForm({
 						<p className="text-xs text-destructive">{errors.host}</p>
 					)}
 				</div>
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label htmlFor="smtp-port">Port *</Label>
 					<Input
 						id="smtp-port"
@@ -610,7 +617,7 @@ function SmtpConfigForm({
 			</div>
 
 			<div className="grid grid-cols-2 gap-3">
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label>Encryption</Label>
 					<Select
 						value={form.encryption}
@@ -626,7 +633,7 @@ function SmtpConfigForm({
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label>Auth Method</Label>
 					<Select
 						value={form.authMethod}
@@ -643,7 +650,7 @@ function SmtpConfigForm({
 				</div>
 			</div>
 
-			<div className="space-y-1">
+			<div className="flex flex-col gap-1">
 				<Label htmlFor="smtp-username">Username *</Label>
 				<Input
 					id="smtp-username"
@@ -657,7 +664,7 @@ function SmtpConfigForm({
 				)}
 			</div>
 
-			<div className="space-y-1">
+			<div className="flex flex-col gap-1">
 				<Label htmlFor="smtp-password">
 					{isNew ? "Password *" : "Password"}
 				</Label>
@@ -679,7 +686,7 @@ function SmtpConfigForm({
 			</div>
 
 			<div className="grid grid-cols-2 gap-3">
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label htmlFor="smtp-from">From Address *</Label>
 					<Input
 						id="smtp-from"
@@ -692,7 +699,7 @@ function SmtpConfigForm({
 						<p className="text-xs text-destructive">{errors.fromAddress}</p>
 					)}
 				</div>
-				<div className="space-y-1">
+				<div className="flex flex-col gap-1">
 					<Label htmlFor="smtp-from-name">From Name</Label>
 					<Input
 						id="smtp-from-name"
@@ -704,7 +711,7 @@ function SmtpConfigForm({
 				</div>
 			</div>
 
-			<div className="space-y-1">
+			<div className="flex flex-col gap-1">
 				<Label htmlFor="smtp-reply-to">Reply-To</Label>
 				<Input
 					id="smtp-reply-to"

@@ -10,7 +10,14 @@ import {
 	updateProductApiKeyMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { PermissionsStep as CommonPermissionsStep } from "@/components/product/common/steps/PermissionsStep";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import { type Step, VerticalStepper } from "@/components/ui/vertical-stepper";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -235,6 +242,16 @@ export function ProductApiKeyDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
 			<DialogContent className="p-0 sm:max-w-[900px] max-h-[95vh] overflow-hidden">
+				<DialogHeader className="sr-only">
+					<DialogTitle>
+						{isEditMode ? "Edit API Key" : "Create API Key"}
+					</DialogTitle>
+					<DialogDescription>
+						{isEditMode
+							? "Update the details and permissions for this API key."
+							: "Create a new API key by providing its details and permissions."}
+					</DialogDescription>
+				</DialogHeader>
 				<div className="flex h-[700px]">
 					<VerticalStepper
 						steps={steps}

@@ -49,7 +49,7 @@ const stepperVariants = cva("flex h-full w-full", {
 		},
 		variant: {
 			default: "",
-			compact: "space-y-2",
+			compact: "flex-col gap-2",
 		},
 	},
 	defaultVariants: {
@@ -71,7 +71,7 @@ const stepContentVariants = cva("flex-1 h-full", {
 	},
 });
 
-const sidebarVariants = cva("bg-slate-50/80 border-r border-slate-200/70 p-6", {
+const sidebarVariants = cva("bg-muted/60 border-r border-border p-6", {
 	variants: {
 		size: {
 			sm: "w-56 p-4",
@@ -89,16 +89,16 @@ const stepIndicatorVariants = cva(
 	{
 		variants: {
 			size: {
-				sm: "h-7 w-7",
-				default: "h-8 w-8",
-				lg: "h-9 w-9",
+				sm: "size-7",
+				default: "size-8",
+				lg: "size-9",
 			},
 			state: {
-				pending: "bg-slate-100 text-slate-400 border border-slate-200",
-				active: "bg-slate-900 text-white shadow-sm",
-				completed: "bg-emerald-500 text-white",
+				pending: "bg-muted text-muted-foreground border border-border",
+				active: "bg-primary text-primary-foreground shadow-sm",
+				completed: "bg-success text-success-foreground",
 				disabled:
-					"bg-slate-100 text-slate-300 border border-slate-200 opacity-50",
+					"bg-muted text-muted-foreground border border-border opacity-50",
 			},
 		},
 		defaultVariants: {
@@ -109,22 +109,22 @@ const stepIndicatorVariants = cva(
 );
 
 const stepItemVariants = cva(
-	"flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+	"flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
 	{
 		variants: {
 			size: {
-				sm: "px-2 py-2 space-x-2",
-				default: "px-3 py-2.5 space-x-3",
-				lg: "px-4 py-3 space-x-4",
+				sm: "px-2 py-2 gap-2",
+				default: "px-3 py-2.5 gap-3",
+				lg: "px-4 py-3 gap-4",
 			},
 			state: {
-				pending: "text-slate-400",
-				active: "bg-white shadow-sm border border-slate-200/80 text-slate-900",
-				completed: "text-emerald-600",
-				disabled: "text-slate-300 opacity-50",
+				pending: "text-muted-foreground",
+				active: "bg-card shadow-sm border border-border text-foreground",
+				completed: "text-success",
+				disabled: "text-muted-foreground opacity-50",
 			},
 			interactive: {
-				true: "cursor-pointer hover:bg-white/70",
+				true: "cursor-pointer hover:bg-accent",
 				false: "",
 			},
 		},
@@ -271,13 +271,13 @@ function VerticalStepperSidebar({
 				{state === "completed" ? (
 					<Check
 						className={cn(
-							size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4",
+							size === "sm" ? "size-3" : size === "lg" ? "size-5" : "size-4",
 						)}
 					/>
 				) : Icon ? (
 					<Icon
 						className={cn(
-							size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4",
+							size === "sm" ? "size-3" : size === "lg" ? "size-5" : "size-4",
 						)}
 					/>
 				) : (
@@ -308,15 +308,15 @@ function VerticalStepperSidebar({
 						"font-medium tracking-tight",
 						size === "sm" ? "text-xs" : size === "lg" ? "text-base" : "text-sm",
 						state === "active"
-							? "text-slate-900"
+							? "text-foreground"
 							: state === "completed"
-								? "text-emerald-600"
-								: "text-slate-400",
+								? "text-success"
+								: "text-muted-foreground",
 					)}
 				>
 					{step.title}
 					{step.optional && (
-						<span className="ml-1 text-xs font-normal text-slate-400">
+						<span className="ml-1 text-xs font-normal text-muted-foreground">
 							(optional)
 						</span>
 					)}
@@ -324,7 +324,7 @@ function VerticalStepperSidebar({
 				{step.description && variant !== "compact" && (
 					<div
 						className={cn(
-							"text-slate-400 mt-0.5",
+							"text-muted-foreground mt-0.5",
 							size === "sm" ? "text-xs" : size === "lg" ? "text-sm" : "text-xs",
 						)}
 					>
@@ -334,7 +334,7 @@ function VerticalStepperSidebar({
 				{state === "active" && (
 					<div
 						className={cn(
-							"text-slate-400 mt-0.5",
+							"text-muted-foreground mt-0.5",
 							size === "sm" ? "text-xs" : size === "lg" ? "text-sm" : "text-xs",
 						)}
 					>
@@ -349,20 +349,20 @@ function VerticalStepperSidebar({
 
 	return (
 		<div className={cn(sidebarVariants({ size }), className)}>
-			<div className="space-y-6">
+			<div className="flex flex-col gap-6">
 				{/* Header section */}
 				{(title || TitleIcon) && (
 					<>
-						<div className="flex items-center space-x-2.5">
+						<div className="flex items-center gap-2.5">
 							{TitleIcon && (
-								<div className="p-2 rounded-xl bg-slate-900 text-white shadow-sm">
-									<TitleIcon className="h-4 w-4" />
+								<div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
+									<TitleIcon className="size-4" />
 								</div>
 							)}
 							{title && (
 								<span
 									className={cn(
-										"font-semibold tracking-tight text-slate-900",
+										"font-semibold tracking-tight text-foreground",
 										size === "sm"
 											? "text-base"
 											: size === "lg"
@@ -374,12 +374,15 @@ function VerticalStepperSidebar({
 								</span>
 							)}
 						</div>
-						<Separator className="bg-slate-200/70" />
+						<Separator className="bg-border" />
 					</>
 				)}
 
 				<div
-					className={cn(variant === "compact" ? "space-y-1" : "space-y-1.5")}
+					className={cn(
+						"flex flex-col",
+						variant === "compact" ? "gap-1" : "gap-1.5",
+					)}
 				>
 					{steps.map((step, stepIndex) => {
 						const state = getStepState(stepIndex);
@@ -417,11 +420,11 @@ function VerticalStepperSidebar({
 
 				{/* Progress indicator */}
 				{showProgress && (
-					<div className="space-y-2 pt-2">
+					<div className="flex flex-col gap-2 pt-2">
 						<div className="flex items-center justify-between">
 							<span
 								className={cn(
-									"font-medium text-slate-400",
+									"font-medium text-muted-foreground",
 									size === "sm"
 										? "text-xs"
 										: size === "lg"
@@ -433,7 +436,7 @@ function VerticalStepperSidebar({
 							</span>
 							<span
 								className={cn(
-									"text-slate-500 font-medium",
+									"text-foreground font-medium",
 									size === "sm"
 										? "text-xs"
 										: size === "lg"
@@ -445,7 +448,7 @@ function VerticalStepperSidebar({
 							</span>
 						</div>
 						<div
-							className="w-full bg-slate-200 rounded-full h-1.5"
+							className="w-full bg-muted rounded-full h-1.5"
 							role="progressbar"
 							aria-valuenow={progressPercentage}
 							aria-valuemin={0}
@@ -454,7 +457,7 @@ function VerticalStepperSidebar({
 							tabIndex={0}
 						>
 							<div
-								className="bg-slate-900 h-1.5 rounded-full transition-all duration-500 ease-out"
+								className="bg-primary h-1.5 rounded-full transition-all duration-500 ease-out"
 								style={{ width: `${progressPercentage}%` }}
 								data-slot="progress-bar"
 							/>

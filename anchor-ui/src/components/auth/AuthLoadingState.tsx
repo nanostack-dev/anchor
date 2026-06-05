@@ -38,58 +38,58 @@ export const AuthLoadingState: React.FC<AuthLoadingStateProps> = ({
 
 	const getLoadingIcon = () => {
 		if (authLoading && tenantLoading) {
-			return <Loader2 className="h-6 w-6 animate-spin" />;
+			return <Loader2 className="size-6 animate-spin" />;
 		}
 		if (authLoading) {
-			return <Shield className="h-6 w-6 animate-pulse" />;
+			return <Shield className="size-6 animate-pulse" />;
 		}
 		if (tenantLoading) {
-			return <Database className="h-6 w-6 animate-pulse" />;
+			return <Database className="size-6 animate-pulse" />;
 		}
 
-		return <Loader2 className="h-6 w-6 animate-spin" />;
+		return <Loader2 className="size-6 animate-spin" />;
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+		<div className="min-h-screen flex items-center justify-center bg-muted py-12 px-4 sm:px-6 lg:px-8">
 			<Card className="w-full max-w-md">
 				<CardHeader className="text-center">
-					<div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+					<div className="mx-auto flex items-center justify-center size-12 rounded-full bg-accent-soft text-accent-foreground mb-4">
 						{getLoadingIcon()}
 					</div>
-					<CardTitle className="text-lg font-medium text-gray-900">
+					<CardTitle className="text-lg font-medium text-foreground">
 						{getLoadingMessage()}
 					</CardTitle>
-					<CardDescription className="text-sm text-gray-600">
+					<CardDescription className="text-sm text-muted-foreground">
 						Please wait while we set things up for you.
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-3">
-						<div className="flex items-center space-x-3">
+				<CardContent className="flex flex-col gap-4">
+					<div className="flex flex-col gap-3">
+						<div className="flex items-center gap-3">
 							<div
-								className={`w-2 h-2 rounded-full ${
-									authLoading ? "bg-blue-500 animate-pulse" : "bg-green-500"
+								className={`size-2 rounded-full ${
+									authLoading ? "bg-primary animate-pulse" : "bg-success"
 								}`}
 							/>
-							<span className="text-sm text-gray-600">
+							<span className="text-sm text-muted-foreground">
 								Authentication {authLoading ? "in progress..." : "verified"}
 							</span>
 						</div>
 
-						<div className="flex items-center space-x-3">
+						<div className="flex items-center gap-3">
 							<div
-								className={`w-2 h-2 rounded-full ${
-									tenantLoading ? "bg-blue-500 animate-pulse" : "bg-green-500"
+								className={`size-2 rounded-full ${
+									tenantLoading ? "bg-primary animate-pulse" : "bg-success"
 								}`}
 							/>
-							<span className="text-sm text-gray-600">
+							<span className="text-sm text-muted-foreground">
 								System status {tenantLoading ? "checking..." : "ready"}
 							</span>
 						</div>
 					</div>
 
-					<div className="space-y-2">
+					<div className="flex flex-col gap-2">
 						<Skeleton className="h-4 w-full" />
 						<Skeleton className="h-4 w-3/4" />
 						<Skeleton className="h-4 w-1/2" />

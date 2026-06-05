@@ -9,7 +9,14 @@ import {
 	updateProductRoleMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { PermissionsStep as CommonPermissionsStep } from "@/components/product/common/steps/PermissionsStep";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import { type Step, VerticalStepper } from "@/components/ui/vertical-stepper";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -173,6 +180,14 @@ export function ProductRoleDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
 			<DialogContent className="p-0 sm:max-w-[900px] max-h-[95vh] overflow-hidden">
+				<DialogHeader className="sr-only">
+					<DialogTitle>{isEditMode ? "Edit Role" : "Create Role"}</DialogTitle>
+					<DialogDescription>
+						{isEditMode
+							? "Update the details and permissions for this role."
+							: "Create a new role by providing its details and permissions."}
+					</DialogDescription>
+				</DialogHeader>
 				<div className="flex h-[700px]">
 					<VerticalStepper
 						steps={steps}

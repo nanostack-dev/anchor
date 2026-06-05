@@ -8,17 +8,22 @@ const formAlertVariants = cva("", {
 	variants: {
 		variant: {
 			default: "bg-destructive/10 text-destructive border-destructive/20",
-			warning:
-				"bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
-			info: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-			success:
-				"bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+			warning: "bg-warning/10 text-warning border-warning/20",
+			info: "bg-accent-soft text-accent-foreground border-border",
+			success: "bg-success/10 text-success border-success/20",
 		},
 	},
 	defaultVariants: {
 		variant: "default",
 	},
 });
+
+const alertVariantMap = {
+	default: "destructive",
+	warning: "warning",
+	info: "default",
+	success: "success",
+} as const;
 
 export interface FormAlertProps
 	extends React.HTMLAttributes<HTMLDivElement>,
@@ -42,13 +47,13 @@ export function FormAlert({
 		if (icon) return icon;
 		switch (variant) {
 			case "warning":
-				return <AlertTriangle className="h-4 w-4" />;
+				return <AlertTriangle className="size-4" />;
 			case "info":
-				return <Info className="h-4 w-4" />;
+				return <Info className="size-4" />;
 			case "success":
-				return <CheckCircle className="h-4 w-4" />;
+				return <CheckCircle className="size-4" />;
 			default:
-				return <AlertCircle className="h-4 w-4" />;
+				return <AlertCircle className="size-4" />;
 		}
 	};
 
@@ -67,7 +72,11 @@ export function FormAlert({
 	};
 
 	return (
-		<Alert className={cn(formAlertVariants({ variant }), className)} {...props}>
+		<Alert
+			variant={alertVariantMap[variant ?? "default"]}
+			className={cn(formAlertVariants({ variant }), className)}
+			{...props}
+		>
 			{getIcon()}
 			<AlertTitle>{getTitle()}</AlertTitle>
 			<AlertDescription>{message}</AlertDescription>

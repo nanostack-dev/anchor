@@ -88,7 +88,7 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 						alt="App Logo"
 						className={
 							collapsed
-								? "h-6 w-6 transition-all duration-200"
+								? "size-6 transition-all duration-200"
 								: "h-8 w-auto transition-all duration-200"
 						}
 					/>

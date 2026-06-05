@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { type AuthClaims, useAuth } from "@/context/auth/AuthContext";
 import { loginRoute } from "@/routes/platform/login";
 import { registerRoute } from "@/routes/platform/register";
@@ -85,10 +86,10 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 		<Card className={className} {...props}>
 			<CardContent className="p-8">
 				<div className="mb-6">
-					<h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+					<h2 className="text-xl font-semibold text-foreground mb-2">
 						Login to your account
 					</h2>
-					<p className="text-sm text-gray-600 dark:text-gray-400">
+					<p className="text-sm text-muted-foreground">
 						Enter your email below to login to your account
 					</p>
 				</div>
@@ -125,7 +126,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 									<Label>Password</Label>
 									<Link
 										to="/login"
-										className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline-offset-4 hover:underline"
+										className="text-sm text-primary underline-offset-4 hover:underline"
 									>
 										Forgot your password?
 									</Link>
@@ -165,8 +166,8 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 								className="w-full h-11"
 							>
 								{isLoggingIn || isSubmitting ? (
-									<div className="flex items-center space-x-2">
-										<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+									<div className="flex items-center gap-2">
+										<Spinner className="text-current" />
 										<span>Logging in...</span>
 									</div>
 								) : (
@@ -184,7 +185,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 						search={
 							searchParams.redirect ? { redirect: searchParams.redirect } : {}
 						}
-						className="underline underline-offset-4 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300"
+						className="underline underline-offset-4 text-primary hover:opacity-80"
 					>
 						Sign up
 					</Link>

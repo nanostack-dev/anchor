@@ -215,7 +215,7 @@ export function OrganizationWorkspaceDatatable({
 					enableRowSelection={false}
 				/>
 				{error ? (
-					<div className="mt-3 text-sm text-red-600">
+					<div className="mt-3 text-sm text-destructive">
 						Failed to load workspaces: {error.message}
 					</div>
 				) : null}

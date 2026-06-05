@@ -235,7 +235,7 @@ export function ProductDatatable() {
 				enableRowSelection={false}
 			/>
 			{error && (
-				<div style={{ color: "red", marginTop: 8 }}>
+				<div className="mt-2 text-destructive">
 					Failed to load products: {error.message}
 				</div>
 			)}

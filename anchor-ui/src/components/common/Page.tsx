@@ -5,9 +5,9 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home as HomeIcon } from "lucide-react";
+import { HomeIcon } from "lucide-react";
 import * as React from "react";
 import { useMemo } from "react";
 import { PageInfo, type PageInfoProps } from "./PageInfo";
@@ -32,15 +32,29 @@ type PageProps = {
 	children: React.ReactNode;
 	title?: string;
 	description?: string;
+	actions?: React.ReactNode;
 	breadCrumbs?: boolean;
 	variant?: PageVariant;
 	pageInfo?: PageInfoProps;
 };
 
+const variantWidth: Record<PageVariant, string> = {
+	full: "",
+	wide: "mx-auto w-full max-w-[1200px]",
+	narrow: "mx-auto w-full max-w-[600px]",
+	default: "mx-auto w-full max-w-[900px]",
+};
+
+/**
+ * Anchor route page shell. Composes the shared Nanostack/Echopoint page pattern
+ * (heading/description/actions header + body) while keeping an Anchor-local,
+ * route-aware breadcrumb adapter derived from the TanStack Router location.
+ */
 export function Page({
 	children,
 	title,
 	description,
+	actions,
 	breadCrumbs = true,
 	variant = "full",
 	pageInfo,
@@ -51,35 +65,15 @@ export function Page({
 		[location.pathname],
 	);
 
-	// Variant-based container styles
-	let variantClass = "h-full min-h-0 w-full flex flex-col gap-6 p-6";
-	if (variant === "full") {
-		// No max-width or centering for full variant
-	} else if (variant === "wide") {
-		variantClass += " max-w-[1200px] mx-auto";
-	} else if (variant === "narrow") {
-		variantClass += " max-w-[600px] mx-auto";
-	} else {
-		variantClass += " max-w-[900px] mx-auto";
-	}
-
 	return (
-		<div className={variantClass} data-testid="page-root">
-			{title && (
-				<div className="mb-2">
-					<h1 className="text-2xl font-bold" data-testid="page-title">
-						{title}
-					</h1>
-					{description && (
-						<p
-							className="text-muted-foreground text-base mt-1"
-							data-testid="page-description"
-						>
-							{description}
-						</p>
-					)}
-				</div>
+		<section
+			data-slot="page"
+			data-testid="page-root"
+			className={cn(
+				"flex min-h-full flex-col gap-6 p-4 lg:p-6",
+				variantWidth[variant],
 			)}
+		>
 			{breadCrumbs && (
 				<nav aria-label="Breadcrumb" data-testid="breadcrumb-nav">
 					<Breadcrumb>
@@ -90,13 +84,12 @@ export function Page({
 										{idx === 0 ? (
 											<Link
 												to={crumb.path}
-												className="inline-flex items-center gap-1 hover:text-primary transition-colors focus:underline"
-												tabIndex={0}
+												className="inline-flex items-center gap-1 transition-colors hover:text-foreground focus-visible:underline"
 												aria-label="Dashboard"
 											>
-												<HomeIcon size={16} className="mr-1" />
+												<HomeIcon className="size-4" />
 												<span
-													className="truncate max-w-[120px]"
+													className="max-w-[120px] truncate"
 													title={crumb.name}
 												>
 													{crumb.name}
@@ -105,7 +98,7 @@ export function Page({
 										) : idx === crumbs.length - 1 ? (
 											<BreadcrumbPage aria-current="page">
 												<span
-													className="truncate max-w-[120px]"
+													className="max-w-[120px] truncate"
 													title={crumb.name}
 												>
 													{crumb.name}
@@ -114,11 +107,10 @@ export function Page({
 										) : (
 											<Link
 												to={crumb.path}
-												className="hover:text-primary transition-colors focus:underline"
-												tabIndex={0}
+												className="transition-colors hover:text-foreground focus-visible:underline"
 											>
 												<span
-													className="truncate max-w-[120px]"
+													className="max-w-[120px] truncate"
 													title={crumb.name}
 												>
 													{crumb.name}
@@ -133,10 +125,43 @@ export function Page({
 					</Breadcrumb>
 				</nav>
 			)}
+
+			{(title || actions) && (
+				<header
+					data-slot="page-header"
+					className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+				>
+					<div className="max-w-3xl min-w-0 space-y-2">
+						{title && (
+							<h1
+								data-testid="page-title"
+								className="text-3xl font-semibold tracking-tight text-balance text-foreground"
+							>
+								{title}
+							</h1>
+						)}
+						{description && (
+							<p
+								data-testid="page-description"
+								className="text-sm leading-6 text-muted-foreground"
+							>
+								{description}
+							</p>
+						)}
+					</div>
+					{actions && (
+						<div className="flex flex-wrap items-center gap-3 lg:justify-end">
+							{actions}
+						</div>
+					)}
+				</header>
+			)}
+
 			{pageInfo && <PageInfo {...pageInfo} />}
-			<ScrollArea className="min-h-0 flex-1" data-testid="page-content">
+
+			<div className="min-h-0 flex-1" data-testid="page-content">
 				{children}
-			</ScrollArea>
-		</div>
+			</div>
+		</section>
 	);
 }
