@@ -211,3 +211,49 @@ func TestProductRole_Search(t *testing.T) {
 	//	},
 	//)
 }
+
+// Pagination must page over roles, not over the role⋈permissions join. A page
+// limit smaller than a role's permission count must still return ALL of that
+// role's permissions (regression for permission-list truncation).
+func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
+	ctx := context.Background()
+	testCtx := createTestProductContext(t)
+	productID := testCtx.ProductID
+
+	perms := testCtx.CreateDefaultProductResourcePermissions(t)
+	require.Greater(t, len(perms), 1, "need more than one permission to exercise truncation")
+
+	permNames := make([]string, len(perms))
+	for i, p := range perms {
+		permNames[i] = p.Name
+	}
+
+	roleName := "PermHeavy_" + ids.MustNew("test")
+	createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+		ctx, productID, ct.CreateProductRoleJSONRequestBody{
+			Name:        roleName,
+			Permissions: permNames,
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, createResp.StatusCode())
+	require.NotNil(t, createResp.JSON201)
+	roleID := createResp.JSON201.Id
+
+	limit := int32(1)
+	offset := int32(0)
+	searchResp, searchErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
+		ctx, productID, ct.SearchProductRolesJSONRequestBody{
+			Filter:     &ct.ProductRoleFilter{Ids: []string{roleID}},
+			Pagination: &ct.PaginationRequest{Limit: &limit, Offset: &offset},
+		},
+	)
+	require.NoError(t, searchErr)
+	require.Equal(t, http.StatusOK, searchResp.StatusCode())
+	require.NotNil(t, searchResp.JSON200)
+	require.Len(t, searchResp.JSON200.Items, 1)
+	assert.Len(
+		t, searchResp.JSON200.Items[0].Permissions, len(permNames),
+		"all permissions must be returned even when the page limit is smaller than the permission count",
+	)
+}

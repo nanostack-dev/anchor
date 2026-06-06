@@ -320,17 +320,6 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		}
 	}
 
-	query := table.ProductRoles.SELECT(
-		table.ProductRoles.AllColumns,
-		table.ProductRoleResourcePermissions.AllColumns,
-	).FROM(
-		table.ProductRoles.
-			LEFT_JOIN(
-				table.ProductRoleResourcePermissions,
-				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
-			),
-	).WHERE(whereStmt)
-
 	resultCount, err := transactor.QueryCount(
 		ctx,
 		r.db,
@@ -343,31 +332,67 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		return search.Result[role.ProductRole]{}, err
 	}
 
-	if input.Sort != nil {
-		if len(input.Sort) > 0 {
-			for _, sort := range input.Sort {
-				switch sort.Field {
-				case role.SortFieldProductRoleCreatedAt:
-					fieldToOrderBy := table.ProductRoles.CreatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case role.SortFieldProductRoleUpdatedAt:
-					fieldToOrderBy := table.ProductRoles.UpdatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case role.SortFieldProductRoleName:
-					fieldToOrderBy := table.ProductRoles.Name
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				}
-			}
+	var orderBys []postgres.OrderByClause
+	for _, sort := range input.Sort {
+		switch sort.Field {
+		case role.SortFieldProductRoleCreatedAt:
+			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.CreatedAt, sort.Direction))
+		case role.SortFieldProductRoleUpdatedAt:
+			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.UpdatedAt, sort.Direction))
+		case role.SortFieldProductRoleName:
+			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.Name, sort.Direction))
 		}
 	}
 
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
+	// Paginate over roles, not over the role⋈permissions join. Applying
+	// LIMIT/OFFSET to the joined rows truncates a role's permissions to the page
+	// size (e.g. a 19-permission role under LIMIT 10 returns only 10). So the
+	// page is taken on role IDs first, then all permissions are fetched for the
+	// paged roles with no limit/offset.
+	idStmt := table.ProductRoles.
+		SELECT(table.ProductRoles.ID).
+		WHERE(whereStmt)
+	if len(orderBys) > 0 {
+		idStmt = idStmt.ORDER_BY(orderBys...)
+	}
+	idStmt = idStmt.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
+
+	pagedRoles, err := transactor.Query[[]model.ProductRoles](ctx, r.db, idStmt)
+	if err != nil {
+		r.logger.Error().Err(err).Str(
+			"productID", productID,
+		).Msg("failed to page product role ids")
+		return search.Result[role.ProductRole]{}, err
+	}
+	if len(pagedRoles) == 0 {
+		return search.Result[role.ProductRole]{
+			Items: []role.ProductRole{},
+			Total: resultCount,
+			Count: 0,
+		}, nil
+	}
+
+	pagedIDs := make([]string, len(pagedRoles))
+	for i, pr := range pagedRoles {
+		pagedIDs[i] = pr.ID
+	}
+
+	query := table.ProductRoles.SELECT(
+		table.ProductRoles.AllColumns,
+		table.ProductRoleResourcePermissions.AllColumns,
+	).FROM(
+		table.ProductRoles.
+			LEFT_JOIN(
+				table.ProductRoleResourcePermissions,
+				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+			),
+	).WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoles.ID.IN(jetx.ToStringExpressions(pagedIDs)...)),
+	)
+	if len(orderBys) > 0 {
+		query = query.ORDER_BY(orderBys...)
+	}
 
 	slice, err := transactor.QueryMapSlice(
 		ctx, r.db, query, func(permission productRoleWithPermission) role.ProductRole {
