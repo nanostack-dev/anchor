@@ -232,7 +232,7 @@ func (r *productRoleResource) Update(ctx context.Context, req resource.UpdateReq
 		productID,
 		plan.ID.ValueString(),
 		nanoclient.UpdateProductRoleJSONRequestBody{
-			Name:        &name,
+			Name:        name,
 			Description: stringPtrFromTFValue(plan.Description.ValueString()),
 			Permissions: nil,
 		},
