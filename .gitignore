@@ -106,9 +106,6 @@ node_modules/
 # Build artifacts
 apps/anchor/cmd/http/openapi-cleaned.yaml
 
-# Terraform provider local binaries
-clients/terraform-provider-anchor/terraform-provider-anchor*
-terraform/provider/terraform-provider-anchor
 # Terraform working directories
 terraform/**/.terraform/
 terraform/**/.terraform.lock.hcl
