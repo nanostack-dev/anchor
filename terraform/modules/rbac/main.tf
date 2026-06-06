@@ -2,7 +2,7 @@ locals {
   all_permissions = sort(distinct(concat(var.permissions_admin, var.api_only_permissions)))
 }
 
-resource "nanostack_product_permission" "permission" {
+resource "anchor_product_permission" "permission" {
   for_each = toset(local.all_permissions)
 
   product_id  = var.nanostack_product_id
@@ -10,7 +10,7 @@ resource "nanostack_product_permission" "permission" {
   description = replace(title(replace(each.value, ":", " ")), "_", " ")
 }
 
-resource "nanostack_product_role" "admin" {
+resource "anchor_product_role" "admin" {
   product_id  = var.nanostack_product_id
   name        = "admin"
   description = "Administrator role"
@@ -22,7 +22,7 @@ resource "terraform_data" "sync_echopoint_runtime_fields" {
 
   triggers_replace = [
     var.nanostack_product_id,
-    nanostack_product_role.admin.id,
+    anchor_product_role.admin.id,
     var.product_api_key_for_sync,
   ]
 
@@ -55,7 +55,7 @@ resource "terraform_data" "sync_echopoint_runtime_fields" {
       }
 
       update_runtime_key "ANCHOR_PRODUCT_ID" "${var.nanostack_product_id}"
-      update_runtime_key "ANCHOR_ADMIN_ROLE_ID" "${nanostack_product_role.admin.id}"
+      update_runtime_key "ANCHOR_ADMIN_ROLE_ID" "${anchor_product_role.admin.id}"
       update_runtime_key "ANCHOR_PRODUCT_API_KEY" "$ANCHOR_PRODUCT_API_KEY"
 
       op item edit "${var.op_item_ref}" --vault "${var.op_vault_id}" \

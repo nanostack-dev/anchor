@@ -23,17 +23,17 @@ archives:
       - terraform-provider
     format: zip
     name_template: >-
-      terraform-provider-nanostack_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      terraform-provider-anchor_{{ .Version }}_{{ .Os }}_{{ .Arch }}
     files:
       - LICENSE*
       - README.md
 
 checksum:
-  name_template: terraform-provider-nanostack_{{ .Version }}_SHA256SUMS
+  name_template: terraform-provider-anchor_{{ .Version }}_SHA256SUMS
 
 release:
   github:
-    owner: anchor-dev
+    owner: nanostack-dev
     name: anchor
   prerelease: false
 
