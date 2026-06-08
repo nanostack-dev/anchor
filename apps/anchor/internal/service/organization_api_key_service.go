@@ -102,7 +102,10 @@ func (s *organizationAPIKeyService) Create(
 	}
 	prod, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", org.ProductID).Err(err).Msg("failed to find product for organization API key config")
+		logger.Error().
+			Str("product_id", org.ProductID).
+			Err(err).
+			Msg("failed to find product for organization API key config")
 		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
 	}
 	if prod == nil {

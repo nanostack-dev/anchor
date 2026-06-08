@@ -275,7 +275,10 @@ func TestIsValidProductAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.IsValidProductAPIKey(security.DefaultAPIKeyRootPrefix, tt.args.apiKey); got != tt.want {
+				if got := security.IsValidProductAPIKey(
+					security.DefaultAPIKeyRootPrefix,
+					tt.args.apiKey,
+				); got != tt.want {
 					t.Errorf("security.IsValidProductAPIKey() = %v, want %v", got, tt.want)
 				}
 			},
@@ -308,7 +311,10 @@ func TestIsValidOrganizationAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.IsValidOrganizationAPIKey(security.DefaultAPIKeyRootPrefix, tt.args.apiKey); got != tt.want {
+				if got := security.IsValidOrganizationAPIKey(
+					security.DefaultAPIKeyRootPrefix,
+					tt.args.apiKey,
+				); got != tt.want {
 					t.Errorf("security.IsValidOrganizationAPIKey() = %v, want %v", got, tt.want)
 				}
 			},
@@ -336,7 +342,10 @@ func TestObfuscateProductAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.ObfuscateProductAPIKey(security.DefaultAPIKeyRootPrefix, tt.args.apiKey); got != tt.want {
+				if got := security.ObfuscateProductAPIKey(
+					security.DefaultAPIKeyRootPrefix,
+					tt.args.apiKey,
+				); got != tt.want {
 					t.Errorf("security.ObfuscateProductAPIKey() = %v, want %v", got, tt.want)
 				}
 			},
@@ -359,7 +368,10 @@ func TestObfuscateOrganizationAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.ObfuscateOrganizationAPIKey(security.DefaultAPIKeyRootPrefix, tt.args.apiKey); got != tt.want {
+				if got := security.ObfuscateOrganizationAPIKey(
+					security.DefaultAPIKeyRootPrefix,
+					tt.args.apiKey,
+				); got != tt.want {
 					t.Errorf("security.ObfuscateOrganizationAPIKey() = %v, want %v", got, tt.want)
 				}
 			},

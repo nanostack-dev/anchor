@@ -49,7 +49,10 @@ func (m *ProductMapper) ToEntity(domain product.Product) model.Products {
 	}
 }
 
-func (m *ProductMapper) APIKeyConfigToEntity(productID string, config product.APIKeysConfig) model.ProductAPIKeyConfigs {
+func (m *ProductMapper) APIKeyConfigToEntity(
+	productID string,
+	config product.APIKeysConfig,
+) model.ProductAPIKeyConfigs {
 	return model.ProductAPIKeyConfigs{
 		ProductID: productID,
 		Prefix:    config.Prefix,

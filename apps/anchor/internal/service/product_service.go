@@ -149,9 +149,16 @@ func (s *productService) Create(
 			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 			return createErr
 		}
-		if configErr := s.productRepo.UpsertAPIKeyConfig(txCtx, productCreated.ID, config.APIKeys); configErr != nil {
-			logger.Error().Str("product_id", productCreated.ID).Err(configErr).Msg("failed to create product API key config")
-			return configErr
+		if upsertConfigErr := s.productRepo.UpsertAPIKeyConfig(
+			txCtx,
+			productCreated.ID,
+			config.APIKeys,
+		); upsertConfigErr != nil {
+			logger.Error().
+				Str("product_id", productCreated.ID).
+				Err(upsertConfigErr).
+				Msg("failed to create product API key config")
+			return upsertConfigErr
 		}
 		productCreated.Config = config
 		logger.Info().Str("product_id", productCreated.ID).Str("name", prod.Name).Msg("product created")
@@ -208,8 +215,15 @@ func (s *productService) updateProductInTransaction(
 		return result, err
 	}
 	if input.Config != nil {
-		if configErr := s.productRepo.UpsertAPIKeyConfig(ctx, input.ProductID, updatedProduct.Config.APIKeys); configErr != nil {
-			logger.Error().Str("product_id", input.ProductID).Err(configErr).Msg("failed to update product API key config")
+		if configErr := s.productRepo.UpsertAPIKeyConfig(
+			ctx,
+			input.ProductID,
+			updatedProduct.Config.APIKeys,
+		); configErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Err(configErr).
+				Msg("failed to update product API key config")
 			return product.Product{}, configErr
 		}
 		result.Config = updatedProduct.Config

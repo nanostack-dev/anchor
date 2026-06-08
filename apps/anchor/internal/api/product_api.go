@@ -47,8 +47,8 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 				Prefix: prod.Config.WithDefaults().APIKeys.Prefix,
 			},
 		},
-		CreatedAt:   prod.CreatedAt,
-		UpdatedAt:   prod.UpdatedAt,
+		CreatedAt: prod.CreatedAt,
+		UpdatedAt: prod.UpdatedAt,
 	}
 }
 
