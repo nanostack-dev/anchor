@@ -739,7 +739,7 @@ type CreateProductResourcePermissionRequest struct {
 	// Description Optional human-readable description of what this permission grants.
 	Description *string `json:"description,omitempty"`
 
-	// Name The resource permission identifier, using the format "<resource>:<action>" (e.g. "document:read", "file:delete", "workspace:invite"). Must be unique within the product.
+	// Name The resource permission identifier, using the format "<resource>:<action>" (e.g. "document:read", "file:delete", "workspace:invite"). Must be unique within the product using case-insensitive matching.
 	Name string `json:"name"`
 
 	// ScopeModifier Optional scope qualifier that narrows the permission to a subset of matching resources (e.g. "own" to restrict to resources the user owns, "team" to restrict to resources shared within their team).
@@ -1628,6 +1628,28 @@ type ProductAPIKeyUpdateRequest struct {
 	Permissions *[]string `json:"permissions,omitempty"`
 }
 
+// ProductAPIKeysConfigRequest defines model for ProductAPIKeysConfigRequest.
+type ProductAPIKeysConfigRequest struct {
+	// Prefix Root prefix used when generating product and organization API keys for this product. The key kind suffix is appended automatically, e.g. "acme" produces "acme_prd_apikey_..." and "acme_org_apikey_...".
+	Prefix string `json:"prefix"`
+}
+
+// ProductAPIKeysConfigResponse defines model for ProductAPIKeysConfigResponse.
+type ProductAPIKeysConfigResponse struct {
+	// Prefix Root prefix used when generating product and organization API keys for this product.
+	Prefix string `json:"prefix"`
+}
+
+// ProductConfigRequest defines model for ProductConfigRequest.
+type ProductConfigRequest struct {
+	ApiKeys *ProductAPIKeysConfigRequest `json:"api_keys,omitempty"`
+}
+
+// ProductConfigResponse defines model for ProductConfigResponse.
+type ProductConfigResponse struct {
+	ApiKeys ProductAPIKeysConfigResponse `json:"api_keys"`
+}
+
 // ProductFilter defines model for ProductFilter.
 type ProductFilter struct {
 	// Ids Filter by specific product IDs (can specify multiple).
@@ -1733,7 +1755,7 @@ type ProductPermissionResponse struct {
 	// Description Human-readable description of what this permission grants.
 	Description *string `json:"description,omitempty"`
 
-	// Name The permission string identifier. This is the value used when assigning the permission to a role (e.g. "product:settings:read").
+	// Name The permission string identifier. Permission name filters and validation use case-insensitive matching and return the canonical stored casing.
 	Name string `json:"name"`
 
 	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1760,10 +1782,12 @@ type ProductPermissionSearchRequestSortBy string
 
 // ProductRequest defines model for ProductRequest.
 type ProductRequest struct {
+	Config *ProductConfigRequest `json:"config,omitempty"`
+
 	// Description Optional description for the product.
 	Description *string `json:"description,omitempty"`
 
-	// Name Name of the product. Must be unique within the PlatformTenant.
+	// Name Name of the product. Must be unique within the PlatformTenant using case-insensitive matching.
 	Name string `json:"name"`
 }
 
@@ -1822,6 +1846,8 @@ type ProductResourcePermissionSearchRequestSortBy string
 
 // ProductResponse defines model for ProductResponse.
 type ProductResponse struct {
+	Config ProductConfigResponse `json:"config"`
+
 	// CreatedAt Timestamp when the product was created.
 	CreatedAt time.Time `json:"created_at"`
 
@@ -1846,7 +1872,7 @@ type ProductRoleCreateRequest struct {
 	// Description Optional description of the role's purpose.
 	Description *string `json:"description,omitempty"`
 
-	// Name Name of the product role. Must be unique within the Product.
+	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
 	Name string `json:"name"`
 
 	// Permissions Optional list of permission names (strings) to assign initially.
@@ -1929,7 +1955,7 @@ type ProductRoleUpdateRequest struct {
 	// Description Optional description of the role's purpose.
 	Description *string `json:"description,omitempty"`
 
-	// Name Name of the product role. Must be unique within the Product.
+	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
 	Name string `json:"name"`
 
 	// Permissions Optional list of permission names (strings) to assign initially.

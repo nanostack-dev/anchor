@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"net/http"
 	"time"
+
+	"anchor/internal/security"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -111,6 +114,10 @@ func (s *productService) Create(
 	if err := validateStruct(input); err != nil {
 		return product.Product{}, err
 	}
+	config, configErr := s.normalizeConfig(input.Config)
+	if configErr != nil {
+		return product.Product{}, configErr
+	}
 
 	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
 	if err != nil {
@@ -126,6 +133,7 @@ func (s *productService) Create(
 		PlatformTenantID: input.TenantID,
 		Name:             input.Name,
 		Description:      input.Description,
+		Config:           config,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
@@ -141,6 +149,11 @@ func (s *productService) Create(
 			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 			return createErr
 		}
+		if configErr := s.productRepo.UpsertAPIKeyConfig(txCtx, productCreated.ID, config.APIKeys); configErr != nil {
+			logger.Error().Str("product_id", productCreated.ID).Err(configErr).Msg("failed to create product API key config")
+			return configErr
+		}
+		productCreated.Config = config
 		logger.Info().Str("product_id", productCreated.ID).Str("name", prod.Name).Msg("product created")
 		for _, perm := range defaultPermissions {
 			perm.ProductID = productCreated.ID
@@ -190,13 +203,21 @@ func (s *productService) updateProductInTransaction(
 	}
 
 	result, err := s.productRepo.Update(ctx, input.TenantID, updatedProduct)
-	if err == nil {
-		s.evictProductFromCache(ctx, input.TenantID, input.ProductID, logger)
-		logger.Info().Str("product_id", input.ProductID).Msg("product updated")
-	} else {
+	if err != nil {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to update product")
+		return result, err
 	}
-	return result, err
+	if input.Config != nil {
+		if configErr := s.productRepo.UpsertAPIKeyConfig(ctx, input.ProductID, updatedProduct.Config.APIKeys); configErr != nil {
+			logger.Error().Str("product_id", input.ProductID).Err(configErr).Msg("failed to update product API key config")
+			return product.Product{}, configErr
+		}
+		result.Config = updatedProduct.Config
+	}
+
+	s.evictProductFromCache(ctx, input.TenantID, input.ProductID, logger)
+	logger.Info().Str("product_id", input.ProductID).Msg("product updated")
+	return result, nil
 }
 
 func (s *productService) findProductForUpdate(
@@ -226,7 +247,27 @@ func (s *productService) updateProductFields(
 	if input.Description != nil {
 		prod.Description = *input.Description
 	}
+	if input.Config != nil {
+		config, err := s.normalizeConfig(*input.Config)
+		if err != nil {
+			return err
+		}
+		prod.Config = config
+	}
 	return nil
+}
+
+func (s *productService) normalizeConfig(config product.Config) (product.Config, error) {
+	config = config.WithDefaults()
+	if !security.IsValidAPIKeyRootPrefix(config.APIKeys.Prefix) {
+		return product.Config{}, apierror.NewWithStatus(
+			"INVALID_PRODUCT_API_KEY_PREFIX",
+			"Product API key prefix must be 2-32 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and underscores without ending in an underscore",
+			http.StatusBadRequest,
+		)
+	}
+
+	return config, nil
 }
 
 func (s *productService) validateNameUniqueness(

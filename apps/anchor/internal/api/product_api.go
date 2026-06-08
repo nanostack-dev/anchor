@@ -42,9 +42,24 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 		TenantId:    prod.PlatformTenantID,
 		Name:        prod.Name,
 		Description: description,
+		Config: ProductConfigResponse{
+			ApiKeys: ProductAPIKeysConfigResponse{
+				Prefix: prod.Config.WithDefaults().APIKeys.Prefix,
+			},
+		},
 		CreatedAt:   prod.CreatedAt,
 		UpdatedAt:   prod.UpdatedAt,
 	}
+}
+
+func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
+	productConfig := product.DefaultConfig()
+	if config == nil || config.ApiKeys == nil {
+		return productConfig
+	}
+
+	productConfig.APIKeys.Prefix = config.ApiKeys.Prefix
+	return productConfig
 }
 
 func (s *AnchorAPI) SearchProducts(
@@ -92,6 +107,7 @@ func (s *AnchorAPI) CreateProduct(
 		TenantID:    tenantID,
 		Name:        request.Body.Name,
 		Description: description,
+		Config:      mapProductRequestConfig(request.Body.Config),
 	}
 
 	createdProduct, err := s.ProductService.Create(ctx, input)
@@ -170,6 +186,10 @@ func (s *AnchorAPI) UpdateProduct(
 		ProductID:   productID,
 		Name:        &request.Body.Name,
 		Description: request.Body.Description,
+	}
+	if request.Body.Config != nil {
+		config := mapProductRequestConfig(request.Body.Config)
+		input.Config = &config
 	}
 
 	updatedProduct, err := s.ProductService.Update(ctx, input)

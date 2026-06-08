@@ -52,6 +52,7 @@ type organizationAPIKeyService struct {
 	queue            *pgqueue.Client
 	apiKeyRepo       repository.OrganizationAPIKeyRepository
 	organizationRepo repository.OrganizationRepository
+	productRepo      repository.ProductRepository
 	permissionRepo   repository.ProductResourcePermissionRepository
 	logger           zerolog.Logger
 }
@@ -61,6 +62,7 @@ func NewOrganizationAPIKeyService(
 	queue *pgqueue.Client,
 	apiKeyRepo repository.OrganizationAPIKeyRepository,
 	organizationRepo repository.OrganizationRepository,
+	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductResourcePermissionRepository,
 	logger zerolog.Logger,
 ) OrganizationAPIKeyService {
@@ -69,6 +71,7 @@ func NewOrganizationAPIKeyService(
 		queue:            queue,
 		apiKeyRepo:       apiKeyRepo,
 		organizationRepo: organizationRepo,
+		productRepo:      productRepo,
 		permissionRepo:   permissionRepo,
 		logger: logger.With().Str(
 			"component", "organization_api_key_service",
@@ -97,6 +100,14 @@ func (s *organizationAPIKeyService) Create(
 	if org == nil {
 		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrNotFound
 	}
+	prod, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
+	if err != nil {
+		logger.Error().Str("product_id", org.ProductID).Err(err).Msg("failed to find product for organization API key config")
+		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
+	}
+	if prod == nil {
+		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrNotFound
+	}
 
 	if nameValidationErr := s.nameUniqueValidation(
 		ctx,
@@ -107,14 +118,14 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", nameValidationErr
 	}
 
-	clearAPIKey, err := security.GenerateOrganizationAPIKey()
+	clearAPIKey, err := security.GenerateOrganizationAPIKey(prod.Config.WithDefaults().APIKeys.Prefix)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate organization API key")
 		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
-	obfuscatedValue := security.ObfuscateOrganizationAPIKey(clearAPIKey)
+	obfuscatedValue := security.ObfuscateOrganizationAPIKey(prod.Config.WithDefaults().APIKeys.Prefix, clearAPIKey)
 
 	organizationAPIKey := orgapikey.OrganizationAPIKey{
 		OrganizationID:  input.OrganizationID,

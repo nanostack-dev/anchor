@@ -23,6 +23,7 @@ func UseSchema(schema string) {
 	PlatformInvitations = PlatformInvitations.FromSchema(schema)
 	PlatformTenants = PlatformTenants.FromSchema(schema)
 	PlatformUsers = PlatformUsers.FromSchema(schema)
+	ProductAPIKeyConfigs = ProductAPIKeyConfigs.FromSchema(schema)
 	ProductAPIKeyPermissions = ProductAPIKeyPermissions.FromSchema(schema)
 	ProductAPIKeys = ProductAPIKeys.FromSchema(schema)
 	ProductPermissions = ProductPermissions.FromSchema(schema)
