@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,6 +64,50 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 			assert.Equal(t, permissions.FileRead, created.Permissions[0].PermissionName)
 			assert.Equal(t, product.ProductID, created.Permissions[0].ProductId)
 			assert.Equal(t, org.Id, created.Permissions[0].OrganizationId)
+		},
+	)
+
+	t.Run(
+		"Create organization API key uses product API key prefix", func(t *testing.T) {
+			prefix := "acmeorg"
+			getProductResp, err := product.OwnerAuthenticatedClient().GetProductWithResponse(
+				ctx,
+				product.ProductID,
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, getProductResp.StatusCode())
+			require.NotNil(t, getProductResp.JSON200)
+
+			updateProductResp, err := product.OwnerAuthenticatedClient().UpdateProductWithResponse(
+				ctx,
+				product.ProductID,
+				ct.UpdateProductJSONRequestBody{
+					Name:        getProductResp.JSON200.Name,
+					Description: getProductResp.JSON200.Description,
+					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+						Prefix: prefix,
+					}},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, updateProductResp.StatusCode())
+
+			description := itshared.Faker.Lorem().Sentence(4)
+			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
+			resp, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
+				ctx,
+				product.ProductID,
+				org.Id,
+				ct.CreateOrganizationAPIKeyJSONRequestBody{
+					Name:        "OrgKey-" + uuid.NewString(),
+					Permissions: []string{permissions.FileRead},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode())
+			require.NotNil(t, resp.JSON201)
+			assert.True(t, strings.HasPrefix(resp.JSON201.Value, prefix+"_org_apikey_"))
+			assert.True(t, strings.HasPrefix(resp.JSON201.ObfuscatedValue, prefix+"_org_apikey_"))
 		},
 	)
 

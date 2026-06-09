@@ -599,8 +599,52 @@ components:
           nullable: true
           description: Optional description for the product.
           example: "Real-time Product User analytics."
+        config:
+          $ref: "#/components/schemas/ProductConfigRequest"
+          description: Product-level configuration.
       required:
       - name
+    ProductConfigRequest:
+      type: object
+      properties:
+        api_keys:
+          $ref: "#/components/schemas/ProductAPIKeysConfigRequest"
+          description: Product API key configuration.
+    ProductAPIKeysConfigRequest:
+      type: object
+      properties:
+        prefix:
+          type: string
+          minLength: 2
+          maxLength: 32
+          pattern: "^[a-z][a-z0-9_]*[a-z0-9]$"
+          description: >-
+            Root prefix used when generating product and organization API keys
+            for this product. The key kind suffix is appended automatically,
+            e.g. "acme" produces "acme_prd_apikey_..." and
+            "acme_org_apikey_...".
+          example: "anchor"
+      required:
+      - prefix
+    ProductConfigResponse:
+      type: object
+      properties:
+        api_keys:
+          $ref: "#/components/schemas/ProductAPIKeysConfigResponse"
+          description: Product API key configuration.
+      required:
+      - api_keys
+    ProductAPIKeysConfigResponse:
+      type: object
+      properties:
+        prefix:
+          type: string
+          description: >-
+            Root prefix used when generating product and organization API keys
+            for this product.
+          example: "anchor"
+      required:
+      - prefix
     ProductResponse: # Response Schema
       type: object
       properties:
@@ -621,6 +665,9 @@ components:
           nullable: true
           description: Description of the product.
           example: "Real-time Product User analytics."
+        config:
+          $ref: "#/components/schemas/ProductConfigResponse"
+          description: Product-level configuration.
         created_at:
           type: string
           format: date-time
@@ -633,6 +680,7 @@ components:
       - id
       - tenant_id
       - name
+      - config
       - created_at
       - updated_at
     ProductListResponse:
@@ -5263,4 +5311,3 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailSendRecordListResponse'
-

@@ -31,6 +31,45 @@ func TestProductCreate(t *testing.T) {
 				t, http.StatusCreated,
 				response.StatusCode(), "create product should return 201 Created",
 			)
+			require.NotNil(t, response.JSON201)
+			assert.Equal(t, "anchor", response.JSON201.Config.ApiKeys.Prefix)
+		},
+	)
+
+	t.Run(
+		"CreateProductWithAPIKeyConfig", func(t *testing.T) {
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "Configured Product " + ids.MustNew("test"),
+					Description: ptr.Ptr("This product has a custom API key prefix"),
+					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+						Prefix: "acme",
+					}},
+				},
+			)
+			require.NoError(t, err, "create product request should not error")
+			require.Equal(t, http.StatusCreated, response.StatusCode())
+			require.NotNil(t, response.JSON201)
+			assert.Equal(t, "acme", response.JSON201.Config.ApiKeys.Prefix)
+		},
+	)
+
+	t.Run(
+		"CreateProductWithInvalidAPIKeyPrefix", func(t *testing.T) {
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name: "Invalid Prefix Product " + ids.MustNew("test"),
+					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+						Prefix: "Invalid-Prefix",
+					}},
+				},
+			)
+			require.NoError(t, err, "create product request should not error")
+			require.Equal(t, http.StatusBadRequest, response.StatusCode())
+			require.NotNil(t, response.JSON400)
+			assert.Contains(t, response.JSON400.Errors[0].Code, "INVALID_PRODUCT_API_KEY_PREFIX")
 		},
 	)
 

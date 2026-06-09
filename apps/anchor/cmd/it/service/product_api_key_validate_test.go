@@ -51,7 +51,7 @@ func TestApiKeyValidation(t *testing.T) {
 			permissions := GivenBasicAnchorPermissions(
 				t, tenantAndProduct.Product.ID,
 			)
-			anchorValue, err := security.GenerateProductAPIKey()
+			anchorValue, err := security.GenerateProductAPIKey(security.DefaultAPIKeyRootPrefix)
 			require.NoError(t, err)
 
 			legacyValue := strings.Replace(

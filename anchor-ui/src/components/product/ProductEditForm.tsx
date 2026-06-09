@@ -1,29 +1,50 @@
-import type { ProductRequest, ProductResponse } from "@/client";
+import {
+	type ProductRequest,
+	type ProductResponse,
+	zProductApiKeysConfigRequest,
+	zProductRequest,
+} from "@/client";
 import { updateProductMutation } from "@/client/@tanstack/react-query.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
 import { Button } from "@/components/ui/button";
+import {
+	Field,
+	FieldDescription,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const productFormSchema = z.object({
-	name: z
-		.string()
-		.min(1, "Product name is required")
-		.max(255, "Product name must be less than 255 characters"),
-	description: z
-		.string()
-		.max(1000, "Description must be less than 1000 characters")
-		.optional()
-		.nullable(),
-});
+const productFormSchema = zProductRequest
+	.pick({ name: true, description: true })
+	.extend({
+		apiKeyPrefix: zProductApiKeysConfigRequest.shape.prefix,
+	})
+	.superRefine((value, ctx) => {
+		if (!value.name?.trim()) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Product name is required",
+				path: ["name"],
+			});
+		}
+		if (!value.apiKeyPrefix?.trim()) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "API key prefix is required",
+				path: ["apiKeyPrefix"],
+			});
+		}
+	});
 
 type ProductFormData = z.infer<typeof productFormSchema>;
 
@@ -46,13 +67,14 @@ export function ProductEditForm({
 		defaultValues: {
 			name: product.name || "",
 			description: product.description || "",
+			apiKeyPrefix: product.config.api_keys.prefix || "anchor",
 		} as ProductFormData,
 		onSubmit: async ({ value }) => {
 			const result = productFormSchema.safeParse(value);
 			if (!result.success) {
 				return;
 			}
-			await onSubmit(value);
+			await onSubmit(result.data);
 		},
 		validators: {
 			onChange: productFormSchema,
@@ -81,9 +103,14 @@ export function ProductEditForm({
 		const updateData: ProductRequest = {
 			name: values.name,
 			description: values.description || "",
+			config: {
+				api_keys: {
+					prefix: values.apiKeyPrefix,
+				},
+			},
 		};
 
-		updateMutation.mutate({
+		await updateMutation.mutateAsync({
 			path: { product_id: productId },
 			body: updateData,
 		});
@@ -93,6 +120,7 @@ export function ProductEditForm({
 		form.reset({
 			name: product.name || "",
 			description: product.description || "",
+			apiKeyPrefix: product.config.api_keys.prefix || "anchor",
 		});
 	}, [product, form]);
 
@@ -104,42 +132,110 @@ export function ProductEditForm({
 					e.stopPropagation();
 					form.handleSubmit();
 				}}
-				className="space-y-6"
+				className="flex flex-col gap-6"
 			>
-				<form.Field name="name">
-					{(field) => (
-						<div className="space-y-2">
-							<Label>Product Name</Label>
-							<Input
-								placeholder="Enter product name"
-								value={field.state.value}
-								onChange={(e) => field.handleChange(e.target.value)}
-								onBlur={field.handleBlur}
-								disabled={updateMutation.isPending}
-							/>
-							<FormValidationError field={field} />
-						</div>
-					)}
-				</form.Field>
+				<Tabs defaultValue="details" className="gap-6">
+					<TabsList>
+						<TabsTrigger value="details">Details</TabsTrigger>
+						<TabsTrigger value="config">Config</TabsTrigger>
+					</TabsList>
 
-				<form.Field name="description">
-					{(field) => (
-						<div className="space-y-2">
-							<Label>Description</Label>
-							<Textarea
-								placeholder="Enter product description (optional)"
-								rows={4}
-								value={field.state.value || ""}
-								onChange={(e) => field.handleChange(e.target.value)}
-								onBlur={field.handleBlur}
-								disabled={updateMutation.isPending}
-							/>
-							<FormValidationError field={field} />
-						</div>
-					)}
-				</form.Field>
+					<TabsContent value="details">
+						<FieldGroup>
+							<form.Field name="name">
+								{(field) => (
+									<Field
+										data-disabled={updateMutation.isPending}
+										data-invalid={field.state.meta.errors.length > 0}
+									>
+										<FieldLabel htmlFor="product-name">Product Name</FieldLabel>
+										<Input
+											id="product-name"
+											placeholder="Enter product name"
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											disabled={updateMutation.isPending}
+											aria-invalid={field.state.meta.errors.length > 0}
+										/>
+										<FormValidationError field={field} />
+									</Field>
+								)}
+							</form.Field>
 
-				<div className="flex justify-end space-x-4">
+							<form.Field name="description">
+								{(field) => (
+									<Field
+										data-disabled={updateMutation.isPending}
+										data-invalid={field.state.meta.errors.length > 0}
+									>
+										<FieldLabel htmlFor="product-description">
+											Description
+										</FieldLabel>
+										<Textarea
+											id="product-description"
+											placeholder="Enter product description (optional)"
+											rows={4}
+											value={field.state.value || ""}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											disabled={updateMutation.isPending}
+											aria-invalid={field.state.meta.errors.length > 0}
+										/>
+										<FormValidationError field={field} />
+									</Field>
+								)}
+							</form.Field>
+						</FieldGroup>
+					</TabsContent>
+
+					<TabsContent value="config">
+						<Tabs defaultValue="api-keys" className="gap-6">
+							<TabsList>
+								<TabsTrigger value="api-keys">API keys</TabsTrigger>
+							</TabsList>
+							<TabsContent value="api-keys">
+								<FieldGroup>
+									<form.Field name="apiKeyPrefix">
+										{(field) => (
+											<Field
+												data-disabled={updateMutation.isPending}
+												data-invalid={field.state.meta.errors.length > 0}
+											>
+												<FieldLabel htmlFor="api-key-prefix">
+													API key prefix
+												</FieldLabel>
+												<Input
+													id="api-key-prefix"
+													placeholder="anchor"
+													value={field.state.value}
+													onChange={(e) => field.handleChange(e.target.value)}
+													onBlur={field.handleBlur}
+													disabled={updateMutation.isPending}
+													aria-invalid={field.state.meta.errors.length > 0}
+												/>
+												<FieldDescription>
+													New keys will start with{" "}
+													<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+														{field.state.value || "anchor"}_prd_apikey_
+													</code>{" "}
+													or{" "}
+													<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+														{field.state.value || "anchor"}_org_apikey_
+													</code>
+													. Existing keys remain valid.
+												</FieldDescription>
+												<FormValidationError field={field} />
+											</Field>
+										)}
+									</form.Field>
+								</FieldGroup>
+							</TabsContent>
+						</Tabs>
+					</TabsContent>
+				</Tabs>
+
+				<div className="flex justify-end gap-4">
 					<Button
 						type="button"
 						variant="outline"
@@ -171,7 +267,7 @@ export function ProductEditForm({
 							>
 								{updateMutation.isPending || isSubmitting ? (
 									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										<Spinner data-icon="inline-start" />
 										Updating...
 									</>
 								) : (
