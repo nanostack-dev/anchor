@@ -121,14 +121,15 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", nameValidationErr
 	}
 
-	clearAPIKey, err := security.GenerateOrganizationAPIKey(prod.Config.WithDefaults().APIKeys.Prefix)
+	organizationAPIKeyPrefix := prod.Config.WithDefaults().OrganizationAPIKeys.Prefix
+	clearAPIKey, err := security.GenerateOrganizationAPIKey(organizationAPIKeyPrefix)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate organization API key")
 		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
-	obfuscatedValue := security.ObfuscateOrganizationAPIKey(prod.Config.WithDefaults().APIKeys.Prefix, clearAPIKey)
+	obfuscatedValue := security.ObfuscateOrganizationAPIKey(organizationAPIKeyPrefix, clearAPIKey)
 
 	organizationAPIKey := orgapikey.OrganizationAPIKey{
 		OrganizationID:  input.OrganizationID,

@@ -42,7 +42,6 @@ type ProductAPIKeyService interface {
 type productAPIKeyService struct {
 	transactor     transactor.Transactor
 	apiKeyRepo     repository.ProductAPIKeyRepository
-	productRepo    repository.ProductRepository
 	permissionRepo repository.ProductPermissionRepository
 	cacheService   ProductAPIKeyCacheService
 	logger         zerolog.Logger
@@ -51,14 +50,12 @@ type productAPIKeyService struct {
 func NewProductAPIKeyService(
 	transactor transactor.Transactor,
 	apiKeyRepo repository.ProductAPIKeyRepository,
-	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductPermissionRepository,
 	cacheService ProductAPIKeyCacheService, logger zerolog.Logger,
 ) ProductAPIKeyService {
 	return &productAPIKeyService{
 		transactor:     transactor,
 		apiKeyRepo:     apiKeyRepo,
-		productRepo:    productRepo,
 		permissionRepo: permissionRepo,
 		cacheService:   cacheService,
 		logger: logger.With().Str(
@@ -79,23 +76,15 @@ func (s *productAPIKeyService) Create(
 	if err := s.nameUniqueValidation(ctx, input.ProductID, input.Name, logger); err != nil {
 		return apikey.ProductAPIKey{}, "", err
 	}
-	prod, err := s.productRepo.FindByIDInternal(ctx, input.ProductID)
-	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product for API key config")
-		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
-	}
-	if prod == nil {
-		return apikey.ProductAPIKey{}, "", apierror.ErrNotFound
-	}
 
-	clearAPIKey, err := security.GenerateProductAPIKey(prod.Config.WithDefaults().APIKeys.Prefix)
+	clearAPIKey, err := security.GenerateProductAPIKey()
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate API key")
 		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
-	obfuscatedValue := security.ObfuscateProductAPIKey(prod.Config.WithDefaults().APIKeys.Prefix, clearAPIKey)
+	obfuscatedValue := security.ObfuscateProductAPIKey(clearAPIKey)
 
 	productAPIKey := apikey.ProductAPIKey{
 		ProductID:       input.ProductID,

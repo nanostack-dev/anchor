@@ -189,7 +189,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 	t.Run("Legacy Prefix API Key", func(t *testing.T) {
 		ctxData := givenOrganizationAPIKeyContext(t)
 		permissions := []string{ctxData.PermissionSet.FileRead, ctxData.PermissionSet.FileCreate}
-		anchorValue, err := security.GenerateOrganizationAPIKey(security.DefaultAPIKeyRootPrefix)
+		anchorValue, err := security.GenerateOrganizationAPIKey(security.DefaultOrganizationAPIKeyRootPrefix)
 		require.NoError(t, err)
 
 		legacyValue := strings.Replace(

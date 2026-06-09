@@ -149,15 +149,15 @@ func (s *productService) Create(
 			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 			return createErr
 		}
-		if upsertConfigErr := s.productRepo.UpsertAPIKeyConfig(
+		if upsertConfigErr := s.productRepo.UpsertOrganizationAPIKeyConfig(
 			txCtx,
 			productCreated.ID,
-			config.APIKeys,
+			config.OrganizationAPIKeys,
 		); upsertConfigErr != nil {
 			logger.Error().
 				Str("product_id", productCreated.ID).
 				Err(upsertConfigErr).
-				Msg("failed to create product API key config")
+				Msg("failed to create product organization API key config")
 			return upsertConfigErr
 		}
 		productCreated.Config = config
@@ -215,15 +215,15 @@ func (s *productService) updateProductInTransaction(
 		return result, err
 	}
 	if input.Config != nil {
-		if configErr := s.productRepo.UpsertAPIKeyConfig(
+		if configErr := s.productRepo.UpsertOrganizationAPIKeyConfig(
 			ctx,
 			input.ProductID,
-			updatedProduct.Config.APIKeys,
+			updatedProduct.Config.OrganizationAPIKeys,
 		); configErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
 				Err(configErr).
-				Msg("failed to update product API key config")
+				Msg("failed to update product organization API key config")
 			return product.Product{}, configErr
 		}
 		result.Config = updatedProduct.Config
@@ -273,10 +273,10 @@ func (s *productService) updateProductFields(
 
 func (s *productService) normalizeConfig(config product.Config) (product.Config, error) {
 	config = config.WithDefaults()
-	if !security.IsValidAPIKeyRootPrefix(config.APIKeys.Prefix) {
+	if !security.IsValidOrganizationAPIKeyRootPrefix(config.OrganizationAPIKeys.Prefix) {
 		return product.Config{}, apierror.NewWithStatus(
-			"INVALID_PRODUCT_API_KEY_PREFIX",
-			"Product API key prefix must be 2-32 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and underscores without ending in an underscore",
+			"INVALID_PRODUCT_ORGANIZATION_API_KEY_PREFIX",
+			"Product organization API key prefix must be 2-32 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and underscores without ending in an underscore",
 			http.StatusBadRequest,
 		)
 	}

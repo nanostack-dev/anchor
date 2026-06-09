@@ -81,22 +81,22 @@ func TestGenerateProductAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				got, err := security.GenerateProductAPIKey(security.DefaultAPIKeyRootPrefix)
+				got, err := security.GenerateProductAPIKey()
 				if (err != nil) != tt.wantErr {
 					t.Errorf("security.GenerateProductAPIKey() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
 				if err == nil {
-					if !security.IsValidProductAPIKey(security.DefaultAPIKeyRootPrefix, got) {
+					if !security.IsValidProductAPIKey(got) {
 						t.Errorf("security.GenerateProductAPIKey() generated invalid API key: %v", got)
 					}
 					if !strings.HasPrefix(got, security.DefaultProductAPIKeyPrefix) {
 						t.Errorf("security.GenerateProductAPIKey() missing correct prefix: %v", got)
 					}
-					if len(got) != security.ProductAPIKeyLength(security.DefaultAPIKeyRootPrefix) {
+					if len(got) != security.ProductAPIKeyLength() {
 						t.Errorf(
 							"security.GenerateProductAPIKey() incorrect length: got %d, want %d", len(got),
-							security.ProductAPIKeyLength(security.DefaultAPIKeyRootPrefix),
+							security.ProductAPIKeyLength(),
 						)
 					}
 				}
@@ -118,23 +118,23 @@ func TestGenerateOrganizationAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				got, err := security.GenerateOrganizationAPIKey(security.DefaultAPIKeyRootPrefix)
+				got, err := security.GenerateOrganizationAPIKey(security.DefaultOrganizationAPIKeyRootPrefix)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("security.GenerateOrganizationAPIKey() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
 				if err == nil {
-					if !security.IsValidOrganizationAPIKey(security.DefaultAPIKeyRootPrefix, got) {
+					if !security.IsValidOrganizationAPIKey(security.DefaultOrganizationAPIKeyRootPrefix, got) {
 						t.Errorf("security.GenerateOrganizationAPIKey() generated invalid API key: %v", got)
 					}
 					if !strings.HasPrefix(got, security.DefaultOrganizationAPIKeyPrefix) {
 						t.Errorf("security.GenerateOrganizationAPIKey() missing correct prefix: %v", got)
 					}
-					if len(got) != security.OrganizationAPIKeyLength(security.DefaultAPIKeyRootPrefix) {
+					if len(got) != security.OrganizationAPIKeyLength(security.DefaultOrganizationAPIKeyRootPrefix) {
 						t.Errorf(
 							"security.GenerateOrganizationAPIKey() incorrect length: got %d, want %d",
 							len(got),
-							security.OrganizationAPIKeyLength(security.DefaultAPIKeyRootPrefix),
+							security.OrganizationAPIKeyLength(security.DefaultOrganizationAPIKeyRootPrefix),
 						)
 					}
 				}
@@ -143,16 +143,19 @@ func TestGenerateOrganizationAPIKey(t *testing.T) {
 	}
 }
 
-func TestGenerateAPIKeysWithCustomRootPrefix(t *testing.T) {
-	productKey, err := security.GenerateProductAPIKey(customRootPrefix)
+func TestGenerateAPIKeysWithCustomOrganizationRootPrefix(t *testing.T) {
+	productKey, err := security.GenerateProductAPIKey()
 	if err != nil {
 		t.Fatalf("security.GenerateProductAPIKey() failed: %v", err)
 	}
-	if !strings.HasPrefix(productKey, security.ProductAPIKeyPrefix(customRootPrefix)) {
+	if !strings.HasPrefix(productKey, security.DefaultProductAPIKeyPrefix) {
 		t.Fatalf("product API key has unexpected prefix: %s", productKey)
 	}
-	if !security.IsValidProductAPIKey(customRootPrefix, productKey) {
-		t.Fatalf("product API key with custom prefix is invalid: %s", productKey)
+	if strings.HasPrefix(productKey, customRootPrefix+"_prd_apikey_") {
+		t.Fatalf("product API key should not use custom organization prefix: %s", productKey)
+	}
+	if !security.IsValidProductAPIKey(productKey) {
+		t.Fatalf("product API key is invalid: %s", productKey)
 	}
 
 	organizationKey, err := security.GenerateOrganizationAPIKey(customRootPrefix)
@@ -167,13 +170,13 @@ func TestGenerateAPIKeysWithCustomRootPrefix(t *testing.T) {
 	}
 }
 
-func TestIsValidAPIKeyRootPrefix(t *testing.T) {
+func TestIsValidOrganizationAPIKeyRootPrefix(t *testing.T) {
 	tests := []struct {
 		name   string
 		prefix string
 		want   bool
 	}{
-		{name: "default", prefix: security.DefaultAPIKeyRootPrefix, want: true},
+		{name: "default", prefix: security.DefaultOrganizationAPIKeyRootPrefix, want: true},
 		{name: "lowercase with number", prefix: "acme2", want: true},
 		{name: "internal underscore", prefix: "acme_prod", want: true},
 		{name: "too short", prefix: "a", want: false},
@@ -185,8 +188,8 @@ func TestIsValidAPIKeyRootPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := security.IsValidAPIKeyRootPrefix(tt.prefix); got != tt.want {
-				t.Fatalf("security.IsValidAPIKeyRootPrefix(%q) = %v, want %v", tt.prefix, got, tt.want)
+			if got := security.IsValidOrganizationAPIKeyRootPrefix(tt.prefix); got != tt.want {
+				t.Fatalf("security.IsValidOrganizationAPIKeyRootPrefix(%q) = %v, want %v", tt.prefix, got, tt.want)
 			}
 		})
 	}
@@ -275,10 +278,7 @@ func TestIsValidProductAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.IsValidProductAPIKey(
-					security.DefaultAPIKeyRootPrefix,
-					tt.args.apiKey,
-				); got != tt.want {
+				if got := security.IsValidProductAPIKey(tt.args.apiKey); got != tt.want {
 					t.Errorf("security.IsValidProductAPIKey() = %v, want %v", got, tt.want)
 				}
 			},
@@ -312,7 +312,7 @@ func TestIsValidOrganizationAPIKey(t *testing.T) {
 		t.Run(
 			tt.name, func(t *testing.T) {
 				if got := security.IsValidOrganizationAPIKey(
-					security.DefaultAPIKeyRootPrefix,
+					security.DefaultOrganizationAPIKeyRootPrefix,
 					tt.args.apiKey,
 				); got != tt.want {
 					t.Errorf("security.IsValidOrganizationAPIKey() = %v, want %v", got, tt.want)
@@ -342,10 +342,7 @@ func TestObfuscateProductAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				if got := security.ObfuscateProductAPIKey(
-					security.DefaultAPIKeyRootPrefix,
-					tt.args.apiKey,
-				); got != tt.want {
+				if got := security.ObfuscateProductAPIKey(tt.args.apiKey); got != tt.want {
 					t.Errorf("security.ObfuscateProductAPIKey() = %v, want %v", got, tt.want)
 				}
 			},
@@ -369,7 +366,7 @@ func TestObfuscateOrganizationAPIKey(t *testing.T) {
 		t.Run(
 			tt.name, func(t *testing.T) {
 				if got := security.ObfuscateOrganizationAPIKey(
-					security.DefaultAPIKeyRootPrefix,
+					security.DefaultOrganizationAPIKeyRootPrefix,
 					tt.args.apiKey,
 				); got != tt.want {
 					t.Errorf("security.ObfuscateOrganizationAPIKey() = %v, want %v", got, tt.want)
@@ -384,7 +381,7 @@ func TestGenerateMultipleUniqueAPIKeys(t *testing.T) {
 	keys := make(map[string]bool)
 
 	for i := range numKeys {
-		key, err := security.GenerateProductAPIKey(security.DefaultAPIKeyRootPrefix)
+		key, err := security.GenerateProductAPIKey()
 		if err != nil {
 			t.Fatalf("security.GenerateProductAPIKey() failed on iteration %d: %v", i, err)
 		}
@@ -395,7 +392,7 @@ func TestGenerateMultipleUniqueAPIKeys(t *testing.T) {
 		keys[key] = true
 
 		// Verify each generated key is valid
-		if !security.IsValidProductAPIKey(security.DefaultAPIKeyRootPrefix, key) {
+		if !security.IsValidProductAPIKey(key) {
 			t.Fatalf("security.GenerateProductAPIKey() generated invalid key on iteration %d: %s", i, key)
 		}
 	}
@@ -426,13 +423,13 @@ func TestValidateSecretFormat(t *testing.T) {
 				if testKey == "" {
 					// Generate a fresh key for testing
 					var err error
-					testKey, err = security.GenerateProductAPIKey(security.DefaultAPIKeyRootPrefix)
+					testKey, err = security.GenerateProductAPIKey()
 					if err != nil {
 						t.Fatalf("Failed to generate test key: %v", err)
 					}
 				}
 
-				if got := security.IsValidProductAPIKey(security.DefaultAPIKeyRootPrefix, testKey); got != tt.want {
+				if got := security.IsValidProductAPIKey(testKey); got != tt.want {
 					t.Errorf(
 						"security.IsValidProductAPIKey() = %v, want %v for key: %s", got, tt.want, testKey,
 					)
@@ -443,7 +440,7 @@ func TestValidateSecretFormat(t *testing.T) {
 }
 
 func TestAPIKeyRoundTrip(t *testing.T) {
-	apiKey, err := security.GenerateProductAPIKey(security.DefaultAPIKeyRootPrefix)
+	apiKey, err := security.GenerateProductAPIKey()
 	if err != nil {
 		t.Fatalf("security.GenerateProductAPIKey() failed: %v", err)
 	}
@@ -462,7 +459,7 @@ func TestAPIKeyRoundTrip(t *testing.T) {
 		t.Error("security.CompareAPIKey() incorrectly matched wrong key")
 	}
 
-	obfuscated := security.ObfuscateProductAPIKey(security.DefaultAPIKeyRootPrefix, apiKey)
+	obfuscated := security.ObfuscateProductAPIKey(apiKey)
 	if !strings.HasPrefix(obfuscated, security.DefaultProductAPIKeyPrefix) {
 		t.Errorf("security.ObfuscateProductAPIKey() didn't preserve prefix: %s", obfuscated)
 	}

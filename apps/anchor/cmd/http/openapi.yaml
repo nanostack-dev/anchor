@@ -607,10 +607,10 @@ components:
     ProductConfigRequest:
       type: object
       properties:
-        api_keys:
-          $ref: "#/components/schemas/ProductAPIKeysConfigRequest"
-          description: Product API key configuration.
-    ProductAPIKeysConfigRequest:
+        organization_api_keys:
+          $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigRequest"
+          description: Organization API key configuration for this product.
+    ProductOrganizationAPIKeysConfigRequest:
       type: object
       properties:
         prefix:
@@ -619,29 +619,30 @@ components:
           maxLength: 32
           pattern: "^[a-z][a-z0-9_]*[a-z0-9]$"
           description: >-
-            Root prefix used when generating product and organization API keys
-            for this product. The key kind suffix is appended automatically,
-            e.g. "acme" produces "acme_prd_apikey_..." and
-            "acme_org_apikey_...".
+            Root prefix used when generating organization API keys for
+            organizations in this product. The organization API key suffix is
+            appended automatically, e.g. "acme" produces
+            "acme_org_apikey_...". Product API keys always use the fixed
+            Anchor product API key prefix.
           example: "anchor"
       required:
       - prefix
     ProductConfigResponse:
       type: object
       properties:
-        api_keys:
-          $ref: "#/components/schemas/ProductAPIKeysConfigResponse"
-          description: Product API key configuration.
+        organization_api_keys:
+          $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigResponse"
+          description: Organization API key configuration for this product.
       required:
-      - api_keys
-    ProductAPIKeysConfigResponse:
+      - organization_api_keys
+    ProductOrganizationAPIKeysConfigResponse:
       type: object
       properties:
         prefix:
           type: string
           description: >-
-            Root prefix used when generating product and organization API keys
-            for this product.
+            Root prefix used when generating organization API keys for
+            organizations in this product.
           example: "anchor"
       required:
       - prefix

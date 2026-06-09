@@ -1628,26 +1628,14 @@ type ProductAPIKeyUpdateRequest struct {
 	Permissions *[]string `json:"permissions,omitempty"`
 }
 
-// ProductAPIKeysConfigRequest defines model for ProductAPIKeysConfigRequest.
-type ProductAPIKeysConfigRequest struct {
-	// Prefix Root prefix used when generating product and organization API keys for this product. The key kind suffix is appended automatically, e.g. "acme" produces "acme_prd_apikey_..." and "acme_org_apikey_...".
-	Prefix string `json:"prefix"`
-}
-
-// ProductAPIKeysConfigResponse defines model for ProductAPIKeysConfigResponse.
-type ProductAPIKeysConfigResponse struct {
-	// Prefix Root prefix used when generating product and organization API keys for this product.
-	Prefix string `json:"prefix"`
-}
-
 // ProductConfigRequest defines model for ProductConfigRequest.
 type ProductConfigRequest struct {
-	ApiKeys *ProductAPIKeysConfigRequest `json:"api_keys,omitempty"`
+	OrganizationApiKeys *ProductOrganizationAPIKeysConfigRequest `json:"organization_api_keys,omitempty"`
 }
 
 // ProductConfigResponse defines model for ProductConfigResponse.
 type ProductConfigResponse struct {
-	ApiKeys ProductAPIKeysConfigResponse `json:"api_keys"`
+	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
 }
 
 // ProductFilter defines model for ProductFilter.
@@ -1667,6 +1655,18 @@ type ProductListResponse struct {
 
 	// Total Total number of matching items.
 	Total int64 `json:"total"`
+}
+
+// ProductOrganizationAPIKeysConfigRequest defines model for ProductOrganizationAPIKeysConfigRequest.
+type ProductOrganizationAPIKeysConfigRequest struct {
+	// Prefix Root prefix used when generating organization API keys for organizations in this product. The organization API key suffix is appended automatically, e.g. "acme" produces "acme_org_apikey_...". Product API keys always use the fixed Anchor product API key prefix.
+	Prefix string `json:"prefix"`
+}
+
+// ProductOrganizationAPIKeysConfigResponse defines model for ProductOrganizationAPIKeysConfigResponse.
+type ProductOrganizationAPIKeysConfigResponse struct {
+	// Prefix Root prefix used when generating organization API keys for organizations in this product.
+	Prefix string `json:"prefix"`
 }
 
 // ProductOrganizationListResponse defines model for ProductOrganizationListResponse.

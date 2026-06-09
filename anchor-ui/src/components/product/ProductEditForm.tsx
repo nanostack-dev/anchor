@@ -1,7 +1,7 @@
 import {
 	type ProductRequest,
 	type ProductResponse,
-	zProductApiKeysConfigRequest,
+	zProductOrganizationApiKeysConfigRequest,
 	zProductRequest,
 } from "@/client";
 import { updateProductMutation } from "@/client/@tanstack/react-query.gen";
@@ -27,7 +27,8 @@ import { z } from "zod";
 const productFormSchema = zProductRequest
 	.pick({ name: true, description: true })
 	.extend({
-		apiKeyPrefix: zProductApiKeysConfigRequest.shape.prefix,
+		organizationApiKeyPrefix:
+			zProductOrganizationApiKeysConfigRequest.shape.prefix,
 	})
 	.superRefine((value, ctx) => {
 		if (!value.name?.trim()) {
@@ -37,11 +38,11 @@ const productFormSchema = zProductRequest
 				path: ["name"],
 			});
 		}
-		if (!value.apiKeyPrefix?.trim()) {
+		if (!value.organizationApiKeyPrefix?.trim()) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: "API key prefix is required",
-				path: ["apiKeyPrefix"],
+				message: "Organization API key prefix is required",
+				path: ["organizationApiKeyPrefix"],
 			});
 		}
 	});
@@ -67,7 +68,8 @@ export function ProductEditForm({
 		defaultValues: {
 			name: product.name || "",
 			description: product.description || "",
-			apiKeyPrefix: product.config.api_keys.prefix || "anchor",
+			organizationApiKeyPrefix:
+				product.config.organization_api_keys.prefix || "anchor",
 		} as ProductFormData,
 		onSubmit: async ({ value }) => {
 			const result = productFormSchema.safeParse(value);
@@ -104,8 +106,8 @@ export function ProductEditForm({
 			name: values.name,
 			description: values.description || "",
 			config: {
-				api_keys: {
-					prefix: values.apiKeyPrefix,
+				organization_api_keys: {
+					prefix: values.organizationApiKeyPrefix,
 				},
 			},
 		};
@@ -120,7 +122,8 @@ export function ProductEditForm({
 		form.reset({
 			name: product.name || "",
 			description: product.description || "",
-			apiKeyPrefix: product.config.api_keys.prefix || "anchor",
+			organizationApiKeyPrefix:
+				product.config.organization_api_keys.prefix || "anchor",
 		});
 	}, [product, form]);
 
@@ -190,23 +193,25 @@ export function ProductEditForm({
 					</TabsContent>
 
 					<TabsContent value="config">
-						<Tabs defaultValue="api-keys" className="gap-6">
+						<Tabs defaultValue="organization-api-keys" className="gap-6">
 							<TabsList>
-								<TabsTrigger value="api-keys">API keys</TabsTrigger>
+								<TabsTrigger value="organization-api-keys">
+									Organization API keys
+								</TabsTrigger>
 							</TabsList>
-							<TabsContent value="api-keys">
+							<TabsContent value="organization-api-keys">
 								<FieldGroup>
-									<form.Field name="apiKeyPrefix">
+									<form.Field name="organizationApiKeyPrefix">
 										{(field) => (
 											<Field
 												data-disabled={updateMutation.isPending}
 												data-invalid={field.state.meta.errors.length > 0}
 											>
-												<FieldLabel htmlFor="api-key-prefix">
-													API key prefix
+												<FieldLabel htmlFor="organization-api-key-prefix">
+													Organization API key prefix
 												</FieldLabel>
 												<Input
-													id="api-key-prefix"
+													id="organization-api-key-prefix"
 													placeholder="anchor"
 													value={field.state.value}
 													onChange={(e) => field.handleChange(e.target.value)}
@@ -215,15 +220,9 @@ export function ProductEditForm({
 													aria-invalid={field.state.meta.errors.length > 0}
 												/>
 												<FieldDescription>
-													New keys will start with{" "}
-													<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-														{field.state.value || "anchor"}_prd_apikey_
-													</code>{" "}
-													or{" "}
-													<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-														{field.state.value || "anchor"}_org_apikey_
-													</code>
-													. Existing keys remain valid.
+													Changing this prefix only affects newly generated
+													organization API keys. Organization keys created with
+													a previous prefix remain valid.
 												</FieldDescription>
 												<FormValidationError field={field} />
 											</Field>
