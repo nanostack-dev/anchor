@@ -236,23 +236,23 @@ export type ProductRequest = {
 };
 
 export type ProductConfigRequest = {
-    api_keys?: ProductApiKeysConfigRequest;
+    organization_api_keys?: ProductOrganizationApiKeysConfigRequest;
 };
 
-export type ProductApiKeysConfigRequest = {
+export type ProductOrganizationApiKeysConfigRequest = {
     /**
-     * Root prefix used when generating product and organization API keys for this product. The key kind suffix is appended automatically, e.g. "acme" produces "acme_prd_apikey_..." and "acme_org_apikey_...".
+     * Root prefix used when generating organization API keys for organizations in this product. The organization API key suffix is appended automatically, e.g. "acme" produces "acme_org_apikey_...". Product API keys always use the fixed Anchor product API key prefix.
      */
     prefix: string;
 };
 
 export type ProductConfigResponse = {
-    api_keys: ProductApiKeysConfigResponse;
+    organization_api_keys: ProductOrganizationApiKeysConfigResponse;
 };
 
-export type ProductApiKeysConfigResponse = {
+export type ProductOrganizationApiKeysConfigResponse = {
     /**
-     * Root prefix used when generating product and organization API keys for this product.
+     * Root prefix used when generating organization API keys for organizations in this product.
      */
     prefix: string;
 };

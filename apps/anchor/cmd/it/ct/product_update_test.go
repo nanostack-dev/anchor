@@ -45,7 +45,7 @@ func TestProductUpdate(t *testing.T) {
 				ct.UpdateProductJSONRequestBody{
 					Name:        updatedName,
 					Description: ptr.Ptr(updatedDesc),
-					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+					Config: &ct.ProductConfigRequest{OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
 						Prefix: "acme",
 					}},
 				},
@@ -58,7 +58,7 @@ func TestProductUpdate(t *testing.T) {
 				t, updatedDesc, *updateResp.JSON200.Description,
 				"product description should be updated",
 			)
-			assert.Equal(t, "acme", updateResp.JSON200.Config.ApiKeys.Prefix)
+			assert.Equal(t, "acme", updateResp.JSON200.Config.OrganizationApiKeys.Prefix)
 
 			preserveResp, err := testOwnerClient(t).UpdateProductWithResponse(
 				ctx,
@@ -71,7 +71,7 @@ func TestProductUpdate(t *testing.T) {
 			require.NoError(t, err, "update product request should not error")
 			require.Equal(t, http.StatusOK, preserveResp.StatusCode())
 			require.NotNil(t, preserveResp.JSON200)
-			assert.Equal(t, "acme", preserveResp.JSON200.Config.ApiKeys.Prefix)
+			assert.Equal(t, "acme", preserveResp.JSON200.Config.OrganizationApiKeys.Prefix)
 		},
 	)
 

@@ -15,6 +15,7 @@ Scope: Go OaaS core for hierarchy, identity, RBAC, and tenancy. Read this file o
 - Public IDs use KSUIDs.
 - `Create`/`Update` repository methods return domain values, not pointers; re-query after update.
 - OpenAPI enums are shared component schemas, referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
+- Product API keys are Anchor management credentials for a product and must keep the fixed `anchor_prd_apikey_` prefix. Product-level prefix configuration applies only to organization API keys (`*_org_apikey_`) issued for organizations under that product.
 
 ## Verification
 

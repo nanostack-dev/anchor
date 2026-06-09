@@ -91,13 +91,13 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
-		"Create API key uses product API key prefix", func(t *testing.T) {
+		"Create API key keeps fixed Anchor prefix when organization prefix is configured", func(t *testing.T) {
 			prefix := "acme"
 			createProductResp, err := testOwnerClient(t).CreateProductWithResponse(
 				t.Context(),
 				ct.CreateProductJSONRequestBody{
 					Name: "API Prefix Product " + uuid.NewString(),
-					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+					Config: &ct.ProductConfigRequest{OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
 						Prefix: prefix,
 					}},
 				},
@@ -121,8 +121,9 @@ func TestProductAPIKeyCreate(t *testing.T) {
 				t.Fatalf("failed to create API key: %v", err)
 			}
 			if assert.NotNil(t, resp.JSON201) {
-				assert.True(t, strings.HasPrefix(resp.JSON201.Value, prefix+"_prd_apikey_"))
-				assert.True(t, strings.HasPrefix(resp.JSON201.ObfuscatedValue, prefix+"_prd_apikey_"))
+				assert.True(t, strings.HasPrefix(resp.JSON201.Value, "anchor_prd_apikey_"))
+				assert.True(t, strings.HasPrefix(resp.JSON201.ObfuscatedValue, "anchor_prd_apikey_"))
+				assert.False(t, strings.HasPrefix(resp.JSON201.Value, prefix+"_prd_apikey_"))
 			}
 		},
 	)

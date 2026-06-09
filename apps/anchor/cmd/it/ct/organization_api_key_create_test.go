@@ -68,7 +68,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 	)
 
 	t.Run(
-		"Create organization API key uses product API key prefix", func(t *testing.T) {
+		"Create organization API key uses product organization API key prefix", func(t *testing.T) {
 			prefix := "acmeorg"
 			getProductResp, err := product.OwnerAuthenticatedClient().GetProductWithResponse(
 				ctx,
@@ -84,7 +84,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 				ct.UpdateProductJSONRequestBody{
 					Name:        getProductResp.JSON200.Name,
 					Description: getProductResp.JSON200.Description,
-					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+					Config: &ct.ProductConfigRequest{OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
 						Prefix: prefix,
 					}},
 				},
