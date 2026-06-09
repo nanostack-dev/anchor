@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type ProductAPIKeyConfigs struct {
+type ProductOrganizationAPIKeyConfigs struct {
 	ProductID string `sql:"primary_key"`
 	Prefix    string
 	CreatedAt time.Time

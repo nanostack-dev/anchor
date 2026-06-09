@@ -43,8 +43,8 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 		Name:        prod.Name,
 		Description: description,
 		Config: ProductConfigResponse{
-			ApiKeys: ProductAPIKeysConfigResponse{
-				Prefix: prod.Config.WithDefaults().APIKeys.Prefix,
+			OrganizationApiKeys: ProductOrganizationAPIKeysConfigResponse{
+				Prefix: prod.Config.WithDefaults().OrganizationAPIKeys.Prefix,
 			},
 		},
 		CreatedAt: prod.CreatedAt,
@@ -54,11 +54,11 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 
 func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
 	productConfig := product.DefaultConfig()
-	if config == nil || config.ApiKeys == nil {
+	if config == nil || config.OrganizationApiKeys == nil {
 		return productConfig
 	}
 
-	productConfig.APIKeys.Prefix = config.ApiKeys.Prefix
+	productConfig.OrganizationAPIKeys.Prefix = config.OrganizationApiKeys.Prefix
 	return productConfig
 }
 

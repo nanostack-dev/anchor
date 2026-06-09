@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultAPIKeyRootPrefix = "anchor"
+	DefaultOrganizationAPIKeyRootPrefix = "anchor"
 	//nolint:gosec //only prefix
 	DefaultProductAPIKeyPrefix = "anchor_prd_apikey_"
 	//nolint:gosec //only prefix
@@ -29,7 +29,7 @@ const (
 	charset                         = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
-var apiKeyRootPrefixPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$`)
+var organizationAPIKeyRootPrefixPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$`)
 
 type contextKey string
 
@@ -87,45 +87,41 @@ func SetCurrentUserID(ctx context.Context, userID string) context.Context {
 func SetTenantID(ctx context.Context, tenantID string) context.Context {
 	return context.WithValue(ctx, tenantIDKey, tenantID)
 }
-func IsValidProductAPIKey(rootPrefix string, apiKey string) bool {
-	return validateSecretFormat(ProductAPIKeyPrefix(rootPrefix), apiKey)
+func IsValidProductAPIKey(apiKey string) bool {
+	return validateSecretFormat(DefaultProductAPIKeyPrefix, apiKey)
 }
 
 func IsValidOrganizationAPIKey(rootPrefix string, apiKey string) bool {
 	return validateSecretFormat(OrganizationAPIKeyPrefix(rootPrefix), apiKey)
 }
 
-func GenerateProductAPIKey(rootPrefix string) (string, error) {
-	return generateSecret(ProductAPIKeyPrefix(rootPrefix))
+func GenerateProductAPIKey() (string, error) {
+	return generateSecret(DefaultProductAPIKeyPrefix)
 }
 
 func GenerateOrganizationAPIKey(rootPrefix string) (string, error) {
 	return generateSecret(OrganizationAPIKeyPrefix(rootPrefix))
 }
 
-func ProductAPIKeyLength(rootPrefix string) int {
-	return apiKeyLength(ProductAPIKeyPrefix(rootPrefix))
+func ProductAPIKeyLength() int {
+	return apiKeyLength(DefaultProductAPIKeyPrefix)
 }
 
 func OrganizationAPIKeyLength(rootPrefix string) int {
 	return apiKeyLength(OrganizationAPIKeyPrefix(rootPrefix))
 }
 
-func ProductAPIKeyPrefix(rootPrefix string) string {
-	return normalizeAPIKeyRootPrefix(rootPrefix) + "_prd_apikey_"
-}
-
 func OrganizationAPIKeyPrefix(rootPrefix string) string {
-	return normalizeAPIKeyRootPrefix(rootPrefix) + "_org_apikey_"
+	return normalizeOrganizationAPIKeyRootPrefix(rootPrefix) + "_org_apikey_"
 }
 
-func IsValidAPIKeyRootPrefix(rootPrefix string) bool {
-	return len(rootPrefix) >= 2 && len(rootPrefix) <= 32 && apiKeyRootPrefixPattern.MatchString(rootPrefix)
+func IsValidOrganizationAPIKeyRootPrefix(rootPrefix string) bool {
+	return len(rootPrefix) >= 2 && len(rootPrefix) <= 32 && organizationAPIKeyRootPrefixPattern.MatchString(rootPrefix)
 }
 
-func normalizeAPIKeyRootPrefix(rootPrefix string) string {
+func normalizeOrganizationAPIKeyRootPrefix(rootPrefix string) string {
 	if rootPrefix == "" {
-		return DefaultAPIKeyRootPrefix
+		return DefaultOrganizationAPIKeyRootPrefix
 	}
 
 	return rootPrefix
@@ -177,8 +173,8 @@ func CompareAPIKey(apiKey, hashedAPIKey string) bool {
 	return frameworkcrypto.CompareSHA256Hash(apiKey, hashedAPIKey)
 }
 
-func ObfuscateProductAPIKey(rootPrefix string, apiKey string) string {
-	prefix := ProductAPIKeyPrefix(rootPrefix)
+func ObfuscateProductAPIKey(apiKey string) string {
+	prefix := DefaultProductAPIKeyPrefix
 	crc32Part := apiKey[len(apiKey)-crc32ChecksumLength-1:]
 	return prefix + "***" + crc32Part
 }

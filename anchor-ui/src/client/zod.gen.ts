@@ -147,12 +147,12 @@ export const zProductSearchRequest = zSearchRequest.and(z.object({
     ]))
 }));
 
-export const zProductApiKeysConfigRequest = z.object({
+export const zProductOrganizationApiKeysConfigRequest = z.object({
     prefix: z.string().min(2).max(32).regex(/^[a-z][a-z0-9_]*[a-z0-9]$/)
 });
 
 export const zProductConfigRequest = z.object({
-    api_keys: z.optional(zProductApiKeysConfigRequest)
+    organization_api_keys: z.optional(zProductOrganizationApiKeysConfigRequest)
 });
 
 export const zProductRequest = z.object({
@@ -164,12 +164,12 @@ export const zProductRequest = z.object({
     config: z.optional(zProductConfigRequest)
 });
 
-export const zProductApiKeysConfigResponse = z.object({
+export const zProductOrganizationApiKeysConfigResponse = z.object({
     prefix: z.string()
 });
 
 export const zProductConfigResponse = z.object({
-    api_keys: zProductApiKeysConfigResponse
+    organization_api_keys: zProductOrganizationApiKeysConfigResponse
 });
 
 export const zProductResponse = z.object({

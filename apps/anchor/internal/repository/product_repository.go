@@ -21,9 +21,9 @@ import (
 
 var _ ProductRepository = (*productRepositoryImpl)(nil)
 
-type productWithAPIKeyConfig struct {
+type productWithOrganizationAPIKeyConfig struct {
 	model.Products
-	ProductAPIKeyConfigs model.ProductAPIKeyConfigs
+	ProductOrganizationAPIKeyConfigs model.ProductOrganizationAPIKeyConfigs
 }
 
 func productsUpdatableColumns() postgres.ColumnList {
@@ -46,7 +46,11 @@ type ProductRepository interface {
 	Create(ctx context.Context, prod product.Product) (
 		product.Product, error,
 	)
-	UpsertAPIKeyConfig(ctx context.Context, productID string, config product.APIKeysConfig) error
+	UpsertOrganizationAPIKeyConfig(
+		ctx context.Context,
+		productID string,
+		config product.OrganizationAPIKeysConfig,
+	) error
 	Update(
 		ctx context.Context, tenantID string, product product.Product,
 	) (product.Product, error)
@@ -82,11 +86,11 @@ func (r *productRepositoryImpl) FindByID(
 ) (*product.Product, error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
-		table.ProductAPIKeyConfigs.AllColumns,
+		table.ProductOrganizationAPIKeyConfigs.AllColumns,
 	).FROM(
 		table.Products.LEFT_JOIN(
-			table.ProductAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductAPIKeyConfigs.ProductID),
+			table.ProductOrganizationAPIKeyConfigs,
+			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
 		),
 	).WHERE(
 		table.Products.ID.EQ(postgres.String(id)).AND(
@@ -94,10 +98,10 @@ func (r *productRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
 		ctx, r.db, stmt,
-		func(entity productWithAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductAPIKeyConfigs)
+		func(entity productWithOrganizationAPIKeyConfig) product.Product {
+			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
 }
@@ -107,20 +111,20 @@ func (r *productRepositoryImpl) FindByIDInternal(
 ) (*product.Product, error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
-		table.ProductAPIKeyConfigs.AllColumns,
+		table.ProductOrganizationAPIKeyConfigs.AllColumns,
 	).FROM(
 		table.Products.LEFT_JOIN(
-			table.ProductAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductAPIKeyConfigs.ProductID),
+			table.ProductOrganizationAPIKeyConfigs,
+			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
 		),
 	).WHERE(
 		table.Products.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
 		ctx, r.db, stmt,
-		func(entity productWithAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductAPIKeyConfigs)
+		func(entity productWithOrganizationAPIKeyConfig) product.Product {
+			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
 }
@@ -130,11 +134,11 @@ func (r *productRepositoryImpl) FindByTenantIDAndName(
 ) (*product.Product, error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
-		table.ProductAPIKeyConfigs.AllColumns,
+		table.ProductOrganizationAPIKeyConfigs.AllColumns,
 	).FROM(
 		table.Products.LEFT_JOIN(
-			table.ProductAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductAPIKeyConfigs.ProductID),
+			table.ProductOrganizationAPIKeyConfigs,
+			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
 		),
 	).WHERE(
 		table.Products.PlatformTenantID.EQ(postgres.String(tenantID)).AND(
@@ -142,10 +146,10 @@ func (r *productRepositoryImpl) FindByTenantIDAndName(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
 		ctx, r.db, stmt,
-		func(entity productWithAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductAPIKeyConfigs)
+		func(entity productWithOrganizationAPIKeyConfig) product.Product {
+			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
 }
@@ -167,25 +171,30 @@ func (r *productRepositoryImpl) Create(
 
 	return r.productMapper.ToDomain(
 		created,
-		r.productMapper.APIKeyConfigToEntity(created.ID, prod.Config.WithDefaults().APIKeys),
+		r.productMapper.OrganizationAPIKeyConfigToEntity(
+			created.ID,
+			prod.Config.WithDefaults().OrganizationAPIKeys,
+		),
 	), nil
 }
 
-func (r *productRepositoryImpl) UpsertAPIKeyConfig(
+func (r *productRepositoryImpl) UpsertOrganizationAPIKeyConfig(
 	ctx context.Context,
 	productID string,
-	config product.APIKeysConfig,
+	config product.OrganizationAPIKeysConfig,
 ) error {
-	entity := r.productMapper.APIKeyConfigToEntity(productID, config)
+	entity := r.productMapper.OrganizationAPIKeyConfigToEntity(productID, config)
 
-	stmt := table.ProductAPIKeyConfigs.INSERT(
-		table.ProductAPIKeyConfigs.ProductID,
-		table.ProductAPIKeyConfigs.Prefix,
+	stmt := table.ProductOrganizationAPIKeyConfigs.INSERT(
+		table.ProductOrganizationAPIKeyConfigs.ProductID,
+		table.ProductOrganizationAPIKeyConfigs.Prefix,
 	).MODEL(entity).
-		ON_CONFLICT(table.ProductAPIKeyConfigs.ProductID).
+		ON_CONFLICT(table.ProductOrganizationAPIKeyConfigs.ProductID).
 		DO_UPDATE(
 			postgres.SET(
-				table.ProductAPIKeyConfigs.Prefix.SET(table.ProductAPIKeyConfigs.EXCLUDED.Prefix),
+				table.ProductOrganizationAPIKeyConfigs.Prefix.SET(
+					table.ProductOrganizationAPIKeyConfigs.EXCLUDED.Prefix,
+				),
 			),
 		)
 
@@ -218,7 +227,10 @@ func (r *productRepositoryImpl) Update(
 
 	return r.productMapper.ToDomain(
 		updated,
-		r.productMapper.APIKeyConfigToEntity(updated.ID, currentProd.Config.WithDefaults().APIKeys),
+		r.productMapper.OrganizationAPIKeyConfigToEntity(
+			updated.ID,
+			currentProd.Config.WithDefaults().OrganizationAPIKeys,
+		),
 	), nil
 }
 
@@ -261,11 +273,11 @@ func (r *productRepositoryImpl) SearchByTenantID(
 
 	query := postgres.SELECT(
 		table.Products.AllColumns,
-		table.ProductAPIKeyConfigs.AllColumns,
+		table.ProductOrganizationAPIKeyConfigs.AllColumns,
 	).FROM(
 		table.Products.LEFT_JOIN(
-			table.ProductAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductAPIKeyConfigs.ProductID),
+			table.ProductOrganizationAPIKeyConfigs,
+			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
 		),
 	).WHERE(whereStmt)
 
@@ -310,8 +322,8 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		ctx,
 		r.db,
 		query,
-		func(entity productWithAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductAPIKeyConfigs)
+		func(entity productWithOrganizationAPIKeyConfig) product.Product {
+			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
 	if err != nil {
@@ -333,17 +345,17 @@ func (r *productRepositoryImpl) FindAllInternal(
 ) ([]product.Product, error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
-		table.ProductAPIKeyConfigs.AllColumns,
+		table.ProductOrganizationAPIKeyConfigs.AllColumns,
 	).FROM(
 		table.Products.LEFT_JOIN(
-			table.ProductAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductAPIKeyConfigs.ProductID),
+			table.ProductOrganizationAPIKeyConfigs,
+			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
 		),
 	)
 
-	return transactor.QueryMapSlice[productWithAPIKeyConfig, product.Product](
-		ctx, r.db, stmt, func(entity productWithAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductAPIKeyConfigs)
+	return transactor.QueryMapSlice[productWithOrganizationAPIKeyConfig, product.Product](
+		ctx, r.db, stmt, func(entity productWithOrganizationAPIKeyConfig) product.Product {
+			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
 }

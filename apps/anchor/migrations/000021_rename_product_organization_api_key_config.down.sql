@@ -1,0 +1,5 @@
+ALTER TRIGGER update_product_organization_api_key_configs_updated_at
+ON product_organization_api_key_configs
+RENAME TO update_product_api_key_configs_updated_at;
+
+ALTER TABLE product_organization_api_key_configs RENAME TO product_api_key_configs;

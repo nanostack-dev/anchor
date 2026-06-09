@@ -6,13 +6,13 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
-const DefaultAPIKeyPrefix = "anchor"
+const DefaultOrganizationAPIKeyRootPrefix = "anchor"
 
 type Config struct {
-	APIKeys APIKeysConfig
+	OrganizationAPIKeys OrganizationAPIKeysConfig
 }
 
-type APIKeysConfig struct {
+type OrganizationAPIKeysConfig struct {
 	Prefix string
 }
 
@@ -32,12 +32,14 @@ func (p *Product) GenerateID() {
 }
 
 func DefaultConfig() Config {
-	return Config{APIKeys: APIKeysConfig{Prefix: DefaultAPIKeyPrefix}}
+	return Config{
+		OrganizationAPIKeys: OrganizationAPIKeysConfig{Prefix: DefaultOrganizationAPIKeyRootPrefix},
+	}
 }
 
 func (c Config) WithDefaults() Config {
-	if c.APIKeys.Prefix == "" {
-		c.APIKeys.Prefix = DefaultAPIKeyPrefix
+	if c.OrganizationAPIKeys.Prefix == "" {
+		c.OrganizationAPIKeys.Prefix = DefaultOrganizationAPIKeyRootPrefix
 	}
 
 	return c
