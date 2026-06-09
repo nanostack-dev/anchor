@@ -38,23 +38,22 @@ export default function ProductEditPage() {
 	return (
 		<Page
 			title="Edit Product"
-			description="Update product details"
+			description="Update product details and configuration"
 			variant="full"
 		>
-			<div className="space-y-6">
-				<div className="flex items-center space-x-4">
+			<div className="flex flex-col gap-6">
+				<div className="flex items-center gap-4">
 					<Button onClick={handleBack} variant="outline" size="sm">
-						<ArrowLeft className="mr-2 h-4 w-4" />
+						<ArrowLeft data-icon="inline-start" />
 						Back to Products
 					</Button>
 				</div>
 
-				<Card className="max-w-2xl">
+				<Card className="max-w-3xl">
 					<CardHeader>
-						<CardTitle>Product Details</CardTitle>
+						<CardTitle>Product</CardTitle>
 						<CardDescription>
-							Update the product information below. All changes will be saved
-							immediately.
+							Update product information and API key generation settings.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

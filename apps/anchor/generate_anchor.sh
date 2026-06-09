@@ -7,6 +7,9 @@ ANCHOR_DB_PORT=25895
 ANCHOR_DB_PASSWORD=$(openssl rand -base64 32 | tr -d /=+ | cut -c1-32)
 POSTGRES_CONTAINER="temp-postgres"
 
+export ANCHOR_DB_PORT
+export ANCHOR_DB_PASSWORD
+
 # Clean up function to ensure we always remove the container
 cleanup() {
   echo "Cleaning up resources..."

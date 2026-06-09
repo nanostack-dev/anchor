@@ -225,13 +225,36 @@ export type ProductSearchRequest = SearchRequest & {
 
 export type ProductRequest = {
     /**
-     * Name of the product. Must be unique within the PlatformTenant.
+     * Name of the product. Must be unique within the PlatformTenant using case-insensitive matching.
      */
     name: string;
     /**
      * Optional description for the product.
      */
     description?: string | null;
+    config?: ProductConfigRequest;
+};
+
+export type ProductConfigRequest = {
+    api_keys?: ProductApiKeysConfigRequest;
+};
+
+export type ProductApiKeysConfigRequest = {
+    /**
+     * Root prefix used when generating product and organization API keys for this product. The key kind suffix is appended automatically, e.g. "acme" produces "acme_prd_apikey_..." and "acme_org_apikey_...".
+     */
+    prefix: string;
+};
+
+export type ProductConfigResponse = {
+    api_keys: ProductApiKeysConfigResponse;
+};
+
+export type ProductApiKeysConfigResponse = {
+    /**
+     * Root prefix used when generating product and organization API keys for this product.
+     */
+    prefix: string;
 };
 
 export type ProductResponse = {
@@ -245,6 +268,7 @@ export type ProductResponse = {
      * Description of the product.
      */
     description?: string | null;
+    config: ProductConfigResponse;
     /**
      * Timestamp when the product was created.
      */
@@ -265,7 +289,7 @@ export type ProductListResponse = PagedListResponse & {
 export type ProductPermissionResponse = {
     product_id: Ksuid;
     /**
-     * The permission string identifier. This is the value used when assigning the permission to a role (e.g. "product:settings:read").
+     * The permission string identifier. Permission name filters and validation use case-insensitive matching and return the canonical stored casing.
      */
     name: string;
     /**
@@ -285,7 +309,7 @@ export type ProductPermissionListResponse = PagedListResponse & {
  */
 export type CreateProductResourcePermissionRequest = {
     /**
-     * The resource permission identifier, using the format "<resource>:<action>" (e.g. "document:read", "file:delete", "workspace:invite"). Must be unique within the product.
+     * The resource permission identifier, using the format "<resource>:<action>" (e.g. "document:read", "file:delete", "workspace:invite"). Must be unique within the product using case-insensitive matching.
      */
     name: string;
     /**
@@ -356,7 +380,7 @@ export type ProductResourcePermissionListResponse = PagedListResponse & {
 
 export type ProductRoleCreateRequest = {
     /**
-     * Name of the product role. Must be unique within the Product.
+     * Name of the product role. Must be unique within the Product using case-insensitive matching.
      */
     name: string;
     /**
@@ -371,7 +395,7 @@ export type ProductRoleCreateRequest = {
 
 export type ProductRoleUpdateRequest = {
     /**
-     * Name of the product role. Must be unique within the Product.
+     * Name of the product role. Must be unique within the Product using case-insensitive matching.
      */
     name: string;
     /**

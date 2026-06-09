@@ -91,6 +91,42 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
+		"Create API key uses product API key prefix", func(t *testing.T) {
+			prefix := "acme"
+			createProductResp, err := testOwnerClient(t).CreateProductWithResponse(
+				t.Context(),
+				ct.CreateProductJSONRequestBody{
+					Name: "API Prefix Product " + uuid.NewString(),
+					Config: &ct.ProductConfigRequest{ApiKeys: &ct.ProductAPIKeysConfigRequest{
+						Prefix: prefix,
+					}},
+				},
+			)
+			if err != nil {
+				t.Fatalf("failed to create product: %v", err)
+			}
+			if !assert.NotNil(t, createProductResp.JSON201) {
+				return
+			}
+
+			resp, err := testOwnerClient(t).CreateProductAPIKeyWithResponse(
+				t.Context(),
+				createProductResp.JSON201.Id,
+				ct.CreateProductAPIKeyJSONRequestBody{
+					Name:        uuid.NewString(),
+					Permissions: []string{permission1},
+				},
+			)
+			if err != nil {
+				t.Fatalf("failed to create API key: %v", err)
+			}
+			if assert.NotNil(t, resp.JSON201) {
+				assert.True(t, strings.HasPrefix(resp.JSON201.Value, prefix+"_prd_apikey_"))
+				assert.True(t, strings.HasPrefix(resp.JSON201.ObfuscatedValue, prefix+"_prd_apikey_"))
+			}
+		},
+	)
+	t.Run(
 		"Name validation cases should trigger 400 Bad Request", func(t *testing.T) {
 			testCases := []struct {
 				name        string

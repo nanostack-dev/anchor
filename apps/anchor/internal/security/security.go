@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/big"
+	"regexp"
 	"strings"
 
 	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
@@ -13,6 +14,7 @@ import (
 )
 
 const (
+	DefaultAPIKeyRootPrefix = "anchor"
 	//nolint:gosec //only prefix
 	DefaultProductAPIKeyPrefix = "anchor_prd_apikey_"
 	//nolint:gosec //only prefix
@@ -26,6 +28,8 @@ const (
 	obfuscateSuffixLength           = 4
 	charset                         = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
+
+var apiKeyRootPrefixPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$`)
 
 type contextKey string
 
@@ -83,28 +87,48 @@ func SetCurrentUserID(ctx context.Context, userID string) context.Context {
 func SetTenantID(ctx context.Context, tenantID string) context.Context {
 	return context.WithValue(ctx, tenantIDKey, tenantID)
 }
-func IsValidProductAPIKey(apiKey string) bool {
-	return validateSecretFormat(DefaultProductAPIKeyPrefix, apiKey)
+func IsValidProductAPIKey(rootPrefix string, apiKey string) bool {
+	return validateSecretFormat(ProductAPIKeyPrefix(rootPrefix), apiKey)
 }
 
-func IsValidOrganizationAPIKey(apiKey string) bool {
-	return validateSecretFormat(DefaultOrganizationAPIKeyPrefix, apiKey)
+func IsValidOrganizationAPIKey(rootPrefix string, apiKey string) bool {
+	return validateSecretFormat(OrganizationAPIKeyPrefix(rootPrefix), apiKey)
 }
 
-func GenerateProductAPIKey() (string, error) {
-	return generateSecret(DefaultProductAPIKeyPrefix)
+func GenerateProductAPIKey(rootPrefix string) (string, error) {
+	return generateSecret(ProductAPIKeyPrefix(rootPrefix))
 }
 
-func GenerateOrganizationAPIKey() (string, error) {
-	return generateSecret(DefaultOrganizationAPIKeyPrefix)
+func GenerateOrganizationAPIKey(rootPrefix string) (string, error) {
+	return generateSecret(OrganizationAPIKeyPrefix(rootPrefix))
 }
 
-func ProductAPIKeyLength() int {
-	return apiKeyLength(DefaultProductAPIKeyPrefix)
+func ProductAPIKeyLength(rootPrefix string) int {
+	return apiKeyLength(ProductAPIKeyPrefix(rootPrefix))
 }
 
-func OrganizationAPIKeyLength() int {
-	return apiKeyLength(DefaultOrganizationAPIKeyPrefix)
+func OrganizationAPIKeyLength(rootPrefix string) int {
+	return apiKeyLength(OrganizationAPIKeyPrefix(rootPrefix))
+}
+
+func ProductAPIKeyPrefix(rootPrefix string) string {
+	return normalizeAPIKeyRootPrefix(rootPrefix) + "_prd_apikey_"
+}
+
+func OrganizationAPIKeyPrefix(rootPrefix string) string {
+	return normalizeAPIKeyRootPrefix(rootPrefix) + "_org_apikey_"
+}
+
+func IsValidAPIKeyRootPrefix(rootPrefix string) bool {
+	return len(rootPrefix) >= 2 && len(rootPrefix) <= 32 && apiKeyRootPrefixPattern.MatchString(rootPrefix)
+}
+
+func normalizeAPIKeyRootPrefix(rootPrefix string) string {
+	if rootPrefix == "" {
+		return DefaultAPIKeyRootPrefix
+	}
+
+	return rootPrefix
 }
 
 // generateSecret generates secret for anchor, it uses a prefix, random bytes, and a CRC32 checksum.
@@ -136,12 +160,7 @@ func apiKeyLength(prefix string) int {
 }
 
 func validateSecretFormat(prefix, apiKey string) bool {
-	switch prefix {
-	case DefaultProductAPIKeyPrefix, DefaultOrganizationAPIKeyPrefix:
-		if len(apiKey) < apiKeyLength(prefix) {
-			return false
-		}
-	default:
+	if prefix == "" || len(apiKey) < apiKeyLength(prefix) {
 		return false
 	}
 	if !strings.HasPrefix(apiKey, prefix) {
@@ -158,14 +177,14 @@ func CompareAPIKey(apiKey, hashedAPIKey string) bool {
 	return frameworkcrypto.CompareSHA256Hash(apiKey, hashedAPIKey)
 }
 
-func ObfuscateProductAPIKey(apiKey string) string {
-	prefix := DefaultProductAPIKeyPrefix
+func ObfuscateProductAPIKey(rootPrefix string, apiKey string) string {
+	prefix := ProductAPIKeyPrefix(rootPrefix)
 	crc32Part := apiKey[len(apiKey)-crc32ChecksumLength-1:]
 	return prefix + "***" + crc32Part
 }
 
-func ObfuscateOrganizationAPIKey(apiKey string) string {
-	prefix := DefaultOrganizationAPIKeyPrefix
+func ObfuscateOrganizationAPIKey(rootPrefix string, apiKey string) string {
+	prefix := OrganizationAPIKeyPrefix(rootPrefix)
 	crc32Part := apiKey[len(apiKey)-crc32ChecksumLength-1:]
 	return prefix + "***" + crc32Part
 }

@@ -11,17 +11,22 @@ func NewProductMapper() *ProductMapper {
 	return &ProductMapper{}
 }
 
-func (m *ProductMapper) ToDomain(entity model.Products) product.Product {
+func (m *ProductMapper) ToDomain(entity model.Products, apiKeyConfig model.ProductAPIKeyConfigs) product.Product {
 	var description string
 	if entity.Description != nil {
 		description = *entity.Description
 	}
+
+	config := product.Config{
+		APIKeys: product.APIKeysConfig{Prefix: apiKeyConfig.Prefix},
+	}.WithDefaults()
 
 	return product.Product{
 		ID:               entity.ID,
 		PlatformTenantID: entity.PlatformTenantID,
 		Name:             entity.Name,
 		Description:      description,
+		Config:           config,
 		CreatedAt:        entity.CreatedAt,
 		UpdatedAt:        entity.UpdatedAt,
 	}
@@ -41,5 +46,15 @@ func (m *ProductMapper) ToEntity(domain product.Product) model.Products {
 		Description:      description,
 		CreatedAt:        domain.CreatedAt,
 		UpdatedAt:        domain.UpdatedAt,
+	}
+}
+
+func (m *ProductMapper) APIKeyConfigToEntity(
+	productID string,
+	config product.APIKeysConfig,
+) model.ProductAPIKeyConfigs {
+	return model.ProductAPIKeyConfigs{
+		ProductID: productID,
+		Prefix:    config.Prefix,
 	}
 }

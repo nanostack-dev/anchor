@@ -6,6 +6,7 @@ type CreateProductInput struct {
 	TenantID    string `json:"tenant_id"   validate:"required,notblank"`
 	Name        string `json:"name"        validate:"required,notblank"`
 	Description string `json:"description" validate:"omitempty,max=1000"`
+	Config      Config `json:"config"`
 }
 
 type UpdateProductInput struct {
@@ -13,6 +14,7 @@ type UpdateProductInput struct {
 	ProductID   string  `json:"product_id"            validate:"required,notblank"`
 	Name        *string `json:"name,omitempty"        validate:"omitempty,notblank"`
 	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
+	Config      *Config `json:"config,omitempty"`
 }
 
 type SearchProductFilter struct {
