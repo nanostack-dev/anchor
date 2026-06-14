@@ -496,15 +496,23 @@ func (s *integrationService) applyInstanceUpdates(
 		return err
 	}
 
-	if err := validateInstanceIngestionState(existing); err != nil {
+	if err := validateInstanceIngestionState(existing, prov); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validateInstanceIngestionState(existing *integration.Instance) error {
+// validateInstanceIngestionState enforces that an active integration capable of
+// ingesting inbound webhooks has a webhook secret configured. Providers that do
+// not implement WebhookIngestor (e.g. outbound-only SMTP) never receive
+// webhooks, so the secret is not required for them.
+func validateInstanceIngestionState(existing *integration.Instance, prov provider.Provider) error {
 	if existing.Status != integration.StatusActive {
+		return nil
+	}
+
+	if _, ingests := prov.(provider.WebhookIngestor); !ingests {
 		return nil
 	}
 
