@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
 	frameworkapierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 
 	"anchor/internal/api"
@@ -75,7 +74,6 @@ func (em *ErrorMiddleware) prepareErrorResponse(err error) (api.ApiErrorResponse
 	}
 
 	em.logger.Error().Err(err).Msg("Unhandled internal server error")
-	sharedsentry.CaptureException(err)
 	apiResponse := mapFrameworkErrorsToAPI(frameworkapierror.ErrUnexpected)
 	return apiResponse, http.StatusInternalServerError
 }
