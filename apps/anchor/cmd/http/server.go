@@ -16,7 +16,6 @@ import (
 	"anchor/internal/buildinfo"
 	"anchor/internal/middleware"
 
-	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
 	"github.com/nanostack-dev/pgkit/pgqueue"
 
@@ -124,7 +123,6 @@ func startHTTPServer(params ServerParams) error {
 
 func setupRouter(params ServerParams) *chi.Mux {
 	router := chi.NewRouter()
-	router.Use(sharedsentry.HTTPMiddleware())
 
 	allowedOrigins := parseAllowedOrigins(params.ServerConfig.AllowedOrigin)
 
@@ -150,7 +148,6 @@ func setupRouter(params ServerParams) *chi.Mux {
 				"Content-Type",
 				"X-CSRF-Token",
 				"Baggage",
-				"Sentry-Trace",
 				"Traceparent",
 				"Tracestate",
 				"X-Request-Id",
