@@ -9,7 +9,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
 	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
 	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
-	sharedsentry "github.com/nanostack-dev/nanostack-framework/modules/sentry"
 	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
 
 	httpserver "anchor/cmd/http"
@@ -52,7 +51,6 @@ func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
 		pglock.Module,
 		mapper.NewModule(),
 		repository.NewModule(),
-		sharedsentry.NewModule(),
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),
