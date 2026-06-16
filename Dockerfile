@@ -66,6 +66,13 @@ ENV SERVER_PORT=8080
 # - POSTGRES_DB
 # - ADMIN_JWT_SECRET
 
+# Container healthcheck: the app binary probes its own /health endpoint (exec
+# form — this is a distroless image with no shell), so a process that is running
+# but no longer serving is reported unhealthy and Swarm can reschedule it.
+# start-period covers boot + migrations.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=3 \
+    CMD ["/app/anchor", "-healthcheck"]
+
 # Run the application
 ENTRYPOINT ["/app/anchor"]
 CMD []
