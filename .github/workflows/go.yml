@@ -33,7 +33,7 @@ jobs:
       test_command: pnpm test
       build_command: pnpm build
       build_env: |
-        VITE_API_BASE_URL=https://anchorapidev.nanostack.dev
+        VITE_API_BASE_URL=https://apidev.tryanchor.dev
 
   go-build-test:
     needs: frontend-verify

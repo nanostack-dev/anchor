@@ -258,14 +258,15 @@ func isAllowedAnchorSubdomain(origin string) bool {
 		return false
 	}
 	hostname := strings.ToLower(parsedOrigin.Hostname())
-	if hostname == "anchor.nanostack.dev" {
+	if hostname == "app.tryanchor.dev" {
 		return true
 	}
-	if hostname == "anchordev.nanostack.dev" {
+	if hostname == "dev.tryanchor.dev" {
 		return true
 	}
-	return strings.HasSuffix(hostname, ".anchor.nanostack.dev") ||
-		strings.HasSuffix(hostname, ".anchordev.nanostack.dev")
+	// Covers preview frontends (pr-<slug>.preview.tryanchor.dev) and any other
+	// subdomain of the anchor zone.
+	return strings.HasSuffix(hostname, ".tryanchor.dev")
 }
 
 func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
