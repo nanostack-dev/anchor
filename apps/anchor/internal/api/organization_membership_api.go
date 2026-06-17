@@ -29,7 +29,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.AddMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.Body.ProductUserId).
@@ -64,7 +64,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.GetMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -101,7 +101,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 
 	membership, err := s.OrganizationMembershipService.UpdateMemberRole(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -126,7 +126,7 @@ func (s *AnchorAPI) RemoveOrganizationMember(
 
 	err := s.OrganizationMembershipService.RemoveMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -191,7 +191,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 
 	res, err := s.OrganizationMembershipService.SearchMembers(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to search organization members")

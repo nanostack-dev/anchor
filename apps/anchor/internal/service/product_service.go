@@ -125,7 +125,7 @@ func (s *productService) Create(
 		return product.Product{}, err
 	}
 	if existingProduct != nil {
-		logger.Error().Str("name", input.Name).Msg("product already exists")
+		logger.Debug().Str("name", input.Name).Msg("product already exists")
 		return product.Product{}, ErrProductAlreadyExists
 	}
 
@@ -243,7 +243,7 @@ func (s *productService) findProductForUpdate(
 		return nil, err
 	}
 	if optProduct == nil {
-		logger.Error().Str("product_id", productID).Msg("product not found for update")
+		logger.Debug().Str("product_id", productID).Msg("product not found for update")
 		return nil, apierror.ErrNotFound
 	}
 	return optProduct, nil
@@ -293,7 +293,7 @@ func (s *productService) validateNameUniqueness(
 		return err
 	}
 	if existingProduct != nil && existingProduct.ID != productID {
-		logger.Error().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
+		logger.Debug().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
 		return ErrProductAlreadyExists
 	}
 	return nil

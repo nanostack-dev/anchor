@@ -31,7 +31,7 @@ func (s *AnchorAPI) SearchPlatformUsers(
 
 	result, err := s.PlatformUserService.SearchPlatformUsers(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to search platform users")
+		logAPIError(s.logger, err).Msg("failed to search platform users")
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func (s *AnchorAPI) DeletePlatformUser(
 
 	err = s.PlatformUserService.DeletePlatformUser(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to delete platform user")
+		logAPIError(s.logger, err).Msg("failed to delete platform user")
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func (s *AnchorAPI) GetPlatformUser(
 
 	user, err := s.PlatformUserService.GetPlatformUser(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Str(
+		logAPIError(s.logger, err).Str(
 			"platformUserId", request.PlatformUserId,
 		).Msg("failed to get platform user")
 		return nil, err
@@ -118,7 +118,7 @@ func (s *AnchorAPI) GetCurrentUser(
 
 	user, err := s.PlatformUserService.GetPlatformUserByUserID(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Str("userID", userID).Str(
+		logAPIError(s.logger, err).Str("userID", userID).Str(
 			"tenantID", tenantID,
 		).Msg("failed to get current user")
 		return nil, err

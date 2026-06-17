@@ -171,7 +171,7 @@ func (s *AnchorAPI) CreateIntegrationInstance(
 
 	created, err := s.IntegrationService.CreateInstance(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Msg("failed to create integration instance")
 		return nil, err
@@ -195,7 +195,7 @@ func (s *AnchorAPI) ListIntegrationInstances(
 
 	instances, err := s.IntegrationService.ListInstances(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Msg("failed to list integration instances")
 		return nil, err
@@ -228,7 +228,7 @@ func (s *AnchorAPI) GetIntegrationInstance(
 
 	instance, err := s.IntegrationService.GetInstance(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("integration_instance_id", request.IntegrationInstanceId).
 			Msg("failed to get integration instance")
@@ -272,7 +272,7 @@ func (s *AnchorAPI) UpdateIntegrationInstance(
 
 	updated, err := s.IntegrationService.UpdateInstance(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("integration_instance_id", request.IntegrationInstanceId).
 			Msg("failed to update integration instance")
@@ -298,7 +298,7 @@ func (s *AnchorAPI) DeleteIntegrationInstance(
 
 	err = s.IntegrationService.DeleteInstance(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("integration_instance_id", request.IntegrationInstanceId).
 			Msg("failed to delete integration instance")
@@ -324,7 +324,7 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 
 	logs, err := s.IntegrationService.ListAuditLogs(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("integration_instance_id", request.IntegrationInstanceId).
 			Msg("failed to list integration audit logs")
@@ -370,7 +370,7 @@ func (s *AnchorAPI) IngestWebhook(
 
 	event, err := s.IntegrationService.IngestWebhook(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("provider_type", string(request.ProviderType)).
 			Msg("failed to ingest webhook")
