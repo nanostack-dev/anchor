@@ -71,7 +71,7 @@ func seedSMTPInstance(t *testing.T, tc testCtx, mp *mailpit.Mailpit) {
 		AuthMethod:  smtpprov.AuthMethodPlain,
 		Username:    "test",
 		Password:    "test",
-		FromAddress: "noreply@anchor.nanostack.dev",
+		FromAddress: "noreply@tryanchor.dev",
 		FromName:    "Anchor",
 	}
 	cfgJSON, err := json.Marshal(cfg)

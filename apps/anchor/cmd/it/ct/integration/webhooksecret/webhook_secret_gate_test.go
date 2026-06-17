@@ -31,7 +31,7 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 		Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
 		AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
 		Username:    ptr.Ptr("test"),
-		FromAddress: ptr.Ptr("noreply@anchor.nanostack.dev"),
+		FromAddress: ptr.Ptr("noreply@tryanchor.dev"),
 		FromName:    ptr.Ptr("Anchor Updated"),
 	}))
 

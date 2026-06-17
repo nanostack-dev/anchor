@@ -8,11 +8,11 @@ not_found_handling = "single-page-application"
 [env.dev]
 name = "anchor-frontend-dev"
 routes = [
-  { pattern = "anchordev.nanostack.dev", custom_domain = true }
+  { pattern = "dev.tryanchor.dev", custom_domain = true }
 ]
 
 [env.production]
 name = "anchor-frontend"
 routes = [
-  { pattern = "anchor.nanostack.dev", custom_domain = true }
+  { pattern = "app.tryanchor.dev", custom_domain = true }
 ]
