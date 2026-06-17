@@ -290,7 +290,7 @@ func (s *organizationService) Update(
 		return organization.Organization{}, err
 	}
 	if optOrg == nil {
-		logger.Error().
+		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for update")
@@ -342,7 +342,7 @@ func (s *organizationService) Delete(
 		return err
 	}
 	if optOrg == nil {
-		logger.Error().
+		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for deletion")

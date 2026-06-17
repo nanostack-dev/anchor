@@ -473,8 +473,8 @@ func (s *productRoleService) permissionsValidation(
 		Permissions: permissionNames,
 	}
 	if err := validateStruct(inputValidator); err != nil {
-		logger.Error().Err(err).Msg("too many permissions requested")
-		return apierror.ErrUnexpected
+		logger.Debug().Err(err).Msg("too many permissions requested")
+		return err
 	}
 
 	searchReq := search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
