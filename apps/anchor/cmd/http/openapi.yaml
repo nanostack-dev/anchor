@@ -2801,6 +2801,13 @@ components:
     EmailSendRequest:
       type: object
       required: [to_address]
+      description: >-
+        Dispatch a transactional email. Supply EITHER a template selector
+        (template_id or template_slug, rendered with variables) OR raw content
+        (subject plus at least one of body_html/body_text). Raw content lets
+        callers that render their own message body send without authoring a
+        template first. dedupe_key is the idempotency key: repeated sends with
+        the same key for a product return the existing record and deliver once.
       properties:
         template_id:
           type: string
@@ -2808,6 +2815,18 @@ components:
         template_slug:
           type: string
           nullable: true
+        subject:
+          type: string
+          nullable: true
+          description: Raw message subject. Required when no template selector is supplied; ignored when a template is used.
+        body_html:
+          type: string
+          nullable: true
+          description: Raw HTML body. Used with raw subject; ignored when a template is used.
+        body_text:
+          type: string
+          nullable: true
+          description: Raw plain-text body. Used with raw subject; ignored when a template is used.
         to_address:
           type: string
           format: email
@@ -2819,6 +2838,7 @@ components:
         dedupe_key:
           type: string
           nullable: true
+          description: Idempotency key. Repeated sends with the same key for a product return the existing record and deliver at most once.
         use_draft:
           type: boolean
           default: false

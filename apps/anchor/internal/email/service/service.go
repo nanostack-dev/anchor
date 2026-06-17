@@ -64,6 +64,10 @@ var (
 		"EMAIL_TEMPLATE_SELECTOR_MISSING",
 		"Either template_id or template_slug must be supplied",
 	)
+	ErrEmailContentMissing = apierror.NewBadRequest(
+		"EMAIL_CONTENT_MISSING",
+		"A raw send requires subject and at least one of body_html or body_text",
+	)
 )
 
 // EmailService is the product-facing entry point for managing templates
@@ -208,6 +212,56 @@ func (s *emailService) resolveSendVersion(
 		return nil, ErrEmailTemplateNotPublished
 	}
 	return v, nil
+}
+
+// sendContent is the resolved subject/body to dispatch plus, for template
+// sends, the template/version IDs recorded on the audit row. For raw sends the
+// ID pointers are nil.
+type sendContent struct {
+	subject    string
+	bodyHTML   string
+	bodyText   string
+	templateID *string
+	versionID  *string
+}
+
+// resolveSendContent produces the message content for a send. With a template
+// selector it resolves the version and renders with variables; otherwise it
+// uses the raw subject/body verbatim, requiring a subject and at least one body.
+func (s *emailService) resolveSendContent(
+	ctx context.Context, in email.SendInput,
+) (sendContent, error) {
+	if !in.HasTemplateSelector() {
+		if strings.TrimSpace(in.Subject) == "" ||
+			(strings.TrimSpace(in.BodyHTML) == "" && strings.TrimSpace(in.BodyText) == "") {
+			return sendContent{}, ErrEmailContentMissing
+		}
+		return sendContent{
+			subject:  in.Subject,
+			bodyHTML: in.BodyHTML,
+			bodyText: in.BodyText,
+		}, nil
+	}
+
+	tpl, err := s.resolveTemplate(ctx, in.TenantID, in.ProductID, in.TemplateID, in.TemplateSlug)
+	if err != nil {
+		return sendContent{}, err
+	}
+	version, err := s.resolveSendVersion(ctx, tpl.ID, in.UseDraft)
+	if err != nil {
+		return sendContent{}, err
+	}
+	rendered, err := s.renderer.Render(version, in.Variables)
+	if err != nil {
+		return sendContent{}, err
+	}
+	return sendContent{
+		subject:    rendered.Subject,
+		bodyHTML:   rendered.BodyHTML,
+		bodyText:   rendered.BodyText,
+		templateID: &tpl.ID,
+		versionID:  &version.ID,
+	}, nil
 }
 
 func (s *emailService) CreateTemplate(
@@ -607,21 +661,12 @@ func (s *emailService) Send(
 		return email.SendRecord{}, err
 	}
 
-	tpl, err := s.resolveTemplate(ctx, in.TenantID, in.ProductID, in.TemplateID, in.TemplateSlug)
-	if err != nil {
-		return email.SendRecord{}, err
-	}
-	version, err := s.resolveSendVersion(ctx, tpl.ID, in.UseDraft)
+	content, err := s.resolveSendContent(ctx, in)
 	if err != nil {
 		return email.SendRecord{}, err
 	}
 
 	sender, err := mailer.SenderIdentity(ctx, instance)
-	if err != nil {
-		return email.SendRecord{}, err
-	}
-
-	rendered, err := s.renderer.Render(version, in.Variables)
 	if err != nil {
 		return email.SendRecord{}, err
 	}
@@ -652,16 +697,16 @@ func (s *emailService) Send(
 		PlatformTenantID:      in.TenantID,
 		ProductID:             in.ProductID,
 		IntegrationInstanceID: instance.ID,
-		TemplateID:            &tpl.ID,
-		TemplateVersionID:     &version.ID,
+		TemplateID:            content.templateID,
+		TemplateVersionID:     content.versionID,
 		DedupeKey:             in.DedupeKey,
 		ToAddress:             in.ToAddress,
 		ToName:                in.ToName,
 		FromAddress:           sender.Email,
 		FromName:              sender.Name,
-		Subject:               rendered.Subject,
-		BodyHTML:              rendered.BodyHTML,
-		BodyText:              rendered.BodyText,
+		Subject:               content.subject,
+		BodyHTML:              content.bodyHTML,
+		BodyText:              content.bodyText,
 		VariablesJSON:         varsJSON,
 		Status:                email.SendStatusQueued,
 		Attempts:              0,
@@ -682,9 +727,9 @@ func (s *emailService) Send(
 	msg := provider.OutboundMessage{
 		From:      sender,
 		To:        []provider.Address{{Email: in.ToAddress, Name: in.ToName}},
-		Subject:   rendered.Subject,
-		HTML:      rendered.BodyHTML,
-		Text:      rendered.BodyText,
+		Subject:   content.subject,
+		HTML:      content.bodyHTML,
+		Text:      content.bodyText,
 		MessageID: messageID,
 	}
 

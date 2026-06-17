@@ -848,9 +848,19 @@ type EmailSendRecordResponse struct {
 	UpdatedAt         time.Time       `json:"updated_at"`
 }
 
-// EmailSendRequest defines model for EmailSendRequest.
+// EmailSendRequest Dispatch a transactional email. Supply EITHER a template selector (template_id or template_slug, rendered with variables) OR raw content (subject plus at least one of body_html/body_text). Raw content lets callers that render their own message body send without authoring a template first. dedupe_key is the idempotency key: repeated sends with the same key for a product return the existing record and deliver once.
 type EmailSendRequest struct {
-	DedupeKey    *string                 `json:"dedupe_key,omitempty"`
+	// BodyHtml Raw HTML body. Used with raw subject; ignored when a template is used.
+	BodyHtml *string `json:"body_html,omitempty"`
+
+	// BodyText Raw plain-text body. Used with raw subject; ignored when a template is used.
+	BodyText *string `json:"body_text,omitempty"`
+
+	// DedupeKey Idempotency key. Repeated sends with the same key for a product return the existing record and deliver at most once.
+	DedupeKey *string `json:"dedupe_key,omitempty"`
+
+	// Subject Raw message subject. Required when no template selector is supplied; ignored when a template is used.
+	Subject      *string                 `json:"subject,omitempty"`
 	TemplateId   *string                 `json:"template_id,omitempty"`
 	TemplateSlug *string                 `json:"template_slug,omitempty"`
 	ToAddress    openapi_types.Email     `json:"to_address"`

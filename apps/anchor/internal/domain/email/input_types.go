@@ -88,27 +88,41 @@ type DeleteTemplateInput struct {
 
 // SendInput is the request shape for dispatching a transactional email.
 //
-// Either TemplateID or TemplateSlug must be supplied (slug is the friendlier
-// option from product code; ID is the safer option from admin tools).
+// Two modes:
+//   - Template: supply TemplateID or TemplateSlug (slug is the friendlier
+//     option from product code; ID is the safer option from admin tools). The
+//     send uses the template's PUBLISHED version unless UseDraft is set
+//     (admin/preview only).
+//   - Raw: supply Subject plus at least one of BodyHTML/BodyText. For callers
+//     that render their own body and do not want to author a template first.
 //
-// By default the send uses the template's PUBLISHED version. Set UseDraft to
-// dispatch the current DRAFT instead — reserved for trusted admin/preview
-// flows; the public product-facing API always sends the published version.
+// Exactly one mode applies: when a template selector is present it wins and the
+// raw fields are ignored; otherwise the raw content is sent verbatim.
 //
-// DedupeKey is the strongest defense against bad loops: when set, repeated
-// submissions with the same key for the same product return the existing
-// record instead of resending. Highly recommended.
+// DedupeKey is the idempotency key and the strongest defense against bad loops:
+// when set, repeated submissions with the same key for the same product return
+// the existing record instead of resending. Highly recommended.
 type SendInput struct {
 	TenantID     string `validate:"required"`
 	ProductID    string `validate:"required"`
 	TemplateID   *string
 	TemplateSlug *string
+	Subject      string
+	BodyHTML     string
+	BodyText     string
 	ToAddress    string `validate:"required,email"`
 	ToName       string
 	Variables    map[string]any
 	DedupeKey    *string
 	UseDraft     bool
 	IsTestSend   bool
+}
+
+// HasTemplateSelector reports whether the input targets a stored template
+// rather than raw content.
+func (in SendInput) HasTemplateSelector() bool {
+	return (in.TemplateID != nil && *in.TemplateID != "") ||
+		(in.TemplateSlug != nil && *in.TemplateSlug != "")
 }
 
 // TestSendInput is the request shape for the UI's "send test" button. It

@@ -362,6 +362,15 @@ func (s *AnchorAPI) SendEmail(
 		ToAddress:    string(b.ToAddress),
 		DedupeKey:    b.DedupeKey,
 	}
+	if b.Subject != nil {
+		in.Subject = *b.Subject
+	}
+	if b.BodyHtml != nil {
+		in.BodyHTML = *b.BodyHtml
+	}
+	if b.BodyText != nil {
+		in.BodyText = *b.BodyText
+	}
 	if b.ToName != nil {
 		in.ToName = *b.ToName
 	}
