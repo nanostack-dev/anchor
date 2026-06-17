@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-	localTunnel := flag.Bool("local-tunnel", false, "launch local cloudflared tunnel")
 	healthcheck := flag.Bool(
 		"healthcheck",
 		false,
@@ -22,5 +21,5 @@ func main() {
 		return
 	}
 
-	app.StartAnchorWithOptions(app.StartOptions{LocalTunnel: *localTunnel})
+	app.StartAnchor()
 }
