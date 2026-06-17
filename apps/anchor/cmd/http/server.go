@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -124,23 +123,14 @@ func startHTTPServer(params ServerParams) error {
 func setupRouter(params ServerParams) *chi.Mux {
 	router := chi.NewRouter()
 
-	allowedOrigins := parseAllowedOrigins(params.ServerConfig.AllowedOrigin)
-
 	corsMiddleware := cors.New(
 		cors.Options{
-			AllowedOrigins: allowedOrigins,
-			AllowOriginFunc: func(_ *http.Request, origin string) bool {
-				if isAllowedOrigin(origin, allowedOrigins) {
-					return true
-				}
-
-				environment := strings.ToLower(strings.TrimSpace(os.Getenv("ENVIRONMENT")))
-				if environment != "preview" && environment != "dev" && environment != "development" {
-					return false
-				}
-
-				return isAllowedAnchorSubdomain(origin)
-			},
+			// Origins come entirely from config. Entries may be exact
+			// (https://app.tryanchor.dev) or wildcard (https://*.tryanchor.dev);
+			// go-chi/cors matches wildcards and reflects the matched origin so
+			// AllowCredentials works. Prod lists exact origins; dev/preview add a
+			// wildcard. No domain literals in source.
+			AllowedOrigins: parseAllowedOrigins(params.ServerConfig.AllowedOrigin),
 			AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 			AllowedHeaders: []string{
 				"Accept",
@@ -223,12 +213,11 @@ func setupRouter(params ServerParams) *chi.Mux {
 	return router
 }
 
+// parseAllowedOrigins splits a comma-separated origin list, trimming blanks.
+// Entries may include go-chi/cors wildcards (e.g. https://*.tryanchor.dev).
 func parseAllowedOrigins(value string) []string {
-	if value == "" {
+	if strings.TrimSpace(value) == "" {
 		return []string{}
-	}
-	if !strings.Contains(value, ",") {
-		return []string{strings.TrimSpace(value)}
 	}
 	parts := strings.Split(value, ",")
 	out := make([]string, 0, len(parts))
@@ -238,35 +227,6 @@ func parseAllowedOrigins(value string) []string {
 		}
 	}
 	return out
-}
-
-func isAllowedOrigin(origin string, allowedOrigins []string) bool {
-	for _, allowedOrigin := range allowedOrigins {
-		if origin == allowedOrigin {
-			return true
-		}
-	}
-	return false
-}
-
-func isAllowedAnchorSubdomain(origin string) bool {
-	parsedOrigin, err := url.Parse(origin)
-	if err != nil {
-		return false
-	}
-	if parsedOrigin.Scheme != "https" {
-		return false
-	}
-	hostname := strings.ToLower(parsedOrigin.Hostname())
-	if hostname == "app.tryanchor.dev" {
-		return true
-	}
-	if hostname == "dev.tryanchor.dev" {
-		return true
-	}
-	// Covers preview frontends (pr-<slug>.preview.tryanchor.dev) and any other
-	// subdomain of the anchor zone.
-	return strings.HasSuffix(hostname, ".tryanchor.dev")
 }
 
 func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
