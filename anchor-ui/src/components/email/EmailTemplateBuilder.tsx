@@ -1181,12 +1181,33 @@ function TestSendDialog({
 		e.preventDefault();
 		setError(null);
 		setResult(null);
+
+		// For any field left blank, fall back to the loaded example values
+		// (the first example is pre-loaded when one exists) before validating,
+		// so a required variable only errors when neither the form nor an
+		// example provides a value.
+		const effective: Record<string, string> = {};
+		for (const v of variables) {
+			const entered = varValues[v.name] ?? "";
+			effective[v.name] =
+				entered.trim() !== "" ? entered : (activeVarValues[v.name] ?? "");
+		}
+
+		const missing = variables
+			.filter((v) => v.required && (effective[v.name] ?? "").trim() === "")
+			.map((v) => v.name);
+		if (missing.length > 0) {
+			setError(`Fill required variable(s): ${missing.join(", ")}`);
+			return;
+		}
+
+		setVarValues(effective);
 		mutate({
 			path: { product_id: productId },
 			body: {
 				template_id: templateId,
 				to_address: toAddress,
-				variables: buildVarsPayload(varValues, variables),
+				variables: buildVarsPayload(effective, variables),
 				use_draft: true,
 			},
 		});
