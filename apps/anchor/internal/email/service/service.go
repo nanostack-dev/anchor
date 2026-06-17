@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -65,6 +66,18 @@ var (
 		"Either template_id or template_slug must be supplied",
 	)
 )
+
+// errEmailRequiredVariablesMissing builds the validation error returned when a
+// send omits variables the template version marks required. The missing names
+// are surfaced both in the message and as machine-readable metadata so clients
+// can highlight the offending fields.
+func errEmailRequiredVariablesMissing(missing []string) *apierror.Error {
+	return apierror.NewBadRequestWithMetadata(
+		"EMAIL_REQUIRED_VARIABLES_MISSING",
+		fmt.Sprintf("Missing required template variable(s): %s", strings.Join(missing, ", ")),
+		map[string]any{"missing_variables": missing},
+	)
+}
 
 // EmailService is the product-facing entry point for managing templates
 // and dispatching transactional email.
@@ -614,6 +627,10 @@ func (s *emailService) Send(
 	version, err := s.resolveSendVersion(ctx, tpl.ID, in.UseDraft)
 	if err != nil {
 		return email.SendRecord{}, err
+	}
+
+	if missing := email.MissingRequiredVariables(version.Variables, in.Variables); len(missing) > 0 {
+		return email.SendRecord{}, errEmailRequiredVariablesMissing(missing)
 	}
 
 	sender, err := mailer.SenderIdentity(ctx, instance)
