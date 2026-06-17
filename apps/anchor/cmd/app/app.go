@@ -24,19 +24,15 @@ import (
 	"go.uber.org/fx"
 )
 
-type StartOptions struct {
-	LocalTunnel bool
-}
-
 func StartAnchor() {
-	StartAnchorWithOptions(StartOptions{})
+	startAnchor()
 }
 
 func StartAnchorWithPopulate(target ...interface{}) {
-	StartAnchorWithOptions(StartOptions{}, target...)
+	startAnchor(target...)
 }
 
-func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
+func startAnchor(target ...interface{}) {
 	if err := runtimeenv.HydrateFileBackedEnv(); err != nil {
 		panic(fmt.Sprintf("failed to hydrate file-backed runtime env: %v", err))
 	}
@@ -56,8 +52,6 @@ func StartAnchorWithOptions(options StartOptions, target ...interface{}) {
 		email.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),
-		newLocalTunnelModule(),
-		fx.Supply(localTunnelConfig{Enabled: options.LocalTunnel}),
 		httpserver.NewHTTPServerModule(),
 		fx.Populate(target...),
 	)
