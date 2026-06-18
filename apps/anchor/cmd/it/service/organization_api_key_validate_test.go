@@ -7,7 +7,7 @@ import (
 
 	"anchor/internal/security"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/assert"
@@ -273,7 +273,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			},
 		)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, apierror.ErrNotFound)
+		assert.ErrorIs(t, err, fault.ErrNotFound)
 	})
 
 	t.Run("Last Used At Is Not Updated Within One Hour", func(t *testing.T) {

@@ -27,6 +27,7 @@ import (
 	"anchor/internal/domain/workspace"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -197,24 +198,10 @@ func (e UserOrganizationInclude) Valid() bool {
 }
 
 // ApiError defines model for ApiError.
-type ApiError struct {
-	// Code A machine-readable error code.
-	Code string `json:"code"`
-
-	// Details Additional details about the error (optional).
-	Details *map[string]interface{} `json:"details,omitempty"`
-
-	// Field The specific field that caused the error (optional).
-	Field *string `json:"field,omitempty"`
-
-	// Message A human-readable error message.
-	Message string `json:"message"`
-}
+type ApiError = fault.Detail
 
 // ApiErrorResponse defines model for ApiErrorResponse.
-type ApiErrorResponse struct {
-	Errors []ApiError `json:"errors"`
-}
+type ApiErrorResponse = fault.Error
 
 // AssignPermissionRequest Request body for assigning a product resource permission to a role. The permission must already exist under the product's resource permissions (see /resource-permissions endpoints).
 type AssignPermissionRequest struct {

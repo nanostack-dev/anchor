@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
@@ -256,7 +256,7 @@ func (s *authService) Login(
 	)
 	if err != nil {
 		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to generate tokens")
-		return auth.LoginOutput{}, apierror.ErrUnexpected
+		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
@@ -290,7 +290,7 @@ func (s *authService) RefreshToken(
 			Str("user_id", claims.UserID).
 			Err(err).
 			Msg("failed to generate new tokens during refresh")
-		return auth.LoginOutput{}, apierror.ErrUnexpected
+		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(

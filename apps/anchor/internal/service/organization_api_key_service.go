@@ -7,8 +7,8 @@ import (
 
 	"anchor/internal/security"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/nanostack-dev/pgkit/pgqueue"
@@ -95,10 +95,10 @@ func (s *organizationAPIKeyService) Create(
 
 	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 	if org == nil {
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
 	prod, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
 	if err != nil {
@@ -106,10 +106,10 @@ func (s *organizationAPIKeyService) Create(
 			Str("product_id", org.ProductID).
 			Err(err).
 			Msg("failed to find product for organization API key config")
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 	if prod == nil {
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
 
 	if nameValidationErr := s.nameUniqueValidation(
@@ -125,7 +125,7 @@ func (s *organizationAPIKeyService) Create(
 	clearAPIKey, err := security.GenerateOrganizationAPIKey(organizationAPIKeyPrefix)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate organization API key")
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
@@ -185,7 +185,7 @@ func (s *organizationAPIKeyService) Create(
 			Str("organization_id", input.OrganizationID).
 			Err(err).
 			Msg("failed to create organization API key")
-		return orgapikey.OrganizationAPIKey{}, "", apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
 	return created, clearAPIKey, nil
@@ -211,11 +211,11 @@ func (s *organizationAPIKeyService) GetByID(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get organization API key")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	if apiKey == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	return apiKey, nil
@@ -241,11 +241,11 @@ func (s *organizationAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get organization API key for update")
-		return orgapikey.OrganizationAPIKey{}, apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return orgapikey.OrganizationAPIKey{}, apierror.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, fault.ErrNotFound
 	}
 
 	updatedAPIKey := *existingAPIKey
@@ -277,7 +277,7 @@ func (s *organizationAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to update organization API key")
-		return orgapikey.OrganizationAPIKey{}, apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
 	return updated, nil
@@ -302,7 +302,7 @@ func (s *organizationAPIKeyService) Search(
 			Str("organization_id", input.OrganizationID).
 			Err(err).
 			Msg("failed to search organization API keys")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	return &result, nil
@@ -328,11 +328,11 @@ func (s *organizationAPIKeyService) Delete(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get organization API key for deletion")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -342,7 +342,7 @@ func (s *organizationAPIKeyService) Delete(
 				Str("api_key_id", input.ID).
 				Err(deleteErr).
 				Msg("failed to delete organization API key")
-			return apierror.ErrUnexpected
+			return fault.ErrUnexpected
 		}
 
 		if existingAPIKey.ExpiresAt == nil {
@@ -359,7 +359,7 @@ func (s *organizationAPIKeyService) Delete(
 				Str("api_key_id", input.ID).
 				Err(listErr).
 				Msg("failed to list pending queue jobs for api key deletion")
-			return apierror.ErrUnexpected
+			return fault.ErrUnexpected
 		}
 
 		for _, job := range jobs {
@@ -376,7 +376,7 @@ func (s *organizationAPIKeyService) Delete(
 					Int64("job_id", job.ID).
 					Err(cancelErr).
 					Msg("failed to cancel queue job for deleted api key")
-				return apierror.ErrUnexpected
+				return fault.ErrUnexpected
 			}
 		}
 
@@ -457,7 +457,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	foundAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
 		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
-		return orgapikey.OrganizationAPIKey{}, false, apierror.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if foundAPIKey == nil {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
@@ -546,7 +546,7 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 			Str("name", name).
 			Err(err).
 			Msg("failed to search for organization API keys by name")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if existingAPIKey != nil {
 		return NewOrganizationAPIKeyNameExistsError(name, organizationID)
@@ -560,10 +560,10 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 ) error {
 	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if org == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 	return nil
 }

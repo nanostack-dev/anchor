@@ -30,7 +30,7 @@ func AssertProductAPIKeyInsufficientPermissions(
 			Errors: []anchorClient.ApiError{{
 				Code:    "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS",
 				Message: "Product API key does not have sufficient permissions",
-				Details: &map[string]interface{}{
+				Metadata: &map[string]interface{}{
 					"api_key_id":      apiKeyID,
 					"required_scopes": convertToInterfaceSlice(requiredScopes),
 					"current_scopes":  convertToInterfaceSlice(currentScopes),
@@ -58,10 +58,10 @@ func AssertAnchorBadRequestError(
 	if assert.NotNil(t, json400, "400 response should not be nil") {
 		expectedResponse := &anchorClient.ApiErrorResponse{
 			Errors: []anchorClient.ApiError{{
-				Code:    code,
-				Message: message,
-				Details: &details,
-				Field:   nil,
+				Code:     code,
+				Message:  message,
+				Metadata: &details,
+				Field:    nil,
 			}},
 		}
 		assert.Equal(t, expectedResponse, json400)

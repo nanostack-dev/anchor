@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -17,7 +17,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 	request AddOrganizationMemberRequestObject,
 ) (AddOrganizationMemberResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.AddMemberInput{
@@ -73,7 +73,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 	}
 
 	if membership == nil {
-		return nil, apierror.NewWithStatus(
+		return nil, fault.NewWithStatus(
 			"MEMBER_NOT_FOUND",
 			"Organization member not found",
 			http.StatusNotFound,
@@ -89,7 +89,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 	request UpdateOrganizationMemberRoleRequestObject,
 ) (UpdateOrganizationMemberRoleResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.UpdateMemberRoleInput{
@@ -180,7 +180,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 	request SearchOrganizationMembersRequestObject,
 ) (SearchOrganizationMembersResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.SearchMembersInput{

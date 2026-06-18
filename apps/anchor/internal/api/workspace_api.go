@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/workspace"
@@ -92,7 +92,7 @@ func (s *AnchorAPI) GetOrganizationWorkspace(
 		return nil, err
 	}
 	if found == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	return GetOrganizationWorkspace200JSONResponse(mapWorkspaceToResponse(*found)), nil

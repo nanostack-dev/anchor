@@ -3,36 +3,36 @@ package permission
 import (
 	"net/http"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 )
 
 // Permission-specific business rule errors.
 var (
-	ErrPermissionNameDuplicate = apierror.NewWithStatus(
+	ErrPermissionNameDuplicate = fault.NewWithStatus(
 		"PERMISSION_NAME_DUPLICATE",
 		"A permission with this name already exists in the product",
 		http.StatusConflict,
 	)
 
-	ErrPermissionAssignedToRoles = apierror.NewWithStatus(
+	ErrPermissionAssignedToRoles = fault.NewWithStatus(
 		"PERMISSION_ASSIGNED_TO_ROLES",
 		"Cannot delete permission that is assigned to one or more roles",
 		http.StatusConflict,
 	)
 
-	ErrPermissionInvalidFormat = apierror.NewWithStatus(
+	ErrPermissionInvalidFormat = fault.NewWithStatus(
 		"PERMISSION_INVALID_FORMAT",
 		"Permission name must follow format 'resource:action'",
 		http.StatusBadRequest,
 	)
 
-	ErrProductNotFound = apierror.NewWithStatus(
+	ErrProductNotFound = fault.NewWithStatus(
 		"PRODUCT_NOT_FOUND",
 		"Product does not exist",
 		http.StatusNotFound,
 	)
 
-	ErrPermissionNotFound = apierror.NewWithStatus(
+	ErrPermissionNotFound = fault.NewWithStatus(
 		"PERMISSIONS_NOT_FOUND",
 		"Permission does not exist",
 		http.StatusNotFound,
@@ -42,27 +42,21 @@ var (
 // NewPermissionNameDuplicateError creates an error for duplicate permission names.
 func NewPermissionNameDuplicateError(
 	permissionName string, productID string,
-) *apierror.Error {
-	return apierror.NewBadRequestWithMetadata(
-		"PERMISSION_NAME_DUPLICATE",
-		"A permission with this name already exists in the product",
-		map[string]any{
+) *fault.Error {
+	return fault.BadRequest("PERMISSION_NAME_DUPLICATE", "A permission with this name already exists in the product").
+		Metadata(map[string]any{
 			"permission_name": permissionName,
 			"product_id":      productID,
-		},
-	)
+		})
 }
 
 func NewPermissionAssignedToAPIKeysError(
 	productID, permissionName string, apiKeyCount int,
-) *apierror.Error {
-	return apierror.NewBadRequestWithMetadata(
-		"PERMISSION_ASSIGNED_TO_PRODUCT_API_KEYS",
-		"Cannot delete permission that is assigned to one or more API keys",
-		map[string]any{
+) *fault.Error {
+	return fault.BadRequest("PERMISSION_ASSIGNED_TO_PRODUCT_API_KEYS", "Cannot delete permission that is assigned to one or more API keys").
+		Metadata(map[string]any{
 			"product_id":      productID,
 			"permission_name": permissionName,
 			"api_key_count":   apiKeyCount,
-		},
-	)
+		})
 }

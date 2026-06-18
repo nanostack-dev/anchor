@@ -1,14 +1,11 @@
 package workspace
 
-import apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+import "github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
-func NewNameExistsError(name, organizationID string) *apierror.Error {
-	return apierror.NewBadRequestWithMetadata(
-		"WORKSPACE_NAME_DUPLICATE",
-		"Workspace with this name already exists in the organization",
-		map[string]any{
+func NewNameExistsError(name, organizationID string) *fault.Error {
+	return fault.BadRequest("WORKSPACE_NAME_DUPLICATE", "Workspace with this name already exists in the organization").
+		Metadata(map[string]any{
 			"name":            name,
 			"organization_id": organizationID,
-		},
-	)
+		})
 }
