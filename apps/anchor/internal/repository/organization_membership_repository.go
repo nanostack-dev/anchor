@@ -13,7 +13,7 @@ import (
 	"anchor/internal/domain/product/user"
 
 	"github.com/go-jet/jet/v2/postgres"
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -199,7 +199,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		return organization.Membership{}, err
 	}
 	if membership == nil {
-		return organization.Membership{}, apierror.ErrNotFound
+		return organization.Membership{}, fault.ErrNotFound
 	}
 
 	return *membership, nil
@@ -239,7 +239,7 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 	if membership == nil {
-		return organization.Membership{}, apierror.ErrNotFound
+		return organization.Membership{}, fault.ErrNotFound
 	}
 
 	return *membership, nil

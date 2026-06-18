@@ -117,7 +117,7 @@ func (s *AnchorAPI) RefreshToken(
 	}
 	refreshResponse, err := s.AuthService.RefreshToken(ctx, refreshInput)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("Error refreshing token")
+		logAPIError(s.logger, err).Msg("Error refreshing token")
 		s.clearRefreshTokenCookie()
 		return RefreshToken401Response{
 			Headers: RefreshToken401ResponseHeaders{
@@ -162,7 +162,7 @@ func (s *AnchorAPI) Register(
 	}
 	loginResponse, err := s.AuthService.Login(ctx, loginInput)
 	if err != nil {
-		s.logger.Error().Err(err).Str(
+		logAPIError(s.logger, err).Str(
 			"email", registerInput.Email,
 		).Msg("Error logging in user immediately after registration")
 		return nil, err

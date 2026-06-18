@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -87,7 +87,7 @@ func (s *resourcePermissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to check existing resource permission")
-		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 	if permByName != nil {
 		return resourcepermission.ProductResourcePermission{}, NewResourcePermissionAlreadyExistsError(
@@ -102,7 +102,7 @@ func (s *resourcePermissionService) Create(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to create resource permission")
-		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -131,7 +131,7 @@ func (s *resourcePermissionService) GetByID(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to get resource permission")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	return resourcePermission, nil
@@ -154,11 +154,11 @@ func (s *resourcePermissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find existing resource permission")
-		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
 	if existing == nil {
-		return resourcepermission.ProductResourcePermission{}, apierror.ErrNotFound
+		return resourcepermission.ProductResourcePermission{}, fault.ErrNotFound
 	}
 
 	updated := *existing
@@ -172,7 +172,7 @@ func (s *resourcePermissionService) Update(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to update resource permission")
-		return resourcepermission.ProductResourcePermission{}, apierror.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -201,14 +201,14 @@ func (s *resourcePermissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find resource permission by name")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if name == nil {
 		logger.Debug().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
 			Msg("resource permission not found for deletion")
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
@@ -229,7 +229,7 @@ func (s *resourcePermissionService) Delete(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to delete resource permission with cascading cleanup")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -257,7 +257,7 @@ func (s *resourcePermissionService) SearchByProduct(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search resource permissions")
-		return search.Result[resourcepermission.ProductResourcePermission]{}, apierror.ErrUnexpected
+		return search.Result[resourcepermission.ProductResourcePermission]{}, fault.ErrUnexpected
 	}
 
 	return result, nil
@@ -278,7 +278,7 @@ func (s *resourcePermissionService) GetByRole(
 			Str("product_role_id", input.ProductRoleID).
 			Err(err).
 			Msg("failed to get resource permissions by role")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	return permissions, nil

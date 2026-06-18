@@ -20,8 +20,8 @@ import (
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/pgqueue"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/rs/zerolog"
 )
@@ -104,45 +104,45 @@ type IntegrationService interface {
 }
 
 var (
-	ErrIntegrationInstanceNotFound = apierror.NewWithStatus(
+	ErrIntegrationInstanceNotFound = fault.NewWithStatus(
 		"INTEGRATION_INSTANCE_NOT_FOUND",
 		"Integration instance not found",
 		http.StatusNotFound,
 	)
-	ErrIntegrationInstanceAlreadyExists = apierror.NewBadRequest(
+	ErrIntegrationInstanceAlreadyExists = fault.BadRequest(
 		"INTEGRATION_INSTANCE_ALREADY_EXISTS",
 		"An integration instance for this provider already exists on this product",
 	)
-	ErrIntegrationProviderNotRegistered = apierror.NewBadRequest(
+	ErrIntegrationProviderNotRegistered = fault.BadRequest(
 		"INTEGRATION_PROVIDER_NOT_REGISTERED",
 		"The specified integration provider is not registered",
 	)
-	ErrIntegrationProviderNotWebhookIngestor = apierror.NewBadRequest(
+	ErrIntegrationProviderNotWebhookIngestor = fault.BadRequest(
 		"INTEGRATION_PROVIDER_NOT_WEBHOOK_INGESTOR",
 		"The specified integration provider does not accept inbound webhooks",
 	)
-	ErrIntegrationWebhookValidationFailed = apierror.NewWithStatus(
+	ErrIntegrationWebhookValidationFailed = fault.NewWithStatus(
 		"INTEGRATION_WEBHOOK_VALIDATION_FAILED",
 		"Webhook signature validation failed",
 		http.StatusUnauthorized,
 	)
-	ErrIntegrationInstanceDisabled = apierror.NewBadRequest(
+	ErrIntegrationInstanceDisabled = fault.BadRequest(
 		"INTEGRATION_INSTANCE_DISABLED",
 		"The integration instance is disabled",
 	)
-	ErrIntegrationInstanceConfiguring = apierror.NewBadRequest(
+	ErrIntegrationInstanceConfiguring = fault.BadRequest(
 		"INTEGRATION_INSTANCE_CONFIGURING",
 		"The integration instance is still configuring",
 	)
-	ErrIntegrationInstanceUnhealthy = apierror.NewBadRequest(
+	ErrIntegrationInstanceUnhealthy = fault.BadRequest(
 		"INTEGRATION_INSTANCE_UNHEALTHY",
 		"The integration instance is not ready to process webhook events",
 	)
-	ErrIntegrationWebhookSecretRequired = apierror.NewBadRequest(
+	ErrIntegrationWebhookSecretRequired = fault.BadRequest(
 		"INTEGRATION_WEBHOOK_SECRET_REQUIRED",
 		"Webhook secret is required when integration instance is active",
 	)
-	ErrIntegrationWebhookEventIDMissing = apierror.NewWithStatus(
+	ErrIntegrationWebhookEventIDMissing = fault.NewWithStatus(
 		"INTEGRATION_WEBHOOK_EVENT_ID_MISSING",
 		"Webhook event id header is required",
 		http.StatusUnauthorized,
@@ -1548,7 +1548,7 @@ func (s *integrationService) buildWebhookEvent(
 			Str("instance_id", instance.ID).
 			Msg("failed to parse webhook event")
 		return integration.Event{}, nil,
-			apierror.NewBadRequest(
+			fault.BadRequest(
 				"INTEGRATION_EVENT_PARSE_FAILED",
 				fmt.Sprintf(
 					"Failed to parse webhook event: %s",
@@ -1958,7 +1958,7 @@ func extractExternalEventID(
 // newInvalidConfigError creates a standardized bad-request error for invalid
 // provider configuration.
 func newInvalidConfigError(cause error) error {
-	return apierror.NewBadRequest(
+	return fault.BadRequest(
 		"INTEGRATION_INVALID_CONFIG",
 		fmt.Sprintf("Invalid provider config: %s", cause.Error()),
 	)

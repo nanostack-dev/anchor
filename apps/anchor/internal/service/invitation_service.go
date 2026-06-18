@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/invitation"
@@ -67,14 +67,14 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to find user by email")
-		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
+		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if optPlatformUser != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("user already exists")
-		return invitation.PlatformInvitation{}, apierror.NewWithStatus(
+		return invitation.PlatformInvitation{}, fault.NewWithStatus(
 			"INVITATION_USER_ALREADY_EXISTS",
 			"This email address is already associated with an existing user account. "+
 				"Please check if they are already a member, or try inviting a different email.",
@@ -90,14 +90,14 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to find invitation by email")
-		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
+		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if optInvitation != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("invitation already exists")
-		return invitation.PlatformInvitation{}, apierror.NewWithStatus(
+		return invitation.PlatformInvitation{}, fault.NewWithStatus(
 			"INVITATION_ALREADY_EXISTS",
 			"This email address is already associated with an existing invitation. "+
 				"Please check if they are already a member, or try inviting a different email.",
@@ -110,7 +110,7 @@ func (s *invitationService) CreateInvitation(
 	code, err := generateSecureCode(invitationCodeLength)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate secure code")
-		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
+		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	inv := invitation.PlatformInvitation{
 		Email:            input.Email,
@@ -126,7 +126,7 @@ func (s *invitationService) CreateInvitation(
 			Str("email", input.Email).
 			Err(err).
 			Msg("failed to create invitation")
-		return invitation.PlatformInvitation{}, apierror.ErrUnexpected
+		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 
 	logger.Info().

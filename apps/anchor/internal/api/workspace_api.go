@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/workspace"
@@ -34,7 +34,7 @@ func (s *AnchorAPI) CreateOrganizationWorkspace(
 		},
 	)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to create organization workspace")
+		logAPIError(s.logger, err).Msg("failed to create organization workspace")
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (s *AnchorAPI) SearchOrganizationWorkspaces(
 		},
 	)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to search organization workspaces")
+		logAPIError(s.logger, err).Msg("failed to search organization workspaces")
 		return nil, err
 	}
 
@@ -88,11 +88,11 @@ func (s *AnchorAPI) GetOrganizationWorkspace(
 		},
 	)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to find organization workspace")
+		logAPIError(s.logger, err).Msg("failed to find organization workspace")
 		return nil, err
 	}
 	if found == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	return GetOrganizationWorkspace200JSONResponse(mapWorkspaceToResponse(*found)), nil
@@ -113,7 +113,7 @@ func (s *AnchorAPI) UpdateOrganizationWorkspace(
 		},
 	)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to update organization workspace")
+		logAPIError(s.logger, err).Msg("failed to update organization workspace")
 		return nil, err
 	}
 
@@ -132,7 +132,7 @@ func (s *AnchorAPI) DeleteOrganizationWorkspace(
 			WorkspaceID:    request.WorkspaceId,
 		},
 	); err != nil {
-		s.logger.Error().Err(err).Msg("failed to delete organization workspace")
+		logAPIError(s.logger, err).Msg("failed to delete organization workspace")
 		return nil, err
 	}
 

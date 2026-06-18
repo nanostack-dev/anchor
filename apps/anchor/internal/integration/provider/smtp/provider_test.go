@@ -21,24 +21,24 @@ func TestPrepareUpdatedConfigForStoragePreservesExistingPassword(t *testing.T) {
 	ctx := context.Background()
 
 	existingConfigJSON, err := provider.PrepareConfigForStorage(ctx, mustMarshalConfig(t, Config{
-		Host:        "smtp.anchor.nanostack.dev",
+		Host:        "smtp.tryanchor.dev",
 		Port:        defaultPort,
 		Encryption:  EncryptionStartTLS,
 		AuthMethod:  AuthMethodPlain,
-		Username:    "mailer@anchor.nanostack.dev",
+		Username:    "mailer@tryanchor.dev",
 		Password:    "existing-secret",
-		FromAddress: "noreply@anchor.nanostack.dev",
+		FromAddress: "noreply@tryanchor.dev",
 		FromName:    "Anchor",
 	}))
 	require.NoError(t, err)
 
 	updatedConfig := mustMarshalConfig(t, Config{
-		Host:        "smtp.anchor.nanostack.dev",
+		Host:        "smtp.tryanchor.dev",
 		Port:        defaultPort,
 		Encryption:  EncryptionStartTLS,
 		AuthMethod:  AuthMethodPlain,
-		Username:    "updated-mailer@anchor.nanostack.dev",
-		FromAddress: "noreply@anchor.nanostack.dev",
+		Username:    "updated-mailer@tryanchor.dev",
+		FromAddress: "noreply@tryanchor.dev",
 		FromName:    "Anchor",
 	})
 
@@ -58,7 +58,7 @@ func TestPrepareUpdatedConfigForStoragePreservesExistingPassword(t *testing.T) {
 	resolved, err := provider.resolveConfig(updatedConfigJSON)
 	require.NoError(t, err)
 	require.Equal(t, "existing-secret", resolved.Password)
-	require.Equal(t, "updated-mailer@anchor.nanostack.dev", resolved.Username)
+	require.Equal(t, "updated-mailer@tryanchor.dev", resolved.Username)
 }
 
 func TestPrepareUpdatedConfigForStorageEncryptsReplacementPassword(t *testing.T) {
@@ -68,24 +68,24 @@ func TestPrepareUpdatedConfigForStorageEncryptsReplacementPassword(t *testing.T)
 	ctx := context.Background()
 
 	existingConfigJSON, err := provider.PrepareConfigForStorage(ctx, mustMarshalConfig(t, Config{
-		Host:        "smtp.anchor.nanostack.dev",
+		Host:        "smtp.tryanchor.dev",
 		Port:        defaultPort,
 		Encryption:  EncryptionStartTLS,
 		AuthMethod:  AuthMethodPlain,
-		Username:    "mailer@anchor.nanostack.dev",
+		Username:    "mailer@tryanchor.dev",
 		Password:    "existing-secret",
-		FromAddress: "noreply@anchor.nanostack.dev",
+		FromAddress: "noreply@tryanchor.dev",
 	}))
 	require.NoError(t, err)
 
 	updatedConfig := mustMarshalConfig(t, Config{
-		Host:        "smtp.anchor.nanostack.dev",
+		Host:        "smtp.tryanchor.dev",
 		Port:        defaultPort,
 		Encryption:  EncryptionStartTLS,
 		AuthMethod:  AuthMethodPlain,
-		Username:    "mailer@anchor.nanostack.dev",
+		Username:    "mailer@tryanchor.dev",
 		Password:    "replacement-secret",
-		FromAddress: "noreply@anchor.nanostack.dev",
+		FromAddress: "noreply@tryanchor.dev",
 	})
 
 	updatedConfigJSON, err := provider.PrepareUpdatedConfigForStorage(

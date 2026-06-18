@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
@@ -147,7 +147,7 @@ func (s *organizationService) CreateWithMember(
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if org == nil {
-			return organization.OrganizationWithMemberResult{}, apierror.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
 
 		membership, errGetOrg := s.orgMembershipRepo.FindByOrgIDAndUserID(
@@ -157,7 +157,7 @@ func (s *organizationService) CreateWithMember(
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if membership == nil {
-			return organization.OrganizationWithMemberResult{}, apierror.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
 
 		logger.Info().
@@ -195,7 +195,7 @@ func (s *organizationService) CreateWithMember(
 			return lookupErr
 		}
 		if productUserEntity == nil {
-			return apierror.ErrNotFound
+			return fault.ErrNotFound
 		}
 
 		role, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
@@ -252,7 +252,7 @@ func (s *organizationService) CreateWithMember(
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("create-with-member lock was busy; concurrent request in progress")
-		return organization.OrganizationWithMemberResult{}, apierror.ErrUnexpected
+		return organization.OrganizationWithMemberResult{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -290,11 +290,11 @@ func (s *organizationService) Update(
 		return organization.Organization{}, err
 	}
 	if optOrg == nil {
-		logger.Error().
+		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for update")
-		return organization.Organization{}, apierror.ErrNotFound
+		return organization.Organization{}, fault.ErrNotFound
 	}
 
 	org := *optOrg
@@ -342,11 +342,11 @@ func (s *organizationService) Delete(
 		return err
 	}
 	if optOrg == nil {
-		logger.Error().
+		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for deletion")
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 
 	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID)

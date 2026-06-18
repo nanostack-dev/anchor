@@ -6,8 +6,8 @@ import (
 
 	"anchor/internal/security"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
@@ -80,7 +80,7 @@ func (s *productAPIKeyService) Create(
 	clearAPIKey, err := security.GenerateProductAPIKey()
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to generate API key")
-		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, "", fault.ErrUnexpected
 	}
 
 	hashedValue := security.HashSecret(clearAPIKey)
@@ -133,7 +133,7 @@ func (s *productAPIKeyService) Create(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to create product API key")
-		return apikey.ProductAPIKey{}, "", apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, "", fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -161,11 +161,11 @@ func (s *productAPIKeyService) GetByID(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	if apiKey == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	return apiKey, nil
@@ -191,11 +191,11 @@ func (s *productAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key for update")
-		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return apikey.ProductAPIKey{}, apierror.ErrNotFound
+		return apikey.ProductAPIKey{}, fault.ErrNotFound
 	}
 
 	updatedAPIKey := *existingAPIKey
@@ -286,7 +286,7 @@ func (s *productAPIKeyService) Update(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to update API key transaction")
-		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
 	err = s.cacheService.EvictAPIKeyByHashedValue(ctx, input.ProductID, existingAPIKey.HashedValue)
@@ -322,11 +322,11 @@ func (s *productAPIKeyService) Delete(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get API key for deletion")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	if existingAPIKey == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {
 		logger.Error().
@@ -334,7 +334,7 @@ func (s *productAPIKeyService) Delete(
 			Str("api_key_id", input.ID).
 			Err(deleteErr).
 			Msg("failed to delete API key")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	err = s.cacheService.EvictAPIKeyByHashedValue(
 		ctx, input.ProductID, existingAPIKey.HashedValue,
@@ -370,7 +370,7 @@ func (s *productAPIKeyService) Search(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search API keys")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	return &result, nil
@@ -394,7 +394,7 @@ func (s *productAPIKeyService) validateAPIKey(
 
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to validate API key")
-		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
 	if foundAPIKey == nil {
@@ -433,7 +433,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Msg("every route authenticated with API key must have at least one scope, please check your configuration")
-		return apikey.ProductAPIKey{}, apierror.ErrUnexpected
+		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
 	permissionMap := make(map[string]bool)
@@ -471,7 +471,7 @@ func (s *productAPIKeyService) nameUniqueValidation(
 			Str("name", name).
 			Err(err).
 			Msg("failed to search for API keys by name")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if existingAPIKey != nil {
 		return NewProductAPIKeyNameExistsError(name, productID)
