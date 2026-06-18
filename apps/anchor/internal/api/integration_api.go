@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
@@ -156,7 +156,7 @@ func (s *AnchorAPI) CreateIntegrationInstance(
 			return nil, err
 		}
 	default:
-		return nil, apierror.NewBadRequest(
+		return nil, fault.BadRequest(
 			"INTEGRATION_PROVIDER_INVALID",
 			"Unsupported integration provider type",
 		)

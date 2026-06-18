@@ -8,8 +8,8 @@ import (
 
 	"anchor/internal/repository"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/rs/zerolog"
@@ -31,7 +31,7 @@ type ProductUserService interface {
 	) (*user.OrganizationMembership, error)
 }
 
-var ErrProductUserEmailAlreadyExists = apierror.NewBadRequest(
+var ErrProductUserEmailAlreadyExists = fault.BadRequest(
 	"PRODUCT_USER_EMAIL_ALREADY_EXISTS",
 	"A product user with this email already exists in this product",
 )
@@ -238,7 +238,7 @@ func (s *productUserService) ListUserOrganizations(
 		return nil, err
 	}
 	if existingUser == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	memberships, err := s.orgMembershipRepo.FindByProductUserID(
@@ -278,7 +278,7 @@ func (s *productUserService) GetUserOrganization(
 		return nil, err
 	}
 	if existingUser == nil {
-		return nil, apierror.ErrNotFound
+		return nil, fault.ErrNotFound
 	}
 
 	membership, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
