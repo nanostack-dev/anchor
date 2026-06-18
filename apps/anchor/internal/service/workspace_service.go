@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
@@ -143,7 +143,7 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 	if currentWorkspace == nil {
-		return workspace.Workspace{}, apierror.ErrNotFound
+		return workspace.Workspace{}, fault.ErrNotFound
 	}
 
 	var updated workspace.Workspace
@@ -212,7 +212,7 @@ func (s *workspaceService) Delete(
 		return err
 	}
 	if currentWorkspace == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 
 	return s.workspaceRepo.DeleteByID(
@@ -264,7 +264,7 @@ func (s *workspaceService) ensureOrganizationExists(
 		return err
 	}
 	if org == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 
 	return nil

@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/permission"
@@ -130,7 +130,7 @@ func TestApiKeyValidation(t *testing.T) {
 			)
 			require.Error(t, err, "Expected error for API key with extra scopes")
 			assert.Contains(t, err.Error(), "Product API key does not have sufficient permissions")
-			var apiErr *apierror.Error
+			var apiErr *fault.Error
 			require.ErrorAs(t, err, &apiErr)
 			assert.Equal(
 				t, service.NewProductAPIKeyInsufficientPermissionsError(
@@ -156,7 +156,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for API key with extra scopes")
-			var apiErr *apierror.Error
+			var apiErr *fault.Error
 			require.ErrorAs(t, err, &apiErr)
 			assert.Equal(
 				t, service.NewProductAPIKeyInsufficientPermissionsError(

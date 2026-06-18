@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
@@ -106,7 +106,7 @@ func (s *productRoleService) CreateProductRole(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to create product role")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -133,7 +133,7 @@ func (s *productRoleService) SearchProductRoles(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search product roles")
-		return search.Result[role.ProductRole]{}, apierror.ErrUnexpected
+		return search.Result[role.ProductRole]{}, fault.ErrUnexpected
 	}
 
 	return result, nil
@@ -155,7 +155,7 @@ func (s *productRoleService) GetProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to get product role")
-		return nil, apierror.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	return productRole, nil
@@ -182,10 +182,10 @@ func (s *productRoleService) UpdateProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to find product role for update")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if existingRole == nil {
-		return role.ProductRole{}, apierror.ErrNotFound
+		return role.ProductRole{}, fault.ErrNotFound
 	}
 
 	updatedRole := *existingRole
@@ -214,7 +214,7 @@ func (s *productRoleService) UpdateProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to update product role")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -241,10 +241,10 @@ func (s *productRoleService) DeleteProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to find product role for deletion")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if existingRole == nil {
-		return apierror.ErrNotFound
+		return fault.ErrNotFound
 	}
 
 	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
@@ -254,7 +254,7 @@ func (s *productRoleService) DeleteProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to count role membership assignments")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if assignmentCount > 0 {
 		return NewRoleInUseError(input.ID)
@@ -267,7 +267,7 @@ func (s *productRoleService) DeleteProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to delete product role")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -301,7 +301,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			Str("role_id", input.ProductRoleID).
 			Err(err).
 			Msg("failed to find role")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if productRole == nil {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
@@ -339,7 +339,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to update role with new permission")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -373,7 +373,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Str("role_id", input.ProductRoleID).
 			Err(err).
 			Msg("failed to find role")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if productRole == nil {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
@@ -388,7 +388,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to find permission")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if permissionFound == nil {
 		return role.ProductRole{}, NewPermissionsNotFoundError(
@@ -423,7 +423,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to update role after removing permission")
-		return role.ProductRole{}, apierror.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 
 	logger.Info().
@@ -446,7 +446,7 @@ func (s *productRoleService) nameDuplicationValidation(
 			Str("role_name", roleName).
 			Err(err).
 			Msg("failed to look up product role by name")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if existingRole != nil && existingRole.ID != currentRoleID {
 		return NewRoleWithAlreadyExistingNameError(
@@ -473,8 +473,8 @@ func (s *productRoleService) permissionsValidation(
 		Permissions: permissionNames,
 	}
 	if err := validateStruct(inputValidator); err != nil {
-		logger.Error().Err(err).Msg("too many permissions requested")
-		return apierror.ErrUnexpected
+		logger.Debug().Err(err).Msg("too many permissions requested")
+		return err
 	}
 
 	searchReq := search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
@@ -493,7 +493,7 @@ func (s *productRoleService) permissionsValidation(
 			Str("product_id", productID).
 			Err(err).
 			Msg("failed to search resource permissions")
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	foundMap := make(map[string]string)

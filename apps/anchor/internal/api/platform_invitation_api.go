@@ -82,7 +82,7 @@ func (s *AnchorAPI) DeletePlatformInvitation(
 		},
 	)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to delete invitation")
+		logAPIError(s.logger, err).Msg("failed to delete invitation")
 		return nil, err
 	}
 	return DeletePlatformInvitation204Response{}, nil

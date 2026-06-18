@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -17,7 +17,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 	request AddOrganizationMemberRequestObject,
 ) (AddOrganizationMemberResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.AddMemberInput{
@@ -29,7 +29,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.AddMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.Body.ProductUserId).
@@ -64,7 +64,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.GetMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -73,7 +73,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 	}
 
 	if membership == nil {
-		return nil, apierror.NewWithStatus(
+		return nil, fault.NewWithStatus(
 			"MEMBER_NOT_FOUND",
 			"Organization member not found",
 			http.StatusNotFound,
@@ -89,7 +89,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 	request UpdateOrganizationMemberRoleRequestObject,
 ) (UpdateOrganizationMemberRoleResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.UpdateMemberRoleInput{
@@ -101,7 +101,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 
 	membership, err := s.OrganizationMembershipService.UpdateMemberRole(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -126,7 +126,7 @@ func (s *AnchorAPI) RemoveOrganizationMember(
 
 	err := s.OrganizationMembershipService.RemoveMember(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("product_user_id", request.ProductUserId).
@@ -180,7 +180,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 	request SearchOrganizationMembersRequestObject,
 ) (SearchOrganizationMembersResponseObject, error) {
 	if request.Body == nil {
-		return nil, apierror.NewBadRequest("INVALID_REQUEST", "request body is required")
+		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
 	input := organization.SearchMembersInput{
@@ -191,7 +191,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 
 	res, err := s.OrganizationMembershipService.SearchMembers(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to search organization members")
