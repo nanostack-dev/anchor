@@ -7,8 +7,8 @@ import (
 
 	"anchor/internal/security"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product"
@@ -125,7 +125,7 @@ func (s *productService) Create(
 		return product.Product{}, err
 	}
 	if existingProduct != nil {
-		logger.Error().Str("name", input.Name).Msg("product already exists")
+		logger.Debug().Str("name", input.Name).Msg("product already exists")
 		return product.Product{}, ErrProductAlreadyExists
 	}
 
@@ -243,8 +243,8 @@ func (s *productService) findProductForUpdate(
 		return nil, err
 	}
 	if optProduct == nil {
-		logger.Error().Str("product_id", productID).Msg("product not found for update")
-		return nil, apierror.ErrNotFound
+		logger.Debug().Str("product_id", productID).Msg("product not found for update")
+		return nil, fault.ErrNotFound
 	}
 	return optProduct, nil
 }
@@ -274,7 +274,7 @@ func (s *productService) updateProductFields(
 func (s *productService) normalizeConfig(config product.Config) (product.Config, error) {
 	config = config.WithDefaults()
 	if !security.IsValidOrganizationAPIKeyRootPrefix(config.OrganizationAPIKeys.Prefix) {
-		return product.Config{}, apierror.NewWithStatus(
+		return product.Config{}, fault.NewWithStatus(
 			"INVALID_PRODUCT_ORGANIZATION_API_KEY_PREFIX",
 			"Product organization API key prefix must be 2-32 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and underscores without ending in an underscore",
 			http.StatusBadRequest,
@@ -293,7 +293,7 @@ func (s *productService) validateNameUniqueness(
 		return err
 	}
 	if existingProduct != nil && existingProduct.ID != productID {
-		logger.Error().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
+		logger.Debug().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
 		return ErrProductAlreadyExists
 	}
 	return nil

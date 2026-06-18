@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
@@ -91,7 +91,7 @@ func (s *authService) Register(
 
 	logger.Info().Str("email", input.Email).Msg("registering platform user")
 	if validationErr := validateStruct(input); validationErr != nil {
-		logger.Warn().Err(validationErr).Msg("registration input validation failed")
+		logServiceError(logger, validationErr).Msg("registration input validation failed")
 		return platform.User{}, validationErr
 	}
 
@@ -107,7 +107,7 @@ func (s *authService) Register(
 		}
 
 		if optUserByEmail != nil {
-			logger.Warn().Str("email", input.Email).Msg("user already exists")
+			logger.Debug().Str("email", input.Email).Msg("user already exists")
 			return ErrUserAlreadyExists
 		}
 		currentTenantID, role, err := s.setupTenantForRegistration(
@@ -175,7 +175,7 @@ func (s *authService) handleInvitation(
 	ctx context.Context, email string, code string, logger zerolog.Logger,
 ) (invitation.PlatformInvitation, error) {
 	if code == "" {
-		logger.Error().Msg("invitation code is empty")
+		logger.Debug().Msg("invitation code is empty")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
 	optInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
@@ -184,7 +184,7 @@ func (s *authService) handleInvitation(
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
 	}
 	if optInvitation == nil {
-		logger.Error().Str("email", email).Msg("invitation not found")
+		logger.Debug().Str("email", email).Msg("invitation not found")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeIsInvalid
 	}
 	// then delete the invitation because it is used
@@ -256,7 +256,7 @@ func (s *authService) Login(
 	)
 	if err != nil {
 		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to generate tokens")
-		return auth.LoginOutput{}, apierror.ErrUnexpected
+		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
@@ -280,7 +280,7 @@ func (s *authService) RefreshToken(
 	claims, err := s.jwt.ValidateRefreshToken(input.RefreshToken)
 	if err != nil {
 		// Don't log the token itself, but log the failure
-		logger.Warn().Err(err).Msg("refresh token validation failed")
+		logger.Debug().Err(err).Msg("refresh token validation failed")
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 
@@ -290,7 +290,7 @@ func (s *authService) RefreshToken(
 			Str("user_id", claims.UserID).
 			Err(err).
 			Msg("failed to generate new tokens during refresh")
-		return auth.LoginOutput{}, apierror.ErrUnexpected
+		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
@@ -357,14 +357,14 @@ func (s *authService) setupTenantForRegistration(
 	}
 
 	if invitationCode == nil {
-		logger.Warn().Msg("invitation code is required for existing tenants")
+		logger.Debug().Msg("invitation code is required for existing tenants")
 		return "", "", ErrInvitationCodeNotProvided
 	}
 
 	logger.Info().Msg("using invitation code for registration")
 	userInvitation, inviteErr := s.handleInvitation(ctx, email, *invitationCode, logger)
 	if inviteErr != nil {
-		logger.Error().Err(inviteErr).Msg("failed to handle invitation")
+		logServiceError(logger, inviteErr).Msg("failed to handle invitation")
 		return "", "", fmt.Errorf("failed to handle invitation: %w", inviteErr)
 	}
 	return userInvitation.PlatformTenantID, role, nil

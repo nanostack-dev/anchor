@@ -65,7 +65,7 @@ func (s *AnchorAPI) CreateEmailTemplate(
 
 	tpl, err := s.EmailService.CreateTemplate(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).Str("product_id", request.ProductId).Msg("failed to create email template")
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create email template")
 		return nil, err
 	}
 	return CreateEmailTemplate201JSONResponse(mapTemplateToResponse(tpl)), nil
@@ -88,7 +88,7 @@ func (s *AnchorAPI) ListEmailTemplates(
 
 	templates, err := s.EmailService.ListTemplates(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).Str("product_id", request.ProductId).Msg("failed to list email templates")
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email templates")
 		return nil, err
 	}
 
@@ -110,7 +110,7 @@ func (s *AnchorAPI) GetEmailTemplate(
 		ID:        request.EmailTemplateId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to get email template")
@@ -139,7 +139,7 @@ func (s *AnchorAPI) UpdateEmailTemplate(
 		IsActive:    request.Body.IsActive,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to update email template")
@@ -162,7 +162,7 @@ func (s *AnchorAPI) DeleteEmailTemplate(
 		ID:        request.EmailTemplateId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to delete email template")
@@ -185,7 +185,7 @@ func (s *AnchorAPI) GetEmailTemplateDraft(
 		TemplateID: request.EmailTemplateId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to get email template draft")
@@ -221,7 +221,7 @@ func (s *AnchorAPI) UpdateEmailTemplateDraft(
 
 	version, err := s.EmailService.UpdateTemplateDraft(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to update email template draft")
@@ -244,7 +244,7 @@ func (s *AnchorAPI) PublishEmailTemplate(
 		TemplateID: request.EmailTemplateId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to publish email template")
@@ -276,7 +276,7 @@ func (s *AnchorAPI) PreviewEmailTemplate(
 
 	result, err := s.EmailService.Preview(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to preview email template")
@@ -332,7 +332,7 @@ func (s *AnchorAPI) SaveEmailTemplateExamples(
 		Examples:   examples,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("email_template_id", request.EmailTemplateId).
 			Msg("failed to save template examples")
@@ -374,7 +374,7 @@ func (s *AnchorAPI) SendEmail(
 
 	record, err := s.EmailService.Send(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).Str("product_id", request.ProductId).Msg("failed to send email")
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to send email")
 		return nil, err
 	}
 	return SendEmail201JSONResponse(mapSendRecordToResponse(record)), nil
@@ -397,7 +397,7 @@ func (s *AnchorAPI) ListEmailSends(
 
 	records, err := s.EmailService.ListSends(ctx, in)
 	if err != nil {
-		s.logger.Error().Err(err).Str("product_id", request.ProductId).Msg("failed to list email sends")
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email sends")
 		return nil, err
 	}
 

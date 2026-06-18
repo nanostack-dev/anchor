@@ -33,7 +33,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
 		if err != nil {
-			s.logger.Error().Err(err).
+			logAPIError(s.logger, err).
 				Str("product_id", request.ProductId).
 				Str("product_user_id", request.Body.FoundingMember.ProductUserId).
 				Str("role_id", request.Body.FoundingMember.RoleId).
@@ -52,7 +52,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 	createdOrganization, err := s.OrganizationService.Create(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to create organization")
+		logAPIError(s.logger, err).Msg("failed to create organization")
 		return nil, err
 	}
 
@@ -76,7 +76,7 @@ func (s *AnchorAPI) SearchProductOrganizations(
 
 	result, err := s.OrganizationService.Search(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to search product organizations")
+		logAPIError(s.logger, err).Msg("failed to search product organizations")
 		return nil, err
 	}
 
@@ -100,7 +100,7 @@ func (s *AnchorAPI) GetProductOrganization(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to get organization")
@@ -121,7 +121,7 @@ func (s *AnchorAPI) DeleteProductOrganization(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		s.logger.Error().Err(err).
+		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to delete organization")
@@ -143,7 +143,7 @@ func (s *AnchorAPI) UpdateProductOrganization(
 
 	updatedOrganization, err := s.OrganizationService.Update(ctx, input)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to update organization")
+		logAPIError(s.logger, err).Msg("failed to update organization")
 		return nil, err
 	}
 

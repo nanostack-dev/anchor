@@ -688,14 +688,14 @@ type ApiError struct {
 	// Code A machine-readable error code.
 	Code string `json:"code"`
 
-	// Details Additional details about the error (optional).
-	Details *map[string]interface{} `json:"details,omitempty"`
-
 	// Field The specific field that caused the error (optional).
 	Field *string `json:"field,omitempty"`
 
 	// Message A human-readable error message.
 	Message string `json:"message"`
+
+	// Metadata Additional metadata about the error (optional).
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // ApiErrorResponse defines model for ApiErrorResponse.

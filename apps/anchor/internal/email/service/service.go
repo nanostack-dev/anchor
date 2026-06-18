@@ -16,8 +16,8 @@ import (
 	intrepo "anchor/internal/repository"
 
 	"github.com/lib/pq"
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/rs/zerolog"
 )
@@ -25,42 +25,42 @@ import (
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 
 var (
-	ErrEmailIntegrationNotFound = apierror.NewWithStatus(
+	ErrEmailIntegrationNotFound = fault.NewWithStatus(
 		"EMAIL_INTEGRATION_NOT_FOUND",
 		"No email integration is configured for this product",
 		http.StatusFailedDependency,
 	)
-	ErrEmailIntegrationInactive = apierror.NewBadRequest(
+	ErrEmailIntegrationInactive = fault.BadRequest(
 		"EMAIL_INTEGRATION_INACTIVE",
 		"The email integration is not in an ACTIVE state",
 	)
-	ErrEmailTemplateNotFound = apierror.NewWithStatus(
+	ErrEmailTemplateNotFound = fault.NewWithStatus(
 		"EMAIL_TEMPLATE_NOT_FOUND",
 		"Email template not found",
 		http.StatusNotFound,
 	)
-	ErrEmailTemplateNotPublished = apierror.NewBadRequest(
+	ErrEmailTemplateNotPublished = fault.BadRequest(
 		"EMAIL_TEMPLATE_NOT_PUBLISHED",
 		"This template has no published version; publish it before sending",
 	)
-	ErrEmailTemplateNoDraft = apierror.NewBadRequest(
+	ErrEmailTemplateNoDraft = fault.BadRequest(
 		"EMAIL_TEMPLATE_NO_DRAFT",
 		"This template has no draft version available",
 	)
-	ErrEmailTemplateSlugTaken = apierror.NewBadRequest(
+	ErrEmailTemplateSlugTaken = fault.BadRequest(
 		"EMAIL_TEMPLATE_SLUG_TAKEN",
 		"An email template with this slug already exists for the product",
 	)
-	ErrEmailRateLimitExceeded = apierror.NewWithStatus(
+	ErrEmailRateLimitExceeded = fault.NewWithStatus(
 		"EMAIL_RATE_LIMIT_EXCEEDED",
 		"Sends for this product exceeded the configured rate limit",
 		http.StatusTooManyRequests,
 	)
-	ErrEmailMailerCapabilityMissing = apierror.NewBadRequest(
+	ErrEmailMailerCapabilityMissing = fault.BadRequest(
 		"EMAIL_MAILER_CAPABILITY_MISSING",
 		"The configured integration does not support outbound email",
 	)
-	ErrEmailTemplateSelectorMissing = apierror.NewBadRequest(
+	ErrEmailTemplateSelectorMissing = fault.BadRequest(
 		"EMAIL_TEMPLATE_SELECTOR_MISSING",
 		"Either template_id or template_slug must be supplied",
 	)
@@ -570,7 +570,7 @@ func (s *emailService) Preview(
 	}
 	res, err := s.renderer.Render(v, in.Variables)
 	if err != nil {
-		return email.PreviewResult{}, apierror.NewBadRequest(
+		return email.PreviewResult{}, fault.BadRequest(
 			"EMAIL_TEMPLATE_RENDER_ERROR",
 			err.Error(),
 		)

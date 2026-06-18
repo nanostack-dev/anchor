@@ -206,6 +206,9 @@ components:
       pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
     ApiError:
       type: object
+      x-go-type: fault.Detail
+      x-go-type-import:
+        path: github.com/nanostack-dev/nanostack-framework/pkg/fault
       properties:
         code:
           type: string
@@ -219,10 +222,10 @@ components:
           type: string
           description: The specific field that caused the error (optional).
           example: "name"
-        details:
-          type: object # Allow richer details
+        metadata:
+          type: object # Allow richer metadata
           additionalProperties: true
-          description: Additional details about the error (optional).
+          description: Additional metadata about the error (optional).
           example: {"minLength": 2}
       required:
       - code
@@ -230,6 +233,9 @@ components:
 
     ApiErrorResponse:
       type: object
+      x-go-type: fault.Error
+      x-go-type-import:
+        path: github.com/nanostack-dev/nanostack-framework/pkg/fault
       properties:
         errors:
           type: array

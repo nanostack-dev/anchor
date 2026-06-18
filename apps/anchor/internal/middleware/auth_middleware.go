@@ -1,12 +1,11 @@
 package middleware
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
-	frameworkapierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"github.com/rs/zerolog"
 
@@ -99,10 +98,10 @@ func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 		},
 	)
 	if err != nil {
-		if frameworkErr, hasFrameworkErr := frameworkapierror.As(err); hasFrameworkErr {
+		if frameworkErr, hasFrameworkErr := fault.As(err); hasFrameworkErr {
 			writeAPIError(w, frameworkErr)
 		} else {
-			writeAPIError(w, frameworkapierror.ErrUnexpected)
+			writeAPIError(w, fault.ErrUnexpected)
 		}
 		return true
 	}
@@ -206,28 +205,6 @@ func (auth *AuthMiddleware) validateProductAccess(
 	return nil
 }
 
-func writeAPIError(w http.ResponseWriter, err *frameworkapierror.Error) {
-	if err == nil {
-		err = frameworkapierror.ErrUnexpected
-	}
-
-	response := api.ApiErrorResponse{Errors: make([]api.ApiError, 0, len(err.Details))}
-	for _, detail := range err.Details {
-		apiErr := api.ApiError{Code: detail.Code, Message: detail.Message}
-		if len(detail.Metadata) > 0 {
-			metadata := make(map[string]interface{}, len(detail.Metadata))
-			for key, value := range detail.Metadata {
-				metadata[key] = value
-			}
-			apiErr.Details = &metadata
-			if field, ok := metadata["field"].(string); ok && field != "" {
-				apiErr.Field = &field
-			}
-		}
-		response.Errors = append(response.Errors, apiErr)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(err.HTTPStatus())
-	_ = json.NewEncoder(w).Encode(response)
+func writeAPIError(w http.ResponseWriter, err *fault.Error) {
+	fault.WriteJSON(w, err)
 }

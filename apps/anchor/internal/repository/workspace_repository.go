@@ -8,7 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"github.com/go-jet/jet/v2/postgres"
-	apierror "github.com/nanostack-dev/nanostack-framework/pkg/apierror"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -190,7 +190,7 @@ func (r *workspaceRepositoryImpl) Update(
 		return workspace.Workspace{}, err
 	}
 	if updated == nil {
-		return workspace.Workspace{}, apierror.ErrNotFound
+		return workspace.Workspace{}, fault.ErrNotFound
 	}
 
 	return *updated, nil
@@ -217,7 +217,7 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		return err
 	}
 	if found != nil {
-		return apierror.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 
 	return nil
