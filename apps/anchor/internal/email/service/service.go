@@ -71,12 +71,11 @@ var (
 // send omits variables the template version marks required. The missing names
 // are surfaced both in the message and as machine-readable metadata so clients
 // can highlight the offending fields.
-func errEmailRequiredVariablesMissing(missing []string) *apierror.Error {
-	return apierror.NewBadRequestWithMetadata(
+func errEmailRequiredVariablesMissing(missing []string) *fault.Error {
+	return fault.BadRequest(
 		"EMAIL_REQUIRED_VARIABLES_MISSING",
 		fmt.Sprintf("Missing required template variable(s): %s", strings.Join(missing, ", ")),
-		map[string]any{"missing_variables": missing},
-	)
+	).Metadata(map[string]any{"missing_variables": missing})
 }
 
 // EmailService is the product-facing entry point for managing templates
