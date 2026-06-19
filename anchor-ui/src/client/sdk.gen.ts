@@ -1480,6 +1480,10 @@ export const listEmailTemplates = <ThrowOnError extends boolean = false>(options
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates',
@@ -1496,6 +1500,10 @@ export const createEmailTemplate = <ThrowOnError extends boolean = false>(option
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates',
@@ -1516,6 +1524,10 @@ export const deleteEmailTemplate = <ThrowOnError extends boolean = false>(option
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}',
@@ -1532,6 +1544,10 @@ export const getEmailTemplate = <ThrowOnError extends boolean = false>(options: 
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}',
@@ -1549,6 +1565,10 @@ export const updateEmailTemplate = <ThrowOnError extends boolean = false>(option
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}',
@@ -1570,6 +1590,10 @@ export const getEmailTemplateDraft = <ThrowOnError extends boolean = false>(opti
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}/draft',
@@ -1587,6 +1611,10 @@ export const updateEmailTemplateDraft = <ThrowOnError extends boolean = false>(o
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}/draft',
@@ -1608,6 +1636,10 @@ export const publishEmailTemplate = <ThrowOnError extends boolean = false>(optio
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}/publish',
@@ -1625,6 +1657,10 @@ export const previewEmailTemplate = <ThrowOnError extends boolean = false>(optio
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'X-Product-API-Key',
+                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/email/templates/{email_template_id}/preview',

@@ -11,7 +11,7 @@ export const zApiError = z.object({
     code: z.string(),
     message: z.string(),
     field: z.optional(z.string()),
-    details: z.optional(z.record(z.string(), z.unknown()))
+    metadata: z.optional(z.record(z.string(), z.unknown()))
 });
 
 export const zApiErrorResponse = z.object({
