@@ -19,9 +19,9 @@ export type ApiError = {
      */
     field?: string;
     /**
-     * Additional details about the error (optional).
+     * Additional metadata about the error (optional).
      */
-    details?: {
+    metadata?: {
         [key: string]: unknown;
     };
 };

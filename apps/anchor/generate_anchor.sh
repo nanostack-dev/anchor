@@ -92,10 +92,11 @@ generate_code() {
   echo "===== Running code generation steps ====="
 
   # create openapi-cleaned.yaml if it doesn't exist
+  # Strip x-go-type hints for the client spec. Delete each `x-go-type-import:`
+  # together with its following `path:` child (N;d) so no orphaned mapping is
+  # left behind — generic across all imports (domain, framework/*, fault, ...).
   sed -e '/x-go-type: string/!{/x-go-type:/d;}' \
-        -e '/x-go-type-import:/d' \
-        -e '/\s*path: anchor\/internal\/domain.*/d' \
-        -e '/\s*path: github\.com\/nanostack-dev\/nanostack-framework\/pkg\/search.*/d' ./cmd/http/openapi.yaml > ./cmd/http/openapi-cleaned.yaml
+        -e '/x-go-type-import:/{N;d;}' ./cmd/http/openapi.yaml > ./cmd/http/openapi-cleaned.yaml
 
   go generate tools.go
 
