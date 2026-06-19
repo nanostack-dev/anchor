@@ -20,6 +20,8 @@ import { emailSendsRoute } from "@/routes/products/email-sends";
 import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
 import { emailTemplatesRoute } from "@/routes/products/email-templates";
 import { productPermissionsRoute } from "@/routes/products/permissions";
+import { productApiKeyEditRoute } from "@/routes/products/product-api-key-edit";
+import { productApiKeyNewRoute } from "@/routes/products/product-api-key-new";
 import { productApiKeysRoute } from "@/routes/products/product-api-keys";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
 import { productRolesRoute } from "@/routes/products/product-roles-route";
@@ -37,6 +39,8 @@ const routeTree = rootRoute.addChildren([
 	productsRoute,
 	productEditRoute,
 	productApiKeysRoute,
+	productApiKeyNewRoute,
+	productApiKeyEditRoute,
 	productUsersRoute,
 	productRolesRoute,
 	productResourcePermissionsRoute,
