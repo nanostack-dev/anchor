@@ -18,6 +18,8 @@ export const ROUTE_PATHS = {
 
 	// Product routes
 	PRODUCT_API_KEYS: "/products/product-api-keys",
+	PRODUCT_API_KEY_NEW: "/products/product-api-keys/new",
+	PRODUCT_API_KEY_EDIT: "/products/product-api-keys/$apiKeyId/edit",
 	PRODUCT_USERS: "/products/users",
 	PRODUCT_ROLES: "/products/resources/roles",
 	PRODUCT_PERMISSIONS: "/products/permissions",
