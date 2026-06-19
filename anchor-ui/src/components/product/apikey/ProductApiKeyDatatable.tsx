@@ -9,9 +9,10 @@ import {
 import { searchProductApiKeysOptions } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { DeleteProductAPIKeyDialog } from "@/components/product/apikey/DeleteProductApiKeyDialog";
-import { ProductApiKeyDialog } from "@/components/product/apikey/ProductApiKeyDialog";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -183,17 +184,15 @@ export function ProductApiKeyDatatable({
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
-						<ProductApiKeyDialog
-							productId={productId}
-							mode="edit"
-							existingApiKey={row.original}
-							trigger={
-								<Button variant="outline" size="icon">
-									<span className="sr-only">Edit API key</span>
-									<PenLine className="h-4 w-4" />
-								</Button>
-							}
-						/>
+						<Button variant="outline" size="icon" asChild>
+							<Link
+								to={ROUTE_PATHS.PRODUCT_API_KEY_EDIT}
+								params={{ apiKeyId: row.original.id }}
+							>
+								<span className="sr-only">Edit API key</span>
+								<PenLine className="h-4 w-4" />
+							</Link>
+						</Button>
 						<DeleteProductAPIKeyDialog
 							productId={productId}
 							apiKey={row.original}
@@ -225,16 +224,12 @@ export function ProductApiKeyDatatable({
 		<>
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
-					<ProductApiKeyDialog
-						productId={productId}
-						mode="create"
-						trigger={
-							<Button>
-								<Plus />
-								Create API Key
-							</Button>
-						}
-					/>
+					<Button asChild>
+						<Link to={ROUTE_PATHS.PRODUCT_API_KEY_NEW}>
+							<Plus />
+							Create API Key
+						</Link>
+					</Button>
 				</div>
 			</div>
 			<AnchorDataTable<ProductApiKeyResponse, ProductApiKeyFilters>
