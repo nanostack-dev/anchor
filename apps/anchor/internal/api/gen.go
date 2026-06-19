@@ -3688,6 +3688,8 @@ func (siw *ServerInterfaceWrapper) ListEmailTemplates(w http.ResponseWriter, r *
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
 
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
+
 	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
@@ -3749,6 +3751,8 @@ func (siw *ServerInterfaceWrapper) CreateEmailTemplate(w http.ResponseWriter, r 
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
 
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:create"})
+
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3789,6 +3793,8 @@ func (siw *ServerInterfaceWrapper) DeleteEmailTemplate(w http.ResponseWriter, r 
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:delete"})
 
 	r = r.WithContext(ctx)
 
@@ -3831,6 +3837,8 @@ func (siw *ServerInterfaceWrapper) GetEmailTemplate(w http.ResponseWriter, r *ht
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
 
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
+
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3871,6 +3879,8 @@ func (siw *ServerInterfaceWrapper) UpdateEmailTemplate(w http.ResponseWriter, r 
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
 
 	r = r.WithContext(ctx)
 
@@ -3913,6 +3923,8 @@ func (siw *ServerInterfaceWrapper) GetEmailTemplateDraft(w http.ResponseWriter, 
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
 
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
+
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3953,6 +3965,8 @@ func (siw *ServerInterfaceWrapper) UpdateEmailTemplateDraft(w http.ResponseWrite
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
 
 	r = r.WithContext(ctx)
 
@@ -4077,6 +4091,8 @@ func (siw *ServerInterfaceWrapper) PreviewEmailTemplate(w http.ResponseWriter, r
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
 
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
+
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -4117,6 +4133,8 @@ func (siw *ServerInterfaceWrapper) PublishEmailTemplate(w http.ResponseWriter, r
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
 
 	r = r.WithContext(ctx)
 
