@@ -5008,6 +5008,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:create
       requestBody:
         required: true
         content:
@@ -5030,6 +5032,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:read
       parameters:
       - name: limit
         in: query
@@ -5062,6 +5066,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:read
       responses:
         '200':
           description: Success
@@ -5079,6 +5085,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:update
       requestBody:
         required: true
         content:
@@ -5103,6 +5111,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:delete
       responses:
         '204':
           description: Deleted
@@ -5121,6 +5131,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:read
       responses:
         '200':
           description: Success
@@ -5138,6 +5150,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:update
       requestBody:
         required: true
         content:
@@ -5168,6 +5182,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:update
       responses:
         '200':
           description: Published version
@@ -5192,6 +5208,8 @@ paths:
       - Email
       security:
       - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:read
       requestBody:
         required: true
         content:
