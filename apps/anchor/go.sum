@@ -270,8 +270,8 @@ github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 h1:RWengNIwukTxcDr9
 github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
 github.com/morikuni/aec v1.1.0 h1:vBBl0pUnvi/Je71dsRrhMBtreIqNMYErSAbEeb8jrXQ=
 github.com/morikuni/aec v1.1.0/go.mod h1:xDRgiq/iw5l+zkao76YTKzKttOp2cwPEne25HDkJnBw=
-github.com/nanostack-dev/nanostack-framework v0.2.8 h1:k0+aUVyNzctN+C4Us/6baEg87uyZYTKAlw7qJw0O9OY=
-github.com/nanostack-dev/nanostack-framework v0.2.8/go.mod h1:dyNmrdbwFlFqM4iw3HnoX/HDpkwmfDWx2RrOqODhXrg=
+github.com/nanostack-dev/nanostack-framework v0.2.9 h1:+FXFQ0zCulfgM6KVt4CIbA/kepaU7MZVqcOkMW5gMsw=
+github.com/nanostack-dev/nanostack-framework v0.2.9/go.mod h1:dyNmrdbwFlFqM4iw3HnoX/HDpkwmfDWx2RrOqODhXrg=
 github.com/nanostack-dev/pgkit v0.0.10 h1:zNIqJzhL/stMrS3YUjMj6Y+MZjGLEgTEE0p3AZ6LiKs=
 github.com/nanostack-dev/pgkit v0.0.10/go.mod h1:ZVxrSJ+1qxZwgQHmuN+E2EiIS6ygPL5bxdBbNuFURSE=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
