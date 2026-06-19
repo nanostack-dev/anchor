@@ -46,6 +46,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import Editor from "@monaco-editor/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,6 +55,7 @@ import {
 	AlertCircle,
 	Check,
 	Code2,
+	Copy,
 	FileText,
 	LayoutTemplate,
 	Plus,
@@ -114,6 +116,48 @@ function getApiErrorCode(error: unknown): string | undefined {
 	}
 
 	return undefined;
+}
+
+// Copies the current HTML body to the clipboard with transient "Copied" feedback.
+function CopyHtmlButton({ html }: { html: string }) {
+	const [copied, setCopied] = useState(false);
+	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	useEffect(
+		() => () => {
+			if (resetTimer.current) clearTimeout(resetTimer.current);
+		},
+		[],
+	);
+
+	async function handleCopy() {
+		try {
+			await navigator.clipboard.writeText(html);
+			setCopied(true);
+			if (resetTimer.current) clearTimeout(resetTimer.current);
+			resetTimer.current = setTimeout(() => setCopied(false), 2000);
+		} catch {
+			setCopied(false);
+		}
+	}
+
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			className="h-7 px-2 text-muted-foreground hover:text-foreground"
+			onClick={handleCopy}
+			disabled={!html}
+		>
+			{copied ? (
+				<Check className="size-3.5 mr-1" />
+			) : (
+				<Copy className="size-3.5 mr-1" />
+			)}
+			{copied ? "Copied" : "Copy HTML"}
+		</Button>
+	);
 }
 
 function stringifyExampleValues(
@@ -1008,9 +1052,9 @@ function ExampleManager({
 					</p>
 				</div>
 			) : (
-				<div className="flex gap-3">
+				<div className="flex flex-col gap-3 sm:flex-row">
 					{/* Example list sidebar */}
-					<div className="w-44 shrink-0">
+					<div className="w-full sm:w-44 sm:shrink-0">
 						<div className="text-xs font-medium text-muted-foreground mb-1.5 px-1">
 							Examples ({examples.length})
 						</div>
@@ -1501,6 +1545,7 @@ export function EmailTemplateBuilder({
 	templateId: string;
 }) {
 	const queryClient = useQueryClient();
+	const isMobile = useIsMobile();
 
 	const { data: template, isLoading: templateLoading } = useQuery(
 		getEmailTemplateOptions({
@@ -1642,22 +1687,22 @@ export function EmailTemplateBuilder({
 	return (
 		<div className="flex flex-col h-full gap-0">
 			{/* Header */}
-			<div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
-				<div className="flex items-center gap-3">
+			<div className="flex flex-col gap-3 px-4 py-3 border-b shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
 					<Link
 						to={ROUTE_PATHS.EMAIL_TEMPLATES}
 						className="text-sm text-muted-foreground hover:text-foreground"
 					>
 						← Templates
 					</Link>
-					<Separator orientation="vertical" className="h-4" />
+					<Separator orientation="vertical" className="h-4 hidden sm:block" />
 					<input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						className="font-semibold text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-border outline-none px-0 py-0.5 w-48"
+						className="font-semibold text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-border outline-none px-0 py-0.5 w-40 sm:w-48"
 						placeholder="Template name"
 					/>
-					<span className="font-mono text-xs text-muted-foreground">
+					<span className="font-mono text-xs text-muted-foreground truncate">
 						/{template.slug}
 					</span>
 					{template.published_version_id ? (
@@ -1666,7 +1711,7 @@ export function EmailTemplateBuilder({
 						<StatusBadge tone="warning">Draft only</StatusBadge>
 					)}
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-2 sm:justify-end">
 					<span className="text-xs text-muted-foreground">
 						{saveState === "saving" && "Saving…"}
 						{saveState === "saved" && "Saved"}
@@ -1698,10 +1743,14 @@ export function EmailTemplateBuilder({
 				</div>
 			)}
 
-			{/* Body — split editor / preview */}
+			{/* Body — split editor / preview on desktop, tabbed on mobile */}
 			<div className="flex flex-1 min-h-0">
 				{/* Left: editor */}
-				<div className="flex flex-col w-1/2 border-r min-h-0">
+				<div
+					className={`flex flex-col min-h-0 ${
+						isMobile ? "w-full" : "w-1/2 border-r"
+					}`}
+				>
 					<Tabs defaultValue="content" className="flex flex-col flex-1 min-h-0">
 						<TabsList className="mx-4 mt-4 w-fit shrink-0">
 							<TabsTrigger value="content">Content</TabsTrigger>
@@ -1709,6 +1758,7 @@ export function EmailTemplateBuilder({
 								Variables ({variables.length})
 							</TabsTrigger>
 							<TabsTrigger value="examples">Examples</TabsTrigger>
+							{isMobile && <TabsTrigger value="preview">Preview</TabsTrigger>}
 						</TabsList>
 
 						<TabsContent
@@ -1726,7 +1776,10 @@ export function EmailTemplateBuilder({
 								/>
 							</div>
 							<div className="flex flex-col flex-1 min-h-0 gap-1">
-								<Label className="shrink-0">HTML Body</Label>
+								<div className="flex items-center justify-between shrink-0">
+									<Label>HTML Body</Label>
+									<CopyHtmlButton html={bodyHtml} />
+								</div>
 								<div className="flex-1 min-h-0 border rounded-md overflow-hidden">
 									<Editor
 										language="html"
@@ -1871,22 +1924,40 @@ export function EmailTemplateBuilder({
 								onActiveChange={setActiveVarValues}
 							/>
 						</TabsContent>
+
+						{/* Mobile-only preview tab (desktop renders the split panel below) */}
+						{isMobile && (
+							<TabsContent
+								value="preview"
+								className="flex flex-col flex-1 min-h-0 px-4 pb-4"
+							>
+								<PreviewPane
+									productId={productId}
+									templateId={templateId}
+									variables={variables}
+									draftVersion={draft ?? null}
+									activeVarValues={activeVarValues}
+								/>
+							</TabsContent>
+						)}
 					</Tabs>
 				</div>
 
-				{/* Right: preview */}
-				<div className="flex flex-col w-1/2 p-4 min-h-0">
-					<p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-						Live Preview
-					</p>
-					<PreviewPane
-						productId={productId}
-						templateId={templateId}
-						variables={variables}
-						draftVersion={draft ?? null}
-						activeVarValues={activeVarValues}
-					/>
-				</div>
+				{/* Right: preview (desktop split view) */}
+				{!isMobile && (
+					<div className="flex flex-col w-1/2 p-4 min-h-0">
+						<p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+							Live Preview
+						</p>
+						<PreviewPane
+							productId={productId}
+							templateId={templateId}
+							variables={variables}
+							draftVersion={draft ?? null}
+							activeVarValues={activeVarValues}
+						/>
+					</div>
+				)}
 			</div>
 		</div>
 	);
