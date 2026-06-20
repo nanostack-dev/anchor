@@ -604,13 +604,20 @@ func (s *emailService) Preview(
 func (s *emailService) Send(
 	ctx context.Context, in email.SendInput,
 ) (email.SendRecord, error) {
+	// retryRecord is a prior send for this dedupe key that FAILED — we re-dispatch
+	// it (reusing the row) instead of returning the stale failure. Any other
+	// status (queued/sending/sent) is a genuine duplicate and short-circuits.
+	var retryRecord *email.SendRecord
 	if in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != "" {
 		existing, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
 		if err != nil {
 			return email.SendRecord{}, err
 		}
 		if existing != nil {
-			return *existing, nil
+			if existing.Status != email.SendStatusFailed {
+				return *existing, nil
+			}
+			retryRecord = existing
 		}
 	}
 
@@ -664,35 +671,44 @@ func (s *emailService) Send(
 		}
 	}
 
-	rec := email.SendRecord{
-		PlatformTenantID:      in.TenantID,
-		ProductID:             in.ProductID,
-		IntegrationInstanceID: instance.ID,
-		TemplateID:            &tpl.ID,
-		TemplateVersionID:     &version.ID,
-		DedupeKey:             in.DedupeKey,
-		ToAddress:             in.ToAddress,
-		ToName:                in.ToName,
-		FromAddress:           sender.Email,
-		FromName:              sender.Name,
-		Subject:               rendered.Subject,
-		BodyHTML:              rendered.BodyHTML,
-		BodyText:              rendered.BodyText,
-		VariablesJSON:         varsJSON,
-		Status:                email.SendStatusQueued,
-		Attempts:              0,
-	}
-	rec.GenerateID()
+	var persisted email.SendRecord
+	var messageID string
+	if retryRecord != nil {
+		// Re-dispatch a previously FAILED send, reusing its row (the dedupe unique
+		// index forbids a second row for the same key).
+		persisted = *retryRecord
+		messageID = persisted.MessageID
+	} else {
+		rec := email.SendRecord{
+			PlatformTenantID:      in.TenantID,
+			ProductID:             in.ProductID,
+			IntegrationInstanceID: instance.ID,
+			TemplateID:            &tpl.ID,
+			TemplateVersionID:     &version.ID,
+			DedupeKey:             in.DedupeKey,
+			ToAddress:             in.ToAddress,
+			ToName:                in.ToName,
+			FromAddress:           sender.Email,
+			FromName:              sender.Name,
+			Subject:               rendered.Subject,
+			BodyHTML:              rendered.BodyHTML,
+			BodyText:              rendered.BodyText,
+			VariablesJSON:         varsJSON,
+			Status:                email.SendStatusQueued,
+			Attempts:              0,
+		}
+		rec.GenerateID()
+		messageID = ids.MustNew("emid")
+		rec.MessageID = messageID
 
-	messageID := ids.MustNew("emid")
-	rec.MessageID = messageID
-
-	persisted, createdNew, err := s.createSendRecord(ctx, in, rec)
-	if err != nil {
-		return email.SendRecord{}, err
-	}
-	if !createdNew {
-		return persisted, nil
+		var createdNew bool
+		persisted, createdNew, err = s.createSendRecord(ctx, in, rec)
+		if err != nil {
+			return email.SendRecord{}, err
+		}
+		if !createdNew {
+			return persisted, nil
+		}
 	}
 
 	msg := provider.OutboundMessage{
