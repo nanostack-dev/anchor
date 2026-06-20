@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"anchor/internal/logx"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -32,7 +33,7 @@ func (t *tenantService) IsTenantInit(ctx context.Context) (bool, error) {
 
 	count, err := t.tenantRepo.Count(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to count tenants")
+		logx.EventForError(&logger, err).Err(err).Msg("failed to count tenants")
 		return false, err
 	}
 	return count > 0, nil
