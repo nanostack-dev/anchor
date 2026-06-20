@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,7 @@ func TestEmailTemplateGet(t *testing.T) {
 			Name:        "Get Template",
 			Subject:     "Subj",
 			BodyHtml:    "<p>Body</p>",
-			Description: ptr.Ptr("desc"),
+			Description: new("desc"),
 		},
 	)
 	require.NoError(t, err)

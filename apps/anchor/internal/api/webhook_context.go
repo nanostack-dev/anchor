@@ -27,7 +27,7 @@ func webhookHeaderPrefixes() []string { return []string{"svix-", "webhook-"} }
 // context so the handler can access them for signature validation.
 func NewWebhookHeadersMiddleware() StrictMiddlewareFunc {
 	return func(f StrictHandlerFunc, operationID string) StrictHandlerFunc {
-		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
 			if operationID == "IngestWebhook" {
 				headers := extractWebhookHeaders(r)
 				ctx = context.WithValue(ctx, webhookHeadersKey{}, headers)

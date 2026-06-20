@@ -26,13 +26,13 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 	// A plain config update on the active instance — no webhook secret in sight.
 	cfg := ct.IntegrationProviderConfig{}
 	require.NoError(t, cfg.FromSmtpIntegrationConfig(ct.SmtpIntegrationConfig{
-		Host:        ptr.Ptr(mp.SMTPHost),
-		Port:        ptr.Ptr(mp.SMTPPort),
+		Host:        new(mp.SMTPHost),
+		Port:        new(mp.SMTPPort),
 		Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
 		AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
-		Username:    ptr.Ptr("test"),
-		FromAddress: ptr.Ptr("noreply@tryanchor.dev"),
-		FromName:    ptr.Ptr("Anchor Updated"),
+		Username:    new("test"),
+		FromAddress: new("noreply@tryanchor.dev"),
+		FromName:    new("Anchor Updated"),
 	}))
 
 	resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
@@ -52,7 +52,7 @@ func TestClerkActiveInstanceStillRequiresWebhookSecret(t *testing.T) {
 	instance := seedActiveClerkInstance(t, tc)
 
 	resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
-		WebhookSecret: ptr.Ptr(""),
+		WebhookSecret: new(""),
 	})
 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), "body: %s", string(resp.Body))

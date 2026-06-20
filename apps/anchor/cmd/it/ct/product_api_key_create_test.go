@@ -6,7 +6,6 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
 
@@ -195,12 +194,12 @@ func TestProductAPIKeyCreate(t *testing.T) {
 				},
 				{
 					name:        "Description is blank (should be allowed)",
-					inputDesc:   ptr.Ptr("   "),
+					inputDesc:   new("   "),
 					expectedMsg: "",
 				},
 				{
 					name:        "Description exceeds 500 characters",
-					inputDesc:   ptr.Ptr(strings.Repeat("a", 501)),
+					inputDesc:   new(strings.Repeat("a", 501)),
 					expectedMsg: "Description must be a maximum of 500 characters in length",
 				},
 			}

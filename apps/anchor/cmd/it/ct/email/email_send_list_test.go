@@ -51,7 +51,7 @@ func TestEmailSendList(t *testing.T) {
 		_, err = client.PublishEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
 		require.NoError(t, err)
 
-		vars := map[string]interface{}{}
+		vars := map[string]any{}
 		_, err = client.SendEmailWithResponse(
 			context.Background(),
 			tc.product.ProductID,

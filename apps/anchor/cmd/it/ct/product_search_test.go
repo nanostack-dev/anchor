@@ -6,7 +6,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ func TestProductSearch(t *testing.T) {
 			ctx,
 			ct.CreateProductJSONRequestBody{
 				Name:        productName,
-				Description: ptr.Ptr("This is a test product " + productName),
+				Description: new("This is a test product " + productName),
 			},
 		)
 		require.NoError(t, err, "create product request should not error")
@@ -46,8 +45,8 @@ func TestProductSearch(t *testing.T) {
 						},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -71,8 +70,8 @@ func TestProductSearch(t *testing.T) {
 						},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)

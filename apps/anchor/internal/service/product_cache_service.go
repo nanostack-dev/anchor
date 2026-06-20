@@ -78,7 +78,7 @@ func (c *productCacheService) GetOrElseProduct(
 ) (*product.Product, error) {
 	var prod product.Product
 	err := c.cache.GetOrElseStruct(
-		ctx, c.getProductCacheKey(tenantID, productID), &prod, func() (interface{}, error) {
+		ctx, c.getProductCacheKey(tenantID, productID), &prod, func() (any, error) {
 			result, err := fallback()
 			if err != nil {
 				return nil, err

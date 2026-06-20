@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
 
@@ -28,7 +27,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Deletable Organization",
-					Description: ptr.Ptr("Org to delete"),
+					Description: new("Org to delete"),
 				},
 			)
 			require.NoError(t, err, "create organization should not error")
@@ -82,7 +81,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Security Delete Organization",
-					Description: ptr.Ptr("Security test"),
+					Description: new("Security test"),
 				},
 			)
 			require.NoError(t, err, "create organization should not error")

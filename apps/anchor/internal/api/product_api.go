@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"slices"
 
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/user"
@@ -376,11 +377,8 @@ func (s *AnchorAPI) ListUserOrganizations(
 ) (ListUserOrganizationsResponseObject, error) {
 	includePermissions := false
 	if request.Params.Include != nil {
-		for _, inc := range *request.Params.Include {
-			if inc == UserOrganizationIncludeRolePermissions {
-				includePermissions = true
-				break
-			}
+		if slices.Contains(*request.Params.Include, UserOrganizationIncludeRolePermissions) {
+			includePermissions = true
 		}
 	}
 
@@ -414,11 +412,8 @@ func (s *AnchorAPI) GetUserOrganization(
 ) (GetUserOrganizationResponseObject, error) {
 	includePermissions := false
 	if request.Params.Include != nil {
-		for _, inc := range *request.Params.Include {
-			if inc == UserOrganizationIncludeRolePermissions {
-				includePermissions = true
-				break
-			}
+		if slices.Contains(*request.Params.Include, UserOrganizationIncludeRolePermissions) {
+			includePermissions = true
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 // AssertProductAPIKeyInsufficientPermissions validates standard API key permission failures.
 func AssertProductAPIKeyInsufficientPermissions(
 	t *testing.T,
-	response interface{},
+	response any,
 	apiKeyID string,
 	requiredScopes []string,
 	currentScopes []string,
@@ -30,7 +30,7 @@ func AssertProductAPIKeyInsufficientPermissions(
 			Errors: []anchorClient.ApiError{{
 				Code:    "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS",
 				Message: "Product API key does not have sufficient permissions",
-				Metadata: &map[string]interface{}{
+				Metadata: &map[string]any{
 					"api_key_id":      apiKeyID,
 					"required_scopes": convertToInterfaceSlice(requiredScopes),
 					"current_scopes":  convertToInterfaceSlice(currentScopes),
@@ -45,10 +45,10 @@ func AssertProductAPIKeyInsufficientPermissions(
 
 func AssertAnchorBadRequestError(
 	t *testing.T,
-	response interface{},
+	response any,
 	code string,
 	message string,
-	details map[string]interface{},
+	details map[string]any,
 ) {
 	statusCode := getStatusCode(response)
 	json400 := getJSON400(response)
@@ -68,14 +68,14 @@ func AssertAnchorBadRequestError(
 	}
 }
 
-func getStatusCode(response interface{}) int {
+func getStatusCode(response any) int {
 	if r, ok := response.(interface{ StatusCode() int }); ok {
 		return r.StatusCode()
 	}
 	return 0
 }
 
-func getJSON403(response interface{}) *anchorClient.ApiErrorResponse {
+func getJSON403(response any) *anchorClient.ApiErrorResponse {
 	value := reflect.ValueOf(response)
 
 	if value.Kind() == reflect.Pointer {
@@ -97,7 +97,7 @@ func getJSON403(response interface{}) *anchorClient.ApiErrorResponse {
 	return nil
 }
 
-func getJSON400(response interface{}) *anchorClient.ApiErrorResponse {
+func getJSON400(response any) *anchorClient.ApiErrorResponse {
 	value := reflect.ValueOf(response)
 
 	if value.Kind() == reflect.Pointer {
@@ -119,8 +119,8 @@ func getJSON400(response interface{}) *anchorClient.ApiErrorResponse {
 	return nil
 }
 
-func convertToInterfaceSlice(strings []string) []interface{} {
-	result := make([]interface{}, len(strings))
+func convertToInterfaceSlice(strings []string) []any {
+	result := make([]any, len(strings))
 	for i, s := range strings {
 		result[i] = s
 	}

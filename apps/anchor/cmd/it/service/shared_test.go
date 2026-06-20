@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 			ProductRepository:            &ProductRepository,
 			TenantRepository:             &TenantRepository,
 			UserRepository:               &UserRepository,
-			ExtraPopulateTargets: []interface{}{
+			ExtraPopulateTargets: []any{
 				&Queue,
 				&APIKeyEventSvc,
 				&ResourcePermissionRepo,

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -60,7 +59,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: ptr.Ptr(false)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: new(false)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusINACTIVE, updated.Status)
 
@@ -79,7 +78,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: ptr.Ptr(false)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: new(false)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusINACTIVE, updatedToInactive.Status)
 
@@ -87,7 +86,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: ptr.Ptr(true)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: new(true)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, updatedToActive.Status)
 		assert.True(t, updatedToActive.IsEnabled)
@@ -143,7 +142,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: ptr.Ptr(clerkTestWebhookSecret)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: new(clerkTestWebhookSecret)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, updatedToActive.Status)
 
@@ -151,7 +150,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: ptr.Ptr(false)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: new(false)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusINACTIVE, updatedToInactive.Status)
 
@@ -159,7 +158,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 			t,
 			productContext,
 			instance.Id,
-			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: ptr.Ptr(true)},
+			ct.UpdateIntegrationInstanceJSONRequestBody{IsEnabled: new(true)},
 		)
 		assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, updatedToActiveAgain.Status)
 

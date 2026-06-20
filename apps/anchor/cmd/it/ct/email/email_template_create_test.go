@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,7 @@ func TestEmailTemplateCreate(t *testing.T) {
 				Name:        "Welcome Email",
 				Subject:     "Welcome {{ .name }}",
 				BodyHtml:    "<p>Hi {{ .name }}</p>",
-				Description: ptr.Ptr("onboarding template"),
+				Description: new("onboarding template"),
 			},
 		)
 		require.NoError(t, err)

@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +21,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Test Product",
-					Description: ptr.Ptr("This is a test product"),
+					Description: new("This is a test product"),
 				},
 			)
 			assert.NotNil(t, response, "response should not be nil")
@@ -42,7 +41,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Configured Product " + ids.MustNew("test"),
-					Description: ptr.Ptr("This product has a custom organization API key prefix"),
+					Description: new("This product has a custom organization API key prefix"),
 					Config: &ct.ProductConfigRequest{OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
 						Prefix: "acme",
 					}},
@@ -79,7 +78,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "",
-					Description: ptr.Ptr("This product has no name"),
+					Description: new("This product has no name"),
 				},
 			)
 			require.NoError(t, err, "create product with empty name should not error")
@@ -100,7 +99,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Invalid Description Product",
-					Description: ptr.Ptr(strings.Repeat("a", 1001)),
+					Description: new(strings.Repeat("a", 1001)),
 				},
 			)
 			assert.NotNil(t, response, "response should not be nil")
@@ -123,7 +122,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Duplicate Product",
-					Description: ptr.Ptr("This is a test product"),
+					Description: new("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -137,7 +136,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Duplicate Product",
-					Description: ptr.Ptr("This is another test product"),
+					Description: new("This is another test product"),
 				},
 			)
 			assert.NotNil(t, duplicateResp, "response should not be nil")
@@ -162,7 +161,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        productName,
-					Description: ptr.Ptr("This is a test product"),
+					Description: new("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")
@@ -172,7 +171,7 @@ func TestProductCreate(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        strings.ToLower(productName),
-					Description: ptr.Ptr("This is another test product"),
+					Description: new("This is another test product"),
 				},
 			)
 			require.NoError(t, err, "create duplicate product request should not error")

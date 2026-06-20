@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/require"
 
@@ -113,8 +112,8 @@ func GivenBasicProductResourcePermissions(t *testing.T, productID string) []stri
 			t.Context(), resourcepermission.ProductResourcePermission{
 				ProductID:     productID,
 				Name:          perm,
-				Description:   ptr.Ptr("Test resource permission"),
-				ScopeModifier: ptr.Ptr("GLOBAL"),
+				Description:   new("Test resource permission"),
+				ScopeModifier: new("GLOBAL"),
 			},
 		)
 		require.NoError(t, err, "Failed to create resource permission '%s'", perm)

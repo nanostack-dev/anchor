@@ -14,7 +14,6 @@ import (
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -31,7 +30,7 @@ type routeSecurityCase struct {
 	OperationID          string
 	Method               string
 	Path                 string
-	OpMap                map[string]interface{}
+	OpMap                map[string]any
 	RequiresBody         bool
 	RequiredQueryParams  []string
 	HasExplicitSecurity  bool
@@ -42,8 +41,8 @@ type routeSecurityCase struct {
 }
 
 type openAPIRawSpec struct {
-	Paths      map[string]map[string]interface{} `yaml:"paths"`
-	Components map[string]interface{}            `yaml:"components"`
+	Paths      map[string]map[string]any `yaml:"paths"`
+	Components map[string]any            `yaml:"components"`
 }
 
 type securityFixture struct {
@@ -103,7 +102,7 @@ func (fx *securityFixture) getOrCreateAPIKey(t *testing.T, scopes []string) apiK
 
 	req := nanostackClient.CreateProductAPIKeyJSONRequestBody{
 		Name:        "security-test-key-" + ids.MustNew("key"),
-		Description: ptr.Ptr("Security contract test key"),
+		Description: new("Security contract test key"),
 		Permissions: normalized,
 	}
 
@@ -127,7 +126,7 @@ func normalizeScopes(scopes []string) []string {
 	return clone
 }
 
-func readOpenAPISpec(t *testing.T) (openAPIRawSpec, map[string]interface{}) {
+func readOpenAPISpec(t *testing.T) (openAPIRawSpec, map[string]any) {
 	t.Helper()
 
 	data, err := os.ReadFile("../../http/openapi.yaml")
@@ -136,30 +135,30 @@ func readOpenAPISpec(t *testing.T) (openAPIRawSpec, map[string]interface{}) {
 	var spec openAPIRawSpec
 	require.NoError(t, yaml.Unmarshal(data, &spec))
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &raw))
 
-	components := map[string]interface{}{}
-	if c, ok := raw["components"].(map[string]interface{}); ok {
+	components := map[string]any{}
+	if c, ok := raw["components"].(map[string]any); ok {
 		components = c
 	}
 
 	return spec, components
 }
 
-func loadSecurityRouteCases(t *testing.T) ([]routeSecurityCase, map[string]interface{}) {
+func loadSecurityRouteCases(t *testing.T) ([]routeSecurityCase, map[string]any) {
 	t.Helper()
 
 	spec, components := readOpenAPISpec(t)
-	paramDefs := map[string]interface{}{}
-	if p, ok := components["parameters"].(map[string]interface{}); ok {
+	paramDefs := map[string]any{}
+	if p, ok := components["parameters"].(map[string]any); ok {
 		paramDefs = p
 	}
 
 	routes := make([]routeSecurityCase, 0)
 	for path, methods := range spec.Paths {
 		for method, rawOp := range methods {
-			opMap, ok := rawOp.(map[string]interface{})
+			opMap, ok := rawOp.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -183,9 +182,9 @@ func loadSecurityRouteCases(t *testing.T) ([]routeSecurityCase, map[string]inter
 func buildRouteSecurityCase(
 	t *testing.T,
 	method, path string,
-	opMap map[string]interface{},
-	pathMethods map[string]interface{},
-	paramDefs map[string]interface{},
+	opMap map[string]any,
+	pathMethods map[string]any,
+	paramDefs map[string]any,
 ) routeSecurityCase {
 	t.Helper()
 
@@ -214,13 +213,13 @@ func buildRouteSecurityCase(
 	}
 }
 
-func parseSecurity(opMap map[string]interface{}) (bool, bool, bool, bool, []string) {
+func parseSecurity(opMap map[string]any) (bool, bool, bool, bool, []string) {
 	rawSecurity, ok := opMap["security"]
 	if !ok {
 		return false, false, false, false, nil
 	}
 
-	securityEntries, ok := rawSecurity.([]interface{})
+	securityEntries, ok := rawSecurity.([]any)
 	if !ok {
 		return true, false, false, false, nil
 	}
@@ -233,7 +232,7 @@ func parseSecurity(opMap map[string]interface{}) (bool, bool, bool, bool, []stri
 	allowsAPIKey := false
 	requiredAPIKeyScopesSet := map[string]struct{}{}
 	for _, secEntry := range securityEntries {
-		secMap, secOK := secEntry.(map[string]interface{})
+		secMap, secOK := secEntry.(map[string]any)
 		if !secOK {
 			continue
 		}
@@ -243,7 +242,7 @@ func parseSecurity(opMap map[string]interface{}) (bool, bool, bool, bool, []stri
 				requiresBearer = true
 			case "productApiKeyAuth":
 				allowsAPIKey = true
-				scopes, _ := rawScopes.([]interface{})
+				scopes, _ := rawScopes.([]any)
 				for _, rawScope := range scopes {
 					scope, scopeOK := rawScope.(string)
 					if scopeOK && scope != "" {
@@ -296,15 +295,15 @@ func replacePathParams(path string, params map[string]string) string {
 }
 
 func extractParameters(
-	opMap map[string]interface{},
-	pathMethods map[string]interface{},
-	paramDefs map[string]interface{},
+	opMap map[string]any,
+	pathMethods map[string]any,
+	paramDefs map[string]any,
 ) (map[string]struct{}, []string) {
 	requiredPathParams := map[string]struct{}{}
 	requiredQueryParams := []string{}
 
-	parseParams := func(raw interface{}) {
-		paramsArr, ok := raw.([]interface{})
+	parseParams := func(raw any) {
+		paramsArr, ok := raw.([]any)
 		if !ok {
 			return
 		}
@@ -332,8 +331,8 @@ func extractParameters(
 	return requiredPathParams, requiredQueryParams
 }
 
-func resolveParameter(p interface{}, paramDefs map[string]interface{}) map[string]interface{} {
-	refObj, ok := p.(map[string]interface{})
+func resolveParameter(p any, paramDefs map[string]any) map[string]any {
+	refObj, ok := p.(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -342,7 +341,7 @@ func resolveParameter(p interface{}, paramDefs map[string]interface{}) map[strin
 	if hasRef && strings.HasPrefix(ref, "#/components/parameters/") {
 		refName := strings.TrimPrefix(ref, "#/components/parameters/")
 		if def, found := paramDefs[refName]; found {
-			if refDefMap, refOK := def.(map[string]interface{}); refOK {
+			if refDefMap, refOK := def.(map[string]any); refOK {
 				return refDefMap
 			}
 		}
@@ -352,12 +351,12 @@ func resolveParameter(p interface{}, paramDefs map[string]interface{}) map[strin
 	return refObj
 }
 
-func checkIfRequiresBody(opMap map[string]interface{}) bool {
+func checkIfRequiresBody(opMap map[string]any) bool {
 	rb, ok := opMap["requestBody"]
 	if !ok {
 		return false
 	}
-	rbMap, ok := rb.(map[string]interface{})
+	rbMap, ok := rb.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -386,7 +385,7 @@ func buildURL(baseURL, path string, requiredQueryParams []string) string {
 func sendRequest(
 	t *testing.T,
 	route routeSecurityCase,
-	components map[string]interface{},
+	components map[string]any,
 	headers map[string]string,
 	fx *securityFixture,
 ) *http.Response {
@@ -414,20 +413,20 @@ func sendRequest(
 	return resp
 }
 
-func generateRequestBody(opMap map[string]interface{}, components map[string]interface{}) string {
-	rb, ok := opMap["requestBody"].(map[string]interface{})
+func generateRequestBody(opMap map[string]any, components map[string]any) string {
+	rb, ok := opMap["requestBody"].(map[string]any)
 	if !ok {
 		return `{}`
 	}
-	content, ok := rb["content"].(map[string]interface{})
+	content, ok := rb["content"].(map[string]any)
 	if !ok {
 		return `{}`
 	}
-	appJSON, ok := content["application/json"].(map[string]interface{})
+	appJSON, ok := content["application/json"].(map[string]any)
 	if !ok {
 		return `{}`
 	}
-	schema, ok := appJSON["schema"].(map[string]interface{})
+	schema, ok := appJSON["schema"].(map[string]any)
 	if !ok {
 		return `{}`
 	}
@@ -440,9 +439,9 @@ func generateRequestBody(opMap map[string]interface{}, components map[string]int
 	return string(b)
 }
 
-func generateFakeJSONFromSchema(schema, components map[string]interface{}) interface{} {
+func generateFakeJSONFromSchema(schema, components map[string]any) any {
 	if schema == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	if refSchema := resolveSchemaRef(schema, components); refSchema != nil {
@@ -452,10 +451,10 @@ func generateFakeJSONFromSchema(schema, components map[string]interface{}) inter
 	typ, _ := schema["type"].(string)
 	switch typ {
 	case "object":
-		obj := map[string]interface{}{}
-		props, _ := schema["properties"].(map[string]interface{})
+		obj := map[string]any{}
+		props, _ := schema["properties"].(map[string]any)
 		requiredFields := map[string]struct{}{}
-		if requiredArr, ok := schema["required"].([]interface{}); ok {
+		if requiredArr, ok := schema["required"].([]any); ok {
 			for _, rawField := range requiredArr {
 				field, fieldOK := rawField.(string)
 				if fieldOK {
@@ -467,37 +466,37 @@ func generateFakeJSONFromSchema(schema, components map[string]interface{}) inter
 			if _, required := requiredFields[key]; !required {
 				continue
 			}
-			propSchema, _ := value.(map[string]interface{})
+			propSchema, _ := value.(map[string]any)
 			obj[key] = fakeValueForSchema(propSchema, components)
 		}
 		return obj
 	case "array":
-		items, _ := schema["items"].(map[string]interface{})
-		return []interface{}{fakeValueForSchema(items, components)}
+		items, _ := schema["items"].(map[string]any)
+		return []any{fakeValueForSchema(items, components)}
 	default:
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 }
 
-func resolveSchemaRef(schema, components map[string]interface{}) map[string]interface{} {
+func resolveSchemaRef(schema, components map[string]any) map[string]any {
 	ref, ok := schema["$ref"].(string)
 	if !ok || !strings.HasPrefix(ref, "#/components/schemas/") {
 		return nil
 	}
 
 	refName := strings.TrimPrefix(ref, "#/components/schemas/")
-	allSchemas, ok := components["schemas"].(map[string]interface{})
+	allSchemas, ok := components["schemas"].(map[string]any)
 	if !ok {
 		return nil
 	}
-	refSchema, ok := allSchemas[refName].(map[string]interface{})
+	refSchema, ok := allSchemas[refName].(map[string]any)
 	if !ok {
 		return nil
 	}
 	return refSchema
 }
 
-func fakeValueForSchema(schema, components map[string]interface{}) interface{} {
+func fakeValueForSchema(schema, components map[string]any) any {
 	if schema == nil {
 		return nil
 	}
@@ -521,7 +520,7 @@ func fakeValueForSchema(schema, components map[string]interface{}) interface{} {
 		case "date-time":
 			return "2024-01-01T00:00:00Z"
 		default:
-			if enumVals, ok := schema["enum"].([]interface{}); ok && len(enumVals) > 0 {
+			if enumVals, ok := schema["enum"].([]any); ok && len(enumVals) > 0 {
 				if enumStr, enumOK := enumVals[0].(string); enumOK {
 					return enumStr
 				}
@@ -544,8 +543,8 @@ func fakeValueForSchema(schema, components map[string]interface{}) interface{} {
 	case "boolean":
 		return true
 	case "array":
-		items, _ := schema["items"].(map[string]interface{})
-		return []interface{}{fakeValueForSchema(items, components)}
+		items, _ := schema["items"].(map[string]any)
+		return []any{fakeValueForSchema(items, components)}
 	case "object":
 		return generateFakeJSONFromSchema(schema, components)
 	default:

@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +18,8 @@ func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:          "file:read",
-		Description:   ptr.Ptr("Read file contents"),
-		ScopeModifier: ptr.Ptr("own"),
+		Description:   new("Read file contents"),
+		ScopeModifier: new("own"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -91,7 +90,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 
 	createPermissionInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: ptr.Ptr("Read file contents"),
+		Description: new("Read file contents"),
 	}
 
 	createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -107,7 +106,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 
 	createRoleInput := ct.ProductRoleCreateRequest{
 		Name:        "Test Role",
-		Description: ptr.Ptr("Test role with permission"),
+		Description: new("Test role with permission"),
 		Permissions: []string{permissionName},
 	}
 
@@ -145,7 +144,7 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 
 	createPermissionInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: ptr.Ptr("Read file contents"),
+		Description: new("Read file contents"),
 	}
 
 	createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -161,7 +160,7 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 
 	createRoleInput := ct.ProductRoleCreateRequest{
 		Name:        "Test Role",
-		Description: ptr.Ptr("Test role with permission"),
+		Description: new("Test role with permission"),
 		Permissions: []string{permissionName},
 	}
 
