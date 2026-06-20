@@ -825,7 +825,6 @@ type EmailSendRecordListResponse struct {
 
 // EmailSendRecordResponse defines model for EmailSendRecordResponse.
 type EmailSendRecordResponse struct {
-	Attempts    int       `json:"attempts"`
 	CreatedAt   time.Time `json:"created_at"`
 	DedupeKey   *string   `json:"dedupe_key,omitempty"`
 	FromAddress string    `json:"from_address"`

@@ -49,7 +49,6 @@ type SendRecord struct {
 	VariablesJSON         json.RawMessage
 	MessageID             string
 	Status                SendStatus
-	Attempts              int32
 	LastError             *string
 	SentAt                *time.Time
 	CreatedAt             time.Time
