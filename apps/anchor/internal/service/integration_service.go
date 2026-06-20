@@ -14,6 +14,7 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
+	"anchor/internal/logx"
 	"anchor/internal/repository"
 	serviceconfig "anchor/internal/service/config"
 
@@ -1681,9 +1682,18 @@ func (s *integrationService) verifyAndActivate(
 
 	// Re-fetch the live instance so we update current state, not a stale snapshot.
 	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
-	if findErr != nil || live == nil {
-		logger.Error().Err(findErr).Str("instance_id", inst.ID).
+	if findErr != nil {
+		// Context deadline/cancellation here is a benign timeout, not a fault;
+		// EventForError downgrades those to Warn and keeps real errors at Error.
+		logx.EventForError(&logger, findErr).Err(findErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
+		return
+	}
+	if live == nil {
+		// The instance was removed between the save and this verification run
+		// (e.g. deleted by the tenant). This is an expected race, not an error.
+		logger.Warn().Str("instance_id", inst.ID).
+			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
 		return
 	}
 	if !s.isCurrentVerificationRun(inst.ID, run) {
@@ -1702,7 +1712,8 @@ func (s *integrationService) verifyAndActivate(
 	}
 
 	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live); updateErr != nil {
-		logger.Error().Err(updateErr).Str("instance_id", inst.ID).
+		// As above: a persist-context timeout is benign and downgraded to Warn.
+		logx.EventForError(&logger, updateErr).Err(updateErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to persist verification result")
 	}
 }
