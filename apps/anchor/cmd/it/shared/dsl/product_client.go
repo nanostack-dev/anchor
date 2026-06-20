@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/require"
 
@@ -39,8 +38,8 @@ func (tp *ProductContext) CreateProductResourcePermissions(
 			tp.ProductID,
 			nanostackClient.CreateProductResourcePermissionJSONRequestBody{
 				Name:          name,
-				Description:   ptr.Ptr("Test resource permission for integration tests"),
-				ScopeModifier: ptr.Ptr("GLOBAL"),
+				Description:   new("Test resource permission for integration tests"),
+				ScopeModifier: new("GLOBAL"),
 			},
 		)
 		require.NoError(testingCtx, err)
@@ -116,7 +115,7 @@ func (tp *ProductContext) createAPIKeyClientWithScopes(scopes []string) (
 		apikey.CreateProductAPIKeyInput{
 			ProductID:   tp.ProductID,
 			Name:        "Test API Key " + itshared.Faker.UUID().V4(),
-			Description: ptr.Ptr("Test API key for integration tests"),
+			Description: new("Test API key for integration tests"),
 			Permissions: scopes,
 		},
 	)

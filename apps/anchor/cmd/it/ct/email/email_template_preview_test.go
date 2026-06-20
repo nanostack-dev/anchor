@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 			Name:     "Preview Template",
 			Subject:  "Hello {{ .name }}",
 			BodyHtml: "<p>Hi {{ .name }}</p>",
-			BodyText: ptr.Ptr("Hi {{ .name }}"),
+			BodyText: new("Hi {{ .name }}"),
 		},
 	)
 	require.NoError(t, err)
@@ -32,7 +31,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	tplID := created.JSON201.Id
 
 	t.Run("renders draft with variables", func(t *testing.T) {
-		vars := map[string]interface{}{"name": "Alice"}
+		vars := map[string]any{"name": "Alice"}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -59,7 +58,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown template", func(t *testing.T) {
-		vars := map[string]interface{}{}
+		vars := map[string]any{}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,

@@ -6,7 +6,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
@@ -25,7 +24,7 @@ func TestProductDelete(t *testing.T) {
 				ctx,
 				ct.CreateProductJSONRequestBody{
 					Name:        "Test Product for Deletion",
-					Description: ptr.Ptr("This is a test product"),
+					Description: new("This is a test product"),
 				},
 			)
 			require.NoError(t, err, "create product request should not error")

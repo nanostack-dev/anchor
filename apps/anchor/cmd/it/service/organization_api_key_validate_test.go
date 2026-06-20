@@ -8,7 +8,6 @@ import (
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -201,7 +200,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		createdKey := orgapikey.OrganizationAPIKey{
 			OrganizationID:  ctxData.Organization.ID,
 			Name:            "Org Key " + Faker.UUID().V4(),
-			Description:     ptr.Ptr("Legacy organization API key for tests"),
+			Description:     new("Legacy organization API key for tests"),
 			HashedValue:     security.HashSecret(legacyValue),
 			ObfuscatedValue: "nanostack_org_apikey_***_legacy",
 			Status:          orgapikey.StatusActive,
@@ -347,7 +346,7 @@ func givenOrganizationAPIKeyContext(t *testing.T) organizationAPIKeyContextData 
 	org := organization.Organization{
 		ProductID:   tenantAndProduct.Product.ID,
 		Name:        Faker.Company().Name(),
-		Description: ptr.Ptr("Organization API key validation test organization"),
+		Description: new("Organization API key validation test organization"),
 	}
 	org.GenerateID()
 
@@ -376,7 +375,7 @@ func givenOrganizationAPIKey(
 			ProductID:      ctxData.Product.Product.ID,
 			OrganizationID: ctxData.Organization.ID,
 			Name:           "Org Key " + Faker.UUID().V4(),
-			Description:    ptr.Ptr("Organization API key for tests"),
+			Description:    new("Organization API key for tests"),
 			ExpiresAt:      expiresAt,
 			Permissions:    permissions,
 		},

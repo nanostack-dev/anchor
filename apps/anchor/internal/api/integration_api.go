@@ -89,9 +89,9 @@ func obfuscateSecret(secret *string) *string {
 }
 
 func mapAuditLogToResponse(log integration.AuditLog) IntegrationAuditLogEntryResponse {
-	var metadata *map[string]interface{}
+	var metadata *map[string]any
 	if len(log.MetadataJSON) > 0 {
-		parsedMetadata := map[string]interface{}{}
+		parsedMetadata := map[string]any{}
 		if err := json.Unmarshal(log.MetadataJSON, &parsedMetadata); err == nil {
 			metadata = &parsedMetadata
 		}

@@ -28,11 +28,11 @@ func StartAnchor() {
 	startAnchor()
 }
 
-func StartAnchorWithPopulate(target ...interface{}) {
+func StartAnchorWithPopulate(target ...any) {
 	startAnchor(target...)
 }
 
-func startAnchor(target ...interface{}) {
+func startAnchor(target ...any) {
 	if err := runtimeenv.HydrateFileBackedEnv(); err != nil {
 		panic(fmt.Sprintf("failed to hydrate file-backed runtime env: %v", err))
 	}

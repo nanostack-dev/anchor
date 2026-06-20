@@ -85,7 +85,7 @@ func (c *productAPIKeyCacheService) GetOrElseAPIKeyHashedValue(
 ) (*apikey.ProductAPIKey, error) {
 	var apiKey *apikey.ProductAPIKey
 	err := c.cache.GetOrElseStruct(
-		ctx, c.getAPIKeyCacheKey(productID, apiKeyValue), &apiKey, func() (interface{}, error) {
+		ctx, c.getAPIKeyCacheKey(productID, apiKeyValue), &apiKey, func() (any, error) {
 			result, err := fallback()
 			if err != nil {
 				return nil, err

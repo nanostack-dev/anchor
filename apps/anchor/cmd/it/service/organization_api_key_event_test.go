@@ -47,7 +47,7 @@ func TestOrganizationAPIKeyExpirationEvents(t *testing.T) {
 		job := findOrganizationAPIKeyExpirationJob(t, ctxData.Organization.ID, createdKey.ID)
 		require.NotNil(t, job)
 
-		createdKey.ExpiresAt = ptrTime(time.Now().UTC().Add(-time.Minute))
+		createdKey.ExpiresAt = new(time.Now().UTC().Add(-time.Minute))
 		updated, updateErr := OrgAPIKeyRepository.Update(t.Context(), createdKey)
 		require.NoError(t, updateErr)
 
@@ -122,8 +122,4 @@ func findOrganizationAPIKeyExpirationJob(t *testing.T, organizationID, apiKeyID 
 	}
 
 	return nil
-}
-
-func ptrTime(v time.Time) *time.Time {
-	return &v
 }

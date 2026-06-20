@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 		UserRepository:          &itshared.UserRepository,
 		PlatformUserRepository:  &itshared.PlatformTenantUserRepo,
 		JWTHelper:               &itshared.JWTHelper,
-		ExtraPopulateTargets:    []interface{}{&IntegrationRepo},
+		ExtraPopulateTargets:    []any{&IntegrationRepo},
 	})
 }
 

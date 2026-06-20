@@ -7,7 +7,6 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +34,7 @@ func TestEmailSendRequiredVariables(t *testing.T) {
 			Subject:  "Hello {{ .name }}",
 			BodyHtml: "<p>Hi {{ .name }}</p>",
 			Variables: &[]ct.EmailVariableSchema{
-				{Name: "name", Type: ct.STRING, Required: ptr.Ptr(true)},
+				{Name: "name", Type: ct.STRING, Required: new(true)},
 			},
 		},
 	)
@@ -68,7 +67,7 @@ func TestEmailSendRequiredVariables(t *testing.T) {
 	})
 
 	t.Run("delivers once the required variable is supplied", func(t *testing.T) {
-		vars := map[string]interface{}{"name": "Ada"}
+		vars := map[string]any{"name": "Ada"}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),
 			tc.product.ProductID,
