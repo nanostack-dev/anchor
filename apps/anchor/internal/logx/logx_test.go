@@ -1,4 +1,4 @@
-package logx
+package logx_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
+
+	"anchor/internal/logx"
 )
 
 func TestIsContextError(t *testing.T) {
@@ -25,7 +27,7 @@ func TestIsContextError(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := IsContextError(tc.err); got != tc.want {
+			if got := logx.IsContextError(tc.err); got != tc.want {
 				t.Fatalf("IsContextError(%v) = %v, want %v", tc.err, got, tc.want)
 			}
 		})
@@ -47,7 +49,7 @@ func TestEventForErrorLevel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			logger := zerolog.New(&buf)
-			EventForError(&logger, tc.err).Err(tc.err).Msg("update SENT status")
+			logx.EventForError(&logger, tc.err).Err(tc.err).Msg("update SENT status")
 
 			var entry struct {
 				Level string `json:"level"`
