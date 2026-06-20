@@ -9,7 +9,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,14 +43,14 @@ func TestEmailSendCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("delivers email and returns SENT record", func(t *testing.T) {
-		vars := map[string]interface{}{"name": "Bob"}
+		vars := map[string]any{"name": "Bob"}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),
 			tc.product.ProductID,
 			ct.SendEmailJSONRequestBody{
 				TemplateId: &tplID,
 				ToAddress:  openapi_types.Email("bob@example.com"),
-				ToName:     ptr.Ptr("Bob"),
+				ToName:     new("Bob"),
 				Variables:  &vars,
 			},
 		)
@@ -71,7 +70,7 @@ func TestEmailSendCreate(t *testing.T) {
 
 	t.Run("same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
 		dedupeKey := ids.MustNew("dkey")
-		vars := map[string]interface{}{}
+		vars := map[string]any{}
 		body := ct.SendEmailJSONRequestBody{
 			TemplateId: &tplID,
 			ToAddress:  openapi_types.Email("dedupe@example.com"),
@@ -101,7 +100,7 @@ func TestEmailSendCreate(t *testing.T) {
 		mp.Reset(t)
 
 		dedupeKey := ids.MustNew("dkey")
-		vars := map[string]interface{}{"name": "Concurrent"}
+		vars := map[string]any{"name": "Concurrent"}
 		body := ct.SendEmailJSONRequestBody{
 			TemplateId: &tplID,
 			ToAddress:  openapi_types.Email("dedupe-concurrent@example.com"),
@@ -116,9 +115,7 @@ func TestEmailSendCreate(t *testing.T) {
 
 		var wg sync.WaitGroup
 		for range parallelRequests {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				<-start
 				resp, sendErr := client.SendEmailWithResponse(context.Background(), tc.product.ProductID, body)
 				if sendErr != nil {
@@ -126,7 +123,7 @@ func TestEmailSendCreate(t *testing.T) {
 					return
 				}
 				responses <- resp
-			}()
+			})
 		}
 
 		close(start)
@@ -173,7 +170,7 @@ func TestEmailSendCreate(t *testing.T) {
 		require.NoError(t, createErr)
 		draftID := draft.JSON201.Id
 
-		vars := map[string]interface{}{}
+		vars := map[string]any{}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),
 			tc.product.ProductID,

@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,8 +35,8 @@ func TestEmailTemplateDraftUpdate(t *testing.T) {
 			tc.product.ProductID,
 			tplID,
 			ct.UpdateEmailTemplateDraftJSONRequestBody{
-				Subject:  ptr.Ptr("Updated {{ .name }}"),
-				BodyHtml: ptr.Ptr("<p>Updated {{ .name }}</p>"),
+				Subject:  new("Updated {{ .name }}"),
+				BodyHtml: new("<p>Updated {{ .name }}</p>"),
 			},
 		)
 		require.NoError(t, updateErr)
@@ -52,7 +51,7 @@ func TestEmailTemplateDraftUpdate(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			ids.MustNew("etpl"),
-			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: ptr.Ptr("x")},
+			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: new("x")},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())

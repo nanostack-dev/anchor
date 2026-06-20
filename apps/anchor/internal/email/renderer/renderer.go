@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"html"
 	htmltemplate "html/template"
+	"maps"
 	"regexp"
 	"strings"
 	texttemplate "text/template"
@@ -140,9 +141,7 @@ func softValidate(schema []email.VariableSchema, vars map[string]any, templates 
 
 	// Build padded map: start with caller-supplied values.
 	padded := make(map[string]any, len(vars)+len(referenced))
-	for k, v := range vars {
-		padded[k] = v
-	}
+	maps.Copy(padded, vars)
 
 	// For referenced vars with no supplied value, insert a visible placeholder.
 	// Only act on vars declared in the schema — undeclared refs (e.g. {{ .Name }}

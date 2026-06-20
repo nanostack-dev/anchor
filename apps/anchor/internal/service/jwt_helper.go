@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -98,7 +99,7 @@ func (h *jwtHelper) validateTokenWithAudience(
 	claims := &AuthClaims{}
 
 	token, err := jwt.ParseWithClaims(
-		tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		tokenString, claims, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -116,13 +117,7 @@ func (h *jwtHelper) validateTokenWithAudience(
 
 	// Validate audience if specified
 	if expectedAudience != "" {
-		audienceValid := false
-		for _, aud := range claims.Audience {
-			if aud == expectedAudience {
-				audienceValid = true
-				break
-			}
-		}
+		audienceValid := slices.Contains(claims.Audience, expectedAudience)
 		if !audienceValid {
 			return nil, fmt.Errorf(
 				"token has invalid audience: expected %s, got %v", expectedAudience,

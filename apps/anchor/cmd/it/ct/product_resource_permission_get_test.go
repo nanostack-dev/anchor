@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +18,8 @@ func TestProductResourcePermissionGetSuccess(t *testing.T) {
 
 	createInput := ct.CreateProductResourcePermissionRequest{
 		Name:          "file:read",
-		Description:   ptr.Ptr("Read file contents"),
-		ScopeModifier: ptr.Ptr("own"),
+		Description:   new("Read file contents"),
+		ScopeModifier: new("own"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -127,17 +126,17 @@ func TestProductResourcePermissionGetMultiplePermissions(t *testing.T) {
 	permissions := []ct.CreateProductResourcePermissionRequest{
 		{
 			Name:          "file:read",
-			Description:   ptr.Ptr("Read file contents"),
-			ScopeModifier: ptr.Ptr("own"),
+			Description:   new("Read file contents"),
+			ScopeModifier: new("own"),
 		},
 		{
 			Name:          "file:write",
-			Description:   ptr.Ptr("Write file contents"),
-			ScopeModifier: ptr.Ptr("team"),
+			Description:   new("Write file contents"),
+			ScopeModifier: new("team"),
 		},
 		{
 			Name:        "file:delete",
-			Description: ptr.Ptr("Delete file contents"),
+			Description: new("Delete file contents"),
 		},
 	}
 

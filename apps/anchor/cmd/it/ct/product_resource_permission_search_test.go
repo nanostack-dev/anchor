@@ -3,11 +3,11 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"slices"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,21 +23,21 @@ func TestProductResourcePermissionSearchSuccess(t *testing.T) {
 	permissions := []ct.CreateProductResourcePermissionRequest{
 		{
 			Name:          "file:read",
-			Description:   ptr.Ptr("Read file contents"),
-			ScopeModifier: ptr.Ptr("own"),
+			Description:   new("Read file contents"),
+			ScopeModifier: new("own"),
 		},
 		{
 			Name:          "file:write",
-			Description:   ptr.Ptr("Write file contents"),
-			ScopeModifier: ptr.Ptr("team"),
+			Description:   new("Write file contents"),
+			ScopeModifier: new("team"),
 		},
 		{
 			Name:        "file:delete",
-			Description: ptr.Ptr("Delete file contents"),
+			Description: new("Delete file contents"),
 		},
 		{
 			Name:        "document:read",
-			Description: ptr.Ptr("Read document contents"),
+			Description: new("Read document contents"),
 		},
 	}
 
@@ -85,15 +85,15 @@ func TestProductResourcePermissionSearchByNames(t *testing.T) {
 	permissions := []ct.CreateProductResourcePermissionRequest{
 		{
 			Name:        "file:read",
-			Description: ptr.Ptr("Read file contents"),
+			Description: new("Read file contents"),
 		},
 		{
 			Name:        "file:write",
-			Description: ptr.Ptr("Write file contents"),
+			Description: new("Write file contents"),
 		},
 		{
 			Name:        "document:read",
-			Description: ptr.Ptr("Read document contents"),
+			Description: new("Read document contents"),
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
 	for range permissionCount {
 		permission := ct.CreateProductResourcePermissionRequest{
 			Name:        itshared.Faker.Lorem().Word() + ":read",
-			Description: ptr.Ptr(itshared.Faker.Lorem().Sentence(5)),
+			Description: new(itshared.Faker.Lorem().Sentence(5)),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -223,7 +223,7 @@ func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
 	for _, name := range permissions {
 		permission := ct.CreateProductResourcePermissionRequest{
 			Name:        name,
-			Description: ptr.Ptr("Test permission"),
+			Description: new("Test permission"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -252,11 +252,8 @@ func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
 
 		var foundPermissions []string
 		for _, item := range resp.JSON200.Items {
-			for _, testName := range permissions {
-				if item.Name == testName {
-					foundPermissions = append(foundPermissions, item.Name)
-					break
-				}
+			if slices.Contains(permissions, item.Name) {
+				foundPermissions = append(foundPermissions, item.Name)
 			}
 		}
 
@@ -294,7 +291,7 @@ func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
 
 	permission := ct.CreateProductResourcePermissionRequest{
 		Name:        "test:read",
-		Description: ptr.Ptr("Test permission"),
+		Description: new("Test permission"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -331,7 +328,7 @@ func TestProductResourcePermissionSearchMixedNamesFilter(t *testing.T) {
 	for _, name := range existingPermissions {
 		permission := ct.CreateProductResourcePermissionRequest{
 			Name:        name,
-			Description: ptr.Ptr("Test permission"),
+			Description: new("Test permission"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

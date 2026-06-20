@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +70,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			tplID,
-			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: ptr.Ptr("v2")},
+			ct.UpdateEmailTemplateDraftJSONRequestBody{Subject: new("v2")},
 		)
 		require.NoError(t, err)
 
