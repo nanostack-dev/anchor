@@ -14,6 +14,7 @@ import (
 	"anchor/internal/email/renderer"
 	emailrepo "anchor/internal/email/repository"
 	"anchor/internal/integration/provider"
+	"anchor/internal/logx"
 	intrepo "anchor/internal/repository"
 
 	"github.com/lib/pq"
@@ -725,7 +726,7 @@ func (s *emailService) Send(
 		if updErr := s.sendRepo.UpdateStatus(
 			ctx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
-			s.logger.Error().Err(updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
+			logx.EventForError(&s.logger, updErr).Err(updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
@@ -736,7 +737,7 @@ func (s *emailService) Send(
 	if err = s.sendRepo.UpdateStatus(
 		ctx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
-		s.logger.Error().Err(err).Str("send_id", persisted.ID).Msg("update SENT status")
+		logx.EventForError(&s.logger, err).Err(err).Str("send_id", persisted.ID).Msg("update SENT status")
 	}
 	persisted.Status = email.SendStatusSent
 	persisted.SentAt = &now
