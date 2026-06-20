@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
 
@@ -29,7 +28,7 @@ func TestGetUserOrganization(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Get Test Organization",
-				Description: ptr.Ptr("Organization for get test"),
+				Description: new("Organization for get test"),
 			},
 		)
 		require.NoError(t, err)
@@ -37,7 +36,7 @@ func TestGetUserOrganization(t *testing.T) {
 		require.NotNil(t, orgResp.JSON201)
 
 		// Create a role
-		role := createDSLProductRole(t, productCtx, "Developer", ptr.Ptr("Developer role"))
+		role := createDSLProductRole(t, productCtx, "Developer", new("Developer role"))
 		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
 
 		// Get the specific user organization
@@ -80,7 +79,7 @@ func TestGetUserOrganization(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Permissions Get Test Org",
-				Description: ptr.Ptr("Org for permissions get testing"),
+				Description: new("Org for permissions get testing"),
 			},
 		)
 		require.NoError(t, err)
@@ -91,7 +90,7 @@ func TestGetUserOrganization(t *testing.T) {
 			t,
 			productCtx,
 			"Manager",
-			ptr.Ptr("Manager role"),
+			new("Manager role"),
 			[]string{"file:read", "file:create", "file:delete"},
 		)
 		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
@@ -135,14 +134,14 @@ func TestGetUserOrganization(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "Empty Permissions Org",
-				Description: ptr.Ptr("Org for empty permissions test"),
+				Description: new("Org for empty permissions test"),
 			},
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, orgResp.StatusCode())
 
 		// Create role without permissions
-		role := createDSLProductRole(t, productCtx, "Basic", ptr.Ptr("Basic role with no permissions"))
+		role := createDSLProductRole(t, productCtx, "Basic", new("Basic role with no permissions"))
 		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
 
 		// Get with include=role_permissions
@@ -179,7 +178,7 @@ func TestGetUserOrganization(t *testing.T) {
 			productCtx.ProductID,
 			ct.CreateProductOrganizationJSONRequestBody{
 				Name:        "No Membership Org",
-				Description: ptr.Ptr("User is not a member"),
+				Description: new("User is not a member"),
 			},
 		)
 		require.NoError(t, err)

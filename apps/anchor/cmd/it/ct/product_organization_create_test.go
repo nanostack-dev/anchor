@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	itshared "anchor/cmd/it/shared"
 
@@ -25,7 +24,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Test Organization",
-					Description: ptr.Ptr("This is a test organization"),
+					Description: new("This is a test organization"),
 				},
 			)
 
@@ -57,7 +56,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Duplicate Organization",
-					Description: ptr.Ptr("This is the first duplicate-name organization"),
+					Description: new("This is the first duplicate-name organization"),
 				},
 			)
 			require.NoError(t, firstErr, "first duplicate-name create should not error")
@@ -70,7 +69,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Duplicate Organization",
-					Description: ptr.Ptr("This is the second duplicate-name organization"),
+					Description: new("This is the second duplicate-name organization"),
 				},
 			)
 			require.NoError(t, secondErr, "second duplicate-name create should not error")
@@ -90,7 +89,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "",
-					Description: ptr.Ptr("This organization has no name"),
+					Description: new("This organization has no name"),
 				},
 			)
 
@@ -114,7 +113,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "A",
-					Description: ptr.Ptr("This organization has a too short name"),
+					Description: new("This organization has a too short name"),
 				},
 			)
 
@@ -141,7 +140,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Valid Organization Name",
-					Description: ptr.Ptr(generateString(501)), // Too long (maximum is 500)
+					Description: new(generateString(501)), // Too long (maximum is 500)
 				},
 			)
 
@@ -170,7 +169,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				nonExistentProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Organization for Non-existent Product",
-					Description: ptr.Ptr("This should fail"),
+					Description: new("This should fail"),
 				},
 			)
 
@@ -196,7 +195,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 				testProduct.ProductID,
 				ct.CreateProductOrganizationJSONRequestBody{
 					Name:        "Test Organization",
-					Description: ptr.Ptr("This is a test organization"),
+					Description: new("This is a test organization"),
 				},
 			)
 

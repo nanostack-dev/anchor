@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +34,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			tplID,
-			ct.UpdateEmailTemplateJSONRequestBody{Name: ptr.Ptr("Renamed")},
+			ct.UpdateEmailTemplateJSONRequestBody{Name: new("Renamed")},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -48,7 +47,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			tplID,
-			ct.UpdateEmailTemplateJSONRequestBody{Description: ptr.Ptr("new desc")},
+			ct.UpdateEmailTemplateJSONRequestBody{Description: new("new desc")},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -59,7 +58,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			tplID,
-			ct.UpdateEmailTemplateJSONRequestBody{IsActive: ptr.Ptr(false)},
+			ct.UpdateEmailTemplateJSONRequestBody{IsActive: new(false)},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -72,7 +71,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			ids.MustNew("etpl"),
-			ct.UpdateEmailTemplateJSONRequestBody{Name: ptr.Ptr("x")},
+			ct.UpdateEmailTemplateJSONRequestBody{Name: new("x")},
 		)
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())

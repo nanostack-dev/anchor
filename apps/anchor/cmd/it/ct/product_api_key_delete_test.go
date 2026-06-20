@@ -7,7 +7,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +26,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName,
-					Description: ptr.Ptr("Key to be deleted"),
+					Description: new("Key to be deleted"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -121,7 +120,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName,
-					Description: ptr.Ptr("Key for verification test"),
+					Description: new("Key for verification test"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -179,7 +178,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName1,
-					Description: ptr.Ptr("First key for multi-delete test"),
+					Description: new("First key for multi-delete test"),
 					Permissions: []string{permission1},
 				},
 			)
@@ -194,7 +193,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				ctx, product.ProductID,
 				ct.CreateProductAPIKeyJSONRequestBody{
 					Name:        apiKeyName2,
-					Description: ptr.Ptr("Second key for multi-delete test"),
+					Description: new("Second key for multi-delete test"),
 					Permissions: []string{permission1},
 				},
 			)

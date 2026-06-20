@@ -102,7 +102,7 @@ func TestJWTHelper_TokenGeneration(t *testing.T) {
 			// Parse and verify access token audience
 			accessClaims := &service.AuthClaims{}
 			_, err = jwtlib.ParseWithClaims(
-				accessToken, accessClaims, func(_ *jwtlib.Token) (interface{}, error) {
+				accessToken, accessClaims, func(_ *jwtlib.Token) (any, error) {
 					return authCfg.GetAdminJWTSecretAsBytes(), nil
 				},
 			)
@@ -114,7 +114,7 @@ func TestJWTHelper_TokenGeneration(t *testing.T) {
 			// Parse and verify refresh token audience
 			refreshClaims := &service.AuthClaims{}
 			_, err = jwtlib.ParseWithClaims(
-				refreshToken, refreshClaims, func(_ *jwtlib.Token) (interface{}, error) {
+				refreshToken, refreshClaims, func(_ *jwtlib.Token) (any, error) {
 					return authCfg.GetAdminJWTSecretAsBytes(), nil
 				},
 			)

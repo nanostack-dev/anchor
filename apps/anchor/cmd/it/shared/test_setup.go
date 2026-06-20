@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -73,7 +74,7 @@ type TestConfig struct {
 	// ExtraPopulateTargets holds additional fx.Populate targets (e.g. *pgqueue.Client)
 	// for test packages that need direct access to FX-provided values beyond the standard
 	// repository/service set. Each entry must be a pointer to the destination variable.
-	ExtraPopulateTargets []interface{}
+	ExtraPopulateTargets []any
 	AfterInit            func()
 }
 
@@ -143,8 +144,8 @@ func SetupTest(config TestConfig) func() {
 
 	teardown := func() {
 		testLogger.Info().Msg("Tearing down shared resources...")
-		for i := len(teardownFuncs) - 1; i >= 0; i-- {
-			teardownFuncs[i]()
+		for _, teardownFunc := range slices.Backward(teardownFuncs) {
+			teardownFunc()
 		}
 		testLogger.Info().Msg("Shared resources teardown complete")
 	}
@@ -253,10 +254,10 @@ func setupRedis(ctx context.Context, testLogger zerolog.Logger) testcontainers.C
 
 // buildPopulateTargets returns the fx.Populate target slice for the given config.
 // It is extracted here to keep setupAppServer under the gocognit limit.
-func buildPopulateTargets(config TestConfig) []interface{} {
-	var targets []interface{}
+func buildPopulateTargets(config TestConfig) []any {
+	var targets []any
 	if config.PopulateRepositories {
-		maybeTargets := []interface{}{
+		maybeTargets := []any{
 			config.APIKeyService,
 			config.OrganizationAPIKeyService,
 			config.APIKeyRepository,
@@ -281,7 +282,7 @@ func buildPopulateTargets(config TestConfig) []interface{} {
 	return targets
 }
 
-func isValidPopulateTarget(target interface{}) bool {
+func isValidPopulateTarget(target any) bool {
 	value := reflect.ValueOf(target)
 	return value.Kind() == reflect.Pointer && !value.IsNil()
 }

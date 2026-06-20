@@ -24,7 +24,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Engineering Team",
-			Description: ptr.Ptr("Software engineering team"),
+			Description: new("Software engineering team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -35,7 +35,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Marketing Team",
-			Description: ptr.Ptr("Marketing and communications team"),
+			Description: new("Marketing and communications team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -46,7 +46,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 		testProduct.ProductID,
 		ct.CreateProductOrganizationJSONRequestBody{
 			Name:        "Sales Team",
-			Description: ptr.Ptr("Customer sales team"),
+			Description: new("Customer sales team"),
 		},
 	)
 	require.NoError(t, errInit)
@@ -59,8 +59,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -104,8 +104,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Ids: []ct.Ksuid{org1.JSON201.Id, org2.JSON201.Id},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -138,8 +138,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Names: []string{"Engineering Team", "Sales Team"},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -168,10 +168,10 @@ func TestProductOrganizationSearch(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					FullTextSearch: ptr.Ptr("Team"),
+					FullTextSearch: new("Team"),
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -201,8 +201,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -240,8 +240,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(2)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(2)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -256,8 +256,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(2)),
-						Offset: ptr.Ptr(int32(2)),
+						Limit:  new(int32(2)),
+						Offset: new(int32(2)),
 					},
 				},
 			)
@@ -298,8 +298,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 						Names: []string{"Non-existent Organization"},
 					},
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -322,8 +322,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(-1)), // Invalid limit
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(-1)), // Invalid limit
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -347,8 +347,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				nonExistentProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)
@@ -374,8 +374,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
-						Limit:  ptr.Ptr(int32(10)),
-						Offset: ptr.Ptr(int32(0)),
+						Limit:  new(int32(10)),
+						Offset: new(int32(0)),
 					},
 				},
 			)

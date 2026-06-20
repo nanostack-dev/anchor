@@ -16,7 +16,7 @@ import (
 
 // sendRequest sends an HTTP request for an operation, with optional headers.
 func sendRequest(
-	op extractedOp, components map[string]interface{}, headers map[string]string,
+	op extractedOp, components map[string]any, headers map[string]string,
 ) (*http.Response, error) {
 	switch op.Verb {
 	case "get":
@@ -46,7 +46,7 @@ func sendDeleteRequest(url string, headers map[string]string) (*http.Response, e
 
 // sendRequestWithBody sends a request with a body (POST, PUT, PATCH).
 func sendRequestWithBody(
-	op extractedOp, components map[string]interface{}, headers map[string]string,
+	op extractedOp, components map[string]any, headers map[string]string,
 ) (*http.Response, error) {
 	bodyStr := generateRequestBody(op, components)
 	var bodyReader io.Reader
@@ -65,27 +65,27 @@ func sendRequestWithBody(
 }
 
 // generateRequestBody generates the request body for operations that require it.
-func generateRequestBody(op extractedOp, components map[string]interface{}) string {
+func generateRequestBody(op extractedOp, components map[string]any) string {
 	if !op.RequiresBody {
 		return ""
 	}
 
-	rb, ok := op.OpMap["requestBody"].(map[string]interface{})
+	rb, ok := op.OpMap["requestBody"].(map[string]any)
 	if !ok {
 		return `{"test":"test"}`
 	}
 
-	content, ok := rb["content"].(map[string]interface{})
+	content, ok := rb["content"].(map[string]any)
 	if !ok {
 		return `{"test":"test"}`
 	}
 
-	appjson, ok := content["application/json"].(map[string]interface{})
+	appjson, ok := content["application/json"].(map[string]any)
 	if !ok {
 		return `{"test":"test"}`
 	}
 
-	schema, ok := appjson["schema"].(map[string]interface{})
+	schema, ok := appjson["schema"].(map[string]any)
 	if !ok {
 		return `{"test":"test"}`
 	}
@@ -104,13 +104,13 @@ func addHeaders(req *http.Request, headers map[string]string) {
 
 // OpenAPI represents the OpenAPI spec structure for paths.
 type OpenAPI struct {
-	Paths map[string]map[string]interface{} `yaml:"paths"`
+	Paths map[string]map[string]any `yaml:"paths"`
 }
 
 // Operation represents an OpenAPI operation.
 type Operation struct {
-	Security  []map[string]interface{} `yaml:"security"`
-	Responses map[string]interface{}   `yaml:"responses"`
+	Security  []map[string]any `yaml:"security"`
+	Responses map[string]any   `yaml:"responses"`
 }
 
 // extractedOp holds extracted operation details for testing.
@@ -118,14 +118,14 @@ type extractedOp struct {
 	Verb                string
 	OpKey               string
 	URL                 string
-	OpMap               map[string]interface{}
+	OpMap               map[string]any
 	RequiresBody        bool
 	RequiredPathParams  map[string]struct{}
 	RequiredQueryParams []string
 }
 
 // parseOpenAPISpec parses the OpenAPI YAML and extracts components and parameter definitions.
-func parseOpenAPISpec(t *testing.T) (OpenAPI, map[string]interface{}, map[string]interface{}) {
+func parseOpenAPISpec(t *testing.T) (OpenAPI, map[string]any, map[string]any) {
 	data, err := os.ReadFile("../../http/openapi.yaml")
 	if err != nil {
 		t.Fatalf("failed to read openapi.yaml: %v", err)
@@ -134,16 +134,16 @@ func parseOpenAPISpec(t *testing.T) (OpenAPI, map[string]interface{}, map[string
 	if specErr := yaml.Unmarshal(data, &spec); specErr != nil {
 		t.Fatalf("failed to parse openapi.yaml: %v", specErr)
 	}
-	var specRaw map[string]interface{}
+	var specRaw map[string]any
 	if rawErr := yaml.Unmarshal(data, &specRaw); rawErr != nil {
 		t.Fatalf("failed to parse openapi.yaml (raw): %v", rawErr)
 	}
-	components := map[string]interface{}{}
-	if c, ok := specRaw["components"].(map[string]interface{}); ok {
+	components := map[string]any{}
+	if c, ok := specRaw["components"].(map[string]any); ok {
 		components = c
 	}
-	paramDefs := map[string]interface{}{}
-	if p, ok := components["parameters"].(map[string]interface{}); ok {
+	paramDefs := map[string]any{}
+	if p, ok := components["parameters"].(map[string]any); ok {
 		paramDefs = p
 	}
 	return spec, components, paramDefs
@@ -151,7 +151,7 @@ func parseOpenAPISpec(t *testing.T) (OpenAPI, map[string]interface{}, map[string
 
 // extractOperations extracts protected operations from the OpenAPI spec.
 func extractOperations(
-	spec OpenAPI, paramDefs map[string]interface{}, noAuth map[string]struct{},
+	spec OpenAPI, paramDefs map[string]any, noAuth map[string]struct{},
 	baseURL string,
 ) []extractedOp {
 	var ops []extractedOp
@@ -166,7 +166,7 @@ func extractOperations(
 
 // extractOperationsFromPath extracts operations from a single path.
 func extractOperationsFromPath(
-	origPath string, methods map[string]interface{}, paramDefs map[string]interface{},
+	origPath string, methods map[string]any, paramDefs map[string]any,
 	noAuth map[string]struct{}, baseURL string,
 ) []extractedOp {
 	var ops []extractedOp
@@ -183,10 +183,10 @@ func extractOperationsFromPath(
 
 // extractSingleOperation extracts a single operation from a method.
 func extractSingleOperation(
-	origPath, method string, rawOp interface{}, paramDefs map[string]interface{},
+	origPath, method string, rawOp any, paramDefs map[string]any,
 	noAuth map[string]struct{}, baseURL string,
 ) *extractedOp {
-	opMap, ok := rawOp.(map[string]interface{})
+	opMap, ok := rawOp.(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -226,13 +226,13 @@ func extractSingleOperation(
 }
 
 // checkIfRequiresBody checks if the operation requires a request body.
-func checkIfRequiresBody(opMap map[string]interface{}) bool {
+func checkIfRequiresBody(opMap map[string]any) bool {
 	rb, ok := opMap["requestBody"]
 	if !ok {
 		return false
 	}
 
-	rbMap, ok := rb.(map[string]interface{})
+	rbMap, ok := rb.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -242,7 +242,7 @@ func checkIfRequiresBody(opMap map[string]interface{}) bool {
 }
 
 // extractParameters extracts required path and query parameters from operation.
-func extractParameters(opMap, paramDefs map[string]interface{}) (map[string]struct{}, []string) {
+func extractParameters(opMap, paramDefs map[string]any) (map[string]struct{}, []string) {
 	requiredPathParams := map[string]struct{}{}
 	requiredQueryParams := []string{}
 
@@ -251,7 +251,7 @@ func extractParameters(opMap, paramDefs map[string]interface{}) (map[string]stru
 		return requiredPathParams, requiredQueryParams
 	}
 
-	paramsArr, ok := paramsRaw.([]interface{})
+	paramsArr, ok := paramsRaw.([]any)
 	if !ok {
 		return requiredPathParams, requiredQueryParams
 	}
@@ -279,8 +279,8 @@ func extractParameters(opMap, paramDefs map[string]interface{}) (map[string]stru
 }
 
 // resolveParameter resolves a parameter definition, handling $ref if present.
-func resolveParameter(p interface{}, paramDefs map[string]interface{}) map[string]interface{} {
-	refObj, ok := p.(map[string]interface{})
+func resolveParameter(p any, paramDefs map[string]any) map[string]any {
+	refObj, ok := p.(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -289,7 +289,7 @@ func resolveParameter(p interface{}, paramDefs map[string]interface{}) map[strin
 	if hasRef && strings.HasPrefix(ref, "#/components/parameters/") {
 		refName := strings.TrimPrefix(ref, "#/components/parameters/")
 		if def, found := paramDefs[refName]; found {
-			if refDefMap, refOk := def.(map[string]interface{}); refOk {
+			if refDefMap, refOk := def.(map[string]any); refOk {
 				return refDefMap
 			}
 		}
@@ -322,10 +322,10 @@ func buildURL(baseURL, path string, requiredQueryParams []string) string {
 
 // generateFakeJSONFromSchema generates a fake JSON object from an OpenAPI schema.
 func generateFakeJSONFromSchema(
-	schema map[string]interface{}, components map[string]interface{},
-) interface{} {
+	schema map[string]any, components map[string]any,
+) any {
 	if schema == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	// Handle $ref
@@ -340,24 +340,24 @@ func generateFakeJSONFromSchema(
 	case "array":
 		return generateFakeArrayFromSchema(schema, components)
 	default:
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 }
 
 // resolveSchemaRef resolves a schema reference if present.
-func resolveSchemaRef(schema, components map[string]interface{}) map[string]interface{} {
+func resolveSchemaRef(schema, components map[string]any) map[string]any {
 	ref, ok := schema["$ref"].(string)
 	if !ok || !strings.HasPrefix(ref, "#/components/schemas/") {
 		return nil
 	}
 
 	refName := strings.TrimPrefix(ref, "#/components/schemas/")
-	compSchemas, ok := components["schemas"].(map[string]interface{})
+	compSchemas, ok := components["schemas"].(map[string]any)
 	if !ok {
 		return nil
 	}
 
-	realSchema, ok := compSchemas[refName].(map[string]interface{})
+	realSchema, ok := compSchemas[refName].(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -366,13 +366,13 @@ func resolveSchemaRef(schema, components map[string]interface{}) map[string]inte
 }
 
 // generateFakeObjectFromSchema generates a fake object from an object schema.
-func generateFakeObjectFromSchema(schema, components map[string]interface{}) map[string]interface{} {
-	obj := map[string]interface{}{}
-	props, _ := schema["properties"].(map[string]interface{})
+func generateFakeObjectFromSchema(schema, components map[string]any) map[string]any {
+	obj := map[string]any{}
+	props, _ := schema["properties"].(map[string]any)
 	required := extractRequiredFields(schema)
 
 	for k, v := range props {
-		propSchema, _ := v.(map[string]interface{})
+		propSchema, _ := v.(map[string]any)
 		// Only fill required fields
 		if _, isReq := required[k]; isReq {
 			obj[k] = fakeValueForSchema(propSchema, components)
@@ -383,9 +383,9 @@ func generateFakeObjectFromSchema(schema, components map[string]interface{}) map
 }
 
 // extractRequiredFields extracts required fields from a schema.
-func extractRequiredFields(schema map[string]interface{}) map[string]struct{} {
+func extractRequiredFields(schema map[string]any) map[string]struct{} {
 	required := map[string]struct{}{}
-	reqArr, ok := schema["required"].([]interface{})
+	reqArr, ok := schema["required"].([]any)
 	if !ok {
 		return required
 	}
@@ -400,15 +400,15 @@ func extractRequiredFields(schema map[string]interface{}) map[string]struct{} {
 }
 
 // generateFakeArrayFromSchema generates a fake array from an array schema.
-func generateFakeArrayFromSchema(schema, components map[string]interface{}) []interface{} {
-	items, _ := schema["items"].(map[string]interface{})
-	return []interface{}{fakeValueForSchema(items, components)}
+func generateFakeArrayFromSchema(schema, components map[string]any) []any {
+	items, _ := schema["items"].(map[string]any)
+	return []any{fakeValueForSchema(items, components)}
 }
 
 // fakeValueForSchema generates a fake value for a given schema property.
 func fakeValueForSchema(
-	schema map[string]interface{}, components map[string]interface{},
-) interface{} {
+	schema map[string]any, components map[string]any,
+) any {
 	if schema == nil {
 		return nil
 	}
@@ -423,7 +423,7 @@ func fakeValueForSchema(
 }
 
 // resolveFakeValueRef resolves a reference in fake value generation.
-func resolveFakeValueRef(schema, components map[string]interface{}) interface{} {
+func resolveFakeValueRef(schema, components map[string]any) any {
 	ref, ok := schema["$ref"].(string)
 	if !ok {
 		return nil
@@ -438,12 +438,12 @@ func resolveFakeValueRef(schema, components map[string]interface{}) interface{} 
 	}
 
 	refName := strings.TrimPrefix(ref, "#/components/schemas/")
-	compSchemas, ok := components["schemas"].(map[string]interface{})
+	compSchemas, ok := components["schemas"].(map[string]any)
 	if !ok {
 		return nil
 	}
 
-	realSchema, ok := compSchemas[refName].(map[string]interface{})
+	realSchema, ok := compSchemas[refName].(map[string]any)
 	if !ok {
 		return nil
 	}
@@ -452,7 +452,7 @@ func resolveFakeValueRef(schema, components map[string]interface{}) interface{} 
 }
 
 // generateFakeValueByType generates a fake value based on the schema type.
-func generateFakeValueByType(typ string, schema, components map[string]interface{}) interface{} {
+func generateFakeValueByType(typ string, schema, components map[string]any) any {
 	switch typ {
 	case "string":
 		return generateFakeStringValue(schema)
@@ -461,8 +461,8 @@ func generateFakeValueByType(typ string, schema, components map[string]interface
 	case "boolean":
 		return true
 	case "array":
-		items, _ := schema["items"].(map[string]interface{})
-		return []interface{}{fakeValueForSchema(items, components)}
+		items, _ := schema["items"].(map[string]any)
+		return []any{fakeValueForSchema(items, components)}
 	case "object":
 		return generateFakeJSONFromSchema(schema, components)
 	default:
@@ -471,7 +471,7 @@ func generateFakeValueByType(typ string, schema, components map[string]interface
 }
 
 // generateFakeStringValue generates a fake string value based on format.
-func generateFakeStringValue(schema map[string]interface{}) string {
+func generateFakeStringValue(schema map[string]any) string {
 	format, _ := schema["format"].(string)
 	switch format {
 	case "email":

@@ -8,7 +8,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,8 +22,8 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:          "file:read",
-		Description:   ptr.Ptr("Read file contents"),
-		ScopeModifier: ptr.Ptr("own"),
+		Description:   new("Read file contents"),
+		ScopeModifier: new("own"),
 	}
 
 	resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -57,7 +56,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "empty name",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "",
-				Description: ptr.Ptr("Test description"),
+				Description: new("Test description"),
 			},
 			expectedErr: "name is required",
 		},
@@ -65,7 +64,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "name too short",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "a",
-				Description: ptr.Ptr("Test description"),
+				Description: new("Test description"),
 			},
 			expectedErr: "name must be at least 2 characters",
 		},
@@ -73,7 +72,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "name too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        string(make([]byte, 201)),
-				Description: ptr.Ptr("Test description"),
+				Description: new("Test description"),
 			},
 			expectedErr: "name must be at most 200 characters",
 		},
@@ -81,7 +80,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "description too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:        "valid:name",
-				Description: ptr.Ptr(string(make([]byte, 501))),
+				Description: new(string(make([]byte, 501))),
 			},
 			expectedErr: "description must be at most 500 characters",
 		},
@@ -89,8 +88,8 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			name: "scope modifier too long",
 			input: ct.CreateProductResourcePermissionRequest{
 				Name:          "valid:name",
-				Description:   ptr.Ptr("Test description"),
-				ScopeModifier: ptr.Ptr(string(make([]byte, 101))),
+				Description:   new("Test description"),
+				ScopeModifier: new(string(make([]byte, 101))),
 			},
 			expectedErr: "scope_modifier must be at most 100 characters",
 		},
@@ -118,7 +117,7 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:duplicate",
-		Description: ptr.Ptr("First permission"),
+		Description: new("First permission"),
 	}
 
 	resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -133,7 +132,7 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 	require.NoError(t, err, "request should not error")
 	itshared.AssertAnchorBadRequestError(
 		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
-		"Resource permission with name 'file:duplicate' already exists", map[string]interface{}{
+		"Resource permission with name 'file:duplicate' already exists", map[string]any{
 			"name": input.Name,
 		},
 	)
@@ -147,7 +146,7 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:        permissionName,
-		Description: ptr.Ptr("First permission"),
+		Description: new("First permission"),
 	}
 
 	resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -160,13 +159,13 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 	resp2, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
 		ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{
 			Name:        duplicateName,
-			Description: ptr.Ptr("Second permission"),
+			Description: new("Second permission"),
 		},
 	)
 	require.NoError(t, err, "request should not error")
 	itshared.AssertAnchorBadRequestError(
 		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
-		"Resource permission with name '"+duplicateName+"' already exists", map[string]interface{}{
+		"Resource permission with name '"+duplicateName+"' already exists", map[string]any{
 			"name": duplicateName,
 		},
 	)
@@ -179,7 +178,7 @@ func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
 
 	input := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
-		Description: ptr.Ptr("Test permission"),
+		Description: new("Test permission"),
 	}
 
 	resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

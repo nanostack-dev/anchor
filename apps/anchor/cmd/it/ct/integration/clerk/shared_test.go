@@ -16,7 +16,6 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -26,18 +25,18 @@ import (
 
 const clerkTestWebhookSecret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
 
-func clerkOfficialUserCreatedPayload() map[string]interface{} {
-	return map[string]interface{}{
-		"data": map[string]interface{}{
+func clerkOfficialUserCreatedPayload() map[string]any {
+	return map[string]any{
+		"data": map[string]any{
 			"backup_code_enabled":             false,
 			"banned":                          false,
 			"create_organization_enabled":     true,
 			"create_organizations_limit":      nil,
 			"created_at":                      float64(1716883200000),
 			"delete_self_enabled":             true,
-			"email_addresses":                 []interface{}{},
-			"enterprise_accounts":             []interface{}{},
-			"external_accounts":               []interface{}{},
+			"email_addresses":                 []any{},
+			"enterprise_accounts":             []any{},
+			"external_accounts":               []any{},
 			"external_id":                     nil,
 			"first_name":                      "John",
 			"has_image":                       true,
@@ -52,26 +51,26 @@ func clerkOfficialUserCreatedPayload() map[string]interface{} {
 			"mfa_disabled_at":                 nil,
 			"mfa_enabled_at":                  nil,
 			"object":                          "user",
-			"passkeys":                        []interface{}{},
+			"passkeys":                        []any{},
 			"password_enabled":                true,
-			"phone_numbers":                   []interface{}{},
+			"phone_numbers":                   []any{},
 			"primary_email_address_id":        "idn_2g7np7Hrk0SN6kj5EDMLDaKNL0S",
 			"primary_phone_number_id":         nil,
 			"primary_web3_wallet_id":          nil,
 			"private_metadata":                nil,
 			"profile_image_url":               "https://img.clerk.com/xxxxxx",
-			"public_metadata":                 map[string]interface{}{},
-			"saml_accounts":                   []interface{}{},
+			"public_metadata":                 map[string]any{},
+			"saml_accounts":                   []any{},
 			"totp_enabled":                    false,
 			"two_factor_enabled":              false,
-			"unsafe_metadata":                 map[string]interface{}{},
+			"unsafe_metadata":                 map[string]any{},
 			"updated_at":                      float64(1716883200000),
 			"username":                        nil,
 			"verification_attempts_remaining": nil,
-			"web3_wallets":                    []interface{}{},
+			"web3_wallets":                    []any{},
 		},
-		"event_attributes": map[string]interface{}{
-			"http_request": map[string]interface{}{
+		"event_attributes": map[string]any{
+			"http_request": map[string]any{
 				"client_ip":  "192.168.1.100",
 				"user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 			},
@@ -83,19 +82,19 @@ func clerkOfficialUserCreatedPayload() map[string]interface{} {
 	}
 }
 
-func clerkOfficialUserUpdatedPayload() map[string]interface{} {
-	return map[string]interface{}{
-		"data": map[string]interface{}{
+func clerkOfficialUserUpdatedPayload() map[string]any {
+	return map[string]any{
+		"data": map[string]any{
 			"birthday":   "",
 			"created_at": float64(1654012591514),
-			"email_addresses": []interface{}{
-				map[string]interface{}{
+			"email_addresses": []any{
+				map[string]any{
 					"email_address": "example@example.org",
 					"id":            "idn_29w83yL7CwVlJXylYLxcslromF1",
-					"linked_to":     []interface{}{},
+					"linked_to":     []any{},
 					"object":        "email_address",
 					"reserved":      true,
-					"verification": map[string]interface{}{
+					"verification": map[string]any{
 						"attempts":  nil,
 						"expire_at": nil,
 						"status":    "verified",
@@ -103,7 +102,7 @@ func clerkOfficialUserUpdatedPayload() map[string]interface{} {
 					},
 				},
 			},
-			"external_accounts":        []interface{}{},
+			"external_accounts":        []any{},
 			"external_id":              nil,
 			"first_name":               "Example",
 			"gender":                   "",
@@ -113,21 +112,21 @@ func clerkOfficialUserUpdatedPayload() map[string]interface{} {
 			"last_sign_in_at":          nil,
 			"object":                   "user",
 			"password_enabled":         true,
-			"phone_numbers":            []interface{}{},
+			"phone_numbers":            []any{},
 			"primary_email_address_id": "idn_29w83yL7CwVlJXylYLxcslromF1",
 			"primary_phone_number_id":  nil,
 			"primary_web3_wallet_id":   nil,
-			"private_metadata":         map[string]interface{}{},
+			"private_metadata":         map[string]any{},
 			"profile_image_url":        "https://www.gravatar.com/avatar?d=mp",
-			"public_metadata":          map[string]interface{}{},
+			"public_metadata":          map[string]any{},
 			"two_factor_enabled":       false,
-			"unsafe_metadata":          map[string]interface{}{},
+			"unsafe_metadata":          map[string]any{},
 			"updated_at":               float64(1654012824306),
 			"username":                 nil,
-			"web3_wallets":             []interface{}{},
+			"web3_wallets":             []any{},
 		},
-		"event_attributes": map[string]interface{}{
-			"http_request": map[string]interface{}{
+		"event_attributes": map[string]any{
+			"http_request": map[string]any{
 				"client_ip":  "0.0.0.0",
 				"user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 			},
@@ -138,15 +137,15 @@ func clerkOfficialUserUpdatedPayload() map[string]interface{} {
 	}
 }
 
-func clerkOfficialUserDeletedPayload() map[string]interface{} {
-	return map[string]interface{}{
-		"data": map[string]interface{}{
+func clerkOfficialUserDeletedPayload() map[string]any {
+	return map[string]any{
+		"data": map[string]any{
 			"deleted": true,
 			"id":      "user_29wBMCtzATuFJut8jO2VNTVekS4",
 			"object":  "user",
 		},
-		"event_attributes": map[string]interface{}{
-			"http_request": map[string]interface{}{
+		"event_attributes": map[string]any{
+			"http_request": map[string]any{
 				"client_ip":  "0.0.0.0",
 				"user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 			},
@@ -157,26 +156,26 @@ func clerkOfficialUserDeletedPayload() map[string]interface{} {
 	}
 }
 
-func clonePayload(t *testing.T, src map[string]interface{}) map[string]interface{} {
+func clonePayload(t *testing.T, src map[string]any) map[string]any {
 	t.Helper()
 
 	raw, err := json.Marshal(src)
 	require.NoError(t, err)
 
-	var cloned map[string]interface{}
+	var cloned map[string]any
 	require.NoError(t, json.Unmarshal(raw, &cloned))
 	return cloned
 }
 
-func payloadDataMap(t *testing.T, payload map[string]interface{}) map[string]interface{} {
+func payloadDataMap(t *testing.T, payload map[string]any) map[string]any {
 	t.Helper()
 
-	data, ok := payload["data"].(map[string]interface{})
+	data, ok := payload["data"].(map[string]any)
 	require.True(t, ok)
 	return data
 }
 
-func clerkUserCreatedPayload(t *testing.T, externalID, email, firstName, lastName string) map[string]interface{} {
+func clerkUserCreatedPayload(t *testing.T, externalID, email, firstName, lastName string) map[string]any {
 	t.Helper()
 
 	payload := clonePayload(t, clerkOfficialUserCreatedPayload())
@@ -187,14 +186,14 @@ func clerkUserCreatedPayload(t *testing.T, externalID, email, firstName, lastNam
 	data["first_name"] = firstName
 	data["last_name"] = lastName
 	data["primary_email_address_id"] = primaryEmailID
-	data["email_addresses"] = []interface{}{
-		map[string]interface{}{
+	data["email_addresses"] = []any{
+		map[string]any{
 			"id":            primaryEmailID,
 			"email_address": email,
 			"object":        "email_address",
-			"linked_to":     []interface{}{},
+			"linked_to":     []any{},
 			"reserved":      false,
-			"verification": map[string]interface{}{
+			"verification": map[string]any{
 				"attempts":  nil,
 				"expire_at": nil,
 				"status":    "verified",
@@ -206,7 +205,7 @@ func clerkUserCreatedPayload(t *testing.T, externalID, email, firstName, lastNam
 	return payload
 }
 
-func clerkUserUpdatedPayload(t *testing.T, externalID, email, firstName, lastName string) map[string]interface{} {
+func clerkUserUpdatedPayload(t *testing.T, externalID, email, firstName, lastName string) map[string]any {
 	t.Helper()
 
 	payload := clonePayload(t, clerkOfficialUserUpdatedPayload())
@@ -217,14 +216,14 @@ func clerkUserUpdatedPayload(t *testing.T, externalID, email, firstName, lastNam
 	data["first_name"] = firstName
 	data["last_name"] = lastName
 	data["primary_email_address_id"] = primaryEmailID
-	data["email_addresses"] = []interface{}{
-		map[string]interface{}{
+	data["email_addresses"] = []any{
+		map[string]any{
 			"email_address": email,
 			"id":            primaryEmailID,
-			"linked_to":     []interface{}{},
+			"linked_to":     []any{},
 			"object":        "email_address",
 			"reserved":      true,
-			"verification": map[string]interface{}{
+			"verification": map[string]any{
 				"attempts":  nil,
 				"expire_at": nil,
 				"status":    "verified",
@@ -236,7 +235,7 @@ func clerkUserUpdatedPayload(t *testing.T, externalID, email, firstName, lastNam
 	return payload
 }
 
-func clerkUserDeletedPayload(t *testing.T, externalID string) map[string]interface{} {
+func clerkUserDeletedPayload(t *testing.T, externalID string) map[string]any {
 	t.Helper()
 
 	payload := clonePayload(t, clerkOfficialUserDeletedPayload())
@@ -331,7 +330,7 @@ func createActiveClerkIntegrationInstance(
 		t,
 		productContext,
 		instance.Id,
-		ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: ptr.Ptr(clerkTestWebhookSecret)},
+		ct.UpdateIntegrationInstanceJSONRequestBody{WebhookSecret: new(clerkTestWebhookSecret)},
 	)
 }
 
@@ -393,7 +392,7 @@ func listIntegrationAuditLogs(
 func sendClerkWebhook(
 	t *testing.T,
 	productID string,
-	payload map[string]interface{},
+	payload map[string]any,
 	secret string,
 ) *ct.IngestWebhookResponse {
 	t.Helper()

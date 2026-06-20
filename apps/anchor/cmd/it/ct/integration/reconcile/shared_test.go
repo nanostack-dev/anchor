@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/pgkit/pgqueue"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +39,7 @@ func TestMain(m *testing.M) {
 			UserRepository:          &itshared.UserRepository,
 			PlatformUserRepository:  &itshared.PlatformTenantUserRepo,
 			JWTHelper:               &itshared.JWTHelper,
-			ExtraPopulateTargets:    []interface{}{&Queue},
+			ExtraPopulateTargets:    []any{&Queue},
 		},
 	)
 }
@@ -106,7 +105,7 @@ func createInstanceWithAPIKey(
 	// Attach the API key via update so that maybeStartReconcileScheduler runs post-tx.
 	cfg := ct.IntegrationProviderConfig{}
 	require.NoError(t, cfg.FromClerkIntegrationConfig(ct.ClerkIntegrationConfig{
-		ApiKey: ptr.Ptr(apiKey),
+		ApiKey: new(apiKey),
 	}))
 
 	updateResp, err := productContext.OwnerAuthenticatedClient().UpdateIntegrationInstanceWithResponse(

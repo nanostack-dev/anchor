@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +26,7 @@ func TestProductAPIKeySearch(t *testing.T) {
 		ctx, product.ProductID,
 		ct.CreateProductAPIKeyJSONRequestBody{
 			Name:        apiKey1Name,
-			Description: ptr.Ptr("First test API key"),
+			Description: new("First test API key"),
 			Permissions: []string{permission1},
 		},
 	)
@@ -42,7 +41,7 @@ func TestProductAPIKeySearch(t *testing.T) {
 		ctx, product.ProductID,
 		ct.CreateProductAPIKeyJSONRequestBody{
 			Name:        apiKey2Name,
-			Description: ptr.Ptr("Second test API key"),
+			Description: new("Second test API key"),
 			Permissions: []string{permission2},
 		},
 	)
@@ -57,7 +56,7 @@ func TestProductAPIKeySearch(t *testing.T) {
 		ctx, product.ProductID,
 		ct.CreateProductAPIKeyJSONRequestBody{
 			Name:        apiKey3Name,
-			Description: ptr.Ptr("Third test API key for search"),
+			Description: new("Third test API key for search"),
 			Permissions: []string{permission1, permission2},
 		},
 	)

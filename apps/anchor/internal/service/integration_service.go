@@ -1892,10 +1892,7 @@ func (s *integrationService) executeCommandsInBatches(
 
 	batchesProcessed := 0
 	for start := 0; start < len(commands); start += batchSize {
-		end := start + batchSize
-		if end > len(commands) {
-			end = len(commands)
-		}
+		end := min(start+batchSize, len(commands))
 
 		batchIndex := batchesProcessed + 1
 		batchCommands := commands[start:end]
