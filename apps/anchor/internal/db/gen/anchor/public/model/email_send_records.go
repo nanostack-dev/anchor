@@ -29,7 +29,6 @@ type EmailSendRecords struct {
 	VariablesJSON         string
 	MessageID             string
 	Status                string
-	Attempts              int32
 	LastError             *string
 	SentAt                *time.Time
 	CreatedAt             time.Time

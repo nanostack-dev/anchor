@@ -191,7 +191,6 @@ func mapSendRecordToResponse(r email.SendRecord) EmailSendRecordResponse {
 		FromName:              fromName,
 		Subject:               r.Subject,
 		Status:                r.Status,
-		Attempts:              int(r.Attempts),
 		LastError:             r.LastError,
 		SentAt:                r.SentAt,
 		CreatedAt:             r.CreatedAt,

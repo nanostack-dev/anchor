@@ -1179,7 +1179,6 @@ export const zEmailSendRecordResponse = z.object({
     from_name: z.optional(z.string()),
     subject: z.string(),
     status: zEmailSendStatus,
-    attempts: z.int(),
     last_error: z.optional(z.union([
         z.string(),
         z.null()
