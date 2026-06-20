@@ -107,7 +107,9 @@ func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
 	// The row was reused (dedupe unique index forbids a second): exactly one send
 	// record for the key, now SENT.
 	list, err := client.ListEmailSendsWithResponse(
-		context.Background(), tc.product.ProductID, &ct.ListEmailSendsParams{Limit: ptr.Ptr(int64(50)), Offset: ptr.Ptr(int64(0))},
+		context.Background(),
+		tc.product.ProductID,
+		&ct.ListEmailSendsParams{Limit: ptr.Ptr(int64(50)), Offset: ptr.Ptr(int64(0))},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, list.JSON200)
