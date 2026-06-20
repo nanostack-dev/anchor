@@ -34,7 +34,6 @@ type emailSendRecordsTable struct {
 	VariablesJSON         postgres.ColumnString
 	MessageID             postgres.ColumnString
 	Status                postgres.ColumnString
-	Attempts              postgres.ColumnInteger
 	LastError             postgres.ColumnString
 	SentAt                postgres.ColumnTimestampz
 	CreatedAt             postgres.ColumnTimestampz
@@ -97,14 +96,13 @@ func newEmailSendRecordsTableImpl(schemaName, tableName, alias string) emailSend
 		VariablesJSONColumn         = postgres.StringColumn("variables_json")
 		MessageIDColumn             = postgres.StringColumn("message_id")
 		StatusColumn                = postgres.StringColumn("status")
-		AttemptsColumn              = postgres.IntegerColumn("attempts")
 		LastErrorColumn             = postgres.StringColumn("last_error")
 		SentAtColumn                = postgres.TimestampzColumn("sent_at")
 		CreatedAtColumn             = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn             = postgres.TimestampzColumn("updated_at")
-		allColumns                  = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, IntegrationInstanceIDColumn, TemplateIDColumn, TemplateVersionIDColumn, DedupeKeyColumn, ToAddressColumn, ToNameColumn, FromAddressColumn, FromNameColumn, SubjectColumn, BodyHTMLColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, StatusColumn, AttemptsColumn, LastErrorColumn, SentAtColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns              = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, IntegrationInstanceIDColumn, TemplateIDColumn, TemplateVersionIDColumn, DedupeKeyColumn, ToAddressColumn, ToNameColumn, FromAddressColumn, FromNameColumn, SubjectColumn, BodyHTMLColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, StatusColumn, AttemptsColumn, LastErrorColumn, SentAtColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns              = postgres.ColumnList{ToNameColumn, FromNameColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, AttemptsColumn, CreatedAtColumn, UpdatedAtColumn}
+		allColumns                  = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, IntegrationInstanceIDColumn, TemplateIDColumn, TemplateVersionIDColumn, DedupeKeyColumn, ToAddressColumn, ToNameColumn, FromAddressColumn, FromNameColumn, SubjectColumn, BodyHTMLColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, StatusColumn, LastErrorColumn, SentAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns              = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, IntegrationInstanceIDColumn, TemplateIDColumn, TemplateVersionIDColumn, DedupeKeyColumn, ToAddressColumn, ToNameColumn, FromAddressColumn, FromNameColumn, SubjectColumn, BodyHTMLColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, StatusColumn, LastErrorColumn, SentAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns              = postgres.ColumnList{ToNameColumn, FromNameColumn, BodyTextColumn, VariablesJSONColumn, MessageIDColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return emailSendRecordsTable{
@@ -128,7 +126,6 @@ func newEmailSendRecordsTableImpl(schemaName, tableName, alias string) emailSend
 		VariablesJSON:         VariablesJSONColumn,
 		MessageID:             MessageIDColumn,
 		Status:                StatusColumn,
-		Attempts:              AttemptsColumn,
 		LastError:             LastErrorColumn,
 		SentAt:                SentAtColumn,
 		CreatedAt:             CreatedAtColumn,

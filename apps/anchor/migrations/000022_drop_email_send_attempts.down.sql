@@ -1,0 +1,1 @@
+ALTER TABLE email_send_records ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;

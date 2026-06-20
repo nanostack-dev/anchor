@@ -9,7 +9,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,11 +58,11 @@ func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
 	tplID := createPublishedTemplate(t, client, tc)
 
 	dedupeKey := ids.MustNew("dkey")
-	vars := map[string]interface{}{"name": "Bob"}
+	vars := map[string]any{"name": "Bob"}
 	body := ct.SendEmailJSONRequestBody{
 		TemplateId: &tplID,
 		ToAddress:  openapi_types.Email("bob@example.com"),
-		ToName:     ptr.Ptr("Bob"),
+		ToName:     new("Bob"),
 		Variables:  &vars,
 		DedupeKey:  &dedupeKey,
 	}
@@ -109,7 +108,7 @@ func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
 	list, err := client.ListEmailSendsWithResponse(
 		context.Background(),
 		tc.product.ProductID,
-		&ct.ListEmailSendsParams{Limit: ptr.Ptr(int64(50)), Offset: ptr.Ptr(int64(0))},
+		&ct.ListEmailSendsParams{Limit: new(int64(50)), Offset: new(int64(0))},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, list.JSON200)

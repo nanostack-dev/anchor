@@ -695,7 +695,6 @@ func (s *emailService) Send(
 			BodyText:              rendered.BodyText,
 			VariablesJSON:         varsJSON,
 			Status:                email.SendStatusQueued,
-			Attempts:              0,
 		}
 		rec.GenerateID()
 		messageID = ids.MustNew("emid")

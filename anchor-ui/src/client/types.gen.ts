@@ -1590,7 +1590,6 @@ export type EmailSendRecordResponse = {
     from_name?: string;
     subject: string;
     status: EmailSendStatus;
-    attempts: number;
     last_error?: string | null;
     sent_at?: string | null;
     created_at: string;
