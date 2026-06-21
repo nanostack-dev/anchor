@@ -12,6 +12,7 @@ import (
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
 	"anchor/internal/domain/tenant"
+	"anchor/internal/logx"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/service/config"
@@ -324,7 +325,10 @@ func (s *authService) setupTenantForRegistration(
 ) (string, platform.TenantRole, error) {
 	count, err := s.tenantRepo.Count(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to count tenants")
+		// Mirror tenant_service.go: a cancelled/expired request context is a
+		// benign caller-side outcome, not a server fault, so route through
+		// logx.EventForError to keep it off error dashboards and alerts.
+		logx.EventForError(&logger, err).Err(err).Msg("failed to count tenants")
 		return "", "", fmt.Errorf("failed to count tenants: %w", err)
 	}
 
