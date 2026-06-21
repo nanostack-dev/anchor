@@ -66,6 +66,18 @@ var (
 		"EMAIL_TEMPLATE_SELECTOR_MISSING",
 		"Either template_id or template_slug must be supplied",
 	)
+	// ErrEmailDeliveryFailed models a failure to hand a message off to the
+	// configured email integration (SMTP relay rejection, auth failure, dial
+	// error, or an undeliverable recipient/sender). Delivery failure is a known
+	// operational outcome, not a "truly unexpected" bug, so it is a modelled 500:
+	// the boundary handler logs it as an intentional internal error with a stable
+	// code instead of the generic "unhandled error" safety net, and the client
+	// gets EMAIL_DELIVERY_FAILED rather than an opaque UNEXPECTED. The transport
+	// cause is wrapped for server-side logs but never serialized to the client.
+	ErrEmailDeliveryFailed = fault.Internal(
+		"EMAIL_DELIVERY_FAILED",
+		"Failed to deliver the email through the configured integration",
+	)
 )
 
 // errEmailRequiredVariablesMissing builds the validation error returned when a
@@ -729,7 +741,13 @@ func (s *emailService) Send(
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
-		return persisted, dispatchErr
+		// A cancelled context means the caller (or shutdown) went away mid-send,
+		// not a delivery fault — surface it unchanged so the context-cancellation
+		// logging policy (logx) keeps it out of error dashboards and alerts.
+		if logx.IsContextError(dispatchErr) {
+			return persisted, dispatchErr
+		}
+		return persisted, ErrEmailDeliveryFailed.Wrap(dispatchErr)
 	}
 
 	now := time.Now()
