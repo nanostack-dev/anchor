@@ -683,7 +683,15 @@ func (s *emailService) Send(
 
 	sender, err := mailer.SenderIdentity(ctx, instance)
 	if err != nil {
-		return email.SendRecord{}, err
+		// SenderIdentity decrypts and validates the integration's stored config
+		// before we touch the relay, so its failure modes (an undecryptable
+		// credential, a missing encryption key) are the same class of integration
+		// failure as a dispatch error. Classify it the same way: otherwise it
+		// reaches the strict boundary unmodelled and is logged as the generic
+		// "unhandled error" 500 safety net instead of a stable, intentional
+		// EMAIL_DELIVERY_FAILED. No SendRecord exists yet, so there is nothing to
+		// mark FAILED here.
+		return email.SendRecord{}, classifyDispatchError(err)
 	}
 
 	rendered, err := s.renderer.Render(version, in.Variables)
