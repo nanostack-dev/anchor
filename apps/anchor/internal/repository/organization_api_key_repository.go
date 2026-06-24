@@ -40,6 +40,10 @@ type OrganizationAPIKeyRepository interface {
 		ctx context.Context,
 		organizationID, hashedValue string,
 	) (*orgapikey.OrganizationAPIKey, error)
+	GetByProductIDAndHashedValueInternal(
+		ctx context.Context,
+		productID, hashedValue string,
+	) (*orgapikey.OrganizationAPIKey, error)
 	SearchByOrganizationID(
 		ctx context.Context,
 		input orgapikey.SearchOrganizationAPIKeysInput,
@@ -254,6 +258,46 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		),
 	).WHERE(
 		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
+			table.OrganizationAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
+		),
+	)
+
+	return transactor.QueryOptionalMap[
+		organizationAPIKeyWithPermissions,
+		orgapikey.OrganizationAPIKey,
+	](
+		ctx,
+		r.db,
+		stmt,
+		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
+			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
+		},
+	)
+}
+
+// GetByProductIDAndHashedValueInternal resolves an organization API key by its hashed
+// value across all organizations within a product, deriving the organization
+// from the key. It bypasses organization scope intentionally: the caller is the
+// product (productApiKeyAuth) and the hash uniquely identifies a single key.
+func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
+	ctx context.Context,
+	productID, hashedValue string,
+) (*orgapikey.OrganizationAPIKey, error) {
+	stmt := postgres.SELECT(
+		table.OrganizationAPIKeys.AllColumns,
+		table.OrganizationAPIKeyPermissions.AllColumns,
+	).FROM(
+		table.OrganizationAPIKeys.
+			LEFT_JOIN(
+				table.OrganizationAPIKeyPermissions,
+				table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
+			).
+			INNER_JOIN(
+				table.Organizations,
+				table.OrganizationAPIKeys.OrganizationID.EQ(table.Organizations.ID),
+			),
+	).WHERE(
+		table.Organizations.ProductID.EQ(postgres.String(productID)).AND(
 			table.OrganizationAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
 		),
 	)

@@ -45,6 +45,10 @@ type OrganizationAPIKeyService interface {
 		ctx context.Context,
 		input orgapikey.ValidateOrganizationAPIKeyScopesInput,
 	) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error)
+	IntrospectAPIKey(
+		ctx context.Context,
+		input orgapikey.IntrospectOrganizationAPIKeyInput,
+	) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error)
 }
 
 type organizationAPIKeyService struct {
@@ -402,6 +406,39 @@ func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(
 		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
 	}
 
+	return s.buildScopesOutput(validAPIKey, inactive, input.Scopes, logger), nil
+}
+
+// IntrospectAPIKey resolves an organization API key within a product without a
+// supplied organization id, returning the key's identity, organization, and
+// permissions. When required scopes are provided they are checked and reported
+// via MissingPrivileges.
+func (s *organizationAPIKeyService) IntrospectAPIKey(
+	ctx context.Context,
+	input orgapikey.IntrospectOrganizationAPIKeyInput,
+) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error) {
+	logger := s.logger.With().Str("operation", "IntrospectAPIKey").Logger()
+
+	if err := validateStruct(input); err != nil {
+		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
+	}
+
+	validAPIKey, inactive, err := s.resolveAPIKeyByProduct(ctx, input.ProductID, input.APIKeyValue, logger)
+	if err != nil {
+		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
+	}
+
+	return s.buildScopesOutput(validAPIKey, inactive, input.Scopes, logger), nil
+}
+
+// buildScopesOutput computes the key's permission set, any missing required
+// scopes, and the resulting authorization decision.
+func (s *organizationAPIKeyService) buildScopesOutput(
+	validAPIKey orgapikey.OrganizationAPIKey,
+	inactive bool,
+	requiredScopes []string,
+	logger zerolog.Logger,
+) orgapikey.ValidateOrganizationAPIKeyScopesOutput {
 	permissionMap := make(map[string]bool, len(validAPIKey.Permissions))
 	currentScopes := make([]string, 0, len(validAPIKey.Permissions))
 	for _, perm := range validAPIKey.Permissions {
@@ -410,7 +447,7 @@ func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(
 	}
 
 	var missingScopes []string
-	for _, scope := range input.Scopes {
+	for _, scope := range requiredScopes {
 		if !permissionMap[scope] {
 			missingScopes = append(missingScopes, scope)
 		}
@@ -426,23 +463,24 @@ func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(
 
 	if inactive {
 		logger.Debug().
-			Str("organization_id", input.OrganizationID).
+			Str("organization_id", validAPIKey.OrganizationID).
 			Str("api_key_id", validAPIKey.ID).
 			Msg("organization API key is inactive")
-		return output, nil
+		return output
 	}
 
 	if len(missingScopes) > 0 {
 		logger.Debug().
-			Str("organization_id", input.OrganizationID).
+			Str("organization_id", validAPIKey.OrganizationID).
 			Strs("missing_scopes", missingScopes).
 			Msg("organization API key does not have required scopes")
-		return output, nil
 	}
 
-	return output, nil
+	return output
 }
 
+// validateAPIKey resolves an organization API key within a known organization
+// and evaluates its expiry/status.
 func (s *organizationAPIKeyService) validateAPIKey(
 	ctx context.Context,
 	organizationID string,
@@ -462,6 +500,48 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	if foundAPIKey == nil {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
 	}
+
+	return s.evaluateAPIKey(ctx, foundAPIKey, logger)
+}
+
+// resolveAPIKeyByProduct resolves an organization API key across all
+// organizations within a product (the organization is derived from the key) and
+// evaluates its expiry/status. Used by introspection, where the caller does not
+// supply an organization id.
+func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
+	ctx context.Context,
+	productID string,
+	apiKey string,
+	logger zerolog.Logger,
+) (orgapikey.OrganizationAPIKey, bool, error) {
+	if apiKey == "" {
+		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
+	}
+
+	hashedKey := security.HashSecret(apiKey)
+	foundAPIKey, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
+	if err != nil {
+		logger.Error().Str("product_id", productID).Err(err).Msg("failed to introspect organization API key")
+		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
+	}
+	if foundAPIKey == nil {
+		// The caller (the product) is authenticated; the subject credential simply
+		// does not exist. That is a not-found, not a caller-authentication failure.
+		return orgapikey.OrganizationAPIKey{}, false, fault.ErrNotFound
+	}
+
+	return s.evaluateAPIKey(ctx, foundAPIKey, logger)
+}
+
+// evaluateAPIKey applies expiry and status handling to a resolved key,
+// returning the (possibly mutated) key and whether it is inactive. It updates
+// last_used_at on a live, active key and flips an expired key to inactive.
+func (s *organizationAPIKeyService) evaluateAPIKey(
+	ctx context.Context,
+	foundAPIKey *orgapikey.OrganizationAPIKey,
+	logger zerolog.Logger,
+) (orgapikey.OrganizationAPIKey, bool, error) {
+	organizationID := foundAPIKey.OrganizationID
 
 	now := nowUTC()
 	if foundAPIKey.IsExpiredAt(now) {
