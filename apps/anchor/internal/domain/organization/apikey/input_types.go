@@ -68,6 +68,15 @@ type ValidateOrganizationAPIKeyScopesInput struct {
 	APIKeyValue    string   `validate:"required,notblank"`
 }
 
+// IntrospectOrganizationAPIKeyInput identifies an organization API key within a
+// product without a supplied organization id. Scopes are optional: when present
+// they are checked and reported via MissingPrivileges.
+type IntrospectOrganizationAPIKeyInput struct {
+	ProductID   string   `validate:"required,notblank"`
+	Scopes      []string `validate:"omitempty,dive,notblank"`
+	APIKeyValue string   `validate:"required,notblank"`
+}
+
 type ValidateOrganizationAPIKeyScopesOutput struct {
 	APIKey            OrganizationAPIKey
 	Permissions       []string

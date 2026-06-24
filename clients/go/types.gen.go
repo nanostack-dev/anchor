@@ -1147,6 +1147,15 @@ type OrganizationAPIKeyFilter struct {
 	Status *[]OrganizationAPIKeyStatus `json:"status,omitempty"`
 }
 
+// OrganizationAPIKeyIntrospectRequest defines model for OrganizationAPIKeyIntrospectRequest.
+type OrganizationAPIKeyIntrospectRequest struct {
+	// ApiKey Raw organization API key value to introspect.
+	ApiKey string `json:"api_key"`
+
+	// RequiredScopes Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+	RequiredScopes *[]string `json:"required_scopes,omitempty"`
+}
+
 // OrganizationAPIKeyListResponse defines model for OrganizationAPIKeyListResponse.
 type OrganizationAPIKeyListResponse struct {
 	// Count The number of items returned in this response.
@@ -2433,6 +2442,9 @@ type SearchProductAPIKeysJSONRequestBody = ProductAPIKeySearchRequest
 
 // UpdateProductAPIKeyJSONRequestBody defines body for UpdateProductAPIKey for application/json ContentType.
 type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
+
+// IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
+type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest
 
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest

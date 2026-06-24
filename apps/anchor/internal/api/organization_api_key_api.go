@@ -218,6 +218,52 @@ func (response validateOrganizationAPIKeyForbiddenResponse) VisitValidateOrganiz
 	return json.NewEncoder(w).Encode(response.OrganizationAPIKeyValidateResponse)
 }
 
+// IntrospectOrganizationAPIKey resolves a raw organization API key within the
+// product without an organization id, returning the key's organization,
+// identity, and permissions. When required scopes are supplied they are checked
+// and any missing scopes yield a 403.
+func (s *AnchorAPI) IntrospectOrganizationAPIKey(
+	ctx context.Context,
+	request IntrospectOrganizationAPIKeyRequestObject,
+) (IntrospectOrganizationAPIKeyResponseObject, error) {
+	var scopes []string
+	if request.Body.RequiredScopes != nil {
+		scopes = *request.Body.RequiredScopes
+	}
+
+	input := orgapikey.IntrospectOrganizationAPIKeyInput{
+		ProductID:   request.ProductId,
+		Scopes:      scopes,
+		APIKeyValue: request.Body.ApiKey,
+	}
+
+	result, err := s.OrganizationAPIKeyService.IntrospectAPIKey(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	permissions := slicex.Map(
+		result.APIKey.Permissions,
+		func(permission orgapikey.OrganizationAPIKeyPermission) string {
+			return permission.PermissionName
+		},
+	)
+
+	if result.Inactive || len(result.MissingPrivileges) > 0 {
+		return IntrospectOrganizationAPIKey403JSONResponse{
+			ApiKey:            mapOrganizationAPIKeyToResponse(result.APIKey),
+			Permissions:       permissions,
+			MissingPrivileges: result.MissingPrivileges,
+		}, nil
+	}
+
+	return IntrospectOrganizationAPIKey200JSONResponse{
+		ApiKey:            mapOrganizationAPIKeyToResponse(result.APIKey),
+		Permissions:       permissions,
+		MissingPrivileges: result.MissingPrivileges,
+	}, nil
+}
+
 func mapToSearchOrganizationAPIKeyInput(
 	searchReqBody *SearchOrganizationAPIKeysJSONRequestBody,
 ) search.Request[

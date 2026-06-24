@@ -647,6 +647,15 @@ type OrganizationAPIKeyFilter struct {
 	Status *[]OrganizationAPIKeyStatus `json:"status,omitempty"`
 }
 
+// OrganizationAPIKeyIntrospectRequest defines model for OrganizationAPIKeyIntrospectRequest.
+type OrganizationAPIKeyIntrospectRequest struct {
+	// ApiKey Raw organization API key value to introspect.
+	ApiKey string `json:"api_key"`
+
+	// RequiredScopes Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+	RequiredScopes *[]string `json:"required_scopes,omitempty"`
+}
+
 // OrganizationAPIKeyListResponse defines model for OrganizationAPIKeyListResponse.
 type OrganizationAPIKeyListResponse struct {
 	// Count The number of items returned in this response.
@@ -1892,6 +1901,9 @@ type SearchProductAPIKeysJSONRequestBody = ProductAPIKeySearchRequest
 // UpdateProductAPIKeyJSONRequestBody defines body for UpdateProductAPIKey for application/json ContentType.
 type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
 
+// IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
+type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest
+
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest
 
@@ -2243,6 +2255,9 @@ type ServerInterface interface {
 	// Update Product API Key
 	// (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 	UpdateProductAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter)
+	// Introspect Credential
+	// (POST /v1/products/{product_id}/auth/introspect)
+	IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
 	ListEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailSendsParams)
@@ -2561,6 +2576,12 @@ func (_ Unimplemented) GetProductAPIKey(w http.ResponseWriter, r *http.Request, 
 // Update Product API Key
 // (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 func (_ Unimplemented) UpdateProductAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Introspect Credential
+// (POST /v1/products/{product_id}/auth/introspect)
+func (_ Unimplemented) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3538,6 +3559,38 @@ func (siw *ServerInterfaceWrapper) UpdateProductAPIKey(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductAPIKey(w, r, productId, apiKeyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IntrospectOrganizationAPIKey operation middleware
+func (siw *ServerInterfaceWrapper) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:read"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IntrospectOrganizationAPIKey(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6384,6 +6437,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/v1/products/{product_id}/api-keys/{api_key_id}", wrapper.UpdateProductAPIKey)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/auth/introspect", wrapper.IntrospectOrganizationAPIKey)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/email/sends", wrapper.ListEmailSends)
 	})
 	r.Group(func(r chi.Router) {
@@ -7865,6 +7921,78 @@ func (response UpdateProductAPIKey403JSONResponse) VisitUpdateProductAPIKeyRespo
 type UpdateProductAPIKey404Response = NotFoundResponse
 
 func (response UpdateProductAPIKey404Response) VisitUpdateProductAPIKeyResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type IntrospectOrganizationAPIKeyRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *IntrospectOrganizationAPIKeyJSONRequestBody
+}
+
+type IntrospectOrganizationAPIKeyResponseObject interface {
+	VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error
+}
+
+type IntrospectOrganizationAPIKey200JSONResponse OrganizationAPIKeyValidateResponse
+
+func (response IntrospectOrganizationAPIKey200JSONResponse) VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IntrospectOrganizationAPIKey400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response IntrospectOrganizationAPIKey400JSONResponse) VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IntrospectOrganizationAPIKey401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response IntrospectOrganizationAPIKey401JSONResponse) VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IntrospectOrganizationAPIKey403JSONResponse OrganizationAPIKeyValidateForbiddenResponse
+
+func (response IntrospectOrganizationAPIKey403JSONResponse) VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IntrospectOrganizationAPIKey404Response = NotFoundResponse
+
+func (response IntrospectOrganizationAPIKey404Response) VisitIntrospectOrganizationAPIKeyResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -11246,6 +11374,9 @@ type StrictServerInterface interface {
 	// Update Product API Key
 	// (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 	UpdateProductAPIKey(ctx context.Context, request UpdateProductAPIKeyRequestObject) (UpdateProductAPIKeyResponseObject, error)
+	// Introspect Credential
+	// (POST /v1/products/{product_id}/auth/introspect)
+	IntrospectOrganizationAPIKey(ctx context.Context, request IntrospectOrganizationAPIKeyRequestObject) (IntrospectOrganizationAPIKeyResponseObject, error)
 	// List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
 	ListEmailSends(ctx context.Context, request ListEmailSendsRequestObject) (ListEmailSendsResponseObject, error)
@@ -12087,6 +12218,39 @@ func (sh *strictHandler) UpdateProductAPIKey(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateProductAPIKeyResponseObject); ok {
 		if err := validResponse.VisitUpdateProductAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IntrospectOrganizationAPIKey operation middleware
+func (sh *strictHandler) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request IntrospectOrganizationAPIKeyRequestObject
+
+	request.ProductId = productId
+
+	var body IntrospectOrganizationAPIKeyJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IntrospectOrganizationAPIKey(ctx, request.(IntrospectOrganizationAPIKeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IntrospectOrganizationAPIKey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IntrospectOrganizationAPIKeyResponseObject); ok {
+		if err := validResponse.VisitIntrospectOrganizationAPIKeyResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
