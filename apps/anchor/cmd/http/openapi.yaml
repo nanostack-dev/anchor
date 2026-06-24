@@ -1870,6 +1870,19 @@ components:
           items:
             type: string
 
+    OrganizationAPIKeyIntrospectRequest:
+      type: object
+      required: [api_key]
+      properties:
+        api_key:
+          type: string
+          description: Raw organization API key value to introspect.
+        required_scopes:
+          type: array
+          description: Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+          items:
+            type: string
+
     OrganizationAPIKeyValidateResponse:
       type: object
       required:
@@ -4568,6 +4581,43 @@ paths:
       responses:
         "200":
           description: Organization API key validation result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyValidateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Organization API key is valid but lacks one or more required scopes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationAPIKeyValidateForbiddenResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/products/{product_id}/auth/introspect:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+
+    post:
+      summary: Introspect Credential
+      description: Resolves a raw credential within the product and returns the caller's identity and permissions. Currently supports organization API keys, resolving the key's organization without requiring the organization id. Optionally checks required scopes and updates last_used_at on success. Returns 404 when the credential is not found.
+      operationId: introspectOrganizationAPIKey
+      tags: [OrganizationAPIKey]
+      security:
+      - productApiKeyAuth: ["organization_api_key:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationAPIKeyIntrospectRequest"
+      responses:
+        "200":
+          description: Organization API key introspection result.
           content:
             application/json:
               schema:

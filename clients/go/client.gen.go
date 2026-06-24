@@ -177,6 +177,11 @@ type ClientInterface interface {
 
 	UpdateProductAPIKey(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// IntrospectOrganizationAPIKeyWithBody request with any body
+	IntrospectOrganizationAPIKeyWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	IntrospectOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, body IntrospectOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListEmailSends request
 	ListEmailSends(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -811,6 +816,30 @@ func (c *Client) UpdateProductAPIKeyWithBody(ctx context.Context, productId Prod
 
 func (c *Client) UpdateProductAPIKey(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProductAPIKeyRequest(c.Server, productId, apiKeyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) IntrospectOrganizationAPIKeyWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIntrospectOrganizationAPIKeyRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) IntrospectOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, body IntrospectOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIntrospectOrganizationAPIKeyRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2787,6 +2816,53 @@ func NewUpdateProductAPIKeyRequestWithBody(server string, productId ProductIdPar
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewIntrospectOrganizationAPIKeyRequest calls the generic IntrospectOrganizationAPIKey builder with application/json body
+func NewIntrospectOrganizationAPIKeyRequest(server string, productId ProductIdParameter, body IntrospectOrganizationAPIKeyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewIntrospectOrganizationAPIKeyRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewIntrospectOrganizationAPIKeyRequestWithBody generates requests for IntrospectOrganizationAPIKey with any type of body
+func NewIntrospectOrganizationAPIKeyRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/auth/introspect", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -5999,6 +6075,11 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProductAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductAPIKeyResponse, error)
 
+	// IntrospectOrganizationAPIKeyWithBodyWithResponse request with any body
+	IntrospectOrganizationAPIKeyWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error)
+
+	IntrospectOrganizationAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, body IntrospectOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error)
+
 	// ListEmailSendsWithResponse request
 	ListEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*ListEmailSendsResponse, error)
 
@@ -6946,6 +7027,39 @@ func (r UpdateProductAPIKeyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProductAPIKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type IntrospectOrganizationAPIKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrganizationAPIKeyValidateResponse
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *OrganizationAPIKeyValidateForbiddenResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r IntrospectOrganizationAPIKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r IntrospectOrganizationAPIKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r IntrospectOrganizationAPIKeyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9175,6 +9289,23 @@ func (c *ClientWithResponses) UpdateProductAPIKeyWithResponse(ctx context.Contex
 	return ParseUpdateProductAPIKeyResponse(rsp)
 }
 
+// IntrospectOrganizationAPIKeyWithBodyWithResponse request with arbitrary body returning *IntrospectOrganizationAPIKeyResponse
+func (c *ClientWithResponses) IntrospectOrganizationAPIKeyWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error) {
+	rsp, err := c.IntrospectOrganizationAPIKeyWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIntrospectOrganizationAPIKeyResponse(rsp)
+}
+
+func (c *ClientWithResponses) IntrospectOrganizationAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, body IntrospectOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error) {
+	rsp, err := c.IntrospectOrganizationAPIKey(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIntrospectOrganizationAPIKeyResponse(rsp)
+}
+
 // ListEmailSendsWithResponse request returning *ListEmailSendsResponse
 func (c *ClientWithResponses) ListEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*ListEmailSendsResponse, error) {
 	rsp, err := c.ListEmailSends(ctx, productId, params, reqEditors...)
@@ -10854,6 +10985,53 @@ func ParseUpdateProductAPIKeyResponse(rsp *http.Response) (*UpdateProductAPIKeyR
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseIntrospectOrganizationAPIKeyResponse parses an HTTP response from a IntrospectOrganizationAPIKeyWithResponse call
+func ParseIntrospectOrganizationAPIKeyResponse(rsp *http.Response) (*IntrospectOrganizationAPIKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &IntrospectOrganizationAPIKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationAPIKeyValidateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest OrganizationAPIKeyValidateForbiddenResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
