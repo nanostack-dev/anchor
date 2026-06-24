@@ -1,0 +1,73 @@
+name: release-client
+
+# Tags the Go client module (clients/go) whenever it changes on main, so
+# consumers can always `go get` the latest. The version bump is derived from
+# Conventional Commits touching clients/go since the last clients/go tag:
+#   feat:            -> minor
+#   anything else:   -> patch
+#   breaking (!/BREAKING CHANGE) -> minor while 0.x, major from 1.0 onward
+#
+# Tags pushed with GITHUB_TOKEN do not retrigger workflows, so this never loops.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "clients/go/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-client
+  cancel-in-progress: false
+
+jobs:
+  tag-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags for version computation
+
+      - name: Compute and push the next clients/go tag
+        run: |
+          set -euo pipefail
+          prefix="clients/go/v"
+
+          latest="$(git tag --list "${prefix}*" | sed "s#${prefix}##" | sort -V | tail -1)"
+          if [ -z "${latest}" ]; then
+            latest="0.0.0"
+            range="HEAD"
+          else
+            range="${prefix}${latest}..HEAD"
+          fi
+          IFS=. read -r maj min pat <<< "${latest}"
+
+          commits="$(git log --format='%s%n%b' ${range} -- clients/go)"
+          if [ -z "${commits}" ]; then
+            echo "No clients/go commits since ${prefix}${latest}; nothing to release."
+            exit 0
+          fi
+
+          if echo "${commits}" | grep -qiE '^[a-z]+(\(.+\))?!:|BREAKING CHANGE'; then
+            if [ "${maj}" -ge 1 ]; then
+              maj=$((maj + 1)); min=0; pat=0
+            else
+              min=$((min + 1)); pat=0
+            fi
+          elif echo "${commits}" | grep -qiE '^feat(\(.+\))?:'; then
+            min=$((min + 1)); pat=0
+          else
+            pat=$((pat + 1))
+          fi
+
+          next="${prefix}${maj}.${min}.${pat}"
+          echo "Latest ${prefix}${latest} -> next ${next}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${next}" -m "${next} (auto-released from ${GITHUB_SHA})"
+          git push origin "${next}"
+
+          echo "### Released \`${next}\`" >> "${GITHUB_STEP_SUMMARY}"
