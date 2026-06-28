@@ -1,5 +1,5 @@
 # Multi-stage build for anchor Go application
-FROM --platform=linux/amd64 golang:1.26.1-alpine AS builder
+FROM --platform=linux/amd64 golang:1.26.2-alpine AS builder
 
 # Build arguments for metadata
 ARG VERSION=dev
