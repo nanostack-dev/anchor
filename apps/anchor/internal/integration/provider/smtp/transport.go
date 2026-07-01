@@ -174,14 +174,14 @@ func sendMessage(client *smtp.Client, cfg Config, msg provider.OutboundMessage) 
 	}
 
 	if err := client.Mail(from.Email); err != nil {
-		return "", fmt.Errorf("smtp MAIL FROM: %w", err)
+		return "", classifyEnvelopeErr(fmt.Errorf("smtp MAIL FROM: %w", err), err)
 	}
 	for _, to := range msg.To {
 		if strings.TrimSpace(to.Email) == "" {
 			return "", errors.New("smtp send: recipient address is empty")
 		}
 		if err := client.Rcpt(to.Email); err != nil {
-			return "", fmt.Errorf("smtp RCPT TO %s: %w", to.Email, err)
+			return "", classifyEnvelopeErr(fmt.Errorf("smtp RCPT TO %s: %w", to.Email, err), err)
 		}
 	}
 
@@ -208,6 +208,33 @@ func sendMessage(client *smtp.Client, cfg Config, msg provider.OutboundMessage) 
 		return "", fmt.Errorf("smtp DATA close: %w", closeErr)
 	}
 	return messageID, nil
+}
+
+// classifyEnvelopeErr tags a MAIL FROM / RCPT TO failure as a permanent message
+// rejection when the relay replied with a 5xx SMTP code. wrapped is the
+// log-friendly error (it keeps the command and address context); cause is the
+// raw error returned by net/smtp, inspected for the protocol reply code. A
+// permanent rejection is the caller's problem (unauthorized sender, unknown
+// recipient), so it is wrapped with provider.ErrMessageRejected; transient
+// failures and non-protocol errors propagate unchanged as ordinary delivery
+// failures the caller may retry.
+func classifyEnvelopeErr(wrapped, cause error) error {
+	if isPermanentSMTPRejection(cause) {
+		return fmt.Errorf("%w: %w", provider.ErrMessageRejected, wrapped)
+	}
+	return wrapped
+}
+
+// isPermanentSMTPRejection reports whether err carries an SMTP protocol reply
+// with a permanent (5xx) negative-completion code. Per RFC 5321 §4.2.1 a 5yz
+// reply means the server will never accept the command as issued, whereas a 4yz
+// reply is transient and worth retrying.
+func isPermanentSMTPRejection(err error) bool {
+	var protoErr *textproto.Error
+	if !errors.As(err, &protoErr) {
+		return false
+	}
+	return protoErr.Code >= 500 && protoErr.Code < 600
 }
 
 // buildRFC5322Message renders an RFC 5322 multipart/alternative message. We
