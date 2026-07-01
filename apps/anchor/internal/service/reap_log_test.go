@@ -1,10 +1,12 @@
-package service
+package service_test
 
 import (
 	"testing"
 
 	"github.com/nanostack-dev/pgkit/pgqueue"
 	"github.com/rs/zerolog"
+
+	"anchor/internal/service"
 )
 
 func TestReapLogLevel(t *testing.T) {
@@ -20,8 +22,8 @@ func TestReapLogLevel(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := reapLogLevel(tc.result); got != tc.want {
-				t.Fatalf("reapLogLevel(%+v) = %v, want %v", tc.result, got, tc.want)
+			if got := service.ReapLogLevel(tc.result); got != tc.want {
+				t.Fatalf("ReapLogLevel(%+v) = %v, want %v", tc.result, got, tc.want)
 			}
 		})
 	}
