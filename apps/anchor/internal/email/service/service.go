@@ -78,7 +78,36 @@ var (
 		"EMAIL_DELIVERY_FAILED",
 		"Failed to deliver the email through the configured integration",
 	)
+	// ErrEmailDeliveryRejected models a permanent rejection of the message by the
+	// configured relay (unauthorized sender identity, undeliverable recipient, or
+	// rejected content). Unlike ErrEmailDeliveryFailed this is a caller-input
+	// problem, not a server fault: retrying the same request will not help, so it
+	// is a 422 the client can act on rather than a 500. The transport cause is
+	// wrapped for server-side logs but never serialized to the client.
+	ErrEmailDeliveryRejected = fault.NewWithStatus(
+		"EMAIL_DELIVERY_REJECTED",
+		"The email integration rejected the message; verify the sender identity is "+
+			"authorized and the recipient address is valid",
+		http.StatusUnprocessableEntity,
+	)
 )
+
+// classifyDispatchError maps a mailer dispatch failure to the API error the
+// caller should see. A permanent rejection by the relay is the caller's problem
+// and surfaces as a 422 EMAIL_DELIVERY_REJECTED; every other transport failure
+// is a modelled 500 EMAIL_DELIVERY_FAILED. A cancelled context means the caller
+// (or shutdown) went away mid-send, not a delivery fault, so it is returned
+// unchanged to keep the context-cancellation logging policy (logx) from
+// surfacing it on error dashboards and alerts.
+func classifyDispatchError(err error) error {
+	if logx.IsContextError(err) {
+		return err
+	}
+	if errors.Is(err, provider.ErrMessageRejected) {
+		return ErrEmailDeliveryRejected.Wrap(err)
+	}
+	return ErrEmailDeliveryFailed.Wrap(err)
+}
 
 // errEmailRequiredVariablesMissing builds the validation error returned when a
 // send omits variables the template version marks required. The missing names
@@ -654,7 +683,15 @@ func (s *emailService) Send(
 
 	sender, err := mailer.SenderIdentity(ctx, instance)
 	if err != nil {
-		return email.SendRecord{}, err
+		// SenderIdentity decrypts and validates the integration's stored config
+		// before we touch the relay, so its failure modes (an undecryptable
+		// credential, a missing encryption key) are the same class of integration
+		// failure as a dispatch error. Classify it the same way: otherwise it
+		// reaches the strict boundary unmodelled and is logged as the generic
+		// "unhandled error" 500 safety net instead of a stable, intentional
+		// EMAIL_DELIVERY_FAILED. No SendRecord exists yet, so there is nothing to
+		// mark FAILED here.
+		return email.SendRecord{}, classifyDispatchError(err)
 	}
 
 	rendered, err := s.renderer.Render(version, in.Variables)
@@ -741,13 +778,7 @@ func (s *emailService) Send(
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
-		// A cancelled context means the caller (or shutdown) went away mid-send,
-		// not a delivery fault — surface it unchanged so the context-cancellation
-		// logging policy (logx) keeps it out of error dashboards and alerts.
-		if logx.IsContextError(dispatchErr) {
-			return persisted, dispatchErr
-		}
-		return persisted, ErrEmailDeliveryFailed.Wrap(dispatchErr)
+		return persisted, classifyDispatchError(dispatchErr)
 	}
 
 	now := time.Now()

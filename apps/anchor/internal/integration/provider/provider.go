@@ -2,11 +2,21 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"anchor/internal/domain/integration"
 
 	"github.com/rs/zerolog"
 )
+
+// ErrMessageRejected marks a permanent rejection of an outbound message by the
+// remote mail system — an unauthorized sender, an undeliverable recipient, or
+// rejected content. It signals a caller-input problem (a 4xx-class condition),
+// not a transport or infrastructure fault, so the email domain maps it to a
+// client error instead of a 5xx delivery failure. Providers wrap it around the
+// underlying transport cause; that detail stays in server-side logs and is
+// never serialized to the client.
+var ErrMessageRejected = errors.New("outbound message rejected by provider")
 
 // Provider is the base interface every integration plugin implements.
 // It is intentionally domain-agnostic: provider identity + config lifecycle
