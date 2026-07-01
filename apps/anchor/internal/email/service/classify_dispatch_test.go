@@ -34,7 +34,7 @@ func TestClassifyDispatchError(t *testing.T) {
 		assert.Equal(t, http.StatusUnprocessableEntity, apiErr.HTTPStatus())
 		assert.Equal(t, "EMAIL_DELIVERY_REJECTED", apiErr.Details[0].Code)
 		// The transport cause stays reachable for server-side logs.
-		assert.ErrorIs(t, got, provider.ErrMessageRejected)
+		require.ErrorIs(t, got, provider.ErrMessageRejected)
 		// ...but is never exposed in the client-safe message.
 		assert.NotContains(t, apiErr.Message(), "Sender address rejected")
 	})
@@ -56,7 +56,7 @@ func TestClassifyDispatchError(t *testing.T) {
 		t.Parallel()
 		got := classifyDispatchError(context.Canceled)
 
-		assert.ErrorIs(t, got, context.Canceled)
+		require.ErrorIs(t, got, context.Canceled)
 		_, ok := fault.As(got)
 		assert.False(t, ok, "context cancellation must not be wrapped in a fault")
 	})

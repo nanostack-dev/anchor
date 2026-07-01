@@ -10,6 +10,7 @@ import (
 	"anchor/internal/integration/provider"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsPermanentSMTPRejection(t *testing.T) {
@@ -65,7 +66,7 @@ func TestClassifyEnvelopeErr(t *testing.T) {
 
 		got := classifyEnvelopeErr(wrapped, cause)
 
-		assert.True(t, errors.Is(got, provider.ErrMessageRejected),
+		require.ErrorIs(t, got, provider.ErrMessageRejected,
 			"permanent 5xx rejection must carry provider.ErrMessageRejected")
 		// The command/address context is preserved for server-side logs.
 		assert.Contains(t, got.Error(), "smtp RCPT TO bob@example.com")
@@ -78,7 +79,7 @@ func TestClassifyEnvelopeErr(t *testing.T) {
 
 		got := classifyEnvelopeErr(wrapped, cause)
 
-		assert.False(t, errors.Is(got, provider.ErrMessageRejected),
+		require.NotErrorIs(t, got, provider.ErrMessageRejected,
 			"transient 4xx failure must not be classified as a permanent rejection")
 		assert.Equal(t, wrapped, got)
 	})
