@@ -81,7 +81,7 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 				Msg("queue job permanently failed")
 		},
 		OnJobStuck: func(_ context.Context, result pgqueue.ReapResult) {
-			logger.Error().
+			logger.WithLevel(reapLogLevel(result)).
 				Int64("requeued", result.Requeued).
 				Int64("failed", result.Failed).
 				Msg("queue jobs stuck in processing were reaped")

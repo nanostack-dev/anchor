@@ -71,7 +71,7 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 					Msg("organization api key event job permanently failed")
 			},
 			OnJobStuck: func(_ context.Context, result pgqueue.ReapResult) {
-				logger.Error().
+				logger.WithLevel(reapLogLevel(result)).
 					Int64("requeued", result.Requeued).
 					Int64("failed", result.Failed).
 					Msg("organization api key event jobs stuck in processing were reaped")
