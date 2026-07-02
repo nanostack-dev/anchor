@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/logx"
@@ -22,6 +23,13 @@ func TestIsContextError(t *testing.T) {
 		{"canceled", context.Canceled, true},
 		{"deadline", context.DeadlineExceeded, true},
 		{"wrapped canceled", fmt.Errorf("update SENT status: %w", context.Canceled), true},
+		// go-jet prefixes driver errors with "jet: " and breaks the Unwrap chain,
+		// so errors.Is misses these; they must still be treated as cancellations.
+		{"jet-wrapped canceled (broken chain)", errors.New("jet: context canceled"), true},
+		{"jet-wrapped deadline (broken chain)", errors.New("jet: context deadline exceeded"), true},
+		// lib/pq raises SQLSTATE 57014 when it cancels an in-flight query.
+		{"pq query canceled 57014", &pq.Error{Code: "57014", Message: "canceling statement due to user request"}, true},
+		{"pq other error", &pq.Error{Code: "3D000", Message: "database does not exist"}, false},
 		{"plain error", errors.New("boom"), false},
 		{"nil", nil, false},
 	}
@@ -43,6 +51,8 @@ func TestEventForErrorLevel(t *testing.T) {
 		{"context canceled downgraded to warn", context.Canceled, "warn"},
 		{"deadline exceeded downgraded to warn", context.DeadlineExceeded, "warn"},
 		{"wrapped cancellation downgraded to warn", fmt.Errorf("call: %w", context.Canceled), "warn"},
+		{"jet-wrapped cancellation downgraded to warn", errors.New("jet: context canceled"), "warn"},
+		{"pq 57014 downgraded to warn", &pq.Error{Code: "57014", Message: "canceling statement due to user request"}, "warn"},
 		{"real error stays error", errors.New("db exploded"), "error"},
 	}
 	for _, tc := range cases {
