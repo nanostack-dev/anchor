@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import type * as React from "react";
 import { AnchorLogoMark } from "./AnchorLogoMark";
 
 const FONT_STACK =
@@ -301,16 +302,17 @@ function FeatureChips() {
 }
 
 /**
- * Right-hand branding panel of the auth pages.
- *
- * Pure Motion (MIT) + CSS keyframes — no video framework: aurora
- * background, rising bubbles, ripple rings, spring-entrance Anchor mark
- * with a continuous bob, staggered wordmark, tagline, feature chips and
- * layered scrolling waves. Honors prefers-reduced-motion.
+ * Reusable animated Anchor backdrop: aurora gradient, rising bubbles,
+ * layered scrolling waves and a vignette, all Motion (MIT) + CSS
+ * keyframes. Children render above the background layers but under the
+ * waves/vignette, matching the login panel's depth stacking. Honors
+ * prefers-reduced-motion. Fills the nearest positioned ancestor.
  */
-export function LoginAnimationPanel() {
-	const reducedMotion = useReducedMotion();
-
+export function AnchorAnimatedBackdrop({
+	children,
+}: {
+	children?: React.ReactNode;
+}) {
 	return (
 		<div
 			className="anchor-login-animation"
@@ -324,6 +326,72 @@ export function LoginAnimationPanel() {
 			<style>{KEYFRAMES}</style>
 			<AuroraBlobs />
 			<Bubbles />
+			{children}
+			<Waves />
+			{/* Vignette for depth */}
+			<div
+				style={{
+					position: "absolute",
+					inset: 0,
+					background:
+						"radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(2, 6, 18, 0.55) 100%)",
+					pointerEvents: "none",
+				}}
+			/>
+		</div>
+	);
+}
+
+/**
+ * The floating Anchor mark: spring entrance, then a continuous bob and
+ * tilt. Requires the backdrop's keyframes to be present.
+ */
+export function FloatingAnchorMark({
+	width = "clamp(150px, 24vw, 230px)",
+}: {
+	width?: string;
+}) {
+	const reducedMotion = useReducedMotion();
+	return (
+		<motion.div
+			initial={reducedMotion ? false : { opacity: 0, y: 90, scale: 0.6 }}
+			animate={{ opacity: 1, y: 0, scale: 1 }}
+			transition={{
+				delay: 0.27,
+				type: "spring",
+				stiffness: 120,
+				damping: 12,
+				mass: 0.9,
+			}}
+			style={{
+				filter:
+					"drop-shadow(0 0 44px rgba(0, 120, 255, 0.55)) drop-shadow(0 12px 24px rgba(0, 0, 30, 0.45))",
+			}}
+		>
+			<div style={{ animation: "anchor-bob 5s ease-in-out infinite" }}>
+				<div
+					style={{
+						width,
+						animation: "anchor-tilt 10s ease-in-out infinite",
+					}}
+				>
+					<AnchorLogoMark color="#ffffff" />
+				</div>
+			</div>
+		</motion.div>
+	);
+}
+
+/**
+ * Right-hand branding panel of the auth pages: the animated backdrop
+ * with ripple rings, the floating Anchor mark, staggered wordmark,
+ * tagline and feature chips.
+ */
+export function LoginAnimationPanel() {
+	const reducedMotion = useReducedMotion();
+
+	return (
+		<AnchorAnimatedBackdrop>
 			<Ripples />
 
 			{/* Logo */}
@@ -337,33 +405,9 @@ export function LoginAnimationPanel() {
 					justifyContent: "center",
 				}}
 			>
-				<motion.div
-					initial={reducedMotion ? false : { opacity: 0, y: 90, scale: 0.6 }}
-					animate={{ opacity: 1, y: 0, scale: 1 }}
-					transition={{
-						delay: 0.27,
-						type: "spring",
-						stiffness: 120,
-						damping: 12,
-						mass: 0.9,
-					}}
-					style={{
-						translate: "0 -60%",
-						filter:
-							"drop-shadow(0 0 44px rgba(0, 120, 255, 0.55)) drop-shadow(0 12px 24px rgba(0, 0, 30, 0.45))",
-					}}
-				>
-					<div style={{ animation: "anchor-bob 5s ease-in-out infinite" }}>
-						<div
-							style={{
-								width: "clamp(150px, 24vw, 230px)",
-								animation: "anchor-tilt 10s ease-in-out infinite",
-							}}
-						>
-							<AnchorLogoMark color="#ffffff" />
-						</div>
-					</div>
-				</motion.div>
+				<div style={{ translate: "0 -60%" }}>
+					<FloatingAnchorMark />
+				</div>
 			</div>
 
 			{/* Wordmark + tagline + chips */}
@@ -394,19 +438,6 @@ export function LoginAnimationPanel() {
 				</motion.div>
 				<FeatureChips />
 			</div>
-
-			<Waves />
-
-			{/* Vignette for depth */}
-			<div
-				style={{
-					position: "absolute",
-					inset: 0,
-					background:
-						"radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(2, 6, 18, 0.55) 100%)",
-					pointerEvents: "none",
-				}}
-			/>
-		</div>
+		</AnchorAnimatedBackdrop>
 	);
 }
