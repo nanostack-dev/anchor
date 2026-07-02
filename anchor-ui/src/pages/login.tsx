@@ -1,3 +1,4 @@
+import { LoginAnimationPanel } from "@/components/auth/LoginAnimationPanel";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Link } from "@tanstack/react-router";
 
@@ -15,12 +16,8 @@ export function LoginPage() {
 					<LoginForm className="w-full max-w-lg" />
 				</div>
 			</div>
-			<div className="relative hidden bg-muted lg:block">
-				<img
-					src="/auth/login.jpg"
-					alt=""
-					className="absolute inset-0 h-full w-full object-cover"
-				/>
+			<div className="relative hidden overflow-hidden lg:block">
+				<LoginAnimationPanel />
 			</div>
 		</div>
 	);
