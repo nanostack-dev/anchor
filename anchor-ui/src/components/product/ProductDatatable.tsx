@@ -142,20 +142,22 @@ export function ProductDatatable() {
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									size="icon"
-									variant="outline"
-									onClick={() => {
-										navigate({
-											to: "/products/$productId/edit",
-											params: { productId: row.original.id },
-										});
-									}}
-								>
-									<span className="sr-only">Edit product</span>
-									<PenLine className="h-4 w-4" />
-								</Button>
+							<TooltipTrigger
+								render={
+									<Button
+										size="icon"
+										variant="outline"
+										onClick={() => {
+											navigate({
+												to: "/products/$productId/edit",
+												params: { productId: row.original.id },
+											});
+										}}
+									/>
+								}
+							>
+								<span className="sr-only">Edit product</span>
+								<PenLine className="h-4 w-4" />
 							</TooltipTrigger>
 							<TooltipContent>Edit product</TooltipContent>
 						</Tooltip>
