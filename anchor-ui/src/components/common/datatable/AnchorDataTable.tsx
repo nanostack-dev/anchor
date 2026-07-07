@@ -234,8 +234,9 @@ export function AnchorDataTable<
 						id: "select",
 						header: ({ table }) => (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Checkbox
+								<DropdownMenuTrigger
+									render={
+										<Checkbox
 										checked={
 											selectAllMode === "all-matching" ||
 											table.getIsAllPageRowsSelected()
@@ -255,8 +256,9 @@ export function AnchorDataTable<
 														: "none",
 											);
 										}}
-									/>
-								</DropdownMenuTrigger>
+										/>
+									}
+								/>
 								<DropdownMenuContent align="start">
 									<DropdownMenuLabel>Select</DropdownMenuLabel>
 									<DropdownMenuItem onClick={() => setSelectAllMode("none")}>
@@ -329,10 +331,10 @@ export function AnchorDataTable<
 					)}
 					{children}
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" className="ml-auto">
-								Columns <ChevronDown />
-							</Button>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" className="ml-auto" />}
+						>
+							Columns <ChevronDown />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{table

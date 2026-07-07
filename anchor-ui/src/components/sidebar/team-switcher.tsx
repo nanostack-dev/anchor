@@ -37,25 +37,27 @@ export function TeamSwitcher({
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
-							<img
-								src="/logo.svg"
-								alt="App Logo"
-								className="h-8 w-auto object-contain"
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
 							/>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">{activeTeam.name}</span>
-								<span className="truncate text-xs">{activeTeam.plan}</span>
-							</div>
-							<ChevronsUpDown className="ml-auto" />
-						</SidebarMenuButton>
+						}
+					>
+						<img
+							src="/logo.svg"
+							alt="App Logo"
+							className="h-8 w-auto object-contain"
+						/>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate font-medium">{activeTeam.name}</span>
+							<span className="truncate text-xs">{activeTeam.plan}</span>
+						</div>
+						<ChevronsUpDown className="ml-auto" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
-						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+						className="w-(--anchor-width) min-w-56 rounded-lg"
 						align="start"
 						side={isMobile ? "bottom" : "right"}
 						sideOffset={4}
