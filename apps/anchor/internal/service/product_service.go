@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -14,8 +15,28 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/repository"
 
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
+
+// productNameUniqueConstraint guards (platform_tenant_id, name) at the database
+// level. A violation means a concurrent request created a product with the same
+// name in the window between the service's pre-insert existence check and the
+// INSERT — the DB is the only race-free arbiter of uniqueness.
+const productNameUniqueConstraint = "products_platform_tenant_id_name_key"
+
+// isProductNameConflict reports whether err is the Postgres unique-violation
+// (SQLSTATE 23505) raised when two concurrent creates race on the same product
+// name. go-jet wraps the driver error with a "jet: " prefix, but errors.As
+// still unwraps to the underlying *pq.Error. Without this translation the race
+// loser's constraint violation escapes as an unhandled 500 instead of the
+// intended PRODUCT_ALREADY_EXISTS client error.
+func isProductNameConflict(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) &&
+		pqErr.Code == "23505" &&
+		pqErr.Constraint == productNameUniqueConstraint
+}
 
 type ProductService interface {
 	Get(ctx context.Context, input product.GetProductInput) (*product.Product, error)
@@ -146,6 +167,14 @@ func (s *productService) Create(
 		var createErr error
 		productCreated, createErr = s.productRepo.Create(txCtx, prod)
 		if createErr != nil {
+			// A concurrent create can win the race after our FindByTenantIDAndName
+			// check above passed, tripping the unique constraint. That is the same
+			// logical condition as the pre-check (a duplicate name), so surface the
+			// same client error instead of leaking the raw DB error as a 500.
+			if isProductNameConflict(createErr) {
+				logger.Debug().Str("name", prod.Name).Msg("product already exists (unique constraint)")
+				return ErrProductAlreadyExists
+			}
 			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 			return createErr
 		}
