@@ -45,17 +45,19 @@ export function PlatformDeleteInvitationDialog({
 
 	return (
 		<AlertDialog open={open} onOpenChange={setOpen}>
-			<AlertDialogTrigger asChild>
-				{trigger ? (
-					<button type="button" onClick={() => setOpen(true)}>
-						{trigger}
-					</button>
-				) : (
-					<Button size="icon" variant="outlineDestructive">
-						<Trash2 />
-					</Button>
-				)}
-			</AlertDialogTrigger>
+			<AlertDialogTrigger
+				render={
+					trigger ? (
+						<button type="button" onClick={() => setOpen(true)}>
+							{trigger}
+						</button>
+					) : (
+						<Button size="icon" variant="outlineDestructive">
+							<Trash2 />
+						</Button>
+					)
+				}
+			/>
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete Invitation?</AlertDialogTitle>
