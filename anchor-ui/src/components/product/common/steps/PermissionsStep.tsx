@@ -88,7 +88,6 @@ export function PermissionsStep({
 	);
 	const [sortBy, setSortBy] = useState<"name" | "selected">("name");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
-	const checkboxRef = useRef<HTMLButtonElement>(null);
 
 	const seededPermissions = useMemo(
 		() => [...new Set(initialSelectedPermissions ?? [])],
@@ -221,20 +220,6 @@ export function PermissionsStep({
 		}
 	};
 
-	useEffect(() => {
-		if (checkboxRef.current) {
-			const currentSelected = form.state.values.selectedPermissions;
-			const allVisibleSelected =
-				filteredPermissions.length > 0 &&
-				filteredPermissions.every((p) => currentSelected.includes(p.name));
-			const someVisibleSelected = filteredPermissions.some((p) =>
-				currentSelected.includes(p.name),
-			);
-			(
-				checkboxRef.current as HTMLButtonElement & { indeterminate: boolean }
-			).indeterminate = someVisibleSelected && !allVisibleSelected;
-		}
-	}, [filteredPermissions, form.state.values.selectedPermissions]);
 
 	const renderSelectedPermissionsSummary = () => {
 		const currentSelected = form.state.values.selectedPermissions;
@@ -347,6 +332,9 @@ export function PermissionsStep({
 		const allVisibleSelected = filteredPermissions.every((p) =>
 			currentSelected.includes(p.name),
 		);
+		const someVisibleSelected = filteredPermissions.some((p) =>
+			currentSelected.includes(p.name),
+		);
 
 		return (
 			<div className="space-y-3">
@@ -355,8 +343,8 @@ export function PermissionsStep({
 					<div className="flex items-center gap-2.5">
 						<Checkbox
 							checked={allVisibleSelected}
+							indeterminate={someVisibleSelected && !allVisibleSelected}
 							onCheckedChange={handleSelectAll}
-							ref={checkboxRef}
 							className="size-4 rounded border-input"
 						/>
 						<span className="text-xs font-medium text-muted-foreground">

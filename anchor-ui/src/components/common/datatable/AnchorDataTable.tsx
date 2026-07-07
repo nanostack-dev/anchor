@@ -237,13 +237,13 @@ export function AnchorDataTable<
 								<DropdownMenuTrigger asChild>
 									<Checkbox
 										checked={
-											selectAllMode === "all-matching"
-												? true
-												: table.getIsAllPageRowsSelected()
-													? true
-													: table.getIsSomePageRowsSelected()
-														? "indeterminate"
-														: false
+											selectAllMode === "all-matching" ||
+											table.getIsAllPageRowsSelected()
+										}
+										indeterminate={
+											selectAllMode !== "all-matching" &&
+											!table.getIsAllPageRowsSelected() &&
+											table.getIsSomePageRowsSelected()
 										}
 										aria-label="Select all"
 										onCheckedChange={() => {
