@@ -1270,17 +1270,17 @@ function TestSendDialog({
 		>
 			<TooltipProvider>
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<span tabIndex={!hasEmailIntegration ? 0 : undefined}>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={!hasEmailIntegration}
-								onClick={() => hasEmailIntegration && setOpen(true)}
-							>
-								Send Test
-							</Button>
-						</span>
+					<TooltipTrigger
+						render={<span tabIndex={!hasEmailIntegration ? 0 : undefined} />}
+					>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={!hasEmailIntegration}
+							onClick={() => hasEmailIntegration && setOpen(true)}
+						>
+							Send Test
+						</Button>
 					</TooltipTrigger>
 					{!hasEmailIntegration && (
 						<TooltipContent side="bottom">

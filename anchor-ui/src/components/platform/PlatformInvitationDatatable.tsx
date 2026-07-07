@@ -139,20 +139,22 @@ export function PlatformInvitationDatatable() {
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									size="icon"
-									variant={"outline"}
-									onClick={() =>
-										handleCopy(
-											row.original.code,
-											row.original.tenant_id,
-											row.original.email,
-										)
-									}
-								>
-									<Copy />
-								</Button>
+							<TooltipTrigger
+								render={
+									<Button
+										size="icon"
+										variant={"outline"}
+										onClick={() =>
+											handleCopy(
+												row.original.code,
+												row.original.tenant_id,
+												row.original.email,
+											)
+										}
+									/>
+								}
+							>
+								<Copy />
 							</TooltipTrigger>
 							<TooltipContent>Copy invitation link</TooltipContent>
 						</Tooltip>
@@ -166,9 +168,12 @@ export function PlatformInvitationDatatable() {
 							}}
 							trigger={
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button size="icon" variant="outlineDestructive">
-											<span className="sr-only">Delete invitation</span>
+									<TooltipTrigger
+										render={
+											<Button size="icon" variant="outlineDestructive" />
+										}
+									>
+										<span className="sr-only">Delete invitation</span>
 											<svg
 												width="1em"
 												height="1em"
@@ -186,7 +191,6 @@ export function PlatformInvitationDatatable() {
 												<line x1="10" x2="10" y1="11" y2="17" />
 												<line x1="14" x2="14" y1="11" y2="17" />
 											</svg>
-										</Button>
 									</TooltipTrigger>
 									<TooltipContent>Delete invitation</TooltipContent>
 								</Tooltip>
