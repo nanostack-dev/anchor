@@ -184,14 +184,18 @@ export function ProductApiKeyDatatable({
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
-						<Button variant="outline" size="icon" asChild>
-							<Link
-								to={ROUTE_PATHS.PRODUCT_API_KEY_EDIT}
-								params={{ apiKeyId: row.original.id }}
-							>
-								<span className="sr-only">Edit API key</span>
-								<PenLine className="h-4 w-4" />
-							</Link>
+						<Button
+							variant="outline"
+							size="icon"
+							render={
+								<Link
+									to={ROUTE_PATHS.PRODUCT_API_KEY_EDIT}
+									params={{ apiKeyId: row.original.id }}
+								/>
+							}
+						>
+							<span className="sr-only">Edit API key</span>
+							<PenLine className="h-4 w-4" />
 						</Button>
 						<DeleteProductAPIKeyDialog
 							productId={productId}
@@ -224,11 +228,9 @@ export function ProductApiKeyDatatable({
 		<>
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
-					<Button asChild>
-						<Link to={ROUTE_PATHS.PRODUCT_API_KEY_NEW}>
-							<Plus />
-							Create API Key
-						</Link>
+					<Button render={<Link to={ROUTE_PATHS.PRODUCT_API_KEY_NEW} />}>
+						<Plus />
+						Create API Key
 					</Button>
 				</div>
 			</div>
