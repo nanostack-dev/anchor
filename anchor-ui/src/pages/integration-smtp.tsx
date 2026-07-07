@@ -525,25 +525,27 @@ export default function SmtpIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<AlertDialog>
-								<AlertDialogTrigger asChild>
-									<Button
-										variant="outline"
-										className="border-destructive/40 text-destructive hover:bg-destructive/10"
-										disabled={deleteMutation.isPending}
-									>
-										{deleteMutation.isPending ? (
-											<Spinner
-												data-icon="inline-start"
-												className="mr-2 text-current"
-											/>
-										) : (
-											<Trash2
-												data-icon="inline-start"
-												className="mr-2 size-4"
-											/>
-										)}
-										Delete Integration
-									</Button>
+								<AlertDialogTrigger
+									render={
+										<Button
+											variant="outline"
+											className="border-destructive/40 text-destructive hover:bg-destructive/10"
+											disabled={deleteMutation.isPending}
+										/>
+									}
+								>
+									{deleteMutation.isPending ? (
+										<Spinner
+											data-icon="inline-start"
+											className="mr-2 text-current"
+										/>
+									) : (
+										<Trash2
+											data-icon="inline-start"
+											className="mr-2 size-4"
+										/>
+									)}
+									Delete Integration
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
