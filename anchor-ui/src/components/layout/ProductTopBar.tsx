@@ -39,18 +39,20 @@ export function ProductTopBar() {
 		<div className="flex min-w-0 items-center gap-2">
 			{currentProduct && !error && products.length > 0 && (
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="outline" size="sm" className="min-w-0">
-							<span
-								className="size-2 shrink-0 rounded-full bg-success"
-								aria-hidden
-							/>
-							<span className="text-muted-foreground">Working on:</span>
-							<span className="truncate font-medium text-foreground">
-								{currentProduct.name}
-							</span>
-							<ChevronDownIcon className="text-muted-foreground" />
-						</Button>
+					<DropdownMenuTrigger
+						render={
+							<Button variant="outline" size="sm" className="min-w-0" />
+						}
+					>
+						<span
+							className="size-2 shrink-0 rounded-full bg-success"
+							aria-hidden
+						/>
+						<span className="text-muted-foreground">Working on:</span>
+						<span className="truncate font-medium text-foreground">
+							{currentProduct.name}
+						</span>
+						<ChevronDownIcon className="text-muted-foreground" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="w-64">
 						{products.map((product) => (
