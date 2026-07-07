@@ -47,11 +47,13 @@ export function DateRangeFilter({
 	return (
 		<div className="flex items-center gap-2">
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<Button variant="outline" size="sm" className="justify-start">
-						<CalendarIcon className="mr-2 h-4 w-4" />
-						{hasValue ? `${label}: ${displayText}` : label}
-					</Button>
+				<PopoverTrigger
+					render={
+						<Button variant="outline" size="sm" className="justify-start" />
+					}
+				>
+					<CalendarIcon className="mr-2 h-4 w-4" />
+					{hasValue ? `${label}: ${displayText}` : label}
 				</PopoverTrigger>
 				<PopoverContent className="w-auto p-0" align="start">
 					<Calendar
