@@ -21,14 +21,14 @@ import { type Step, VerticalStepper } from "@/components/ui/vertical-stepper";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Edit, Shield, Sparkles, User } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { BasicInfoFormData, RoleFormData } from "./form-type";
 import { BasicInfoStep, ReviewStep } from "./steps";
 
 interface ProductRoleDialogProps {
 	productId: string;
-	trigger: ReactNode;
+	trigger: ReactElement;
 	onSaved?: () => void;
 	mode?: "create" | "edit";
 	existingRole?: ProductRoleResponse;
@@ -178,7 +178,7 @@ export function ProductRoleDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>{trigger}</DialogTrigger>
+			<DialogTrigger render={trigger} />
 			<DialogContent className="p-0 sm:max-w-[900px] max-h-[95vh] overflow-hidden">
 				<DialogHeader className="sr-only">
 					<DialogTitle>{isEditMode ? "Edit Role" : "Create Role"}</DialogTitle>
