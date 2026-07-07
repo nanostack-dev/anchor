@@ -25,6 +25,7 @@ type OrganizationMembershipService interface {
 
 type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
+	organizationRepo  repository.OrganizationRepository
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
 	logger            zerolog.Logger
@@ -32,12 +33,14 @@ type organizationMembershipService struct {
 
 func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
+	organizationRepo repository.OrganizationRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
+		organizationRepo:  organizationRepo,
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
@@ -50,6 +53,10 @@ func (s *organizationMembershipService) AddMember(
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.Membership{}, err
+	}
+
+	if err := s.validateOrganizationInProduct(ctx, input.ProductID, input.OrganizationID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -86,6 +93,10 @@ func (s *organizationMembershipService) UpdateMemberRole(
 	logger := s.logger.With().Str("operation", "UpdateMemberRole").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.Membership{}, err
+	}
+
+	if err := s.validateOrganizationInProduct(ctx, input.ProductID, input.OrganizationID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -305,9 +316,37 @@ func (s *organizationMembershipService) SearchMembers(
 	return result, nil
 }
 
-// validateRole checks that the role exists within the given product.
-// The product itself is verified by the auth middleware, and the org/user are
-// validated implicitly by the membership repo queries that follow.
+// validateOrganizationInProduct checks that the target organization exists and
+// belongs to the caller's product. This is the tenant boundary: without it,
+// AddMember/UpdateMemberRole are scoped only by the caller-supplied organization
+// ID, so a caller authenticated for product A could write membership rows into
+// an organization owned by product B (the membership row and its FK targets — a
+// product-A user and product-A role — all satisfy the schema, and the follow-up
+// membership reads scope by the *user's* product, not the organization's).
+func (s *organizationMembershipService) validateOrganizationInProduct(
+	ctx context.Context,
+	productID string,
+	organizationID string,
+	logger zerolog.Logger,
+) error {
+	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", productID).
+			Str("organization_id", organizationID).
+			Msg("failed to verify organization belongs to product")
+		return err
+	}
+	if org == nil {
+		return NewOrganizationNotFoundError(organizationID)
+	}
+
+	return nil
+}
+
+// validateProductUser checks that the product user exists within the given product.
+// The product itself is verified by the auth middleware; the organization is
+// verified by validateOrganizationInProduct before this runs.
 func (s *organizationMembershipService) validateProductUser(
 	ctx context.Context,
 	productID string,
