@@ -67,8 +67,8 @@ export default function WorkspacesPage() {
 						Organization
 					</label>
 					<Select
-						value={selectedOrgId}
-						onValueChange={setSelectedOrgId}
+						value={selectedOrgId || undefined}
+						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
 						<SelectTrigger id="workspace-org-select">

@@ -54,8 +54,8 @@ export default function OrganizationApiKeysPage() {
 						Organization
 					</label>
 					<Select
-						value={selectedOrgId}
-						onValueChange={setSelectedOrgId}
+						value={selectedOrgId || undefined}
+						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
 						<SelectTrigger id="organization-api-key-org-select">
