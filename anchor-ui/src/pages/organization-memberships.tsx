@@ -45,7 +45,7 @@ export default function OrganizationMembershipsPage() {
 							value: org.id,
 							label: org.name,
 						}))}
-						value={selectedOrgId || undefined}
+						value={selectedOrgId ?? null}
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>

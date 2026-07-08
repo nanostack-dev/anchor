@@ -71,7 +71,7 @@ export default function WorkspacesPage() {
 							value: organization.id,
 							label: organization.name,
 						}))}
-						value={selectedOrgId || undefined}
+						value={selectedOrgId ?? null}
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
