@@ -115,6 +115,14 @@
 	--color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
 	--color-sidebar-border: hsl(var(--sidebar-border));
 	--color-sidebar-ring: hsl(var(--sidebar-ring));
+	/*
+	 * Accordion animation utilities (animate-accordion-down / -up). The
+	 * accordion-down/up keyframes come from the imported shadcn/tailwind.css
+	 * layer; these vars register the matching utilities (normally provided by
+	 * tw-animate-css, which anchor does not use).
+	 */
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
 	--font-sans: "Plus Jakarta Sans", "Inter Variable", ui-sans-serif, system-ui,
 		sans-serif;
 	--font-heading: "Outfit", "Geist Variable", ui-sans-serif, system-ui,
