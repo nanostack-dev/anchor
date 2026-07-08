@@ -623,7 +623,7 @@ function SmtpConfigForm({
 					<Label>Encryption</Label>
 					<Select
 						value={form.encryption}
-						onValueChange={(v) => setField("encryption", v)}
+						onValueChange={(v) => setField("encryption", v ?? "")}
 					>
 						<SelectTrigger>
 							<SelectValue />
@@ -639,7 +639,7 @@ function SmtpConfigForm({
 					<Label>Auth Method</Label>
 					<Select
 						value={form.authMethod}
-						onValueChange={(v) => setField("authMethod", v)}
+						onValueChange={(v) => setField("authMethod", v ?? "")}
 					>
 						<SelectTrigger>
 							<SelectValue />
