@@ -160,7 +160,7 @@ type AppShellBrandProps = useRender.ComponentProps<"button"> & {
 /**
  * Brand row for the app shell sidebar header: a colored tile holding the brand
  * mark, plus a name and an optional sub-line. The text collapses away when the
- * sidebar is in icon mode. Render as a link/button via `asChild`.
+ * sidebar is in icon mode. Render as a link/button via the `render` prop.
  */
 function AppShellBrand({
 	logo,
