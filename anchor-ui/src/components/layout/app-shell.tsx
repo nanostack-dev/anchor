@@ -1,4 +1,5 @@
-import { Slot, Slottable } from "@radix-ui/react-slot";
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
 import type * as React from "react";
 
 import {
@@ -145,15 +146,13 @@ function AppShellContent({
 	);
 }
 
-type AppShellBrandProps = React.ComponentProps<"button"> & {
+type AppShellBrandProps = useRender.ComponentProps<"button"> & {
 	/** Brand mark, e.g. a white logo `<img>` or `<svg>`. Rendered inside the tile. */
 	logo?: React.ReactNode;
 	/** Primary brand name. */
 	name: React.ReactNode;
 	/** Optional secondary line under the name. */
 	description?: React.ReactNode;
-	/** Render as the child element (e.g. a router `Link`) instead of a button. */
-	asChild?: boolean;
 	/** Override the tile classes (defaults to the sidebar-primary tile). */
 	tileClassName?: string;
 };
@@ -167,10 +166,9 @@ function AppShellBrand({
 	logo,
 	name,
 	description,
-	asChild = false,
+	render,
 	className,
 	tileClassName,
-	children,
 	...props
 }: AppShellBrandProps) {
 	const brandClassName = cn(
@@ -202,27 +200,21 @@ function AppShellBrand({
 		</>
 	);
 
-	// asChild renders the caller's element (e.g. a router Link) as the row and
-	// injects the tile + text into it via Slottable.
-	if (asChild) {
-		return (
-			<Slot data-slot="app-shell-brand" className={brandClassName} {...props}>
-				{inner}
-				<Slottable>{children}</Slottable>
-			</Slot>
-		);
-	}
-
-	return (
-		<button
-			type="button"
-			data-slot="app-shell-brand"
-			className={brandClassName}
-			{...props}
-		>
-			{inner}
-		</button>
-	);
+	// `render` (e.g. a router Link) becomes the row element, with the tile + text
+	// injected as its children. Without it, we fall back to a plain button.
+	return useRender({
+		defaultTagName: "button",
+		render,
+		state: { slot: "app-shell-brand" },
+		props: mergeProps<"button">(
+			{
+				className: brandClassName,
+				children: inner,
+				...(render ? {} : { type: "button" as const }),
+			},
+			props,
+		),
+	});
 }
 
 export {
