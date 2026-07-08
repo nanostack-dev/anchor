@@ -622,6 +622,11 @@ function SmtpConfigForm({
 				<div className="flex flex-col gap-1">
 					<Label>Encryption</Label>
 					<Select
+						items={[
+							{ value: "STARTTLS", label: "STARTTLS (587)" },
+							{ value: "TLS", label: "Implicit TLS (465)" },
+							{ value: "NONE", label: "None (dev only)" },
+						]}
 						value={form.encryption}
 						onValueChange={(v) => setField("encryption", v ?? "")}
 					>
@@ -638,6 +643,10 @@ function SmtpConfigForm({
 				<div className="flex flex-col gap-1">
 					<Label>Auth Method</Label>
 					<Select
+						items={[
+							{ value: "PLAIN", label: "PLAIN" },
+							{ value: "LOGIN", label: "LOGIN" },
+						]}
 						value={form.authMethod}
 						onValueChange={(v) => setField("authMethod", v ?? "")}
 					>

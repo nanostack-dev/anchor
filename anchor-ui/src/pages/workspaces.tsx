@@ -67,6 +67,10 @@ export default function WorkspacesPage() {
 						Organization
 					</label>
 					<Select
+						items={organizations.map((organization) => ({
+							value: organization.id,
+							label: organization.name,
+						}))}
 						value={selectedOrgId || undefined}
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}

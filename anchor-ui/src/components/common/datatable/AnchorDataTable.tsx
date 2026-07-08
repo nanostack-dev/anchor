@@ -474,6 +474,10 @@ export function AnchorDataTable<
 					</Button>
 				</div>
 				<Select
+					items={pageSizeOptions.map((size) => ({
+						value: String(size),
+						label: `Show ${size}`,
+					}))}
 					value={String(pagination.pageSize)}
 					onValueChange={(value) =>
 						onPaginationChange({

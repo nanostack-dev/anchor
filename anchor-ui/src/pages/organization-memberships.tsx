@@ -41,6 +41,10 @@ export default function OrganizationMembershipsPage() {
 						Organization
 					</label>
 					<Select
+						items={organizations.map((org) => ({
+							value: org.id,
+							label: org.name,
+						}))}
 						value={selectedOrgId || undefined}
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
