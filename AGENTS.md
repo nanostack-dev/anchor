@@ -10,6 +10,9 @@ Scope: Go OaaS core for hierarchy, identity, RBAC, and tenancy. Read this file o
 
 ## Invariants
 
+- Shared cross-repo rules: `docs/engineering-best-practices.md` (source of truth, kept identical with echopoint).
+- Every exported service method validates its input via the shared validator (`nanostack-framework/pkg/validate`) before any repository/transaction call.
+- Business rules live in the service layer, never in SQL: new migrations must not add `CHECK` constraints or business triggers (DB keeps PK/FK/UNIQUE/NOT NULL/defaults and the `updated_at` trigger only).
 - Tenant-facing paths must stay tenant-scoped at repository/service boundaries.
 - Repository methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers.
 - Public IDs use KSUIDs.
