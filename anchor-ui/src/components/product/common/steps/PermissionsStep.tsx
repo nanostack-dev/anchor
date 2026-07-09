@@ -220,7 +220,6 @@ export function PermissionsStep({
 		}
 	};
 
-
 	const renderSelectedPermissionsSummary = () => {
 		const currentSelected = form.state.values.selectedPermissions;
 		if (currentSelected.length === 0) return null;

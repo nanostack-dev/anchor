@@ -82,7 +82,10 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 					description="Organization-as-a-Service"
 					logo={<img src="/logo.svg" alt="" className="brightness-0 invert" />}
 					render={
-						<Link to={ROUTE_PATHS.PRODUCT_PERMISSIONS} aria-label="Anchor home" />
+						<Link
+							to={ROUTE_PATHS.PRODUCT_PERMISSIONS}
+							aria-label="Anchor home"
+						/>
 					}
 				/>
 			</SidebarHeader>
@@ -113,7 +116,9 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 														target="_blank"
 														rel="noopener noreferrer"
 														className={
-															isGroupDisabled(group) ? "pointer-events-none" : ""
+															isGroupDisabled(group)
+																? "pointer-events-none"
+																: ""
 														}
 													>
 														{renderIcon(item.icon)}
@@ -123,7 +128,9 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 													<Link
 														to={item.path}
 														className={
-															isGroupDisabled(group) ? "pointer-events-none" : ""
+															isGroupDisabled(group)
+																? "pointer-events-none"
+																: ""
 														}
 													>
 														{renderIcon(item.icon)}

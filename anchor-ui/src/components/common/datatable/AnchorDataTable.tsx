@@ -237,25 +237,25 @@ export function AnchorDataTable<
 								<DropdownMenuTrigger
 									render={
 										<Checkbox
-										checked={
-											selectAllMode === "all-matching" ||
-											table.getIsAllPageRowsSelected()
-										}
-										indeterminate={
-											selectAllMode !== "all-matching" &&
-											!table.getIsAllPageRowsSelected() &&
-											table.getIsSomePageRowsSelected()
-										}
-										aria-label="Select all"
-										onCheckedChange={() => {
-											setSelectAllMode((prev) =>
-												prev === "none"
-													? "page"
-													: prev === "page"
-														? "all-matching"
-														: "none",
-											);
-										}}
+											checked={
+												selectAllMode === "all-matching" ||
+												table.getIsAllPageRowsSelected()
+											}
+											indeterminate={
+												selectAllMode !== "all-matching" &&
+												!table.getIsAllPageRowsSelected() &&
+												table.getIsSomePageRowsSelected()
+											}
+											aria-label="Select all"
+											onCheckedChange={() => {
+												setSelectAllMode((prev) =>
+													prev === "none"
+														? "page"
+														: prev === "page"
+															? "all-matching"
+															: "none",
+												);
+											}}
 										/>
 									}
 								/>
@@ -409,7 +409,6 @@ export function AnchorDataTable<
 										: columns
 									).map((column, cellIndex) => (
 										<TableCell
-											// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder cells have no stable id.
 											key={`skeleton-cell-${rowIndex}-${column.id ?? cellIndex}`}
 										>
 											<Skeleton className="h-4 w-full" />

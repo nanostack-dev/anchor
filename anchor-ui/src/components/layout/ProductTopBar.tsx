@@ -40,9 +40,7 @@ export function ProductTopBar() {
 			{currentProduct && !error && products.length > 0 && (
 				<DropdownMenu>
 					<DropdownMenuTrigger
-						render={
-							<Button variant="outline" size="sm" className="min-w-0" />
-						}
+						render={<Button variant="outline" size="sm" className="min-w-0" />}
 					>
 						<span
 							className="size-2 shrink-0 rounded-full bg-success"

@@ -540,10 +540,7 @@ export default function SmtpIntegrationPage() {
 											className="mr-2 text-current"
 										/>
 									) : (
-										<Trash2
-											data-icon="inline-start"
-											className="mr-2 size-4"
-										/>
+										<Trash2 data-icon="inline-start" className="mr-2 size-4" />
 									)}
 									Delete Integration
 								</AlertDialogTrigger>
