@@ -78,13 +78,16 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
 				<AppShellBrand
-					asChild
 					name="Anchor"
 					description="Organization-as-a-Service"
 					logo={<img src="/logo.svg" alt="" className="brightness-0 invert" />}
-				>
-					<Link to={ROUTE_PATHS.PRODUCT_PERMISSIONS} aria-label="Anchor home" />
-				</AppShellBrand>
+					render={
+						<Link
+							to={ROUTE_PATHS.PRODUCT_PERMISSIONS}
+							aria-label="Anchor home"
+						/>
+					}
+				/>
 			</SidebarHeader>
 			<SidebarContent>
 				{sidebarConfig.map((group: SidebarConfigGroup) => (
@@ -103,35 +106,39 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 								<SidebarMenuItem key={`${group.id}-item-${itemIndex}`}>
 									{item.path && !item.submenu ? (
 										<SidebarMenuButton
-											asChild
 											isActive={
 												!isGroupDisabled(group) && isActivePath(item.path)
 											}
-										>
-											{item.external ? (
-												<a
-													href={item.path}
-													target="_blank"
-													rel="noopener noreferrer"
-													className={
-														isGroupDisabled(group) ? "pointer-events-none" : ""
-													}
-												>
-													{renderIcon(item.icon)}
-													<span>{item.title}</span>
-												</a>
-											) : (
-												<Link
-													to={item.path}
-													className={
-														isGroupDisabled(group) ? "pointer-events-none" : ""
-													}
-												>
-													{renderIcon(item.icon)}
-													<span>{item.title}</span>
-												</Link>
-											)}
-										</SidebarMenuButton>
+											render={
+												item.external ? (
+													<a
+														href={item.path}
+														target="_blank"
+														rel="noopener noreferrer"
+														className={
+															isGroupDisabled(group)
+																? "pointer-events-none"
+																: ""
+														}
+													>
+														{renderIcon(item.icon)}
+														<span>{item.title}</span>
+													</a>
+												) : (
+													<Link
+														to={item.path}
+														className={
+															isGroupDisabled(group)
+																? "pointer-events-none"
+																: ""
+														}
+													>
+														{renderIcon(item.icon)}
+														<span>{item.title}</span>
+													</Link>
+												)
+											}
+										/>
 									) : (
 										<SidebarMenuButton
 											isActive={
@@ -153,40 +160,40 @@ export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
 														key={`${group.id}-item-${itemIndex}-sub-${subItemIndex}`}
 													>
 														<SidebarMenuSubButton
-															asChild
 															isActive={
 																!isGroupDisabled(group) &&
 																isActivePath(subItem.path)
 															}
-														>
-															{subItem.external ? (
-																<a
-																	href={subItem.path}
-																	target="_blank"
-																	rel="noopener noreferrer"
-																	className={
-																		isGroupDisabled(group)
-																			? "pointer-events-none"
-																			: ""
-																	}
-																>
-																	{renderIcon(subItem.icon)}
-																	<span>{subItem.title}</span>
-																</a>
-															) : (
-																<Link
-																	to={subItem.path}
-																	className={
-																		isGroupDisabled(group)
-																			? "pointer-events-none"
-																			: ""
-																	}
-																>
-																	{renderIcon(subItem.icon)}
-																	<span>{subItem.title}</span>
-																</Link>
-															)}
-														</SidebarMenuSubButton>
+															render={
+																subItem.external ? (
+																	<a
+																		href={subItem.path}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		className={
+																			isGroupDisabled(group)
+																				? "pointer-events-none"
+																				: ""
+																		}
+																	>
+																		{renderIcon(subItem.icon)}
+																		<span>{subItem.title}</span>
+																	</a>
+																) : (
+																	<Link
+																		to={subItem.path}
+																		className={
+																			isGroupDisabled(group)
+																				? "pointer-events-none"
+																				: ""
+																		}
+																	>
+																		{renderIcon(subItem.icon)}
+																		<span>{subItem.title}</span>
+																	</Link>
+																)
+															}
+														/>
 													</SidebarMenuSubItem>
 												),
 											)}

@@ -137,12 +137,14 @@ export function ProductResourcePermissionDatatable({
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<EditProductResourcePermissionDialog
-									productId={productId}
-									permission={row.original}
-								/>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<EditProductResourcePermissionDialog
+										productId={productId}
+										permission={row.original}
+									/>
+								}
+							/>
 							<TooltipContent>Edit permission</TooltipContent>
 						</Tooltip>
 						<DeleteProductResourcePermissionDialog

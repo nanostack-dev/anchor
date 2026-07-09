@@ -24,7 +24,7 @@ import { Button } from "../../ui/button";
 interface DeleteProductPermissionDialogProps {
 	productId: string;
 	permission: ProductPermissionResponse;
-	trigger?: React.ReactNode;
+	trigger?: React.ReactElement;
 	onDeleted?: () => void;
 }
 
@@ -90,9 +90,7 @@ export function DeleteProductResourcePermissionDialog({
 
 	return (
 		<AlertDialog open={open} onOpenChange={setOpen}>
-			<AlertDialogTrigger asChild>
-				{trigger || defaultTrigger}
-			</AlertDialogTrigger>
+			<AlertDialogTrigger render={trigger || defaultTrigger} />
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete Product Permission</AlertDialogTitle>

@@ -67,8 +67,12 @@ export default function WorkspacesPage() {
 						Organization
 					</label>
 					<Select
-						value={selectedOrgId}
-						onValueChange={setSelectedOrgId}
+						items={organizations.map((organization) => ({
+							value: organization.id,
+							label: organization.name,
+						}))}
+						value={selectedOrgId ?? null}
+						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
 						<SelectTrigger id="workspace-org-select">

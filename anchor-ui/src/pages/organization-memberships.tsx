@@ -41,8 +41,12 @@ export default function OrganizationMembershipsPage() {
 						Organization
 					</label>
 					<Select
-						value={selectedOrgId}
-						onValueChange={setSelectedOrgId}
+						items={organizations.map((org) => ({
+							value: org.id,
+							label: org.name,
+						}))}
+						value={selectedOrgId ?? null}
+						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
 						<SelectTrigger id="org-select">

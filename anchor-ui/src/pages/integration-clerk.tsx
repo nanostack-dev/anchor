@@ -685,18 +685,20 @@ export default function ClerkIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<AlertDialog>
-								<AlertDialogTrigger asChild>
-									<Button
-										variant="outlineDestructive"
-										disabled={deleteMutation.isPending}
-									>
-										{deleteMutation.isPending ? (
-											<Spinner className="mr-2 size-4 text-current" />
-										) : (
-											<Trash2 className="mr-2 size-4" />
-										)}
-										Delete Instance
-									</Button>
+								<AlertDialogTrigger
+									render={
+										<Button
+											variant="outlineDestructive"
+											disabled={deleteMutation.isPending}
+										/>
+									}
+								>
+									{deleteMutation.isPending ? (
+										<Spinner className="mr-2 size-4 text-current" />
+									) : (
+										<Trash2 className="mr-2 size-4" />
+									)}
+									Delete Instance
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
