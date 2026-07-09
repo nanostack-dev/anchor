@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 
 interface ProductDeleteDialogProps {
 	product: ProductResponse;
-	trigger?: React.ReactNode;
+	trigger?: React.ReactElement;
 	onDeleted?: () => void;
 }
 

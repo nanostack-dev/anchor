@@ -12,12 +12,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { FormAlert } from "../FormAlert";
 
 interface DeleteDialogProps {
-	trigger?: ReactNode;
+	trigger?: ReactElement;
 	entityType: string;
 	entityName: string;
 	displayFields: Array<{
@@ -108,20 +108,26 @@ export function DeleteDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				{trigger ? (
-					trigger
-				) : (
-					<Button disabled={disabled} variant="outlineDestructive" size="icon">
-						<span className="sr-only">Delete {entityType}</span>
-						{deleteMutation.isPending ? (
-							<Spinner className="text-current" />
-						) : (
-							<Trash2 className="size-4" />
-						)}
-					</Button>
-				)}
-			</DialogTrigger>
+			<DialogTrigger
+				render={
+					trigger ? (
+						trigger
+					) : (
+						<Button
+							disabled={disabled}
+							variant="outlineDestructive"
+							size="icon"
+						>
+							<span className="sr-only">Delete {entityType}</span>
+							{deleteMutation.isPending ? (
+								<Spinner className="text-current" />
+							) : (
+								<Trash2 className="size-4" />
+							)}
+						</Button>
+					)
+				}
+			/>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Delete {entityType}</DialogTitle>

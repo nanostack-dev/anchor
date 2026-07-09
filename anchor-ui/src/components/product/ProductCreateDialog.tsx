@@ -39,7 +39,7 @@ const productFormSchema = z.object({
 type ProductFormData = z.infer<typeof productFormSchema>;
 
 interface ProductCreateDialogProps {
-	trigger: React.ReactNode;
+	trigger: React.ReactElement;
 	onCreated?: () => void;
 }
 
@@ -106,7 +106,7 @@ export function ProductCreateDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogTrigger asChild>{trigger}</DialogTrigger>
+			<DialogTrigger render={trigger} />
 			<DialogContent className="sm:max-w-[450px]">
 				<form
 					onSubmit={(e) => {

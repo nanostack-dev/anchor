@@ -5,14 +5,14 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { DeleteDialog } from "../../common/dialogs/DeleteDialog";
 import { Button } from "../../ui/button";
 
 interface DeleteProductRoleDialogProps {
 	productId: string;
 	role: ProductRoleResponse;
-	trigger?: ReactNode;
+	trigger?: ReactElement;
 	onDeleted?: () => void;
 }
 

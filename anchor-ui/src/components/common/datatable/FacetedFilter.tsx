@@ -75,16 +75,16 @@ export function FacetedFilter({
 	return (
 		<div className="flex items-center gap-2">
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<Button variant="outline" size="sm" className="justify-start">
-						{selected.length > 0
-							? `${label}: ${selected
-									.map(
-										(v) => options.find((opt) => opt.value === v)?.label || v,
-									)
-									.join(", ")}`
-							: `${label}`}
-					</Button>
+				<PopoverTrigger
+					render={
+						<Button variant="outline" size="sm" className="justify-start" />
+					}
+				>
+					{selected.length > 0
+						? `${label}: ${selected
+								.map((v) => options.find((opt) => opt.value === v)?.label || v)
+								.join(", ")}`
+						: `${label}`}
 				</PopoverTrigger>
 				<PopoverContent className="p-0 w-56">
 					<Command>

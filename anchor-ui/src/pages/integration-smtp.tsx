@@ -525,25 +525,24 @@ export default function SmtpIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<AlertDialog>
-								<AlertDialogTrigger asChild>
-									<Button
-										variant="outline"
-										className="border-destructive/40 text-destructive hover:bg-destructive/10"
-										disabled={deleteMutation.isPending}
-									>
-										{deleteMutation.isPending ? (
-											<Spinner
-												data-icon="inline-start"
-												className="mr-2 text-current"
-											/>
-										) : (
-											<Trash2
-												data-icon="inline-start"
-												className="mr-2 size-4"
-											/>
-										)}
-										Delete Integration
-									</Button>
+								<AlertDialogTrigger
+									render={
+										<Button
+											variant="outline"
+											className="border-destructive/40 text-destructive hover:bg-destructive/10"
+											disabled={deleteMutation.isPending}
+										/>
+									}
+								>
+									{deleteMutation.isPending ? (
+										<Spinner
+											data-icon="inline-start"
+											className="mr-2 text-current"
+										/>
+									) : (
+										<Trash2 data-icon="inline-start" className="mr-2 size-4" />
+									)}
+									Delete Integration
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
@@ -620,8 +619,13 @@ function SmtpConfigForm({
 				<div className="flex flex-col gap-1">
 					<Label>Encryption</Label>
 					<Select
+						items={[
+							{ value: "STARTTLS", label: "STARTTLS (587)" },
+							{ value: "TLS", label: "Implicit TLS (465)" },
+							{ value: "NONE", label: "None (dev only)" },
+						]}
 						value={form.encryption}
-						onValueChange={(v) => setField("encryption", v)}
+						onValueChange={(v) => setField("encryption", v ?? "")}
 					>
 						<SelectTrigger>
 							<SelectValue />
@@ -636,8 +640,12 @@ function SmtpConfigForm({
 				<div className="flex flex-col gap-1">
 					<Label>Auth Method</Label>
 					<Select
+						items={[
+							{ value: "PLAIN", label: "PLAIN" },
+							{ value: "LOGIN", label: "LOGIN" },
+						]}
 						value={form.authMethod}
-						onValueChange={(v) => setField("authMethod", v)}
+						onValueChange={(v) => setField("authMethod", v ?? "")}
 					>
 						<SelectTrigger>
 							<SelectValue />

@@ -234,29 +234,31 @@ export function AnchorDataTable<
 						id: "select",
 						header: ({ table }) => (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Checkbox
-										checked={
-											selectAllMode === "all-matching"
-												? true
-												: table.getIsAllPageRowsSelected()
-													? true
-													: table.getIsSomePageRowsSelected()
-														? "indeterminate"
-														: false
-										}
-										aria-label="Select all"
-										onCheckedChange={() => {
-											setSelectAllMode((prev) =>
-												prev === "none"
-													? "page"
-													: prev === "page"
-														? "all-matching"
-														: "none",
-											);
-										}}
-									/>
-								</DropdownMenuTrigger>
+								<DropdownMenuTrigger
+									render={
+										<Checkbox
+											checked={
+												selectAllMode === "all-matching" ||
+												table.getIsAllPageRowsSelected()
+											}
+											indeterminate={
+												selectAllMode !== "all-matching" &&
+												!table.getIsAllPageRowsSelected() &&
+												table.getIsSomePageRowsSelected()
+											}
+											aria-label="Select all"
+											onCheckedChange={() => {
+												setSelectAllMode((prev) =>
+													prev === "none"
+														? "page"
+														: prev === "page"
+															? "all-matching"
+															: "none",
+												);
+											}}
+										/>
+									}
+								/>
 								<DropdownMenuContent align="start">
 									<DropdownMenuLabel>Select</DropdownMenuLabel>
 									<DropdownMenuItem onClick={() => setSelectAllMode("none")}>
@@ -329,10 +331,10 @@ export function AnchorDataTable<
 					)}
 					{children}
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" className="ml-auto">
-								Columns <ChevronDown />
-							</Button>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" className="ml-auto" />}
+						>
+							Columns <ChevronDown />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{table
@@ -407,7 +409,6 @@ export function AnchorDataTable<
 										: columns
 									).map((column, cellIndex) => (
 										<TableCell
-											// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder cells have no stable id.
 											key={`skeleton-cell-${rowIndex}-${column.id ?? cellIndex}`}
 										>
 											<Skeleton className="h-4 w-full" />
@@ -472,6 +473,10 @@ export function AnchorDataTable<
 					</Button>
 				</div>
 				<Select
+					items={pageSizeOptions.map((size) => ({
+						value: String(size),
+						label: `Show ${size}`,
+					}))}
 					value={String(pagination.pageSize)}
 					onValueChange={(value) =>
 						onPaginationChange({

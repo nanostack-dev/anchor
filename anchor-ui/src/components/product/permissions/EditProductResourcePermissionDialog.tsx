@@ -28,7 +28,7 @@ import { Textarea } from "../../ui/textarea";
 interface EditProductPermissionDialogProps {
 	productId: string;
 	permission: ProductResourcePermissionResponse;
-	trigger?: React.ReactNode;
+	trigger?: React.ReactElement;
 	onUpdated?: () => void;
 }
 
@@ -92,7 +92,7 @@ export function EditProductResourcePermissionDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
+			<DialogTrigger render={trigger || defaultTrigger} />
 			<DialogContent className="sm:max-w-[450px]">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
