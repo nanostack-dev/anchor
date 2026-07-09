@@ -97,7 +97,10 @@ function SelectContent({
 	);
 }
 
-function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props) {
+function SelectLabel({
+	className,
+	...props
+}: SelectPrimitive.GroupLabel.Props) {
 	return (
 		<SelectPrimitive.GroupLabel
 			data-slot="select-label"

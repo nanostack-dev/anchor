@@ -180,7 +180,9 @@ function MenubarShortcut({
 	);
 }
 
-function MenubarSub({ ...props }: React.ComponentProps<typeof DropdownMenuSub>) {
+function MenubarSub({
+	...props
+}: React.ComponentProps<typeof DropdownMenuSub>) {
 	return <DropdownMenuSub data-slot="menubar-sub" {...props} />;
 }
 
