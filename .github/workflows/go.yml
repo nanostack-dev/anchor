@@ -25,6 +25,7 @@ jobs:
   frontend-verify:
     uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
     with:
+      runner: ubuntu-latest
       app_name: Anchor
       working_directory: anchor-ui
       cache_dependency_path: anchor-ui/pnpm-lock.yaml
@@ -43,6 +44,7 @@ jobs:
       packages: write
       id-token: write
     with:
+      runner: ubuntu-latest
       app_name: anchor
       go_version: '1.26.2'
       cache_dependency_path: apps/anchor/go.sum
@@ -72,6 +74,7 @@ jobs:
     permissions:
       contents: read
     with:
+      runner: ubuntu-latest
       deploy_repository: nanostack-dev/infra
       event_type: deploy-service
       payload: >-
@@ -90,6 +93,7 @@ jobs:
     permissions:
       contents: read
     with:
+      runner: ubuntu-latest
       deploy_repository: nanostack-dev/infra
       event_type: preview-upsert
       payload: >-
@@ -106,6 +110,7 @@ jobs:
     permissions:
       contents: read
     with:
+      runner: ubuntu-latest
       deploy_repository: nanostack-dev/infra
       event_type: preview-destroy
       payload: >-
