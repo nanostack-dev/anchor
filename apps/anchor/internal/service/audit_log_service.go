@@ -78,7 +78,12 @@ func (s *auditLogService) Record(ctx context.Context, entry audit.Log) {
 			Str("action", string(entry.Action)).
 			Str("product_id", entry.ProductID).
 			Msg("failed to create audit log entry")
+		return
 	}
+
+	// Tell the audit middleware this request is covered, so it doesn't
+	// write its generic fallback entry on top.
+	security.MarkAuditRecorded(ctx)
 }
 
 // resolveActor fills the actor fields from the request context when unset.

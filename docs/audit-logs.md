@@ -92,9 +92,19 @@ v1 covers product-plane events only. Platform-plane events (platform invitations
 2. Resolves actor from request context (`security.GetCurrentUserID` → `PLATFORM_USER`; product-scope-without-user → API key actor; neither → `SYSTEM`).
 3. Inserts synchronously via the repository. On error: logs, never returns the error — a failed audit write must not fail the mutation (same semantics as the existing integration `writeAuditLog`).
 
-Call sites are the mutating service methods (organization, workspace, membership, API key, role, invitation services), placed after the mutation succeeds. `ctx` may be a transactor tx context, in which case the audit row commits atomically with the mutation.
+Call sites are the mutating service methods (product, organization, workspace, membership, API key, role, permission, resource permission, product user services), placed after the mutation succeeds. `ctx` may be a transactor tx context, in which case the audit row commits atomically with the mutation.
 
 The repository is insert-only: `Create` and scoped list methods exist; no update or delete methods are defined, and none may be added.
+
+### Middleware safety net
+
+Service hooks alone have two structural gaps: a new mutation nobody instruments is silently unaudited, and hooks only run after success so failed attempts are never captured. `AuditMiddleware` (wrapping every generated operation, inside the auth middleware) closes both:
+
+- It observes every mutating request (`POST`/`PUT`/`PATCH`/`DELETE`, excluding read-only POSTs: `/search`, `/validate`, `/introspect`).
+- `AuditLogService.Record` marks the request context when a service entry lands; if the request succeeds without a mark, the middleware writes a **generic fallback entry** with a route-derived action (`<last-static-segment>.<created|updated|deleted>`, e.g. `templates.created`) and `{"fallback": true, route, method, status}` metadata.
+- If the request **fails** (status ≥ 400, except 401), it records the attempt with `outcome: FAILURE` — the only place failures are captured.
+
+Limits: routes without a `product_id` path parameter (e.g. `POST /v1/products` failures, platform-plane routes) are skipped — no product scope to attach to. Fallback entries lack name snapshots and deltas; when one shows up for a real operation, promote it to a proper service hook.
 
 ## API
 
