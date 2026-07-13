@@ -7,6 +7,7 @@ func NewModule() fx.Option {
 		"middleware",
 		fx.Provide(
 			NewAuthMiddleware,
+			NewAuditMiddleware,
 		),
 	)
 }
