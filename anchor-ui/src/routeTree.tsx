@@ -16,6 +16,7 @@ import { loginRoute } from "@/routes/platform/login";
 import { platformUsersRoute } from "@/routes/platform/platform-users";
 import { registerRoute } from "@/routes/platform/register";
 import { productEditRoute } from "@/routes/products/$productId.edit";
+import { productAuditLogsRoute } from "@/routes/products/audit-logs";
 import { emailSendsRoute } from "@/routes/products/email-sends";
 import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
 import { emailTemplatesRoute } from "@/routes/products/email-templates";
@@ -45,6 +46,7 @@ const routeTree = rootRoute.addChildren([
 	productRolesRoute,
 	productResourcePermissionsRoute,
 	productPermissionsRoute,
+	productAuditLogsRoute,
 	organizationsRoute,
 	organizationApiKeysRoute,
 	organizationMembershipsRoute,

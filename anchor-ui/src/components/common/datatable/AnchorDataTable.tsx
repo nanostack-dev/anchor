@@ -94,6 +94,7 @@ interface AnchorDataTableProps<
 	pageSizeOptions?: number[];
 	onSelectionChange?: (selected: TData[] | "all-matching" | []) => void;
 	enableRowSelection?: boolean;
+	onRowClick?: (row: TData) => void;
 }
 
 export function AnchorDataTable<
@@ -117,6 +118,7 @@ export function AnchorDataTable<
 	pageSizeOptions = [10, 20, 50, 100],
 	onSelectionChange,
 	enableRowSelection = true,
+	onRowClick,
 }: AnchorDataTableProps<TData, TFilters>) {
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -421,6 +423,8 @@ export function AnchorDataTable<
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
+									className={onRowClick ? "cursor-pointer" : undefined}
+									onClick={() => onRowClick?.(row.original)}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

@@ -11,6 +11,7 @@ func NewModule() fx.Option {
 		"service",
 		config.NewModule(),
 		fx.Provide(
+			NewAuditLogService,
 			NewOrganizationAPIKeyEventService,
 			NewJWTHelper,
 			NewAuthService,

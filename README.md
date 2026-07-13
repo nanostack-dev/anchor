@@ -69,7 +69,7 @@ And the users:
 ## 🔮 Roadmap (Potential Future Features)
 
 * User Invitation Flow
-* Audit Log Access via API
+* ~~Audit Log Access via API~~ — shipped: see [docs/audit-logs.md](docs/audit-logs.md)
 * Webhook Event System
 * SCIM Protocol Support (for easier IdP integration)
 * Team/Group Management Features

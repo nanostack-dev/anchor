@@ -2272,8 +2272,152 @@ components:
     OrganizationMemberInclude:
       type: string
       enum: [role_permissions]
-      description: Additional fields to include in organization member 
+      description: Additional fields to include in organization member
         responses.
+
+    # Audit Log Schemas
+    AuditLogActorType:
+      type: string
+      enum: [PLATFORM_USER, PRODUCT_API_KEY, SYSTEM]
+      x-enum-varnames:
+        - AuditLogActorTypePLATFORMUSER
+        - AuditLogActorTypePRODUCTAPIKEY
+        - AuditLogActorTypeSYSTEM
+      description: The kind of principal that performed the audited action.
+      x-go-type: audit.ActorType
+      x-go-type-import:
+        path: anchor/internal/domain/audit
+    AuditLogOutcome:
+      type: string
+      enum: [SUCCESS, FAILURE]
+      x-enum-varnames:
+        - AuditLogOutcomeSUCCESS
+        - AuditLogOutcomeFAILURE
+      description: Whether the audited action succeeded.
+      x-go-type: audit.Outcome
+      x-go-type-import:
+        path: anchor/internal/domain/audit
+    AuditLogResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the audit log entry.
+          example: "alog_3iXYZ..."
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Organization the event belongs to. Absent for product-level events.
+        action:
+          type: string
+          description: Dotted resource.verb event name.
+          example: "organization.created"
+        outcome:
+          $ref: "#/components/schemas/AuditLogOutcome"
+        actor_type:
+          $ref: "#/components/schemas/AuditLogActorType"
+        actor_id:
+          type: string
+          description: Identifier of the acting principal.
+        actor_name:
+          type: string
+          description: Display name of the actor, snapshotted at event time.
+        target_type:
+          type: string
+          description: Type of the resource the action was performed on.
+          example: "organization"
+        target_id:
+          type: string
+          description: Identifier of the target resource.
+        target_name:
+          type: string
+          description: Display name of the target, snapshotted at event time.
+        request_id:
+          type: string
+          description: Correlation ID of the originating request.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional event detail.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the event was recorded.
+      required:
+      - id
+      - action
+      - outcome
+      - actor_type
+      - target_type
+      - created_at
+    AuditLogFilter:
+      type: object
+      description: Filter criteria for searching audit logs.
+      properties:
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Filter by organization.
+        actions:
+          type: array
+          items:
+            type: string
+          description: Filter by action names.
+          x-go-type-skip-optional-pointer: true
+        actor_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogActorType"
+          description: Filter by actor types.
+          x-go-type-skip-optional-pointer: true
+        actor_id:
+          type: string
+          description: Filter by acting principal ID.
+        target_type:
+          type: string
+          description: Filter by target resource type.
+        target_id:
+          type: string
+          description: Filter by target resource ID.
+        outcome:
+          $ref: "#/components/schemas/AuditLogOutcome"
+          description: Filter by outcome.
+        created_after:
+          type: string
+          format: date-time
+          description: Only include entries created at or after this time.
+        created_before:
+          type: string
+          format: date-time
+          description: Only include entries created at or before this time.
+    AuditLogSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/AuditLogFilter"
+            description: Filter criteria for audit logs.
+          sort_by:
+            type: string
+            enum:
+            - created_at
+            x-enum-varnames:
+            - AuditLogSortByCreatedAt
+            default: created_at
+            description: Field to sort by.
+            x-go-type: audit.SortField
+            x-go-type-import:
+              path: anchor/internal/domain/audit
+    AuditLogListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/AuditLogResponse"
+        required:
+        - items
 
     # Integration Schemas
     IntegrationProviderType:
@@ -5042,6 +5186,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationMemberListResponse'
+
+  # ---------------------------------------------------------------------------
+  # Audit Logs
+  # ---------------------------------------------------------------------------
+  /v1/products/{product_id}/audit-logs/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search Audit Logs
+      description: |-
+        Searches the audit log for the specified Product, with filtering and
+        pagination. The audit log records management-plane mutations
+        (organizations, workspaces, memberships, API keys, roles).
+        Requires a Platform Bearer token.
+      operationId: searchAuditLogs
+      tags:
+      - AuditLog
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Search criteria.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditLogSearchRequest'
+      responses:
+        '200':
+          description: A page of audit log entries for the product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   # ---------------------------------------------------------------------------
   # Email

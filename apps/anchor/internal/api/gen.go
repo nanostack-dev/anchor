@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/email"
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/invitation"
@@ -207,6 +208,108 @@ type ApiErrorResponse = fault.Error
 type AssignPermissionRequest struct {
 	// PermissionName The name of the product resource permission to assign (e.g. "document:read"). Must match an existing ProductResourcePermission for this product.
 	PermissionName string `json:"permission_name"`
+}
+
+// AuditLogActorType The kind of principal that performed the audited action.
+type AuditLogActorType = audit.ActorType
+
+// AuditLogFilter Filter criteria for searching audit logs.
+type AuditLogFilter struct {
+	// Actions Filter by action names.
+	Actions []string `json:"actions,omitempty"`
+
+	// ActorId Filter by acting principal ID.
+	ActorId *string `json:"actor_id,omitempty"`
+
+	// ActorTypes Filter by actor types.
+	ActorTypes []AuditLogActorType `json:"actor_types,omitempty"`
+
+	// CreatedAfter Only include entries created at or after this time.
+	CreatedAfter *time.Time `json:"created_after,omitempty"`
+
+	// CreatedBefore Only include entries created at or before this time.
+	CreatedBefore *time.Time `json:"created_before,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId *Ksuid `json:"organization_id,omitempty"`
+
+	// Outcome Whether the audited action succeeded.
+	Outcome *AuditLogOutcome `json:"outcome,omitempty"`
+
+	// TargetId Filter by target resource ID.
+	TargetId *string `json:"target_id,omitempty"`
+
+	// TargetType Filter by target resource type.
+	TargetType *string `json:"target_type,omitempty"`
+}
+
+// AuditLogListResponse defines model for AuditLogListResponse.
+type AuditLogListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                `json:"count"`
+	Items []AuditLogResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
+}
+
+// AuditLogOutcome Whether the audited action succeeded.
+type AuditLogOutcome = audit.Outcome
+
+// AuditLogResponse defines model for AuditLogResponse.
+type AuditLogResponse struct {
+	// Action Dotted resource.verb event name.
+	Action string `json:"action"`
+
+	// ActorId Identifier of the acting principal.
+	ActorId *string `json:"actor_id,omitempty"`
+
+	// ActorName Display name of the actor, snapshotted at event time.
+	ActorName *string `json:"actor_name,omitempty"`
+
+	// ActorType The kind of principal that performed the audited action.
+	ActorType AuditLogActorType `json:"actor_type"`
+
+	// CreatedAt Timestamp when the event was recorded.
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id Ksuid `json:"id"`
+
+	// Metadata Additional event detail.
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId *Ksuid `json:"organization_id,omitempty"`
+
+	// Outcome Whether the audited action succeeded.
+	Outcome AuditLogOutcome `json:"outcome"`
+
+	// RequestId Correlation ID of the originating request.
+	RequestId *string `json:"request_id,omitempty"`
+
+	// TargetId Identifier of the target resource.
+	TargetId *string `json:"target_id,omitempty"`
+
+	// TargetName Display name of the target, snapshotted at event time.
+	TargetName *string `json:"target_name,omitempty"`
+
+	// TargetType Type of the resource the action was performed on.
+	TargetType string `json:"target_type"`
+}
+
+// AuditLogSearchRequest defines model for AuditLogSearchRequest.
+type AuditLogSearchRequest struct {
+	// Filter Filter criteria for searching audit logs.
+	Filter *AuditLogFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy        *audit.SortField `json:"sort_by,omitempty"`
+	SortDirection *SortDirection   `json:"sort_direction,omitempty"`
 }
 
 // AuthTokenResponse defines model for AuthTokenResponse.
@@ -1901,6 +2004,9 @@ type SearchProductAPIKeysJSONRequestBody = ProductAPIKeySearchRequest
 // UpdateProductAPIKeyJSONRequestBody defines body for UpdateProductAPIKey for application/json ContentType.
 type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
 
+// SearchAuditLogsJSONRequestBody defines body for SearchAuditLogs for application/json ContentType.
+type SearchAuditLogsJSONRequestBody = AuditLogSearchRequest
+
 // IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
 type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest
 
@@ -2255,6 +2361,9 @@ type ServerInterface interface {
 	// Update Product API Key
 	// (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 	UpdateProductAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter)
+	// Search Audit Logs
+	// (POST /v1/products/{product_id}/audit-logs/search)
+	SearchAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// Introspect Credential
 	// (POST /v1/products/{product_id}/auth/introspect)
 	IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -2576,6 +2685,12 @@ func (_ Unimplemented) GetProductAPIKey(w http.ResponseWriter, r *http.Request, 
 // Update Product API Key
 // (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 func (_ Unimplemented) UpdateProductAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Search Audit Logs
+// (POST /v1/products/{product_id}/audit-logs/search)
+func (_ Unimplemented) SearchAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3559,6 +3674,38 @@ func (siw *ServerInterfaceWrapper) UpdateProductAPIKey(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductAPIKey(w, r, productId, apiKeyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchAuditLogs operation middleware
+func (siw *ServerInterfaceWrapper) SearchAuditLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchAuditLogs(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6437,6 +6584,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/v1/products/{product_id}/api-keys/{api_key_id}", wrapper.UpdateProductAPIKey)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/audit-logs/search", wrapper.SearchAuditLogs)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/auth/introspect", wrapper.IntrospectOrganizationAPIKey)
 	})
 	r.Group(func(r chi.Router) {
@@ -7923,6 +8073,71 @@ type UpdateProductAPIKey404Response = NotFoundResponse
 func (response UpdateProductAPIKey404Response) VisitUpdateProductAPIKeyResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
+}
+
+type SearchAuditLogsRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *SearchAuditLogsJSONRequestBody
+}
+
+type SearchAuditLogsResponseObject interface {
+	VisitSearchAuditLogsResponse(w http.ResponseWriter) error
+}
+
+type SearchAuditLogs200JSONResponse AuditLogListResponse
+
+func (response SearchAuditLogs200JSONResponse) VisitSearchAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchAuditLogs400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchAuditLogs400JSONResponse) VisitSearchAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchAuditLogs401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchAuditLogs401JSONResponse) VisitSearchAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchAuditLogs403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchAuditLogs403JSONResponse) VisitSearchAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type IntrospectOrganizationAPIKeyRequestObject struct {
@@ -11374,6 +11589,9 @@ type StrictServerInterface interface {
 	// Update Product API Key
 	// (PUT /v1/products/{product_id}/api-keys/{api_key_id})
 	UpdateProductAPIKey(ctx context.Context, request UpdateProductAPIKeyRequestObject) (UpdateProductAPIKeyResponseObject, error)
+	// Search Audit Logs
+	// (POST /v1/products/{product_id}/audit-logs/search)
+	SearchAuditLogs(ctx context.Context, request SearchAuditLogsRequestObject) (SearchAuditLogsResponseObject, error)
 	// Introspect Credential
 	// (POST /v1/products/{product_id}/auth/introspect)
 	IntrospectOrganizationAPIKey(ctx context.Context, request IntrospectOrganizationAPIKeyRequestObject) (IntrospectOrganizationAPIKeyResponseObject, error)
@@ -12218,6 +12436,39 @@ func (sh *strictHandler) UpdateProductAPIKey(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateProductAPIKeyResponseObject); ok {
 		if err := validResponse.VisitUpdateProductAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchAuditLogs operation middleware
+func (sh *strictHandler) SearchAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchAuditLogsRequestObject
+
+	request.ProductId = productId
+
+	var body SearchAuditLogsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchAuditLogs(ctx, request.(SearchAuditLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchAuditLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchAuditLogsResponseObject); ok {
+		if err := validResponse.VisitSearchAuditLogsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

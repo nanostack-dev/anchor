@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
 	"anchor/internal/repository"
@@ -40,24 +41,28 @@ type ProductAPIKeyService interface {
 }
 
 type productAPIKeyService struct {
-	transactor     transactor.Transactor
-	apiKeyRepo     repository.ProductAPIKeyRepository
-	permissionRepo repository.ProductPermissionRepository
-	cacheService   ProductAPIKeyCacheService
-	logger         zerolog.Logger
+	transactor      transactor.Transactor
+	apiKeyRepo      repository.ProductAPIKeyRepository
+	permissionRepo  repository.ProductPermissionRepository
+	cacheService    ProductAPIKeyCacheService
+	auditLogService AuditLogService
+	logger          zerolog.Logger
 }
 
 func NewProductAPIKeyService(
 	transactor transactor.Transactor,
 	apiKeyRepo repository.ProductAPIKeyRepository,
 	permissionRepo repository.ProductPermissionRepository,
-	cacheService ProductAPIKeyCacheService, logger zerolog.Logger,
+	cacheService ProductAPIKeyCacheService,
+	auditLogService AuditLogService,
+	logger zerolog.Logger,
 ) ProductAPIKeyService {
 	return &productAPIKeyService{
-		transactor:     transactor,
-		apiKeyRepo:     apiKeyRepo,
-		permissionRepo: permissionRepo,
-		cacheService:   cacheService,
+		transactor:      transactor,
+		apiKeyRepo:      apiKeyRepo,
+		permissionRepo:  permissionRepo,
+		cacheService:    cacheService,
+		auditLogService: auditLogService,
 		logger: logger.With().Str(
 			"component", "product_api_key_service",
 		).Logger(),
@@ -141,6 +146,14 @@ func (s *productAPIKeyService) Create(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("product API key created")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionProductAPIKeyCreated,
+		TargetType: audit.TargetTypeProductAPIKey,
+		TargetID:   new(created.ID),
+		TargetName: new(created.Name),
+	})
 
 	return created, clearAPIKey, nil
 }
@@ -303,6 +316,18 @@ func (s *productAPIKeyService) Update(
 		Str("product_id", input.ProductID).
 		Msg("product API key updated")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionProductAPIKeyUpdated,
+		TargetType: audit.TargetTypeProductAPIKey,
+		TargetID:   new(input.ID),
+		TargetName: new(updatedAPIKeyFromDB.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			audit.MetadataKeyPrevious: map[string]any{fieldNameKey: existingAPIKey.Name},
+			"permissions_updated":     permissionsUpdated,
+		}),
+	})
+
 	return updatedAPIKeyFromDB, nil
 }
 
@@ -351,6 +376,14 @@ func (s *productAPIKeyService) Delete(
 		Str("product_api_key_id", input.ID).
 		Str("product_id", input.ProductID).
 		Msg("product API key deleted")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionProductAPIKeyDeleted,
+		TargetType: audit.TargetTypeProductAPIKey,
+		TargetID:   new(input.ID),
+		TargetName: new(existingAPIKey.Name),
+	})
 
 	return nil
 }
