@@ -15,7 +15,7 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 
 const columnHelper = createColumnHelper<AuditLogResponse>();
@@ -71,7 +71,6 @@ interface AuditLogDatatableProps {
 }
 
 export function AuditLogDatatable({ productId }: AuditLogDatatableProps) {
-	const [total, setTotal] = useState(0);
 	const [selectedEntry, setSelectedEntry] = useState<AuditLogResponse | null>(
 		null,
 	);
@@ -99,36 +98,8 @@ export function AuditLogDatatable({ productId }: AuditLogDatatableProps) {
 	);
 	const debouncedDateRange = useDebounce(dateRange, 100);
 
-	const [searchAuditLogsParams, setSearchAuditLogsParams] = useState<
-		Options<SearchAuditLogsData>
-	>(() => ({
-		path: { product_id: productId },
-		body: {
-			pagination: {
-				limit: pagination.pageSize,
-				offset: pagination.pageIndex * pagination.pageSize,
-			},
-			sort_by: "created_at",
-			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
-		},
-	}));
-
-	const {
-		data: auditLogData,
-		isLoading,
-		error,
-	} = useQuery({
-		...searchAuditLogsOptions(searchAuditLogsParams),
-		placeholderData: keepPreviousData,
-	});
-
-	const { items = [], total: fetchedTotal = 0 } = auditLogData ?? {};
-	useMemo(() => {
-		setTotal(fetchedTotal);
-	}, [fetchedTotal]);
-
-	useEffect(() => {
-		setSearchAuditLogsParams({
+	const searchAuditLogsParams = useMemo<Options<SearchAuditLogsData>>(
+		() => ({
 			path: { product_id: productId },
 			body: {
 				pagination: {
@@ -154,17 +125,29 @@ export function AuditLogDatatable({ productId }: AuditLogDatatableProps) {
 						: undefined,
 				},
 			},
-		});
-	}, [
-		productId,
-		pagination,
-		sorting,
-		debouncedFullTextSearch,
-		debouncedActions,
-		debouncedActorTypes,
-		debouncedOutcome,
-		debouncedDateRange,
-	]);
+		}),
+		[
+			productId,
+			pagination,
+			sorting,
+			debouncedFullTextSearch,
+			debouncedActions,
+			debouncedActorTypes,
+			debouncedOutcome,
+			debouncedDateRange,
+		],
+	);
+
+	const {
+		data: auditLogData,
+		isLoading,
+		error,
+	} = useQuery({
+		...searchAuditLogsOptions(searchAuditLogsParams),
+		placeholderData: keepPreviousData,
+	});
+
+	const { items = [], total = 0 } = auditLogData ?? {};
 
 	const columns = useMemo(
 		() => [

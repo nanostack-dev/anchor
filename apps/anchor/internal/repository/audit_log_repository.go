@@ -108,9 +108,14 @@ func (r *auditLogRepositoryImpl) Search(
 		direction = req.Sort[0].Direction
 	}
 
+	// KSUID ids are k-sortable: the id tiebreaker keeps pagination stable
+	// when multiple entries share a created_at timestamp.
 	query := table.AuditLogs.SELECT(table.AuditLogs.AllColumns).
 		WHERE(whereStmt).
-		ORDER_BY(jetx.OrderBy(table.AuditLogs.CreatedAt, direction)).
+		ORDER_BY(
+			jetx.OrderBy(table.AuditLogs.CreatedAt, direction),
+			jetx.OrderBy(table.AuditLogs.ID, direction),
+		).
 		LIMIT(int64(req.Pagination.Limit)).
 		OFFSET(int64(req.Pagination.Offset))
 
