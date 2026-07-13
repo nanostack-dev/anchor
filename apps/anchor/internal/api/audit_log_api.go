@@ -37,14 +37,38 @@ func mapAuditLogSearchRequestToInput(
 		}
 	}
 
+	// The contract defaults sort_direction to DESC (newest first) and limit
+	// to 20 (max 100); the framework's WithSort/WithPagination default to
+	// ASC/10, so apply the contract defaults explicitly.
+	sortDirection := search.SortDescending
+	if request.Body.SortDirection != nil {
+		sortDirection = *request.Body.SortDirection
+	}
+
+	pagination := search.Pagination{Limit: defaultAuditLogPageSize}
+	if request.Body.Pagination != nil {
+		pagination = *request.Body.Pagination
+	}
+	if pagination.Limit <= 0 {
+		pagination.Limit = defaultAuditLogPageSize
+	}
+	if pagination.Limit > maxAuditLogPageSize {
+		pagination.Limit = maxAuditLogPageSize
+	}
+
 	return req.WithFilter(filter).
 		WithSort(
 			request.Body.SortBy,
-			request.Body.SortDirection,
+			&sortDirection,
 		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
+		&pagination,
 	)
 }
+
+const (
+	defaultAuditLogPageSize int32 = 20
+	maxAuditLogPageSize     int32 = 100
+)
 
 func (s *AnchorAPI) SearchAuditLogs(
 	ctx context.Context, request SearchAuditLogsRequestObject,

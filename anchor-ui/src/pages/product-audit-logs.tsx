@@ -27,7 +27,10 @@ export default function ProductAuditLogsPage() {
 						and roles.
 					</p>
 				</div>
-				<AuditLogDatatable productId={currentProduct.id} />
+				<AuditLogDatatable
+					key={currentProduct.id}
+					productId={currentProduct.id}
+				/>
 			</div>
 		</Page>
 	);

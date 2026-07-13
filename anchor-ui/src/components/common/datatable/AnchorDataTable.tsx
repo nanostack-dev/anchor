@@ -424,7 +424,29 @@ export function AnchorDataTable<
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
 									className={onRowClick ? "cursor-pointer" : undefined}
-									onClick={() => onRowClick?.(row.original)}
+									tabIndex={onRowClick ? 0 : undefined}
+									onClick={(event) => {
+										if (!onRowClick) return;
+										// Ignore clicks on interactive cells (buttons, links,
+										// selection checkboxes) so row-click consumers compose
+										// with action columns.
+										if (
+											(event.target as HTMLElement).closest(
+												"button, a, input, [role=checkbox]",
+											)
+										) {
+											return;
+										}
+										onRowClick(row.original);
+									}}
+									onKeyDown={(event) => {
+										if (!onRowClick) return;
+										if (event.target !== event.currentTarget) return;
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											onRowClick(row.original);
+										}
+									}}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

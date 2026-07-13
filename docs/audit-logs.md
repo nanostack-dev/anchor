@@ -38,7 +38,7 @@ CREATE TABLE audit_logs (
     organization_id    VARCHAR(255),             -- NULL for product-level events
     action             VARCHAR(100) NOT NULL,    -- dotted: organization.created
     outcome            VARCHAR(20)  NOT NULL DEFAULT 'SUCCESS',
-    actor_type         VARCHAR(30)  NOT NULL,    -- PLATFORM_USER | PRODUCT_API_KEY | ORGANIZATION_API_KEY | SYSTEM
+    actor_type         VARCHAR(30)  NOT NULL,    -- PLATFORM_USER | PRODUCT_API_KEY | SYSTEM
     actor_id           VARCHAR(255),
     actor_name         VARCHAR(255),             -- denormalized snapshot
     target_type        VARCHAR(50)  NOT NULL,    -- organization | workspace | membership | api_key | role | ...
@@ -65,6 +65,13 @@ CREATE INDEX idx_audit_logs_product_target   ON audit_logs (product_id, target_t
 
 No GIN index on `metadata_json` — nothing filters inside it.
 
+Notes:
+
+- `created_at` is authoritative from the database default (`NOW()`); the insert excludes the column, so all entries share the DB clock. Reads order by `created_at` with an `id` tiebreaker (KSUIDs are k-sortable) for stable pagination.
+- Migration `000024` drops the `product_id` FK on environments that applied the original version of `000023` before it was amended (golang-migrate tracks versions, not content). Lesson applied: never edit a migration after any environment may have run it.
+- Rolling back `000023` drops the table and the entire trail.
+- Immutability is enforced in code only (insert-only repository, no update paths); the application's DB role technically retains UPDATE/DELETE. A role-level `REVOKE` or guard trigger is future compliance work.
+
 ## Action taxonomy
 
 `<resource>.<verb_past_tense>`, resources matching Anchor's domain nouns:
@@ -88,11 +95,11 @@ v1 covers product-plane events only. Platform-plane events (platform invitations
 
 `AuditLogService.Record(ctx, audit.Entry)`:
 
-1. Fills `ID` (KSUID `alog_`), `CreatedAt`, defaults `Outcome` to `SUCCESS`.
-2. Resolves actor from request context (`security.GetCurrentUserID` → `PLATFORM_USER`; product-scope-without-user → API key actor; neither → `SYSTEM`).
-3. Inserts synchronously via the repository. On error: logs, never returns the error — a failed audit write must not fail the mutation (same semantics as the existing integration `writeAuditLog`).
+1. Fills `ID` (KSUID `alog_`), defaults `Outcome` to `SUCCESS`, resolves `PlatformTenantID` and `RequestID` (from the request-log middleware) from context.
+2. Resolves actor from request context (`security.Actor` set by the auth middleware: bearer → `PLATFORM_USER` with best-effort name snapshot, API key → `PRODUCT_API_KEY` with key name; neither → `SYSTEM`).
+3. Inserts synchronously via the repository using `context.WithoutCancel` — a client disconnect after the mutation committed must not lose the entry. On error: logs, never returns the error — a failed audit write must not fail the mutation.
 
-Call sites are the mutating service methods (product, organization, workspace, membership, API key, role, permission, resource permission, product user services), placed after the mutation succeeds. `ctx` may be a transactor tx context, in which case the audit row commits atomically with the mutation.
+Call sites are the mutating service methods (product, organization, workspace, membership, API key, role, permission, resource permission, product user services), placed **after the mutation commits**, on the request context. Do not call `Record` inside the mutation's transaction: an aborted audit insert would poison the whole transaction, violating "audit failure never fails the mutation".
 
 The repository is insert-only: `Create` and scoped list methods exist; no update or delete methods are defined, and none may be added.
 
@@ -100,11 +107,12 @@ The repository is insert-only: `Create` and scoped list methods exist; no update
 
 Service hooks alone have two structural gaps: a new mutation nobody instruments is silently unaudited, and hooks only run after success so failed attempts are never captured. `AuditMiddleware` (wrapping every generated operation, inside the auth middleware) closes both:
 
-- It observes every mutating request (`POST`/`PUT`/`PATCH`/`DELETE`, excluding read-only POSTs: `/search`, `/validate`, `/introspect`).
+- It observes every mutating request (`POST`/`PUT`/`PATCH`/`DELETE`), excluding read-only POSTs (`/search`, `/validate`, `/introspect`, `/preview`) and data-plane email dispatch (`/sends`, one row per email would swamp a management log).
 - `AuditLogService.Record` marks the request context when a service entry lands; if the request succeeds without a mark, the middleware writes a **generic fallback entry** with a route-derived action (`<last-static-segment>.<created|updated|deleted>`, e.g. `templates.created`) and `{"fallback": true, route, method, status}` metadata.
-- If the request **fails** (status ≥ 400, except 401), it records the attempt with `outcome: FAILURE` — the only place failures are captured.
+- If the request **fails** (status ≥ 400, except 401 and 404), it records the attempt with `outcome: FAILURE` — the only place failures are captured. 404s are skipped: they mutate nothing and are trivially mass-generated (id guessing), which would let one client flood the table. Panicking handlers are recorded as status-500 failures before the panic propagates.
+- If a service hook already recorded the request, the middleware never writes a second row — even when the response later fails (the recorded mutation did commit).
 
-Limits: routes without a `product_id` path parameter (e.g. `POST /v1/products` failures, platform-plane routes) are skipped — no product scope to attach to. Fallback entries lack name snapshots and deltas; when one shows up for a real operation, promote it to a proper service hook.
+Limits: routes without a `product_id` path parameter (e.g. `POST /v1/products` failures, platform-plane routes) are skipped — no product scope to attach to. Failed mutating requests (400/403/409) still write one row each with no rate cap; a retrying integration or hostile client can grow the table until a retention job exists. Fallback entries lack name snapshots and deltas; when one shows up for a real operation, promote it to a proper service hook.
 
 ## API
 
@@ -122,7 +130,7 @@ Request (`AuditLogSearchRequest` = `SearchRequest` + filter):
 ```yaml
 pagination: { limit: 1-100 (default 20), offset }
 sort_direction: ASC | DESC        # over created_at; default DESC
-full_text_search: string          # ILIKE over action, actor_name, target_name
+full_text_search: string          # case-sensitive LIKE substring over action, actor_name, target_name
 filter:
   organization_id: string
   actions: [string]

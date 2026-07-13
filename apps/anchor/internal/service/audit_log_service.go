@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/audit"
@@ -50,15 +50,19 @@ func (s *auditLogService) Record(ctx context.Context, entry audit.Log) {
 	if entry.ID == "" {
 		entry.GenerateID()
 	}
-	if entry.CreatedAt.IsZero() {
-		entry.CreatedAt = time.Now()
-	}
+	// created_at is set by the database default; the domain value is ignored
+	// on insert (the column is excluded) so it is deliberately not filled here.
 	if entry.Outcome == "" {
 		entry.Outcome = audit.OutcomeSuccess
 	}
 	if entry.PlatformTenantID == "" {
 		if tenantID, err := security.GetTenantID(ctx); err == nil {
 			entry.PlatformTenantID = tenantID
+		}
+	}
+	if entry.RequestID == nil {
+		if requestID := requestlog.RequestIDFromContext(ctx); requestID != "" {
+			entry.RequestID = &requestID
 		}
 	}
 	s.resolveActor(ctx, &entry)
@@ -73,7 +77,11 @@ func (s *auditLogService) Record(ctx context.Context, entry audit.Log) {
 		return
 	}
 
-	if _, err := s.auditLogRepo.Create(ctx, entry); err != nil {
+	// The mutation has already committed by the time hooks call Record; a
+	// canceled request context (client disconnect/timeout) must not lose the
+	// entry. WithoutCancel keeps context values (tenant, actor, tx).
+	writeCtx := context.WithoutCancel(ctx)
+	if _, err := s.auditLogRepo.Create(writeCtx, entry); err != nil {
 		logger.Error().Err(err).
 			Str("action", string(entry.Action)).
 			Str("product_id", entry.ProductID).

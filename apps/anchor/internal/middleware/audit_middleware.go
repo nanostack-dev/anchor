@@ -36,21 +36,38 @@ func NewAuditMiddleware(
 	}
 }
 
-// readOnlyPostSuffixes returns POST route suffixes that read rather than mutate.
-func readOnlyPostSuffixes() []string {
-	return []string{"/search", "/validate", "/introspect"}
+const (
+	paramProductID      = "product_id"
+	paramOrganizationID = "organization_id"
+)
+
+// skippedPathSuffixes returns route suffixes the fallback net ignores:
+// POSTs that read rather than mutate (/search, /validate, /introspect,
+// /preview) and data-plane operations whose volume doesn't belong in a
+// management audit log (/sends — one row per transactional email).
+func skippedPathSuffixes() []string {
+	return []string{"/search", "/validate", "/introspect", "/preview", "/sends"}
 }
 
 func (a *AuditMiddleware) Create(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			if !isMutatingMethod(r.Method) || isReadOnlyPost(r.URL.Path) {
+			if !isMutatingMethod(r.Method) || isSkippedPath(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			ctx, trail := security.WithAuditTrail(r.Context())
 			ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			// A panicking mutation handler is exactly the failed attempt the
+			// net exists to capture: record it, then let the panic continue.
+			defer func() {
+				if rec := recover(); rec != nil {
+					a.recordFallback(r.WithContext(ctx), trail, http.StatusInternalServerError)
+					panic(rec)
+				}
+			}()
 
 			next.ServeHTTP(ww, r.WithContext(ctx))
 
@@ -68,8 +85,8 @@ func isMutatingMethod(method string) bool {
 	}
 }
 
-func isReadOnlyPost(path string) bool {
-	for _, suffix := range readOnlyPostSuffixes() {
+func isSkippedPath(path string) bool {
+	for _, suffix := range skippedPathSuffixes() {
 		if strings.HasSuffix(path, suffix) {
 			return true
 		}
@@ -78,14 +95,22 @@ func isReadOnlyPost(path string) bool {
 }
 
 func (a *AuditMiddleware) recordFallback(r *http.Request, trail *security.AuditTrail, status int) {
-	success := status < http.StatusBadRequest
-	if success && trail.Recorded() {
+	// A service hook already produced the authoritative entry for this
+	// request; even a late failure (e.g. response encoding) happened after
+	// the recorded mutation committed. Never write a second, contradictory row.
+	if trail.Recorded() {
 		return
 	}
 	// Unauthenticated requests carry no tenant/actor context worth recording.
 	if status == http.StatusUnauthorized {
 		return
 	}
+	// Not-found failures mutate nothing and are trivially generated in bulk
+	// (id guessing); recording each would let one client flood the table.
+	if status == http.StatusNotFound {
+		return
+	}
+	success := status < http.StatusBadRequest
 
 	ctx := r.Context()
 	if _, err := security.GetTenantID(ctx); err != nil {
@@ -96,7 +121,7 @@ func (a *AuditMiddleware) recordFallback(r *http.Request, trail *security.AuditT
 	if routeCtx == nil {
 		return
 	}
-	productID := routeCtx.URLParam("product_id")
+	productID := routeCtx.URLParam(paramProductID)
 	if productID == "" {
 		// Platform-plane routes are out of scope for the product audit log.
 		return
@@ -121,7 +146,7 @@ func (a *AuditMiddleware) recordFallback(r *http.Request, trail *security.AuditT
 	if !success {
 		entry.Outcome = audit.OutcomeFailure
 	}
-	if orgID := routeCtx.URLParam("organization_id"); orgID != "" {
+	if orgID := routeCtx.URLParam(paramOrganizationID); orgID != "" {
 		entry.OrganizationID = &orgID
 	}
 	if targetID := lastPathParamValue(routeCtx); targetID != "" {
@@ -171,7 +196,7 @@ func lastPathParamValue(routeCtx *chi.Context) string {
 		return ""
 	}
 	lastKey := routeCtx.URLParams.Keys[len(routeCtx.URLParams.Keys)-1]
-	if lastKey == "product_id" || lastKey == "organization_id" {
+	if lastKey == paramProductID || lastKey == paramOrganizationID {
 		return ""
 	}
 	return routeCtx.URLParam(lastKey)
