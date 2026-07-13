@@ -23,8 +23,8 @@ export default function ProductAuditLogsPage() {
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
 					<p className="text-muted-foreground">
-						Who did what across organizations, workspaces, memberships, API
-						keys and roles.
+						Who did what across organizations, workspaces, memberships, API keys
+						and roles.
 					</p>
 				</div>
 				<AuditLogDatatable productId={currentProduct.id} />

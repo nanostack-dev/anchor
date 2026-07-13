@@ -130,8 +130,7 @@ export function AuditLogDatatable({ productId }: AuditLogDatatableProps) {
 					: SortDirection.ASC,
 				full_text_search: debouncedFullTextSearch || undefined,
 				filter: {
-					actions:
-						debouncedActions.length > 0 ? debouncedActions : undefined,
+					actions: debouncedActions.length > 0 ? debouncedActions : undefined,
 					actor_types:
 						debouncedActorTypes.length > 0 ? debouncedActorTypes : undefined,
 					outcome:
