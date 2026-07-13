@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/product/user"
 
 	"anchor/internal/repository"
@@ -39,6 +40,7 @@ var ErrProductUserEmailAlreadyExists = fault.BadRequest(
 type productUserService struct {
 	productUserRepo   repository.ProductUserRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
+	auditLogService   AuditLogService
 	transactor        transactor.Transactor
 	logger            zerolog.Logger
 }
@@ -46,12 +48,14 @@ type productUserService struct {
 func NewProductUserService(
 	productUserRepo repository.ProductUserRepository,
 	orgMembershipRepo repository.OrganizationMembershipRepository,
+	auditLogService AuditLogService,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) ProductUserService {
 	return &productUserService{
 		productUserRepo:   productUserRepo,
 		orgMembershipRepo: orgMembershipRepo,
+		auditLogService:   auditLogService,
 		transactor:        transactor,
 		logger:            logger.With().Str("component", "product_user_service").Logger(),
 	}
@@ -136,7 +140,19 @@ func (s *productUserService) Create(
 
 		return nil
 	})
-	return createdUser, err
+	if err != nil {
+		return createdUser, err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionProductUserCreated,
+		TargetType: audit.TargetTypeProductUser,
+		TargetID:   new(createdUser.ID),
+		TargetName: new(createdUser.Email),
+	})
+
+	return createdUser, nil
 }
 
 func (s *productUserService) Delete(
@@ -162,6 +178,13 @@ func (s *productUserService) Delete(
 		Str("product_user_id", input.ProductUserID).
 		Str("product_id", input.ProductID).
 		Msg("product user deleted successfully")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionProductUserDeleted,
+		TargetType: audit.TargetTypeProductUser,
+		TargetID:   new(input.ProductUserID),
+	})
 
 	return nil
 }

@@ -3,7 +3,9 @@
 CREATE TABLE audit_logs (
     id                 VARCHAR(255) PRIMARY KEY, -- KSUID prefix: alog_
     platform_tenant_id VARCHAR(255) NOT NULL,
-    product_id         VARCHAR(255) NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    -- No FK on product_id: audit rows must survive deletion of everything
+    -- they reference, including the product itself (product.deleted event).
+    product_id         VARCHAR(255) NOT NULL,
     organization_id    VARCHAR(255),             -- NULL for product-level events
     action             VARCHAR(100) NOT NULL,    -- dotted resource.verb: organization.created
     outcome            VARCHAR(20)  NOT NULL DEFAULT 'SUCCESS',

@@ -34,7 +34,7 @@ Migration `000023_audit_logs`:
 CREATE TABLE audit_logs (
     id                 VARCHAR(255) PRIMARY KEY, -- KSUID prefix: alog_
     platform_tenant_id VARCHAR(255) NOT NULL,
-    product_id         VARCHAR(255) NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    product_id         VARCHAR(255) NOT NULL,    -- no FK: rows survive product deletion
     organization_id    VARCHAR(255),             -- NULL for product-level events
     action             VARCHAR(100) NOT NULL,    -- dotted: organization.created
     outcome            VARCHAR(20)  NOT NULL DEFAULT 'SUCCESS',
@@ -51,7 +51,7 @@ CREATE TABLE audit_logs (
 );
 ```
 
-Scoping columns are denormalized (`platform_tenant_id`, `product_id`, `organization_id`) so tenant-scoped reads need no JOIN — unlike `integration_audit_logs`, which joins through `integration_instances`. Audit rows must also survive deletion of the resources they reference, so only the owning product carries an FK.
+Scoping columns are denormalized (`platform_tenant_id`, `product_id`, `organization_id`) so tenant-scoped reads need no JOIN — unlike `integration_audit_logs`, which joins through `integration_instances`. Audit rows carry no foreign keys at all: they must survive deletion of everything they reference, including the product itself (a `product.deleted` entry is written after the product row is gone, and a cascade would erase the product's entire trail).
 
 Indexes (product-first, newest-first):
 
@@ -69,13 +69,16 @@ No GIN index on `metadata_json` — nothing filters inside it.
 
 `<resource>.<verb_past_tense>`, resources matching Anchor's domain nouns:
 
+- `product.created` / `product.updated` / `product.deleted`
 - `organization.created` / `organization.updated` / `organization.deleted`
 - `organization.member_added` / `organization.member_removed` / `organization.member_role_updated`
 - `workspace.created` / `workspace.updated` / `workspace.deleted`
-- `workspace.member_added` / `workspace.member_removed` / `workspace.member_role_updated`
-- `organization_api_key.created` / `organization_api_key.deleted`
-- `product_api_key.created` / `product_api_key.deleted`
-- `role.created` / `role.updated` / `role.deleted`
+- `organization_api_key.created` / `organization_api_key.updated` / `organization_api_key.deleted`
+- `product_api_key.created` / `product_api_key.updated` / `product_api_key.deleted`
+- `role.created` / `role.updated` / `role.deleted` / `role.permission_assigned` / `role.permission_unassigned`
+- `permission.created` / `permission.updated` / `permission.deleted`
+- `resource_permission.created` / `resource_permission.updated` / `resource_permission.deleted`
+- `product_user.created` / `product_user.deleted`
 
 Constants live in `internal/domain/audit/audit_log.go`. New actions are added there — never free-strings at call sites.
 
@@ -125,6 +128,8 @@ filter:
 Response (`AuditLogListResponse` = `PagedListResponse` + `items: [AuditLogResponse]`), where `AuditLogResponse` mirrors the table columns with `metadata` parsed as an object. Enums (`AuditLogActorType`, `AuditLogOutcome`) are shared `$ref` component schemas per repo invariant.
 
 The endpoint is tenant-scoped: handler pulls `tenantID` from `security.GetTenantID(ctx)`, service filters `platform_tenant_id` + `product_id` in the repository. No `*Internal` read is exposed over HTTP.
+
+After a product is deleted its audit rows are retained (no FK) but become unreachable through this product-scoped endpoint — the auth middleware 404s on the deleted product. A platform-scoped read for retained trails is future work.
 
 `POST …/search` (not GET) so the hey-api generator emits a TanStack Query hook with a rich filter body, matching every other datatable in anchor-ui.
 

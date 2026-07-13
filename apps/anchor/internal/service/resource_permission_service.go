@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/domain/audit"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/repository"
 
@@ -42,6 +43,7 @@ type ResourcePermissionService interface {
 type resourcePermissionService struct {
 	resourcePermissionRepo repository.ProductResourcePermissionRepository
 	apiKeyRepo             repository.ProductAPIKeyRepository
+	auditLogService        AuditLogService
 	transactor             transactor.Transactor
 	logger                 zerolog.Logger
 }
@@ -49,12 +51,14 @@ type resourcePermissionService struct {
 func NewResourcePermissionService(
 	resourcePermissionRepo repository.ProductResourcePermissionRepository,
 	apiKeyRepo repository.ProductAPIKeyRepository,
+	auditLogService AuditLogService,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) ResourcePermissionService {
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
 		apiKeyRepo:             apiKeyRepo,
+		auditLogService:        auditLogService,
 		transactor:             transactor,
 		logger: logger.With().Str(
 			"component", "resource_permission_service",
@@ -109,6 +113,14 @@ func (s *resourcePermissionService) Create(
 		Str("product_id", input.ProductID).
 		Str("name", created.Name).
 		Msg("resource permission created")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionResourcePermissionCreated,
+		TargetType: audit.TargetTypeResourcePermission,
+		TargetID:   new(created.Name),
+		TargetName: new(created.Name),
+	})
 
 	return created, nil
 }
@@ -180,6 +192,14 @@ func (s *resourcePermissionService) Update(
 		Str("name", input.Name).
 		Msg("resource permission updated")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionResourcePermissionUpdated,
+		TargetType: audit.TargetTypeResourcePermission,
+		TargetID:   new(result.Name),
+		TargetName: new(result.Name),
+	})
+
 	return result, nil
 }
 
@@ -236,6 +256,17 @@ func (s *resourcePermissionService) Delete(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("resource permission deleted")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionResourcePermissionDeleted,
+		TargetType: audit.TargetTypeResourcePermission,
+		TargetID:   new(name.Name),
+		TargetName: new(name.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			"api_key_assignments_removed": true,
+		}),
+	})
 
 	return nil
 }

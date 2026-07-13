@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
 
@@ -35,16 +36,19 @@ type PermissionService interface {
 }
 
 type permissionService struct {
-	permissionRepo repository.ProductPermissionRepository
-	logger         zerolog.Logger
+	permissionRepo  repository.ProductPermissionRepository
+	auditLogService AuditLogService
+	logger          zerolog.Logger
 }
 
 func NewPermissionService(
 	permissionRepo repository.ProductPermissionRepository,
+	auditLogService AuditLogService,
 	logger zerolog.Logger,
 ) PermissionService {
 	return &permissionService{
-		permissionRepo: permissionRepo,
+		permissionRepo:  permissionRepo,
+		auditLogService: auditLogService,
 		logger: logger.With().Str(
 			"component", "permission_service",
 		).Logger(),
@@ -102,6 +106,14 @@ func (s *permissionService) Create(
 		Str("name", createdPerm.Name).
 		Msg("permission created")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionPermissionCreated,
+		TargetType: audit.TargetTypePermission,
+		TargetID:   new(createdPerm.Name),
+		TargetName: new(createdPerm.Name),
+	})
+
 	return createdPerm, nil
 }
 
@@ -148,6 +160,14 @@ func (s *permissionService) Update(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("permission updated")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionPermissionUpdated,
+		TargetType: audit.TargetTypePermission,
+		TargetID:   new(result.Name),
+		TargetName: new(result.Name),
+	})
 
 	return result, nil
 }
@@ -207,6 +227,14 @@ func (s *permissionService) Delete(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("permission deleted")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionPermissionDeleted,
+		TargetType: audit.TargetTypePermission,
+		TargetID:   new(exists.Name),
+		TargetName: new(exists.Name),
+	})
 
 	return nil
 }
