@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/repository"
 )
@@ -26,6 +27,7 @@ type WorkspaceService interface {
 type workspaceService struct {
 	workspaceRepo    repository.WorkspaceRepository
 	organizationRepo repository.OrganizationRepository
+	auditLogService  AuditLogService
 	transactor       transactor.Transactor
 	logger           zerolog.Logger
 }
@@ -33,12 +35,14 @@ type workspaceService struct {
 func NewWorkspaceService(
 	workspaceRepo repository.WorkspaceRepository,
 	organizationRepo repository.OrganizationRepository,
+	auditLogService AuditLogService,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) WorkspaceService {
 	return &workspaceService{
 		workspaceRepo:    workspaceRepo,
 		organizationRepo: organizationRepo,
+		auditLogService:  auditLogService,
 		transactor:       transactor,
 		logger: logger.With().Str(
 			"component", "workspace_service",
@@ -115,6 +119,15 @@ func (s *workspaceService) Create(
 		return workspace.Workspace{}, err
 	}
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionWorkspaceCreated,
+		TargetType:     audit.TargetTypeWorkspace,
+		TargetID:       new(created.ID),
+		TargetName:     new(created.Name),
+	})
+
 	return created, nil
 }
 
@@ -184,6 +197,18 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionWorkspaceUpdated,
+		TargetType:     audit.TargetTypeWorkspace,
+		TargetID:       new(updated.ID),
+		TargetName:     new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			audit.MetadataKeyPrevious: map[string]any{fieldNameKey: currentWorkspace.Name},
+		}),
+	})
+
 	return updated, nil
 }
 
@@ -215,12 +240,25 @@ func (s *workspaceService) Delete(
 		return fault.ErrNotFound
 	}
 
-	return s.workspaceRepo.DeleteByID(
+	if deleteErr := s.workspaceRepo.DeleteByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
-	)
+	); deleteErr != nil {
+		return deleteErr
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionWorkspaceDeleted,
+		TargetType:     audit.TargetTypeWorkspace,
+		TargetID:       new(input.WorkspaceID),
+		TargetName:     new(currentWorkspace.Name),
+	})
+
+	return nil
 }
 
 func (s *workspaceService) Search(

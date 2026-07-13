@@ -24,6 +24,7 @@ export const ROUTE_PATHS = {
 	PRODUCT_ROLES: "/products/resources/roles",
 	PRODUCT_PERMISSIONS: "/products/permissions",
 	PRODUCT_RESOURCES_PERMISSIONS: "/products/resources/permissions",
+	PRODUCT_AUDIT_LOGS: "/products/audit-logs",
 	PRODUCT_EDIT: "/products/$productId/edit",
 
 	// Organization routes

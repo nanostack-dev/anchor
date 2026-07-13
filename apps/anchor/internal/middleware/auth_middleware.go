@@ -90,7 +90,7 @@ func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 		return true
 	}
 
-	_, err := auth.productAPIKeyKeyService.ValidateAPIKeyAndScopes(
+	validKey, err := auth.productAPIKeyKeyService.ValidateAPIKeyAndScopes(
 		r.Context(), apikey.ValidateAPIKeyScopesInput{
 			ProductID:   productIDPath,
 			Scopes:      values,
@@ -119,6 +119,11 @@ func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 
 	ctx := security.SetTenantID(r.Context(), prod.PlatformTenantID)
 	ctx = security.SetProductScope(ctx, security.ProductScope{ProductID: productIDPath})
+	ctx = security.SetActor(ctx, security.Actor{
+		Type: security.ActorTypeProductAPIKey,
+		ID:   validKey.ID,
+		Name: validKey.Name,
+	})
 	next.ServeHTTP(w, r.WithContext(ctx))
 	return true
 }
@@ -142,6 +147,10 @@ func (auth *AuthMiddleware) handlePlatformBearerAuth(
 
 	ctx := security.SetCurrentUserID(r.Context(), token.UserID)
 	ctx = security.SetTenantID(ctx, token.TenantID)
+	ctx = security.SetActor(ctx, security.Actor{
+		Type: security.ActorTypePlatformUser,
+		ID:   token.UserID,
+	})
 	if productIDPath := chi.URLParam(r, "product_id"); productIDPath != "" {
 		ctx = security.SetProductScope(ctx, security.ProductScope{ProductID: productIDPath})
 	}

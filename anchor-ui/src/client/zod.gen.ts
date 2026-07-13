@@ -659,6 +659,11 @@ export const zOrganizationApiKeyValidateRequest = z.object({
     required_scopes: z.array(z.string())
 });
 
+export const zOrganizationApiKeyIntrospectRequest = z.object({
+    api_key: z.string(),
+    required_scopes: z.optional(z.array(z.string()))
+});
+
 export const zOrganizationApiKeyValidateResponse = z.object({
     api_key: zOrganizationApiKeyResponse,
     permissions: z.array(z.string()),
@@ -819,6 +824,65 @@ export const zOrganizationMemberSearchRequest = zSearchRequest.and(z.object({
 export const zOrganizationMemberInclude = z.enum([
     'role_permissions'
 ]);
+
+/**
+ * The kind of principal that performed the audited action.
+ */
+export const zAuditLogActorType = z.enum([
+    'PLATFORM_USER',
+    'PRODUCT_API_KEY',
+    'SYSTEM'
+]);
+
+/**
+ * Whether the audited action succeeded.
+ */
+export const zAuditLogOutcome = z.enum([
+    'SUCCESS',
+    'FAILURE'
+]);
+
+export const zAuditLogResponse = z.object({
+    id: zKsuid,
+    organization_id: z.optional(zKsuid),
+    action: z.string(),
+    outcome: zAuditLogOutcome,
+    actor_type: zAuditLogActorType,
+    actor_id: z.optional(z.string()),
+    actor_name: z.optional(z.string()),
+    target_type: z.string(),
+    target_id: z.optional(z.string()),
+    target_name: z.optional(z.string()),
+    request_id: z.optional(z.string()),
+    metadata: z.optional(z.record(z.string(), z.unknown())),
+    created_at: z.iso.datetime()
+});
+
+/**
+ * Filter criteria for searching audit logs.
+ */
+export const zAuditLogFilter = z.object({
+    organization_id: z.optional(zKsuid),
+    actions: z.optional(z.array(z.string())),
+    actor_types: z.optional(z.array(zAuditLogActorType)),
+    actor_id: z.optional(z.string()),
+    target_type: z.optional(z.string()),
+    target_id: z.optional(z.string()),
+    outcome: z.optional(zAuditLogOutcome),
+    created_after: z.optional(z.iso.datetime()),
+    created_before: z.optional(z.iso.datetime())
+});
+
+export const zAuditLogSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zAuditLogFilter),
+    sort_by: z.optional(z.enum([
+        'created_at'
+    ]))
+}));
+
+export const zAuditLogListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zAuditLogResponse)
+}));
 
 /**
  * The type of integration provider.
@@ -2006,6 +2070,19 @@ export const zValidateOrganizationApiKeyData = z.object({
  */
 export const zValidateOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
 
+export const zIntrospectOrganizationApiKeyData = z.object({
+    body: zOrganizationApiKeyIntrospectRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Organization API key introspection result.
+ */
+export const zIntrospectOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
+
 export const zCreateProductOrganizationData = z.object({
     body: zProductOrganizationRequest,
     path: z.object({
@@ -2221,6 +2298,19 @@ export const zSearchOrganizationMembersData = z.object({
  * Success
  */
 export const zSearchOrganizationMembersResponse = zOrganizationMemberListResponse;
+
+export const zSearchAuditLogsData = z.object({
+    body: zAuditLogSearchRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * A page of audit log entries for the product.
+ */
+export const zSearchAuditLogsResponse = zAuditLogListResponse;
 
 export const zListEmailTemplatesData = z.object({
     body: z.optional(z.never()),

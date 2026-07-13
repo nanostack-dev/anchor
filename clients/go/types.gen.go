@@ -17,6 +17,60 @@ const (
 	ProductApiKeyAuthScopes  productApiKeyAuthContextKey  = "productApiKeyAuth.Scopes"
 )
 
+// Defines values for AuditLogActorType.
+const (
+	AuditLogActorTypePLATFORMUSER  AuditLogActorType = "PLATFORM_USER"
+	AuditLogActorTypePRODUCTAPIKEY AuditLogActorType = "PRODUCT_API_KEY"
+	AuditLogActorTypeSYSTEM        AuditLogActorType = "SYSTEM"
+)
+
+// Valid indicates whether the value is a known member of the AuditLogActorType enum.
+func (e AuditLogActorType) Valid() bool {
+	switch e {
+	case AuditLogActorTypePLATFORMUSER:
+		return true
+	case AuditLogActorTypePRODUCTAPIKEY:
+		return true
+	case AuditLogActorTypeSYSTEM:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditLogOutcome.
+const (
+	AuditLogOutcomeFAILURE AuditLogOutcome = "FAILURE"
+	AuditLogOutcomeSUCCESS AuditLogOutcome = "SUCCESS"
+)
+
+// Valid indicates whether the value is a known member of the AuditLogOutcome enum.
+func (e AuditLogOutcome) Valid() bool {
+	switch e {
+	case AuditLogOutcomeFAILURE:
+		return true
+	case AuditLogOutcomeSUCCESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditLogSearchRequestSortBy.
+const (
+	AuditLogSortByCreatedAt AuditLogSearchRequestSortBy = "created_at"
+)
+
+// Valid indicates whether the value is a known member of the AuditLogSearchRequestSortBy enum.
+func (e AuditLogSearchRequestSortBy) Valid() bool {
+	switch e {
+	case AuditLogSortByCreatedAt:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClerkIntegrationInstanceCreateRequestProviderType.
 const (
 	ClerkIntegrationInstanceCreateRequestProviderTypeCLERK ClerkIntegrationInstanceCreateRequestProviderType = "CLERK"
@@ -708,6 +762,111 @@ type AssignPermissionRequest struct {
 	// PermissionName The name of the product resource permission to assign (e.g. "document:read"). Must match an existing ProductResourcePermission for this product.
 	PermissionName string `json:"permission_name"`
 }
+
+// AuditLogActorType The kind of principal that performed the audited action.
+type AuditLogActorType string
+
+// AuditLogFilter Filter criteria for searching audit logs.
+type AuditLogFilter struct {
+	// Actions Filter by action names.
+	Actions []string `json:"actions,omitempty"`
+
+	// ActorId Filter by acting principal ID.
+	ActorId *string `json:"actor_id,omitempty"`
+
+	// ActorTypes Filter by actor types.
+	ActorTypes []AuditLogActorType `json:"actor_types,omitempty"`
+
+	// CreatedAfter Only include entries created at or after this time.
+	CreatedAfter *time.Time `json:"created_after,omitempty"`
+
+	// CreatedBefore Only include entries created at or before this time.
+	CreatedBefore *time.Time `json:"created_before,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId *Ksuid `json:"organization_id,omitempty"`
+
+	// Outcome Whether the audited action succeeded.
+	Outcome *AuditLogOutcome `json:"outcome,omitempty"`
+
+	// TargetId Filter by target resource ID.
+	TargetId *string `json:"target_id,omitempty"`
+
+	// TargetType Filter by target resource type.
+	TargetType *string `json:"target_type,omitempty"`
+}
+
+// AuditLogListResponse defines model for AuditLogListResponse.
+type AuditLogListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                `json:"count"`
+	Items []AuditLogResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
+}
+
+// AuditLogOutcome Whether the audited action succeeded.
+type AuditLogOutcome string
+
+// AuditLogResponse defines model for AuditLogResponse.
+type AuditLogResponse struct {
+	// Action Dotted resource.verb event name.
+	Action string `json:"action"`
+
+	// ActorId Identifier of the acting principal.
+	ActorId *string `json:"actor_id,omitempty"`
+
+	// ActorName Display name of the actor, snapshotted at event time.
+	ActorName *string `json:"actor_name,omitempty"`
+
+	// ActorType The kind of principal that performed the audited action.
+	ActorType AuditLogActorType `json:"actor_type"`
+
+	// CreatedAt Timestamp when the event was recorded.
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id Ksuid `json:"id"`
+
+	// Metadata Additional event detail.
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId *Ksuid `json:"organization_id,omitempty"`
+
+	// Outcome Whether the audited action succeeded.
+	Outcome AuditLogOutcome `json:"outcome"`
+
+	// RequestId Correlation ID of the originating request.
+	RequestId *string `json:"request_id,omitempty"`
+
+	// TargetId Identifier of the target resource.
+	TargetId *string `json:"target_id,omitempty"`
+
+	// TargetName Display name of the target, snapshotted at event time.
+	TargetName *string `json:"target_name,omitempty"`
+
+	// TargetType Type of the resource the action was performed on.
+	TargetType string `json:"target_type"`
+}
+
+// AuditLogSearchRequest defines model for AuditLogSearchRequest.
+type AuditLogSearchRequest struct {
+	// Filter Filter criteria for searching audit logs.
+	Filter *AuditLogFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy        *AuditLogSearchRequestSortBy `json:"sort_by,omitempty"`
+	SortDirection *SortDirection               `json:"sort_direction,omitempty"`
+}
+
+// AuditLogSearchRequestSortBy Field to sort by.
+type AuditLogSearchRequestSortBy string
 
 // AuthTokenResponse defines model for AuthTokenResponse.
 type AuthTokenResponse struct {
@@ -2442,6 +2601,9 @@ type SearchProductAPIKeysJSONRequestBody = ProductAPIKeySearchRequest
 
 // UpdateProductAPIKeyJSONRequestBody defines body for UpdateProductAPIKey for application/json ContentType.
 type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
+
+// SearchAuditLogsJSONRequestBody defines body for SearchAuditLogs for application/json ContentType.
+type SearchAuditLogsJSONRequestBody = AuditLogSearchRequest
 
 // IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
 type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest

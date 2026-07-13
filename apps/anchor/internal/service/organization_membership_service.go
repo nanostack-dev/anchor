@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
 
@@ -27,6 +28,7 @@ type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
+	auditLogService   AuditLogService
 	logger            zerolog.Logger
 }
 
@@ -34,12 +36,14 @@ func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
+	auditLogService AuditLogService,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
+		auditLogService:   auditLogService,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
 	}
 }
@@ -71,13 +75,40 @@ func (s *organizationMembershipService) AddMember(
 		return organization.Membership{}, err
 	}
 
-	return s.applyMembership(
+	membership, err := s.applyMembership(
 		ctx,
 		input.ProductID, input.OrganizationID, input.ProductUserID, input.RoleID,
 		"failed to create membership", "member added to organization",
 		s.orgMembershipRepo.Create,
 		logger,
 	)
+	if err != nil {
+		return organization.Membership{}, err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationMemberAdded,
+		TargetType:     audit.TargetTypeMembership,
+		TargetID:       new(input.ProductUserID),
+		TargetName:     new(membershipDisplayName(membership)),
+		MetadataJSON: audit.Metadata(map[string]any{
+			fieldProductUserIDKey: input.ProductUserID,
+			fieldRoleIDKey:        input.RoleID,
+			fieldRoleNameKey:      membership.RoleName,
+		}),
+	})
+
+	return membership, nil
+}
+
+// membershipDisplayName picks the best human-readable label for a member.
+func membershipDisplayName(membership organization.Membership) string {
+	if membership.UserName != "" {
+		return membership.UserName
+	}
+	return membership.UserEmail
 }
 
 func (s *organizationMembershipService) UpdateMemberRole(
@@ -93,23 +124,45 @@ func (s *organizationMembershipService) UpdateMemberRole(
 		return organization.Membership{}, err
 	}
 
-	if err := s.checkMembershipPresence(
+	previous, err := s.checkMembershipPresence(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.ProductUserID,
 		logger,
-	); err != nil {
+	)
+	if err != nil {
 		return organization.Membership{}, err
 	}
 
-	return s.applyMembership(
+	membership, err := s.applyMembership(
 		ctx,
 		input.ProductID, input.OrganizationID, input.ProductUserID, input.RoleID,
 		"failed to update membership role", "member role updated",
 		s.orgMembershipRepo.Update,
 		logger,
 	)
+	if err != nil {
+		return organization.Membership{}, err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationMemberRoleUpdated,
+		TargetType:     audit.TargetTypeMembership,
+		TargetID:       new(input.ProductUserID),
+		TargetName:     new(membershipDisplayName(membership)),
+		MetadataJSON: audit.Metadata(map[string]any{
+			fieldProductUserIDKey: input.ProductUserID,
+			fieldRoleIDKey:        input.RoleID,
+			fieldRoleNameKey:      membership.RoleName,
+			"previous_role_id":    previous.RoleID,
+			"previous_role_name":  previous.RoleName,
+		}),
+	})
+
+	return membership, nil
 }
 
 // checkMembershipAbsence verifies that no membership exists; returns an error if one does.
@@ -136,12 +189,13 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	return nil
 }
 
-// checkMembershipPresence verifies that a membership exists; returns an error if it does not.
+// checkMembershipPresence verifies that a membership exists and returns it;
+// returns an error if it does not.
 func (s *organizationMembershipService) checkMembershipPresence(
 	ctx context.Context,
 	productID, organizationID, productUserID string,
 	logger zerolog.Logger,
-) error {
+) (*organization.Membership, error) {
 	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, false,
 	)
@@ -151,13 +205,13 @@ func (s *organizationMembershipService) checkMembershipPresence(
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
 			Msg("failed to verify existing membership")
-		return err
+		return nil, err
 	}
 	if existing == nil {
-		return NewOrganizationMembershipNotFoundError(productUserID, organizationID)
+		return nil, NewOrganizationMembershipNotFoundError(productUserID, organizationID)
 	}
 
-	return nil
+	return existing, nil
 }
 
 // applyMembership calls repoFn to persist a membership change, then returns the
@@ -231,6 +285,20 @@ func (s *organizationMembershipService) RemoveMember(
 		Str("organization_id", input.OrganizationID).
 		Str("product_user_id", input.ProductUserID).
 		Msg("member removed from organization")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationMemberRemoved,
+		TargetType:     audit.TargetTypeMembership,
+		TargetID:       new(input.ProductUserID),
+		TargetName:     new(membershipDisplayName(*existing)),
+		MetadataJSON: audit.Metadata(map[string]any{
+			fieldProductUserIDKey: input.ProductUserID,
+			fieldRoleIDKey:        existing.RoleID,
+			fieldRoleNameKey:      existing.RoleName,
+		}),
+	})
 
 	return nil
 }

@@ -177,6 +177,11 @@ type ClientInterface interface {
 
 	UpdateProductAPIKey(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchAuditLogsWithBody request with any body
+	SearchAuditLogsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchAuditLogs(ctx context.Context, productId ProductIdParameter, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// IntrospectOrganizationAPIKeyWithBody request with any body
 	IntrospectOrganizationAPIKeyWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -816,6 +821,30 @@ func (c *Client) UpdateProductAPIKeyWithBody(ctx context.Context, productId Prod
 
 func (c *Client) UpdateProductAPIKey(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProductAPIKeyRequest(c.Server, productId, apiKeyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchAuditLogsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAuditLogsRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchAuditLogs(ctx context.Context, productId ProductIdParameter, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAuditLogsRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2816,6 +2845,53 @@ func NewUpdateProductAPIKeyRequestWithBody(server string, productId ProductIdPar
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchAuditLogsRequest calls the generic SearchAuditLogs builder with application/json body
+func NewSearchAuditLogsRequest(server string, productId ProductIdParameter, body SearchAuditLogsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchAuditLogsRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewSearchAuditLogsRequestWithBody generates requests for SearchAuditLogs with any type of body
+func NewSearchAuditLogsRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/audit-logs/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -6075,6 +6151,11 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProductAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, apiKeyId ProductAPIKeyIdParameter, body UpdateProductAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductAPIKeyResponse, error)
 
+	// SearchAuditLogsWithBodyWithResponse request with any body
+	SearchAuditLogsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
+
+	SearchAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
+
 	// IntrospectOrganizationAPIKeyWithBodyWithResponse request with any body
 	IntrospectOrganizationAPIKeyWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error)
 
@@ -7027,6 +7108,39 @@ func (r UpdateProductAPIKeyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProductAPIKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchAuditLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AuditLogListResponse
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchAuditLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchAuditLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchAuditLogsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9289,6 +9403,23 @@ func (c *ClientWithResponses) UpdateProductAPIKeyWithResponse(ctx context.Contex
 	return ParseUpdateProductAPIKeyResponse(rsp)
 }
 
+// SearchAuditLogsWithBodyWithResponse request with arbitrary body returning *SearchAuditLogsResponse
+func (c *ClientWithResponses) SearchAuditLogsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
+	rsp, err := c.SearchAuditLogsWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAuditLogsResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
+	rsp, err := c.SearchAuditLogs(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAuditLogsResponse(rsp)
+}
+
 // IntrospectOrganizationAPIKeyWithBodyWithResponse request with arbitrary body returning *IntrospectOrganizationAPIKeyResponse
 func (c *ClientWithResponses) IntrospectOrganizationAPIKeyWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IntrospectOrganizationAPIKeyResponse, error) {
 	rsp, err := c.IntrospectOrganizationAPIKeyWithBody(ctx, productId, contentType, body, reqEditors...)
@@ -10964,6 +11095,53 @@ func ParseUpdateProductAPIKeyResponse(rsp *http.Response) (*UpdateProductAPIKeyR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProductAPIKeyResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchAuditLogsResponse parses an HTTP response from a SearchAuditLogsWithResponse call
+func ParseSearchAuditLogsResponse(rsp *http.Response) (*SearchAuditLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchAuditLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditLogListResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

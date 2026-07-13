@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
 
@@ -42,6 +43,7 @@ type organizationService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productUserRepo   repository.ProductUserRepository
 	productRoleRepo   repository.ProductRoleRepository
+	auditLogService   AuditLogService
 	lock              *pglock.Client
 	logger            zerolog.Logger
 }
@@ -51,6 +53,7 @@ func NewOrganizationService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productUserRepo repository.ProductUserRepository,
 	productRoleRepo repository.ProductRoleRepository,
+	auditLogService AuditLogService,
 	lock *pglock.Client,
 	logger zerolog.Logger,
 ) OrganizationService {
@@ -59,6 +62,7 @@ func NewOrganizationService(
 		orgMembershipRepo: orgMembershipRepo,
 		productUserRepo:   productUserRepo,
 		productRoleRepo:   productRoleRepo,
+		auditLogService:   auditLogService,
 		lock:              lock,
 		logger:            logger.With().Str("component", "organization_service").Logger(),
 	}
@@ -116,6 +120,15 @@ func (s *organizationService) Create(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("organization created")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(created.ID),
+		Action:         audit.ActionOrganizationCreated,
+		TargetType:     audit.TargetTypeOrganization,
+		TargetID:       new(created.ID),
+		TargetName:     new(created.Name),
+	})
 
 	return created, nil
 }
@@ -262,6 +275,19 @@ func (s *organizationService) CreateWithMember(
 		Str("role_id", input.RoleID).
 		Msg("organization created with founding member")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(createdOrg.ID),
+		Action:         audit.ActionOrganizationCreated,
+		TargetType:     audit.TargetTypeOrganization,
+		TargetID:       new(createdOrg.ID),
+		TargetName:     new(createdOrg.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			"founding_member_product_user_id": input.ProductUserID,
+			"founding_member_role_id":         input.RoleID,
+		}),
+	})
+
 	return organization.OrganizationWithMemberResult{
 		Organization: createdOrg,
 		Membership:   createdMembership,
@@ -318,6 +344,18 @@ func (s *organizationService) Update(
 		Str("product_id", input.ProductID).
 		Msg("organization updated")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(updated.ID),
+		Action:         audit.ActionOrganizationUpdated,
+		TargetType:     audit.TargetTypeOrganization,
+		TargetID:       new(updated.ID),
+		TargetName:     new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			audit.MetadataKeyPrevious: map[string]any{fieldNameKey: optOrg.Name},
+		}),
+	})
+
 	return updated, nil
 }
 
@@ -363,6 +401,15 @@ func (s *organizationService) Delete(
 		Str("organization_id", input.OrganizationID).
 		Str("product_id", input.ProductID).
 		Msg("organization deleted")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationDeleted,
+		TargetType:     audit.TargetTypeOrganization,
+		TargetID:       new(input.OrganizationID),
+		TargetName:     new(optOrg.Name),
+	})
 
 	return nil
 }

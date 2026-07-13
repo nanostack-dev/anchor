@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
+	"anchor/internal/domain/audit"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
 	"anchor/internal/repository"
@@ -42,17 +43,20 @@ type ProductRoleService interface {
 type productRoleService struct {
 	roleRepo                      repository.ProductRoleRepository
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository
+	auditLogService               AuditLogService
 	logger                        zerolog.Logger
 }
 
 func NewProductRoleService(
 	roleRepo repository.ProductRoleRepository,
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
+	auditLogService AuditLogService,
 	logger zerolog.Logger,
 ) ProductRoleService {
 	return &productRoleService{
 		roleRepo:                      roleRepo,
 		productResourcePermissionRepo: productResourcePermissionRepo,
+		auditLogService:               auditLogService,
 		logger: logger.With().Str(
 			"component", "product_role_permission_service",
 		).Logger(),
@@ -114,6 +118,17 @@ func (s *productRoleService) CreateProductRole(
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
 		Msg("product role created")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionRoleCreated,
+		TargetType: audit.TargetTypeRole,
+		TargetID:   new(created.ID),
+		TargetName: new(created.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			"permissions": input.Permissions,
+		}),
+	})
 
 	return created, nil
 }
@@ -222,6 +237,17 @@ func (s *productRoleService) UpdateProductRole(
 		Str("product_id", input.ProductID).
 		Msg("product role updated")
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionRoleUpdated,
+		TargetType: audit.TargetTypeRole,
+		TargetID:   new(updated.ID),
+		TargetName: new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			audit.MetadataKeyPrevious: map[string]any{fieldNameKey: existingRole.Name},
+		}),
+	})
+
 	return updated, nil
 }
 
@@ -274,6 +300,14 @@ func (s *productRoleService) DeleteProductRole(
 		Str("product_role_id", input.ID).
 		Str("product_id", input.ProductID).
 		Msg("product role deleted")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionRoleDeleted,
+		TargetType: audit.TargetTypeRole,
+		TargetID:   new(input.ID),
+		TargetName: new(existingRole.Name),
+	})
 
 	return nil
 }
@@ -346,6 +380,17 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		Str("product_role_id", input.ProductRoleID).
 		Str("permission_name", newPermission.PermissionName).
 		Msg("permission assigned to product role")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionRolePermissionAssigned,
+		TargetType: audit.TargetTypeRole,
+		TargetID:   new(updated.ID),
+		TargetName: new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			fieldPermissionNameKey: newPermission.PermissionName,
+		}),
+	})
 
 	return updated, nil
 }
@@ -430,6 +475,17 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		Str("product_role_id", input.ProductRoleID).
 		Str("permission_name", input.PermissionName).
 		Msg("permission unassigned from product role")
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:  input.ProductID,
+		Action:     audit.ActionRolePermissionUnassigned,
+		TargetType: audit.TargetTypeRole,
+		TargetID:   new(updated.ID),
+		TargetName: new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			fieldPermissionNameKey: permissionFound.Name,
+		}),
+	})
 
 	return updated, nil
 }
