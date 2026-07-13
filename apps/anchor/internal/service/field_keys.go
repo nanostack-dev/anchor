@@ -10,4 +10,8 @@ const (
 	fieldEventTypeKey        = "event_type"
 	fieldQueueAttemptKey     = "queue_attempt"
 	fieldQueueMaxAttemptsKey = "queue_max_attempts"
+	fieldProductUserIDKey    = "product_user_id"
+	fieldRoleIDKey           = "role_id"
+	fieldRoleNameKey         = "role_name"
+	fieldPermissionNameKey   = "permission_name"
 )

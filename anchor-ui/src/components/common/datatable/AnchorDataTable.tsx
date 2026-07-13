@@ -94,6 +94,7 @@ interface AnchorDataTableProps<
 	pageSizeOptions?: number[];
 	onSelectionChange?: (selected: TData[] | "all-matching" | []) => void;
 	enableRowSelection?: boolean;
+	onRowClick?: (row: TData) => void;
 }
 
 export function AnchorDataTable<
@@ -117,6 +118,7 @@ export function AnchorDataTable<
 	pageSizeOptions = [10, 20, 50, 100],
 	onSelectionChange,
 	enableRowSelection = true,
+	onRowClick,
 }: AnchorDataTableProps<TData, TFilters>) {
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -421,6 +423,30 @@ export function AnchorDataTable<
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
+									className={onRowClick ? "cursor-pointer" : undefined}
+									tabIndex={onRowClick ? 0 : undefined}
+									onClick={(event) => {
+										if (!onRowClick) return;
+										// Ignore clicks on interactive cells (buttons, links,
+										// selection checkboxes) so row-click consumers compose
+										// with action columns.
+										if (
+											(event.target as HTMLElement).closest(
+												"button, a, input, [role=checkbox]",
+											)
+										) {
+											return;
+										}
+										onRowClick(row.original);
+									}}
+									onKeyDown={(event) => {
+										if (!onRowClick) return;
+										if (event.target !== event.currentTarget) return;
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											onRowClick(row.original);
+										}
+									}}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

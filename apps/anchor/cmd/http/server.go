@@ -39,12 +39,13 @@ const (
 type ServerParams struct {
 	fx.In
 
-	Lifecycle      fx.Lifecycle
-	Logger         zerolog.Logger
-	API            *api.AnchorAPI
-	Queue          *pgqueue.Client
-	AuthMiddleware *middleware.AuthMiddleware
-	ServerConfig   *ServerConfig
+	Lifecycle       fx.Lifecycle
+	Logger          zerolog.Logger
+	API             *api.AnchorAPI
+	Queue           *pgqueue.Client
+	AuthMiddleware  *middleware.AuthMiddleware
+	AuditMiddleware *middleware.AuditMiddleware
+	ServerConfig    *ServerConfig
 }
 
 func RegisterServer(params ServerParams) {
@@ -237,6 +238,7 @@ func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 		Addr: ":" + strconv.Itoa(params.ServerConfig.Port),
 		Handler: createHandler(
 			router, params.API, errorMiddleware, []api.MiddlewareFunc{
+				params.AuditMiddleware.Create,
 				middleware.NewRequestLoggingMiddleware(params.Logger),
 				authMiddleware.Create,
 			},

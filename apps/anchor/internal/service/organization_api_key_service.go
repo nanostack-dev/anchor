@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/nanostack-dev/pgkit/pgqueue"
 
+	"anchor/internal/domain/audit"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/repository"
@@ -58,6 +59,7 @@ type organizationAPIKeyService struct {
 	organizationRepo repository.OrganizationRepository
 	productRepo      repository.ProductRepository
 	permissionRepo   repository.ProductResourcePermissionRepository
+	auditLogService  AuditLogService
 	logger           zerolog.Logger
 }
 
@@ -68,6 +70,7 @@ func NewOrganizationAPIKeyService(
 	organizationRepo repository.OrganizationRepository,
 	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductResourcePermissionRepository,
+	auditLogService AuditLogService,
 	logger zerolog.Logger,
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
@@ -77,6 +80,7 @@ func NewOrganizationAPIKeyService(
 		organizationRepo: organizationRepo,
 		productRepo:      productRepo,
 		permissionRepo:   permissionRepo,
+		auditLogService:  auditLogService,
 		logger: logger.With().Str(
 			"component", "organization_api_key_service",
 		).Logger(),
@@ -192,6 +196,15 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationAPIKeyCreated,
+		TargetType:     audit.TargetTypeOrganizationAPIKey,
+		TargetID:       new(created.ID),
+		TargetName:     new(created.Name),
+	})
+
 	return created, clearAPIKey, nil
 }
 
@@ -284,6 +297,22 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationAPIKeyUpdated,
+		TargetType:     audit.TargetTypeOrganizationAPIKey,
+		TargetID:       new(updated.ID),
+		TargetName:     new(updated.Name),
+		MetadataJSON: audit.Metadata(map[string]any{
+			audit.MetadataKeyPrevious: map[string]any{
+				fieldNameKey: existingAPIKey.Name,
+				"status":     string(existingAPIKey.Status),
+			},
+			"status": string(updated.Status),
+		}),
+	})
+
 	return updated, nil
 }
 
@@ -339,7 +368,7 @@ func (s *organizationAPIKeyService) Delete(
 		return fault.ErrNotFound
 	}
 
-	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
 			logger.Error().
 				Str("organization_id", input.OrganizationID).
@@ -386,6 +415,20 @@ func (s *organizationAPIKeyService) Delete(
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		ProductID:      input.ProductID,
+		OrganizationID: new(input.OrganizationID),
+		Action:         audit.ActionOrganizationAPIKeyDeleted,
+		TargetType:     audit.TargetTypeOrganizationAPIKey,
+		TargetID:       new(input.ID),
+		TargetName:     new(existingAPIKey.Name),
+	})
+
+	return nil
 }
 
 func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(

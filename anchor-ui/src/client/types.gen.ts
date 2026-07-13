@@ -956,6 +956,17 @@ export type OrganizationApiKeyValidateRequest = {
     required_scopes: Array<string>;
 };
 
+export type OrganizationApiKeyIntrospectRequest = {
+    /**
+     * Raw organization API key value to introspect.
+     */
+    api_key: string;
+    /**
+     * Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+     */
+    required_scopes?: Array<string>;
+};
+
 export type OrganizationApiKeyValidateResponse = {
     api_key: OrganizationApiKeyResponse;
     /**
@@ -1177,6 +1188,116 @@ export type OrganizationMemberFilter = {
 export enum OrganizationMemberInclude {
     ROLE_PERMISSIONS = 'role_permissions'
 }
+
+/**
+ * The kind of principal that performed the audited action.
+ */
+export enum AuditLogActorType {
+    PLATFORM_USER = 'PLATFORM_USER',
+    PRODUCT_API_KEY = 'PRODUCT_API_KEY',
+    SYSTEM = 'SYSTEM'
+}
+
+/**
+ * Whether the audited action succeeded.
+ */
+export enum AuditLogOutcome {
+    SUCCESS = 'SUCCESS',
+    FAILURE = 'FAILURE'
+}
+
+export type AuditLogResponse = {
+    id: Ksuid;
+    organization_id?: Ksuid;
+    /**
+     * Dotted resource.verb event name.
+     */
+    action: string;
+    outcome: AuditLogOutcome;
+    actor_type: AuditLogActorType;
+    /**
+     * Identifier of the acting principal.
+     */
+    actor_id?: string;
+    /**
+     * Display name of the actor, snapshotted at event time.
+     */
+    actor_name?: string;
+    /**
+     * Type of the resource the action was performed on.
+     */
+    target_type: string;
+    /**
+     * Identifier of the target resource.
+     */
+    target_id?: string;
+    /**
+     * Display name of the target, snapshotted at event time.
+     */
+    target_name?: string;
+    /**
+     * Correlation ID of the originating request.
+     */
+    request_id?: string;
+    /**
+     * Additional event detail.
+     */
+    metadata?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Timestamp when the event was recorded.
+     */
+    created_at: string;
+};
+
+/**
+ * Filter criteria for searching audit logs.
+ */
+export type AuditLogFilter = {
+    organization_id?: Ksuid;
+    /**
+     * Filter by action names.
+     */
+    actions?: Array<string>;
+    /**
+     * Filter by actor types.
+     */
+    actor_types?: Array<AuditLogActorType>;
+    /**
+     * Filter by acting principal ID.
+     */
+    actor_id?: string;
+    /**
+     * Filter by target resource type.
+     */
+    target_type?: string;
+    /**
+     * Filter by target resource ID.
+     */
+    target_id?: string;
+    outcome?: AuditLogOutcome;
+    /**
+     * Only include entries created at or after this time.
+     */
+    created_after?: string;
+    /**
+     * Only include entries created at or before this time.
+     */
+    created_before?: string;
+};
+
+export type AuditLogSearchRequest = SearchRequest & {
+    filter?: AuditLogFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'created_at';
+};
+
+export type AuditLogListResponse = PagedListResponse & {
+    items: Array<AuditLogResponse>;
+};
 
 /**
  * The type of integration provider.
@@ -3961,6 +4082,48 @@ export type ValidateOrganizationApiKeyResponses = {
 
 export type ValidateOrganizationApiKeyResponse = ValidateOrganizationApiKeyResponses[keyof ValidateOrganizationApiKeyResponses];
 
+export type IntrospectOrganizationApiKeyData = {
+    body: OrganizationApiKeyIntrospectRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/auth/introspect';
+};
+
+export type IntrospectOrganizationApiKeyErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Organization API key is valid but lacks one or more required scopes.
+     */
+    403: OrganizationApiKeyValidateForbiddenResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type IntrospectOrganizationApiKeyError = IntrospectOrganizationApiKeyErrors[keyof IntrospectOrganizationApiKeyErrors];
+
+export type IntrospectOrganizationApiKeyResponses = {
+    /**
+     * Organization API key introspection result.
+     */
+    200: OrganizationApiKeyValidateResponse;
+};
+
+export type IntrospectOrganizationApiKeyResponse = IntrospectOrganizationApiKeyResponses[keyof IntrospectOrganizationApiKeyResponses];
+
 export type CreateProductOrganizationData = {
     /**
      * Organization details (name, optional description).
@@ -4548,6 +4711,47 @@ export type SearchOrganizationMembersResponses = {
 };
 
 export type SearchOrganizationMembersResponse = SearchOrganizationMembersResponses[keyof SearchOrganizationMembersResponses];
+
+export type SearchAuditLogsData = {
+    /**
+     * Search criteria.
+     */
+    body: AuditLogSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/audit-logs/search';
+};
+
+export type SearchAuditLogsErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type SearchAuditLogsError = SearchAuditLogsErrors[keyof SearchAuditLogsErrors];
+
+export type SearchAuditLogsResponses = {
+    /**
+     * A page of audit log entries for the product.
+     */
+    200: AuditLogListResponse;
+};
+
+export type SearchAuditLogsResponse = SearchAuditLogsResponses[keyof SearchAuditLogsResponses];
 
 export type ListEmailTemplatesData = {
     body?: never;

@@ -23,6 +23,7 @@ func NewModule() fx.Option {
 			NewIntegrationInstanceMapper,
 			NewIntegrationEventMapper,
 			NewIntegrationAuditLogMapper,
+			NewAuditLogMapper,
 			NewEmailTemplateMapper,
 			NewEmailTemplateVersionMapper,
 			NewEmailSendRecordMapper,

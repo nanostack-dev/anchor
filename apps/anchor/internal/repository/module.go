@@ -25,6 +25,7 @@ func NewModule() fx.Option {
 			NewIntegrationEventRepository,
 			NewIntegrationAuditLogRepository,
 			NewOrganizationMembershipRepository,
+			NewAuditLogRepository,
 		),
 	)
 }

@@ -29,9 +29,11 @@ export function DateRangeFilter({
 			return;
 		}
 
+		// format() keeps the local calendar date; toISOString() would shift it
+		// to the previous UTC day for users east of UTC.
 		onChange({
-			from: range.from ? range.from.toISOString().split("T")[0] : undefined,
-			to: range.to ? range.to.toISOString().split("T")[0] : undefined,
+			from: range.from ? format(range.from, "yyyy-MM-dd") : undefined,
+			to: range.to ? format(range.to, "yyyy-MM-dd") : undefined,
 		});
 	};
 

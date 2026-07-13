@@ -28,6 +28,7 @@ type AnchorAPI struct {
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
+	AuditLogService               service.AuditLogService
 	EmailService                  emailsvc.EmailService
 	Queue                         *pgqueue.Client
 	CoreConfig                    *config.CoreConfig
@@ -51,6 +52,7 @@ type Params struct {
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
+	AuditLogService               service.AuditLogService
 	EmailService                  emailsvc.EmailService
 	Queue                         *pgqueue.Client
 	CoreConfig                    *config.CoreConfig
@@ -74,6 +76,7 @@ func NewAPI(params Params) *AnchorAPI {
 		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,
 		IntegrationService:            params.IntegrationService,
+		AuditLogService:               params.AuditLogService,
 		EmailService:                  params.EmailService,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
