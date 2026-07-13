@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/domain/audit"
 	"anchor/internal/domain/product"
 	"anchor/internal/repository"
 
@@ -38,6 +39,7 @@ type productService struct {
 	productRepo           repository.ProductRepository
 	productPermissionRepo repository.ProductPermissionRepository
 	cacheService          ProductCacheService
+	auditLogService       AuditLogService
 	logger                zerolog.Logger
 	transactor            transactor.Transactor
 }
@@ -45,12 +47,16 @@ type productService struct {
 func NewProductService(
 	productRepo repository.ProductRepository,
 	productPermissionRepo repository.ProductPermissionRepository,
-	cacheService ProductCacheService, transactor transactor.Transactor, logger zerolog.Logger,
+	cacheService ProductCacheService,
+	auditLogService AuditLogService,
+	transactor transactor.Transactor,
+	logger zerolog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
 		cacheService:          cacheService,
+		auditLogService:       auditLogService,
 		logger:                logger.With().Str("component", "product_service").Logger(),
 		transactor:            transactor,
 	}
@@ -176,7 +182,20 @@ func (s *productService) Create(
 			Msg("created default permissions")
 		return nil
 	})
-	return productCreated, err
+	if err != nil {
+		return productCreated, err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		PlatformTenantID: input.TenantID,
+		ProductID:        productCreated.ID,
+		Action:           audit.ActionProductCreated,
+		TargetType:       audit.TargetTypeProduct,
+		TargetID:         new(productCreated.ID),
+		TargetName:       new(productCreated.Name),
+	})
+
+	return productCreated, nil
 }
 
 func (s *productService) Update(
@@ -193,7 +212,20 @@ func (s *productService) Update(
 		updated, updateErr = s.updateProductInTransaction(txCtx, input, logger)
 		return updateErr
 	})
-	return updated, err
+	if err != nil {
+		return updated, err
+	}
+
+	s.auditLogService.Record(ctx, audit.Log{
+		PlatformTenantID: input.TenantID,
+		ProductID:        updated.ID,
+		Action:           audit.ActionProductUpdated,
+		TargetType:       audit.TargetTypeProduct,
+		TargetID:         new(updated.ID),
+		TargetName:       new(updated.Name),
+	})
+
+	return updated, nil
 }
 
 func (s *productService) updateProductInTransaction(
@@ -314,6 +346,17 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		return err
 	}
 
+	// Best-effort name snapshot for the audit entry before the row disappears.
+	var deletedName *string
+	if existing, findErr := s.productRepo.FindByID(
+		ctx,
+		input.TenantID,
+		input.ProductID,
+	); findErr == nil &&
+		existing != nil {
+		deletedName = new(existing.Name)
+	}
+
 	err := s.productRepo.DeleteByID(ctx, input.TenantID, input.ProductID)
 	if err == nil {
 		if evictErr := s.cacheService.EvictProduct(
@@ -322,6 +365,15 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 			logger.Warn().Err(evictErr).Msg("failed to evict product from cache after delete")
 		}
 		logger.Info().Str("product_id", input.ProductID).Msg("product deleted")
+
+		s.auditLogService.Record(ctx, audit.Log{
+			PlatformTenantID: input.TenantID,
+			ProductID:        input.ProductID,
+			Action:           audit.ActionProductDeleted,
+			TargetType:       audit.TargetTypeProduct,
+			TargetID:         new(input.ProductID),
+			TargetName:       deletedName,
+		})
 	} else {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to delete product")
 	}

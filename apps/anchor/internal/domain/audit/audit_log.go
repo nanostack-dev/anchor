@@ -82,8 +82,20 @@ const (
 	ActionWorkspaceUpdated Action = "workspace.updated"
 	ActionWorkspaceDeleted Action = "workspace.deleted"
 
-	ActionWorkspaceMemberAdded   Action = "workspace.member_added"
-	ActionWorkspaceMemberRemoved Action = "workspace.member_removed"
+	ActionProductCreated Action = "product.created"
+	ActionProductUpdated Action = "product.updated"
+	ActionProductDeleted Action = "product.deleted"
+
+	ActionProductUserCreated Action = "product_user.created"
+	ActionProductUserDeleted Action = "product_user.deleted"
+
+	ActionPermissionCreated Action = "permission.created"
+	ActionPermissionUpdated Action = "permission.updated"
+	ActionPermissionDeleted Action = "permission.deleted"
+
+	ActionResourcePermissionCreated Action = "resource_permission.created"
+	ActionResourcePermissionUpdated Action = "resource_permission.updated"
+	ActionResourcePermissionDeleted Action = "resource_permission.deleted"
 
 	ActionOrganizationAPIKeyCreated Action = "organization_api_key.created"
 	ActionOrganizationAPIKeyUpdated Action = "organization_api_key.updated"
@@ -108,4 +120,8 @@ const (
 	TargetTypeOrganizationAPIKey = "organization_api_key"
 	TargetTypeProductAPIKey      = "product_api_key"
 	TargetTypeRole               = "role"
+	TargetTypeProduct            = "product"
+	TargetTypeProductUser        = "product_user"
+	TargetTypePermission         = "permission"
+	TargetTypeResourcePermission = "resource_permission"
 )

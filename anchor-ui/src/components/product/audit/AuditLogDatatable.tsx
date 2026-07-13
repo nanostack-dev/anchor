@@ -27,6 +27,9 @@ type AuditLogFilters = {
 };
 
 const ACTION_OPTIONS = [
+	"product.created",
+	"product.updated",
+	"product.deleted",
 	"organization.created",
 	"organization.updated",
 	"organization.deleted",
@@ -47,6 +50,14 @@ const ACTION_OPTIONS = [
 	"role.deleted",
 	"role.permission_assigned",
 	"role.permission_unassigned",
+	"permission.created",
+	"permission.updated",
+	"permission.deleted",
+	"resource_permission.created",
+	"resource_permission.updated",
+	"resource_permission.deleted",
+	"product_user.created",
+	"product_user.deleted",
 ].map((action) => ({ label: action, value: action }));
 
 const ACTOR_TYPE_LABELS: Record<AuditLogActorType, string> = {
