@@ -27,6 +27,7 @@ type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
+	organizationRepo  repository.OrganizationRepository
 	logger            zerolog.Logger
 }
 
@@ -34,12 +35,14 @@ func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
+	organizationRepo repository.OrganizationRepository,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
+		organizationRepo:  organizationRepo,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
 	}
 }
@@ -50,6 +53,10 @@ func (s *organizationMembershipService) AddMember(
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.Membership{}, err
+	}
+
+	if err := s.validateOrganization(ctx, input.ProductID, input.OrganizationID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -305,9 +312,37 @@ func (s *organizationMembershipService) SearchMembers(
 	return result, nil
 }
 
-// validateRole checks that the role exists within the given product.
-// The product itself is verified by the auth middleware, and the org/user are
-// validated implicitly by the membership repo queries that follow.
+// validateOrganization checks that the organization exists within the given
+// product. The product itself is verified by the auth middleware, but the
+// membership repo Create/FindByOrgIDAndUserID queries scope only by
+// organization_id + product_user_id — they never join organizations on
+// product_id — so without this check a caller authorized for product A could
+// supply an OrganizationID belonging to a different product/tenant and have a
+// membership row written against that foreign organization.
+func (s *organizationMembershipService) validateOrganization(
+	ctx context.Context,
+	productID string,
+	organizationID string,
+	logger zerolog.Logger,
+) error {
+	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", productID).
+			Str("organization_id", organizationID).
+			Msg("failed to verify organization exists")
+		return err
+	}
+	if org == nil {
+		return NewOrganizationNotFoundError(organizationID)
+	}
+
+	return nil
+}
+
+// validateProductUser checks that the product user exists within the given
+// product. The product itself is verified by the auth middleware; the
+// organization is verified separately by validateOrganization.
 func (s *organizationMembershipService) validateProductUser(
 	ctx context.Context,
 	productID string,
