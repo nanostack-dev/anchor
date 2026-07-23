@@ -30,6 +30,9 @@ export const ROUTE_PATHS = {
 	PRODUCT_PLANS: "/products/plans",
 	PRODUCT_LICENSES: "/products/licenses",
 
+	// Webhook routes
+	PRODUCT_WEBHOOKS: "/products/webhooks",
+
 	// Organization routes
 	ORGANIZATIONS: "/organizations",
 	ORGANIZATIONS_APIS_KEYS: "/organizations/api-keys",

@@ -18,6 +18,7 @@ import {
 	UserPlus,
 	Users,
 	Users2,
+	Webhook,
 } from "lucide-react";
 
 export interface SubMenuItem {
@@ -172,6 +173,18 @@ export const sidebarConfig: SidebarGroup[] = [
 				title: "Licenses",
 				path: ROUTE_PATHS.PRODUCT_LICENSES,
 				icon: BadgeCheck,
+			},
+		],
+	},
+	{
+		id: "webhooks",
+		title: "Webhooks",
+		type: "product",
+		items: [
+			{
+				title: "Endpoints",
+				path: ROUTE_PATHS.PRODUCT_WEBHOOKS,
+				icon: Webhook,
 			},
 		],
 	},

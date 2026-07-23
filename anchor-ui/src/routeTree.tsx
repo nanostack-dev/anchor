@@ -28,6 +28,7 @@ import { productPlansRoute } from "@/routes/products/product-plans";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
 import { productRolesRoute } from "@/routes/products/product-roles-route";
 import { productUsersRoute } from "@/routes/products/product-users";
+import { productWebhooksRoute } from "@/routes/products/product-webhooks";
 import { productsRoute } from "@/routes/products/products";
 import { settingsAppRoute } from "@/routes/settings/app";
 import { settingsUserRoute } from "@/routes/settings/user";
@@ -47,6 +48,7 @@ const routeTree = rootRoute.addChildren([
 	productRolesRoute,
 	productPlansRoute,
 	productLicensesRoute,
+	productWebhooksRoute,
 	productResourcePermissionsRoute,
 	productPermissionsRoute,
 	organizationsRoute,
