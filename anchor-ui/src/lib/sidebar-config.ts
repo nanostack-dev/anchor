@@ -1,9 +1,11 @@
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import {
+	BadgeCheck,
 	BookOpen,
 	Building2,
 	Home,
 	Key,
+	Layers,
 	LayoutDashboard,
 	ListChecks,
 	Lock,
@@ -153,6 +155,23 @@ export const sidebarConfig: SidebarGroup[] = [
 				title: "Users",
 				path: ROUTE_PATHS.PRODUCT_USERS,
 				icon: Users,
+			},
+		],
+	},
+	{
+		id: "licensing",
+		title: "Licensing",
+		type: "product",
+		items: [
+			{
+				title: "Plans",
+				path: ROUTE_PATHS.PRODUCT_PLANS,
+				icon: Layers,
+			},
+			{
+				title: "Licenses",
+				path: ROUTE_PATHS.PRODUCT_LICENSES,
+				icon: BadgeCheck,
 			},
 		],
 	},
