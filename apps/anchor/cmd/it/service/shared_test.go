@@ -26,6 +26,15 @@ var (
 	UserRepository         repository.UserRepository
 	Queue                  *pgqueue.Client
 	APIKeyEventSvc         service.OrganizationAPIKeyEventService
+	PlanService            service.PlanService
+	LicenseService         service.LicenseService
+	WebhookEndpointSvc     service.WebhookEndpointService
+	WebhookFanoutSvc       service.WebhookFanoutService
+	WebhookDeliverySvc     service.WebhookDeliveryService
+	WebhookEndpointRepo    repository.WebhookEndpointRepository
+	WebhookDeliveryRepo    repository.WebhookDeliveryRepository
+	WebhookEventRepo       repository.WebhookEventRepository
+	WebhookSecretRepo      repository.WebhookEndpointSecretRepository
 )
 
 func TestMain(m *testing.M) {
@@ -46,6 +55,15 @@ func TestMain(m *testing.M) {
 				&Queue,
 				&APIKeyEventSvc,
 				&ResourcePermissionRepo,
+				&PlanService,
+				&LicenseService,
+				&WebhookEndpointSvc,
+				&WebhookFanoutSvc,
+				&WebhookDeliverySvc,
+				&WebhookEndpointRepo,
+				&WebhookDeliveryRepo,
+				&WebhookEventRepo,
+				&WebhookSecretRepo,
 			},
 		},
 	)
