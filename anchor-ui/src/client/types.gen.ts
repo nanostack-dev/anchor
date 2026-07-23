@@ -1798,6 +1798,181 @@ export type OrganizationEntitlementsResponse = {
 };
 
 /**
+ * Lifecycle status of a webhook endpoint. DISABLED is an administrator's decision; AUTO_DISABLED is Anchor's, after sustained delivery failures or a 410 Gone from the receiver. Disabled endpoints stop accruing deliveries and are never deleted.
+ */
+export enum WebhookEndpointStatus {
+    /**
+     * WebhookEndpointStatusENABLED
+     */
+    WEBHOOK_ENDPOINT_STATUS_ENABLED = 'ENABLED',
+    /**
+     * WebhookEndpointStatusDISABLED
+     */
+    WEBHOOK_ENDPOINT_STATUS_DISABLED = 'DISABLED',
+    /**
+     * WebhookEndpointStatusAUTODISABLED
+     */
+    WEBHOOK_ENDPOINT_STATUS_AUTODISABLED = 'AUTO_DISABLED'
+}
+
+/**
+ * Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
+ */
+export enum WebhookDeliveryStatus {
+    /**
+     * WebhookDeliveryStatusPENDING
+     */
+    WEBHOOK_DELIVERY_STATUS_PENDING = 'PENDING',
+    /**
+     * WebhookDeliveryStatusSUCCEEDED
+     */
+    WEBHOOK_DELIVERY_STATUS_SUCCEEDED = 'SUCCEEDED',
+    /**
+     * WebhookDeliveryStatusFAILED
+     */
+    WEBHOOK_DELIVERY_STATUS_FAILED = 'FAILED',
+    /**
+     * WebhookDeliveryStatusEXHAUSTED
+     */
+    WEBHOOK_DELIVERY_STATUS_EXHAUSTED = 'EXHAUSTED'
+}
+
+/**
+ * Creates a product-scoped outbound webhook subscription.
+ */
+export type WebhookEndpointRequest = {
+    /**
+     * HTTPS URL that receives the signed POST. Loopback, private, link-local and cloud-metadata addresses are refused at send time, after DNS resolution, and redirects are never followed.
+     */
+    url: string;
+    /**
+     * Free-text label shown in the admin UI.
+     */
+    description?: string | null;
+    /**
+     * Subscribed event types. Each entry is either an exact type from `GET /v1/webhook-event-types` or a `<group>.*` wildcard.
+     */
+    event_types: Array<string>;
+};
+
+/**
+ * Partially updates a webhook endpoint.
+ */
+export type WebhookEndpointUpdateRequest = {
+    url?: string;
+    description?: string | null;
+    event_types?: Array<string>;
+};
+
+export type WebhookEndpointResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    url: string;
+    description?: string | null;
+    event_types: Array<string>;
+    status: WebhookEndpointStatus;
+    /**
+     * Why the endpoint is not enabled, when it is not.
+     */
+    disabled_reason?: string | null;
+    /**
+     * Length of the current failure streak; reset by any success.
+     */
+    consecutive_failure_count: number;
+    first_failure_at?: string | null;
+    last_failure_at?: string | null;
+    last_success_at?: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * A webhook endpoint together with its plaintext signing secret. The secret is returned exactly twice in its lifetime — at creation and at rotation — and never appears in a list or get response.
+ */
+export type WebhookEndpointWithSecretResponse = {
+    endpoint: WebhookEndpointResponse;
+    /**
+     * Signing secret, prefixed `anchor_whsec_`. Store it now: it is unrecoverable afterwards. Signatures are HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}`, keyed with the UTF-8 bytes of this value exactly as returned, and delivered in the `webhook-signature` header as `v1,<base64>`.
+     */
+    secret: string;
+};
+
+export type WebhookEndpointListResponse = {
+    items: Array<WebhookEndpointResponse>;
+};
+
+export type WebhookEventTypeDescriptor = {
+    type: string;
+    group: string;
+    description: string;
+};
+
+export type WebhookEventTypeListResponse = {
+    items: Array<WebhookEventTypeDescriptor>;
+    /**
+     * Envelope contract version stamped on every event.
+     */
+    api_version: string;
+};
+
+/**
+ * The synthetic event queued by a ping.
+ */
+export type WebhookPingResponse = {
+    event_id: Ksuid;
+    event_type: string;
+};
+
+export type WebhookDeliveryResponse = {
+    id: Ksuid;
+    event_id: Ksuid;
+    endpoint_id: Ksuid;
+    event_type: string;
+    status: WebhookDeliveryStatus;
+    attempt_count: number;
+    max_attempts: number;
+    target_url: string;
+    last_status_code?: number | null;
+    last_error?: string | null;
+    completed_at?: string | null;
+    /**
+     * Set when this delivery is a manual replay of another.
+     */
+    replay_of_delivery_id?: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type WebhookDeliveryListResponse = {
+    items: Array<WebhookDeliveryResponse>;
+};
+
+export type WebhookDeliveryAttemptResponse = {
+    id: Ksuid;
+    attempt_number: number;
+    status_code?: number | null;
+    error?: string | null;
+    /**
+     * First 2KB of the receiver's response body.
+     */
+    response_snippet?: string | null;
+    duration_ms: number;
+    attempted_at: string;
+};
+
+/**
+ * A delivery with its append-only attempt log and the exact bytes that were signed and sent.
+ */
+export type WebhookDeliveryDetailResponse = {
+    delivery: WebhookDeliveryResponse;
+    /**
+     * The frozen request body, byte-for-byte as signed.
+     */
+    payload: string;
+    attempts: Array<WebhookDeliveryAttemptResponse>;
+};
+
+/**
  * The KSUID of the platform invitation.
  */
 export type PlatformInvitationIdParameter = Ksuid;
@@ -1871,6 +2046,16 @@ export type EmailTemplateIdParameter = Ksuid;
  * The KSUID of the plan.
  */
 export type PlanIdParameter = Ksuid;
+
+/**
+ * The KSUID of the webhook endpoint.
+ */
+export type WebhookEndpointIdParameter = Ksuid;
+
+/**
+ * The KSUID of the webhook delivery.
+ */
+export type WebhookDeliveryIdParameter = Ksuid;
 
 export type LogoutData = {
     body?: never;
@@ -5722,6 +5907,575 @@ export type GetOrganizationEntitlementsResponses = {
 };
 
 export type GetOrganizationEntitlementsResponse = GetOrganizationEntitlementsResponses[keyof GetOrganizationEntitlementsResponses];
+
+export type ListWebhookEndpointsData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints';
+};
+
+export type ListWebhookEndpointsErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type ListWebhookEndpointsError = ListWebhookEndpointsErrors[keyof ListWebhookEndpointsErrors];
+
+export type ListWebhookEndpointsResponses = {
+    /**
+     * Webhook endpoints for the product.
+     */
+    200: WebhookEndpointListResponse;
+};
+
+export type ListWebhookEndpointsResponse = ListWebhookEndpointsResponses[keyof ListWebhookEndpointsResponses];
+
+export type CreateWebhookEndpointData = {
+    /**
+     * Webhook endpoint details.
+     */
+    body: WebhookEndpointRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints';
+};
+
+export type CreateWebhookEndpointErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type CreateWebhookEndpointError = CreateWebhookEndpointErrors[keyof CreateWebhookEndpointErrors];
+
+export type CreateWebhookEndpointResponses = {
+    /**
+     * Endpoint created; signing secret returned once.
+     */
+    201: WebhookEndpointWithSecretResponse;
+};
+
+export type CreateWebhookEndpointResponse = CreateWebhookEndpointResponses[keyof CreateWebhookEndpointResponses];
+
+export type DeleteWebhookEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}';
+};
+
+export type DeleteWebhookEndpointErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeleteWebhookEndpointError = DeleteWebhookEndpointErrors[keyof DeleteWebhookEndpointErrors];
+
+export type DeleteWebhookEndpointResponses = {
+    /**
+     * Webhook endpoint deleted successfully.
+     */
+    204: void;
+};
+
+export type DeleteWebhookEndpointResponse = DeleteWebhookEndpointResponses[keyof DeleteWebhookEndpointResponses];
+
+export type GetWebhookEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}';
+};
+
+export type GetWebhookEndpointErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetWebhookEndpointError = GetWebhookEndpointErrors[keyof GetWebhookEndpointErrors];
+
+export type GetWebhookEndpointResponses = {
+    /**
+     * Webhook endpoint details.
+     */
+    200: WebhookEndpointResponse;
+};
+
+export type GetWebhookEndpointResponse = GetWebhookEndpointResponses[keyof GetWebhookEndpointResponses];
+
+export type UpdateWebhookEndpointData = {
+    /**
+     * Fields to update.
+     */
+    body: WebhookEndpointUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}';
+};
+
+export type UpdateWebhookEndpointErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type UpdateWebhookEndpointError = UpdateWebhookEndpointErrors[keyof UpdateWebhookEndpointErrors];
+
+export type UpdateWebhookEndpointResponses = {
+    /**
+     * Webhook endpoint updated successfully.
+     */
+    200: WebhookEndpointResponse;
+};
+
+export type UpdateWebhookEndpointResponse = UpdateWebhookEndpointResponses[keyof UpdateWebhookEndpointResponses];
+
+export type EnableWebhookEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/enable';
+};
+
+export type EnableWebhookEndpointErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type EnableWebhookEndpointError = EnableWebhookEndpointErrors[keyof EnableWebhookEndpointErrors];
+
+export type EnableWebhookEndpointResponses = {
+    /**
+     * Webhook endpoint enabled.
+     */
+    200: WebhookEndpointResponse;
+};
+
+export type EnableWebhookEndpointResponse = EnableWebhookEndpointResponses[keyof EnableWebhookEndpointResponses];
+
+export type DisableWebhookEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/disable';
+};
+
+export type DisableWebhookEndpointErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DisableWebhookEndpointError = DisableWebhookEndpointErrors[keyof DisableWebhookEndpointErrors];
+
+export type DisableWebhookEndpointResponses = {
+    /**
+     * Webhook endpoint disabled.
+     */
+    200: WebhookEndpointResponse;
+};
+
+export type DisableWebhookEndpointResponse = DisableWebhookEndpointResponses[keyof DisableWebhookEndpointResponses];
+
+export type RotateWebhookEndpointSecretData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret';
+};
+
+export type RotateWebhookEndpointSecretErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type RotateWebhookEndpointSecretError = RotateWebhookEndpointSecretErrors[keyof RotateWebhookEndpointSecretErrors];
+
+export type RotateWebhookEndpointSecretResponses = {
+    /**
+     * Secret rotated; new signing secret returned once.
+     */
+    200: WebhookEndpointWithSecretResponse;
+};
+
+export type RotateWebhookEndpointSecretResponse = RotateWebhookEndpointSecretResponses[keyof RotateWebhookEndpointSecretResponses];
+
+export type PingWebhookEndpointData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/ping';
+};
+
+export type PingWebhookEndpointErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type PingWebhookEndpointError = PingWebhookEndpointErrors[keyof PingWebhookEndpointErrors];
+
+export type PingWebhookEndpointResponses = {
+    /**
+     * Ping event queued.
+     */
+    202: WebhookPingResponse;
+};
+
+export type PingWebhookEndpointResponse = PingWebhookEndpointResponses[keyof PingWebhookEndpointResponses];
+
+export type ListWebhookDeliveriesData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: {
+        /**
+         * Filter by delivery status.
+         */
+        status?: WebhookDeliveryStatus;
+        /**
+         * Filter by event type.
+         */
+        event_type?: string;
+        /**
+         * Page size (default 50, maximum 200).
+         */
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries';
+};
+
+export type ListWebhookDeliveriesErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type ListWebhookDeliveriesError = ListWebhookDeliveriesErrors[keyof ListWebhookDeliveriesErrors];
+
+export type ListWebhookDeliveriesResponses = {
+    /**
+     * Delivery log for the endpoint.
+     */
+    200: WebhookDeliveryListResponse;
+};
+
+export type ListWebhookDeliveriesResponse = ListWebhookDeliveriesResponses[keyof ListWebhookDeliveriesResponses];
+
+export type GetWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+        /**
+         * The KSUID of the webhook delivery.
+         */
+        delivery_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries/{delivery_id}';
+};
+
+export type GetWebhookDeliveryErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetWebhookDeliveryError = GetWebhookDeliveryErrors[keyof GetWebhookDeliveryErrors];
+
+export type GetWebhookDeliveryResponses = {
+    /**
+     * Delivery detail.
+     */
+    200: WebhookDeliveryDetailResponse;
+};
+
+export type GetWebhookDeliveryResponse = GetWebhookDeliveryResponses[keyof GetWebhookDeliveryResponses];
+
+export type RetryWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+        /**
+         * The KSUID of the webhook delivery.
+         */
+        delivery_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries/{delivery_id}/retry';
+};
+
+export type RetryWebhookDeliveryErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+    /**
+     * Conflict (e.g., resource already exists)
+     */
+    409: ApiErrorResponse;
+};
+
+export type RetryWebhookDeliveryError = RetryWebhookDeliveryErrors[keyof RetryWebhookDeliveryErrors];
+
+export type RetryWebhookDeliveryResponses = {
+    /**
+     * Replay delivery queued.
+     */
+    202: WebhookDeliveryResponse;
+};
+
+export type RetryWebhookDeliveryResponse = RetryWebhookDeliveryResponses[keyof RetryWebhookDeliveryResponses];
+
+export type ListWebhookEventTypesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/webhook-event-types';
+};
+
+export type ListWebhookEventTypesErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type ListWebhookEventTypesError = ListWebhookEventTypesErrors[keyof ListWebhookEventTypesErrors];
+
+export type ListWebhookEventTypesResponses = {
+    /**
+     * Registered webhook event types.
+     */
+    200: WebhookEventTypeListResponse;
+};
+
+export type ListWebhookEventTypesResponse = ListWebhookEventTypesResponses[keyof ListWebhookEventTypesResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

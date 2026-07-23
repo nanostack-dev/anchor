@@ -24,6 +24,8 @@ var maintainedPathParams = map[string]struct{}{
 	"provider_type":           {},
 	"role_id":                 {},
 	"workspace_id":            {},
+	"webhook_endpoint_id":     {},
+	"delivery_id":             {},
 }
 
 func TestOpenAPIPathVariablesStayOnMaintainedList(t *testing.T) {

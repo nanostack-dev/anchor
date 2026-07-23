@@ -743,6 +743,51 @@ func (e UserOrganizationInclude) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDeliveryStatus.
+const (
+	WebhookDeliveryStatusEXHAUSTED WebhookDeliveryStatus = "EXHAUSTED"
+	WebhookDeliveryStatusFAILED    WebhookDeliveryStatus = "FAILED"
+	WebhookDeliveryStatusPENDING   WebhookDeliveryStatus = "PENDING"
+	WebhookDeliveryStatusSUCCEEDED WebhookDeliveryStatus = "SUCCEEDED"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeliveryStatus enum.
+func (e WebhookDeliveryStatus) Valid() bool {
+	switch e {
+	case WebhookDeliveryStatusEXHAUSTED:
+		return true
+	case WebhookDeliveryStatusFAILED:
+		return true
+	case WebhookDeliveryStatusPENDING:
+		return true
+	case WebhookDeliveryStatusSUCCEEDED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookEndpointStatus.
+const (
+	WebhookEndpointStatusAUTODISABLED WebhookEndpointStatus = "AUTO_DISABLED"
+	WebhookEndpointStatusDISABLED     WebhookEndpointStatus = "DISABLED"
+	WebhookEndpointStatusENABLED      WebhookEndpointStatus = "ENABLED"
+)
+
+// Valid indicates whether the value is a known member of the WebhookEndpointStatus enum.
+func (e WebhookEndpointStatus) Valid() bool {
+	switch e {
+	case WebhookEndpointStatusAUTODISABLED:
+		return true
+	case WebhookEndpointStatusDISABLED:
+		return true
+	case WebhookEndpointStatusENABLED:
+		return true
+	default:
+		return false
+	}
+}
+
 // ApiError defines model for ApiError.
 type ApiError struct {
 	// Code A machine-readable error code.
@@ -2502,6 +2547,148 @@ type UserResponse struct {
 	Role  string `json:"role"`
 }
 
+// WebhookDeliveryAttemptResponse defines model for WebhookDeliveryAttemptResponse.
+type WebhookDeliveryAttemptResponse struct {
+	AttemptNumber int       `json:"attempt_number"`
+	AttemptedAt   time.Time `json:"attempted_at"`
+	DurationMs    int       `json:"duration_ms"`
+	Error         *string   `json:"error,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id Ksuid `json:"id"`
+
+	// ResponseSnippet First 2KB of the receiver's response body.
+	ResponseSnippet *string `json:"response_snippet,omitempty"`
+	StatusCode      *int    `json:"status_code,omitempty"`
+}
+
+// WebhookDeliveryDetailResponse A delivery with its append-only attempt log and the exact bytes that were signed and sent.
+type WebhookDeliveryDetailResponse struct {
+	Attempts []WebhookDeliveryAttemptResponse `json:"attempts"`
+	Delivery WebhookDeliveryResponse          `json:"delivery"`
+
+	// Payload The frozen request body, byte-for-byte as signed.
+	Payload string `json:"payload"`
+}
+
+// WebhookDeliveryListResponse defines model for WebhookDeliveryListResponse.
+type WebhookDeliveryListResponse struct {
+	Items []WebhookDeliveryResponse `json:"items"`
+}
+
+// WebhookDeliveryResponse defines model for WebhookDeliveryResponse.
+type WebhookDeliveryResponse struct {
+	AttemptCount int        `json:"attempt_count"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+
+	// EndpointId Unique identifier using KSUID format with a resource-specific prefix.
+	EndpointId Ksuid `json:"endpoint_id"`
+
+	// EventId Unique identifier using KSUID format with a resource-specific prefix.
+	EventId   Ksuid  `json:"event_id"`
+	EventType string `json:"event_type"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id             Ksuid   `json:"id"`
+	LastError      *string `json:"last_error,omitempty"`
+	LastStatusCode *int    `json:"last_status_code,omitempty"`
+	MaxAttempts    int     `json:"max_attempts"`
+
+	// ReplayOfDeliveryId Set when this delivery is a manual replay of another.
+	ReplayOfDeliveryId *string `json:"replay_of_delivery_id,omitempty"`
+
+	// Status Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
+	Status    WebhookDeliveryStatus `json:"status"`
+	TargetUrl string                `json:"target_url"`
+	UpdatedAt time.Time             `json:"updated_at"`
+}
+
+// WebhookDeliveryStatus Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
+type WebhookDeliveryStatus string
+
+// WebhookEndpointListResponse defines model for WebhookEndpointListResponse.
+type WebhookEndpointListResponse struct {
+	Items []WebhookEndpointResponse `json:"items"`
+}
+
+// WebhookEndpointRequest Creates a product-scoped outbound webhook subscription.
+type WebhookEndpointRequest struct {
+	// Description Free-text label shown in the admin UI.
+	Description *string `json:"description,omitempty"`
+
+	// EventTypes Subscribed event types. Each entry is either an exact type from `GET /v1/webhook-event-types` or a `<group>.*` wildcard.
+	EventTypes []string `json:"event_types"`
+
+	// Url HTTPS URL that receives the signed POST. Loopback, private, link-local and cloud-metadata addresses are refused at send time, after DNS resolution, and redirects are never followed.
+	Url string `json:"url"`
+}
+
+// WebhookEndpointResponse defines model for WebhookEndpointResponse.
+type WebhookEndpointResponse struct {
+	// ConsecutiveFailureCount Length of the current failure streak; reset by any success.
+	ConsecutiveFailureCount int       `json:"consecutive_failure_count"`
+	CreatedAt               time.Time `json:"created_at"`
+	Description             *string   `json:"description,omitempty"`
+
+	// DisabledReason Why the endpoint is not enabled, when it is not.
+	DisabledReason *string    `json:"disabled_reason,omitempty"`
+	EventTypes     []string   `json:"event_types"`
+	FirstFailureAt *time.Time `json:"first_failure_at,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id            Ksuid      `json:"id"`
+	LastFailureAt *time.Time `json:"last_failure_at,omitempty"`
+	LastSuccessAt *time.Time `json:"last_success_at,omitempty"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid `json:"product_id"`
+
+	// Status Lifecycle status of a webhook endpoint. DISABLED is an administrator's decision; AUTO_DISABLED is Anchor's, after sustained delivery failures or a 410 Gone from the receiver. Disabled endpoints stop accruing deliveries and are never deleted.
+	Status    WebhookEndpointStatus `json:"status"`
+	UpdatedAt time.Time             `json:"updated_at"`
+	Url       string                `json:"url"`
+}
+
+// WebhookEndpointStatus Lifecycle status of a webhook endpoint. DISABLED is an administrator's decision; AUTO_DISABLED is Anchor's, after sustained delivery failures or a 410 Gone from the receiver. Disabled endpoints stop accruing deliveries and are never deleted.
+type WebhookEndpointStatus string
+
+// WebhookEndpointUpdateRequest Partially updates a webhook endpoint.
+type WebhookEndpointUpdateRequest struct {
+	Description *string   `json:"description,omitempty"`
+	EventTypes  *[]string `json:"event_types,omitempty"`
+	Url         *string   `json:"url,omitempty"`
+}
+
+// WebhookEndpointWithSecretResponse A webhook endpoint together with its plaintext signing secret. The secret is returned exactly twice in its lifetime — at creation and at rotation — and never appears in a list or get response.
+type WebhookEndpointWithSecretResponse struct {
+	Endpoint WebhookEndpointResponse `json:"endpoint"`
+
+	// Secret Signing secret, prefixed `anchor_whsec_`. Store it now: it is unrecoverable afterwards. Signatures are HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}`, keyed with the UTF-8 bytes of this value exactly as returned, and delivered in the `webhook-signature` header as `v1,<base64>`.
+	Secret string `json:"secret"`
+}
+
+// WebhookEventTypeDescriptor defines model for WebhookEventTypeDescriptor.
+type WebhookEventTypeDescriptor struct {
+	Description string `json:"description"`
+	Group       string `json:"group"`
+	Type        string `json:"type"`
+}
+
+// WebhookEventTypeListResponse defines model for WebhookEventTypeListResponse.
+type WebhookEventTypeListResponse struct {
+	// ApiVersion Envelope contract version stamped on every event.
+	ApiVersion string                       `json:"api_version"`
+	Items      []WebhookEventTypeDescriptor `json:"items"`
+}
+
+// WebhookPingResponse The synthetic event queued by a ping.
+type WebhookPingResponse struct {
+	// EventId Unique identifier using KSUID format with a resource-specific prefix.
+	EventId   Ksuid  `json:"event_id"`
+	EventType string `json:"event_type"`
+}
+
 // WorkspaceFilter defines model for WorkspaceFilter.
 type WorkspaceFilter struct {
 	// Ids Filter by specific workspace IDs.
@@ -2555,6 +2742,12 @@ type ProviderTypeParameter = IntegrationProviderType
 
 // ResourcePermissionNameParameter defines model for ResourcePermissionNameParameter.
 type ResourcePermissionNameParameter = string
+
+// WebhookDeliveryIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+type WebhookDeliveryIdParameter = Ksuid
+
+// WebhookEndpointIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+type WebhookEndpointIdParameter = Ksuid
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 type WorkspaceIdParameter = Ksuid
@@ -2627,6 +2820,19 @@ type ListUserOrganizationsParams struct {
 type GetUserOrganizationParams struct {
 	// Include Comma-separated list of additional fields to include.
 	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// ListWebhookDeliveriesParams defines parameters for ListWebhookDeliveries.
+type ListWebhookDeliveriesParams struct {
+	// Status Filter by delivery status.
+	Status *WebhookDeliveryStatus `form:"status,omitempty" json:"status,omitempty"`
+
+	// EventType Filter by event type.
+	EventType *string `form:"event_type,omitempty" json:"event_type,omitempty"`
+
+	// Limit Page size (default 50, maximum 200).
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -2769,6 +2975,12 @@ type UpdateProductRoleJSONRequestBody = ProductRoleUpdateRequest
 
 // AssignPermissionToProductRoleJSONRequestBody defines body for AssignPermissionToProductRole for application/json ContentType.
 type AssignPermissionToProductRoleJSONRequestBody = AssignPermissionRequest
+
+// CreateWebhookEndpointJSONRequestBody defines body for CreateWebhookEndpoint for application/json ContentType.
+type CreateWebhookEndpointJSONRequestBody = WebhookEndpointRequest
+
+// UpdateWebhookEndpointJSONRequestBody defines body for UpdateWebhookEndpoint for application/json ContentType.
+type UpdateWebhookEndpointJSONRequestBody = WebhookEndpointUpdateRequest
 
 // AsClerkIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a ClerkIntegrationInstanceCreateRequest
 func (t IntegrationInstanceCreateRequest) AsClerkIntegrationInstanceCreateRequest() (ClerkIntegrationInstanceCreateRequest, error) {

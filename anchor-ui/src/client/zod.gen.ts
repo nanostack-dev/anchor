@@ -1343,6 +1343,172 @@ export const zOrganizationEntitlementsResponse = z.object({
 });
 
 /**
+ * Lifecycle status of a webhook endpoint. DISABLED is an administrator's decision; AUTO_DISABLED is Anchor's, after sustained delivery failures or a 410 Gone from the receiver. Disabled endpoints stop accruing deliveries and are never deleted.
+ */
+export const zWebhookEndpointStatus = z.enum([
+    'ENABLED',
+    'DISABLED',
+    'AUTO_DISABLED'
+]);
+
+/**
+ * Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
+ */
+export const zWebhookDeliveryStatus = z.enum([
+    'PENDING',
+    'SUCCEEDED',
+    'FAILED',
+    'EXHAUSTED'
+]);
+
+/**
+ * Creates a product-scoped outbound webhook subscription.
+ */
+export const zWebhookEndpointRequest = z.object({
+    url: z.string().max(2000),
+    description: z.optional(z.union([
+        z.string().max(500),
+        z.null()
+    ])),
+    event_types: z.array(z.string()).min(1).max(50)
+});
+
+/**
+ * Partially updates a webhook endpoint.
+ */
+export const zWebhookEndpointUpdateRequest = z.object({
+    url: z.optional(z.string().max(2000)),
+    description: z.optional(z.union([
+        z.string().max(500),
+        z.null()
+    ])),
+    event_types: z.optional(z.array(z.string()).min(1).max(50))
+});
+
+export const zWebhookEndpointResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    url: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    event_types: z.array(z.string()),
+    status: zWebhookEndpointStatus,
+    disabled_reason: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    consecutive_failure_count: z.int(),
+    first_failure_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    last_failure_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    last_success_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+/**
+ * A webhook endpoint together with its plaintext signing secret. The secret is returned exactly twice in its lifetime — at creation and at rotation — and never appears in a list or get response.
+ */
+export const zWebhookEndpointWithSecretResponse = z.object({
+    endpoint: zWebhookEndpointResponse,
+    secret: z.string()
+});
+
+export const zWebhookEndpointListResponse = z.object({
+    items: z.array(zWebhookEndpointResponse)
+});
+
+export const zWebhookEventTypeDescriptor = z.object({
+    type: z.string(),
+    group: z.string(),
+    description: z.string()
+});
+
+export const zWebhookEventTypeListResponse = z.object({
+    items: z.array(zWebhookEventTypeDescriptor),
+    api_version: z.string()
+});
+
+/**
+ * The synthetic event queued by a ping.
+ */
+export const zWebhookPingResponse = z.object({
+    event_id: zKsuid,
+    event_type: z.string()
+});
+
+export const zWebhookDeliveryResponse = z.object({
+    id: zKsuid,
+    event_id: zKsuid,
+    endpoint_id: zKsuid,
+    event_type: z.string(),
+    status: zWebhookDeliveryStatus,
+    attempt_count: z.int(),
+    max_attempts: z.int(),
+    target_url: z.string(),
+    last_status_code: z.optional(z.union([
+        z.int(),
+        z.null()
+    ])),
+    last_error: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    completed_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    replay_of_delivery_id: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zWebhookDeliveryListResponse = z.object({
+    items: z.array(zWebhookDeliveryResponse)
+});
+
+export const zWebhookDeliveryAttemptResponse = z.object({
+    id: zKsuid,
+    attempt_number: z.int(),
+    status_code: z.optional(z.union([
+        z.int(),
+        z.null()
+    ])),
+    error: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    response_snippet: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    duration_ms: z.int(),
+    attempted_at: z.iso.datetime()
+});
+
+/**
+ * A delivery with its append-only attempt log and the exact bytes that were signed and sent.
+ */
+export const zWebhookDeliveryDetailResponse = z.object({
+    delivery: zWebhookDeliveryResponse,
+    payload: z.string(),
+    attempts: z.array(zWebhookDeliveryAttemptResponse)
+});
+
+/**
  * The KSUID of the platform invitation.
  */
 export const zPlatformInvitationIdParameter = zKsuid;
@@ -1416,6 +1582,16 @@ export const zEmailTemplateIdParameter = zKsuid;
  * The KSUID of the plan.
  */
 export const zPlanIdParameter = zKsuid;
+
+/**
+ * The KSUID of the webhook endpoint.
+ */
+export const zWebhookEndpointIdParameter = zKsuid;
+
+/**
+ * The KSUID of the webhook delivery.
+ */
+export const zWebhookDeliveryIdParameter = zKsuid;
 
 export const zLogoutData = z.object({
     body: z.optional(z.never()),
@@ -2736,3 +2912,187 @@ export const zGetOrganizationEntitlementsData = z.object({
  * Resolved entitlements.
  */
 export const zGetOrganizationEntitlementsResponse = zOrganizationEntitlementsResponse;
+
+export const zListWebhookEndpointsData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoints for the product.
+ */
+export const zListWebhookEndpointsResponse = zWebhookEndpointListResponse;
+
+export const zCreateWebhookEndpointData = z.object({
+    body: zWebhookEndpointRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Endpoint created; signing secret returned once.
+ */
+export const zCreateWebhookEndpointResponse = zWebhookEndpointWithSecretResponse;
+
+export const zDeleteWebhookEndpointData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoint deleted successfully.
+ */
+export const zDeleteWebhookEndpointResponse = z.void();
+
+export const zGetWebhookEndpointData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoint details.
+ */
+export const zGetWebhookEndpointResponse = zWebhookEndpointResponse;
+
+export const zUpdateWebhookEndpointData = z.object({
+    body: zWebhookEndpointUpdateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoint updated successfully.
+ */
+export const zUpdateWebhookEndpointResponse = zWebhookEndpointResponse;
+
+export const zEnableWebhookEndpointData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoint enabled.
+ */
+export const zEnableWebhookEndpointResponse = zWebhookEndpointResponse;
+
+export const zDisableWebhookEndpointData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Webhook endpoint disabled.
+ */
+export const zDisableWebhookEndpointResponse = zWebhookEndpointResponse;
+
+export const zRotateWebhookEndpointSecretData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Secret rotated; new signing secret returned once.
+ */
+export const zRotateWebhookEndpointSecretResponse = zWebhookEndpointWithSecretResponse;
+
+export const zPingWebhookEndpointData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Ping event queued.
+ */
+export const zPingWebhookEndpointResponse = zWebhookPingResponse;
+
+export const zListWebhookDeliveriesData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        status: z.optional(zWebhookDeliveryStatus),
+        event_type: z.optional(z.string()),
+        limit: z.optional(z.int().gte(1).lte(200)),
+        offset: z.optional(z.int().gte(0))
+    }))
+});
+
+/**
+ * Delivery log for the endpoint.
+ */
+export const zListWebhookDeliveriesResponse = zWebhookDeliveryListResponse;
+
+export const zGetWebhookDeliveryData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid,
+        delivery_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Delivery detail.
+ */
+export const zGetWebhookDeliveryResponse = zWebhookDeliveryDetailResponse;
+
+export const zRetryWebhookDeliveryData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid,
+        delivery_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Replay delivery queued.
+ */
+export const zRetryWebhookDeliveryResponse = zWebhookDeliveryResponse;
+
+export const zListWebhookEventTypesData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+});
+
+/**
+ * Registered webhook event types.
+ */
+export const zListWebhookEventTypesResponse = zWebhookEventTypeListResponse;

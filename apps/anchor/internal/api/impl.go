@@ -31,6 +31,7 @@ type AnchorAPI struct {
 	EmailService                  emailsvc.EmailService
 	PlanService                   service.PlanService
 	LicenseService                service.LicenseService
+	WebhookEndpointService        service.WebhookEndpointService
 	Queue                         *pgqueue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
@@ -56,6 +57,7 @@ type Params struct {
 	EmailService                  emailsvc.EmailService
 	PlanService                   service.PlanService
 	LicenseService                service.LicenseService
+	WebhookEndpointService        service.WebhookEndpointService
 	Queue                         *pgqueue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
@@ -81,6 +83,7 @@ func NewAPI(params Params) *AnchorAPI {
 		EmailService:                  params.EmailService,
 		PlanService:                   params.PlanService,
 		LicenseService:                params.LicenseService,
+		WebhookEndpointService:        params.WebhookEndpointService,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
 		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),

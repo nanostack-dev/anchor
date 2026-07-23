@@ -58,6 +58,10 @@ tags:
     Manage per-organization licenses and serve resolved entitlement snapshots
     to consumer services. Admin CRUD requires a Platform Bearer token; the
     entitlements read requires a Product API Key.
+- name: Webhook
+  description: >-
+    Manage product-scoped outbound webhook endpoints, their signing secrets and
+    their delivery log. (Admin operation)
 components:
   parameters:
     # --- Define Path Parameters for re-use ---
@@ -183,6 +187,22 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         example: "plan_2iABC..."
+    WebhookEndpointIdParameter:
+      name: webhook_endpoint_id
+      in: path
+      required: true
+      description: The KSUID of the webhook endpoint.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "whe_2iABC..."
+    WebhookDeliveryIdParameter:
+      name: delivery_id
+      in: path
+      required: true
+      description: The KSUID of the webhook delivery.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "whd_2iABC..."
   securitySchemes:
     platformBearerAuth:
       type: http
@@ -3201,6 +3221,321 @@ components:
       - status
       - entitlements
       - refresh_after
+    WebhookEndpointStatus:
+      type: string
+      enum: [ENABLED, DISABLED, AUTO_DISABLED]
+      x-enum-varnames:
+        - WebhookEndpointStatusENABLED
+        - WebhookEndpointStatusDISABLED
+        - WebhookEndpointStatusAUTODISABLED
+      x-go-type: webhook.EndpointStatus
+      x-go-type-import:
+        path: anchor/internal/domain/webhook
+      description: >-
+        Lifecycle status of a webhook endpoint. DISABLED is an administrator's
+        decision; AUTO_DISABLED is Anchor's, after sustained delivery failures
+        or a 410 Gone from the receiver. Disabled endpoints stop accruing
+        deliveries and are never deleted.
+      example: ENABLED
+    WebhookDeliveryStatus:
+      type: string
+      enum: [PENDING, SUCCEEDED, FAILED, EXHAUSTED]
+      x-enum-varnames:
+        - WebhookDeliveryStatusPENDING
+        - WebhookDeliveryStatusSUCCEEDED
+        - WebhookDeliveryStatusFAILED
+        - WebhookDeliveryStatusEXHAUSTED
+      x-go-type: webhook.DeliveryStatus
+      x-go-type-import:
+        path: anchor/internal/domain/webhook
+      description: >-
+        Status of a single (event x endpoint) delivery. EXHAUSTED is the dead
+        letter: the retry ladder ran out. It is a status rather than a separate
+        table so dead deliveries stay queryable and replayable next to their
+        siblings.
+      example: SUCCEEDED
+    WebhookEndpointRequest:
+      type: object
+      description: Creates a product-scoped outbound webhook subscription.
+      properties:
+        url:
+          type: string
+          maxLength: 2000
+          description: >-
+            HTTPS URL that receives the signed POST. Loopback, private,
+            link-local and cloud-metadata addresses are refused at send time,
+            after DNS resolution, and redirects are never followed.
+          example: "https://example.com/hooks/anchor"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Free-text label shown in the admin UI.
+        event_types:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+          description: >-
+            Subscribed event types. Each entry is either an exact type from
+            `GET /v1/webhook-event-types` or a `<group>.*` wildcard.
+          example: ["license.*"]
+      required:
+      - url
+      - event_types
+    WebhookEndpointUpdateRequest:
+      type: object
+      description: Partially updates a webhook endpoint.
+      properties:
+        url:
+          type: string
+          maxLength: 2000
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        event_types:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+    WebhookEndpointResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the endpoint (prefix 'whe_').
+          example: "whe_2iABC..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+        url:
+          type: string
+        description:
+          type: string
+          nullable: true
+        event_types:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: "#/components/schemas/WebhookEndpointStatus"
+        disabled_reason:
+          type: string
+          nullable: true
+          description: Why the endpoint is not enabled, when it is not.
+        consecutive_failure_count:
+          type: integer
+          description: Length of the current failure streak; reset by any success.
+        first_failure_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_failure_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_success_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - product_id
+      - url
+      - event_types
+      - status
+      - consecutive_failure_count
+      - created_at
+      - updated_at
+    WebhookEndpointWithSecretResponse:
+      type: object
+      description: >-
+        A webhook endpoint together with its plaintext signing secret. The
+        secret is returned exactly twice in its lifetime — at creation and at
+        rotation — and never appears in a list or get response.
+      properties:
+        endpoint:
+          $ref: "#/components/schemas/WebhookEndpointResponse"
+        secret:
+          type: string
+          description: >-
+            Signing secret, prefixed `anchor_whsec_`. Store it now: it is
+            unrecoverable afterwards. Signatures are HMAC-SHA256 over
+            `{webhook-id}.{webhook-timestamp}.{body}`, keyed with the UTF-8
+            bytes of this value exactly as returned, and delivered in the
+            `webhook-signature` header as `v1,<base64>`.
+          example: "anchor_whsec_..."
+      required:
+      - endpoint
+      - secret
+    WebhookEndpointListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookEndpointResponse"
+      required:
+      - items
+    WebhookEventTypeDescriptor:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "license.revoked"
+        group:
+          type: string
+          example: "license"
+        description:
+          type: string
+      required:
+      - type
+      - group
+      - description
+    WebhookEventTypeListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookEventTypeDescriptor"
+        api_version:
+          type: string
+          description: Envelope contract version stamped on every event.
+          example: "2026-07-23"
+      required:
+      - items
+      - api_version
+    WebhookPingResponse:
+      type: object
+      description: The synthetic event queued by a ping.
+      properties:
+        event_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Identifier of the queued ping event (prefix 'evt_').
+        event_type:
+          type: string
+          example: "ping"
+      required:
+      - event_id
+      - event_type
+    WebhookDeliveryResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the delivery (prefix 'whd_'). It is
+            also the `webhook-id` header value, stable across retries, and the
+            receiver's natural idempotency key.
+        event_id:
+          $ref: "#/components/schemas/ksuid"
+        endpoint_id:
+          $ref: "#/components/schemas/ksuid"
+        event_type:
+          type: string
+          example: "license.revoked"
+        status:
+          $ref: "#/components/schemas/WebhookDeliveryStatus"
+        attempt_count:
+          type: integer
+        max_attempts:
+          type: integer
+        target_url:
+          type: string
+        last_status_code:
+          type: integer
+          nullable: true
+        last_error:
+          type: string
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        replay_of_delivery_id:
+          type: string
+          nullable: true
+          description: Set when this delivery is a manual replay of another.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - event_id
+      - endpoint_id
+      - event_type
+      - status
+      - attempt_count
+      - max_attempts
+      - target_url
+      - created_at
+      - updated_at
+    WebhookDeliveryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookDeliveryResponse"
+      required:
+      - items
+    WebhookDeliveryAttemptResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the attempt (prefix 'wha_').
+        attempt_number:
+          type: integer
+        status_code:
+          type: integer
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        response_snippet:
+          type: string
+          nullable: true
+          description: First 2KB of the receiver's response body.
+        duration_ms:
+          type: integer
+        attempted_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - attempt_number
+      - duration_ms
+      - attempted_at
+    WebhookDeliveryDetailResponse:
+      type: object
+      description: A delivery with its append-only attempt log and the exact
+        bytes that were signed and sent.
+      properties:
+        delivery:
+          $ref: "#/components/schemas/WebhookDeliveryResponse"
+        payload:
+          type: string
+          description: The frozen request body, byte-for-byte as signed.
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookDeliveryAttemptResponse"
+      required:
+      - delivery
+      - payload
+      - attempts
 
   responses:
     BadRequest:
@@ -6003,3 +6338,378 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  # --- Outbound Webhooks (Platform Admin Auth) ---
+  /v1/products/{product_id}/webhook-endpoints:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      summary: List Webhook Endpoints
+      description: Lists the product's outbound webhook endpoints. Signing
+        secrets are never included. Requires Platform Bearer token.
+      operationId: listWebhookEndpoints
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Webhook endpoints for the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create Webhook Endpoint
+      description: >-
+        Creates an outbound webhook endpoint and returns its signing secret.
+        The secret is shown exactly once; it cannot be retrieved afterwards,
+        only rotated. Requires Platform Bearer token.
+      operationId: createWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Webhook endpoint details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointRequest"
+      responses:
+        "201":
+          description: Endpoint created; signing secret returned once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointWithSecretResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    get:
+      summary: Get Webhook Endpoint
+      description: Retrieves a single webhook endpoint. The signing secret is
+        never included. Requires Platform Bearer token.
+      operationId: getWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Webhook endpoint details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update Webhook Endpoint
+      description: Partially updates a webhook endpoint's url, description or
+        subscribed event types. Requires Platform Bearer token.
+      operationId: updateWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointUpdateRequest"
+      responses:
+        "200":
+          description: Webhook endpoint updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Webhook Endpoint
+      description: Deletes a webhook endpoint together with its secrets and
+        delivery history. Requires Platform Bearer token.
+      operationId: deleteWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Webhook endpoint deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/enable:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    post:
+      summary: Enable Webhook Endpoint
+      description: >-
+        Enables the endpoint and clears any failure streak, including one that
+        auto-disabled it. Enable and disable are sub-resources rather than a
+        PATCH on `status` because that produces cleaner permissions and
+        unambiguous audit entries. Requires Platform Bearer token.
+      operationId: enableWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Webhook endpoint enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/disable:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    post:
+      summary: Disable Webhook Endpoint
+      description: Disables the endpoint. It stops accruing deliveries but keeps
+        its history. Requires Platform Bearer token.
+      operationId: disableWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Webhook endpoint disabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    post:
+      summary: Rotate Webhook Signing Secret
+      description: >-
+        Issues a new signing secret and marks the previous one expiring in 24
+        hours. Both signatures ride in the space-delimited `webhook-signature`
+        header until then, so a receiver can roll over without downtime. The new
+        secret is shown exactly once. Requires Platform Bearer token.
+      operationId: rotateWebhookEndpointSecret
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Secret rotated; new signing secret returned once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointWithSecretResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/ping:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    post:
+      summary: Ping Webhook Endpoint
+      description: >-
+        Queues a synthetic `ping` event aimed at this endpoint only. It travels
+        the same outbox, fan-out, signing and delivery path as a business event,
+        so a successful ping proves the whole chain. Requires Platform Bearer
+        token.
+      operationId: pingWebhookEndpoint
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "202":
+          description: Ping event queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookPingResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    get:
+      summary: List Webhook Deliveries
+      description: >-
+        Returns the endpoint's delivery log, newest first. This is the single
+        largest support-cost reducer in a webhook system: without it, every
+        "we didn't get the event" question is an engineer reading production
+        logs. Requires Platform Bearer token.
+      operationId: listWebhookDeliveries
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        description: Filter by delivery status.
+        schema:
+          $ref: "#/components/schemas/WebhookDeliveryStatus"
+      - name: event_type
+        in: query
+        required: false
+        description: Filter by event type.
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Page size (default 50, maximum 200).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        "200":
+          description: Delivery log for the endpoint.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries/{delivery_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    - $ref: "#/components/parameters/WebhookDeliveryIdParameter"
+    get:
+      summary: Get Webhook Delivery
+      description: Retrieves one delivery with its per-attempt log, including
+        response status codes and body snippets. Requires Platform Bearer token.
+      operationId: getWebhookDelivery
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Delivery detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/deliveries/{delivery_id}/retry:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    - $ref: "#/components/parameters/WebhookDeliveryIdParameter"
+    post:
+      summary: Retry Webhook Delivery
+      description: >-
+        Replays a finished delivery as a new delivery pointing back at the
+        original. The frozen request body is reused byte-for-byte, so the replay
+        carries the same event with a fresh signature. Replays of replays are
+        rejected. Requires Platform Bearer token.
+      operationId: retryWebhookDelivery
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "202":
+          description: Replay delivery queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/webhook-event-types:
+    get:
+      summary: List Webhook Event Types
+      description: >-
+        Returns the catalog of emittable event types with their groups and
+        descriptions. Endpoint subscriptions are validated against it, and the
+        admin UI's picker is built from it.
+      operationId: listWebhookEventTypes
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Registered webhook event types.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEventTypeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
