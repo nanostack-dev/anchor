@@ -13,45 +13,75 @@ plug into.
 
 ## Architecture
 
-**Anchor owns three things: mutable entitlement state, an Ed25519 signing service, and a token
-issuance API. Consumer services own one thing: a verifier.** The signed token is a *derived,
-disposable artifact* of the mutable license row — never the license itself (the mistake Keygen's
-docs warn about with immutable signed keys: plans change, so sign short-lived snapshots instead).
+**Anchor owns the mutable entitlement state and serves it over an authenticated read. Consumer
+services own the cache and the enforcement.** A snapshot returned by the entitlements endpoint is a
+*derived, disposable view* of the mutable license row — never the license itself (the mistake
+Keygen's docs warn about with immutable signed license keys: plans change, so hand out short-lived
+snapshots instead).
 
 ```mermaid
 flowchart LR
     subgraph Anchor
         UI[Admin UI\nplans + licenses] --> API
-        API[License API\nPlatformBearerAuth] --> SVC[LicenseService]
-        SVC --> DB[(plans / licenses /\nlicense_signing_keys)]
-        TOK[Token API\nProductApiKeyAuth] --> SVC
-        SVC --> SIGN[Ed25519 signer\nPASETO v4.public, kid]
+        API[License admin API\nPlatformBearerAuth] --> SVC[LicenseService]
+        SVC --> DB[(plans / licenses)]
+        ENT[Entitlements API\nProductApiKeyAuth] --> SVC
     end
     subgraph Echopoint
-        CLIENT[anchor client] -->|"POST license-token\n(startup + refresh at ~1/2 TTL)"| TOK
-        CLIENT -->|"GET license-signing-keys\n(pinned at startup)"| TOK
-        VERIFY[clients/go/license verifier\noffline, per-check] --> GATE[limit checks\nreplaces license.Default]
-        CLIENT --> VERIFY
+        CLIENT[anchor client] -->|"GET …/entitlements\n(startup + refresh at refresh_after)"| ENT
+        CLIENT --> CACHE[in-memory snapshot]
+        CACHE --> GATE[limit checks\nreplaces license.Default]
     end
 ```
 
-- **Hot path is offline.** Echopoint verifies the cached token locally (Ed25519, sub-microsecond).
-  Anchor being down must never take a consumer down — network contact happens only at
-  issuance/refresh (the LicenseSpring/Cryptlex split: local checks always, periodic online sync).
-- **Revocation = refusing the next refresh.** Short TTL (24 h default) + renewal beats revocation
-  lists; worst-case revocation latency equals the TTL. No CRL plumbing in v1.
-- **Two grace windows, both server-set.** *Sync grace*: consumer keeps honoring the cached token for
-  a bounded window after `exp` when Anchor is unreachable — degrade, never crash. *Business grace*:
-  license past `expires_at` but inside `grace_until` still gets tokens, with `status=GRACE`, so the
-  UX can show "renew" instead of hard-cutting at the expiry instant.
+- **Hot path is local.** Echopoint checks the cached snapshot in memory. Anchor being down must
+  never take a consumer down — network contact happens only at refresh (the
+  LicenseSpring/Cryptlex split: local checks always, periodic online sync).
+- **Revocation = the next refresh returning 409.** Short refresh interval (24 h default) beats
+  revocation lists; worst-case revocation latency equals one refresh interval.
+- **Two grace windows, both server-set.** *Sync grace*: the consumer keeps honoring its cached
+  snapshot for a bounded window when Anchor is unreachable — degrade, never crash. *Business
+  grace*: a license past `expires_at` but inside `grace_until` still resolves, with
+  `status=GRACE`, so the UX can show "renew" instead of hard-cutting at the expiry instant.
+
+## Why not signed tokens
+
+An earlier revision of this design (and the first implementation on this branch) minted Ed25519
+PASETO v4.public license tokens, published verification keys, and shipped an offline verifier in
+`clients/go/license`. That machinery has been removed. The reasoning, recorded here so the next
+person doesn't rebuild it by default:
+
+- **One trust boundary.** Anchor and its consumers are all first-party services inside the same
+  deployment, talking over TLS and authenticating with a product API key. A signature proves the
+  payload came from Anchor — but the TLS session plus the API key already prove that. The
+  signature adds no fact the transport doesn't already carry.
+- **No customer-controlled enforcement point.** Entitlement checks happen inside consumer
+  *backends* we operate. Signing defends against a client you don't control — a desktop app, a
+  customer-run agent, an on-prem binary someone can patch. We don't have one. Against an attacker
+  who controls the process doing the check, a valid signature changes nothing: they skip the check.
+- **Cache poisoning isn't a vector.** The snapshot lives in the consumer's memory. Anyone who can
+  write it already has code execution in that process and would simply ignore the claims rather
+  than forge them.
+- **The private key is a new liability.** An Ed25519 secret in the database is an asset to encrypt,
+  back up, rotate, audit, and reason about during incidents — real, permanent operational cost
+  bought against a threat model we don't have.
+
+**The trigger to bring it back** is a change in topology, not in threat appetite: if entitlement
+enforcement ever moves into a binary we don't run — the CLI, the runner executing on a customer's
+machine, or a self-hosted Anchor deployment — signing comes back, because then the checking process
+*is* the adversary's. Estimated cost to re-add: about a day, and most of that is the key
+distribution rollout (publish keys, pin them in consumers, overlap window), not the signing code.
+
+Everything else in this design is unchanged by that removal: plans, licenses, entitlement overrides
+and their resolution order, the statuses, the business grace window, the default-plan fallback, and
+the typed error codes all predate and outlive the signing question.
 
 ## Data model (new migration)
 
 | Table | Purpose |
 |---|---|
 | `plans` | Per-product plan: `key` (stable string, future Stripe `lookup_key`), name, description, `entitlements` JSONB, `is_default` |
-| `licenses` | One per organization: `plan_id`, `status` (`ACTIVE\|SUSPENDED\|REVOKED`), `expires_at`, `grace_until`, `entitlement_overrides` JSONB, `token_ttl_seconds` |
-| `license_signing_keys` | Ed25519 keypairs: `kid` (KSUID `lsk_…`), public key, private key encrypted with the framework `VersionedCipher`, `status` (`ACTIVE\|RETIRING\|RETIRED`) |
+| `licenses` | One per organization: `plan_id`, `status` (`ACTIVE\|SUSPENDED\|REVOKED`), `expires_at`, `grace_until`, `entitlement_overrides` JSONB, `refresh_interval_seconds` |
 
 Entitlements are a JSONB map `key → {type: boolean|numeric, value}` rather than normalized
 `plan_entitlements` rows: v1 has no per-entitlement queries, the service layer validates shape (per
@@ -64,27 +94,22 @@ edits the whole map at once. Revisit if per-feature analytics or metered usage a
 code is the interpretation-drift failure mode (Stigg).
 
 Three entitlement kinds exist in the taxonomy (boolean, numeric, metered — Stigg/OpenMeter
-consensus). v1 implements boolean + numeric; **metered is deliberately out**: a signed snapshot can
-carry a quota ceiling but not live usage. When metering arrives, the token carries the limit and
-usage lives server-side.
+consensus). v1 implements boolean + numeric; **metered is deliberately out**: a point-in-time
+snapshot can carry a quota ceiling but not live usage. When metering arrives, the snapshot carries
+the limit and usage lives server-side.
 
-## Token
+## The entitlement snapshot
 
-**Format: PASETO v4.public** (`aidanwoods.dev/go-paseto`). All research converged on Ed25519-signed
-claim snapshots; PASETO removes the JWT failure modes we'd otherwise have to configure away
-(`alg=none`, RS256→HS256 key confusion) because v4.public *is* Ed25519 with no algorithm
-negotiation. `kid` travels in the footer so verifiers select a key before signature check.
+The response of the entitlements read is a plain JSON object: `organization_id`, `product_id`,
+`plan_key` (informational), `status` (`ACTIVE|GRACE|SUSPENDED` — the *effective* status, distinct
+from the stored license status which has no GRACE), `entitlements` (the resolved map),
+`expires_at`, `grace_until`, `refresh_after`. No Stripe IDs, ever — snapshots carry derived
+entitlements only.
 
-Claims: `organization_id`, `product_id`, `plan_key` (informational), `status`
-(`ACTIVE|GRACE|SUSPENDED`), `entitlements` (resolved map), `iat`, `exp`, `grace_until`,
-`refresh_after`, `schema_version`. No Stripe IDs, ever — tokens carry derived entitlements only.
-
-**Key rotation is designed in from day one even with one key** (retrofitting `kid` into deployed
-verifiers is far worse than carrying it unused): every token names its `kid`; verifiers hold an
-ordered set of trusted public keys fetched from `GET …/license-signing-keys` at startup; rotation =
-add new ACTIVE key → old key RETIRING (still verifies, no longer signs) → RETIRED only after
-max-TTL + buffer (Curity/WorkOS overlap-window rule). Private keys never leave Anchor and are
-stored encrypted with the same `VersionedCipher` pattern as integration secrets.
+`refresh_after` is `refresh_interval_seconds` past the read. The column is a cadence hint and
+nothing more: with no token there is no expiry to defend, so the interval is the interval — a
+consumer that reads late is stale, not locked out. Admins tune it per license (60 s … 30 days) to
+trade propagation latency against read volume.
 
 ## API surface (contract-first, `cmd/http/openapi.yaml`)
 
@@ -92,38 +117,35 @@ Platform admin (`PlatformBearerAuth`) — drives the admin UI:
 
 - `POST/GET /v1/products/{product_id}/plans`, `GET/PATCH/DELETE /v1/products/{product_id}/plans/{plan_id}`
 - `GET /v1/products/{product_id}/licenses` — list with org + status
-- `GET/PUT /v1/products/{product_id}/organizations/{organization_id}/license` — assign/update (plan, expiry, grace, overrides)
+- `GET/PUT /v1/products/{product_id}/organizations/{organization_id}/license` — assign/update (plan, expiry, grace, overrides, refresh interval)
 - `POST …/license/revoke`, `POST …/license/suspend`, `POST …/license/reinstate`
 
-Service-to-service (`ProductApiKeyAuth`) — consumed by echopoint via the generated Go client:
+Service-to-service (`ProductApiKeyAuth`, scope `license:read`) — consumed by echopoint via the
+generated Go client:
 
-- `POST /v1/products/{product_id}/organizations/{organization_id}/license-token` → `{token, refresh_after, expires_at}`
-- `GET /v1/products/{product_id}/license-signing-keys` → `[{kid, public_key, status}]`
+- `GET /v1/products/{product_id}/organizations/{organization_id}/entitlements` →
+  `OrganizationEntitlementsResponse`
 
-Validation results are **typed statuses, not booleans** (Keygen's `VALID/EXPIRED/SUSPENDED/…`
-model): "expired — show renew banner" and "suspended — hard block" are different UX.
-
-## Verifier (`clients/go/license`)
-
-Hand-written package next to the generated client: `NewVerifier(keys)`, `Verify(token) → (Claims,
-Status)`, `Claims.HasFeature(key)`, `Claims.Limit(key)`. Enforces PASETO v4.public only, makes
-unverified claims unreachable (parse-before-verify is the classic licensing exploit), and returns
-`GRACE` for tokens past `exp` but inside `grace_until`. One canonical verifier — no consumer
-hand-rolls parsing.
+It is a `GET` because it is a pure read: nothing is minted, nothing is recorded. Organizations
+without a license row fall back to the product's default plan when one exists, and 404 when it
+doesn't. Revoked licenses answer `409 LICENSE_REVOKED`; licenses past their grace boundary answer
+`409 LICENSE_EXPIRED`. Results are **typed statuses and typed error codes, not booleans** (Keygen's
+`VALID/EXPIRED/SUSPENDED/…` model): "expired — show renew banner" and "suspended — hard block" are
+different UX.
 
 ## Echopoint migration plan (follow-up PR in echopoint)
 
 1. Regenerate `clients/go` (`make generate-client`) — echopoint's existing anchor client gains the
-   license endpoints for free.
-2. Echopoint startup: fetch signing keys + license token for its org scope, cache, background-refresh
-   at `refresh_after` (durable retry, not bare goroutine).
-3. Map claims onto the existing `license.License` struct — the static struct becomes the *shape* of
-   a verified snapshot. Suggested keys: `executions.max_cloud_duration_seconds`,
+   entitlements endpoint for free.
+2. Echopoint startup: read entitlements for its org scope, cache in memory, background-refresh at
+   `refresh_after` (durable retry, not bare goroutine).
+3. Map the snapshot onto the existing `license.License` struct — the static struct becomes the
+   *shape* of a fetched snapshot. Suggested keys: `executions.max_cloud_duration_seconds`,
    `flow_schedules.max_flows_per_run`, `flow_schedules.min_interval_minutes`,
    `flow_schedules.max_schedules_per_org`.
-4. Fallback: anchor unreachable beyond sync grace → keep last verified token; no token ever →
+4. Fallback: anchor unreachable beyond sync grace → keep the last snapshot; no snapshot ever →
    `license.Default()` (fail-open to today's behavior, never crash).
-5. Later: per-org tokens replace the global singleton where limits are org-scoped.
+5. Later: per-org snapshots replace the global singleton where limits are org-scoped.
 
 ## Stripe / subscription readiness (future, no code in v1)
 
@@ -133,14 +155,16 @@ ID, and enqueue a durable `ReconcileBillingCustomer` job (pgqueue) that refetche
 state and upserts the license row — never act on event payload deltas (t3dotgg/Stripe guidance;
 the entitlement-summary event even caps at 10 items). Status mapping: `trialing/active → ACTIVE`,
 `past_due → GRACE` (Stripe Smart Retries is the dunning system — don't rebuild timers),
-`unpaid/canceled → REVOKED`. `plans.key` is the future Stripe `lookup_key`. Because tokens are
-short-lived derived artifacts, Stripe integration will not touch consumers at all.
+`unpaid/canceled → REVOKED`. `plans.key` is the future Stripe `lookup_key`. Because snapshots are
+short-lived derived reads, Stripe integration will not touch consumers at all.
 
 ## Deliberate non-goals (v1)
 
+- Cryptographic signing of the snapshot — see "Why not signed tokens" above; it returns if
+  enforcement moves into a binary we don't run.
 - Machine fingerprinting / node-locking / heartbeats — desktop-vendor machinery; consumers are
-  trusted internal services in containers (renewal is the liveness signal). If self-hosted installs
-  arrive, add an instance-id claim (Grafana binds to `root_url`).
+  trusted internal services in containers (the refresh is the liveness signal). If self-hosted
+  installs arrive, add an instance-id dimension (Grafana binds to `root_url`).
 - Metered entitlements (see above), CRL/kill-switch sets, air-gapped long-lived license files.
 - Audit-log integration — lands with the audit-log branch (PR #44), not merged at time of writing.
 - Anchor gating *itself*: an identity platform must never brick a tenant's admins over license
@@ -150,7 +174,12 @@ short-lived derived artifacts, Stripe integration will not touch consumers at al
 
 Research run: 6 themed agents, 41 page-reads, deduplicated below.
 
-### Signed tokens & formats
+### Signed tokens & formats (considered and rejected for this topology)
+
+These sources drove the original signed-token design. They remain correct — they simply describe a
+topology where the enforcing client is outside your trust boundary. Re-read them first if
+entitlement checks ever move client-side (see "Why not signed tokens").
+
 1. [Keygen — Cryptography API](https://keygen.sh/docs/api/cryptography/) — Ed25519 recommended over RSA; signed keys are immutable, so issue re-checkout-able TTL'd license files verified against a public key pinned in the client.
 2. [Keygen — Offline licensing model](https://keygen.sh/docs/choosing-a-licensing-model/offline-licenses/) — embed grace periods and issued/expiry snapshots in the signed payload; TTL'd checkout files beat baked-in expiry for renewable licenses.
 3. [Keygen — Validating license keys](https://keygen.sh/docs/validating-licenses/) — machine-readable validation codes (VALID/EXPIRED/SUSPENDED…); on network failure fall back to cached cryptographically-verified license + grace period.
@@ -181,7 +210,7 @@ Research run: 6 themed agents, 41 page-reads, deduplicated below.
 22. [Stripe — Prorations](https://docs.stripe.com/billing/subscriptions/prorations) — `proration_behavior` + pinned `proration_date` previews for showing exact deltas before a plan change.
 23. [Stripe — Smart Retries](https://docs.stripe.com/billing/revenue-recovery/smart-retries) — Stripe retries ~8× over a configurable window; align app-side grace with that window instead of rebuilding dunning timers.
 
-### Key management & binding
+### Key management & binding (applicable only if enforcement moves client-side)
 24. [Keygen — Security guidance](https://keygen.sh/docs/api/security/) — all client-side enforcement is crackable; the only trustable component is the signed server API; obfuscation is not a boundary.
 25. [Keygen — Node-locked licensing](https://keygen.sh/docs/choosing-a-licensing-model/node-locked-licenses/) — fingerprint-scoped validation and its UX; irrelevant for trusted internal services (why v1 binds to org, not machine).
 26. [Keygen — Floating licensing](https://keygen.sh/docs/choosing-a-licensing-model/floating-licenses/) — first-come activations + heartbeat-culled zombies; VMs need random-UUID fingerprints.
