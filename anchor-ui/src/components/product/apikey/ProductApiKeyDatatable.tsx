@@ -161,9 +161,9 @@ export function ProductApiKeyDatatable({
 				cell: (info) => {
 					const status = info.getValue();
 					const tone =
-						status === ProductApiKeyStatus.ACTIVE
+						status === ProductApiKeyStatus.PRODUCT_API_KEY_STATUS_ACTIVE
 							? "success"
-							: status === ProductApiKeyStatus.INACTIVE
+							: status === ProductApiKeyStatus.PRODUCT_API_KEY_STATUS_INACTIVE
 								? "neutral"
 								: "warning";
 					return <StatusBadge tone={tone}>{status}</StatusBadge>;
@@ -218,8 +218,14 @@ export function ProductApiKeyDatatable({
 
 	const statusOptions = useMemo(
 		() => [
-			{ label: "Active", value: ProductApiKeyStatus.ACTIVE },
-			{ label: "Inactive", value: ProductApiKeyStatus.INACTIVE },
+			{
+				label: "Active",
+				value: ProductApiKeyStatus.PRODUCT_API_KEY_STATUS_ACTIVE,
+			},
+			{
+				label: "Inactive",
+				value: ProductApiKeyStatus.PRODUCT_API_KEY_STATUS_INACTIVE,
+			},
 		],
 		[],
 	);

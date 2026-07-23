@@ -7,28 +7,20 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 )
 
-// ErrLicenseRevoked is returned when a token is requested for a REVOKED
-// license. 409: the request is valid but the license state forbids issuance.
+// ErrLicenseRevoked is returned when entitlements are read for a REVOKED
+// license. 409: the request is valid but the license state forbids the read.
 var ErrLicenseRevoked = fault.NewWithStatus(
 	"LICENSE_REVOKED",
-	"License is revoked; no license token can be issued",
+	"License is revoked; no entitlements can be resolved",
 	http.StatusConflict,
 )
 
-// ErrLicenseExpired is returned when a token is requested past the license's
+// ErrLicenseExpired is returned when entitlements are read past the license's
 // grace boundary (grace_until, or expires_at when no grace window is set).
 var ErrLicenseExpired = fault.NewWithStatus(
 	"LICENSE_EXPIRED",
-	"License is expired beyond its grace period; no license token can be issued",
+	"License is expired beyond its grace period; no entitlements can be resolved",
 	http.StatusConflict,
-)
-
-// ErrLicenseSigningKeyMissing signals that no ACTIVE signing key exists; the
-// startup ensure hook should have created one.
-var ErrLicenseSigningKeyMissing = fault.NewWithStatus(
-	"LICENSE_SIGNING_KEY_MISSING",
-	"No active license signing key is available",
-	http.StatusInternalServerError,
 )
 
 func NewLicenseNotFoundError(organizationID string) *fault.Error {

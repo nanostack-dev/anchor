@@ -27,7 +27,6 @@ func NewModule() fx.Option {
 			NewOrganizationMembershipRepository,
 			NewPlanRepository,
 			NewLicenseRepository,
-			NewLicenseSigningKeyRepository,
 		),
 	)
 }

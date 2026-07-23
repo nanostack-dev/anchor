@@ -55,9 +55,9 @@ tags:
     operation)
 - name: License
   description: >-
-    Manage per-organization licenses, issue signed license tokens, and expose
-    license signing keys. Admin CRUD requires Platform Bearer token;
-    license-token issuance and signing-key listing require a Product API Key.
+    Manage per-organization licenses and serve resolved entitlement snapshots
+    to consumer services. Admin CRUD requires a Platform Bearer token; the
+    entitlements read requires a Product API Key.
 components:
   parameters:
     # --- Define Path Parameters for re-use ---
@@ -1052,6 +1052,9 @@ components:
     ProductAPIKeyStatus:
       type: string
       enum: [ACTIVE, INACTIVE]
+      x-enum-varnames:
+        - ProductAPIKeyStatusACTIVE
+        - ProductAPIKeyStatusINACTIVE
       x-go-type: apikey.Status
       x-go-type-import:
         path: anchor/internal/domain/product/apikey
@@ -1211,6 +1214,9 @@ components:
     OrganizationAPIKeyStatus:
       type: string
       enum: [ACTIVE, INACTIVE]
+      x-enum-varnames:
+        - OrganizationAPIKeyStatusACTIVE
+        - OrganizationAPIKeyStatusINACTIVE
       x-go-type: orgapikey.Status
       x-go-type-import:
         path: anchor/internal/domain/organization/apikey
@@ -2539,6 +2545,11 @@ components:
     IntegrationAuditLogSeverity:
       type: string
       enum: [INFO, SUCCESS, WARNING, ERROR]
+      x-enum-varnames:
+        - IntegrationAuditLogSeverityINFO
+        - IntegrationAuditLogSeveritySUCCESS
+        - IntegrationAuditLogSeverityWARNING
+        - IntegrationAuditLogSeverityERROR
       description: Severity level for integration audit events.
       x-go-type: integration.AuditSeverity
       x-go-type-import:
@@ -3068,15 +3079,18 @@ components:
           format: date-time
           nullable: true
           description: Business grace boundary. Past `expires_at` but within
-            `grace_until`, tokens are still issued with status GRACE.
+            `grace_until`, entitlements still resolve with effective status
+            GRACE.
         entitlement_overrides:
           $ref: "#/components/schemas/EntitlementsMap"
-        token_ttl_seconds:
+        refresh_interval_seconds:
           type: integer
           minimum: 60
           maximum: 2592000
           default: 86400
-          description: Lifetime of issued license tokens in seconds.
+          description: How often consumers should re-read this organization's
+            entitlements, in seconds. Surfaced as `refresh_after` on the
+            entitlements read; it does not expire anything on its own.
       required:
       - plan_id
     LicenseResponse:
@@ -3104,7 +3118,7 @@ components:
           nullable: true
         entitlement_overrides:
           $ref: "#/components/schemas/EntitlementsMap"
-        token_ttl_seconds:
+        refresh_interval_seconds:
           type: integer
         created_at:
           type: string
@@ -3119,7 +3133,7 @@ components:
       - plan_id
       - status
       - entitlement_overrides
-      - token_ttl_seconds
+      - refresh_interval_seconds
       - created_at
       - updated_at
     LicenseListResponse:
@@ -3131,61 +3145,62 @@ components:
             $ref: "#/components/schemas/LicenseResponse"
       required:
       - items
-    LicenseTokenResponse:
+    EffectiveLicenseStatus:
+      type: string
+      enum: [ACTIVE, GRACE, SUSPENDED]
+      x-enum-varnames:
+        - EffectiveLicenseStatusACTIVE
+        - EffectiveLicenseStatusGRACE
+        - EffectiveLicenseStatusSUSPENDED
+      x-go-type: license.EffectiveStatus
+      x-go-type-import:
+        path: anchor/internal/domain/license
+      description: Effective status of a resolved entitlement snapshot. GRACE
+        means past `expires_at` but still inside `grace_until`. Revoked and
+        past-grace licenses resolve to a 409 instead of a snapshot.
+      example: ACTIVE
+    OrganizationEntitlementsResponse:
       type: object
+      description: >-
+        Resolved entitlement snapshot for an organization: the plan's
+        entitlements merged with the license's per-organization overrides
+        (override wins).
       properties:
-        token:
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+        plan_key:
           type: string
-          description: Signed PASETO v4.public license token. Verify offline
-            with the product's license signing keys.
-        refresh_after:
-          type: string
-          format: date-time
-          description: Consumers should refresh the token after this instant
-            (half the token TTL).
+          description: Stable key of the resolved plan. Informational — gate on
+            entitlements, never on the plan key.
+          example: "pro"
+        status:
+          $ref: "#/components/schemas/EffectiveLicenseStatus"
+        entitlements:
+          $ref: "#/components/schemas/EntitlementsMap"
         expires_at:
           type: string
           format: date-time
-          description: Token expiry.
-      required:
-      - token
-      - refresh_after
-      - expires_at
-    LicenseSigningKeyStatus:
-      type: string
-      enum: [ACTIVE, RETIRING, RETIRED]
-      x-go-type: license.SigningKeyStatus
-      x-go-type-import:
-        path: anchor/internal/domain/license
-      description: Key rotation lifecycle. ACTIVE keys sign new tokens,
-        RETIRING keys still verify but no longer sign.
-      example: ACTIVE
-    LicenseSigningKeyResponse:
-      type: object
-      properties:
-        kid:
-          $ref: "#/components/schemas/ksuid"
-          description: Key identifier carried in the token footer (prefix
-            'lsk_').
-          example: "lsk_2iABC..."
-        public_key:
+          nullable: true
+          description: When the license expires. Null means no expiry.
+        grace_until:
           type: string
-          description: Base64-encoded raw Ed25519 public key.
-        status:
-          $ref: "#/components/schemas/LicenseSigningKeyStatus"
+          format: date-time
+          nullable: true
+          description: Business grace boundary, when one is set.
+        refresh_after:
+          type: string
+          format: date-time
+          description: When the consumer should read entitlements again
+            (`refresh_interval_seconds` after this response).
       required:
-      - kid
-      - public_key
+      - organization_id
+      - product_id
+      - plan_key
       - status
-    LicenseSigningKeyListResponse:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/LicenseSigningKeyResponse"
-      required:
-      - items
+      - entitlements
+      - refresh_after
 
   responses:
     BadRequest:
@@ -5850,7 +5865,7 @@ paths:
     put:
       summary: Assign or Update Organization License
       description: Assigns a license to the organization or fully replaces the
-        existing one (plan, expiry, grace, overrides, token TTL). Requires
+        existing one (plan, expiry, grace, overrides, refresh interval). Requires
         Platform Bearer token.
       operationId: putOrganizationLicense
       tags: [License]
@@ -5885,7 +5900,7 @@ paths:
     post:
       summary: Revoke Organization License
       description: Sets the license status to REVOKED. Revoked organizations
-        stop receiving license tokens at the next refresh. Requires Platform
+        stop resolving entitlements at their next refresh. Requires Platform
         Bearer token.
       operationId: revokeOrganizationLicense
       tags: [License]
@@ -5910,9 +5925,9 @@ paths:
     - $ref: "#/components/parameters/OrganizationIdParameter"
     post:
       summary: Suspend Organization License
-      description: Sets the license status to SUSPENDED. Tokens keep being
-        issued with status SUSPENDED so consumers can hard-block with UX.
-        Requires Platform Bearer token.
+      description: Sets the license status to SUSPENDED. Entitlements keep
+        resolving with effective status SUSPENDED so consumers can hard-block
+        with UX. Requires Platform Bearer token.
       operationId: suspendOrganizationLicense
       tags: [License]
       security:
@@ -5956,30 +5971,30 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  # --- License tokens & signing keys (Product API Key Auth) ---
-  /v1/products/{product_id}/organizations/{organization_id}/license-token:
+  # --- Entitlement reads (Product API Key Auth) ---
+  /v1/products/{product_id}/organizations/{organization_id}/entitlements:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
     - $ref: "#/components/parameters/OrganizationIdParameter"
-    post:
-      summary: Issue License Token
+    get:
+      summary: Get Organization Entitlements
       description: |-
-        Issues a signed PASETO v4.public license token for the organization: a
-        short-lived snapshot of the resolved license (plan entitlements merged
-        with per-org overrides). Organizations without a license row fall back
-        to the product's default plan when one exists. Requires an API Key with
-        `license:read` permission.
-      operationId: issueLicenseToken
+        Returns the organization's resolved entitlement snapshot: the plan's
+        entitlements merged with the license's per-organization overrides,
+        together with the effective status and a refresh hint. Organizations
+        without a license row fall back to the product's default plan when one
+        exists. Requires an API Key with `license:read` permission.
+      operationId: getOrganizationEntitlements
       tags: [License]
       security:
       - productApiKeyAuth: ["license:read"]
       responses:
         "200":
-          description: Signed license token.
+          description: Resolved entitlements.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LicenseTokenResponse"
+                $ref: "#/components/schemas/OrganizationEntitlementsResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -5988,28 +6003,3 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
-  /v1/products/{product_id}/license-signing-keys:
-    parameters:
-    - $ref: "#/components/parameters/ProductIdParameter"
-    get:
-      summary: List License Signing Keys
-      description: |-
-        Lists the Ed25519 public keys (with kid) used to verify license
-        tokens, ordered newest first. Consumers pin these at startup and select
-        the key matching the token footer kid. Requires an API Key with
-        `license:read` permission.
-      operationId: listLicenseSigningKeys
-      tags: [License]
-      security:
-      - productApiKeyAuth: ["license:read"]
-      responses:
-        "200":
-          description: Verification keys.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LicenseSigningKeyListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"

@@ -16,7 +16,6 @@ func UseSchema(schema string) {
 	IntegrationAuditLogs = IntegrationAuditLogs.FromSchema(schema)
 	IntegrationEvents = IntegrationEvents.FromSchema(schema)
 	IntegrationInstances = IntegrationInstances.FromSchema(schema)
-	LicenseSigningKeys = LicenseSigningKeys.FromSchema(schema)
 	Licenses = Licenses.FromSchema(schema)
 	OrganizationAPIKeyPermissions = OrganizationAPIKeyPermissions.FromSchema(schema)
 	OrganizationAPIKeys = OrganizationAPIKeys.FromSchema(schema)

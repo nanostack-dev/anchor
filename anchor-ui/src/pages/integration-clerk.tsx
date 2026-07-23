@@ -87,11 +87,11 @@ function mapAuditSeverity(
 	severity: IntegrationAuditLogSeverity,
 ): IntegrationAuditEntry["severity"] {
 	switch (severity) {
-		case IntegrationAuditLogSeverity.SUCCESS:
+		case IntegrationAuditLogSeverity.INTEGRATION_AUDIT_LOG_SEVERITY_SUCCESS:
 			return "success";
-		case IntegrationAuditLogSeverity.WARNING:
+		case IntegrationAuditLogSeverity.INTEGRATION_AUDIT_LOG_SEVERITY_WARNING:
 			return "warning";
-		case IntegrationAuditLogSeverity.ERROR:
+		case IntegrationAuditLogSeverity.INTEGRATION_AUDIT_LOG_SEVERITY_ERROR:
 			return "error";
 		default:
 			return "info";

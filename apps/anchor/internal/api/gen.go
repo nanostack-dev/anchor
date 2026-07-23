@@ -319,6 +319,9 @@ type CreatedProductAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
+// EffectiveLicenseStatus Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
+type EffectiveLicenseStatus = license.EffectiveStatus
+
 // EmailSendRecordListResponse defines model for EmailSendRecordListResponse.
 type EmailSendRecordListResponse struct {
 	Count int                       `json:"count"`
@@ -630,17 +633,17 @@ type LicenseAssignRequest struct {
 	// ExpiresAt When the license expires. Null means no expiry.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, entitlements still resolve with effective status GRACE.
 	GraceUntil *time.Time `json:"grace_until,omitempty"`
 
 	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
 	PlanId Ksuid `json:"plan_id"`
 
+	// RefreshIntervalSeconds How often consumers should re-read this organization's entitlements, in seconds. Surfaced as `refresh_after` on the entitlements read; it does not expire anything on its own.
+	RefreshIntervalSeconds *int `json:"refresh_interval_seconds,omitempty"`
+
 	// Status Mutable lifecycle status of the license row.
 	Status *LicenseStatus `json:"status,omitempty"`
-
-	// TokenTtlSeconds Lifetime of issued license tokens in seconds.
-	TokenTtlSeconds *int `json:"token_ttl_seconds,omitempty"`
 }
 
 // LicenseListResponse defines model for LicenseListResponse.
@@ -667,48 +670,16 @@ type LicenseResponse struct {
 	PlanId Ksuid `json:"plan_id"`
 
 	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
-	ProductId Ksuid `json:"product_id"`
+	ProductId              Ksuid `json:"product_id"`
+	RefreshIntervalSeconds int   `json:"refresh_interval_seconds"`
 
 	// Status Mutable lifecycle status of the license row.
-	Status          LicenseStatus `json:"status"`
-	TokenTtlSeconds int           `json:"token_ttl_seconds"`
-	UpdatedAt       time.Time     `json:"updated_at"`
+	Status    LicenseStatus `json:"status"`
+	UpdatedAt time.Time     `json:"updated_at"`
 }
-
-// LicenseSigningKeyListResponse defines model for LicenseSigningKeyListResponse.
-type LicenseSigningKeyListResponse struct {
-	Items []LicenseSigningKeyResponse `json:"items"`
-}
-
-// LicenseSigningKeyResponse defines model for LicenseSigningKeyResponse.
-type LicenseSigningKeyResponse struct {
-	// Kid Unique identifier using KSUID format with a resource-specific prefix.
-	Kid Ksuid `json:"kid"`
-
-	// PublicKey Base64-encoded raw Ed25519 public key.
-	PublicKey string `json:"public_key"`
-
-	// Status Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
-	Status LicenseSigningKeyStatus `json:"status"`
-}
-
-// LicenseSigningKeyStatus Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
-type LicenseSigningKeyStatus = license.SigningKeyStatus
 
 // LicenseStatus Mutable lifecycle status of the license row.
 type LicenseStatus = license.Status
-
-// LicenseTokenResponse defines model for LicenseTokenResponse.
-type LicenseTokenResponse struct {
-	// ExpiresAt Token expiry.
-	ExpiresAt time.Time `json:"expires_at"`
-
-	// RefreshAfter Consumers should refresh the token after this instant (half the token TTL).
-	RefreshAfter time.Time `json:"refresh_after"`
-
-	// Token Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
-	Token string `json:"token"`
-}
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -872,6 +843,33 @@ type OrganizationAPIKeyValidateResponse struct {
 
 	// Permissions Permission names currently assigned to the organization API key.
 	Permissions []string `json:"permissions"`
+}
+
+// OrganizationEntitlementsResponse Resolved entitlement snapshot for an organization: the plan's entitlements merged with the license's per-organization overrides (override wins).
+type OrganizationEntitlementsResponse struct {
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements EntitlementsMap `json:"entitlements"`
+
+	// ExpiresAt When the license expires. Null means no expiry.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// GraceUntil Business grace boundary, when one is set.
+	GraceUntil *time.Time `json:"grace_until,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// PlanKey Stable key of the resolved plan. Informational — gate on entitlements, never on the plan key.
+	PlanKey string `json:"plan_key"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid `json:"product_id"`
+
+	// RefreshAfter When the consumer should read entitlements again (`refresh_interval_seconds` after this response).
+	RefreshAfter time.Time `json:"refresh_after"`
+
+	// Status Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
+	Status EffectiveLicenseStatus `json:"status"`
 }
 
 // OrganizationFilter defines model for OrganizationFilter.
@@ -2490,9 +2488,6 @@ type ServerInterface interface {
 	// List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
-	// List License Signing Keys
-	// (GET /v1/products/{product_id}/license-signing-keys)
-	ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// List Licenses
 	// (GET /v1/products/{product_id}/licenses)
 	ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -2529,15 +2524,15 @@ type ServerInterface interface {
 	// Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter)
+	// Get Organization Entitlements
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/entitlements)
+	GetOrganizationEntitlements(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// Assign or Update Organization License
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
 	PutOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
-	// Issue License Token
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
-	IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// Reinstate Organization License
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/reinstate)
 	ReinstateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -2916,12 +2911,6 @@ func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// List License Signing Keys
-// (GET /v1/products/{product_id}/license-signing-keys)
-func (_ Unimplemented) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
 // List Licenses
 // (GET /v1/products/{product_id}/licenses)
 func (_ Unimplemented) ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
@@ -2994,6 +2983,12 @@ func (_ Unimplemented) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Get Organization Entitlements
+// (GET /v1/products/{product_id}/organizations/{organization_id}/entitlements)
+func (_ Unimplemented) GetOrganizationEntitlements(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get Organization License
 // (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 func (_ Unimplemented) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
@@ -3003,12 +2998,6 @@ func (_ Unimplemented) GetOrganizationLicense(w http.ResponseWriter, r *http.Req
 // Assign or Update Organization License
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
 func (_ Unimplemented) PutOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Issue License Token
-// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
-func (_ Unimplemented) IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4753,38 +4742,6 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
-// ListLicenseSigningKeys operation middleware
-func (siw *ServerInterfaceWrapper) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"license:read"})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListLicenseSigningKeys(w, r, productId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // ListLicenses operation middleware
 func (siw *ServerInterfaceWrapper) ListLicenses(w http.ResponseWriter, r *http.Request) {
 
@@ -5283,6 +5240,47 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationAPIKey(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
+// GetOrganizationEntitlements operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationEntitlements(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"license:read"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationEntitlements(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetOrganizationLicense operation middleware
 func (siw *ServerInterfaceWrapper) GetOrganizationLicense(w http.ResponseWriter, r *http.Request) {
 
@@ -5356,47 +5354,6 @@ func (siw *ServerInterfaceWrapper) PutOrganizationLicense(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutOrganizationLicense(w, r, productId, organizationId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// IssueLicenseToken operation middleware
-func (siw *ServerInterfaceWrapper) IssueLicenseToken(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"license:read"})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.IssueLicenseToken(w, r, productId, organizationId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7286,9 +7243,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs", wrapper.ListIntegrationAuditLogs)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/products/{product_id}/license-signing-keys", wrapper.ListLicenseSigningKeys)
-	})
-	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/licenses", wrapper.ListLicenses)
 	})
 	r.Group(func(r chi.Router) {
@@ -7325,13 +7279,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}", wrapper.UpdateOrganizationAPIKey)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/entitlements", wrapper.GetOrganizationEntitlements)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.GetOrganizationLicense)
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.PutOrganizationLicense)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license-token", wrapper.IssueLicenseToken)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/reinstate", wrapper.ReinstateOrganizationLicense)
@@ -9683,56 +9637,6 @@ func (response ListIntegrationAuditLogs404Response) VisitListIntegrationAuditLog
 	return nil
 }
 
-type ListLicenseSigningKeysRequestObject struct {
-	ProductId ProductIdParameter `json:"product_id"`
-}
-
-type ListLicenseSigningKeysResponseObject interface {
-	VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error
-}
-
-type ListLicenseSigningKeys200JSONResponse LicenseSigningKeyListResponse
-
-func (response ListLicenseSigningKeys200JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLicenseSigningKeys401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response ListLicenseSigningKeys401JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLicenseSigningKeys403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response ListLicenseSigningKeys403JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type ListLicensesRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 }
@@ -10501,6 +10405,78 @@ func (response UpdateOrganizationAPIKey404Response) VisitUpdateOrganizationAPIKe
 	return nil
 }
 
+type GetOrganizationEntitlementsRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type GetOrganizationEntitlementsResponseObject interface {
+	VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationEntitlements200JSONResponse OrganizationEntitlementsResponse
+
+func (response GetOrganizationEntitlements200JSONResponse) VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationEntitlements401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetOrganizationEntitlements401JSONResponse) VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationEntitlements403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetOrganizationEntitlements403JSONResponse) VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationEntitlements404Response = NotFoundResponse
+
+func (response GetOrganizationEntitlements404Response) VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetOrganizationEntitlements409JSONResponse struct{ ConflictJSONResponse }
+
+func (response GetOrganizationEntitlements409JSONResponse) VisitGetOrganizationEntitlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetOrganizationLicenseRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -10630,78 +10606,6 @@ type PutOrganizationLicense404Response = NotFoundResponse
 func (response PutOrganizationLicense404Response) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
-}
-
-type IssueLicenseTokenRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-}
-
-type IssueLicenseTokenResponseObject interface {
-	VisitIssueLicenseTokenResponse(w http.ResponseWriter) error
-}
-
-type IssueLicenseToken200JSONResponse LicenseTokenResponse
-
-func (response IssueLicenseToken200JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type IssueLicenseToken401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response IssueLicenseToken401JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type IssueLicenseToken403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response IssueLicenseToken403JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type IssueLicenseToken404Response = NotFoundResponse
-
-func (response IssueLicenseToken404Response) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
-}
-
-type IssueLicenseToken409JSONResponse struct{ ConflictJSONResponse }
-
-func (response IssueLicenseToken409JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
 }
 
 type ReinstateOrganizationLicenseRequestObject struct {
@@ -13053,9 +12957,6 @@ type StrictServerInterface interface {
 	// List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
-	// List License Signing Keys
-	// (GET /v1/products/{product_id}/license-signing-keys)
-	ListLicenseSigningKeys(ctx context.Context, request ListLicenseSigningKeysRequestObject) (ListLicenseSigningKeysResponseObject, error)
 	// List Licenses
 	// (GET /v1/products/{product_id}/licenses)
 	ListLicenses(ctx context.Context, request ListLicensesRequestObject) (ListLicensesResponseObject, error)
@@ -13092,15 +12993,15 @@ type StrictServerInterface interface {
 	// Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(ctx context.Context, request UpdateOrganizationAPIKeyRequestObject) (UpdateOrganizationAPIKeyResponseObject, error)
+	// Get Organization Entitlements
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/entitlements)
+	GetOrganizationEntitlements(ctx context.Context, request GetOrganizationEntitlementsRequestObject) (GetOrganizationEntitlementsResponseObject, error)
 	// Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(ctx context.Context, request GetOrganizationLicenseRequestObject) (GetOrganizationLicenseResponseObject, error)
 	// Assign or Update Organization License
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
 	PutOrganizationLicense(ctx context.Context, request PutOrganizationLicenseRequestObject) (PutOrganizationLicenseResponseObject, error)
-	// Issue License Token
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
-	IssueLicenseToken(ctx context.Context, request IssueLicenseTokenRequestObject) (IssueLicenseTokenResponseObject, error)
 	// Reinstate Organization License
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/reinstate)
 	ReinstateOrganizationLicense(ctx context.Context, request ReinstateOrganizationLicenseRequestObject) (ReinstateOrganizationLicenseResponseObject, error)
@@ -14512,32 +14413,6 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 	}
 }
 
-// ListLicenseSigningKeys operation middleware
-func (sh *strictHandler) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	var request ListLicenseSigningKeysRequestObject
-
-	request.ProductId = productId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListLicenseSigningKeys(ctx, request.(ListLicenseSigningKeysRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListLicenseSigningKeys")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListLicenseSigningKeysResponseObject); ok {
-		if err := validResponse.VisitListLicenseSigningKeysResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // ListLicenses operation middleware
 func (sh *strictHandler) ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	var request ListLicensesRequestObject
@@ -14911,6 +14786,33 @@ func (sh *strictHandler) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http
 	}
 }
 
+// GetOrganizationEntitlements operation middleware
+func (sh *strictHandler) GetOrganizationEntitlements(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request GetOrganizationEntitlementsRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationEntitlements(ctx, request.(GetOrganizationEntitlementsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationEntitlements")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationEntitlementsResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationEntitlementsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetOrganizationLicense operation middleware
 func (sh *strictHandler) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	var request GetOrganizationLicenseRequestObject
@@ -14965,33 +14867,6 @@ func (sh *strictHandler) PutOrganizationLicense(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutOrganizationLicenseResponseObject); ok {
 		if err := validResponse.VisitPutOrganizationLicenseResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// IssueLicenseToken operation middleware
-func (sh *strictHandler) IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	var request IssueLicenseTokenRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.IssueLicenseToken(ctx, request.(IssueLicenseTokenRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "IssueLicenseToken")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(IssueLicenseTokenResponseObject); ok {
-		if err := validResponse.VisitIssueLicenseTokenResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

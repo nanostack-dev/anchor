@@ -12,15 +12,15 @@ import (
 )
 
 type Licenses struct {
-	ID                   string `sql:"primary_key"`
-	ProductID            string
-	OrganizationID       string
-	PlanID               string
-	Status               string
-	ExpiresAt            *time.Time
-	GraceUntil           *time.Time
-	EntitlementOverrides string
-	TokenTTLSeconds      int32
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID                     string `sql:"primary_key"`
+	ProductID              string
+	OrganizationID         string
+	PlanID                 string
+	Status                 string
+	ExpiresAt              *time.Time
+	GraceUntil             *time.Time
+	EntitlementOverrides   string
+	RefreshIntervalSeconds int32
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }

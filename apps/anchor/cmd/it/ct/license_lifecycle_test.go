@@ -36,11 +36,11 @@ func TestLicenseLifecycle(t *testing.T) {
 		resp, err := client.PutOrganizationLicenseWithResponse(
 			ctx, testProduct.ProductID, org.Id,
 			ct.PutOrganizationLicenseJSONRequestBody{
-				PlanId:               pro.Id,
-				ExpiresAt:            &expiresAt,
-				GraceUntil:           &graceUntil,
-				EntitlementOverrides: &overrides,
-				TokenTtlSeconds:      new(3600),
+				PlanId:                 pro.Id,
+				ExpiresAt:              &expiresAt,
+				GraceUntil:             &graceUntil,
+				EntitlementOverrides:   &overrides,
+				RefreshIntervalSeconds: new(3600),
 			},
 		)
 		require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestLicenseLifecycle(t *testing.T) {
 		assert.True(t, resp.JSON200.ExpiresAt.Equal(expiresAt))
 		require.NotNil(t, resp.JSON200.GraceUntil)
 		assert.True(t, resp.JSON200.GraceUntil.Equal(graceUntil))
-		assert.Equal(t, 3600, resp.JSON200.TokenTtlSeconds)
+		assert.Equal(t, 3600, resp.JSON200.RefreshIntervalSeconds)
 		require.Len(t, resp.JSON200.EntitlementOverrides, 1)
 		assert.Equal(
 			t, numericEntitlement(100), resp.JSON200.EntitlementOverrides["limits.max_runs"],
@@ -109,7 +109,7 @@ func TestLicenseLifecycle(t *testing.T) {
 	})
 
 	t.Run("PutIsFullReplacement", func(t *testing.T) {
-		// A second PUT without expiry/grace/overrides/ttl clears them all.
+		// A second PUT without expiry/grace/overrides/interval clears them all.
 		resp, err := client.PutOrganizationLicenseWithResponse(
 			ctx, testProduct.ProductID, org.Id,
 			ct.PutOrganizationLicenseJSONRequestBody{PlanId: pro.Id},
@@ -121,7 +121,10 @@ func TestLicenseLifecycle(t *testing.T) {
 		assert.Nil(t, resp.JSON200.ExpiresAt, "PUT must clear omitted expires_at")
 		assert.Nil(t, resp.JSON200.GraceUntil, "PUT must clear omitted grace_until")
 		assert.Empty(t, resp.JSON200.EntitlementOverrides, "PUT must clear omitted overrides")
-		assert.Equal(t, 86400, resp.JSON200.TokenTtlSeconds, "PUT resets TTL to default")
+		assert.Equal(
+			t, 86400, resp.JSON200.RefreshIntervalSeconds,
+			"PUT resets the refresh interval to default",
+		)
 		assert.Equal(
 			t, ct.LicenseStatusACTIVE, resp.JSON200.Status,
 			"PUT without status keeps the current status",
@@ -202,10 +205,12 @@ func TestLicenseAssignmentNegatives(t *testing.T) {
 		assert.Equal(t, "INVALID_LICENSE_GRACE", resp.JSON400.Errors[0].Code)
 	})
 
-	t.Run("PutWithTooSmallTTLReturns400", func(t *testing.T) {
+	t.Run("PutWithTooSmallRefreshIntervalReturns400", func(t *testing.T) {
 		resp, err := client.PutOrganizationLicenseWithResponse(
 			ctx, testProduct.ProductID, org.Id,
-			ct.PutOrganizationLicenseJSONRequestBody{PlanId: plan.Id, TokenTtlSeconds: new(10)},
+			ct.PutOrganizationLicenseJSONRequestBody{
+				PlanId: plan.Id, RefreshIntervalSeconds: new(10),
+			},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())

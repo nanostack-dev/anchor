@@ -17,47 +17,41 @@ type LicenseService interface {
 	List(ctx context.Context, input license.ListLicensesInput) ([]license.License, error)
 	Get(ctx context.Context, input license.GetLicenseInput) (*license.License, error)
 	// Put assigns a license to the organization or fully replaces the existing
-	// one (plan, expiry, grace, overrides, token TTL).
+	// one (plan, expiry, grace, overrides, refresh interval).
 	Put(ctx context.Context, input license.PutLicenseInput) (license.License, error)
 	Revoke(ctx context.Context, input license.RevokeLicenseInput) (license.License, error)
 	Suspend(ctx context.Context, input license.SuspendLicenseInput) (license.License, error)
 	Reinstate(ctx context.Context, input license.ReinstateLicenseInput) (license.License, error)
-	// IssueToken resolves the organization's license into a signed PASETO
-	// v4.public token. Organizations without a license row fall back to the
-	// product's default plan when one exists.
-	IssueToken(ctx context.Context, input license.IssueTokenInput) (license.IssuedToken, error)
-	ListSigningKeys(
-		ctx context.Context, input license.ListSigningKeysInput,
-	) ([]license.SigningKey, error)
+	// GetEntitlements resolves the organization's license into an entitlement
+	// snapshot (plan entitlements merged with per-org overrides, effective
+	// status, refresh hint). Organizations without a license row fall back to
+	// the product's default plan when one exists.
+	GetEntitlements(
+		ctx context.Context, input license.GetEntitlementsInput,
+	) (license.EntitlementSnapshot, error)
 }
 
 type licenseService struct {
-	licenseRepo    repository.LicenseRepository
-	planRepo       repository.PlanRepository
-	signingKeyRepo repository.LicenseSigningKeyRepository
-	orgRepo        repository.OrganizationRepository
-	signer         LicenseSigningService
-	transactor     transactor.Transactor
-	logger         zerolog.Logger
+	licenseRepo repository.LicenseRepository
+	planRepo    repository.PlanRepository
+	orgRepo     repository.OrganizationRepository
+	transactor  transactor.Transactor
+	logger      zerolog.Logger
 }
 
 func NewLicenseService(
 	licenseRepo repository.LicenseRepository,
 	planRepo repository.PlanRepository,
-	signingKeyRepo repository.LicenseSigningKeyRepository,
 	orgRepo repository.OrganizationRepository,
-	signer LicenseSigningService,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) LicenseService {
 	return &licenseService{
-		licenseRepo:    licenseRepo,
-		planRepo:       planRepo,
-		signingKeyRepo: signingKeyRepo,
-		orgRepo:        orgRepo,
-		signer:         signer,
-		transactor:     transactor,
-		logger:         logger.With().Str("component", "license_service").Logger(),
+		licenseRepo: licenseRepo,
+		planRepo:    planRepo,
+		orgRepo:     orgRepo,
+		transactor:  transactor,
+		logger:      logger.With().Str("component", "license_service").Logger(),
 	}
 }
 
@@ -139,9 +133,9 @@ func (s *licenseService) Put(
 		return license.License{}, NewPlanReferenceInvalidError(input.PlanID)
 	}
 
-	tokenTTL := license.DefaultTokenTTLSeconds
-	if input.TokenTTLSeconds != nil {
-		tokenTTL = *input.TokenTTLSeconds
+	refreshInterval := license.DefaultRefreshIntervalSeconds
+	if input.RefreshIntervalSeconds != nil {
+		refreshInterval = *input.RefreshIntervalSeconds
 	}
 
 	var result license.License
@@ -155,16 +149,16 @@ func (s *licenseService) Put(
 
 		if existing == nil {
 			newLicense := license.License{
-				ProductID:            input.ProductID,
-				OrganizationID:       input.OrganizationID,
-				PlanID:               input.PlanID,
-				Status:               license.StatusActive,
-				ExpiresAt:            input.ExpiresAt,
-				GraceUntil:           input.GraceUntil,
-				EntitlementOverrides: overrides,
-				TokenTTLSeconds:      tokenTTL,
-				CreatedAt:            time.Now(),
-				UpdatedAt:            time.Now(),
+				ProductID:              input.ProductID,
+				OrganizationID:         input.OrganizationID,
+				PlanID:                 input.PlanID,
+				Status:                 license.StatusActive,
+				ExpiresAt:              input.ExpiresAt,
+				GraceUntil:             input.GraceUntil,
+				EntitlementOverrides:   overrides,
+				RefreshIntervalSeconds: refreshInterval,
+				CreatedAt:              time.Now(),
+				UpdatedAt:              time.Now(),
 			}
 			if input.Status != nil {
 				newLicense.Status = *input.Status
@@ -188,7 +182,7 @@ func (s *licenseService) Put(
 		updatedLicense.ExpiresAt = input.ExpiresAt
 		updatedLicense.GraceUntil = input.GraceUntil
 		updatedLicense.EntitlementOverrides = overrides
-		updatedLicense.TokenTTLSeconds = tokenTTL
+		updatedLicense.RefreshIntervalSeconds = refreshInterval
 		if input.Status != nil {
 			updatedLicense.Status = *input.Status
 		}
@@ -286,23 +280,23 @@ func (s *licenseService) setStatus(
 	return result, err
 }
 
-func (s *licenseService) IssueToken(
-	ctx context.Context, input license.IssueTokenInput,
-) (license.IssuedToken, error) {
-	logger := s.logger.With().Str("operation", "IssueToken").Logger()
+func (s *licenseService) GetEntitlements(
+	ctx context.Context, input license.GetEntitlementsInput,
+) (license.EntitlementSnapshot, error) {
+	logger := s.logger.With().Str("operation", "GetEntitlements").Logger()
 
 	if err := validateStruct(input); err != nil {
-		return license.IssuedToken{}, err
+		return license.EntitlementSnapshot{}, err
 	}
 
 	organization, err := s.orgRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.Error().Str("organization_id", input.OrganizationID).Err(err).
 			Msg("failed to find organization")
-		return license.IssuedToken{}, err
+		return license.EntitlementSnapshot{}, err
 	}
 	if organization == nil {
-		return license.IssuedToken{}, fault.ErrNotFound
+		return license.EntitlementSnapshot{}, fault.ErrNotFound
 	}
 
 	lic, err := s.licenseRepo.FindByOrganization(
@@ -311,141 +305,107 @@ func (s *licenseService) IssueToken(
 	if err != nil {
 		logger.Error().Str("organization_id", input.OrganizationID).Err(err).
 			Msg("failed to find license")
-		return license.IssuedToken{}, err
+		return license.EntitlementSnapshot{}, err
 	}
 
 	now := time.Now()
-	snapshot, err := s.resolveTokenSnapshot(ctx, input, lic, now, logger)
+	resolved, err := s.resolveEntitlements(ctx, input, lic, now, logger)
 	if err != nil {
-		return license.IssuedToken{}, err
+		return license.EntitlementSnapshot{}, err
 	}
 
-	// Consumers should refresh at half the token lifetime (design doc:
-	// refresh_after = ttl/2) so a full grace window remains on failure.
-	const refreshAfterDivisor = 2
-
-	ttl := time.Duration(snapshot.tokenTTLSeconds) * time.Second
-	claims := license.Claims{
+	return license.EntitlementSnapshot{
 		OrganizationID: input.OrganizationID,
 		ProductID:      input.ProductID,
-		PlanKey:        snapshot.planKey,
-		Status:         snapshot.status,
-		Entitlements:   snapshot.entitlements,
-		IssuedAt:       now,
-		ExpiresAt:      now.Add(ttl),
-		GraceUntil:     snapshot.graceUntil,
-		RefreshAfter:   now.Add(ttl / refreshAfterDivisor),
-		SchemaVersion:  license.ClaimsSchemaVersion,
-	}
-
-	token, err := s.signer.Sign(ctx, claims)
-	if err != nil {
-		logger.Error().Str("organization_id", input.OrganizationID).Err(err).
-			Msg("failed to sign license token")
-		return license.IssuedToken{}, err
-	}
-
-	return license.IssuedToken{
-		Token:        token,
-		RefreshAfter: claims.RefreshAfter,
-		ExpiresAt:    claims.ExpiresAt,
+		PlanKey:        resolved.planKey,
+		Status:         resolved.status,
+		Entitlements:   resolved.entitlements,
+		ExpiresAt:      resolved.expiresAt,
+		GraceUntil:     resolved.graceUntil,
+		RefreshAfter: now.Add(
+			time.Duration(resolved.refreshIntervalSeconds) * time.Second,
+		),
 	}, nil
 }
 
-// tokenSnapshot is the resolved state a token gets minted from.
-type tokenSnapshot struct {
-	planKey         string
-	status          license.TokenStatus
-	entitlements    plan.Entitlements
-	graceUntil      *time.Time
-	tokenTTLSeconds int32
+// resolvedLicense is the license state a snapshot is built from.
+type resolvedLicense struct {
+	planKey                string
+	status                 license.EffectiveStatus
+	entitlements           plan.Entitlements
+	expiresAt              *time.Time
+	graceUntil             *time.Time
+	refreshIntervalSeconds int32
 }
 
-// resolveTokenSnapshot applies the issuance semantics: default-plan fallback
-// for organizations without a license row; REVOKED or past the grace boundary
-// is a 409; SUSPENDED still issues (status SUSPENDED); past expiry but within
-// grace issues with status GRACE.
-func (s *licenseService) resolveTokenSnapshot(
+// resolveEntitlements applies the read semantics: default-plan fallback for
+// organizations without a license row; REVOKED or past the grace boundary is a
+// 409; SUSPENDED still resolves (status SUSPENDED); past expiry but within
+// grace resolves with status GRACE.
+func (s *licenseService) resolveEntitlements(
 	ctx context.Context,
-	input license.IssueTokenInput,
+	input license.GetEntitlementsInput,
 	lic *license.License,
 	now time.Time,
 	logger zerolog.Logger,
-) (tokenSnapshot, error) {
+) (resolvedLicense, error) {
 	if lic == nil {
 		defaultPlan, err := s.planRepo.FindDefault(ctx, input.ProductID)
 		if err != nil {
 			logger.Error().Str("product_id", input.ProductID).Err(err).
 				Msg("failed to find default plan")
-			return tokenSnapshot{}, err
+			return resolvedLicense{}, err
 		}
 		if defaultPlan == nil {
-			return tokenSnapshot{}, NewLicenseNotFoundError(input.OrganizationID)
+			return resolvedLicense{}, NewLicenseNotFoundError(input.OrganizationID)
 		}
 
-		return tokenSnapshot{
-			planKey:         defaultPlan.Key,
-			status:          license.TokenStatusActive,
-			entitlements:    defaultPlan.Entitlements,
-			tokenTTLSeconds: license.DefaultTokenTTLSeconds,
+		return resolvedLicense{
+			planKey:                defaultPlan.Key,
+			status:                 license.EffectiveStatusActive,
+			entitlements:           defaultPlan.Entitlements,
+			refreshIntervalSeconds: license.DefaultRefreshIntervalSeconds,
 		}, nil
 	}
 
 	if lic.Status == license.StatusRevoked {
-		return tokenSnapshot{}, ErrLicenseRevoked
+		return resolvedLicense{}, ErrLicenseRevoked
 	}
 
 	boundary := lic.GraceBoundary()
 	if boundary != nil && now.After(*boundary) {
-		return tokenSnapshot{}, ErrLicenseExpired
+		return resolvedLicense{}, ErrLicenseExpired
 	}
 
-	status := license.TokenStatusActive
+	status := license.EffectiveStatusActive
 	switch {
 	case lic.Status == license.StatusSuspended:
-		status = license.TokenStatusSuspended
+		status = license.EffectiveStatusSuspended
 	case lic.ExpiresAt != nil && now.After(*lic.ExpiresAt):
-		status = license.TokenStatusGrace
+		status = license.EffectiveStatusGrace
 	}
 
 	licensePlan, err := s.planRepo.FindByID(ctx, input.ProductID, lic.PlanID)
 	if err != nil {
 		logger.Error().Str("plan_id", lic.PlanID).Err(err).Msg("failed to find license plan")
-		return tokenSnapshot{}, err
+		return resolvedLicense{}, err
 	}
 	if licensePlan == nil {
 		logger.Error().Str("plan_id", lic.PlanID).Msg("license references missing plan")
-		return tokenSnapshot{}, fault.ErrUnexpected
+		return resolvedLicense{}, fault.ErrUnexpected
 	}
 
-	tokenTTL := lic.TokenTTLSeconds
-	if tokenTTL <= 0 {
-		tokenTTL = license.DefaultTokenTTLSeconds
+	refreshInterval := lic.RefreshIntervalSeconds
+	if refreshInterval <= 0 {
+		refreshInterval = license.DefaultRefreshIntervalSeconds
 	}
 
-	return tokenSnapshot{
-		planKey:         licensePlan.Key,
-		status:          status,
-		entitlements:    lic.ResolvedEntitlements(licensePlan.Entitlements),
-		graceUntil:      lic.GraceUntil,
-		tokenTTLSeconds: tokenTTL,
+	return resolvedLicense{
+		planKey:                licensePlan.Key,
+		status:                 status,
+		entitlements:           lic.ResolvedEntitlements(licensePlan.Entitlements),
+		expiresAt:              lic.ExpiresAt,
+		graceUntil:             lic.GraceUntil,
+		refreshIntervalSeconds: refreshInterval,
 	}, nil
-}
-
-func (s *licenseService) ListSigningKeys(
-	ctx context.Context, input license.ListSigningKeysInput,
-) ([]license.SigningKey, error) {
-	logger := s.logger.With().Str("operation", "ListSigningKeys").Logger()
-
-	if err := validateStruct(input); err != nil {
-		return nil, err
-	}
-
-	keys, err := s.signingKeyRepo.ListAll(ctx)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to list license signing keys")
-		return nil, err
-	}
-
-	return keys, nil
 }

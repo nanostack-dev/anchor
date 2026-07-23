@@ -102,7 +102,7 @@ interface LicenseFormState {
 	status: LicenseStatus;
 	expiresAt: string;
 	graceUntil: string;
-	tokenTtlSeconds: string;
+	refreshIntervalSeconds: string;
 	overrideRows: EntitlementRow[];
 }
 
@@ -112,7 +112,7 @@ const emptyForm = (): LicenseFormState => ({
 	status: LicenseStatus.ACTIVE,
 	expiresAt: "",
 	graceUntil: "",
-	tokenTtlSeconds: "86400",
+	refreshIntervalSeconds: "86400",
 	overrideRows: [],
 });
 
@@ -150,7 +150,9 @@ export function LicenseDialog({
 				status: existingLicense.status,
 				expiresAt: isoToLocalInput(existingLicense.expires_at),
 				graceUntil: isoToLocalInput(existingLicense.grace_until),
-				tokenTtlSeconds: String(existingLicense.token_ttl_seconds),
+				refreshIntervalSeconds: String(
+					existingLicense.refresh_interval_seconds,
+				),
 				overrideRows: entitlementsToRows(existingLicense.entitlement_overrides),
 			});
 		} else {
@@ -207,14 +209,16 @@ export function LicenseDialog({
 			errors.entitlement_overrides = overrideError;
 		}
 
-		const tokenTtl = Number(formData.tokenTtlSeconds);
+		const refreshInterval = Number(formData.refreshIntervalSeconds);
 		const payload: LicenseAssignRequest = {
 			plan_id: formData.planId,
 			status: formData.status,
 			expires_at: localInputToIso(formData.expiresAt),
 			grace_until: localInputToIso(formData.graceUntil),
 			entitlement_overrides: rowsToEntitlements(formData.overrideRows),
-			token_ttl_seconds: Number.isNaN(tokenTtl) ? undefined : tokenTtl,
+			refresh_interval_seconds: Number.isNaN(refreshInterval)
+				? undefined
+				: refreshInterval,
 		};
 
 		const result = formSchema.safeParse(payload);
@@ -383,7 +387,8 @@ export function LicenseDialog({
 									}
 								/>
 								<p className="text-xs text-muted-foreground">
-									Past expiry but within grace, tokens carry status GRACE.
+									Past expiry but within grace, entitlements resolve with status
+									GRACE.
 								</p>
 								{fieldErrors.grace_until && (
 									<p className="text-sm text-destructive">
@@ -393,27 +398,30 @@ export function LicenseDialog({
 							</div>
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="license-token-ttl">Token TTL (seconds)</Label>
+							<Label htmlFor="license-refresh-interval">
+								Refresh interval (seconds)
+							</Label>
 							<Input
-								id="license-token-ttl"
+								id="license-refresh-interval"
 								type="number"
 								min={60}
 								max={2592000}
-								value={formData.tokenTtlSeconds}
+								value={formData.refreshIntervalSeconds}
 								onChange={(e) =>
 									setFormData((prev) => ({
 										...prev,
-										tokenTtlSeconds: e.target.value,
+										refreshIntervalSeconds: e.target.value,
 									}))
 								}
 							/>
 							<p className="text-xs text-muted-foreground">
-								Lifetime of issued license tokens (60s to 30 days). Shorter TTLs
-								mean faster revocation.
+								How often consumers re-read this organization's entitlements
+								(60s to 30 days). Shorter intervals mean faster propagation of
+								changes.
 							</p>
-							{fieldErrors.token_ttl_seconds && (
+							{fieldErrors.refresh_interval_seconds && (
 								<p className="text-sm text-destructive">
-									{fieldErrors.token_ttl_seconds}
+									{fieldErrors.refresh_interval_seconds}
 								</p>
 							)}
 						</div>

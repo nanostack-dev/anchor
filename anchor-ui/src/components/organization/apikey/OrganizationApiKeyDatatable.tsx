@@ -157,12 +157,16 @@ export function OrganizationApiKeyDatatable({
 				cell: (info) => {
 					const status = info.getValue();
 					const label =
-						status === OrganizationApiKeyStatus.ACTIVE ? "Active" : "Inactive";
+						status ===
+						OrganizationApiKeyStatus.ORGANIZATION_API_KEY_STATUS_ACTIVE
+							? "Active"
+							: "Inactive";
 
 					return (
 						<Badge
 							variant={
-								status === OrganizationApiKeyStatus.ACTIVE
+								status ===
+								OrganizationApiKeyStatus.ORGANIZATION_API_KEY_STATUS_ACTIVE
 									? "default"
 									: "secondary"
 							}
@@ -201,8 +205,14 @@ export function OrganizationApiKeyDatatable({
 
 	const statusOptions = useMemo(
 		() => [
-			{ label: "Active", value: OrganizationApiKeyStatus.ACTIVE },
-			{ label: "Inactive", value: OrganizationApiKeyStatus.INACTIVE },
+			{
+				label: "Active",
+				value: OrganizationApiKeyStatus.ORGANIZATION_API_KEY_STATUS_ACTIVE,
+			},
+			{
+				label: "Inactive",
+				value: OrganizationApiKeyStatus.ORGANIZATION_API_KEY_STATUS_INACTIVE,
+			},
 		],
 		[],
 	);

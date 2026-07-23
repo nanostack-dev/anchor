@@ -162,17 +162,17 @@ func (s *AnchorAPI) DeletePlan(
 
 func mapLicenseToResponse(l license.License) LicenseResponse {
 	return LicenseResponse{
-		Id:                   l.ID,
-		ProductId:            l.ProductID,
-		OrganizationId:       l.OrganizationID,
-		PlanId:               l.PlanID,
-		Status:               l.Status,
-		ExpiresAt:            l.ExpiresAt,
-		GraceUntil:           l.GraceUntil,
-		EntitlementOverrides: mapEntitlementsToResponse(l.EntitlementOverrides),
-		TokenTtlSeconds:      int(l.TokenTTLSeconds),
-		CreatedAt:            l.CreatedAt,
-		UpdatedAt:            l.UpdatedAt,
+		Id:                     l.ID,
+		ProductId:              l.ProductID,
+		OrganizationId:         l.OrganizationID,
+		PlanId:                 l.PlanID,
+		Status:                 l.Status,
+		ExpiresAt:              l.ExpiresAt,
+		GraceUntil:             l.GraceUntil,
+		EntitlementOverrides:   mapEntitlementsToResponse(l.EntitlementOverrides),
+		RefreshIntervalSeconds: int(l.RefreshIntervalSeconds),
+		CreatedAt:              l.CreatedAt,
+		UpdatedAt:              l.UpdatedAt,
 	}
 }
 
@@ -224,15 +224,15 @@ func (s *AnchorAPI) PutOrganizationLicense(
 		GraceUntil:           request.Body.GraceUntil,
 		EntitlementOverrides: mapEntitlementsToDomain(request.Body.EntitlementOverrides),
 	}
-	if request.Body.TokenTtlSeconds != nil {
+	if request.Body.RefreshIntervalSeconds != nil {
 		// Values outside int32 keep the out-of-range boundary so the service
 		// validator (min=60, max=2592000) still answers them with a 400 rather
-		// than the narrowing wrapping into a valid TTL.
-		ttl := int32(math.MaxInt32)
-		if v := *request.Body.TokenTtlSeconds; v >= math.MinInt32 && v <= math.MaxInt32 {
-			ttl = int32(v)
+		// than the narrowing wrapping into a valid interval.
+		interval := int32(math.MaxInt32)
+		if v := *request.Body.RefreshIntervalSeconds; v >= math.MinInt32 && v <= math.MaxInt32 {
+			interval = int32(v)
 		}
-		input.TokenTTLSeconds = &ttl
+		input.RefreshIntervalSeconds = &interval
 	}
 
 	result, err := s.LicenseService.Put(ctx, input)
@@ -297,49 +297,30 @@ func (s *AnchorAPI) ReinstateOrganizationLicense(
 	return ReinstateOrganizationLicense200JSONResponse(mapLicenseToResponse(result)), nil
 }
 
-// Token & signing key handlers (Product API Key auth).
+// Entitlement read handler (Product API Key auth).
 
-func (s *AnchorAPI) IssueLicenseToken(
-	ctx context.Context, request IssueLicenseTokenRequestObject,
-) (IssueLicenseTokenResponseObject, error) {
-	issued, err := s.LicenseService.IssueToken(ctx, license.IssueTokenInput{
+func (s *AnchorAPI) GetOrganizationEntitlements(
+	ctx context.Context, request GetOrganizationEntitlementsRequestObject,
+) (GetOrganizationEntitlementsResponseObject, error) {
+	snapshot, err := s.LicenseService.GetEntitlements(ctx, license.GetEntitlementsInput{
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
 		logAPIError(s.logger, err).
 			Str("organization_id", request.OrganizationId).
-			Msg("failed to issue license token")
+			Msg("failed to resolve organization entitlements")
 		return nil, err
 	}
 
-	return IssueLicenseToken200JSONResponse{
-		Token:        issued.Token,
-		RefreshAfter: issued.RefreshAfter,
-		ExpiresAt:    issued.ExpiresAt,
-	}, nil
-}
-
-func (s *AnchorAPI) ListLicenseSigningKeys(
-	ctx context.Context, request ListLicenseSigningKeysRequestObject,
-) (ListLicenseSigningKeysResponseObject, error) {
-	keys, err := s.LicenseService.ListSigningKeys(ctx, license.ListSigningKeysInput{
-		ProductID: request.ProductId,
-	})
-	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Msg("failed to list license signing keys")
-		return nil, err
-	}
-
-	return ListLicenseSigningKeys200JSONResponse{
-		Items: slicex.Map(keys, func(key license.SigningKey) LicenseSigningKeyResponse {
-			return LicenseSigningKeyResponse{
-				Kid:       key.ID,
-				PublicKey: key.PublicKey,
-				Status:    key.Status,
-			}
-		}),
+	return GetOrganizationEntitlements200JSONResponse{
+		OrganizationId: snapshot.OrganizationID,
+		ProductId:      snapshot.ProductID,
+		PlanKey:        snapshot.PlanKey,
+		Status:         snapshot.Status,
+		Entitlements:   mapEntitlementsToResponse(snapshot.Entitlements),
+		ExpiresAt:      snapshot.ExpiresAt,
+		GraceUntil:     snapshot.GraceUntil,
+		RefreshAfter:   snapshot.RefreshAfter,
 	}, nil
 }

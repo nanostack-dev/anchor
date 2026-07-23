@@ -1286,7 +1286,7 @@ export const zLicenseAssignRequest = z.object({
         z.null()
     ])),
     entitlement_overrides: z.optional(zEntitlementsMap),
-    token_ttl_seconds: z.optional(z.int().gte(60).lte(2592000)).default(86400)
+    refresh_interval_seconds: z.optional(z.int().gte(60).lte(2592000)).default(86400)
 });
 
 export const zLicenseResponse = z.object({
@@ -1304,7 +1304,7 @@ export const zLicenseResponse = z.object({
         z.null()
     ])),
     entitlement_overrides: zEntitlementsMap,
-    token_ttl_seconds: z.int(),
+    refresh_interval_seconds: z.int(),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
@@ -1313,29 +1313,33 @@ export const zLicenseListResponse = z.object({
     items: z.array(zLicenseResponse)
 });
 
-export const zLicenseTokenResponse = z.object({
-    token: z.string(),
-    refresh_after: z.iso.datetime(),
-    expires_at: z.iso.datetime()
-});
-
 /**
- * Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+ * Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
  */
-export const zLicenseSigningKeyStatus = z.enum([
+export const zEffectiveLicenseStatus = z.enum([
     'ACTIVE',
-    'RETIRING',
-    'RETIRED'
+    'GRACE',
+    'SUSPENDED'
 ]);
 
-export const zLicenseSigningKeyResponse = z.object({
-    kid: zKsuid,
-    public_key: z.string(),
-    status: zLicenseSigningKeyStatus
-});
-
-export const zLicenseSigningKeyListResponse = z.object({
-    items: z.array(zLicenseSigningKeyResponse)
+/**
+ * Resolved entitlement snapshot for an organization: the plan's entitlements merged with the license's per-organization overrides (override wins).
+ */
+export const zOrganizationEntitlementsResponse = z.object({
+    organization_id: zKsuid,
+    product_id: zKsuid,
+    plan_key: z.string(),
+    status: zEffectiveLicenseStatus,
+    entitlements: zEntitlementsMap,
+    expires_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    grace_until: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    refresh_after: z.iso.datetime()
 });
 
 /**
@@ -2719,7 +2723,7 @@ export const zReinstateOrganizationLicenseData = z.object({
  */
 export const zReinstateOrganizationLicenseResponse = zLicenseResponse;
 
-export const zIssueLicenseTokenData = z.object({
+export const zGetOrganizationEntitlementsData = z.object({
     body: z.optional(z.never()),
     path: z.object({
         product_id: zKsuid,
@@ -2729,19 +2733,6 @@ export const zIssueLicenseTokenData = z.object({
 });
 
 /**
- * Signed license token.
+ * Resolved entitlements.
  */
-export const zIssueLicenseTokenResponse = zLicenseTokenResponse;
-
-export const zListLicenseSigningKeysData = z.object({
-    body: z.optional(z.never()),
-    path: z.object({
-        product_id: zKsuid
-    }),
-    query: z.optional(z.never())
-});
-
-/**
- * Verification keys.
- */
-export const zListLicenseSigningKeysResponse = zLicenseSigningKeyListResponse;
+export const zGetOrganizationEntitlementsResponse = zOrganizationEntitlementsResponse;

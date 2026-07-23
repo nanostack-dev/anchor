@@ -260,9 +260,6 @@ type ClientInterface interface {
 	// ListIntegrationAuditLogs request
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListLicenseSigningKeys request
-	ListLicenseSigningKeys(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListLicenses request
 	ListLicenses(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -313,6 +310,9 @@ type ClientInterface interface {
 
 	UpdateOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrganizationEntitlements request
+	GetOrganizationEntitlements(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetOrganizationLicense request
 	GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -320,9 +320,6 @@ type ClientInterface interface {
 	PutOrganizationLicenseWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PutOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body PutOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// IssueLicenseToken request
-	IssueLicenseToken(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReinstateOrganizationLicense request
 	ReinstateOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1243,18 +1240,6 @@ func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId Product
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListLicenseSigningKeys(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListLicenseSigningKeysRequest(c.Server, productId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) ListLicenses(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListLicensesRequest(c.Server, productId)
 	if err != nil {
@@ -1483,6 +1468,18 @@ func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId Product
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetOrganizationEntitlements(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationEntitlementsRequest(c.Server, productId, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationLicenseRequest(c.Server, productId, organizationId)
 	if err != nil {
@@ -1509,18 +1506,6 @@ func (c *Client) PutOrganizationLicenseWithBody(ctx context.Context, productId P
 
 func (c *Client) PutOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body PutOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutOrganizationLicenseRequest(c.Server, productId, organizationId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) IssueLicenseToken(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewIssueLicenseTokenRequest(c.Server, productId, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -4106,40 +4091,6 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	return req, nil
 }
 
-// NewListLicenseSigningKeysRequest generates requests for ListLicenseSigningKeys
-func NewListLicenseSigningKeysRequest(server string, productId ProductIdParameter) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/license-signing-keys", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewListLicensesRequest generates requests for ListLicenses
 func NewListLicensesRequest(server string, productId ProductIdParameter) (*http.Request, error) {
 	var err error
@@ -4723,6 +4674,47 @@ func NewUpdateOrganizationAPIKeyRequestWithBody(server string, productId Product
 	return req, nil
 }
 
+// NewGetOrganizationEntitlementsRequest generates requests for GetOrganizationEntitlements
+func NewGetOrganizationEntitlementsRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/entitlements", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetOrganizationLicenseRequest generates requests for GetOrganizationLicense
 func NewGetOrganizationLicenseRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
 	var err error
@@ -4814,47 +4806,6 @@ func NewPutOrganizationLicenseRequestWithBody(server string, productId ProductId
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewIssueLicenseTokenRequest generates requests for IssueLicenseToken
-func NewIssueLicenseTokenRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license-token", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -6939,9 +6890,6 @@ type ClientWithResponsesInterface interface {
 	// ListIntegrationAuditLogsWithResponse request
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
 
-	// ListLicenseSigningKeysWithResponse request
-	ListLicenseSigningKeysWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseSigningKeysResponse, error)
-
 	// ListLicensesWithResponse request
 	ListLicensesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicensesResponse, error)
 
@@ -6992,6 +6940,9 @@ type ClientWithResponsesInterface interface {
 
 	UpdateOrganizationAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationAPIKeyResponse, error)
 
+	// GetOrganizationEntitlementsWithResponse request
+	GetOrganizationEntitlementsWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationEntitlementsResponse, error)
+
 	// GetOrganizationLicenseWithResponse request
 	GetOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseResponse, error)
 
@@ -6999,9 +6950,6 @@ type ClientWithResponsesInterface interface {
 	PutOrganizationLicenseWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutOrganizationLicenseResponse, error)
 
 	PutOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body PutOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationLicenseResponse, error)
-
-	// IssueLicenseTokenWithResponse request
-	IssueLicenseTokenWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*IssueLicenseTokenResponse, error)
 
 	// ReinstateOrganizationLicenseWithResponse request
 	ReinstateOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*ReinstateOrganizationLicenseResponse, error)
@@ -8512,38 +8460,6 @@ func (r ListIntegrationAuditLogsResponse) ContentType() string {
 	return ""
 }
 
-type ListLicenseSigningKeysResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *LicenseSigningKeyListResponse
-	JSON401      *Unauthorized
-	JSON403      *Forbidden
-}
-
-// Status returns HTTPResponse.Status
-func (r ListLicenseSigningKeysResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListLicenseSigningKeysResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListLicenseSigningKeysResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type ListLicensesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8933,6 +8849,39 @@ func (r UpdateOrganizationAPIKeyResponse) ContentType() string {
 	return ""
 }
 
+type GetOrganizationEntitlementsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrganizationEntitlementsResponse
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON409      *Conflict
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationEntitlementsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationEntitlementsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationEntitlementsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOrganizationLicenseResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8992,39 +8941,6 @@ func (r PutOrganizationLicenseResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PutOrganizationLicenseResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type IssueLicenseTokenResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *LicenseTokenResponse
-	JSON401      *Unauthorized
-	JSON403      *Forbidden
-	JSON409      *Conflict
-}
-
-// Status returns HTTPResponse.Status
-func (r IssueLicenseTokenResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r IssueLicenseTokenResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r IssueLicenseTokenResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -10804,15 +10720,6 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
-// ListLicenseSigningKeysWithResponse request returning *ListLicenseSigningKeysResponse
-func (c *ClientWithResponses) ListLicenseSigningKeysWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseSigningKeysResponse, error) {
-	rsp, err := c.ListLicenseSigningKeys(ctx, productId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListLicenseSigningKeysResponse(rsp)
-}
-
 // ListLicensesWithResponse request returning *ListLicensesResponse
 func (c *ClientWithResponses) ListLicensesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicensesResponse, error) {
 	rsp, err := c.ListLicenses(ctx, productId, reqEditors...)
@@ -10977,6 +10884,15 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 	return ParseUpdateOrganizationAPIKeyResponse(rsp)
 }
 
+// GetOrganizationEntitlementsWithResponse request returning *GetOrganizationEntitlementsResponse
+func (c *ClientWithResponses) GetOrganizationEntitlementsWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationEntitlementsResponse, error) {
+	rsp, err := c.GetOrganizationEntitlements(ctx, productId, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationEntitlementsResponse(rsp)
+}
+
 // GetOrganizationLicenseWithResponse request returning *GetOrganizationLicenseResponse
 func (c *ClientWithResponses) GetOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseResponse, error) {
 	rsp, err := c.GetOrganizationLicense(ctx, productId, organizationId, reqEditors...)
@@ -11001,15 +10917,6 @@ func (c *ClientWithResponses) PutOrganizationLicenseWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePutOrganizationLicenseResponse(rsp)
-}
-
-// IssueLicenseTokenWithResponse request returning *IssueLicenseTokenResponse
-func (c *ClientWithResponses) IssueLicenseTokenWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*IssueLicenseTokenResponse, error) {
-	rsp, err := c.IssueLicenseToken(ctx, productId, organizationId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseIssueLicenseTokenResponse(rsp)
 }
 
 // ReinstateOrganizationLicenseWithResponse request returning *ReinstateOrganizationLicenseResponse
@@ -13086,46 +12993,6 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 	return response, nil
 }
 
-// ParseListLicenseSigningKeysResponse parses an HTTP response from a ListLicenseSigningKeysWithResponse call
-func ParseListLicenseSigningKeysResponse(rsp *http.Response) (*ListLicenseSigningKeysResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListLicenseSigningKeysResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest LicenseSigningKeyListResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseListLicensesResponse parses an HTTP response from a ListLicensesWithResponse call
 func ParseListLicensesResponse(rsp *http.Response) (*ListLicensesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13641,6 +13508,53 @@ func ParseUpdateOrganizationAPIKeyResponse(rsp *http.Response) (*UpdateOrganizat
 	return response, nil
 }
 
+// ParseGetOrganizationEntitlementsResponse parses an HTTP response from a GetOrganizationEntitlementsWithResponse call
+func ParseGetOrganizationEntitlementsResponse(rsp *http.Response) (*GetOrganizationEntitlementsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationEntitlementsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationEntitlementsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetOrganizationLicenseResponse parses an HTTP response from a GetOrganizationLicenseWithResponse call
 func ParseGetOrganizationLicenseResponse(rsp *http.Response) (*GetOrganizationLicenseResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13722,53 +13636,6 @@ func ParsePutOrganizationLicenseResponse(rsp *http.Response) (*PutOrganizationLi
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseIssueLicenseTokenResponse parses an HTTP response from a IssueLicenseTokenWithResponse call
-func ParseIssueLicenseTokenResponse(rsp *http.Response) (*IssueLicenseTokenResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &IssueLicenseTokenResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest LicenseTokenResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	}
 

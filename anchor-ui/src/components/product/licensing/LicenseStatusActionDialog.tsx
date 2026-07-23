@@ -40,7 +40,7 @@ const actionCopy: Record<
 		title: "Suspend License",
 		verb: "Suspend",
 		description:
-			"Tokens keep being issued with status SUSPENDED so the consumer can hard-block with clear UX. The license can be reinstated at any time.",
+			"Entitlements keep resolving with status SUSPENDED so the consumer can hard-block with clear UX. The license can be reinstated at any time.",
 		successMessage: "License suspended.",
 		destructive: false,
 	},
@@ -48,7 +48,7 @@ const actionCopy: Record<
 		title: "Reinstate License",
 		verb: "Reinstate",
 		description:
-			"Sets the license back to ACTIVE. The organization receives normal license tokens at its next refresh.",
+			"Sets the license back to ACTIVE. The organization resolves normal entitlements at its next refresh.",
 		successMessage: "License reinstated.",
 		destructive: false,
 	},
@@ -56,7 +56,7 @@ const actionCopy: Record<
 		title: "Revoke License",
 		verb: "Revoke",
 		description:
-			"Revoked organizations stop receiving license tokens at their next refresh (worst case one token TTL). Revocation can be undone by reinstating the license.",
+			"Revoked organizations stop resolving entitlements at their next refresh (worst case one refresh interval). Revocation can be undone by reinstating the license.",
 		successMessage: "License revoked.",
 		destructive: true,
 	},

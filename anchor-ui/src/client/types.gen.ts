@@ -458,8 +458,14 @@ export type AssignPermissionRequest = {
 };
 
 export enum ProductApiKeyStatus {
-    ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE'
+    /**
+     * ProductAPIKeyStatusACTIVE
+     */
+    PRODUCT_API_KEY_STATUS_ACTIVE = 'ACTIVE',
+    /**
+     * ProductAPIKeyStatusINACTIVE
+     */
+    PRODUCT_API_KEY_STATUS_INACTIVE = 'INACTIVE'
 }
 
 export type ProductApiKeyCreateRequest = {
@@ -541,8 +547,14 @@ export type ProductApiKeyListResponse = PagedListResponse & {
 };
 
 export enum OrganizationApiKeyStatus {
-    ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE'
+    /**
+     * OrganizationAPIKeyStatusACTIVE
+     */
+    ORGANIZATION_API_KEY_STATUS_ACTIVE = 'ACTIVE',
+    /**
+     * OrganizationAPIKeyStatusINACTIVE
+     */
+    ORGANIZATION_API_KEY_STATUS_INACTIVE = 'INACTIVE'
 }
 
 export type OrganizationApiKeyCreateRequest = {
@@ -1401,10 +1413,22 @@ export type IntegrationWebhookResponse = {
  * Severity level for integration audit events.
  */
 export enum IntegrationAuditLogSeverity {
-    INFO = 'INFO',
-    SUCCESS = 'SUCCESS',
-    WARNING = 'WARNING',
-    ERROR = 'ERROR'
+    /**
+     * IntegrationAuditLogSeverityINFO
+     */
+    INTEGRATION_AUDIT_LOG_SEVERITY_INFO = 'INFO',
+    /**
+     * IntegrationAuditLogSeveritySUCCESS
+     */
+    INTEGRATION_AUDIT_LOG_SEVERITY_SUCCESS = 'SUCCESS',
+    /**
+     * IntegrationAuditLogSeverityWARNING
+     */
+    INTEGRATION_AUDIT_LOG_SEVERITY_WARNING = 'WARNING',
+    /**
+     * IntegrationAuditLogSeverityERROR
+     */
+    INTEGRATION_AUDIT_LOG_SEVERITY_ERROR = 'ERROR'
 }
 
 export type IntegrationAuditLogEntryResponse = {
@@ -1701,14 +1725,14 @@ export type LicenseAssignRequest = {
      */
     expires_at?: string | null;
     /**
-     * Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+     * Business grace boundary. Past `expires_at` but within `grace_until`, entitlements still resolve with effective status GRACE.
      */
     grace_until?: string | null;
     entitlement_overrides?: EntitlementsMap;
     /**
-     * Lifetime of issued license tokens in seconds.
+     * How often consumers should re-read this organization's entitlements, in seconds. Surfaced as `refresh_after` on the entitlements read; it does not expire anything on its own.
      */
-    token_ttl_seconds?: number;
+    refresh_interval_seconds?: number;
 };
 
 export type LicenseResponse = {
@@ -1720,7 +1744,7 @@ export type LicenseResponse = {
     expires_at?: string | null;
     grace_until?: string | null;
     entitlement_overrides: EntitlementsMap;
-    token_ttl_seconds: number;
+    refresh_interval_seconds: number;
     created_at: string;
     updated_at: string;
 };
@@ -1729,41 +1753,48 @@ export type LicenseListResponse = {
     items: Array<LicenseResponse>;
 };
 
-export type LicenseTokenResponse = {
-    /**
-     * Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
-     */
-    token: string;
-    /**
-     * Consumers should refresh the token after this instant (half the token TTL).
-     */
-    refresh_after: string;
-    /**
-     * Token expiry.
-     */
-    expires_at: string;
-};
-
 /**
- * Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+ * Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
  */
-export enum LicenseSigningKeyStatus {
-    ACTIVE = 'ACTIVE',
-    RETIRING = 'RETIRING',
-    RETIRED = 'RETIRED'
+export enum EffectiveLicenseStatus {
+    /**
+     * EffectiveLicenseStatusACTIVE
+     */
+    EFFECTIVE_LICENSE_STATUS_ACTIVE = 'ACTIVE',
+    /**
+     * EffectiveLicenseStatusGRACE
+     */
+    EFFECTIVE_LICENSE_STATUS_GRACE = 'GRACE',
+    /**
+     * EffectiveLicenseStatusSUSPENDED
+     */
+    EFFECTIVE_LICENSE_STATUS_SUSPENDED = 'SUSPENDED'
 }
 
-export type LicenseSigningKeyResponse = {
-    kid: Ksuid;
+/**
+ * Resolved entitlement snapshot for an organization: the plan's entitlements merged with the license's per-organization overrides (override wins).
+ */
+export type OrganizationEntitlementsResponse = {
+    organization_id: Ksuid;
+    product_id: Ksuid;
     /**
-     * Base64-encoded raw Ed25519 public key.
+     * Stable key of the resolved plan. Informational — gate on entitlements, never on the plan key.
      */
-    public_key: string;
-    status: LicenseSigningKeyStatus;
-};
-
-export type LicenseSigningKeyListResponse = {
-    items: Array<LicenseSigningKeyResponse>;
+    plan_key: string;
+    status: EffectiveLicenseStatus;
+    entitlements: EntitlementsMap;
+    /**
+     * When the license expires. Null means no expiry.
+     */
+    expires_at?: string | null;
+    /**
+     * Business grace boundary, when one is set.
+     */
+    grace_until?: string | null;
+    /**
+     * When the consumer should read entitlements again (`refresh_interval_seconds` after this response).
+     */
+    refresh_after: string;
 };
 
 /**
@@ -5646,7 +5677,7 @@ export type ReinstateOrganizationLicenseResponses = {
 
 export type ReinstateOrganizationLicenseResponse = ReinstateOrganizationLicenseResponses[keyof ReinstateOrganizationLicenseResponses];
 
-export type IssueLicenseTokenData = {
+export type GetOrganizationEntitlementsData = {
     body?: never;
     path: {
         /**
@@ -5659,10 +5690,10 @@ export type IssueLicenseTokenData = {
         organization_id: Ksuid;
     };
     query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/license-token';
+    url: '/v1/products/{product_id}/organizations/{organization_id}/entitlements';
 };
 
-export type IssueLicenseTokenErrors = {
+export type GetOrganizationEntitlementsErrors = {
     /**
      * Unauthorized (Authentication required or invalid)
      */
@@ -5681,50 +5712,16 @@ export type IssueLicenseTokenErrors = {
     409: ApiErrorResponse;
 };
 
-export type IssueLicenseTokenError = IssueLicenseTokenErrors[keyof IssueLicenseTokenErrors];
+export type GetOrganizationEntitlementsError = GetOrganizationEntitlementsErrors[keyof GetOrganizationEntitlementsErrors];
 
-export type IssueLicenseTokenResponses = {
+export type GetOrganizationEntitlementsResponses = {
     /**
-     * Signed license token.
+     * Resolved entitlements.
      */
-    200: LicenseTokenResponse;
+    200: OrganizationEntitlementsResponse;
 };
 
-export type IssueLicenseTokenResponse = IssueLicenseTokenResponses[keyof IssueLicenseTokenResponses];
-
-export type ListLicenseSigningKeysData = {
-    body?: never;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/license-signing-keys';
-};
-
-export type ListLicenseSigningKeysErrors = {
-    /**
-     * Unauthorized (Authentication required or invalid)
-     */
-    401: ApiErrorResponse;
-    /**
-     * Forbidden (Authenticated Product User lacks permission)
-     */
-    403: ApiErrorResponse;
-};
-
-export type ListLicenseSigningKeysError = ListLicenseSigningKeysErrors[keyof ListLicenseSigningKeysErrors];
-
-export type ListLicenseSigningKeysResponses = {
-    /**
-     * Verification keys.
-     */
-    200: LicenseSigningKeyListResponse;
-};
-
-export type ListLicenseSigningKeysResponse = ListLicenseSigningKeysResponses[keyof ListLicenseSigningKeysResponses];
+export type GetOrganizationEntitlementsResponse = GetOrganizationEntitlementsResponses[keyof GetOrganizationEntitlementsResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

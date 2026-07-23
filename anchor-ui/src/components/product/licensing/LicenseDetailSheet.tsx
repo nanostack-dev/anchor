@@ -53,7 +53,7 @@ interface ResolvedEntitlement {
 }
 
 /**
- * Client-side view of the resolution chain the token service applies:
+ * Client-side view of the resolution chain the entitlements endpoint applies:
  * plan defaults first, then per-organization overrides replace matching
  * keys.
  */
@@ -115,8 +115,8 @@ export function LicenseDetailSheet({
 		{ label: "Expires at", value: formatDate(license.expires_at) },
 		{ label: "Grace until", value: formatDate(license.grace_until) },
 		{
-			label: "Token TTL",
-			value: `${license.token_ttl_seconds.toLocaleString()} seconds`,
+			label: "Refresh interval",
+			value: `${license.refresh_interval_seconds.toLocaleString()} seconds`,
 		},
 		{ label: "Created", value: formatDate(license.created_at) },
 		{ label: "Updated", value: formatDate(license.updated_at) },
@@ -131,8 +131,8 @@ export function LicenseDetailSheet({
 					<SheetDescription>
 						Resolved entitlements are the plan defaults with the {overrideCount}{" "}
 						per-organization override
-						{overrideCount === 1 ? "" : "s"} applied — exactly what issued
-						license tokens carry.
+						{overrideCount === 1 ? "" : "s"} applied — exactly what the
+						entitlements endpoint returns.
 					</SheetDescription>
 				</SheetHeader>
 				<div className="flex flex-col gap-6 px-4 pb-6">

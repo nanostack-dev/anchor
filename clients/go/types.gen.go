@@ -32,6 +32,27 @@ func (e ClerkIntegrationInstanceCreateRequestProviderType) Valid() bool {
 	}
 }
 
+// Defines values for EffectiveLicenseStatus.
+const (
+	EffectiveLicenseStatusACTIVE    EffectiveLicenseStatus = "ACTIVE"
+	EffectiveLicenseStatusGRACE     EffectiveLicenseStatus = "GRACE"
+	EffectiveLicenseStatusSUSPENDED EffectiveLicenseStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the EffectiveLicenseStatus enum.
+func (e EffectiveLicenseStatus) Valid() bool {
+	switch e {
+	case EffectiveLicenseStatusACTIVE:
+		return true
+	case EffectiveLicenseStatusGRACE:
+		return true
+	case EffectiveLicenseStatusSUSPENDED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EmailSendStatus.
 const (
 	FAILED  EmailSendStatus = "FAILED"
@@ -206,27 +227,6 @@ func (e IntegrationProviderType) Valid() bool {
 	case IntegrationProviderTypeCLERK:
 		return true
 	case IntegrationProviderTypeSMTP:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for LicenseSigningKeyStatus.
-const (
-	LicenseSigningKeyStatusACTIVE   LicenseSigningKeyStatus = "ACTIVE"
-	LicenseSigningKeyStatusRETIRED  LicenseSigningKeyStatus = "RETIRED"
-	LicenseSigningKeyStatusRETIRING LicenseSigningKeyStatus = "RETIRING"
-)
-
-// Valid indicates whether the value is a known member of the LicenseSigningKeyStatus enum.
-func (e LicenseSigningKeyStatus) Valid() bool {
-	switch e {
-	case LicenseSigningKeyStatusACTIVE:
-		return true
-	case LicenseSigningKeyStatusRETIRED:
-		return true
-	case LicenseSigningKeyStatusRETIRING:
 		return true
 	default:
 		return false
@@ -877,6 +877,9 @@ type CreatedProductAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
+// EffectiveLicenseStatus Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
+type EffectiveLicenseStatus string
+
 // EmailSendRecordListResponse defines model for EmailSendRecordListResponse.
 type EmailSendRecordListResponse struct {
 	Count int                       `json:"count"`
@@ -1188,17 +1191,17 @@ type LicenseAssignRequest struct {
 	// ExpiresAt When the license expires. Null means no expiry.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, entitlements still resolve with effective status GRACE.
 	GraceUntil *time.Time `json:"grace_until,omitempty"`
 
 	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
 	PlanId Ksuid `json:"plan_id"`
 
+	// RefreshIntervalSeconds How often consumers should re-read this organization's entitlements, in seconds. Surfaced as `refresh_after` on the entitlements read; it does not expire anything on its own.
+	RefreshIntervalSeconds *int `json:"refresh_interval_seconds,omitempty"`
+
 	// Status Mutable lifecycle status of the license row.
 	Status *LicenseStatus `json:"status,omitempty"`
-
-	// TokenTtlSeconds Lifetime of issued license tokens in seconds.
-	TokenTtlSeconds *int `json:"token_ttl_seconds,omitempty"`
 }
 
 // LicenseListResponse defines model for LicenseListResponse.
@@ -1225,48 +1228,16 @@ type LicenseResponse struct {
 	PlanId Ksuid `json:"plan_id"`
 
 	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
-	ProductId Ksuid `json:"product_id"`
+	ProductId              Ksuid `json:"product_id"`
+	RefreshIntervalSeconds int   `json:"refresh_interval_seconds"`
 
 	// Status Mutable lifecycle status of the license row.
-	Status          LicenseStatus `json:"status"`
-	TokenTtlSeconds int           `json:"token_ttl_seconds"`
-	UpdatedAt       time.Time     `json:"updated_at"`
+	Status    LicenseStatus `json:"status"`
+	UpdatedAt time.Time     `json:"updated_at"`
 }
-
-// LicenseSigningKeyListResponse defines model for LicenseSigningKeyListResponse.
-type LicenseSigningKeyListResponse struct {
-	Items []LicenseSigningKeyResponse `json:"items"`
-}
-
-// LicenseSigningKeyResponse defines model for LicenseSigningKeyResponse.
-type LicenseSigningKeyResponse struct {
-	// Kid Unique identifier using KSUID format with a resource-specific prefix.
-	Kid Ksuid `json:"kid"`
-
-	// PublicKey Base64-encoded raw Ed25519 public key.
-	PublicKey string `json:"public_key"`
-
-	// Status Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
-	Status LicenseSigningKeyStatus `json:"status"`
-}
-
-// LicenseSigningKeyStatus Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
-type LicenseSigningKeyStatus string
 
 // LicenseStatus Mutable lifecycle status of the license row.
 type LicenseStatus string
-
-// LicenseTokenResponse defines model for LicenseTokenResponse.
-type LicenseTokenResponse struct {
-	// ExpiresAt Token expiry.
-	ExpiresAt time.Time `json:"expires_at"`
-
-	// RefreshAfter Consumers should refresh the token after this instant (half the token TTL).
-	RefreshAfter time.Time `json:"refresh_after"`
-
-	// Token Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
-	Token string `json:"token"`
-}
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -1433,6 +1404,33 @@ type OrganizationAPIKeyValidateResponse struct {
 
 	// Permissions Permission names currently assigned to the organization API key.
 	Permissions []string `json:"permissions"`
+}
+
+// OrganizationEntitlementsResponse Resolved entitlement snapshot for an organization: the plan's entitlements merged with the license's per-organization overrides (override wins).
+type OrganizationEntitlementsResponse struct {
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements EntitlementsMap `json:"entitlements"`
+
+	// ExpiresAt When the license expires. Null means no expiry.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// GraceUntil Business grace boundary, when one is set.
+	GraceUntil *time.Time `json:"grace_until,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// PlanKey Stable key of the resolved plan. Informational — gate on entitlements, never on the plan key.
+	PlanKey string `json:"plan_key"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid `json:"product_id"`
+
+	// RefreshAfter When the consumer should read entitlements again (`refresh_interval_seconds` after this response).
+	RefreshAfter time.Time `json:"refresh_after"`
+
+	// Status Effective status of a resolved entitlement snapshot. GRACE means past `expires_at` but still inside `grace_until`. Revoked and past-grace licenses resolve to a 409 instead of a snapshot.
+	Status EffectiveLicenseStatus `json:"status"`
 }
 
 // OrganizationFilter defines model for OrganizationFilter.

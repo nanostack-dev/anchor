@@ -17,17 +17,17 @@ type licensesTable struct {
 	postgres.Table
 
 	// Columns
-	ID                   postgres.ColumnString
-	ProductID            postgres.ColumnString
-	OrganizationID       postgres.ColumnString
-	PlanID               postgres.ColumnString
-	Status               postgres.ColumnString
-	ExpiresAt            postgres.ColumnTimestampz
-	GraceUntil           postgres.ColumnTimestampz
-	EntitlementOverrides postgres.ColumnString
-	TokenTTLSeconds      postgres.ColumnInteger
-	CreatedAt            postgres.ColumnTimestampz
-	UpdatedAt            postgres.ColumnTimestampz
+	ID                     postgres.ColumnString
+	ProductID              postgres.ColumnString
+	OrganizationID         postgres.ColumnString
+	PlanID                 postgres.ColumnString
+	Status                 postgres.ColumnString
+	ExpiresAt              postgres.ColumnTimestampz
+	GraceUntil             postgres.ColumnTimestampz
+	EntitlementOverrides   postgres.ColumnString
+	RefreshIntervalSeconds postgres.ColumnInteger
+	CreatedAt              postgres.ColumnTimestampz
+	UpdatedAt              postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -69,37 +69,37 @@ func newLicensesTable(schemaName, tableName, alias string) *LicensesTable {
 
 func newLicensesTableImpl(schemaName, tableName, alias string) licensesTable {
 	var (
-		IDColumn                   = postgres.StringColumn("id")
-		ProductIDColumn            = postgres.StringColumn("product_id")
-		OrganizationIDColumn       = postgres.StringColumn("organization_id")
-		PlanIDColumn               = postgres.StringColumn("plan_id")
-		StatusColumn               = postgres.StringColumn("status")
-		ExpiresAtColumn            = postgres.TimestampzColumn("expires_at")
-		GraceUntilColumn           = postgres.TimestampzColumn("grace_until")
-		EntitlementOverridesColumn = postgres.StringColumn("entitlement_overrides")
-		TokenTTLSecondsColumn      = postgres.IntegerColumn("token_ttl_seconds")
-		CreatedAtColumn            = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn            = postgres.TimestampzColumn("updated_at")
-		allColumns                 = postgres.ColumnList{IDColumn, ProductIDColumn, OrganizationIDColumn, PlanIDColumn, StatusColumn, ExpiresAtColumn, GraceUntilColumn, EntitlementOverridesColumn, TokenTTLSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns             = postgres.ColumnList{ProductIDColumn, OrganizationIDColumn, PlanIDColumn, StatusColumn, ExpiresAtColumn, GraceUntilColumn, EntitlementOverridesColumn, TokenTTLSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns             = postgres.ColumnList{EntitlementOverridesColumn, TokenTTLSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                     = postgres.StringColumn("id")
+		ProductIDColumn              = postgres.StringColumn("product_id")
+		OrganizationIDColumn         = postgres.StringColumn("organization_id")
+		PlanIDColumn                 = postgres.StringColumn("plan_id")
+		StatusColumn                 = postgres.StringColumn("status")
+		ExpiresAtColumn              = postgres.TimestampzColumn("expires_at")
+		GraceUntilColumn             = postgres.TimestampzColumn("grace_until")
+		EntitlementOverridesColumn   = postgres.StringColumn("entitlement_overrides")
+		RefreshIntervalSecondsColumn = postgres.IntegerColumn("refresh_interval_seconds")
+		CreatedAtColumn              = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn              = postgres.TimestampzColumn("updated_at")
+		allColumns                   = postgres.ColumnList{IDColumn, ProductIDColumn, OrganizationIDColumn, PlanIDColumn, StatusColumn, ExpiresAtColumn, GraceUntilColumn, EntitlementOverridesColumn, RefreshIntervalSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns               = postgres.ColumnList{ProductIDColumn, OrganizationIDColumn, PlanIDColumn, StatusColumn, ExpiresAtColumn, GraceUntilColumn, EntitlementOverridesColumn, RefreshIntervalSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns               = postgres.ColumnList{EntitlementOverridesColumn, RefreshIntervalSecondsColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return licensesTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:                   IDColumn,
-		ProductID:            ProductIDColumn,
-		OrganizationID:       OrganizationIDColumn,
-		PlanID:               PlanIDColumn,
-		Status:               StatusColumn,
-		ExpiresAt:            ExpiresAtColumn,
-		GraceUntil:           GraceUntilColumn,
-		EntitlementOverrides: EntitlementOverridesColumn,
-		TokenTTLSeconds:      TokenTTLSecondsColumn,
-		CreatedAt:            CreatedAtColumn,
-		UpdatedAt:            UpdatedAtColumn,
+		ID:                     IDColumn,
+		ProductID:              ProductIDColumn,
+		OrganizationID:         OrganizationIDColumn,
+		PlanID:                 PlanIDColumn,
+		Status:                 StatusColumn,
+		ExpiresAt:              ExpiresAtColumn,
+		GraceUntil:             GraceUntilColumn,
+		EntitlementOverrides:   EntitlementOverridesColumn,
+		RefreshIntervalSeconds: RefreshIntervalSecondsColumn,
+		CreatedAt:              CreatedAtColumn,
+		UpdatedAt:              UpdatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
