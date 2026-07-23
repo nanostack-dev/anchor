@@ -48,27 +48,36 @@ func TestMain(m *testing.M) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// countPendingSchedulerJobs returns the number of pending scheduler jobs in the
+// countPendingSchedulerJobs returns the number of live scheduler jobs in the
 // integration-reconcile queue. A job is considered a scheduler job when its
 // payload contains "is_scheduler": true.
+//
+// Both PENDING and PROCESSING count as live. The scheduler job re-enqueues
+// itself, so a worker that has claimed it leaves no PENDING row until the
+// handler commits the next one; counting only PENDING makes the scheduler
+// appear to vanish for the width of that window and turns every
+// "count did not change" assertion into a race.
 func countPendingSchedulerJobs(t *testing.T) int {
 	t.Helper()
 
 	const maxJobs = 1000
-	jobs, err := Queue.ListJobs(context.Background(), pgqueue.ListJobsParams{
-		QueueName: integrationReconcileQueueName,
-		Status:    pgqueue.StatusPending,
-		Limit:     maxJobs,
-	})
-	require.NoError(t, err)
 
 	count := 0
-	for _, job := range jobs {
-		var payload struct {
-			IsScheduler bool `json:"is_scheduler"`
-		}
-		if jsonErr := json.Unmarshal(job.Payload, &payload); jsonErr == nil && payload.IsScheduler {
-			count++
+	for _, status := range []pgqueue.JobStatus{pgqueue.StatusPending, pgqueue.StatusProcessing} {
+		jobs, err := Queue.ListJobs(context.Background(), pgqueue.ListJobsParams{
+			QueueName: integrationReconcileQueueName,
+			Status:    status,
+			Limit:     maxJobs,
+		})
+		require.NoError(t, err)
+
+		for _, job := range jobs {
+			var payload struct {
+				IsScheduler bool `json:"is_scheduler"`
+			}
+			if jsonErr := json.Unmarshal(job.Payload, &payload); jsonErr == nil && payload.IsScheduler {
+				count++
+			}
 		}
 	}
 
