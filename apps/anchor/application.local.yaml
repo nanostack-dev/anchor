@@ -35,6 +35,10 @@ core:
     global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
   integration:
     reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
+  webhooks:
+    # Relaxes https-only and the private-address block for outbound webhook
+    # targets. Test-only: keep false in every deployed environment.
+    allow_insecure_targets: ${WEBHOOKS_ALLOW_INSECURE_TARGETS:false}
 
 
 # Redis cache configuration

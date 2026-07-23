@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/plan"
+	"anchor/internal/domain/webhook"
 	"anchor/internal/repository"
 )
 
@@ -23,6 +24,7 @@ type PlanService interface {
 type planService struct {
 	planRepo    repository.PlanRepository
 	licenseRepo repository.LicenseRepository
+	emitter     WebhookEmitter
 	transactor  transactor.Transactor
 	logger      zerolog.Logger
 }
@@ -30,12 +32,14 @@ type planService struct {
 func NewPlanService(
 	planRepo repository.PlanRepository,
 	licenseRepo repository.LicenseRepository,
+	emitter WebhookEmitter,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) PlanService {
 	return &planService{
 		planRepo:    planRepo,
 		licenseRepo: licenseRepo,
+		emitter:     emitter,
 		transactor:  transactor,
 		logger:      logger.With().Str("component", "plan_service").Logger(),
 	}
@@ -160,7 +164,21 @@ func (s *planService) Update(
 		}
 
 		logger.Info().Str("plan_id", input.PlanID).Msg("plan updated")
-		return nil
+
+		// Emitted ONCE at product scope, never once per licensed organization.
+		// Per-org amplification on a plan edit is the easiest available way to
+		// self-inflict a delivery storm.
+		_, emitErr := s.emitter.Emit(txCtx, webhook.EmitInput{
+			ProductID: updated.ProductID,
+			EventType: webhook.EventTypePlanUpdated,
+			Data: webhook.PlanEventData{
+				PlanID:  updated.ID,
+				PlanKey: updated.Key,
+				Name:    updated.Name,
+			},
+		})
+
+		return emitErr
 	})
 
 	return updated, err

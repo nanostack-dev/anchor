@@ -42,11 +42,19 @@ func NewModule() fx.Option {
 			// License services
 			NewPlanService,
 			NewLicenseService,
+
+			// Outbound webhook services
+			NewWebhookHTTPClient,
+			NewWebhookEmitter,
+			NewWebhookEndpointService,
+			NewWebhookFanoutService,
+			NewWebhookDeliveryService,
 		),
 
 		// Background workers
 		fx.Invoke(RegisterProductPermissionStartupSync),
 		fx.Invoke(RegisterAPIKeyEventWorker),
 		fx.Invoke(RegisterIntegrationEventWorker),
+		fx.Invoke(RegisterWebhookWorkers),
 	)
 }

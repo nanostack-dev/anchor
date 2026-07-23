@@ -4,6 +4,7 @@ type CoreConfig struct {
 	Auth        AuthConfig        `yaml:"auth"`
 	Encryption  EncryptionConfig  `yaml:"encryption"`
 	Integration IntegrationConfig `yaml:"integration"`
+	Webhooks    WebhooksConfig    `yaml:"webhooks"`
 	Environment string            `yaml:"environment"`
 }
 
@@ -20,6 +21,17 @@ type EncryptionConfig struct {
 
 type IntegrationConfig struct {
 	ReconcileScheduleInterval string `yaml:"reconcile_schedule_interval"`
+}
+
+// WebhooksConfig tunes outbound webhook delivery.
+type WebhooksConfig struct {
+	// AllowInsecureTargets relaxes the outbound target policy: plain http URLs
+	// are accepted and the private/loopback address block is not applied.
+	//
+	// It exists so integration tests can point an endpoint at a container on
+	// localhost. It MUST stay false everywhere else: with it on, a product
+	// administrator can aim a webhook at any service reachable from Anchor.
+	AllowInsecureTargets bool `yaml:"allow_insecure_targets"`
 }
 
 func (a AuthConfig) GetAdminJWTSecretAsBytes() []byte {

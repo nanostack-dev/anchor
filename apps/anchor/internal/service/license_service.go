@@ -10,6 +10,7 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/plan"
+	"anchor/internal/domain/webhook"
 	"anchor/internal/repository"
 )
 
@@ -35,6 +36,7 @@ type licenseService struct {
 	licenseRepo repository.LicenseRepository
 	planRepo    repository.PlanRepository
 	orgRepo     repository.OrganizationRepository
+	emitter     WebhookEmitter
 	transactor  transactor.Transactor
 	logger      zerolog.Logger
 }
@@ -43,6 +45,7 @@ func NewLicenseService(
 	licenseRepo repository.LicenseRepository,
 	planRepo repository.PlanRepository,
 	orgRepo repository.OrganizationRepository,
+	emitter WebhookEmitter,
 	transactor transactor.Transactor,
 	logger zerolog.Logger,
 ) LicenseService {
@@ -50,6 +53,7 @@ func NewLicenseService(
 		licenseRepo: licenseRepo,
 		planRepo:    planRepo,
 		orgRepo:     orgRepo,
+		emitter:     emitter,
 		transactor:  transactor,
 		logger:      logger.With().Str("component", "license_service").Logger(),
 	}
@@ -174,7 +178,12 @@ func (s *licenseService) Put(
 			}
 			logger.Info().Str("license_id", result.ID).
 				Str("organization_id", input.OrganizationID).Msg("license created")
-			return nil
+
+			// Emitted on the business transaction: the event exists if and
+			// only if the license write commits.
+			return s.emitLicenseEvent(
+				txCtx, webhook.EventTypeLicenseCreated, result, targetPlan.Key, nil,
+			)
 		}
 
 		updatedLicense := *existing
@@ -196,10 +205,94 @@ func (s *licenseService) Put(
 		}
 		logger.Info().Str("license_id", result.ID).
 			Str("organization_id", input.OrganizationID).Msg("license updated")
-		return nil
+
+		return s.emitLicenseEvent(
+			txCtx,
+			webhook.EventTypeLicenseUpdated,
+			result,
+			targetPlan.Key,
+			licenseChanges(*existing, result),
+		)
 	})
 
 	return result, err
+}
+
+// licenseChanges reports the fields that actually moved, so a receiver can
+// decide whether it cares without diffing the resource itself.
+func licenseChanges(previous, next license.License) map[string]webhook.LicenseChange {
+	changes := make(map[string]webhook.LicenseChange)
+	if previous.Status != next.Status {
+		changes["status"] = webhook.LicenseChange{
+			Previous: string(previous.Status), New: string(next.Status),
+		}
+	}
+	if previous.PlanID != next.PlanID {
+		changes["plan_id"] = webhook.LicenseChange{
+			Previous: previous.PlanID, New: next.PlanID,
+		}
+	}
+	if !equalTimePtr(previous.ExpiresAt, next.ExpiresAt) {
+		changes["expires_at"] = webhook.LicenseChange{
+			Previous: formatTimePtr(previous.ExpiresAt), New: formatTimePtr(next.ExpiresAt),
+		}
+	}
+	if !equalTimePtr(previous.GraceUntil, next.GraceUntil) {
+		changes["grace_until"] = webhook.LicenseChange{
+			Previous: formatTimePtr(previous.GraceUntil), New: formatTimePtr(next.GraceUntil),
+		}
+	}
+	if len(changes) == 0 {
+		return nil
+	}
+
+	return changes
+}
+
+func equalTimePtr(a, b *time.Time) bool {
+	switch {
+	case a == nil && b == nil:
+		return true
+	case a == nil || b == nil:
+		return false
+	default:
+		return a.Equal(*b)
+	}
+}
+
+func formatTimePtr(value *time.Time) any {
+	if value == nil {
+		return nil
+	}
+
+	return value.UTC().Format(time.RFC3339)
+}
+
+// emitLicenseEvent publishes a license event on the caller's transaction. A
+// failure to emit fails the business write: silently losing an event would let
+// a consumer serve a revoked license until its next poll.
+func (s *licenseService) emitLicenseEvent(
+	ctx context.Context,
+	eventType string,
+	lic license.License,
+	planKey string,
+	changes map[string]webhook.LicenseChange,
+) error {
+	organizationID := lic.OrganizationID
+	_, err := s.emitter.Emit(ctx, webhook.EmitInput{
+		ProductID:      lic.ProductID,
+		OrganizationID: &organizationID,
+		EventType:      eventType,
+		Data: webhook.LicenseEventData{
+			LicenseID: lic.ID,
+			PlanID:    lic.PlanID,
+			PlanKey:   planKey,
+			Status:    string(lic.Status),
+			Changes:   changes,
+		},
+	})
+
+	return err
 }
 
 func (s *licenseService) Revoke(
@@ -274,7 +367,28 @@ func (s *licenseService) setStatus(
 
 		logger.Info().Str("license_id", result.ID).Str("status", string(status)).
 			Msg("license status changed")
-		return nil
+
+		// Single emit point for revoke, suspend and reinstate. Revocation gets
+		// its own event type because it is the one transition a consumer must
+		// react to immediately; suspend and reinstate are ordinary updates
+		// carrying the status transition in `changes`.
+		eventType := webhook.EventTypeLicenseUpdated
+		if status == license.StatusRevoked {
+			eventType = webhook.EventTypeLicenseRevoked
+		}
+
+		licensePlan, planErr := s.planRepo.FindByID(txCtx, productID, result.PlanID)
+		if planErr != nil {
+			return planErr
+		}
+		planKey := ""
+		if licensePlan != nil {
+			planKey = licensePlan.Key
+		}
+
+		return s.emitLicenseEvent(
+			txCtx, eventType, result, planKey, licenseChanges(*existing, result),
+		)
 	})
 
 	return result, err
