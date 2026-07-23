@@ -956,6 +956,17 @@ export type OrganizationApiKeyValidateRequest = {
     required_scopes: Array<string>;
 };
 
+export type OrganizationApiKeyIntrospectRequest = {
+    /**
+     * Raw organization API key value to introspect.
+     */
+    api_key: string;
+    /**
+     * Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+     */
+    required_scopes?: Array<string>;
+};
+
 export type OrganizationApiKeyValidateResponse = {
     api_key: OrganizationApiKeyResponse;
     /**
@@ -1602,6 +1613,160 @@ export type EmailSendRecordListResponse = {
 };
 
 /**
+ * The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+ */
+export enum EntitlementType {
+    BOOLEAN = 'boolean',
+    NUMERIC = 'numeric'
+}
+
+export type EntitlementValue = {
+    type: EntitlementType;
+    /**
+     * The entitlement value. Must be a boolean for `boolean` entitlements and a number for `numeric` entitlements.
+     */
+    value: unknown;
+};
+
+/**
+ * Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+ */
+export type EntitlementsMap = {
+    [key: string]: EntitlementValue;
+};
+
+export type PlanRequest = {
+    /**
+     * Stable plan identifier, unique per product (future Stripe lookup_key). Immutable after creation.
+     */
+    key: string;
+    /**
+     * Human-readable plan name.
+     */
+    name: string;
+    /**
+     * Optional plan description.
+     */
+    description?: string | null;
+    entitlements?: EntitlementsMap;
+    /**
+     * Whether organizations without a license row fall back to this plan. At most one default plan per product.
+     */
+    is_default?: boolean;
+};
+
+/**
+ * Partial plan update. `key` is immutable.
+ */
+export type PlanUpdateRequest = {
+    name?: string;
+    description?: string | null;
+    entitlements?: EntitlementsMap;
+    is_default?: boolean;
+};
+
+export type PlanResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    key: string;
+    name: string;
+    description?: string | null;
+    entitlements: EntitlementsMap;
+    is_default: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type PlanListResponse = {
+    items: Array<PlanResponse>;
+};
+
+/**
+ * Mutable lifecycle status of the license row.
+ */
+export enum LicenseStatus {
+    ACTIVE = 'ACTIVE',
+    SUSPENDED = 'SUSPENDED',
+    REVOKED = 'REVOKED'
+}
+
+/**
+ * Assigns or fully replaces the organization's license.
+ */
+export type LicenseAssignRequest = {
+    plan_id: Ksuid;
+    status?: LicenseStatus;
+    /**
+     * When the license expires. Null means no expiry.
+     */
+    expires_at?: string | null;
+    /**
+     * Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+     */
+    grace_until?: string | null;
+    entitlement_overrides?: EntitlementsMap;
+    /**
+     * Lifetime of issued license tokens in seconds.
+     */
+    token_ttl_seconds?: number;
+};
+
+export type LicenseResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    organization_id: Ksuid;
+    plan_id: Ksuid;
+    status: LicenseStatus;
+    expires_at?: string | null;
+    grace_until?: string | null;
+    entitlement_overrides: EntitlementsMap;
+    token_ttl_seconds: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type LicenseListResponse = {
+    items: Array<LicenseResponse>;
+};
+
+export type LicenseTokenResponse = {
+    /**
+     * Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
+     */
+    token: string;
+    /**
+     * Consumers should refresh the token after this instant (half the token TTL).
+     */
+    refresh_after: string;
+    /**
+     * Token expiry.
+     */
+    expires_at: string;
+};
+
+/**
+ * Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+ */
+export enum LicenseSigningKeyStatus {
+    ACTIVE = 'ACTIVE',
+    RETIRING = 'RETIRING',
+    RETIRED = 'RETIRED'
+}
+
+export type LicenseSigningKeyResponse = {
+    kid: Ksuid;
+    /**
+     * Base64-encoded raw Ed25519 public key.
+     */
+    public_key: string;
+    status: LicenseSigningKeyStatus;
+};
+
+export type LicenseSigningKeyListResponse = {
+    items: Array<LicenseSigningKeyResponse>;
+};
+
+/**
  * The KSUID of the platform invitation.
  */
 export type PlatformInvitationIdParameter = Ksuid;
@@ -1670,6 +1835,11 @@ export type ProviderTypeParameter = IntegrationProviderType;
  * The KSUID of the email template.
  */
 export type EmailTemplateIdParameter = Ksuid;
+
+/**
+ * The KSUID of the plan.
+ */
+export type PlanIdParameter = Ksuid;
 
 export type LogoutData = {
     body?: never;
@@ -3961,6 +4131,48 @@ export type ValidateOrganizationApiKeyResponses = {
 
 export type ValidateOrganizationApiKeyResponse = ValidateOrganizationApiKeyResponses[keyof ValidateOrganizationApiKeyResponses];
 
+export type IntrospectOrganizationApiKeyData = {
+    body: OrganizationApiKeyIntrospectRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/auth/introspect';
+};
+
+export type IntrospectOrganizationApiKeyErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Organization API key is valid but lacks one or more required scopes.
+     */
+    403: OrganizationApiKeyValidateForbiddenResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type IntrospectOrganizationApiKeyError = IntrospectOrganizationApiKeyErrors[keyof IntrospectOrganizationApiKeyErrors];
+
+export type IntrospectOrganizationApiKeyResponses = {
+    /**
+     * Organization API key introspection result.
+     */
+    200: OrganizationApiKeyValidateResponse;
+};
+
+export type IntrospectOrganizationApiKeyResponse = IntrospectOrganizationApiKeyResponses[keyof IntrospectOrganizationApiKeyResponses];
+
 export type CreateProductOrganizationData = {
     /**
      * Organization details (name, optional description).
@@ -4970,6 +5182,549 @@ export type SendEmailResponses = {
 };
 
 export type SendEmailResponse = SendEmailResponses[keyof SendEmailResponses];
+
+export type ListPlansData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/plans';
+};
+
+export type ListPlansErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type ListPlansError = ListPlansErrors[keyof ListPlansErrors];
+
+export type ListPlansResponses = {
+    /**
+     * Plans for the product.
+     */
+    200: PlanListResponse;
+};
+
+export type ListPlansResponse = ListPlansResponses[keyof ListPlansResponses];
+
+export type CreatePlanData = {
+    /**
+     * Plan details.
+     */
+    body: PlanRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/plans';
+};
+
+export type CreatePlanErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type CreatePlanError = CreatePlanErrors[keyof CreatePlanErrors];
+
+export type CreatePlanResponses = {
+    /**
+     * Plan created successfully.
+     */
+    201: PlanResponse;
+};
+
+export type CreatePlanResponse = CreatePlanResponses[keyof CreatePlanResponses];
+
+export type DeletePlanData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the plan.
+         */
+        plan_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/plans/{plan_id}';
+};
+
+export type DeletePlanErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeletePlanError = DeletePlanErrors[keyof DeletePlanErrors];
+
+export type DeletePlanResponses = {
+    /**
+     * Plan deleted successfully.
+     */
+    204: void;
+};
+
+export type DeletePlanResponse = DeletePlanResponses[keyof DeletePlanResponses];
+
+export type GetPlanData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the plan.
+         */
+        plan_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/plans/{plan_id}';
+};
+
+export type GetPlanErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetPlanError = GetPlanErrors[keyof GetPlanErrors];
+
+export type GetPlanResponses = {
+    /**
+     * Plan details.
+     */
+    200: PlanResponse;
+};
+
+export type GetPlanResponse = GetPlanResponses[keyof GetPlanResponses];
+
+export type UpdatePlanData = {
+    /**
+     * Fields to update.
+     */
+    body: PlanUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the plan.
+         */
+        plan_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/plans/{plan_id}';
+};
+
+export type UpdatePlanErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type UpdatePlanError = UpdatePlanErrors[keyof UpdatePlanErrors];
+
+export type UpdatePlanResponses = {
+    /**
+     * Plan updated successfully.
+     */
+    200: PlanResponse;
+};
+
+export type UpdatePlanResponse = UpdatePlanResponses[keyof UpdatePlanResponses];
+
+export type ListLicensesData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licenses';
+};
+
+export type ListLicensesErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type ListLicensesError = ListLicensesErrors[keyof ListLicensesErrors];
+
+export type ListLicensesResponses = {
+    /**
+     * Licenses for the product.
+     */
+    200: LicenseListResponse;
+};
+
+export type ListLicensesResponse = ListLicensesResponses[keyof ListLicensesResponses];
+
+export type GetOrganizationLicenseData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license';
+};
+
+export type GetOrganizationLicenseErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetOrganizationLicenseError = GetOrganizationLicenseErrors[keyof GetOrganizationLicenseErrors];
+
+export type GetOrganizationLicenseResponses = {
+    /**
+     * License details.
+     */
+    200: LicenseResponse;
+};
+
+export type GetOrganizationLicenseResponse = GetOrganizationLicenseResponses[keyof GetOrganizationLicenseResponses];
+
+export type PutOrganizationLicenseData = {
+    /**
+     * License assignment.
+     */
+    body: LicenseAssignRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license';
+};
+
+export type PutOrganizationLicenseErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type PutOrganizationLicenseError = PutOrganizationLicenseErrors[keyof PutOrganizationLicenseErrors];
+
+export type PutOrganizationLicenseResponses = {
+    /**
+     * License assigned or updated successfully.
+     */
+    200: LicenseResponse;
+};
+
+export type PutOrganizationLicenseResponse = PutOrganizationLicenseResponses[keyof PutOrganizationLicenseResponses];
+
+export type RevokeOrganizationLicenseData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/revoke';
+};
+
+export type RevokeOrganizationLicenseErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type RevokeOrganizationLicenseError = RevokeOrganizationLicenseErrors[keyof RevokeOrganizationLicenseErrors];
+
+export type RevokeOrganizationLicenseResponses = {
+    /**
+     * License revoked.
+     */
+    200: LicenseResponse;
+};
+
+export type RevokeOrganizationLicenseResponse = RevokeOrganizationLicenseResponses[keyof RevokeOrganizationLicenseResponses];
+
+export type SuspendOrganizationLicenseData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/suspend';
+};
+
+export type SuspendOrganizationLicenseErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type SuspendOrganizationLicenseError = SuspendOrganizationLicenseErrors[keyof SuspendOrganizationLicenseErrors];
+
+export type SuspendOrganizationLicenseResponses = {
+    /**
+     * License suspended.
+     */
+    200: LicenseResponse;
+};
+
+export type SuspendOrganizationLicenseResponse = SuspendOrganizationLicenseResponses[keyof SuspendOrganizationLicenseResponses];
+
+export type ReinstateOrganizationLicenseData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/reinstate';
+};
+
+export type ReinstateOrganizationLicenseErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type ReinstateOrganizationLicenseError = ReinstateOrganizationLicenseErrors[keyof ReinstateOrganizationLicenseErrors];
+
+export type ReinstateOrganizationLicenseResponses = {
+    /**
+     * License reinstated.
+     */
+    200: LicenseResponse;
+};
+
+export type ReinstateOrganizationLicenseResponse = ReinstateOrganizationLicenseResponses[keyof ReinstateOrganizationLicenseResponses];
+
+export type IssueLicenseTokenData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license-token';
+};
+
+export type IssueLicenseTokenErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+    /**
+     * Conflict (e.g., resource already exists)
+     */
+    409: ApiErrorResponse;
+};
+
+export type IssueLicenseTokenError = IssueLicenseTokenErrors[keyof IssueLicenseTokenErrors];
+
+export type IssueLicenseTokenResponses = {
+    /**
+     * Signed license token.
+     */
+    200: LicenseTokenResponse;
+};
+
+export type IssueLicenseTokenResponse = IssueLicenseTokenResponses[keyof IssueLicenseTokenResponses];
+
+export type ListLicenseSigningKeysData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/license-signing-keys';
+};
+
+export type ListLicenseSigningKeysErrors = {
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+};
+
+export type ListLicenseSigningKeysError = ListLicenseSigningKeysErrors[keyof ListLicenseSigningKeysErrors];
+
+export type ListLicenseSigningKeysResponses = {
+    /**
+     * Verification keys.
+     */
+    200: LicenseSigningKeyListResponse;
+};
+
+export type ListLicenseSigningKeysResponse = ListLicenseSigningKeysResponses[keyof ListLicenseSigningKeysResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

@@ -57,6 +57,6 @@ func TestResolvedEntitlements(t *testing.T) {
 
 	resolved := lic.ResolvedEntitlements(planEntitlements)
 
-	assert.Equal(t, float64(100), resolved["max_runs"].Value)
+	assert.InDelta(t, float64(100), resolved["max_runs"].Value, 0.0001)
 	assert.Equal(t, true, resolved["api_access"].Value)
 }

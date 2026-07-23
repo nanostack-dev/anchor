@@ -659,6 +659,11 @@ export const zOrganizationApiKeyValidateRequest = z.object({
     required_scopes: z.array(z.string())
 });
 
+export const zOrganizationApiKeyIntrospectRequest = z.object({
+    api_key: z.string(),
+    required_scopes: z.optional(z.array(z.string()))
+});
+
 export const zOrganizationApiKeyValidateResponse = z.object({
     api_key: zOrganizationApiKeyResponse,
     permissions: z.array(z.string()),
@@ -1197,6 +1202,143 @@ export const zEmailSendRecordListResponse = z.object({
 });
 
 /**
+ * The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+ */
+export const zEntitlementType = z.enum([
+    'boolean',
+    'numeric'
+]);
+
+export const zEntitlementValue = z.object({
+    type: zEntitlementType,
+    value: z.unknown()
+});
+
+/**
+ * Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+ */
+export const zEntitlementsMap = z.record(z.string(), zEntitlementValue);
+
+export const zPlanRequest = z.object({
+    key: z.string().min(1).max(100),
+    name: z.string().min(1).max(100),
+    description: z.optional(z.union([
+        z.string().max(1000),
+        z.null()
+    ])),
+    entitlements: z.optional(zEntitlementsMap),
+    is_default: z.optional(z.boolean()).default(false)
+});
+
+/**
+ * Partial plan update. `key` is immutable.
+ */
+export const zPlanUpdateRequest = z.object({
+    name: z.optional(z.string().min(1).max(100)),
+    description: z.optional(z.union([
+        z.string().max(1000),
+        z.null()
+    ])),
+    entitlements: z.optional(zEntitlementsMap),
+    is_default: z.optional(z.boolean())
+});
+
+export const zPlanResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    key: z.string(),
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    entitlements: zEntitlementsMap,
+    is_default: z.boolean(),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zPlanListResponse = z.object({
+    items: z.array(zPlanResponse)
+});
+
+/**
+ * Mutable lifecycle status of the license row.
+ */
+export const zLicenseStatus = z.enum([
+    'ACTIVE',
+    'SUSPENDED',
+    'REVOKED'
+]);
+
+/**
+ * Assigns or fully replaces the organization's license.
+ */
+export const zLicenseAssignRequest = z.object({
+    plan_id: zKsuid,
+    status: z.optional(zLicenseStatus),
+    expires_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    grace_until: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    entitlement_overrides: z.optional(zEntitlementsMap),
+    token_ttl_seconds: z.optional(z.int().gte(60).lte(2592000)).default(86400)
+});
+
+export const zLicenseResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    plan_id: zKsuid,
+    status: zLicenseStatus,
+    expires_at: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    grace_until: z.optional(z.union([
+        z.iso.datetime(),
+        z.null()
+    ])),
+    entitlement_overrides: zEntitlementsMap,
+    token_ttl_seconds: z.int(),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zLicenseListResponse = z.object({
+    items: z.array(zLicenseResponse)
+});
+
+export const zLicenseTokenResponse = z.object({
+    token: z.string(),
+    refresh_after: z.iso.datetime(),
+    expires_at: z.iso.datetime()
+});
+
+/**
+ * Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+ */
+export const zLicenseSigningKeyStatus = z.enum([
+    'ACTIVE',
+    'RETIRING',
+    'RETIRED'
+]);
+
+export const zLicenseSigningKeyResponse = z.object({
+    kid: zKsuid,
+    public_key: z.string(),
+    status: zLicenseSigningKeyStatus
+});
+
+export const zLicenseSigningKeyListResponse = z.object({
+    items: z.array(zLicenseSigningKeyResponse)
+});
+
+/**
  * The KSUID of the platform invitation.
  */
 export const zPlatformInvitationIdParameter = zKsuid;
@@ -1265,6 +1407,11 @@ export const zProviderTypeParameter = zIntegrationProviderType;
  * The KSUID of the email template.
  */
 export const zEmailTemplateIdParameter = zKsuid;
+
+/**
+ * The KSUID of the plan.
+ */
+export const zPlanIdParameter = zKsuid;
 
 export const zLogoutData = z.object({
     body: z.optional(z.never()),
@@ -2006,6 +2153,19 @@ export const zValidateOrganizationApiKeyData = z.object({
  */
 export const zValidateOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
 
+export const zIntrospectOrganizationApiKeyData = z.object({
+    body: zOrganizationApiKeyIntrospectRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Organization API key introspection result.
+ */
+export const zIntrospectOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
+
 export const zCreateProductOrganizationData = z.object({
     body: zProductOrganizationRequest,
     path: z.object({
@@ -2407,3 +2567,181 @@ export const zSendEmailData = z.object({
  * Send record created
  */
 export const zSendEmailResponse = zEmailSendRecordResponse;
+
+export const zListPlansData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Plans for the product.
+ */
+export const zListPlansResponse = zPlanListResponse;
+
+export const zCreatePlanData = z.object({
+    body: zPlanRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Plan created successfully.
+ */
+export const zCreatePlanResponse = zPlanResponse;
+
+export const zDeletePlanData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        plan_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Plan deleted successfully.
+ */
+export const zDeletePlanResponse = z.void();
+
+export const zGetPlanData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        plan_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Plan details.
+ */
+export const zGetPlanResponse = zPlanResponse;
+
+export const zUpdatePlanData = z.object({
+    body: zPlanUpdateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        plan_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Plan updated successfully.
+ */
+export const zUpdatePlanResponse = zPlanResponse;
+
+export const zListLicensesData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Licenses for the product.
+ */
+export const zListLicensesResponse = zLicenseListResponse;
+
+export const zGetOrganizationLicenseData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * License details.
+ */
+export const zGetOrganizationLicenseResponse = zLicenseResponse;
+
+export const zPutOrganizationLicenseData = z.object({
+    body: zLicenseAssignRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * License assigned or updated successfully.
+ */
+export const zPutOrganizationLicenseResponse = zLicenseResponse;
+
+export const zRevokeOrganizationLicenseData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * License revoked.
+ */
+export const zRevokeOrganizationLicenseResponse = zLicenseResponse;
+
+export const zSuspendOrganizationLicenseData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * License suspended.
+ */
+export const zSuspendOrganizationLicenseResponse = zLicenseResponse;
+
+export const zReinstateOrganizationLicenseData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * License reinstated.
+ */
+export const zReinstateOrganizationLicenseResponse = zLicenseResponse;
+
+export const zIssueLicenseTokenData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Signed license token.
+ */
+export const zIssueLicenseTokenResponse = zLicenseTokenResponse;
+
+export const zListLicenseSigningKeysData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Verification keys.
+ */
+export const zListLicenseSigningKeysResponse = zLicenseSigningKeyListResponse;

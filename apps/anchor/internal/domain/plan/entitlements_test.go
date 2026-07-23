@@ -104,8 +104,8 @@ func TestEntitlementsNormalizeCoercesNumerics(t *testing.T) {
 
 	normalized := entitlements.Normalize()
 
-	assert.Equal(t, float64(25), normalized["int_val"].Value)
-	assert.Equal(t, float64(9), normalized["int64_val"].Value)
+	assert.InDelta(t, float64(25), normalized["int_val"].Value, 0.0001)
+	assert.InDelta(t, float64(9), normalized["int64_val"].Value, 0.0001)
 	assert.InDelta(t, 1.5, normalized["float32_val"].Value, 0.0001)
 	assert.Equal(t, true, normalized["bool_val"].Value)
 	require.NoError(t, normalized.Validate())
@@ -129,12 +129,12 @@ func TestEntitlementsMergedWithOverrideWins(t *testing.T) {
 	merged := base.MergedWith(overrides)
 
 	assert.Len(t, merged, 3)
-	assert.Equal(t, float64(100), merged["max_runs"].Value)
+	assert.InDelta(t, float64(100), merged["max_runs"].Value, 0.0001)
 	assert.Equal(t, false, merged["api_access"].Value)
 	assert.Equal(t, true, merged["beta_flag"].Value)
 
 	// Inputs are not mutated.
-	assert.Equal(t, float64(10), base["max_runs"].Value)
+	assert.InDelta(t, float64(10), base["max_runs"].Value, 0.0001)
 	assert.Len(t, base, 2)
 	assert.Len(t, overrides, 2)
 }

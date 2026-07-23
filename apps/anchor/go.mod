@@ -25,11 +25,13 @@ require (
 )
 
 require (
+	aidanwoods.dev/go-paseto v1.6.0
 	github.com/clerk/clerk-sdk-go/v2 v2.5.1
 	github.com/nanostack-dev/pgkit v0.0.10
 )
 
 require (
+	aidanwoods.dev/go-result v0.3.1 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/speakeasy-api/openapi v1.19.2 // indirect

@@ -1,10 +1,10 @@
 package plan
 
 type CreatePlanInput struct {
-	ProductID    string       `json:"product_id"  validate:"required,notblank"`
-	Key          string       `json:"key"         validate:"required,notblank,max=100"`
-	Name         string       `json:"name"        validate:"required,notblank,max=100"`
-	Description  string       `json:"description" validate:"omitempty,max=1000"`
+	ProductID    string       `json:"product_id"   validate:"required,notblank"`
+	Key          string       `json:"key"          validate:"required,notblank,max=100"`
+	Name         string       `json:"name"         validate:"required,notblank,max=100"`
+	Description  string       `json:"description"  validate:"omitempty,max=1000"`
 	Entitlements Entitlements `json:"entitlements"`
 	IsDefault    bool         `json:"is_default"`
 }

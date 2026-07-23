@@ -15,9 +15,11 @@ import (
 	"anchor/internal/domain/email"
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/invitation"
+	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/domain/permission"
+	"anchor/internal/domain/plan"
 	"anchor/internal/domain/platform"
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/apikey"
@@ -474,6 +476,21 @@ type EmailVariableSchemaProperty struct {
 // EmailVariableType defines model for EmailVariableType.
 type EmailVariableType = email.VariableType
 
+// EntitlementType The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+type EntitlementType = plan.EntitlementType
+
+// EntitlementValue defines model for EntitlementValue.
+type EntitlementValue struct {
+	// Type The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+	Type EntitlementType `json:"type"`
+
+	// Value The entitlement value. Must be a boolean for `boolean` entitlements and a number for `numeric` entitlements.
+	Value interface{} `json:"value"`
+}
+
+// EntitlementsMap Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+type EntitlementsMap map[string]EntitlementValue
+
 // FoundingMemberRequest defines model for FoundingMemberRequest.
 type FoundingMemberRequest struct {
 	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
@@ -603,6 +620,94 @@ type IntegrationWebhookResponse struct {
 
 	// Status The processing status of an integration event.
 	Status IntegrationEventStatus `json:"status"`
+}
+
+// LicenseAssignRequest Assigns or fully replaces the organization's license.
+type LicenseAssignRequest struct {
+	// EntitlementOverrides Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	EntitlementOverrides *EntitlementsMap `json:"entitlement_overrides,omitempty"`
+
+	// ExpiresAt When the license expires. Null means no expiry.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+	GraceUntil *time.Time `json:"grace_until,omitempty"`
+
+	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
+	PlanId Ksuid `json:"plan_id"`
+
+	// Status Mutable lifecycle status of the license row.
+	Status *LicenseStatus `json:"status,omitempty"`
+
+	// TokenTtlSeconds Lifetime of issued license tokens in seconds.
+	TokenTtlSeconds *int `json:"token_ttl_seconds,omitempty"`
+}
+
+// LicenseListResponse defines model for LicenseListResponse.
+type LicenseListResponse struct {
+	Items []LicenseResponse `json:"items"`
+}
+
+// LicenseResponse defines model for LicenseResponse.
+type LicenseResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// EntitlementOverrides Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	EntitlementOverrides EntitlementsMap `json:"entitlement_overrides"`
+	ExpiresAt            *time.Time      `json:"expires_at,omitempty"`
+	GraceUntil           *time.Time      `json:"grace_until,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id Ksuid `json:"id"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
+	PlanId Ksuid `json:"plan_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid `json:"product_id"`
+
+	// Status Mutable lifecycle status of the license row.
+	Status          LicenseStatus `json:"status"`
+	TokenTtlSeconds int           `json:"token_ttl_seconds"`
+	UpdatedAt       time.Time     `json:"updated_at"`
+}
+
+// LicenseSigningKeyListResponse defines model for LicenseSigningKeyListResponse.
+type LicenseSigningKeyListResponse struct {
+	Items []LicenseSigningKeyResponse `json:"items"`
+}
+
+// LicenseSigningKeyResponse defines model for LicenseSigningKeyResponse.
+type LicenseSigningKeyResponse struct {
+	// Kid Unique identifier using KSUID format with a resource-specific prefix.
+	Kid Ksuid `json:"kid"`
+
+	// PublicKey Base64-encoded raw Ed25519 public key.
+	PublicKey string `json:"public_key"`
+
+	// Status Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+	Status LicenseSigningKeyStatus `json:"status"`
+}
+
+// LicenseSigningKeyStatus Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+type LicenseSigningKeyStatus = license.SigningKeyStatus
+
+// LicenseStatus Mutable lifecycle status of the license row.
+type LicenseStatus = license.Status
+
+// LicenseTokenResponse defines model for LicenseTokenResponse.
+type LicenseTokenResponse struct {
+	// ExpiresAt Token expiry.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// RefreshAfter Consumers should refresh the token after this instant (half the token TTL).
+	RefreshAfter time.Time `json:"refresh_after"`
+
+	// Token Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
+	Token string `json:"token"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -876,6 +981,58 @@ type PagedListResponse struct {
 
 // PaginationRequest defines model for PaginationRequest.
 type PaginationRequest = search.Pagination
+
+// PlanListResponse defines model for PlanListResponse.
+type PlanListResponse struct {
+	Items []PlanResponse `json:"items"`
+}
+
+// PlanRequest defines model for PlanRequest.
+type PlanRequest struct {
+	// Description Optional plan description.
+	Description *string `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements *EntitlementsMap `json:"entitlements,omitempty"`
+
+	// IsDefault Whether organizations without a license row fall back to this plan. At most one default plan per product.
+	IsDefault *bool `json:"is_default,omitempty"`
+
+	// Key Stable plan identifier, unique per product (future Stripe lookup_key). Immutable after creation.
+	Key string `json:"key"`
+
+	// Name Human-readable plan name.
+	Name string `json:"name"`
+}
+
+// PlanResponse defines model for PlanResponse.
+type PlanResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements EntitlementsMap `json:"entitlements"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id        Ksuid  `json:"id"`
+	IsDefault bool   `json:"is_default"`
+	Key       string `json:"key"`
+	Name      string `json:"name"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid     `json:"product_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PlanUpdateRequest Partial plan update. `key` is immutable.
+type PlanUpdateRequest struct {
+	Description *string `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements *EntitlementsMap `json:"entitlements,omitempty"`
+	IsDefault    *bool            `json:"is_default,omitempty"`
+	Name         *string          `json:"name,omitempty"`
+}
 
 // PlatformInvitationFilter defines model for PlatformInvitationFilter.
 type PlatformInvitationFilter struct {
@@ -1771,6 +1928,9 @@ type OrganizationAPIKeyIdParameter = Ksuid
 // OrganizationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 type OrganizationIdParameter = Ksuid
 
+// PlanIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+type PlanIdParameter = Ksuid
+
 // PlatformInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 type PlatformInvitationIdParameter = Ksuid
 
@@ -1803,6 +1963,9 @@ type WorkspaceIdParameter = Ksuid
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
+
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorResponse
 
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
@@ -1952,6 +2115,9 @@ type ValidateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyValidateReque
 // UpdateOrganizationAPIKeyJSONRequestBody defines body for UpdateOrganizationAPIKey for application/json ContentType.
 type UpdateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyUpdateRequest
 
+// PutOrganizationLicenseJSONRequestBody defines body for PutOrganizationLicense for application/json ContentType.
+type PutOrganizationLicenseJSONRequestBody = LicenseAssignRequest
+
 // AddOrganizationMemberJSONRequestBody defines body for AddOrganizationMember for application/json ContentType.
 type AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest
 
@@ -1972,6 +2138,12 @@ type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest
+
+// CreatePlanJSONRequestBody defines body for CreatePlan for application/json ContentType.
+type CreatePlanJSONRequestBody = PlanRequest
+
+// UpdatePlanJSONRequestBody defines body for UpdatePlan for application/json ContentType.
+type UpdatePlanJSONRequestBody = PlanUpdateRequest
 
 // CreateProductUserJSONRequestBody defines body for CreateProductUser for application/json ContentType.
 type CreateProductUserJSONRequestBody CreateProductUserJSONBody
@@ -2318,6 +2490,12 @@ type ServerInterface interface {
 	// List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
+	// List License Signing Keys
+	// (GET /v1/products/{product_id}/license-signing-keys)
+	ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// List Licenses
+	// (GET /v1/products/{product_id}/licenses)
+	ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -2351,6 +2529,24 @@ type ServerInterface interface {
 	// Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter)
+	// Get Organization License
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+	GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Assign or Update Organization License
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
+	PutOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Issue License Token
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
+	IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Reinstate Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/reinstate)
+	ReinstateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Revoke Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/revoke)
+	RevokeOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// Suspend Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/suspend)
+	SuspendOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -2387,6 +2583,21 @@ type ServerInterface interface {
 	// Get built-in Product Permission
 	// (GET /v1/products/{product_id}/permissions/{permission_id})
 	GetProductPermission(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, permissionId ProductPermissionIdParameter)
+	// List Plans
+	// (GET /v1/products/{product_id}/plans)
+	ListPlans(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// Create Plan
+	// (POST /v1/products/{product_id}/plans)
+	CreatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// Delete Plan
+	// (DELETE /v1/products/{product_id}/plans/{plan_id})
+	DeletePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter)
+	// Get Plan
+	// (GET /v1/products/{product_id}/plans/{plan_id})
+	GetPlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter)
+	// Update Plan
+	// (PATCH /v1/products/{product_id}/plans/{plan_id})
+	UpdatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter)
 	// Create Product User
 	// (POST /v1/products/{product_id}/product-users)
 	CreateProductUser(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -2705,6 +2916,18 @@ func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List License Signing Keys
+// (GET /v1/products/{product_id}/license-signing-keys)
+func (_ Unimplemented) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List Licenses
+// (GET /v1/products/{product_id}/licenses)
+func (_ Unimplemented) ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Create Product Organization
 // (POST /v1/products/{product_id}/organizations)
 func (_ Unimplemented) CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
@@ -2768,6 +2991,42 @@ func (_ Unimplemented) GetOrganizationAPIKey(w http.ResponseWriter, r *http.Requ
 // Update Organization API Key
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 func (_ Unimplemented) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get Organization License
+// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+func (_ Unimplemented) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Assign or Update Organization License
+// (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
+func (_ Unimplemented) PutOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Issue License Token
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
+func (_ Unimplemented) IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Reinstate Organization License
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license/reinstate)
+func (_ Unimplemented) ReinstateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Revoke Organization License
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license/revoke)
+func (_ Unimplemented) RevokeOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Suspend Organization License
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license/suspend)
+func (_ Unimplemented) SuspendOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2840,6 +3099,36 @@ func (_ Unimplemented) SearchProductPermissions(w http.ResponseWriter, r *http.R
 // Get built-in Product Permission
 // (GET /v1/products/{product_id}/permissions/{permission_id})
 func (_ Unimplemented) GetProductPermission(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, permissionId ProductPermissionIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List Plans
+// (GET /v1/products/{product_id}/plans)
+func (_ Unimplemented) ListPlans(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create Plan
+// (POST /v1/products/{product_id}/plans)
+func (_ Unimplemented) CreatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete Plan
+// (DELETE /v1/products/{product_id}/plans/{plan_id})
+func (_ Unimplemented) DeletePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get Plan
+// (GET /v1/products/{product_id}/plans/{plan_id})
+func (_ Unimplemented) GetPlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update Plan
+// (PATCH /v1/products/{product_id}/plans/{plan_id})
+func (_ Unimplemented) UpdatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4464,6 +4753,70 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
+// ListLicenseSigningKeys operation middleware
+func (siw *ServerInterfaceWrapper) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"license:read"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLicenseSigningKeys(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLicenses operation middleware
+func (siw *ServerInterfaceWrapper) ListLicenses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLicenses(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateProductOrganization operation middleware
 func (siw *ServerInterfaceWrapper) CreateProductOrganization(w http.ResponseWriter, r *http.Request) {
 
@@ -4921,6 +5274,252 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationAPIKey(w http.ResponseWrite
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganizationAPIKey(w, r, productId, organizationId, apiKeyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) PutOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IssueLicenseToken operation middleware
+func (siw *ServerInterfaceWrapper) IssueLicenseToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"license:read"})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IssueLicenseToken(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReinstateOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) ReinstateOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReinstateOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) RevokeOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SuspendOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) SuspendOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SuspendOrganizationLicense(w, r, productId, organizationId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5488,6 +6087,193 @@ func (siw *ServerInterfaceWrapper) GetProductPermission(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductPermission(w, r, productId, permissionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPlans operation middleware
+func (siw *ServerInterfaceWrapper) ListPlans(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPlans(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePlan operation middleware
+func (siw *ServerInterfaceWrapper) CreatePlan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePlan(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePlan operation middleware
+func (siw *ServerInterfaceWrapper) DeletePlan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "plan_id" -------------
+	var planId PlanIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "plan_id", chi.URLParam(r, "plan_id"), &planId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "plan_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePlan(w, r, productId, planId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPlan operation middleware
+func (siw *ServerInterfaceWrapper) GetPlan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "plan_id" -------------
+	var planId PlanIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "plan_id", chi.URLParam(r, "plan_id"), &planId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "plan_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPlan(w, r, productId, planId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePlan operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePlan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "plan_id" -------------
+	var planId PlanIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "plan_id", chi.URLParam(r, "plan_id"), &planId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "plan_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePlan(w, r, productId, planId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6500,6 +7286,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs", wrapper.ListIntegrationAuditLogs)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/license-signing-keys", wrapper.ListLicenseSigningKeys)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/licenses", wrapper.ListLicenses)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations", wrapper.CreateProductOrganization)
 	})
 	r.Group(func(r chi.Router) {
@@ -6531,6 +7323,24 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}", wrapper.UpdateOrganizationAPIKey)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.GetOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.PutOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license-token", wrapper.IssueLicenseToken)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/reinstate", wrapper.ReinstateOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/revoke", wrapper.RevokeOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/suspend", wrapper.SuspendOrganizationLicense)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/members", wrapper.AddOrganizationMember)
@@ -6567,6 +7377,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/permissions/{permission_id}", wrapper.GetProductPermission)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/plans", wrapper.ListPlans)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/plans", wrapper.CreatePlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/plans/{plan_id}", wrapper.DeletePlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/plans/{plan_id}", wrapper.GetPlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/products/{product_id}/plans/{plan_id}", wrapper.UpdatePlan)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/product-users", wrapper.CreateProductUser)
@@ -6627,6 +7452,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 }
 
 type BadRequestJSONResponse ApiErrorResponse
+
+type ConflictJSONResponse ApiErrorResponse
 
 type ForbiddenJSONResponse ApiErrorResponse
 
@@ -8856,6 +9683,106 @@ func (response ListIntegrationAuditLogs404Response) VisitListIntegrationAuditLog
 	return nil
 }
 
+type ListLicenseSigningKeysRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type ListLicenseSigningKeysResponseObject interface {
+	VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error
+}
+
+type ListLicenseSigningKeys200JSONResponse LicenseSigningKeyListResponse
+
+func (response ListLicenseSigningKeys200JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLicenseSigningKeys401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListLicenseSigningKeys401JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLicenseSigningKeys403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListLicenseSigningKeys403JSONResponse) VisitListLicenseSigningKeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLicensesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type ListLicensesResponseObject interface {
+	VisitListLicensesResponse(w http.ResponseWriter) error
+}
+
+type ListLicenses200JSONResponse LicenseListResponse
+
+func (response ListLicenses200JSONResponse) VisitListLicensesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLicenses401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListLicenses401JSONResponse) VisitListLicensesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLicenses403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListLicenses403JSONResponse) VisitListLicensesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateProductOrganizationRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *CreateProductOrganizationJSONRequestBody
@@ -9574,6 +10501,383 @@ func (response UpdateOrganizationAPIKey404Response) VisitUpdateOrganizationAPIKe
 	return nil
 }
 
+type GetOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type GetOrganizationLicenseResponseObject interface {
+	VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationLicense200JSONResponse LicenseResponse
+
+func (response GetOrganizationLicense200JSONResponse) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicense401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetOrganizationLicense401JSONResponse) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicense403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetOrganizationLicense403JSONResponse) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicense404Response = NotFoundResponse
+
+func (response GetOrganizationLicense404Response) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type PutOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *PutOrganizationLicenseJSONRequestBody
+}
+
+type PutOrganizationLicenseResponseObject interface {
+	VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type PutOrganizationLicense200JSONResponse LicenseResponse
+
+func (response PutOrganizationLicense200JSONResponse) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutOrganizationLicense400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PutOrganizationLicense400JSONResponse) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutOrganizationLicense401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PutOrganizationLicense401JSONResponse) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutOrganizationLicense403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response PutOrganizationLicense403JSONResponse) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutOrganizationLicense404Response = NotFoundResponse
+
+func (response PutOrganizationLicense404Response) VisitPutOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type IssueLicenseTokenRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type IssueLicenseTokenResponseObject interface {
+	VisitIssueLicenseTokenResponse(w http.ResponseWriter) error
+}
+
+type IssueLicenseToken200JSONResponse LicenseTokenResponse
+
+func (response IssueLicenseToken200JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueLicenseToken401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response IssueLicenseToken401JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueLicenseToken403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response IssueLicenseToken403JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueLicenseToken404Response = NotFoundResponse
+
+func (response IssueLicenseToken404Response) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type IssueLicenseToken409JSONResponse struct{ ConflictJSONResponse }
+
+func (response IssueLicenseToken409JSONResponse) VisitIssueLicenseTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReinstateOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type ReinstateOrganizationLicenseResponseObject interface {
+	VisitReinstateOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type ReinstateOrganizationLicense200JSONResponse LicenseResponse
+
+func (response ReinstateOrganizationLicense200JSONResponse) VisitReinstateOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReinstateOrganizationLicense401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ReinstateOrganizationLicense401JSONResponse) VisitReinstateOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReinstateOrganizationLicense403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReinstateOrganizationLicense403JSONResponse) VisitReinstateOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReinstateOrganizationLicense404Response = NotFoundResponse
+
+func (response ReinstateOrganizationLicense404Response) VisitReinstateOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type RevokeOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type RevokeOrganizationLicenseResponseObject interface {
+	VisitRevokeOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type RevokeOrganizationLicense200JSONResponse LicenseResponse
+
+func (response RevokeOrganizationLicense200JSONResponse) VisitRevokeOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeOrganizationLicense401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RevokeOrganizationLicense401JSONResponse) VisitRevokeOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeOrganizationLicense403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RevokeOrganizationLicense403JSONResponse) VisitRevokeOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeOrganizationLicense404Response = NotFoundResponse
+
+func (response RevokeOrganizationLicense404Response) VisitRevokeOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type SuspendOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type SuspendOrganizationLicenseResponseObject interface {
+	VisitSuspendOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type SuspendOrganizationLicense200JSONResponse LicenseResponse
+
+func (response SuspendOrganizationLicense200JSONResponse) VisitSuspendOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuspendOrganizationLicense401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SuspendOrganizationLicense401JSONResponse) VisitSuspendOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuspendOrganizationLicense403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SuspendOrganizationLicense403JSONResponse) VisitSuspendOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuspendOrganizationLicense404Response = NotFoundResponse
+
+func (response SuspendOrganizationLicense404Response) VisitSuspendOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type AddOrganizationMemberRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -10141,6 +11445,318 @@ func (response GetProductPermission403JSONResponse) VisitGetProductPermissionRes
 type GetProductPermission404Response = NotFoundResponse
 
 func (response GetProductPermission404Response) VisitGetProductPermissionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type ListPlansRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type ListPlansResponseObject interface {
+	VisitListPlansResponse(w http.ResponseWriter) error
+}
+
+type ListPlans200JSONResponse PlanListResponse
+
+func (response ListPlans200JSONResponse) VisitListPlansResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlans401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListPlans401JSONResponse) VisitListPlansResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlans403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListPlans403JSONResponse) VisitListPlansResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePlanRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreatePlanJSONRequestBody
+}
+
+type CreatePlanResponseObject interface {
+	VisitCreatePlanResponse(w http.ResponseWriter) error
+}
+
+type CreatePlan201JSONResponse PlanResponse
+
+func (response CreatePlan201JSONResponse) VisitCreatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePlan400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreatePlan400JSONResponse) VisitCreatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePlan401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreatePlan401JSONResponse) VisitCreatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePlan403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreatePlan403JSONResponse) VisitCreatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePlanRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	PlanId    PlanIdParameter    `json:"plan_id"`
+}
+
+type DeletePlanResponseObject interface {
+	VisitDeletePlanResponse(w http.ResponseWriter) error
+}
+
+type DeletePlan204Response struct {
+}
+
+func (response DeletePlan204Response) VisitDeletePlanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeletePlan400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DeletePlan400JSONResponse) VisitDeletePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePlan401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeletePlan401JSONResponse) VisitDeletePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePlan403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeletePlan403JSONResponse) VisitDeletePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePlan404Response = NotFoundResponse
+
+func (response DeletePlan404Response) VisitDeletePlanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetPlanRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	PlanId    PlanIdParameter    `json:"plan_id"`
+}
+
+type GetPlanResponseObject interface {
+	VisitGetPlanResponse(w http.ResponseWriter) error
+}
+
+type GetPlan200JSONResponse PlanResponse
+
+func (response GetPlan200JSONResponse) VisitGetPlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPlan401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetPlan401JSONResponse) VisitGetPlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPlan403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetPlan403JSONResponse) VisitGetPlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPlan404Response = NotFoundResponse
+
+func (response GetPlan404Response) VisitGetPlanResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type UpdatePlanRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	PlanId    PlanIdParameter    `json:"plan_id"`
+	Body      *UpdatePlanJSONRequestBody
+}
+
+type UpdatePlanResponseObject interface {
+	VisitUpdatePlanResponse(w http.ResponseWriter) error
+}
+
+type UpdatePlan200JSONResponse PlanResponse
+
+func (response UpdatePlan200JSONResponse) VisitUpdatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePlan400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdatePlan400JSONResponse) VisitUpdatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePlan401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdatePlan401JSONResponse) VisitUpdatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePlan403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdatePlan403JSONResponse) VisitUpdatePlanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePlan404Response = NotFoundResponse
+
+func (response UpdatePlan404Response) VisitUpdatePlanResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -11437,6 +13053,12 @@ type StrictServerInterface interface {
 	// List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
+	// List License Signing Keys
+	// (GET /v1/products/{product_id}/license-signing-keys)
+	ListLicenseSigningKeys(ctx context.Context, request ListLicenseSigningKeysRequestObject) (ListLicenseSigningKeysResponseObject, error)
+	// List Licenses
+	// (GET /v1/products/{product_id}/licenses)
+	ListLicenses(ctx context.Context, request ListLicensesRequestObject) (ListLicensesResponseObject, error)
 	// Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(ctx context.Context, request CreateProductOrganizationRequestObject) (CreateProductOrganizationResponseObject, error)
@@ -11470,6 +13092,24 @@ type StrictServerInterface interface {
 	// Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(ctx context.Context, request UpdateOrganizationAPIKeyRequestObject) (UpdateOrganizationAPIKeyResponseObject, error)
+	// Get Organization License
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+	GetOrganizationLicense(ctx context.Context, request GetOrganizationLicenseRequestObject) (GetOrganizationLicenseResponseObject, error)
+	// Assign or Update Organization License
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/license)
+	PutOrganizationLicense(ctx context.Context, request PutOrganizationLicenseRequestObject) (PutOrganizationLicenseResponseObject, error)
+	// Issue License Token
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license-token)
+	IssueLicenseToken(ctx context.Context, request IssueLicenseTokenRequestObject) (IssueLicenseTokenResponseObject, error)
+	// Reinstate Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/reinstate)
+	ReinstateOrganizationLicense(ctx context.Context, request ReinstateOrganizationLicenseRequestObject) (ReinstateOrganizationLicenseResponseObject, error)
+	// Revoke Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/revoke)
+	RevokeOrganizationLicense(ctx context.Context, request RevokeOrganizationLicenseRequestObject) (RevokeOrganizationLicenseResponseObject, error)
+	// Suspend Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/suspend)
+	SuspendOrganizationLicense(ctx context.Context, request SuspendOrganizationLicenseRequestObject) (SuspendOrganizationLicenseResponseObject, error)
 	// Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(ctx context.Context, request AddOrganizationMemberRequestObject) (AddOrganizationMemberResponseObject, error)
@@ -11506,6 +13146,21 @@ type StrictServerInterface interface {
 	// Get built-in Product Permission
 	// (GET /v1/products/{product_id}/permissions/{permission_id})
 	GetProductPermission(ctx context.Context, request GetProductPermissionRequestObject) (GetProductPermissionResponseObject, error)
+	// List Plans
+	// (GET /v1/products/{product_id}/plans)
+	ListPlans(ctx context.Context, request ListPlansRequestObject) (ListPlansResponseObject, error)
+	// Create Plan
+	// (POST /v1/products/{product_id}/plans)
+	CreatePlan(ctx context.Context, request CreatePlanRequestObject) (CreatePlanResponseObject, error)
+	// Delete Plan
+	// (DELETE /v1/products/{product_id}/plans/{plan_id})
+	DeletePlan(ctx context.Context, request DeletePlanRequestObject) (DeletePlanResponseObject, error)
+	// Get Plan
+	// (GET /v1/products/{product_id}/plans/{plan_id})
+	GetPlan(ctx context.Context, request GetPlanRequestObject) (GetPlanResponseObject, error)
+	// Update Plan
+	// (PATCH /v1/products/{product_id}/plans/{plan_id})
+	UpdatePlan(ctx context.Context, request UpdatePlanRequestObject) (UpdatePlanResponseObject, error)
 	// Create Product User
 	// (POST /v1/products/{product_id}/product-users)
 	CreateProductUser(ctx context.Context, request CreateProductUserRequestObject) (CreateProductUserResponseObject, error)
@@ -12857,6 +14512,58 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 	}
 }
 
+// ListLicenseSigningKeys operation middleware
+func (sh *strictHandler) ListLicenseSigningKeys(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request ListLicenseSigningKeysRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLicenseSigningKeys(ctx, request.(ListLicenseSigningKeysRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLicenseSigningKeys")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLicenseSigningKeysResponseObject); ok {
+		if err := validResponse.VisitListLicenseSigningKeysResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLicenses operation middleware
+func (sh *strictHandler) ListLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request ListLicensesRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLicenses(ctx, request.(ListLicensesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLicenses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLicensesResponseObject); ok {
+		if err := validResponse.VisitListLicensesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateProductOrganization operation middleware
 func (sh *strictHandler) CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	var request CreateProductOrganizationRequestObject
@@ -13197,6 +14904,175 @@ func (sh *strictHandler) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationAPIKeyResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationLicense operation middleware
+func (sh *strictHandler) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request GetOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationLicense(ctx, request.(GetOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutOrganizationLicense operation middleware
+func (sh *strictHandler) PutOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request PutOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body PutOrganizationLicenseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PutOrganizationLicense(ctx, request.(PutOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PutOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitPutOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IssueLicenseToken operation middleware
+func (sh *strictHandler) IssueLicenseToken(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request IssueLicenseTokenRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IssueLicenseToken(ctx, request.(IssueLicenseTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IssueLicenseToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IssueLicenseTokenResponseObject); ok {
+		if err := validResponse.VisitIssueLicenseTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReinstateOrganizationLicense operation middleware
+func (sh *strictHandler) ReinstateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request ReinstateOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReinstateOrganizationLicense(ctx, request.(ReinstateOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReinstateOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReinstateOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitReinstateOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeOrganizationLicense operation middleware
+func (sh *strictHandler) RevokeOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request RevokeOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeOrganizationLicense(ctx, request.(RevokeOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitRevokeOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SuspendOrganizationLicense operation middleware
+func (sh *strictHandler) SuspendOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SuspendOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SuspendOrganizationLicense(ctx, request.(SuspendOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SuspendOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SuspendOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitSuspendOrganizationLicenseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -13576,6 +15452,153 @@ func (sh *strictHandler) GetProductPermission(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProductPermissionResponseObject); ok {
 		if err := validResponse.VisitGetProductPermissionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPlans operation middleware
+func (sh *strictHandler) ListPlans(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request ListPlansRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPlans(ctx, request.(ListPlansRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPlans")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPlansResponseObject); ok {
+		if err := validResponse.VisitListPlansResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePlan operation middleware
+func (sh *strictHandler) CreatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreatePlanRequestObject
+
+	request.ProductId = productId
+
+	var body CreatePlanJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePlan(ctx, request.(CreatePlanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePlan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePlanResponseObject); ok {
+		if err := validResponse.VisitCreatePlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeletePlan operation middleware
+func (sh *strictHandler) DeletePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
+	var request DeletePlanRequestObject
+
+	request.ProductId = productId
+	request.PlanId = planId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeletePlan(ctx, request.(DeletePlanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeletePlan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeletePlanResponseObject); ok {
+		if err := validResponse.VisitDeletePlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPlan operation middleware
+func (sh *strictHandler) GetPlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
+	var request GetPlanRequestObject
+
+	request.ProductId = productId
+	request.PlanId = planId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPlan(ctx, request.(GetPlanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPlan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPlanResponseObject); ok {
+		if err := validResponse.VisitGetPlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdatePlan operation middleware
+func (sh *strictHandler) UpdatePlan(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, planId PlanIdParameter) {
+	var request UpdatePlanRequestObject
+
+	request.ProductId = productId
+	request.PlanId = planId
+
+	var body UpdatePlanJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdatePlan(ctx, request.(UpdatePlanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdatePlan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdatePlanResponseObject); ok {
+		if err := validResponse.VisitUpdatePlanResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

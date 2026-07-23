@@ -38,10 +38,16 @@ func NewModule() fx.Option {
 			NewIntegrationQueue,
 			NewIntegrationLock,
 			NewIntegrationService,
+
+			// License services
+			NewLicenseSigningService,
+			NewPlanService,
+			NewLicenseService,
 		),
 
 		// Background workers
 		fx.Invoke(RegisterProductPermissionStartupSync),
+		fx.Invoke(RegisterLicenseSigningKeyStartupEnsure),
 		fx.Invoke(RegisterAPIKeyEventWorker),
 		fx.Invoke(RegisterIntegrationEventWorker),
 	)

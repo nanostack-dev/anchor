@@ -48,8 +48,16 @@ tags:
 - name: OrganizationMember
   description: Manage members within an Organization. (Requires Product API Key)
 - name: Integration
-  description: Manage integration instances and process inbound webhooks for 
+  description: Manage integration instances and process inbound webhooks for
     Products. (Admin + public webhook endpoint)
+- name: Plan
+  description: Manage per-product plans and their entitlement maps. (Admin
+    operation)
+- name: License
+  description: >-
+    Manage per-organization licenses, issue signed license tokens, and expose
+    license signing keys. Admin CRUD requires Platform Bearer token;
+    license-token issuance and signing-key listing require a Product API Key.
 components:
   parameters:
     # --- Define Path Parameters for re-use ---
@@ -167,6 +175,14 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         example: "etpl_2iABC..."
+    PlanIdParameter:
+      name: plan_id
+      in: path
+      required: true
+      description: The KSUID of the plan.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        example: "plan_2iABC..."
   securitySchemes:
     platformBearerAuth:
       type: http
@@ -2898,6 +2914,279 @@ components:
         count:
           type: integer
 
+    # License & Plan Schemas
+    EntitlementType:
+      type: string
+      enum: [boolean, numeric]
+      x-go-type: plan.EntitlementType
+      x-go-type-import:
+        path: anchor/internal/domain/plan
+      description: The kind of entitlement. Boolean entitlements gate features;
+        numeric entitlements carry limits.
+      example: numeric
+    EntitlementValue:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/EntitlementType"
+        value:
+          description: The entitlement value. Must be a boolean for `boolean`
+            entitlements and a number for `numeric` entitlements.
+          example: 25
+      required:
+      - type
+      - value
+    EntitlementsMap:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/EntitlementValue"
+      description: >-
+        Map of stable entitlement keys (dot-separated snake_case, e.g.
+        `flow_schedules.max_flows_per_run`) to typed values.
+      example:
+        api_access: {type: boolean, value: true}
+        flow_schedules.max_flows_per_run: {type: numeric, value: 25}
+    PlanRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Stable plan identifier, unique per product (future
+            Stripe lookup_key). Immutable after creation.
+          example: "pro"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Human-readable plan name.
+          example: "Pro"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Optional plan description.
+        entitlements:
+          $ref: "#/components/schemas/EntitlementsMap"
+        is_default:
+          type: boolean
+          default: false
+          description: Whether organizations without a license row fall back to
+            this plan. At most one default plan per product.
+      required:
+      - key
+      - name
+    PlanUpdateRequest:
+      type: object
+      description: Partial plan update. `key` is immutable.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+        entitlements:
+          $ref: "#/components/schemas/EntitlementsMap"
+        is_default:
+          type: boolean
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the plan (prefix 'plan_').
+          example: "plan_2iABC..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+        key:
+          type: string
+          example: "pro"
+        name:
+          type: string
+          example: "Pro"
+        description:
+          type: string
+          nullable: true
+        entitlements:
+          $ref: "#/components/schemas/EntitlementsMap"
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - product_id
+      - key
+      - name
+      - entitlements
+      - is_default
+      - created_at
+      - updated_at
+    PlanListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanResponse"
+      required:
+      - items
+    LicenseStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, REVOKED]
+      x-go-type: license.Status
+      x-go-type-import:
+        path: anchor/internal/domain/license
+      description: Mutable lifecycle status of the license row.
+      example: ACTIVE
+    LicenseAssignRequest:
+      type: object
+      description: Assigns or fully replaces the organization's license.
+      properties:
+        plan_id:
+          $ref: "#/components/schemas/ksuid"
+          description: The plan this license is based on.
+        status:
+          $ref: "#/components/schemas/LicenseStatus"
+          description: Optional explicit status; defaults to ACTIVE for new
+            licenses and keeps the current status on updates.
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the license expires. Null means no expiry.
+        grace_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: Business grace boundary. Past `expires_at` but within
+            `grace_until`, tokens are still issued with status GRACE.
+        entitlement_overrides:
+          $ref: "#/components/schemas/EntitlementsMap"
+        token_ttl_seconds:
+          type: integer
+          minimum: 60
+          maximum: 2592000
+          default: 86400
+          description: Lifetime of issued license tokens in seconds.
+      required:
+      - plan_id
+    LicenseResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier for the license (prefix 'lic_').
+          example: "lic_2iABC..."
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+        plan_id:
+          $ref: "#/components/schemas/ksuid"
+        status:
+          $ref: "#/components/schemas/LicenseStatus"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        grace_until:
+          type: string
+          format: date-time
+          nullable: true
+        entitlement_overrides:
+          $ref: "#/components/schemas/EntitlementsMap"
+        token_ttl_seconds:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - product_id
+      - organization_id
+      - plan_id
+      - status
+      - entitlement_overrides
+      - token_ttl_seconds
+      - created_at
+      - updated_at
+    LicenseListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LicenseResponse"
+      required:
+      - items
+    LicenseTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Signed PASETO v4.public license token. Verify offline
+            with the product's license signing keys.
+        refresh_after:
+          type: string
+          format: date-time
+          description: Consumers should refresh the token after this instant
+            (half the token TTL).
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiry.
+      required:
+      - token
+      - refresh_after
+      - expires_at
+    LicenseSigningKeyStatus:
+      type: string
+      enum: [ACTIVE, RETIRING, RETIRED]
+      x-go-type: license.SigningKeyStatus
+      x-go-type-import:
+        path: anchor/internal/domain/license
+      description: Key rotation lifecycle. ACTIVE keys sign new tokens,
+        RETIRING keys still verify but no longer sign.
+      example: ACTIVE
+    LicenseSigningKeyResponse:
+      type: object
+      properties:
+        kid:
+          $ref: "#/components/schemas/ksuid"
+          description: Key identifier carried in the token footer (prefix
+            'lsk_').
+          example: "lsk_2iABC..."
+        public_key:
+          type: string
+          description: Base64-encoded raw Ed25519 public key.
+        status:
+          $ref: "#/components/schemas/LicenseSigningKeyStatus"
+      required:
+      - kid
+      - public_key
+      - status
+    LicenseSigningKeyListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LicenseSigningKeyResponse"
+      required:
+      - items
+
   responses:
     BadRequest:
       description: Bad Request (e.g., validation error)
@@ -5384,3 +5673,343 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailSendRecordListResponse'
+
+  # --- Plans (Platform Admin Auth) ---
+  /v1/products/{product_id}/plans:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Create Plan
+      description: Creates a new plan for the product. Requires Platform
+        Bearer token.
+      operationId: createPlan
+      tags: [Plan]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Plan details.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanRequest"
+      responses:
+        "201":
+          description: Plan created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      summary: List Plans
+      description: Lists all plans of the product. Requires Platform Bearer
+        token.
+      operationId: listPlans
+      tags: [Plan]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Plans for the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/plans/{plan_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/PlanIdParameter"
+    get:
+      summary: Get Plan
+      description: Retrieves a single plan. Requires Platform Bearer token.
+      operationId: getPlan
+      tags: [Plan]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Plan details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update Plan
+      description: Partially updates a plan (`key` is immutable). Requires
+        Platform Bearer token.
+      operationId: updatePlan
+      tags: [Plan]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanUpdateRequest"
+      responses:
+        "200":
+          description: Plan updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Plan
+      description: Deletes a plan. Fails if any license still references the
+        plan. Requires Platform Bearer token.
+      operationId: deletePlan
+      tags: [Plan]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "204":
+          description: Plan deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Licenses (Platform Admin Auth) ---
+  /v1/products/{product_id}/licenses:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      summary: List Licenses
+      description: Lists all organization licenses of the product. Requires
+        Platform Bearer token.
+      operationId: listLicenses
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Licenses for the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /v1/products/{product_id}/organizations/{organization_id}/license:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    get:
+      summary: Get Organization License
+      description: Retrieves the organization's license. Requires Platform
+        Bearer token.
+      operationId: getOrganizationLicense
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: License details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Assign or Update Organization License
+      description: Assigns a license to the organization or fully replaces the
+        existing one (plan, expiry, grace, overrides, token TTL). Requires
+        Platform Bearer token.
+      operationId: putOrganizationLicense
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: License assignment.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LicenseAssignRequest"
+      responses:
+        "200":
+          description: License assigned or updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/license/revoke:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Revoke Organization License
+      description: Sets the license status to REVOKED. Revoked organizations
+        stop receiving license tokens at the next refresh. Requires Platform
+        Bearer token.
+      operationId: revokeOrganizationLicense
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: License revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/license/suspend:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Suspend Organization License
+      description: Sets the license status to SUSPENDED. Tokens keep being
+        issued with status SUSPENDED so consumers can hard-block with UX.
+        Requires Platform Bearer token.
+      operationId: suspendOrganizationLicense
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: License suspended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/license/reinstate:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Reinstate Organization License
+      description: Sets the license status back to ACTIVE after a suspension
+        or revocation. Requires Platform Bearer token.
+      operationId: reinstateOrganizationLicense
+      tags: [License]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: License reinstated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- License tokens & signing keys (Product API Key Auth) ---
+  /v1/products/{product_id}/organizations/{organization_id}/license-token:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Issue License Token
+      description: |-
+        Issues a signed PASETO v4.public license token for the organization: a
+        short-lived snapshot of the resolved license (plan entitlements merged
+        with per-org overrides). Organizations without a license row fall back
+        to the product's default plan when one exists. Requires an API Key with
+        `license:read` permission.
+      operationId: issueLicenseToken
+      tags: [License]
+      security:
+      - productApiKeyAuth: ["license:read"]
+      responses:
+        "200":
+          description: Signed license token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/products/{product_id}/license-signing-keys:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      summary: List License Signing Keys
+      description: |-
+        Lists the Ed25519 public keys (with kid) used to verify license
+        tokens, ordered newest first. Consumers pin these at startup and select
+        the key matching the token footer kid. Requires an API Key with
+        `license:read` permission.
+      operationId: listLicenseSigningKeys
+      tags: [License]
+      security:
+      - productApiKeyAuth: ["license:read"]
+      responses:
+        "200":
+          description: Verification keys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseSigningKeyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

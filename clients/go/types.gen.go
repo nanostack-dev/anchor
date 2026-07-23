@@ -104,6 +104,24 @@ func (e EmailVariableType) Valid() bool {
 	}
 }
 
+// Defines values for EntitlementType.
+const (
+	Boolean EntitlementType = "boolean"
+	Numeric EntitlementType = "numeric"
+)
+
+// Valid indicates whether the value is a known member of the EntitlementType enum.
+func (e EntitlementType) Valid() bool {
+	switch e {
+	case Boolean:
+		return true
+	case Numeric:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for IntegrationAuditLogSeverity.
 const (
 	IntegrationAuditLogSeverityERROR   IntegrationAuditLogSeverity = "ERROR"
@@ -188,6 +206,48 @@ func (e IntegrationProviderType) Valid() bool {
 	case IntegrationProviderTypeCLERK:
 		return true
 	case IntegrationProviderTypeSMTP:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LicenseSigningKeyStatus.
+const (
+	LicenseSigningKeyStatusACTIVE   LicenseSigningKeyStatus = "ACTIVE"
+	LicenseSigningKeyStatusRETIRED  LicenseSigningKeyStatus = "RETIRED"
+	LicenseSigningKeyStatusRETIRING LicenseSigningKeyStatus = "RETIRING"
+)
+
+// Valid indicates whether the value is a known member of the LicenseSigningKeyStatus enum.
+func (e LicenseSigningKeyStatus) Valid() bool {
+	switch e {
+	case LicenseSigningKeyStatusACTIVE:
+		return true
+	case LicenseSigningKeyStatusRETIRED:
+		return true
+	case LicenseSigningKeyStatusRETIRING:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LicenseStatus.
+const (
+	LicenseStatusACTIVE    LicenseStatus = "ACTIVE"
+	LicenseStatusREVOKED   LicenseStatus = "REVOKED"
+	LicenseStatusSUSPENDED LicenseStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the LicenseStatus enum.
+func (e LicenseStatus) Valid() bool {
+	switch e {
+	case LicenseStatusACTIVE:
+		return true
+	case LicenseStatusREVOKED:
+		return true
+	case LicenseStatusSUSPENDED:
 		return true
 	default:
 		return false
@@ -974,6 +1034,21 @@ type EmailVariableSchemaProperty struct {
 // EmailVariableType defines model for EmailVariableType.
 type EmailVariableType string
 
+// EntitlementType The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+type EntitlementType string
+
+// EntitlementValue defines model for EntitlementValue.
+type EntitlementValue struct {
+	// Type The kind of entitlement. Boolean entitlements gate features; numeric entitlements carry limits.
+	Type EntitlementType `json:"type"`
+
+	// Value The entitlement value. Must be a boolean for `boolean` entitlements and a number for `numeric` entitlements.
+	Value interface{} `json:"value"`
+}
+
+// EntitlementsMap Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+type EntitlementsMap map[string]EntitlementValue
+
 // FoundingMemberRequest defines model for FoundingMemberRequest.
 type FoundingMemberRequest struct {
 	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1103,6 +1178,94 @@ type IntegrationWebhookResponse struct {
 
 	// Status The processing status of an integration event.
 	Status IntegrationEventStatus `json:"status"`
+}
+
+// LicenseAssignRequest Assigns or fully replaces the organization's license.
+type LicenseAssignRequest struct {
+	// EntitlementOverrides Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	EntitlementOverrides *EntitlementsMap `json:"entitlement_overrides,omitempty"`
+
+	// ExpiresAt When the license expires. Null means no expiry.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// GraceUntil Business grace boundary. Past `expires_at` but within `grace_until`, tokens are still issued with status GRACE.
+	GraceUntil *time.Time `json:"grace_until,omitempty"`
+
+	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
+	PlanId Ksuid `json:"plan_id"`
+
+	// Status Mutable lifecycle status of the license row.
+	Status *LicenseStatus `json:"status,omitempty"`
+
+	// TokenTtlSeconds Lifetime of issued license tokens in seconds.
+	TokenTtlSeconds *int `json:"token_ttl_seconds,omitempty"`
+}
+
+// LicenseListResponse defines model for LicenseListResponse.
+type LicenseListResponse struct {
+	Items []LicenseResponse `json:"items"`
+}
+
+// LicenseResponse defines model for LicenseResponse.
+type LicenseResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// EntitlementOverrides Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	EntitlementOverrides EntitlementsMap `json:"entitlement_overrides"`
+	ExpiresAt            *time.Time      `json:"expires_at,omitempty"`
+	GraceUntil           *time.Time      `json:"grace_until,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id Ksuid `json:"id"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// PlanId Unique identifier using KSUID format with a resource-specific prefix.
+	PlanId Ksuid `json:"plan_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid `json:"product_id"`
+
+	// Status Mutable lifecycle status of the license row.
+	Status          LicenseStatus `json:"status"`
+	TokenTtlSeconds int           `json:"token_ttl_seconds"`
+	UpdatedAt       time.Time     `json:"updated_at"`
+}
+
+// LicenseSigningKeyListResponse defines model for LicenseSigningKeyListResponse.
+type LicenseSigningKeyListResponse struct {
+	Items []LicenseSigningKeyResponse `json:"items"`
+}
+
+// LicenseSigningKeyResponse defines model for LicenseSigningKeyResponse.
+type LicenseSigningKeyResponse struct {
+	// Kid Unique identifier using KSUID format with a resource-specific prefix.
+	Kid Ksuid `json:"kid"`
+
+	// PublicKey Base64-encoded raw Ed25519 public key.
+	PublicKey string `json:"public_key"`
+
+	// Status Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+	Status LicenseSigningKeyStatus `json:"status"`
+}
+
+// LicenseSigningKeyStatus Key rotation lifecycle. ACTIVE keys sign new tokens, RETIRING keys still verify but no longer sign.
+type LicenseSigningKeyStatus string
+
+// LicenseStatus Mutable lifecycle status of the license row.
+type LicenseStatus string
+
+// LicenseTokenResponse defines model for LicenseTokenResponse.
+type LicenseTokenResponse struct {
+	// ExpiresAt Token expiry.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// RefreshAfter Consumers should refresh the token after this instant (half the token TTL).
+	RefreshAfter time.Time `json:"refresh_after"`
+
+	// Token Signed PASETO v4.public license token. Verify offline with the product's license signing keys.
+	Token string `json:"token"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -1387,6 +1550,58 @@ type PaginationRequest struct {
 
 	// Offset Number of items to skip.
 	Offset *int32 `json:"offset,omitempty"`
+}
+
+// PlanListResponse defines model for PlanListResponse.
+type PlanListResponse struct {
+	Items []PlanResponse `json:"items"`
+}
+
+// PlanRequest defines model for PlanRequest.
+type PlanRequest struct {
+	// Description Optional plan description.
+	Description *string `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements *EntitlementsMap `json:"entitlements,omitempty"`
+
+	// IsDefault Whether organizations without a license row fall back to this plan. At most one default plan per product.
+	IsDefault *bool `json:"is_default,omitempty"`
+
+	// Key Stable plan identifier, unique per product (future Stripe lookup_key). Immutable after creation.
+	Key string `json:"key"`
+
+	// Name Human-readable plan name.
+	Name string `json:"name"`
+}
+
+// PlanResponse defines model for PlanResponse.
+type PlanResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements EntitlementsMap `json:"entitlements"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	Id        Ksuid  `json:"id"`
+	IsDefault bool   `json:"is_default"`
+	Key       string `json:"key"`
+	Name      string `json:"name"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	ProductId Ksuid     `json:"product_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PlanUpdateRequest Partial plan update. `key` is immutable.
+type PlanUpdateRequest struct {
+	Description *string `json:"description,omitempty"`
+
+	// Entitlements Map of stable entitlement keys (dot-separated snake_case, e.g. `flow_schedules.max_flows_per_run`) to typed values.
+	Entitlements *EntitlementsMap `json:"entitlements,omitempty"`
+	IsDefault    *bool            `json:"is_default,omitempty"`
+	Name         *string          `json:"name,omitempty"`
 }
 
 // PlatformInvitationFilter defines model for PlatformInvitationFilter.
@@ -2313,6 +2528,9 @@ type OrganizationAPIKeyIdParameter = Ksuid
 // OrganizationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 type OrganizationIdParameter = Ksuid
 
+// PlanIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+type PlanIdParameter = Ksuid
+
 // PlatformInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 type PlatformInvitationIdParameter = Ksuid
 
@@ -2345,6 +2563,9 @@ type WorkspaceIdParameter = Ksuid
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
+
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorResponse
 
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
@@ -2494,6 +2715,9 @@ type ValidateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyValidateReque
 // UpdateOrganizationAPIKeyJSONRequestBody defines body for UpdateOrganizationAPIKey for application/json ContentType.
 type UpdateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyUpdateRequest
 
+// PutOrganizationLicenseJSONRequestBody defines body for PutOrganizationLicense for application/json ContentType.
+type PutOrganizationLicenseJSONRequestBody = LicenseAssignRequest
+
 // AddOrganizationMemberJSONRequestBody defines body for AddOrganizationMember for application/json ContentType.
 type AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest
 
@@ -2514,6 +2738,12 @@ type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest
+
+// CreatePlanJSONRequestBody defines body for CreatePlan for application/json ContentType.
+type CreatePlanJSONRequestBody = PlanRequest
+
+// UpdatePlanJSONRequestBody defines body for UpdatePlan for application/json ContentType.
+type UpdatePlanJSONRequestBody = PlanUpdateRequest
 
 // CreateProductUserJSONRequestBody defines body for CreateProductUser for application/json ContentType.
 type CreateProductUserJSONRequestBody CreateProductUserJSONBody
