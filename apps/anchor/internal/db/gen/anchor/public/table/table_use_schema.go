@@ -36,6 +36,11 @@ func UseSchema(schema string) {
 	Products = Products.FromSchema(schema)
 	SchemaMigrations = SchemaMigrations.FromSchema(schema)
 	Users = Users.FromSchema(schema)
+	WebhookDeliveries = WebhookDeliveries.FromSchema(schema)
+	WebhookDeliveryAttempts = WebhookDeliveryAttempts.FromSchema(schema)
+	WebhookEndpointSecrets = WebhookEndpointSecrets.FromSchema(schema)
+	WebhookEndpoints = WebhookEndpoints.FromSchema(schema)
+	WebhookEvents = WebhookEvents.FromSchema(schema)
 	WorkspaceMemberships = WorkspaceMemberships.FromSchema(schema)
 	Workspaces = Workspaces.FromSchema(schema)
 }

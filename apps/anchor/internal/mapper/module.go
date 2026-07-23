@@ -28,6 +28,11 @@ func NewModule() fx.Option {
 			NewEmailSendRecordMapper,
 			NewPlanMapper,
 			NewLicenseMapper,
+			NewWebhookEndpointMapper,
+			NewWebhookEndpointSecretMapper,
+			NewWebhookEventMapper,
+			NewWebhookDeliveryMapper,
+			NewWebhookDeliveryAttemptMapper,
 		),
 	)
 }

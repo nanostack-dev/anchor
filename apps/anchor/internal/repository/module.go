@@ -27,6 +27,10 @@ func NewModule() fx.Option {
 			NewOrganizationMembershipRepository,
 			NewPlanRepository,
 			NewLicenseRepository,
+			NewWebhookEndpointRepository,
+			NewWebhookEndpointSecretRepository,
+			NewWebhookEventRepository,
+			NewWebhookDeliveryRepository,
 		),
 	)
 }
