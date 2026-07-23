@@ -17,6 +17,7 @@ var maintainedPathParams = map[string]struct{}{
 	"organization_id":         {},
 	"permission_id":           {},
 	"permission_name":         {},
+	"plan_id":                 {},
 	"platform_user_id":        {},
 	"product_id":              {},
 	"product_user_id":         {},

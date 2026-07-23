@@ -225,13 +225,13 @@ func (s *AnchorAPI) PutOrganizationLicense(
 		EntitlementOverrides: mapEntitlementsToDomain(request.Body.EntitlementOverrides),
 	}
 	if request.Body.TokenTtlSeconds != nil {
-		// Clamp before narrowing; the service validator (min=60, max=2592000)
-		// rejects out-of-range values with a 400 afterwards.
-		ttlValue := min(*request.Body.TokenTtlSeconds, math.MaxInt32)
-		if ttlValue < math.MinInt32 {
-			ttlValue = math.MinInt32
+		// Values outside int32 keep the out-of-range boundary so the service
+		// validator (min=60, max=2592000) still answers them with a 400 rather
+		// than the narrowing wrapping into a valid TTL.
+		ttl := int32(math.MaxInt32)
+		if v := *request.Body.TokenTtlSeconds; v >= math.MinInt32 && v <= math.MaxInt32 {
+			ttl = int32(v)
 		}
-		ttl := int32(ttlValue)
 		input.TokenTTLSeconds = &ttl
 	}
 
