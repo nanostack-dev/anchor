@@ -39,6 +39,16 @@ export const deliveryStatusOptions: Array<{ label: string; value: string }> = [
 
 export const WILDCARD_SUFFIX = ".*";
 
+/**
+ * A delivery in a terminal state will never change again, which is what stops
+ * the test-event panel polling.
+ */
+export function isTerminalDeliveryStatus(
+	status: WebhookDeliveryStatus,
+): boolean {
+	return status !== WebhookDeliveryStatus.WEBHOOK_DELIVERY_STATUS_PENDING;
+}
+
 export const formatDateTime = (value: string | null | undefined): string =>
 	value ? dayjs(value).format("D MMMM YYYY H:mm") : "—";
 
@@ -91,5 +101,131 @@ export function isEventTypeCovered(
 		(subscription) =>
 			subscription === descriptor.type ||
 			subscription === `${descriptor.group}${WILDCARD_SUFFIX}`,
+	);
+}
+
+/**
+ * How much of a group a subscription list covers. `partial` is what drives the
+ * indeterminate state of the group checkbox.
+ */
+export type GroupSelection = "none" | "partial" | "all";
+
+export function groupSelection(
+	subscriptions: string[],
+	group: EventTypeGroup,
+): GroupSelection {
+	const covered = group.descriptors.filter((descriptor) =>
+		isEventTypeCovered(subscriptions, descriptor),
+	).length;
+	if (covered === 0) return "none";
+	return covered === group.descriptors.length ? "all" : "partial";
+}
+
+/**
+ * The shortest subscription entries that cover a whole group: the `<group>.*`
+ * wildcard where the grammar allows one, otherwise the group's types spelled
+ * out. Preferring the wildcard is not just brevity — it is what keeps the
+ * endpoint subscribed to types added to the group later.
+ */
+export function groupSubscription(group: EventTypeGroup): string[] {
+	return group.wildcard
+		? [group.wildcard]
+		: group.descriptors.map((descriptor) => descriptor.type);
+}
+
+/** Every subscription entry needed to cover the whole catalog. */
+export function allSubscriptions(groups: EventTypeGroup[]): string[] {
+	return groups.flatMap(groupSubscription);
+}
+
+/** Drops every entry of a group: its wildcard and its exact types. */
+function withoutGroup(
+	subscriptions: string[],
+	group: EventTypeGroup,
+): string[] {
+	return subscriptions.filter(
+		(entry) =>
+			entry !== group.wildcard &&
+			!group.descriptors.some((descriptor) => descriptor.type === entry),
+	);
+}
+
+const unique = (entries: string[]): string[] => [...new Set(entries)];
+
+/**
+ * Collapses a fully selected group back to its wildcard, so saving a whole
+ * group also subscribes to types added to it later — and so the saved value
+ * round-trips to the same checkbox state it was drawn from.
+ */
+function collapseGroup(
+	subscriptions: string[],
+	group: EventTypeGroup,
+): string[] {
+	if (!group.wildcard) return subscriptions;
+	if (groupSelection(subscriptions, group) !== "all") return subscriptions;
+	return [...withoutGroup(subscriptions, group), group.wildcard];
+}
+
+/** Selects or clears an entire group. */
+export function toggleGroup(
+	subscriptions: string[],
+	group: EventTypeGroup,
+): string[] {
+	const rest = withoutGroup(subscriptions, group);
+	return groupSelection(subscriptions, group) === "all"
+		? rest
+		: unique([...rest, ...groupSubscription(group)]);
+}
+
+/**
+ * Selects or clears one event type.
+ *
+ * Clearing a type covered by a wildcard first expands that wildcard into the
+ * exact types it stands for; otherwise unchecking one box would silently
+ * unsubscribe the whole group.
+ */
+export function toggleEventType(
+	subscriptions: string[],
+	group: EventTypeGroup,
+	descriptor: WebhookEventTypeDescriptor,
+): string[] {
+	const covered = isEventTypeCovered(subscriptions, descriptor);
+	const expanded =
+		group.wildcard && subscriptions.includes(group.wildcard)
+			? unique([
+					...subscriptions.filter((entry) => entry !== group.wildcard),
+					...group.descriptors.map((entry) => entry.type),
+				])
+			: subscriptions;
+
+	const next = covered
+		? expanded.filter((entry) => entry !== descriptor.type)
+		: unique([...expanded, descriptor.type]);
+
+	return collapseGroup(next, group);
+}
+
+/** How many catalog event types a subscription list actually covers. */
+export function coveredEventTypeCount(
+	subscriptions: string[],
+	descriptors: WebhookEventTypeDescriptor[],
+): number {
+	return descriptors.filter((descriptor) =>
+		isEventTypeCovered(subscriptions, descriptor),
+	).length;
+}
+
+/** Matches the filter box against the type, its group and its description. */
+export function matchesEventTypeQuery(
+	descriptor: WebhookEventTypeDescriptor,
+	query: string,
+): boolean {
+	const needle = query.trim().toLowerCase();
+	if (needle === "") return true;
+
+	return (
+		descriptor.type.toLowerCase().includes(needle) ||
+		descriptor.group.toLowerCase().includes(needle) ||
+		descriptor.description.toLowerCase().includes(needle)
 	);
 }
