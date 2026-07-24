@@ -106,10 +106,14 @@ webhook-timestamp: 1753280531               (unix seconds, fresh per attempt)
 webhook-signature: v1,<base64 HMAC-SHA256>  (space-delimited list during rotation)
 ```
 
-Signed content is `{webhook-id}.{webhook-timestamp}.{body}`. Secrets are 32 random bytes,
-`anchor_whsec_`-prefixed, encrypted at rest with the framework `VersionedCipher` (context
-`webhook-signing-secret`), and returned in plaintext exactly twice: at endpoint creation and at
-rotation.
+Signed content is `{webhook-id}.{webhook-timestamp}.{body}`. Secrets are 32 random bytes, base64
+-encoded and `whsec_`-prefixed exactly as the spec prescribes — a verifier strips `whsec_` and
+base64-decodes the remainder to recover the HMAC key. Using the spec's own secret format (rather than
+Anchor's internal `PrefixedSpec` API-key tokens, which are checksummed alphanumerics with nothing to
+decode) is the whole point: an off-the-shelf Svix-compatible verifier works unmodified, which the
+`internal/domain/webhook` unit tests prove against the published Standard Webhooks test vector.
+Secrets are encrypted at rest with the framework `VersionedCipher` (context `webhook-signing-secret`)
+and returned in plaintext exactly twice: at endpoint creation and at rotation.
 
 **Why symmetric HMAC rather than asymmetric.** Asymmetric signing buys non-repudiation — with a
 shared secret, a receiver could forge a message indistinguishable from Anchor's. That matters when a

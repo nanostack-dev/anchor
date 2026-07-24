@@ -1892,7 +1892,7 @@ export type WebhookEndpointResponse = {
 export type WebhookEndpointWithSecretResponse = {
     endpoint: WebhookEndpointResponse;
     /**
-     * Signing secret, prefixed `anchor_whsec_`. Store it now: it is unrecoverable afterwards. Signatures are HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}`, keyed with the UTF-8 bytes of this value exactly as returned, and delivered in the `webhook-signature` header as `v1,<base64>`.
+     * Signing secret in Standard Webhooks form: `whsec_` followed by a base64-encoded key. Store it now: it is unrecoverable afterwards. Signatures follow the Standard Webhooks spec, so any conforming verifier library (Svix and compatibles) validates them: strip the `whsec_` prefix, base64-decode the remainder to obtain the HMAC-SHA256 key, and verify it over `{webhook-id}.{webhook-timestamp}.{body}`. The `webhook-signature` header carries one `v1,<base64>` entry per active secret, space-delimited during rotation.
      */
     secret: string;
 };

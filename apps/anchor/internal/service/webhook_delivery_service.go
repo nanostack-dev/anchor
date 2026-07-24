@@ -164,12 +164,17 @@ func (s *webhookDeliveryService) signatureHeaders(
 
 	timestamp := now.Unix()
 
+	signature, err := webhook.SignatureHeader(
+		plaintexts, delivery.ID, timestamp, delivery.SignedBody,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("build webhook signature header: %w", err)
+	}
+
 	return map[string]string{
 		webhook.HeaderWebhookID:        delivery.ID,
 		webhook.HeaderWebhookTimestamp: strconv.FormatInt(timestamp, 10),
-		webhook.HeaderWebhookSignature: webhook.SignatureHeader(
-			plaintexts, delivery.ID, timestamp, delivery.SignedBody,
-		),
+		webhook.HeaderWebhookSignature: signature,
 	}, nil
 }
 

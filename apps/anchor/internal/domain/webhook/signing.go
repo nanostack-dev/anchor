@@ -32,28 +32,40 @@ func SignatureContent(deliveryID string, timestamp int64, body string) string {
 
 // Sign returns the base64 HMAC-SHA256 of content under secret.
 //
-// The HMAC key is the UTF-8 bytes of the secret exactly as it was handed to the
-// customer, prefix included. Anchor's secrets are checksummed prefixed tokens
-// rather than base64 payloads, so there is nothing to decode first.
-func Sign(secret, content string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
+// The HMAC key is the secret's decoded bytes, not its literal characters — see
+// SigningKey. Signing with the literal string would produce a signature no
+// standard verifier accepts, so a secret that does not decode is an error
+// rather than a silently wrong signature.
+func Sign(secret, content string) (string, error) {
+	key, err := SigningKey(secret)
+	if err != nil {
+		return "", err
+	}
+
+	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte(content))
 
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
 // SignatureHeader builds the space-delimited `webhook-signature` value: one
 // `v1,<signature>` entry per usable secret, so both sides of a rotation verify.
-func SignatureHeader(plaintextSecrets []string, deliveryID string, timestamp int64, body string) string {
+func SignatureHeader(
+	plaintextSecrets []string, deliveryID string, timestamp int64, body string,
+) (string, error) {
 	if len(plaintextSecrets) == 0 {
-		return ""
+		return "", nil
 	}
 
 	content := SignatureContent(deliveryID, timestamp, body)
 	entries := make([]string, 0, len(plaintextSecrets))
 	for _, secret := range plaintextSecrets {
-		entries = append(entries, SignatureVersion+","+Sign(secret, content))
+		signature, err := Sign(secret, content)
+		if err != nil {
+			return "", err
+		}
+		entries = append(entries, SignatureVersion+","+signature)
 	}
 
-	return strings.Join(entries, " ")
+	return strings.Join(entries, " "), nil
 }

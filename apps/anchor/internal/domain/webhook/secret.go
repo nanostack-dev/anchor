@@ -1,10 +1,13 @@
 package webhook
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 )
 
 // SecretStatus tracks a signing secret through rotation.
@@ -26,26 +29,46 @@ func (s SecretStatus) IsValid() bool {
 
 // SigningPrefix marks a webhook signing secret so a leaked value is
 // immediately identifiable in a log or a support ticket.
-const SigningPrefix = "anchor_whsec_"
+//
+// It is the Standard Webhooks prefix rather than an Anchor-branded one on
+// purpose: consumer libraries recognise `whsec_`, strip it, and base64-decode
+// the remainder. Anchor's own `PrefixedSpec` tokens (checksummed alphanumerics,
+// used for API keys) are deliberately NOT used here — they are not decodable,
+// so an off-the-shelf verifier would derive the wrong HMAC key.
+const SigningPrefix = "whsec_"
 
-// SecretRandomLength is the random body length of a generated signing secret.
-const SecretRandomLength = 48
+// SecretRandomBytes is the entropy behind a generated signing secret. The spec
+// allows 24-64 bytes; 32 matches the HMAC-SHA256 block size.
+const SecretRandomBytes = 32
 
 // SecretRotationGrace is how long the previous secret keeps signing alongside
 // the new one, so a receiver can roll over without coordination or downtime.
 const SecretRotationGrace = 24 * time.Hour
 
-// SecretSpec generates and validates webhook signing secrets.
-func SecretSpec() secrets.PrefixedSpec {
-	return secrets.PrefixedSpec{
-		Prefix:       SigningPrefix,
-		RandomLength: SecretRandomLength,
+// GenerateSecret returns a fresh plaintext signing secret in Standard Webhooks
+// form: `whsec_` followed by base64-encoded random bytes.
+func GenerateSecret() (string, error) {
+	raw := make([]byte, SecretRandomBytes)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate webhook signing secret: %w", err)
 	}
+
+	return SigningPrefix + base64.StdEncoding.EncodeToString(raw), nil
 }
 
-// GenerateSecret returns a fresh plaintext signing secret.
-func GenerateSecret() (string, error) {
-	return SecretSpec().Generate()
+// SigningKey returns the HMAC key for a plaintext secret: the `whsec_` prefix
+// stripped and the remainder base64-decoded, exactly as a consumer library
+// does. A secret that does not decode is rejected rather than silently signed
+// with its literal bytes, which would produce signatures no verifier accepts.
+func SigningKey(plaintextSecret string) ([]byte, error) {
+	encoded := strings.TrimPrefix(plaintextSecret, SigningPrefix)
+
+	key, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("decode webhook signing secret: %w", err)
+	}
+
+	return key, nil
 }
 
 // Secret is one signing secret of an endpoint. Two rows co-exist during
