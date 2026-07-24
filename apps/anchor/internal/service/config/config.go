@@ -31,7 +31,14 @@ type WebhooksConfig struct {
 	// It exists so integration tests can point an endpoint at a container on
 	// localhost. It MUST stay false everywhere else: with it on, a product
 	// administrator can aim a webhook at any service reachable from Anchor.
-	AllowInsecureTargets bool `yaml:"allow_insecure_targets"`
+	//
+	// `optional:"true"` is load-bearing, not decoration. The config validator
+	// reports any zero-valued field as missing, so an untagged bool whose safe
+	// value is false can never be satisfied: every environment that correctly
+	// leaves it off would fail to boot, while the integration configs that set
+	// it to true would pass. The secure default has to be the one that needs no
+	// declaration.
+	AllowInsecureTargets bool `yaml:"allow_insecure_targets" optional:"true"`
 }
 
 func (a AuthConfig) GetAdminJWTSecretAsBytes() []byte {
