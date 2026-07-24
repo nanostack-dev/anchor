@@ -70,6 +70,7 @@ Endpoint secrets are a table rather than a column because rotation needs two liv
   "type": "license.updated",
   "api_version": "2026-07-23",
   "occurred_at": "2026-07-23T14:02:11Z",
+  "test": false,
   "product_id": "prd_…",
   "organization_id": "org_…",
   "data": {
@@ -90,11 +91,52 @@ low-latency trigger; the existing poll becomes the reconciliation floor.
 **v1 event types**: `license.created`, `license.updated`, `license.revoked`, `plan.updated`, `ping`.
 
 Grammar is `<group>.<event>`, past tense, validated against `^[a-z0-9_]+(\.[a-z0-9_]+)+$`. Types live
-in a registry (`internal/domain/webhook/registry.go`) mapping type → description; the OpenAPI enum and
-the admin UI's picker derive from it, so a new event type is one constant plus an emit call.
+in a registry (`internal/domain/webhook/registry.go`) mapping type → description → **sample payload**;
+the OpenAPI enum, the admin UI's picker and the test-event sender all derive from it, so a new event
+type is one registry entry plus an emit call.
 
 `plan.updated` fires **once at product scope**, not once per licensed organization. Per-org
 amplification on a plan edit is the easiest available way to self-inflict a delivery storm.
+
+### `test` is always present, never omitted
+
+`test` is `false` on every real event and `true` on anything sent from the admin UI's test surface. It
+is not `omitempty`: a receiver must be able to *assert* `test === false` before acting, and an absent
+field would make "this is not a test" and "this came from an older Anchor" indistinguishable. Neither
+Svix nor Clerk marks example sends at all, so in both products a test event is indistinguishable from
+a real one in the log — a cheap gap to close, and closing it is what lets a receiver log a test send
+and refuse to act on it.
+
+The marker is **derived, not stored**: `Event.IsTest()` is `TargetEndpointID != nil`. Targeting is
+exact rather than merely convenient — an event addressed at a single endpoint can only have come from
+the test-event sub-resource, because every business emit broadcasts to whoever subscribes. Should a
+future feature ever need to target a real event at one endpoint, this derivation has to become a
+stored column; the invariant is documented on the method so that change is forced rather than missed.
+
+## Test events and the sample-payload seam
+
+Every registry entry carries a `Sample`: a representative `data` object with illustrative identifiers.
+It is published on `GET /v1/webhook-event-types` as `sample_payload` (indented JSON), previewed in the
+admin UI before a send, and transmitted verbatim by a test send. `ping` is the one type whose sample
+is rewritten at send time, because a ping names the endpoint it probes rather than a placeholder.
+
+The sample is the seam, and it is enforced rather than encouraged: a table-driven unit test walks the
+whole registry and fails on any type without a sample, or whose sample does not marshal to a non-empty
+JSON object. Adding an event type therefore also gives it a working test send, a payload preview and a
+catalog entry — or it does not merge.
+
+`POST …/{webhook_endpoint_id}/test-event` takes an optional `{"event_type": "<registered type>"}`.
+Omitted means `ping`, which is exactly what `POST …/ping` does — `/ping` is kept as the body-free
+shorthand rather than being renamed, so scripts and monitors that just want a transport probe keep
+working unchanged. An unregistered type, or a `<group>.*` wildcard, is rejected with
+`INVALID_WEBHOOK_EVENT_TYPES` (400): a wildcard is a subscription, never a sendable event.
+
+**The send answers with the delivery ids it created**, which is what lets the admin UI poll the
+outcome of *that* send rather than guessing which row in the log belongs to it. Getting the id back
+requires the delivery to exist before the response is written, so a test send runs fan-out inside its
+own emitting transaction instead of waiting for the queued job. That costs nothing and removes a race:
+the delivery row and the fan-out job become visible at the same commit, so the job finds the row
+already there and skips it — the same idempotency that already protects a crash-recovery re-run.
 
 ## Signing: Standard Webhooks
 
@@ -180,6 +222,7 @@ POST   …/{webhook_endpoint_id}/enable
 POST   …/{webhook_endpoint_id}/disable
 POST   …/{webhook_endpoint_id}/rotate-secret                → new secret returned ONCE
 POST   …/{webhook_endpoint_id}/ping                         → synthetic ping event
+POST   …/{webhook_endpoint_id}/test-event                   → any registered type + delivery ids
 GET    …/{webhook_endpoint_id}/deliveries                   (filter by status, event type)
 GET    …/{webhook_endpoint_id}/deliveries/{delivery_id}     (attempts + response snippets)
 POST   …/{webhook_endpoint_id}/deliveries/{delivery_id}/retry
@@ -193,12 +236,57 @@ response — only in the create and rotate replies.
 ## Admin UI
 
 A product-scoped **Webhooks** page: endpoints table with status badge and subscribed types, a create
-dialog with a grouped event-type picker sourced from the registry, one-time secret reveal, rotate and
-enable/disable actions, and a delivery log with per-attempt detail and a retry button.
+dialog with the subscription selector below, one-time secret reveal, rotate and enable/disable
+actions, and a delivery log with per-attempt detail and a retry button.
 
 The delivery log ships in v1 deliberately. It is the single largest support-cost reducer in a webhook
 system — without it, every "we didn't get the event" question is an engineer reading production logs —
 and retrofitting the attempt records later is far more painful than writing them from the start.
+
+### Subscription selector
+
+Modelled on Svix's App Portal endpoint form (Clerk's dashboard is Svix's backend with a weaker UI in
+front of it, and its documented "scroll down and select `user.created`" selector is the thing not to
+copy at fifty-plus event types).
+
+- Always-visible scrollable checkbox tree, grouped by the segment before the dot, event type in mono
+  with its registry description beside it.
+- `Filter events...` box matching type, group **and** description.
+- Tri-state group checkbox: checked, indeterminate when only part of a group is selected, unchecked.
+- Live `12 of 34 events selected` footer with a `Clear` action.
+- A `Subscribe to all events` switch.
+
+Two deliberate departures from Svix:
+
+**An explicit "all events" switch instead of Svix's empty-means-all.** In Svix an endpoint with no
+selected event types receives everything, taught by a footer sentence rather than a control. That is
+elegant, and it is the opposite of what this API means: `event_types` has `minItems: 1` and an empty
+list subscribes to nothing. Adopting the Svix reading would invert the meaning of a stored value.
+The switch maps to the wildcard representation that already exists — every group's `<group>.*`, plus
+the exact type for a group like `ping` that has no wildcard form.
+
+**Selecting a whole group collapses to `<group>.*` rather than listing its types.** The wildcard is
+not merely shorter to store: it is the only form that keeps the endpoint subscribed to event types
+added to that group later. Unchecking one type inside a covered group expands the wildcard back into
+the exact types it stood for first, so one click never silently unsubscribes a whole group. Filtering
+narrows what is shown, never what a group toggle acts on, so a filtered view cannot silently
+unsubscribe the rows it is hiding. The algebra lives in `webhook-display.ts` and is unit tested,
+including the round trip of an endpoint saved with wildcards.
+
+### Testing surface
+
+A **Testing** section on the endpoint detail sheet: pick a registered type (default `ping`), preview
+its sample payload (collapsed by default), send, and watch the result inline — status badge, HTTP
+status code, duration, attempt counter, and the receiver's 2KB response snippet or the transport
+error — by polling the returned delivery id until the delivery reaches a terminal status. Repeated
+sends are safe because each one replaces the delivery id being watched; the control is disabled while
+a send is in flight and while the endpoint is not enabled.
+
+Two things here are better than the products it is modelled on. Svix's Testing tab is a type dropdown
+and a Send button with **no payload preview** — you fire a real request at a real endpoint without
+being shown what you are firing — and **no inline result**: you go find the message in a table
+afterwards. Showing the sample first and the outcome in place closes the loop on one screen. The
+delivery log also carries a `Test` badge, derived from the same `test` flag the receiver sees.
 
 ## Deliberately out of v1
 
@@ -206,6 +294,13 @@ Ordered delivery and per-endpoint concurrency caps; per-endpoint throttling; bul
 everything since <date>"; circuit breakers distinct from auto-disable; ed25519 signing; CloudEvents
 format; published per-type JSON Schemas; customer-defined custom headers; `api_version` migration
 tooling beyond pinning the column; operational meta-events (`webhook.delivery.exhausted`).
+
+From the Svix/Clerk research, also deliberately not built: an editable payload before sending (the
+sample is shown, not edited — an arbitrary body would no longer prove anything about the registry);
+multiple examples per type behind an index, which Svix's API exposes and its own UI does not; a
+"hide test events" filter on the delivery log, now that the rows carry a `Test` badge; per-endpoint
+error-rate columns and a delivery-stats bar; and `featureFlags`-style per-customer visibility for
+beta event types.
 
 The v2 order that follows from this: bulk recover → per-endpoint concurrency and throttle →
 meta-events → opt-in ed25519 → `organization.*` and membership event groups.
@@ -245,6 +340,17 @@ about this design.
 21. [Svix — Application portal & endpoint management](https://docs.svix.com/) — endpoint health, manual replay, recover-since-date as the v2 shape.
 22. [GitHub — Managing webhook deliveries](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/viewing-webhook-deliveries) — a customer-visible delivery log with request/response detail and redelivery.
 23. [Twilio — Webhook reliability](https://www.twilio.com/docs/usage/webhooks/webhooks-connection-overrides) — timeout and retry configuration exposed to the customer.
+
+### Subscription selector and test-send UX (admin UI research)
+24. [Svix — Adding endpoints](https://docs.svix.com/receiving/using-app-portal/adding-endpoints) — the endpoint form this selector is modelled on: `Filter events...` search over a grouped tri-state checkbox tree, and a footer that swaps between "Receiving all events" and "N events selected | Clear". Empty-means-all is the one pattern rejected here, because our `event_types` has `minItems: 1`.
+25. [Svix — Testing events](https://docs.svix.com/receiving/using-app-portal/testing-events) — the whole Testing tab is an event-type dropdown plus a `Send Example` button; no payload preview before sending and no inline result after it, which is exactly the gap this implementation fills.
+26. [Svix — Event type schemas](https://docs.svix.com/tutorials/event-type-schema) — schemas carry an auto-generated example that authors override via "Configure example", and the same example feeds the catalog, the public docs and Send Example. The one-sample-per-type-reused-everywhere shape our registry `Sample` copies.
+27. [Svix — Event types](https://docs.svix.com/event-types) — dot-delimited names are grouped visually from the name itself, so no separate group entity is needed; `featureFlags` hide beta types from the catalog without affecting delivery (noted for later, not built).
+28. [Svix — Event catalog](https://docs.svix.com/receiving/using-app-portal/event-catalog) — the catalog shows each type's payload shape and an example payload, which is what makes an event type explorable rather than merely listable.
+29. [Svix — App Portal](https://docs.svix.com/app-portal) and [Svix — Replaying messages](https://docs.svix.com/receiving/using-app-portal/replaying-messages) — endpoint page layout (Delivery Stats bar, `All | Succeeded | Failed` segmented filter, attempts table) and the replay/recover modals whose relative-plus-absolute timestamps are the model for the v2 bulk recover.
+30. [Svix API reference](https://api.svix.com/api/v1/openapi.json) — `POST …/endpoint/{id}/send-example` returns an ordinary message, and neither `MessageOut` nor `MessageAttemptOut` carries any test/example flag. That absence is why this design adds `test` to the envelope: in Svix and Clerk alike a test send is indistinguishable from a real one in the log.
+31. [Clerk — Webhooks overview](https://clerk.com/docs/guides/development/webhooks/overview) and [Sync data to your app](https://clerk.com/docs/guides/development/webhooks/syncing) — Clerk is Svix with its own dashboard; the documented flow is Add Endpoint → Subscribe to events → Testing tab → Select event → Send Example → Message Attempts.
+32. [Clerk — Debug your webhooks](https://clerk.com/docs/guides/development/webhooks/debugging) — failure triage is "expand the failed row and read the HTTP response code", which is precisely the information this panel surfaces inline instead of two clicks away. Clerk's selector itself is scroll-only with no search, grouping or count over fifty-plus types: the anti-pattern this replaces.
 
 ### Scale and operations
 24. [Svix engineering blog](https://www.svix.com/blog/) — fan-out architecture, per-tenant isolation, why head-of-line blocking is the defining failure mode.
