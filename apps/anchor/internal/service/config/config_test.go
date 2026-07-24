@@ -28,8 +28,6 @@ func assertBoolsOptional(t *testing.T, structType reflect.Type, parent string) {
 	t.Helper()
 
 	for field := range structType.Fields() {
-		field := field
-
 		name := field.Tag.Get("yaml")
 		if name == "" {
 			name = field.Name
