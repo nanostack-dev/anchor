@@ -24,6 +24,16 @@ type WebhookFanoutService interface {
 	// FanOutEvent is the same work addressed directly by event id. Tests and
 	// the queue handler share this entry point.
 	FanOutEvent(ctx context.Context, eventID string) ([]webhook.Delivery, error)
+	// CreateDeliveriesInTx fans an event out on the CALLER'S transaction.
+	//
+	// It exists for the test-event sub-resource, which has to answer with the
+	// delivery id it created. Doing that work in the emitting transaction is
+	// what makes the answer both immediate and race-free: the queued fan-out
+	// job only becomes visible at the same commit, and finds the rows already
+	// there.
+	CreateDeliveriesInTx(
+		ctx context.Context, event webhook.Event, endpoints []webhook.Endpoint,
+	) ([]webhook.Delivery, error)
 }
 
 type webhookFanoutService struct {
@@ -94,15 +104,10 @@ func (s *webhookFanoutService) FanOutEvent(
 		return nil, nil
 	}
 
-	body, err := json.Marshal(event.Envelope())
-	if err != nil {
-		return nil, pgqueue.NonRetryable(fmt.Errorf("marshal webhook envelope: %w", err))
-	}
-
 	var created []webhook.Delivery
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var txErr error
-		created, txErr = s.createDeliveries(txCtx, *event, endpoints, string(body))
+		created, txErr = s.CreateDeliveriesInTx(txCtx, *event, endpoints)
 		return txErr
 	})
 	if err != nil {
@@ -151,6 +156,17 @@ func (s *webhookFanoutService) matchingEndpoints(
 	}
 
 	return matching, nil
+}
+
+func (s *webhookFanoutService) CreateDeliveriesInTx(
+	ctx context.Context, event webhook.Event, endpoints []webhook.Endpoint,
+) ([]webhook.Delivery, error) {
+	body, err := json.Marshal(event.Envelope())
+	if err != nil {
+		return nil, pgqueue.NonRetryable(fmt.Errorf("marshal webhook envelope: %w", err))
+	}
+
+	return s.createDeliveries(ctx, event, endpoints, string(body))
 }
 
 // createDeliveries inserts one delivery per endpoint and enqueues its job.

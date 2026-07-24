@@ -511,6 +511,11 @@ type ClientInterface interface {
 	// RotateWebhookEndpointSecret request
 	RotateWebhookEndpointSecret(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SendWebhookTestEventWithBody request with any body
+	SendWebhookTestEventWithBody(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SendWebhookTestEvent(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, body SendWebhookTestEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWebhookEventTypes request
 	ListWebhookEventTypes(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -2389,6 +2394,30 @@ func (c *Client) PingWebhookEndpoint(ctx context.Context, productId ProductIdPar
 
 func (c *Client) RotateWebhookEndpointSecret(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRotateWebhookEndpointSecretRequest(c.Server, productId, webhookEndpointId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SendWebhookTestEventWithBody(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSendWebhookTestEventRequestWithBody(c.Server, productId, webhookEndpointId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SendWebhookTestEvent(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, body SendWebhookTestEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSendWebhookTestEventRequest(c.Server, productId, webhookEndpointId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7480,6 +7509,60 @@ func NewRotateWebhookEndpointSecretRequest(server string, productId ProductIdPar
 	return req, nil
 }
 
+// NewSendWebhookTestEventRequest calls the generic SendWebhookTestEvent builder with application/json body
+func NewSendWebhookTestEventRequest(server string, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, body SendWebhookTestEventJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSendWebhookTestEventRequestWithBody(server, productId, webhookEndpointId, "application/json", bodyReader)
+}
+
+// NewSendWebhookTestEventRequestWithBody generates requests for SendWebhookTestEvent with any type of body
+func NewSendWebhookTestEventRequestWithBody(server string, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "webhook_endpoint_id", webhookEndpointId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/webhook-endpoints/%s/test-event", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListWebhookEventTypesRequest generates requests for ListWebhookEventTypes
 func NewListWebhookEventTypesRequest(server string) (*http.Request, error) {
 	var err error
@@ -7971,6 +8054,11 @@ type ClientWithResponsesInterface interface {
 
 	// RotateWebhookEndpointSecretWithResponse request
 	RotateWebhookEndpointSecretWithResponse(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, reqEditors ...RequestEditorFn) (*RotateWebhookEndpointSecretResponse, error)
+
+	// SendWebhookTestEventWithBodyWithResponse request with any body
+	SendWebhookTestEventWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendWebhookTestEventResponse, error)
+
+	SendWebhookTestEventWithResponse(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, body SendWebhookTestEventJSONRequestBody, reqEditors ...RequestEditorFn) (*SendWebhookTestEventResponse, error)
 
 	// ListWebhookEventTypesWithResponse request
 	ListWebhookEventTypesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListWebhookEventTypesResponse, error)
@@ -11428,6 +11516,39 @@ func (r RotateWebhookEndpointSecretResponse) ContentType() string {
 	return ""
 }
 
+type SendWebhookTestEventResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *WebhookTestEventResponse
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+}
+
+// Status returns HTTPResponse.Status
+func (r SendWebhookTestEventResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SendWebhookTestEventResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SendWebhookTestEventResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListWebhookEventTypesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12822,6 +12943,23 @@ func (c *ClientWithResponses) RotateWebhookEndpointSecretWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseRotateWebhookEndpointSecretResponse(rsp)
+}
+
+// SendWebhookTestEventWithBodyWithResponse request with arbitrary body returning *SendWebhookTestEventResponse
+func (c *ClientWithResponses) SendWebhookTestEventWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendWebhookTestEventResponse, error) {
+	rsp, err := c.SendWebhookTestEventWithBody(ctx, productId, webhookEndpointId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSendWebhookTestEventResponse(rsp)
+}
+
+func (c *ClientWithResponses) SendWebhookTestEventWithResponse(ctx context.Context, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter, body SendWebhookTestEventJSONRequestBody, reqEditors ...RequestEditorFn) (*SendWebhookTestEventResponse, error) {
+	rsp, err := c.SendWebhookTestEvent(ctx, productId, webhookEndpointId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSendWebhookTestEventResponse(rsp)
 }
 
 // ListWebhookEventTypesWithResponse request returning *ListWebhookEventTypesResponse
@@ -17096,6 +17234,53 @@ func ParseRotateWebhookEndpointSecretResponse(rsp *http.Response) (*RotateWebhoo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSendWebhookTestEventResponse parses an HTTP response from a SendWebhookTestEventWithResponse call
+func ParseSendWebhookTestEventResponse(rsp *http.Response) (*SendWebhookTestEventResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SendWebhookTestEventResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WebhookTestEventResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized

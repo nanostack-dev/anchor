@@ -2601,7 +2601,10 @@ type WebhookDeliveryResponse struct {
 	// Status Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
 	Status    WebhookDeliveryStatus `json:"status"`
 	TargetUrl string                `json:"target_url"`
-	UpdatedAt time.Time             `json:"updated_at"`
+
+	// Test True when the delivery carries a test send rather than a real business change, matching the `test` field in the envelope. It is surfaced here so a delivery log can be read without opening each payload.
+	Test      bool      `json:"test"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // WebhookDeliveryStatus Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
@@ -2664,7 +2667,7 @@ type WebhookEndpointUpdateRequest struct {
 type WebhookEndpointWithSecretResponse struct {
 	Endpoint WebhookEndpointResponse `json:"endpoint"`
 
-	// Secret Signing secret, prefixed `anchor_whsec_`. Store it now: it is unrecoverable afterwards. Signatures are HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}`, keyed with the UTF-8 bytes of this value exactly as returned, and delivered in the `webhook-signature` header as `v1,<base64>`.
+	// Secret Signing secret in Standard Webhooks form: `whsec_` followed by a base64-encoded key. Store it now: it is unrecoverable afterwards. Signatures follow the Standard Webhooks spec, so any conforming verifier library (Svix and compatibles) validates them: strip the `whsec_` prefix, base64-decode the remainder to obtain the HMAC-SHA256 key, and verify it over `{webhook-id}.{webhook-timestamp}.{body}`. The `webhook-signature` header carries one `v1,<base64>` entry per active secret, space-delimited during rotation.
 	Secret string `json:"secret"`
 }
 
@@ -2672,7 +2675,10 @@ type WebhookEndpointWithSecretResponse struct {
 type WebhookEventTypeDescriptor struct {
 	Description string `json:"description"`
 	Group       string `json:"group"`
-	Type        string `json:"type"`
+
+	// SamplePayload A representative `data` object for this event type, JSON-encoded and indented. It is exactly what a test send of this type transmits, so the admin UI can show the payload before sending it. Identifiers in it are illustrative and resolve to nothing.
+	SamplePayload string `json:"sample_payload"`
+	Type          string `json:"type"`
 }
 
 // WebhookEventTypeListResponse defines model for WebhookEventTypeListResponse.
@@ -2684,9 +2690,31 @@ type WebhookEventTypeListResponse struct {
 
 // WebhookPingResponse The synthetic event queued by a ping.
 type WebhookPingResponse struct {
+	// DeliveryIds Deliveries created for this send (prefix 'whd_'). Poll `GET …/deliveries/{delivery_id}` to watch the outcome of this exact send rather than guessing which row in the log belongs to it.
+	DeliveryIds *[]Ksuid `json:"delivery_ids,omitempty"`
+
 	// EventId Unique identifier using KSUID format with a resource-specific prefix.
 	EventId   Ksuid  `json:"event_id"`
 	EventType string `json:"event_type"`
+}
+
+// WebhookTestEventRequest Selects which registered event type to simulate. The whole body is optional; omitting it sends a `ping`.
+type WebhookTestEventRequest struct {
+	// EventType An exact event type from `GET /v1/webhook-event-types`. Wildcards are not accepted — a test send transmits one concrete event. An unregistered type is rejected with `INVALID_WEBHOOK_EVENT_TYPES`.
+	EventType *string `json:"event_type,omitempty"`
+}
+
+// WebhookTestEventResponse The synthetic event queued by a test send, with the deliveries it produced.
+type WebhookTestEventResponse struct {
+	// DeliveryIds Deliveries created for this send (prefix 'whd_'), normally exactly one. Poll `GET …/deliveries/{delivery_id}` for the response code, duration and body snippet of each attempt.
+	DeliveryIds []Ksuid `json:"delivery_ids"`
+
+	// EventId Unique identifier using KSUID format with a resource-specific prefix.
+	EventId   Ksuid  `json:"event_id"`
+	EventType string `json:"event_type"`
+
+	// Test Always true, mirroring the `test` field the receiver sees in the envelope.
+	Test bool `json:"test"`
 }
 
 // WorkspaceFilter defines model for WorkspaceFilter.
@@ -2981,6 +3009,9 @@ type CreateWebhookEndpointJSONRequestBody = WebhookEndpointRequest
 
 // UpdateWebhookEndpointJSONRequestBody defines body for UpdateWebhookEndpoint for application/json ContentType.
 type UpdateWebhookEndpointJSONRequestBody = WebhookEndpointUpdateRequest
+
+// SendWebhookTestEventJSONRequestBody defines body for SendWebhookTestEvent for application/json ContentType.
+type SendWebhookTestEventJSONRequestBody = WebhookTestEventRequest
 
 // AsClerkIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a ClerkIntegrationInstanceCreateRequest
 func (t IntegrationInstanceCreateRequest) AsClerkIntegrationInstanceCreateRequest() (ClerkIntegrationInstanceCreateRequest, error) {

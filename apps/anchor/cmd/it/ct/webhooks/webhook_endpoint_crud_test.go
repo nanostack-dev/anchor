@@ -387,6 +387,141 @@ func TestWebhookDeliveryLog(t *testing.T) {
 	})
 }
 
+// TestWebhookTestEvent covers the test-send sub-resource: an explicit event
+// type is emitted with that type's sample payload, the envelope says it is a
+// test, and the caller is told which delivery to poll.
+func TestWebhookTestEvent(t *testing.T) {
+	ctx := context.Background()
+	productContext := createTestProductContext(t)
+	client := productContext.OwnerAuthenticatedClient()
+
+	created := createEndpoint(
+		t, productContext, "https://receiver.example.com/test-event",
+		[]string{"license.*", webhook.EventTypePing},
+	)
+
+	t.Run("AnExplicitEventTypeIsDeliveredWithItsSamplePayload", func(t *testing.T) {
+		resp, err := client.SendWebhookTestEventWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id,
+			ct.SendWebhookTestEventJSONRequestBody{
+				EventType: new(webhook.EventTypeLicenseRevoked),
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, resp.StatusCode())
+		require.NotNil(t, resp.JSON202)
+
+		assert.Equal(t, webhook.EventTypeLicenseRevoked, resp.JSON202.EventType)
+		assert.True(t, resp.JSON202.Test)
+		require.Len(
+			t, resp.JSON202.DeliveryIds, 1,
+			"the send names the delivery it created so the caller can poll it",
+		)
+
+		detail, err := client.GetWebhookDeliveryWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id, resp.JSON202.DeliveryIds[0],
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, detail.StatusCode())
+		require.NotNil(t, detail.JSON200)
+
+		assert.Equal(t, webhook.EventTypeLicenseRevoked, detail.JSON200.Delivery.EventType)
+		assert.Equal(t, resp.JSON202.EventId, detail.JSON200.Delivery.EventId)
+
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(detail.JSON200.Payload), &envelope))
+		assert.Equal(t, webhook.EventTypeLicenseRevoked, envelope["type"])
+		assert.Equal(t, true, envelope["test"], "a receiver must be able to tell it is a test")
+
+		data, ok := envelope["data"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, webhook.SampleLicenseID, data["license_id"])
+	})
+
+	t.Run("AnOmittedEventTypeSendsAPing", func(t *testing.T) {
+		resp, err := client.SendWebhookTestEventWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id,
+			ct.SendWebhookTestEventJSONRequestBody{},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, resp.StatusCode())
+		require.NotNil(t, resp.JSON202)
+		assert.Equal(t, webhook.EventTypePing, resp.JSON202.EventType)
+		require.Len(t, resp.JSON202.DeliveryIds, 1)
+
+		detail, err := client.GetWebhookDeliveryWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id, resp.JSON202.DeliveryIds[0],
+		)
+		require.NoError(t, err)
+		require.NotNil(t, detail.JSON200)
+
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(detail.JSON200.Payload), &envelope))
+		data, ok := envelope["data"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(
+			t, created.Endpoint.Id, data["endpoint_id"],
+			"a ping names the endpoint it probes, not the catalog placeholder",
+		)
+	})
+
+	t.Run("AnUnknownEventTypeIsRejected", func(t *testing.T) {
+		resp, err := client.SendWebhookTestEventWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id,
+			ct.SendWebhookTestEventJSONRequestBody{EventType: new("license.exploded")},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+		assert.Contains(t, string(resp.Body), "INVALID_WEBHOOK_EVENT_TYPES")
+	})
+
+	t.Run("AWildcardIsNotASendableType", func(t *testing.T) {
+		resp, err := client.SendWebhookTestEventWithResponse(
+			ctx, productContext.ProductID, created.Endpoint.Id,
+			ct.SendWebhookTestEventJSONRequestBody{EventType: new("license.*")},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+	})
+
+	t.Run("AnUnknownEndpointIs404", func(t *testing.T) {
+		resp, err := client.SendWebhookTestEventWithResponse(
+			ctx, productContext.ProductID, ids.MustNew("whe"),
+			ct.SendWebhookTestEventJSONRequestBody{},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
+}
+
+// TestWebhookEventTypeCatalogPublishesSamples pins the seam the admin UI's
+// payload preview depends on: every offered type carries a sample.
+func TestWebhookEventTypeCatalogPublishesSamples(t *testing.T) {
+	productContext := createTestProductContext(t)
+
+	resp, err := productContext.OwnerAuthenticatedClient().ListWebhookEventTypesWithResponse(
+		context.Background(),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode())
+	require.NotNil(t, resp.JSON200)
+	require.NotEmpty(t, resp.JSON200.Items)
+
+	for _, descriptor := range resp.JSON200.Items {
+		require.NotEmptyf(
+			t, descriptor.SamplePayload,
+			"event type %q must publish a sample payload", descriptor.Type,
+		)
+
+		var decoded map[string]any
+		require.NoErrorf(
+			t, json.Unmarshal([]byte(descriptor.SamplePayload), &decoded),
+			"the sample for %q must be a JSON object", descriptor.Type,
+		)
+		assert.NotEmpty(t, decoded)
+	}
+}
+
 // TestWebhookEndpointResponseShape pins the JSON contract the admin UI reads.
 func TestWebhookEndpointResponseShape(t *testing.T) {
 	productContext := createTestProductContext(t)

@@ -1431,7 +1431,8 @@ export const zWebhookEndpointListResponse = z.object({
 export const zWebhookEventTypeDescriptor = z.object({
     type: z.string(),
     group: z.string(),
-    description: z.string()
+    description: z.string(),
+    sample_payload: z.string()
 });
 
 export const zWebhookEventTypeListResponse = z.object({
@@ -1444,7 +1445,25 @@ export const zWebhookEventTypeListResponse = z.object({
  */
 export const zWebhookPingResponse = z.object({
     event_id: zKsuid,
-    event_type: z.string()
+    event_type: z.string(),
+    delivery_ids: z.optional(z.array(zKsuid))
+});
+
+/**
+ * Selects which registered event type to simulate. The whole body is optional; omitting it sends a `ping`.
+ */
+export const zWebhookTestEventRequest = z.object({
+    event_type: z.optional(z.string().max(100))
+});
+
+/**
+ * The synthetic event queued by a test send, with the deliveries it produced.
+ */
+export const zWebhookTestEventResponse = z.object({
+    event_id: zKsuid,
+    event_type: z.string(),
+    test: z.boolean(),
+    delivery_ids: z.array(zKsuid)
 });
 
 export const zWebhookDeliveryResponse = z.object({
@@ -1452,6 +1471,7 @@ export const zWebhookDeliveryResponse = z.object({
     event_id: zKsuid,
     endpoint_id: zKsuid,
     event_type: z.string(),
+    test: z.boolean(),
     status: zWebhookDeliveryStatus,
     attempt_count: z.int(),
     max_attempts: z.int(),
@@ -3036,6 +3056,20 @@ export const zPingWebhookEndpointData = z.object({
  * Ping event queued.
  */
 export const zPingWebhookEndpointResponse = zWebhookPingResponse;
+
+export const zSendWebhookTestEventData = z.object({
+    body: z.optional(zWebhookTestEventRequest),
+    path: z.object({
+        product_id: zKsuid,
+        webhook_endpoint_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Test event queued.
+ */
+export const zSendWebhookTestEventResponse = zWebhookTestEventResponse;
 
 export const zListWebhookDeliveriesData = z.object({
     body: z.optional(z.never()),

@@ -1905,6 +1905,10 @@ export type WebhookEventTypeDescriptor = {
     type: string;
     group: string;
     description: string;
+    /**
+     * A representative `data` object for this event type, JSON-encoded and indented. It is exactly what a test send of this type transmits, so the admin UI can show the payload before sending it. Identifiers in it are illustrative and resolve to nothing.
+     */
+    sample_payload: string;
 };
 
 export type WebhookEventTypeListResponse = {
@@ -1921,6 +1925,36 @@ export type WebhookEventTypeListResponse = {
 export type WebhookPingResponse = {
     event_id: Ksuid;
     event_type: string;
+    /**
+     * Deliveries created for this send (prefix 'whd_'). Poll `GET …/deliveries/{delivery_id}` to watch the outcome of this exact send rather than guessing which row in the log belongs to it.
+     */
+    delivery_ids?: Array<Ksuid>;
+};
+
+/**
+ * Selects which registered event type to simulate. The whole body is optional; omitting it sends a `ping`.
+ */
+export type WebhookTestEventRequest = {
+    /**
+     * An exact event type from `GET /v1/webhook-event-types`. Wildcards are not accepted — a test send transmits one concrete event. An unregistered type is rejected with `INVALID_WEBHOOK_EVENT_TYPES`.
+     */
+    event_type?: string;
+};
+
+/**
+ * The synthetic event queued by a test send, with the deliveries it produced.
+ */
+export type WebhookTestEventResponse = {
+    event_id: Ksuid;
+    event_type: string;
+    /**
+     * Always true, mirroring the `test` field the receiver sees in the envelope.
+     */
+    test: boolean;
+    /**
+     * Deliveries created for this send (prefix 'whd_'), normally exactly one. Poll `GET …/deliveries/{delivery_id}` for the response code, duration and body snippet of each attempt.
+     */
+    delivery_ids: Array<Ksuid>;
 };
 
 export type WebhookDeliveryResponse = {
@@ -1928,6 +1962,10 @@ export type WebhookDeliveryResponse = {
     event_id: Ksuid;
     endpoint_id: Ksuid;
     event_type: string;
+    /**
+     * True when the delivery carries a test send rather than a real business change, matching the `test` field in the envelope. It is surfaced here so a delivery log can be read without opening each payload.
+     */
+    test: boolean;
     status: WebhookDeliveryStatus;
     attempt_count: number;
     max_attempts: number;
@@ -6287,6 +6325,55 @@ export type PingWebhookEndpointResponses = {
 };
 
 export type PingWebhookEndpointResponse = PingWebhookEndpointResponses[keyof PingWebhookEndpointResponses];
+
+export type SendWebhookTestEventData = {
+    /**
+     * Which event type to simulate. Optional.
+     */
+    body?: WebhookTestEventRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the webhook endpoint.
+         */
+        webhook_endpoint_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event';
+};
+
+export type SendWebhookTestEventErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Forbidden (Authenticated Product User lacks permission)
+     */
+    403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type SendWebhookTestEventError = SendWebhookTestEventErrors[keyof SendWebhookTestEventErrors];
+
+export type SendWebhookTestEventResponses = {
+    /**
+     * Test event queued.
+     */
+    202: WebhookTestEventResponse;
+};
+
+export type SendWebhookTestEventResponse = SendWebhookTestEventResponses[keyof SendWebhookTestEventResponses];
 
 export type ListWebhookDeliveriesData = {
     body?: never;

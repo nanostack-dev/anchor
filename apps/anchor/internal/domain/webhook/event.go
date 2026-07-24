@@ -20,7 +20,7 @@ type Event struct {
 	Payload    json.RawMessage
 	OccurredAt time.Time
 	// TargetEndpointID restricts fan-out to a single endpoint. It is set only
-	// for synthetic events (ping) and nil for ordinary broadcast events.
+	// for synthetic test sends and nil for ordinary broadcast events.
 	TargetEndpointID *string
 	CreatedAt        time.Time
 }
@@ -28,6 +28,18 @@ type Event struct {
 // GenerateID sets the event's ID to a new prefixed KSUID.
 func (e *Event) GenerateID() {
 	e.ID = ids.MustNew("evt")
+}
+
+// IsTest reports whether the event is a synthetic send rather than the record
+// of a business change.
+//
+// Targeting is the marker, and it is exact rather than convenient: an event
+// addressed at a single endpoint can only have come from the test-event
+// sub-resource, because every business emit broadcasts to whoever subscribes.
+// Should a future feature ever need to target a real event at one endpoint,
+// this derivation must become a stored column instead.
+func (e *Event) IsTest() bool {
+	return e.TargetEndpointID != nil
 }
 
 // Envelope is the wire shape delivered to receivers.
@@ -38,10 +50,16 @@ func (e *Event) GenerateID() {
 // stale on arrival, and pushing full entitlement maps into third-party logs is
 // a liability for an identity system.
 type Envelope struct {
-	ID             string          `json:"id"`
-	Type           string          `json:"type"`
-	APIVersion     string          `json:"api_version"`
-	OccurredAt     time.Time       `json:"occurred_at"`
+	ID         string    `json:"id"`
+	Type       string    `json:"type"`
+	APIVersion string    `json:"api_version"`
+	OccurredAt time.Time `json:"occurred_at"`
+	// Test marks a send triggered from the admin UI's test surface rather than
+	// a real business change. It is always present, never omitted: a receiver
+	// must be able to assert `test == false` before acting on an event, and an
+	// absent field would make "not a test" and "sent by an older Anchor"
+	// indistinguishable.
+	Test           bool            `json:"test"`
 	ProductID      string          `json:"product_id"`
 	OrganizationID *string         `json:"organization_id,omitempty"`
 	Data           json.RawMessage `json:"data"`
@@ -59,6 +77,7 @@ func (e *Event) Envelope() Envelope {
 		Type:           e.EventType,
 		APIVersion:     e.APIVersion,
 		OccurredAt:     e.OccurredAt.UTC(),
+		Test:           e.IsTest(),
 		ProductID:      e.ProductID,
 		OrganizationID: e.OrganizationID,
 		Data:           data,

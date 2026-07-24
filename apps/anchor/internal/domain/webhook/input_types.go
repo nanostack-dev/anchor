@@ -48,9 +48,22 @@ type RotateSecretInput struct {
 	EndpointID string `json:"endpoint_id" validate:"required,notblank"`
 }
 
-type PingEndpointInput struct {
+// SendTestEventInput asks for a synthetic event aimed at exactly one endpoint.
+type SendTestEventInput struct {
 	ProductID  string `json:"product_id"  validate:"required,notblank"`
 	EndpointID string `json:"endpoint_id" validate:"required,notblank"`
+	// EventType selects which registry type to simulate. Empty means `ping`,
+	// which keeps the transport probe a body-free call.
+	EventType string `json:"event_type,omitempty" validate:"omitempty,notblank"`
+}
+
+// ResolvedEventType is the type a test send actually emits.
+func (i SendTestEventInput) ResolvedEventType() string {
+	if i.EventType == "" {
+		return EventTypePing
+	}
+
+	return i.EventType
 }
 
 type ListDeliveriesInput struct {
@@ -83,7 +96,8 @@ type EmitInput struct {
 	EventType      string  `json:"event_type"                validate:"required,notblank"`
 	// Data becomes the envelope's `data` object.
 	Data any `json:"data"`
-	// TargetEndpointID restricts fan-out to a single endpoint. Used by ping.
+	// TargetEndpointID restricts fan-out to a single endpoint. It is set only by
+	// test sends, and is what marks the event as a test on the wire.
 	TargetEndpointID *string `json:"target_endpoint_id,omitempty"`
 }
 

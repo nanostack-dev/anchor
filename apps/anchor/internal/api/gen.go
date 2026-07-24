@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -1957,7 +1958,10 @@ type WebhookDeliveryResponse struct {
 	// Status Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
 	Status    WebhookDeliveryStatus `json:"status"`
 	TargetUrl string                `json:"target_url"`
-	UpdatedAt time.Time             `json:"updated_at"`
+
+	// Test True when the delivery carries a test send rather than a real business change, matching the `test` field in the envelope. It is surfaced here so a delivery log can be read without opening each payload.
+	Test      bool      `json:"test"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // WebhookDeliveryStatus Status of a single (event x endpoint) delivery. EXHAUSTED is the dead letter: the retry ladder ran out. It is a status rather than a separate table so dead deliveries stay queryable and replayable next to their siblings.
@@ -2028,7 +2032,10 @@ type WebhookEndpointWithSecretResponse struct {
 type WebhookEventTypeDescriptor struct {
 	Description string `json:"description"`
 	Group       string `json:"group"`
-	Type        string `json:"type"`
+
+	// SamplePayload A representative `data` object for this event type, JSON-encoded and indented. It is exactly what a test send of this type transmits, so the admin UI can show the payload before sending it. Identifiers in it are illustrative and resolve to nothing.
+	SamplePayload string `json:"sample_payload"`
+	Type          string `json:"type"`
 }
 
 // WebhookEventTypeListResponse defines model for WebhookEventTypeListResponse.
@@ -2040,9 +2047,31 @@ type WebhookEventTypeListResponse struct {
 
 // WebhookPingResponse The synthetic event queued by a ping.
 type WebhookPingResponse struct {
+	// DeliveryIds Deliveries created for this send (prefix 'whd_'). Poll `GET …/deliveries/{delivery_id}` to watch the outcome of this exact send rather than guessing which row in the log belongs to it.
+	DeliveryIds *[]Ksuid `json:"delivery_ids,omitempty"`
+
 	// EventId Unique identifier using KSUID format with a resource-specific prefix.
 	EventId   Ksuid  `json:"event_id"`
 	EventType string `json:"event_type"`
+}
+
+// WebhookTestEventRequest Selects which registered event type to simulate. The whole body is optional; omitting it sends a `ping`.
+type WebhookTestEventRequest struct {
+	// EventType An exact event type from `GET /v1/webhook-event-types`. Wildcards are not accepted — a test send transmits one concrete event. An unregistered type is rejected with `INVALID_WEBHOOK_EVENT_TYPES`.
+	EventType *string `json:"event_type,omitempty"`
+}
+
+// WebhookTestEventResponse The synthetic event queued by a test send, with the deliveries it produced.
+type WebhookTestEventResponse struct {
+	// DeliveryIds Deliveries created for this send (prefix 'whd_'), normally exactly one. Poll `GET …/deliveries/{delivery_id}` for the response code, duration and body snippet of each attempt.
+	DeliveryIds []Ksuid `json:"delivery_ids"`
+
+	// EventId Unique identifier using KSUID format with a resource-specific prefix.
+	EventId   Ksuid  `json:"event_id"`
+	EventType string `json:"event_type"`
+
+	// Test Always true, mirroring the `test` field the receiver sees in the envelope.
+	Test bool `json:"test"`
 }
 
 // WorkspaceFilter defines model for WorkspaceFilter.
@@ -2337,6 +2366,9 @@ type CreateWebhookEndpointJSONRequestBody = WebhookEndpointRequest
 
 // UpdateWebhookEndpointJSONRequestBody defines body for UpdateWebhookEndpoint for application/json ContentType.
 type UpdateWebhookEndpointJSONRequestBody = WebhookEndpointUpdateRequest
+
+// SendWebhookTestEventJSONRequestBody defines body for SendWebhookTestEvent for application/json ContentType.
+type SendWebhookTestEventJSONRequestBody = WebhookTestEventRequest
 
 // AsClerkIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a ClerkIntegrationInstanceCreateRequest
 func (t IntegrationInstanceCreateRequest) AsClerkIntegrationInstanceCreateRequest() (ClerkIntegrationInstanceCreateRequest, error) {
@@ -2851,6 +2883,9 @@ type ServerInterface interface {
 	// Rotate Webhook Signing Secret
 	// (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret)
 	RotateWebhookEndpointSecret(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter)
+	// Send Webhook Test Event
+	// (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event)
+	SendWebhookTestEvent(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter)
 	// List Webhook Event Types
 	// (GET /v1/webhook-event-types)
 	ListWebhookEventTypes(w http.ResponseWriter, r *http.Request)
@@ -3505,6 +3540,12 @@ func (_ Unimplemented) PingWebhookEndpoint(w http.ResponseWriter, r *http.Reques
 // Rotate Webhook Signing Secret
 // (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret)
 func (_ Unimplemented) RotateWebhookEndpointSecret(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Send Webhook Test Event
+// (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event)
+func (_ Unimplemented) SendWebhookTestEvent(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7832,6 +7873,47 @@ func (siw *ServerInterfaceWrapper) RotateWebhookEndpointSecret(w http.ResponseWr
 	handler.ServeHTTP(w, r)
 }
 
+// SendWebhookTestEvent operation middleware
+func (siw *ServerInterfaceWrapper) SendWebhookTestEvent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "webhook_endpoint_id" -------------
+	var webhookEndpointId WebhookEndpointIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "webhook_endpoint_id", chi.URLParam(r, "webhook_endpoint_id"), &webhookEndpointId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "webhook_endpoint_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SendWebhookTestEvent(w, r, productId, webhookEndpointId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListWebhookEventTypes operation middleware
 func (siw *ServerInterfaceWrapper) ListWebhookEventTypes(w http.ResponseWriter, r *http.Request) {
 
@@ -8288,6 +8370,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret", wrapper.RotateWebhookEndpointSecret)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event", wrapper.SendWebhookTestEvent)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/webhook-event-types", wrapper.ListWebhookEventTypes)
@@ -14480,6 +14565,79 @@ func (response RotateWebhookEndpointSecret404Response) VisitRotateWebhookEndpoin
 	return nil
 }
 
+type SendWebhookTestEventRequestObject struct {
+	ProductId         ProductIdParameter         `json:"product_id"`
+	WebhookEndpointId WebhookEndpointIdParameter `json:"webhook_endpoint_id"`
+	Body              *SendWebhookTestEventJSONRequestBody
+}
+
+type SendWebhookTestEventResponseObject interface {
+	VisitSendWebhookTestEventResponse(w http.ResponseWriter) error
+}
+
+type SendWebhookTestEvent202JSONResponse WebhookTestEventResponse
+
+func (response SendWebhookTestEvent202JSONResponse) VisitSendWebhookTestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendWebhookTestEvent400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SendWebhookTestEvent400JSONResponse) VisitSendWebhookTestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendWebhookTestEvent401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SendWebhookTestEvent401JSONResponse) VisitSendWebhookTestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendWebhookTestEvent403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SendWebhookTestEvent403JSONResponse) VisitSendWebhookTestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendWebhookTestEvent404Response = NotFoundResponse
+
+func (response SendWebhookTestEvent404Response) VisitSendWebhookTestEventResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type ListWebhookEventTypesRequestObject struct {
 }
 
@@ -14855,6 +15013,9 @@ type StrictServerInterface interface {
 	// Rotate Webhook Signing Secret
 	// (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/rotate-secret)
 	RotateWebhookEndpointSecret(ctx context.Context, request RotateWebhookEndpointSecretRequestObject) (RotateWebhookEndpointSecretResponseObject, error)
+	// Send Webhook Test Event
+	// (POST /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event)
+	SendWebhookTestEvent(ctx context.Context, request SendWebhookTestEventRequestObject) (SendWebhookTestEventResponseObject, error)
 	// List Webhook Event Types
 	// (GET /v1/webhook-event-types)
 	ListWebhookEventTypes(ctx context.Context, request ListWebhookEventTypesRequestObject) (ListWebhookEventTypesResponseObject, error)
@@ -18102,6 +18263,43 @@ func (sh *strictHandler) RotateWebhookEndpointSecret(w http.ResponseWriter, r *h
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RotateWebhookEndpointSecretResponseObject); ok {
 		if err := validResponse.VisitRotateWebhookEndpointSecretResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SendWebhookTestEvent operation middleware
+func (sh *strictHandler) SendWebhookTestEvent(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, webhookEndpointId WebhookEndpointIdParameter) {
+	var request SendWebhookTestEventRequestObject
+
+	request.ProductId = productId
+	request.WebhookEndpointId = webhookEndpointId
+
+	var body SendWebhookTestEventJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SendWebhookTestEvent(ctx, request.(SendWebhookTestEventRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SendWebhookTestEvent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SendWebhookTestEventResponseObject); ok {
+		if err := validResponse.VisitSendWebhookTestEventResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

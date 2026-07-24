@@ -7,6 +7,7 @@
 package webhook
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -40,13 +41,40 @@ const (
 	GroupPing    = "ping"
 )
 
+// PingMessage is the `data.message` of a transport-probe ping.
+const PingMessage = "Ping from Anchor"
+
+// Sample identifiers. They are syntactically valid prefixed KSUIDs so a sample
+// payload reads like a real one, and they are deliberately not resolvable: a
+// sample is illustrative, never a pointer at live data.
+const (
+	SampleEndpointID     = "whe_2f9Kx7qLmNpRsTvWyZ1aB3cD4eF"
+	SampleLicenseID      = "lic_2mQ8dTz5RkYbXhWnJ4pLcVsG7uE"
+	SamplePlanID         = "pln_2hR6vBn9WkQdZxMtY3sJfLpC5aU"
+	SamplePlanKey        = "pro"
+	SamplePlanName       = "Pro"
+	SampleLicenseStatus  = "ACTIVE"
+	SampleRevokedStatus  = "REVOKED"
+	SampleSuspendStatus  = "SUSPENDED"
+	SampleChangedFieldID = "status"
+)
+
 // EventTypeDescriptor is one catalog entry: what the type is called, which
-// group it belongs to, and what it means. The OpenAPI enum and the admin UI's
-// picker both derive from this catalog.
+// group it belongs to, what it means, and what its payload looks like. The
+// OpenAPI enum, the admin UI's picker and the test-event sender all derive from
+// this catalog.
 type EventTypeDescriptor struct {
 	Type        string
 	Group       string
 	Description string
+	// Sample is a representative `data` object for the type: what a receiver
+	// sees, with illustrative identifiers. It is what a test send transmits and
+	// what the admin UI previews before sending.
+	//
+	// Every registered type must carry one. That requirement is the seam: a new
+	// event type added without a sample fails the registry test rather than
+	// silently becoming untestable from the admin UI.
+	Sample any
 }
 
 // eventTypeCatalog is the ordered registry of every emittable event type.
@@ -59,28 +87,67 @@ func eventTypeCatalog() []EventTypeDescriptor {
 			Type:        EventTypeLicenseCreated,
 			Group:       GroupLicense,
 			Description: "A license was assigned to an organization for the first time.",
+			Sample: LicenseEventData{
+				LicenseID: SampleLicenseID,
+				PlanKey:   SamplePlanKey,
+				PlanID:    SamplePlanID,
+				Status:    SampleLicenseStatus,
+			},
 		},
 		{
 			Type:  EventTypeLicenseUpdated,
 			Group: GroupLicense,
 			Description: "An organization's license changed: plan, expiry, grace, " +
 				"entitlement overrides, or a suspend/reinstate transition.",
+			Sample: LicenseEventData{
+				LicenseID: SampleLicenseID,
+				PlanKey:   SamplePlanKey,
+				PlanID:    SamplePlanID,
+				Status:    SampleSuspendStatus,
+				Changes: map[string]LicenseChange{
+					SampleChangedFieldID: {
+						Previous: SampleLicenseStatus,
+						New:      SampleSuspendStatus,
+					},
+				},
+			},
 		},
 		{
 			Type:        EventTypeLicenseRevoked,
 			Group:       GroupLicense,
 			Description: "An organization's license was revoked and stops resolving entitlements.",
+			Sample: LicenseEventData{
+				LicenseID: SampleLicenseID,
+				PlanKey:   SamplePlanKey,
+				PlanID:    SamplePlanID,
+				Status:    SampleRevokedStatus,
+				Changes: map[string]LicenseChange{
+					SampleChangedFieldID: {
+						Previous: SampleLicenseStatus,
+						New:      SampleRevokedStatus,
+					},
+				},
+			},
 		},
 		{
 			Type:  EventTypePlanUpdated,
 			Group: GroupPlan,
 			Description: "A plan definition changed. Emitted once at product scope, " +
 				"never once per licensed organization.",
+			Sample: PlanEventData{
+				PlanID:  SamplePlanID,
+				PlanKey: SamplePlanKey,
+				Name:    SamplePlanName,
+			},
 		},
 		{
 			Type:        EventTypePing,
 			Group:       GroupPing,
 			Description: "Synthetic delivery used to verify an endpoint's URL and signature setup.",
+			Sample: PingEventData{
+				EndpointID: SampleEndpointID,
+				Message:    PingMessage,
+			},
 		},
 	}
 }
@@ -104,6 +171,65 @@ func EventTypes() []string {
 	}
 
 	return types
+}
+
+// SamplePayload returns the registered sample `data` object for eventType.
+//
+// An unknown type and a type registered without a sample are both errors: the
+// caller is either sending something that cannot be emitted, or something the
+// registry forgot to describe, and neither should reach a receiver.
+func SamplePayload(eventType string) (any, error) {
+	for _, descriptor := range eventTypeCatalog() {
+		if descriptor.Type != eventType {
+			continue
+		}
+		if descriptor.Sample == nil {
+			return nil, fmt.Errorf("event type %q has no sample payload", eventType)
+		}
+
+		return descriptor.Sample, nil
+	}
+
+	return nil, fmt.Errorf("unknown event type %q", eventType)
+}
+
+// SamplePayloadJSON renders an event type's sample as indented JSON. It is what
+// the catalog endpoint publishes so the admin UI can show exactly what a test
+// send will transmit before it is sent.
+func SamplePayloadJSON(eventType string) (string, error) {
+	sample, err := SamplePayload(eventType)
+	if err != nil {
+		return "", err
+	}
+
+	encoded, err := json.MarshalIndent(sample, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("marshal sample payload for %q: %w", eventType, err)
+	}
+
+	return string(encoded), nil
+}
+
+// TestEventData builds the `data` object of a synthetic test send of eventType
+// aimed at endpointID.
+//
+// It is the sample verbatim, with one exception: a ping names the endpoint it
+// probes, so the placeholder identifier in the published sample is replaced by
+// the real one. Matching on the payload type rather than the event type keeps
+// that substitution tied to the shape that actually carries an endpoint id.
+func TestEventData(eventType string, endpointID string) (any, error) {
+	sample, err := SamplePayload(eventType)
+	if err != nil {
+		return nil, err
+	}
+
+	if probe, ok := sample.(PingEventData); ok {
+		probe.EndpointID = endpointID
+
+		return probe, nil
+	}
+
+	return sample, nil
 }
 
 // IsRegisteredEventType reports whether eventType exists in the registry.

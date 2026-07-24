@@ -54,7 +54,7 @@ func mapWebhookEndpointWithSecretToResponse(
 }
 
 func mapWebhookDeliveryToResponse(
-	delivery webhook.Delivery, eventType string,
+	delivery webhook.Delivery, event webhook.Event,
 ) WebhookDeliveryResponse {
 	var lastStatusCode *int
 	if delivery.LastStatusCode != nil {
@@ -66,7 +66,8 @@ func mapWebhookDeliveryToResponse(
 		Id:                 delivery.ID,
 		EventId:            delivery.EventID,
 		EndpointId:         delivery.EndpointID,
-		EventType:          eventType,
+		EventType:          event.EventType,
+		Test:               event.IsTest(),
 		Status:             delivery.Status,
 		AttemptCount:       int(delivery.AttemptCount),
 		MaxAttempts:        int(delivery.MaxAttempts),
@@ -253,7 +254,7 @@ func (s *AnchorAPI) RotateWebhookEndpointSecret(
 func (s *AnchorAPI) PingWebhookEndpoint(
 	ctx context.Context, request PingWebhookEndpointRequestObject,
 ) (PingWebhookEndpointResponseObject, error) {
-	event, err := s.WebhookEndpointService.Ping(ctx, webhook.PingEndpointInput{
+	result, err := s.WebhookEndpointService.SendTestEvent(ctx, webhook.SendTestEventInput{
 		ProductID:  request.ProductId,
 		EndpointID: request.WebhookEndpointId,
 	})
@@ -263,10 +264,46 @@ func (s *AnchorAPI) PingWebhookEndpoint(
 		return nil, err
 	}
 
+	deliveryIDs := webhookDeliveryIDs(result.Deliveries)
+
 	return PingWebhookEndpoint202JSONResponse{
-		EventId:   event.ID,
-		EventType: event.EventType,
+		EventId:     result.Event.ID,
+		EventType:   result.Event.EventType,
+		DeliveryIds: &deliveryIDs,
 	}, nil
+}
+
+func (s *AnchorAPI) SendWebhookTestEvent(
+	ctx context.Context, request SendWebhookTestEventRequestObject,
+) (SendWebhookTestEventResponseObject, error) {
+	input := webhook.SendTestEventInput{
+		ProductID:  request.ProductId,
+		EndpointID: request.WebhookEndpointId,
+	}
+	if request.Body != nil && request.Body.EventType != nil {
+		input.EventType = *request.Body.EventType
+	}
+
+	result, err := s.WebhookEndpointService.SendTestEvent(ctx, input)
+	if err != nil {
+		logAPIError(s.logger, err).Str("webhook_endpoint_id", request.WebhookEndpointId).
+			Str("event_type", input.ResolvedEventType()).
+			Msg("failed to send webhook test event")
+		return nil, err
+	}
+
+	return SendWebhookTestEvent202JSONResponse{
+		EventId:     result.Event.ID,
+		EventType:   result.Event.EventType,
+		Test:        result.Event.IsTest(),
+		DeliveryIds: webhookDeliveryIDs(result.Deliveries),
+	}, nil
+}
+
+func webhookDeliveryIDs(deliveries []webhook.Delivery) []string {
+	return slicex.Map(deliveries, func(delivery webhook.Delivery) string {
+		return delivery.ID
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +335,7 @@ func (s *AnchorAPI) ListWebhookDeliveries(
 
 	return ListWebhookDeliveries200JSONResponse{
 		Items: slicex.Map(deliveries, func(item webhook.DeliveryWithEvent) WebhookDeliveryResponse {
-			return mapWebhookDeliveryToResponse(item.Delivery, item.Event.EventType)
+			return mapWebhookDeliveryToResponse(item.Delivery, item.Event)
 		}),
 	}, nil
 }
@@ -321,7 +358,7 @@ func (s *AnchorAPI) GetWebhookDelivery(
 	}
 
 	return GetWebhookDelivery200JSONResponse{
-		Delivery: mapWebhookDeliveryToResponse(detail.Delivery, detail.Event.EventType),
+		Delivery: mapWebhookDeliveryToResponse(detail.Delivery, detail.Event),
 		Payload:  detail.Delivery.SignedBody,
 		Attempts: slicex.Map(detail.Attempts, mapWebhookAttemptToResponse),
 	}, nil
@@ -341,10 +378,10 @@ func (s *AnchorAPI) RetryWebhookDelivery(
 		return nil, err
 	}
 
-	// The replay row already exists. Its event type is a display convenience, so
-	// a lookup failure here degrades the response rather than failing a write
-	// that already succeeded.
-	eventType := ""
+	// The replay row already exists. Its event is a display convenience, so a
+	// lookup failure here degrades the response rather than failing a write that
+	// already succeeded.
+	var event webhook.Event
 	detail, detailErr := s.WebhookEndpointService.GetDelivery(ctx, webhook.GetDeliveryInput{
 		ProductID:  request.ProductId,
 		EndpointID: request.WebhookEndpointId,
@@ -355,11 +392,11 @@ func (s *AnchorAPI) RetryWebhookDelivery(
 		s.logger.Warn().Err(detailErr).Str("delivery_id", replay.ID).
 			Msg("replay created but its event could not be read back")
 	case detail != nil:
-		eventType = detail.Event.EventType
+		event = detail.Event
 	}
 
 	return RetryWebhookDelivery202JSONResponse(
-		mapWebhookDeliveryToResponse(replay, eventType),
+		mapWebhookDeliveryToResponse(replay, event),
 	), nil
 }
 
@@ -370,18 +407,27 @@ func (s *AnchorAPI) RetryWebhookDelivery(
 func (s *AnchorAPI) ListWebhookEventTypes(
 	_ context.Context, _ ListWebhookEventTypesRequestObject,
 ) (ListWebhookEventTypesResponseObject, error) {
+	catalog := webhook.EventTypeCatalog()
+	items := make([]WebhookEventTypeDescriptor, 0, len(catalog))
+	for _, descriptor := range catalog {
+		sample, err := webhook.SamplePayloadJSON(descriptor.Type)
+		if err != nil {
+			logAPIError(s.logger, err).Str("event_type", descriptor.Type).
+				Msg("failed to render a webhook event type sample payload")
+			return nil, err
+		}
+
+		items = append(items, WebhookEventTypeDescriptor{
+			Type:          descriptor.Type,
+			Group:         descriptor.Group,
+			Description:   descriptor.Description,
+			SamplePayload: sample,
+		})
+	}
+
 	return ListWebhookEventTypes200JSONResponse{
 		ApiVersion: webhook.APIVersion,
-		Items: slicex.Map(
-			webhook.EventTypeCatalog(),
-			func(descriptor webhook.EventTypeDescriptor) WebhookEventTypeDescriptor {
-				return WebhookEventTypeDescriptor{
-					Type:        descriptor.Type,
-					Group:       descriptor.Group,
-					Description: descriptor.Description,
-				}
-			},
-		),
+		Items:      items,
 	}, nil
 }
 

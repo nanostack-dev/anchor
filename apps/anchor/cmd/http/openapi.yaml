@@ -3399,10 +3399,24 @@ components:
           example: "license"
         description:
           type: string
+        sample_payload:
+          type: string
+          description: >-
+            A representative `data` object for this event type, JSON-encoded and
+            indented. It is exactly what a test send of this type transmits, so
+            the admin UI can show the payload before sending it. Identifiers in
+            it are illustrative and resolve to nothing.
+          example: |-
+            {
+              "license_id": "lic_2mQ8dTz5RkYbXhWnJ4pLcVsG7uE",
+              "plan_key": "pro",
+              "status": "REVOKED"
+            }
       required:
       - type
       - group
       - description
+      - sample_payload
     WebhookEventTypeListResponse:
       type: object
       properties:
@@ -3427,9 +3441,62 @@ components:
         event_type:
           type: string
           example: "ping"
+        delivery_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: >-
+            Deliveries created for this send (prefix 'whd_'). Poll
+            `GET …/deliveries/{delivery_id}` to watch the outcome of this exact
+            send rather than guessing which row in the log belongs to it.
       required:
       - event_id
       - event_type
+    WebhookTestEventRequest:
+      type: object
+      description: >-
+        Selects which registered event type to simulate. The whole body is
+        optional; omitting it sends a `ping`.
+      properties:
+        event_type:
+          type: string
+          maxLength: 100
+          description: >-
+            An exact event type from `GET /v1/webhook-event-types`. Wildcards
+            are not accepted — a test send transmits one concrete event. An
+            unregistered type is rejected with
+            `INVALID_WEBHOOK_EVENT_TYPES`.
+          example: "license.revoked"
+    WebhookTestEventResponse:
+      type: object
+      description: >-
+        The synthetic event queued by a test send, with the deliveries it
+        produced.
+      properties:
+        event_id:
+          $ref: "#/components/schemas/ksuid"
+          description: Identifier of the queued event (prefix 'evt_').
+        event_type:
+          type: string
+          example: "license.revoked"
+        test:
+          type: boolean
+          description: >-
+            Always true, mirroring the `test` field the receiver sees in the
+            envelope.
+        delivery_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: >-
+            Deliveries created for this send (prefix 'whd_'), normally exactly
+            one. Poll `GET …/deliveries/{delivery_id}` for the response code,
+            duration and body snippet of each attempt.
+      required:
+      - event_id
+      - event_type
+      - test
+      - delivery_ids
     WebhookDeliveryResponse:
       type: object
       properties:
@@ -3445,6 +3512,13 @@ components:
         event_type:
           type: string
           example: "license.revoked"
+        test:
+          type: boolean
+          description: >-
+            True when the delivery carries a test send rather than a real
+            business change, matching the `test` field in the envelope. It is
+            surfaced here so a delivery log can be read without opening each
+            payload.
         status:
           $ref: "#/components/schemas/WebhookDeliveryStatus"
         attempt_count:
@@ -3478,6 +3552,7 @@ components:
       - event_id
       - endpoint_id
       - event_type
+      - test
       - status
       - attempt_count
       - max_attempts
@@ -6557,8 +6632,13 @@ paths:
       description: >-
         Queues a synthetic `ping` event aimed at this endpoint only. It travels
         the same outbox, fan-out, signing and delivery path as a business event,
-        so a successful ping proves the whole chain. Requires Platform Bearer
-        token.
+        so a successful ping proves the whole chain. The envelope carries
+        `"test": true`.
+
+
+        This is the body-free shorthand for
+        `POST …/test-event` with no `event_type`; use that sub-resource to
+        simulate any other registered type. Requires Platform Bearer token.
       operationId: pingWebhookEndpoint
       tags: [Webhook]
       security:
@@ -6570,6 +6650,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WebhookPingResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/webhook-endpoints/{webhook_endpoint_id}/test-event:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/WebhookEndpointIdParameter"
+    post:
+      summary: Send Webhook Test Event
+      description: >-
+        Queues a synthetic event of any registered type, aimed at this endpoint
+        only, carrying that type's sample payload from
+        `GET /v1/webhook-event-types`. It travels the same outbox, fan-out,
+        signing and delivery path as a business event, so a green test send
+        proves the whole chain rather than just reachability.
+
+
+        The envelope carries `"test": true`, which is present on every event and
+        false for real ones — a receiver can and should refuse to act on a test
+        send rather than merely acknowledge it.
+
+
+        Omitting the body sends a `ping`, which is what `POST …/ping` does. The
+        response names the deliveries this send created, so the caller can poll
+        `GET …/deliveries/{delivery_id}` for the outcome of this exact send.
+        Requires Platform Bearer token.
+      operationId: sendWebhookTestEvent
+      tags: [Webhook]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        description: Which event type to simulate. Optional.
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookTestEventRequest"
+      responses:
+        "202":
+          description: Test event queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestEventResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

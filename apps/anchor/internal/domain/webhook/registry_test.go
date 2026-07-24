@@ -1,6 +1,7 @@
 package webhook_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,6 +130,83 @@ func TestValidateSubscription(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// TestEveryEventTypeHasAValidSamplePayload is what keeps the test-event surface
+// honest. A registry entry added without a sample is a type the admin UI offers
+// but cannot send, and a sample that does not marshal is a 500 on the catalog
+// endpoint; both fail here rather than in front of a user.
+func TestEveryEventTypeHasAValidSamplePayload(t *testing.T) {
+	t.Parallel()
+
+	catalog := webhook.EventTypeCatalog()
+	require.NotEmpty(t, catalog)
+
+	for _, descriptor := range catalog {
+		t.Run(descriptor.Type, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotNilf(
+				t, descriptor.Sample,
+				"registered type %q must carry a sample payload", descriptor.Type,
+			)
+
+			encoded, err := webhook.SamplePayloadJSON(descriptor.Type)
+			require.NoError(t, err)
+			require.NotEmpty(t, encoded)
+
+			var decoded map[string]any
+			require.NoErrorf(
+				t, json.Unmarshal([]byte(encoded), &decoded),
+				"the sample for %q must be a JSON object, which is what `data` is",
+				descriptor.Type,
+			)
+			assert.NotEmptyf(
+				t, decoded,
+				"an empty sample for %q teaches a receiver nothing", descriptor.Type,
+			)
+		})
+	}
+}
+
+func TestSamplePayloadRejectsUnknownTypes(t *testing.T) {
+	t.Parallel()
+
+	_, err := webhook.SamplePayload("license.exploded")
+	require.Error(t, err)
+
+	_, err = webhook.SamplePayload("license.*")
+	require.Error(t, err, "a wildcard is a subscription, never a sendable type")
+}
+
+func TestTestEventDataNamesTheProbedEndpoint(t *testing.T) {
+	t.Parallel()
+
+	const endpointID = "whe_2t7Yc4nQwLpZbXmVkR9sHdF3jA1"
+
+	data, err := webhook.TestEventData(webhook.EventTypePing, endpointID)
+	require.NoError(t, err)
+
+	probe, ok := data.(webhook.PingEventData)
+	require.True(t, ok)
+	assert.Equal(t, endpointID, probe.EndpointID)
+	assert.Equal(t, webhook.PingMessage, probe.Message)
+
+	// The published sample keeps its placeholder; only the send is rewritten.
+	sample, err := webhook.SamplePayload(webhook.EventTypePing)
+	require.NoError(t, err)
+	assert.Equal(t, webhook.SampleEndpointID, sample.(webhook.PingEventData).EndpointID)
+}
+
+func TestTestEventDataPassesOtherSamplesThrough(t *testing.T) {
+	t.Parallel()
+
+	data, err := webhook.TestEventData(webhook.EventTypeLicenseRevoked, "whe_ignored")
+	require.NoError(t, err)
+
+	license, ok := data.(webhook.LicenseEventData)
+	require.True(t, ok)
+	assert.Equal(t, webhook.SampleLicenseID, license.LicenseID)
 }
 
 func TestEventTypeCatalogIsACopy(t *testing.T) {

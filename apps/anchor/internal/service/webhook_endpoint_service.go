@@ -33,6 +33,15 @@ type DeliveryDetail struct {
 	Attempts []webhook.Attempt
 }
 
+// TestEventResult is a synthetic send: the event that was queued and the
+// deliveries it produced. The delivery ids are the point — they let the caller
+// poll the outcome of this exact send instead of guessing which row in the log
+// belongs to it.
+type TestEventResult struct {
+	Event      webhook.Event
+	Deliveries []webhook.Delivery
+}
+
 // WebhookEndpointService owns the product-facing lifecycle of webhook
 // subscriptions: CRUD, enable/disable, secret rotation, ping, and the delivery
 // log with manual replay.
@@ -46,7 +55,9 @@ type WebhookEndpointService interface {
 		ctx context.Context, input webhook.SetEndpointEnabledInput,
 	) (webhook.Endpoint, error)
 	RotateSecret(ctx context.Context, input webhook.RotateSecretInput) (EndpointWithSecret, error)
-	Ping(ctx context.Context, input webhook.PingEndpointInput) (webhook.Event, error)
+	SendTestEvent(
+		ctx context.Context, input webhook.SendTestEventInput,
+	) (TestEventResult, error)
 	ListDeliveries(
 		ctx context.Context, input webhook.ListDeliveriesInput,
 	) ([]webhook.DeliveryWithEvent, error)
@@ -62,6 +73,7 @@ type webhookEndpointService struct {
 	eventRepo     repository.WebhookEventRepository
 	deliveryRepo  repository.WebhookDeliveryRepository
 	emitter       WebhookEmitter
+	fanout        WebhookFanoutService
 	queue         *pgqueue.Client
 	cipher        *secrets.VersionedCipher
 	transactor    transactor.Transactor
@@ -76,6 +88,7 @@ type WebhookEndpointServiceParams struct {
 	EventRepo         repository.WebhookEventRepository
 	DeliveryRepo      repository.WebhookDeliveryRepository
 	Emitter           WebhookEmitter
+	Fanout            WebhookFanoutService
 	Queue             *pgqueue.Client
 	EncryptionService *encryption.Service
 	HTTPClient        *WebhookHTTPClient
@@ -97,6 +110,7 @@ func NewWebhookEndpointService(
 		eventRepo:     params.EventRepo,
 		deliveryRepo:  params.DeliveryRepo,
 		emitter:       params.Emitter,
+		fanout:        params.Fanout,
 		queue:         params.Queue,
 		cipher:        cipher,
 		transactor:    params.Transactor,
@@ -380,20 +394,33 @@ func (s *webhookEndpointService) RotateSecret(
 }
 
 // ---------------------------------------------------------------------------
-// Ping
+// Test events
 // ---------------------------------------------------------------------------
 
-// Ping emits a synthetic event aimed at exactly one endpoint. It goes through
-// the same outbox, fan-out, signing and delivery path as a business event, so a
-// green ping proves the whole chain rather than just reachability.
-func (s *webhookEndpointService) Ping(
-	ctx context.Context, input webhook.PingEndpointInput,
-) (webhook.Event, error) {
+// SendTestEvent emits a synthetic event aimed at exactly one endpoint. It goes
+// through the same outbox, fan-out, signing and delivery path as a business
+// event, so a green test send proves the whole chain rather than just
+// reachability. The envelope carries `test: true` so a receiver can refuse to
+// act on it.
+//
+// Fan-out runs inside the emitting transaction rather than waiting for the
+// queued job. That is what lets the caller be told which delivery its send
+// produced — and it costs nothing, because the delivery row and the fan-out job
+// become visible at the same commit, leaving the job to find the row already
+// there and skip it.
+func (s *webhookEndpointService) SendTestEvent(
+	ctx context.Context, input webhook.SendTestEventInput,
+) (TestEventResult, error) {
 	if err := validateStruct(input); err != nil {
-		return webhook.Event{}, err
+		return TestEventResult{}, err
 	}
 
-	var event webhook.Event
+	eventType := input.ResolvedEventType()
+	if err := webhook.Validate(eventType); err != nil {
+		return TestEventResult{}, NewInvalidWebhookEventTypesError(err.Error())
+	}
+
+	var result TestEventResult
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		endpoint, findErr := s.endpointRepo.FindByID(txCtx, input.ProductID, input.EndpointID)
 		if findErr != nil {
@@ -406,22 +433,44 @@ func (s *webhookEndpointService) Ping(
 			return NewWebhookEndpointNotEnabledError(endpoint.ID)
 		}
 
+		data, dataErr := webhook.TestEventData(eventType, endpoint.ID)
+		if dataErr != nil {
+			return NewInvalidWebhookEventTypesError(dataErr.Error())
+		}
+
 		endpointID := endpoint.ID
-		var emitErr error
-		event, emitErr = s.emitter.Emit(txCtx, webhook.EmitInput{
+		event, emitErr := s.emitter.Emit(txCtx, webhook.EmitInput{
 			ProductID:        input.ProductID,
-			EventType:        webhook.EventTypePing,
+			EventType:        eventType,
 			TargetEndpointID: &endpointID,
-			Data: webhook.PingEventData{
-				EndpointID: endpoint.ID,
-				Message:    "Ping from Anchor",
-			},
+			Data:             data,
 		})
+		if emitErr != nil {
+			return emitErr
+		}
 
-		return emitErr
+		deliveries, fanErr := s.fanout.CreateDeliveriesInTx(
+			txCtx, event, []webhook.Endpoint{*endpoint},
+		)
+		if fanErr != nil {
+			return fanErr
+		}
+
+		result = TestEventResult{Event: event, Deliveries: deliveries}
+
+		return nil
 	})
+	if err != nil {
+		return TestEventResult{}, err
+	}
 
-	return event, err
+	s.logger.Info().
+		Str("webhook_endpoint_id", input.EndpointID).
+		Str("event_type", eventType).
+		Str("event_id", result.Event.ID).
+		Msg("webhook test event queued")
+
+	return result, nil
 }
 
 // ---------------------------------------------------------------------------

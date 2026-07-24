@@ -348,22 +348,72 @@ func TestWebhookFanout(t *testing.T) {
 			[]string{"license.*", webhook.EventTypePing},
 		)
 
-		event, err := WebhookEndpointSvc.Ping(t.Context(), webhook.PingEndpointInput{
-			ProductID:  ctxData.ProductID,
-			EndpointID: target.ID,
-		})
+		result, err := WebhookEndpointSvc.SendTestEvent(
+			t.Context(), webhook.SendTestEventInput{
+				ProductID:  ctxData.ProductID,
+				EndpointID: target.ID,
+			},
+		)
 		require.NoError(t, err)
-		require.NotEmpty(t, event.ID)
+		require.NotEmpty(t, result.Event.ID)
+		assert.Equal(t, webhook.EventTypePing, result.Event.EventType)
+
+		// The delivery is created in the emitting transaction so the caller can
+		// be told which one its send produced.
+		require.Len(t, result.Deliveries, 1)
 
 		job, _ := findFanoutJob(t, webhook.EventTypePing, "")
 		require.NotNil(t, job)
 		require.NoError(t, WebhookFanoutSvc.ProcessQueueJob(context.Background(), *job))
 
-		assert.Len(t, listDeliveries(t, ctxData.ProductID, target.ID), 1)
+		deliveries := listDeliveries(t, ctxData.ProductID, target.ID)
+		require.Len(t, deliveries, 1, "the queued fan-out job finds the row already there")
+		assert.Equal(t, result.Deliveries[0].ID, deliveries[0].Delivery.ID)
 		assert.Empty(
 			t, listDeliveries(t, ctxData.ProductID, bystander.ID),
 			"a ping is aimed at one endpoint even when others subscribe to ping",
 		)
+	})
+
+	t.Run("a test send carries the requested type's sample payload", func(t *testing.T) {
+		ctxData := givenWebhookContext(t)
+		endpoint := givenWebhookEndpoint(
+			t, ctxData.ProductID, "https://receiver.example.com/sample",
+			[]string{"license.*"},
+		)
+
+		result, err := WebhookEndpointSvc.SendTestEvent(
+			t.Context(), webhook.SendTestEventInput{
+				ProductID:  ctxData.ProductID,
+				EndpointID: endpoint.ID,
+				EventType:  webhook.EventTypeLicenseRevoked,
+			},
+		)
+		require.NoError(t, err)
+		require.Len(t, result.Deliveries, 1)
+		assert.Equal(t, webhook.EventTypeLicenseRevoked, result.Event.EventType)
+		assert.True(t, result.Event.IsTest())
+
+		body := result.Deliveries[0].SignedBody
+		assert.Contains(t, body, `"test":true`)
+		assert.Contains(t, body, webhook.SampleLicenseID)
+	})
+
+	t.Run("a test send of an unregistered type is rejected", func(t *testing.T) {
+		ctxData := givenWebhookContext(t)
+		endpoint := givenWebhookEndpoint(
+			t, ctxData.ProductID, "https://receiver.example.com/unknown",
+			[]string{"license.*"},
+		)
+
+		_, err := WebhookEndpointSvc.SendTestEvent(
+			t.Context(), webhook.SendTestEventInput{
+				ProductID:  ctxData.ProductID,
+				EndpointID: endpoint.ID,
+				EventType:  "license.exploded",
+			},
+		)
+		require.Error(t, err)
 	})
 }
 

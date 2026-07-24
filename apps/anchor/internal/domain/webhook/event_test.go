@@ -40,6 +40,10 @@ func TestEnvelopeShape(t *testing.T) {
 	assert.Equal(t, "2026-07-23T14:02:11Z", decoded["occurred_at"])
 	assert.Equal(t, "prod_2iABC", decoded["product_id"])
 	assert.Equal(t, "org_2iABC", decoded["organization_id"])
+	assert.Equal(
+		t, false, decoded["test"],
+		"a real event says so explicitly; an absent field would be ambiguous",
+	)
 
 	data, ok := decoded["data"].(map[string]any)
 	require.True(t, ok, "data must be a nested object, not a string")
@@ -62,6 +66,30 @@ func TestEnvelopeOmitsOrganizationForProductScopedEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(encoded), "organization_id")
 	assert.Contains(t, string(encoded), `"data":{}`, "an empty payload still renders an object")
+}
+
+func TestEnvelopeMarksTargetedSendsAsTests(t *testing.T) {
+	t.Parallel()
+
+	endpointID := "whe_2t7Yc4nQwLpZbXmVkR9sHdF3jA1"
+	event := webhook.Event{
+		ID:               "evt_test",
+		ProductID:        "prod_2iABC",
+		EventType:        webhook.EventTypePing,
+		APIVersion:       webhook.APIVersion,
+		OccurredAt:       time.Now(),
+		TargetEndpointID: &endpointID,
+	}
+
+	assert.True(t, event.IsTest())
+
+	encoded, err := json.Marshal(event.Envelope())
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), `"test":true`)
+
+	broadcast := event
+	broadcast.TargetEndpointID = nil
+	assert.False(t, broadcast.IsTest())
 }
 
 func TestTruncateSnippetAndError(t *testing.T) {
