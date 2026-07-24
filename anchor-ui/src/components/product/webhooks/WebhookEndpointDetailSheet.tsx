@@ -5,13 +5,12 @@ import {
 } from "@/client";
 import {
 	listWebhookDeliveriesOptions,
-	listWebhookDeliveriesQueryKey,
 	listWebhookEventTypesOptions,
-	pingWebhookEndpointMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FacetedFilter } from "@/components/common/datatable/FacetedFilter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Sheet,
@@ -22,7 +21,6 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import {
 	Table,
 	TableBody,
@@ -32,13 +30,12 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Send } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
 import { type ReactElement, type ReactNode, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { EventTypeChips } from "./EventTypeChips";
 import { WebhookDeliveryDetailDialog } from "./WebhookDeliveryDetailDialog";
+import { WebhookTestEventPanel } from "./WebhookTestEventPanel";
 import {
 	deliveryStatusOptions,
 	deliveryStatusTone,
@@ -66,7 +63,6 @@ export function WebhookEndpointDetailSheet({
 	endpoint,
 	trigger,
 }: WebhookEndpointDetailSheetProps) {
-	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
 	const [statusFilter, setStatusFilter] = useState<string[]>([]);
 	const [eventTypeFilter, setEventTypeFilter] = useState<string[]>([]);
@@ -112,27 +108,6 @@ export function WebhookEndpointDetailSheet({
 	const fetched = deliveryQuery.data?.items ?? [];
 	const hasNextPage = fetched.length > PAGE_SIZE;
 	const deliveries = fetched.slice(0, PAGE_SIZE);
-
-	const pingMutation = useMutation({
-		...pingWebhookEndpointMutation(),
-		onSuccess: (data) => {
-			toast.success("Ping queued.", {
-				description: `Event ${data.event_id} (${data.event_type}) is on its way; it appears in the log below.`,
-			});
-			queryClient.invalidateQueries({
-				queryKey: listWebhookDeliveriesQueryKey({
-					path: { product_id: productId, webhook_endpoint_id: endpoint.id },
-				}),
-			});
-		},
-		onError: (error: unknown) => {
-			console.error("Failed to ping webhook endpoint:", error);
-			toast.error(
-				getApiErrorMessage(error) ??
-					"Failed to queue a ping. The endpoint must be enabled.",
-			);
-		},
-	});
 
 	const summaryRows: Array<{ label: string; value: ReactNode }> = [
 		{
@@ -214,34 +189,18 @@ export function WebhookEndpointDetailSheet({
 						<EventTypeChips eventTypes={endpoint.event_types} max={20} />
 					</div>
 
+					<WebhookTestEventPanel
+						productId={productId}
+						endpointId={endpoint.id}
+						endpointEnabled={
+							endpoint.status ===
+							WebhookEndpointStatus.WEBHOOK_ENDPOINT_STATUS_ENABLED
+						}
+						descriptors={catalog?.items ?? []}
+					/>
+
 					<div className="flex flex-col gap-3">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<h3 className="text-sm font-medium">Delivery log</h3>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={
-									pingMutation.isPending ||
-									endpoint.status !==
-										WebhookEndpointStatus.WEBHOOK_ENDPOINT_STATUS_ENABLED
-								}
-								onClick={() =>
-									pingMutation.mutate({
-										path: {
-											product_id: productId,
-											webhook_endpoint_id: endpoint.id,
-										},
-									})
-								}
-							>
-								{pingMutation.isPending ? (
-									<Spinner className="text-current" />
-								) : (
-									<Send className="size-4" />
-								)}
-								Send test event
-							</Button>
-						</div>
+						<h3 className="text-sm font-medium">Delivery log</h3>
 
 						<div className="flex flex-wrap items-center gap-2">
 							<FacetedFilter
@@ -327,7 +286,14 @@ export function WebhookEndpointDetailSheet({
 									deliveries.map((delivery) => (
 										<TableRow key={delivery.id}>
 											<TableCell className="font-mono text-xs">
-												{delivery.event_type}
+												<span className="flex items-center gap-1.5">
+													{delivery.event_type}
+													{delivery.test && (
+														<Badge variant="outline" className="font-sans">
+															Test
+														</Badge>
+													)}
+												</span>
 											</TableCell>
 											<TableCell>
 												<StatusBadge tone={deliveryStatusTone[delivery.status]}>
