@@ -71,7 +71,13 @@ func RegisterWebhookWorkers(p WebhookWorkerParams) {
 		// The ladder is supplied to pgqueue rather than reimplemented: claim,
 		// lease, visibility timeout, stuck-job reaping and attempt counting
 		// already exist there.
-		retryDelay: func(job pgqueue.Job, _ error) time.Duration {
+		retryDelay: func(job pgqueue.Job, err error) time.Duration {
+			// A receiver that asked for a specific pause via Retry-After outranks
+			// our ladder; everything else rides the jittered schedule.
+			if delay, ok := RetryAfterDelay(err); ok {
+				return delay
+			}
+
 			return webhook.RetryDelay(job.Attempts, webhook.DefaultJitterer())
 		},
 	})

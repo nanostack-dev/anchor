@@ -249,7 +249,10 @@ func (s *webhookDeliveryService) applyOutcome(
 	case webhook.OutcomeRetry:
 		s.updateEndpointHealth(ctx, logger, endpoint, false)
 		if delivery.AttemptsRemaining() {
-			return s.parkForRetry(ctx, delivery, statusCode, failureMessage)
+			// A receiver that answers 429/503 with Retry-After is telling us when
+			// it can cope again; honouring it beats hammering it on our own ladder.
+			retryAfter := webhook.ParseRetryAfter(response.RetryAfter, time.Now())
+			return s.parkForRetry(ctx, delivery, statusCode, failureMessage, retryAfter)
 		}
 
 		logger.Warn().Int32("attempts", delivery.AttemptCount).
@@ -268,12 +271,14 @@ func (s *webhookDeliveryService) applyOutcome(
 }
 
 // parkForRetry keeps the delivery PENDING and hands a retryable error back to
-// pgqueue, which reschedules it on the jittered ladder.
+// pgqueue, which reschedules it on the jittered ladder — or, when the receiver
+// supplied a usable Retry-After, at the delay it asked for.
 func (s *webhookDeliveryService) parkForRetry(
 	ctx context.Context,
 	delivery webhook.Delivery,
 	statusCode *int32,
 	failureMessage *string,
+	retryAfter *time.Duration,
 ) error {
 	if err := s.deliveryRepo.UpdateOutcomeInternal(ctx, delivery.ID, repository.DeliveryOutcome{
 		Status:         webhook.DeliveryStatusPending,
@@ -284,7 +289,10 @@ func (s *webhookDeliveryService) parkForRetry(
 		return err
 	}
 
-	return errors.New(derefOr(failureMessage, "webhook delivery attempt failed"))
+	return NewRetryAfterError(
+		retryAfter,
+		errors.New(derefOr(failureMessage, "webhook delivery attempt failed")),
+	)
 }
 
 // finish writes a terminal (or, for PENDING, an interim) delivery state and
