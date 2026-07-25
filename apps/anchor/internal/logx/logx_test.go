@@ -52,7 +52,11 @@ func TestEventForErrorLevel(t *testing.T) {
 		{"deadline exceeded downgraded to warn", context.DeadlineExceeded, "warn"},
 		{"wrapped cancellation downgraded to warn", fmt.Errorf("call: %w", context.Canceled), "warn"},
 		{"jet-wrapped cancellation downgraded to warn", errors.New("jet: context canceled"), "warn"},
-		{"pq 57014 downgraded to warn", &pq.Error{Code: "57014", Message: "canceling statement due to user request"}, "warn"},
+		{
+			"pq 57014 downgraded to warn",
+			&pq.Error{Code: "57014", Message: "canceling statement due to user request"},
+			"warn",
+		},
 		{"real error stays error", errors.New("db exploded"), "error"},
 	}
 	for _, tc := range cases {
