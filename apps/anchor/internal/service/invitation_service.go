@@ -70,7 +70,7 @@ func (s *invitationService) CreateInvitation(
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if optPlatformUser != nil {
-		logger.Error().
+		logger.Debug().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("user already exists")
@@ -93,7 +93,7 @@ func (s *invitationService) CreateInvitation(
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if optInvitation != nil {
-		logger.Error().
+		logger.Debug().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("invitation already exists")
