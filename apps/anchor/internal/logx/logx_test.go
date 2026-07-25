@@ -29,6 +29,13 @@ func TestIsContextError(t *testing.T) {
 		{"jet-wrapped deadline (broken chain)", errors.New("jet: context deadline exceeded"), true},
 		// lib/pq raises SQLSTATE 57014 when it cancels an in-flight query.
 		{"pq query canceled 57014", &pq.Error{Code: "57014", Message: "canceling statement due to user request"}, true},
+		// statement_timeout shares SQLSTATE 57014 but is a real server-side fault:
+		// it must keep error severity instead of being hidden as a cancellation.
+		{
+			"pq 57014 from statement timeout is not a cancellation",
+			&pq.Error{Code: "57014", Message: "canceling statement due to statement timeout"},
+			false,
+		},
 		{"pq other error", &pq.Error{Code: "3D000", Message: "database does not exist"}, false},
 		{"plain error", errors.New("boom"), false},
 		{"nil", nil, false},
@@ -56,6 +63,11 @@ func TestEventForErrorLevel(t *testing.T) {
 			"pq 57014 downgraded to warn",
 			&pq.Error{Code: "57014", Message: "canceling statement due to user request"},
 			"warn",
+		},
+		{
+			"pq 57014 from statement timeout stays error",
+			&pq.Error{Code: "57014", Message: "canceling statement due to statement timeout"},
+			"error",
 		},
 		{"real error stays error", errors.New("db exploded"), "error"},
 	}

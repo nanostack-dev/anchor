@@ -10,11 +10,23 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// pgQueryCanceled is the PostgreSQL SQLSTATE raised when a running statement is
-// aborted because its context was canceled ("canceling statement due to user
-// request"). lib/pq surfaces this as a *pq.Error and does not wrap
-// context.Canceled, so errors.Is cannot see the cancellation.
-const pgQueryCanceled = "57014"
+// pgQueryCanceled is the PostgreSQL SQLSTATE for an aborted statement. lib/pq
+// surfaces it as a *pq.Error and does not wrap context.Canceled, so errors.Is
+// cannot see the cancellation.
+//
+// The same SQLSTATE covers two very different situations, told apart only by
+// the message:
+//   - "canceling statement due to user request" — the client (us, on context
+//     cancellation) asked Postgres to abort the query. Benign;
+//   - "canceling statement due to statement timeout" — the server killed a
+//     query that exceeded statement_timeout. That is a real, actionable fault
+//     and must keep error severity.
+//
+// So a 57014 only counts as a cancellation when it names the user request.
+const (
+	pgQueryCanceled  = "57014"
+	pgCanceledByUser = "due to user request"
+)
 
 // IsContextError reports whether err is a context cancellation or deadline
 // expiry. These signal that the caller (request, parent context) went away
@@ -22,8 +34,10 @@ const pgQueryCanceled = "57014"
 //
 // Cancellations reach us in three shapes and all three must be recognised:
 //   - the bare context sentinels, or an error that wraps them with %w;
-//   - a lib/pq *pq.Error with SQLSTATE 57014, emitted when the driver cancels
-//     an in-flight query because its context was canceled;
+//   - a lib/pq *pq.Error with SQLSTATE 57014 raised by the client's own cancel
+//     request, emitted when the driver aborts an in-flight query because its
+//     context was canceled (a 57014 from statement_timeout is a genuine fault
+//     and deliberately does not match);
 //   - a go-jet error, which prefixes driver errors with "jet: " using a verb
 //     that drops the wrapped error from the Unwrap chain, so errors.Is/As both
 //     miss the underlying cancellation. For that case we fall back to matching
@@ -36,7 +50,9 @@ func IsContextError(err error) bool {
 		return true
 	}
 	var pqErr *pq.Error
-	if errors.As(err, &pqErr) && pqErr.Code == pgQueryCanceled {
+	if errors.As(err, &pqErr) &&
+		pqErr.Code == pgQueryCanceled &&
+		strings.Contains(pqErr.Message, pgCanceledByUser) {
 		return true
 	}
 	msg := err.Error()
