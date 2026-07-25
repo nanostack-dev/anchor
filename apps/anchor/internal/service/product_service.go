@@ -19,11 +19,22 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// productNameUniqueConstraint guards (platform_tenant_id, name) at the database
-// level. A violation means a concurrent request created a product with the same
-// name in the window between the service's pre-insert existence check and the
-// INSERT — the DB is the only race-free arbiter of uniqueness.
-const productNameUniqueConstraint = "products_platform_tenant_id_name_key"
+// Product names are guarded by two unique constraints, and a racing create can
+// trip either one:
+//   - productNameUniqueConstraint — the original UNIQUE (platform_tenant_id,
+//     name) from 000001_init, violated by a byte-identical name;
+//   - productNameLowerUniqueIndex — the case-insensitive index added in
+//     000019_case_insensitive_names, violated by a name that differs only in
+//     case. That is the one the service's own pre-check compares on (it matches
+//     with LOWER), so it is the constraint a race most often lands on.
+//
+// A violation means a concurrent request created the product in the window
+// between the service's pre-insert existence check and the INSERT — the DB is
+// the only race-free arbiter of uniqueness.
+const (
+	productNameUniqueConstraint = "products_platform_tenant_id_name_key"
+	productNameLowerUniqueIndex = "idx_products_tenant_lower_name_unique"
+)
 
 // isProductNameConflict reports whether err is the Postgres unique-violation
 // (SQLSTATE 23505) raised when two concurrent creates race on the same product
@@ -33,9 +44,11 @@ const productNameUniqueConstraint = "products_platform_tenant_id_name_key"
 // intended PRODUCT_ALREADY_EXISTS client error.
 func isProductNameConflict(err error) bool {
 	var pqErr *pq.Error
-	return errors.As(err, &pqErr) &&
-		pqErr.Code == "23505" &&
-		pqErr.Constraint == productNameUniqueConstraint
+	if !errors.As(err, &pqErr) || pqErr.Code != "23505" {
+		return false
+	}
+	return pqErr.Constraint == productNameUniqueConstraint ||
+		pqErr.Constraint == productNameLowerUniqueIndex
 }
 
 type ProductService interface {

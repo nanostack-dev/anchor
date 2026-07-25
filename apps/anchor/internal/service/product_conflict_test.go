@@ -14,7 +14,10 @@ import (
 // racing duplicate-name create (mapped to PRODUCT_ALREADY_EXISTS) versus a
 // genuine failure that must still surface as an error.
 func TestIsProductNameConflict(t *testing.T) {
-	const constraint = "products_platform_tenant_id_name_key"
+	const (
+		constraint     = "products_platform_tenant_id_name_key"
+		lowerNameIndex = "idx_products_tenant_lower_name_unique"
+	)
 
 	tests := []struct {
 		name string
@@ -29,6 +32,13 @@ func TestIsProductNameConflict(t *testing.T) {
 		{
 			name: "jet-wrapped pq unique violation is still unwrapped",
 			err:  fmt.Errorf("jet: %w", &pq.Error{Code: "23505", Constraint: constraint}),
+			want: true,
+		},
+		{
+			// The pre-insert check compares on LOWER(name), so a race on a name
+			// differing only in case lands on the case-insensitive index.
+			name: "unique violation on the case-insensitive name index",
+			err:  &pq.Error{Code: "23505", Constraint: lowerNameIndex},
 			want: true,
 		},
 		{
