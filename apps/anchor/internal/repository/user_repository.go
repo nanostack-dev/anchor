@@ -6,7 +6,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/auth"
 
@@ -53,17 +52,17 @@ func (u *userRepositoryImpl) FindByEmail(
 		table.Users.Email.EQ(postgres.String(email)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.Users, auth.User](
+	return transactor.QueryOptionalMap(
 		ctx, u.db, stmt,
 
 		u.userMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (u *userRepositoryImpl) Count(ctx context.Context) (
 	int64, error,
 ) {
-	return transactor.QueryCount(ctx, u.db, table.Users.SELECT(postgres.COUNT(postgres.STAR)))
+	return transactor.QueryCount(ctx, u.db, table.Users.SELECT(postgres.COUNT(postgres.STAR))).Value()
 }
 
 func (u *userRepositoryImpl) Create(
@@ -75,7 +74,7 @@ func (u *userRepositoryImpl) Create(
 
 	return transactor.QueryMap(
 		ctx, u.db, stmt, u.userMapper.ToDomain,
-	)
+	).Value()
 }
 
 func NewUserRepository(

@@ -104,7 +104,7 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
-	)
+	).Value()
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
@@ -132,7 +132,7 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
-	)
+	).Value()
 }
 
 func (r *productRoleRepositoryImpl) Create(
@@ -142,7 +142,7 @@ func (r *productRoleRepositoryImpl) Create(
 	stmt := table.ProductRoles.INSERT(
 		productRolesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
-	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt)
+	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).Value()
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -153,7 +153,7 @@ func (r *productRoleRepositoryImpl) Create(
 				table.ProductRoleResourcePermissions.CreatedAt,
 			),
 		).MODELS(permissions)
-		if err = transactor.Exec(ctx, r.db, permStmt); err != nil {
+		if err = transactor.Exec(ctx, r.db, permStmt).Err(); err != nil {
 			r.logger.Error().Err(err).
 				Str("product_role_id", productRole.ID).
 				Str("product_id", productRole.ProductID).
@@ -179,7 +179,7 @@ func (r *productRoleRepositoryImpl) Update(
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(domainRole.ProductID))),
 	).
 		RETURNING(table.ProductRoles.AllColumns)
-	updated, err := transactor.Query[model.ProductRoles](ctx, r.db, updateStmt)
+	updated, err := transactor.Query[model.ProductRoles](ctx, r.db, updateStmt).Value()
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -193,7 +193,7 @@ func (r *productRoleRepositoryImpl) Update(
 			table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(domainRole.ProductID)),
 		),
 	)
-	currentPerms, err := transactor.Query[[]model.ProductRoleResourcePermissions](ctx, r.db, permSelect)
+	currentPerms, err := transactor.Query[[]model.ProductRoleResourcePermissions](ctx, r.db, permSelect).Value()
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -220,7 +220,7 @@ func (r *productRoleRepositoryImpl) Update(
 					),
 				),
 		)
-		if err = transactor.Exec(ctx, r.db, removeStmt); err != nil {
+		if err = transactor.Exec(ctx, r.db, removeStmt).Err(); err != nil {
 			return role.ProductRole{}, err
 		}
 	}
@@ -231,7 +231,7 @@ func (r *productRoleRepositoryImpl) Update(
 			table.ProductRoleResourcePermissions.ProductID,
 			table.ProductRoleResourcePermissions.PermissionName,
 		).MODELS(toAdd)
-		if err = transactor.Exec(ctx, r.db, addStmt); err != nil {
+		if err = transactor.Exec(ctx, r.db, addStmt).Err(); err != nil {
 			return role.ProductRole{}, err
 		}
 	}
@@ -245,7 +245,7 @@ func (r *productRoleRepositoryImpl) DeleteByProductIDAndRoleID(
 		table.ProductRoles.ID.EQ(postgres.String(id)).
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productRoleRepositoryImpl) CountMembershipAssignments(
@@ -256,7 +256,7 @@ func (r *productRoleRepositoryImpl) CountMembershipAssignments(
 		table.OrganizationMemberships.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
 			table.OrganizationMemberships.ProductRoleID.EQ(postgres.String(roleID)),
 		),
-	)
+	).Value()
 	if err != nil {
 		return 0, err
 	}
@@ -266,7 +266,7 @@ func (r *productRoleRepositoryImpl) CountMembershipAssignments(
 		table.WorkspaceMemberships.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
 			table.WorkspaceMemberships.ProductRoleID.EQ(postgres.String(roleID)),
 		),
-	)
+	).Value()
 	if err != nil {
 		return 0, err
 	}
@@ -324,7 +324,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		ctx,
 		r.db,
 		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -357,7 +357,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	}
 	idStmt = idStmt.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	pagedRoles, err := transactor.Query[[]model.ProductRoles](ctx, r.db, idStmt)
+	pagedRoles, err := transactor.Query[[]model.ProductRoles](ctx, r.db, idStmt).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -398,7 +398,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		ctx, r.db, query, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,

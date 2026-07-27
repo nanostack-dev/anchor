@@ -65,6 +65,16 @@ var (
 		"INVITATION_OWNER_ROLE_NOT_ALLOWED",
 		"Invitation with OWNER role is not allowed", http.StatusBadRequest,
 	)
+
+	// ErrInvitationAlreadyExists when the tenant already has an invitation for
+	// the address. Returned both by CreateInvitation's pre-insert check and by
+	// the race loser whose INSERT trips the unique index.
+	ErrInvitationAlreadyExists = fault.NewWithStatus(
+		"INVITATION_ALREADY_EXISTS",
+		"This email address is already associated with an existing invitation. "+
+			"Please check if they are already a member, or try inviting a different email.",
+		http.StatusBadRequest,
+	)
 )
 
 // From resource_permission/errors.go

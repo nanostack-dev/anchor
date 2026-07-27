@@ -69,7 +69,7 @@ func (r *platformTenantUserRepositoryImpl) Create(
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("platform_user_id", platformUser.ID).
@@ -97,7 +97,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	)
+	).Value()
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
@@ -116,7 +116,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	)
+	).Value()
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
@@ -135,7 +135,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	)
+	).Value()
 }
 
 func (r *platformTenantUserRepositoryImpl) DeleteByID(
@@ -147,7 +147,7 @@ func (r *platformTenantUserRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
@@ -189,7 +189,7 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 		ctx,
 		r.db,
 		table.PlatformUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		return search.Result[platform.User]{}, err
 	}
@@ -224,7 +224,7 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
 	// Execute query
-	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.platformUserMapper.ToDomain)
+	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.platformUserMapper.ToDomain).Value()
 	if err != nil {
 		return search.Result[platform.User]{}, err
 	}

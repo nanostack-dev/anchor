@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -97,12 +98,7 @@ func (s *invitationService) CreateInvitation(
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("invitation already exists")
-		return invitation.PlatformInvitation{}, fault.NewWithStatus(
-			"INVITATION_ALREADY_EXISTS",
-			"This email address is already associated with an existing invitation. "+
-				"Please check if they are already a member, or try inviting a different email.",
-			http.StatusBadRequest,
-		)
+		return invitation.PlatformInvitation{}, ErrInvitationAlreadyExists
 	}
 	if input.Role == platform.TenantRoleOwner {
 		return invitation.PlatformInvitation{}, ErrOwnerRoleNotAllowed
@@ -121,6 +117,17 @@ func (s *invitationService) CreateInvitation(
 
 	createdEntity, err := s.invitationRepo.Create(ctx, inv)
 	if err != nil {
+		// A concurrent create can win the race after the FindByTenantIDAndEmail
+		// check above passed, tripping the unique index. The repository reports
+		// that as ErrInvitationExists, which is the same logical condition as the
+		// pre-check, so it gets the same client error rather than a 500.
+		if errors.Is(err, repository.ErrInvitationExists) {
+			logger.Debug().
+				Str("tenant_id", input.TenantID).
+				Str("email", input.Email).
+				Msg("invitation already exists (unique constraint)")
+			return invitation.PlatformInvitation{}, ErrInvitationAlreadyExists
+		}
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).

@@ -145,7 +145,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
@@ -168,7 +168,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationMembershipRepositoryImpl) Create(
@@ -190,7 +190,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		table.OrganizationMemberships.AllColumns,
 	).MODEL(entity)
 
-	if err := transactor.Exec(ctx, r.db, stmt); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -230,7 +230,7 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, stmt); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -256,7 +256,7 @@ func (r *organizationMembershipRepositoryImpl) Delete(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions bool) postgres.SelectStatement {
@@ -385,7 +385,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByOrgID(
@@ -405,7 +405,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
@@ -470,7 +470,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		postgres.COUNT(postgres.STAR).AS("count_result.count"),
 	).FROM(joinExpr).WHERE(whereStmt)
 
-	total, err := transactor.QueryCount(ctx, r.db, countStmt)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
 	if err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
@@ -495,7 +495,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
 		},
-	)
+	).Value()
 	if err != nil {
 		return search.Result[organization.Membership]{}, err
 	}

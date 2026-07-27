@@ -12,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
@@ -103,7 +102,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
@@ -121,7 +120,7 @@ func (r *productUserRepositoryImpl) FindByProductID(
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productUserRepositoryImpl) FindByExternalID(
@@ -142,7 +141,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productUserRepositoryImpl) Create(
@@ -155,12 +154,12 @@ func (r *productUserRepositoryImpl) Create(
 		productUsersUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductUsers.AllColumns)
 
-	return transactor.QueryMap[model.ProductUsers, user.ProductUser](
+	return transactor.QueryMap(
 		ctx,
 		r.db,
 		stmt,
 		r.productUserMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productUserRepositoryImpl) Update(
@@ -185,9 +184,9 @@ func (r *productUserRepositoryImpl) Update(
 		),
 	).RETURNING(table.ProductUsers.AllColumns)
 
-	return transactor.QueryMap[model.ProductUsers, user.ProductUser](
+	return transactor.QueryMap(
 		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productUserRepositoryImpl) DeleteByID(
@@ -201,7 +200,7 @@ func (r *productUserRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productUserRepositoryImpl) UpsertByExternalID(
@@ -224,9 +223,9 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 		).
 		RETURNING(table.ProductUsers.AllColumns)
 
-	result, err := transactor.QueryMap[model.ProductUsers, user.ProductUser](
+	result, err := transactor.QueryMap(
 		ctx, r.db, stmt, r.productUserMapper.ToDomain,
-	)
+	).Value()
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
@@ -250,7 +249,7 @@ func (r *productUserRepositoryImpl) DeleteByExternalID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productUserRepositoryImpl) SearchByProductID(
@@ -302,7 +301,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		ctx,
 		r.db,
 		table.ProductUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -313,7 +312,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 	query = r.applySorting(query, request.Sort)
 
 	query = query.LIMIT(int64(request.Pagination.Limit)).OFFSET(int64(request.Pagination.Offset))
-	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain)
+	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
