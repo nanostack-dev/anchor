@@ -44,7 +44,7 @@ jobs:
       id-token: write
     with:
       app_name: anchor
-      go_version: '1.26.2'
+      go_version: '1.26.5'
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
       lint_working_directory: ./apps/anchor
