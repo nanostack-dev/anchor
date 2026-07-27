@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/mapper"
@@ -98,7 +98,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 		ctx,
 		r.db,
 		table.PlatformInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -130,7 +130,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 		}
 	}
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain)
+	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -144,6 +144,20 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 	}, nil
 }
 
+// invitationTenantEmailUniqueIndex is the UNIQUE (platform_tenant_id, email)
+// index from 000001_init — the only uniqueness guard on platform_invitations
+// besides the primary key.
+const invitationTenantEmailUniqueIndex = "idx_platform_tenant_email"
+
+// ErrInvitationExists is returned by Create when the tenant already has an
+// invitation for the address.
+//
+// The caller's pre-check cannot be race-free: a concurrent inserter's row stays
+// invisible until it commits, so both callers pass their check and the loser
+// trips the unique index. The index is the only race-free arbiter, so its
+// violation is translated here rather than escaping as an unexpected error.
+var ErrInvitationExists = errors.New("invitation already exists for tenant and email")
+
 func (r *invitationRepositoryImpl) Create(
 	ctx context.Context, inv invitation.PlatformInvitation,
 ) (invitation.PlatformInvitation, error) {
@@ -152,9 +166,9 @@ func (r *invitationRepositoryImpl) Create(
 		platformInvitationsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.PlatformInvitations.AllColumns)
 
-	return transactor.QueryMap[model.PlatformInvitations, invitation.PlatformInvitation](
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).
+		OnUnique(ErrInvitationExists, invitationTenantEmailUniqueIndex).
+		Value()
 }
 
 func (r *invitationRepositoryImpl) FindByCodeAndEmail(
@@ -167,9 +181,9 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 			AND(table.PlatformInvitations.Email.EQ(postgres.String(email))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
@@ -182,9 +196,9 @@ func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 			AND(table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.PlatformInvitations, invitation.PlatformInvitation](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
@@ -196,5 +210,5 @@ func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
 				AND(table.PlatformInvitations.ID.EQ(postgres.String(invitationID))),
 		)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }

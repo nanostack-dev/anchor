@@ -51,9 +51,9 @@ func (r *templateRepositoryImpl) FindByID(
 				AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateRepositoryImpl) FindBySlug(
@@ -66,9 +66,9 @@ func (r *templateRepositoryImpl) FindBySlug(
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateRepositoryImpl) FindBySlugInternal(
@@ -80,9 +80,9 @@ func (r *templateRepositoryImpl) FindBySlugInternal(
 			table.EmailTemplates.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailTemplates, email.Template](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateRepositoryImpl) List(
@@ -99,7 +99,7 @@ func (r *templateRepositoryImpl) List(
 		).
 		ORDER_BY(table.EmailTemplates.CreatedAt.DESC()).
 		LIMIT(limit).OFFSET(offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *templateRepositoryImpl) Create(
@@ -115,9 +115,9 @@ func (r *templateRepositoryImpl) Create(
 	stmt := table.EmailTemplates.INSERT(emailTemplatesUpdatableColumns()).
 		MODEL(entity).
 		RETURNING(table.EmailTemplates.AllColumns)
-	return transactor.QueryMap[model.EmailTemplates, email.Template](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateRepositoryImpl) Update(
@@ -135,9 +135,9 @@ func (r *templateRepositoryImpl) Update(
 		table.EmailTemplates.ID.EQ(postgres.String(t.ID)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).RETURNING(table.EmailTemplates.AllColumns)
-	return transactor.QueryMap[model.EmailTemplates, email.Template](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateRepositoryImpl) SaveExamples(
@@ -166,7 +166,7 @@ func (r *templateRepositoryImpl) SaveExamples(
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 			AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *templateRepositoryImpl) SetVersionPointers(
@@ -190,7 +190,7 @@ func (r *templateRepositoryImpl) SetVersionPointers(
 		table.EmailTemplates.ID.EQ(postgres.String(templateID)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *templateRepositoryImpl) DeleteByID(
@@ -201,5 +201,5 @@ func (r *templateRepositoryImpl) DeleteByID(
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 			AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }

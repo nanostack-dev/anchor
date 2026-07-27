@@ -47,9 +47,9 @@ func (r *templateVersionRepositoryImpl) FindByID(
 		FROM(table.EmailTemplateVersions).
 		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
 		LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
@@ -73,9 +73,9 @@ func (r *templateVersionRepositoryImpl) findByStatus(
 			table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID)).
 				AND(table.EmailTemplateVersions.Status.EQ(postgres.String(string(status)))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateVersionRepositoryImpl) List(
@@ -89,7 +89,7 @@ func (r *templateVersionRepositoryImpl) List(
 		WHERE(table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID))).
 		ORDER_BY(table.EmailTemplateVersions.VersionNumber.DESC()).
 		LIMIT(limit).OFFSET(offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *templateVersionRepositoryImpl) Create(
@@ -105,9 +105,9 @@ func (r *templateVersionRepositoryImpl) Create(
 	stmt := table.EmailTemplateVersions.INSERT(emailTemplateVersionsUpdatableColumns()).
 		MODEL(entity).
 		RETURNING(table.EmailTemplateVersions.AllColumns)
-	return transactor.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateVersionRepositoryImpl) Update(
@@ -124,9 +124,9 @@ func (r *templateVersionRepositoryImpl) Update(
 	).MODEL(entity).WHERE(
 		table.EmailTemplateVersions.ID.EQ(postgres.String(v.ID)),
 	).RETURNING(table.EmailTemplateVersions.AllColumns)
-	return transactor.QueryMap[model.EmailTemplateVersions, email.TemplateVersion](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *templateVersionRepositoryImpl) UpdateStatus(
@@ -149,7 +149,7 @@ func (r *templateVersionRepositoryImpl) UpdateStatus(
 	stmt := table.EmailTemplateVersions.UPDATE(cols).MODEL(entity).WHERE(
 		table.EmailTemplateVersions.ID.EQ(postgres.String(id)),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 // NextVersionNumber issues monotonically increasing version numbers per
@@ -171,7 +171,7 @@ func (r *templateVersionRepositoryImpl) NextVersionNumber(
 			return 0
 		}
 		return *row.Max
-	})
+	}).Value()
 	if err != nil {
 		return 0, err
 	}

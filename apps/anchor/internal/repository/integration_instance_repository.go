@@ -7,7 +7,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
@@ -93,9 +92,9 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
@@ -109,9 +108,9 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
@@ -129,9 +128,9 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
@@ -147,9 +146,9 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(
@@ -167,7 +166,7 @@ func (r *integrationInstanceRepositoryImpl) ListByProduct(
 		table.IntegrationInstances.CreatedAt.DESC(),
 	)
 
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProviderInternal(
@@ -184,7 +183,7 @@ func (r *integrationInstanceRepositoryImpl) ListByProviderInternal(
 		table.IntegrationInstances.CreatedAt.DESC(),
 	)
 
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) Create(
@@ -196,9 +195,9 @@ func (r *integrationInstanceRepositoryImpl) Create(
 		integrationInstancesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return transactor.QueryMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) Update(
@@ -220,9 +219,9 @@ func (r *integrationInstanceRepositoryImpl) Update(
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return transactor.QueryMap[model.IntegrationInstances, integration.Instance](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(
@@ -234,5 +233,5 @@ func (r *integrationInstanceRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }

@@ -80,9 +80,9 @@ func (r *integrationEventRepositoryImpl) CreateInternal(
 		integrationEventsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.IntegrationEvents.AllColumns)
 
-	return transactor.QueryMap[model.IntegrationEvents, integration.Event](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationEventRepositoryImpl) FindByIDInternal(
@@ -96,9 +96,9 @@ func (r *integrationEventRepositoryImpl) FindByIDInternal(
 		table.IntegrationEvents.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationEvents, integration.Event](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
@@ -114,9 +114,9 @@ func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.IntegrationEvents, integration.Event](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationEventRepositoryImpl) UpdateStatusInternal(
@@ -150,5 +150,5 @@ func (r *integrationEventRepositoryImpl) UpdateStatusInternal(
 		table.IntegrationEvents.ID.EQ(postgres.String(id)),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
