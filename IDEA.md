@@ -1,6 +1,6 @@
-# Talos Project Enhancement Ideas
+# Enhancement Ideas
 
-This document contains potential feature ideas for the Talos OpenAPI management system.
+This document contains potential feature ideas for the OpenAPI management system.
 
 ## Feature Ideas
 

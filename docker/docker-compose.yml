@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: anchor
       # List of databases to create on startup
       # To add a new database, just add its name to this list (comma-separated)
-      # Example: platform,talos,newdb
+      # Example: anchor,platform,newdb
       POSTGRES_MULTIPLE_DATABASES: anchor
     ports:
       - "5432:5432"
