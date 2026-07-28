@@ -6,6 +6,7 @@ import (
 
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -16,6 +17,11 @@ import (
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
+)
+
+const (
+	apiKeyCacheTTL    = 15 * time.Minute
+	apiKeyCachePrefix = "product_apikey"
 )
 
 type ProductAPIKeyService interface {
@@ -43,7 +49,7 @@ type productAPIKeyService struct {
 	transactor     transactor.Transactor
 	apiKeyRepo     repository.ProductAPIKeyRepository
 	permissionRepo repository.ProductPermissionRepository
-	cacheService   ProductAPIKeyCacheService
+	apiKeys        cache.Cache[apikey.ProductAPIKey]
 	logger         zerolog.Logger
 }
 
@@ -51,13 +57,13 @@ func NewProductAPIKeyService(
 	transactor transactor.Transactor,
 	apiKeyRepo repository.ProductAPIKeyRepository,
 	permissionRepo repository.ProductPermissionRepository,
-	cacheService ProductAPIKeyCacheService, logger zerolog.Logger,
+	cacheStore cache.Store, logger zerolog.Logger,
 ) ProductAPIKeyService {
 	return &productAPIKeyService{
 		transactor:     transactor,
 		apiKeyRepo:     apiKeyRepo,
 		permissionRepo: permissionRepo,
-		cacheService:   cacheService,
+		apiKeys:        cache.New[apikey.ProductAPIKey](cacheStore, apiKeyCachePrefix, apiKeyCacheTTL, logger),
 		logger: logger.With().Str(
 			"component", "product_api_key_service",
 		).Logger(),
@@ -289,7 +295,7 @@ func (s *productAPIKeyService) Update(
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
-	err = s.cacheService.EvictAPIKeyByHashedValue(ctx, input.ProductID, existingAPIKey.HashedValue)
+	err = s.apiKeys.Key(input.ProductID, existingAPIKey.HashedValue).Evict(ctx)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -336,9 +342,7 @@ func (s *productAPIKeyService) Delete(
 			Msg("failed to delete API key")
 		return fault.ErrUnexpected
 	}
-	err = s.cacheService.EvictAPIKeyByHashedValue(
-		ctx, input.ProductID, existingAPIKey.HashedValue,
-	)
+	err = s.apiKeys.Key(input.ProductID, existingAPIKey.HashedValue).Evict(ctx)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -386,8 +390,8 @@ func (s *productAPIKeyService) validateAPIKey(
 	logger.Debug().Str("product_id", productID).Msg("validating API key")
 
 	hashedKey := security.HashSecret(apiKey)
-	foundAPIKey, err := s.cacheService.GetOrElseAPIKeyHashedValue(
-		ctx, productID, hashedKey, func() (*apikey.ProductAPIKey, error) {
+	foundAPIKey, err := s.apiKeys.Key(productID, hashedKey).GetOrElse(
+		ctx, func() (*apikey.ProductAPIKey, error) {
 			return s.apiKeyRepo.GetByProductIDAndHashedValue(ctx, productID, hashedKey)
 		},
 	)
