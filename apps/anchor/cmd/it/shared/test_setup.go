@@ -71,7 +71,7 @@ type TestConfig struct {
 	UserRepository               *repository.UserRepository
 	PlatformUserRepository       *repository.PlatformTenantUserRepository
 	JWTHelper                    *service.JWTHelper
-	// ExtraPopulateTargets holds additional fx.Populate targets (e.g. *pgqueue.Client)
+	// ExtraPopulateTargets holds additional fx.Populate targets (e.g. *queue.Client)
 	// for test packages that need direct access to FX-provided values beyond the standard
 	// repository/service set. Each entry must be a pointer to the destination variable.
 	ExtraPopulateTargets []any

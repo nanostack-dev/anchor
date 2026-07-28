@@ -16,7 +16,8 @@ import (
 	"anchor/internal/middleware"
 
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/adminui"
+	"github.com/nanostack-dev/pgkit/queue"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -42,13 +43,13 @@ type ServerParams struct {
 	Lifecycle      fx.Lifecycle
 	Logger         zerolog.Logger
 	API            *api.AnchorAPI
-	Queue          *pgqueue.Client
+	Queue          *queue.Client
 	AuthMiddleware *middleware.AuthMiddleware
 	ServerConfig   *ServerConfig
 }
 
 func RegisterServer(params ServerParams) {
-	var dashboard *pgqueue.Dashboard
+	var dashboard *adminui.UI
 
 	params.Lifecycle.Append(
 		fx.Hook{
@@ -67,7 +68,7 @@ func RegisterServer(params ServerParams) {
 					shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 					defer cancel()
 					if err := dashboard.Shutdown(shutdownCtx); err != nil {
-						params.Logger.Error().Err(err).Msg("pgqueue dashboard shutdown failed")
+						params.Logger.Error().Err(err).Msg("pgkit admin UI shutdown failed")
 					}
 				}
 				return nil
@@ -76,8 +77,11 @@ func RegisterServer(params ServerParams) {
 	)
 }
 
-func startQueueDashboard(params ServerParams) (*pgqueue.Dashboard, error) {
-	logger := params.Logger.With().Str("component", "pgqueue_dashboard").Logger()
+// startQueueDashboard boots pgkit's embedded admin UI. Anchor registers no
+// pgkit workflows, so the workflow module is nil and the UI serves queue views
+// only.
+func startQueueDashboard(params ServerParams) (*adminui.UI, error) {
+	logger := params.Logger.With().Str("component", "pgkit_adminui").Logger()
 	addr := os.Getenv("PGKIT_DASHBOARD_ADDR")
 	if addr == "" {
 		return nil, nil
@@ -86,21 +90,21 @@ func startQueueDashboard(params ServerParams) (*pgqueue.Dashboard, error) {
 		return nil, errors.New("PGKIT_DASHBOARD_TOKEN is required when PGKIT_DASHBOARD_ADDR is set")
 	}
 
-	dashboard, err := pgqueue.NewDashboardFromEnv(params.Queue)
+	dashboard, err := adminui.NewFromEnv(params.Queue, nil)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize pgqueue dashboard")
+		logger.Error().Err(err).Msg("failed to initialize pgkit admin UI")
 		return nil, err
 	}
 
 	go func() {
 		if serveErr := dashboard.ListenAndServe(addr); serveErr != nil {
-			logger.Error().Err(serveErr).Msg("pgqueue dashboard server failed")
+			logger.Error().Err(serveErr).Msg("pgkit admin UI server failed")
 		}
 	}()
 
 	logger.Info().
 		Str("addr", addr).
-		Msg("pgqueue dashboard started")
+		Msg("pgkit admin UI started")
 
 	return dashboard, nil
 }

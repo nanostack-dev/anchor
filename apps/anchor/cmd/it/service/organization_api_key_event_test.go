@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -94,12 +94,12 @@ func TestOrganizationAPIKeyExpirationEvents(t *testing.T) {
 	})
 }
 
-func findOrganizationAPIKeyExpirationJob(t *testing.T, organizationID, apiKeyID string) *pgqueue.Job {
+func findOrganizationAPIKeyExpirationJob(t *testing.T, organizationID, apiKeyID string) *queue.Job {
 	t.Helper()
 
-	jobs, err := Queue.ListJobs(context.Background(), pgqueue.ListJobsParams{
+	jobs, err := Queue.ListJobs(context.Background(), queue.ListJobsParams{
 		QueueName: organizationAPIKeyEventQueueName,
-		Status:    pgqueue.StatusPending,
+		Status:    queue.StatusPending,
 		Limit:     1000,
 	})
 	require.NoError(t, err)

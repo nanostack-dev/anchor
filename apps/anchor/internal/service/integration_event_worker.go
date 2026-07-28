@@ -12,7 +12,7 @@ import (
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
@@ -43,7 +43,7 @@ type IntegrationEventWorkerParams struct {
 	fx.In
 	Lifecycle          fx.Lifecycle
 	IntegrationService IntegrationService
-	Queue              *pgqueue.Client
+	Queue              *queue.Client
 	Lock               *pglock.Client
 	InstanceRepo       repository.IntegrationInstanceRepository
 	Registry           *provider.Registry
@@ -51,7 +51,7 @@ type IntegrationEventWorkerParams struct {
 	CoreConfig         *serviceconfig.CoreConfig
 }
 
-// RegisterIntegrationEventWorker starts the pgqueue worker runtime.
+// RegisterIntegrationEventWorker starts the pgkit queue worker runtime.
 func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 	logger := p.Logger.With().
 		Str("component", "integration_event_worker").
@@ -59,12 +59,12 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 
 	scheduleInterval := parseScheduleInterval(logger, p.CoreConfig)
 
-	registry := pgqueue.NewHandlerRegistry()
+	registry := queue.NewHandlerRegistry()
 	if err := registerQueueHandlers(registry, p.IntegrationService, logger); err != nil {
 		return
 	}
 
-	worker, err := pgqueue.NewWorker(p.Queue, registry, pgqueue.WorkerConfig{
+	worker, err := queue.NewWorker(p.Queue, registry, queue.WorkerConfig{
 		WorkerID:          integrationWorkerID,
 		PollInterval:      integrationPollInterval,
 		ReapInterval:      integrationReapInterval,
@@ -72,7 +72,7 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 		BatchSizePerQueue: integrationBatchSize,
 		BackoffBase:       integrationBackoffBase,
 		BackoffMax:        integrationBackoffMax,
-		OnJobFailed: func(_ context.Context, job pgqueue.Job) {
+		OnJobFailed: func(_ context.Context, job queue.Job) {
 			logger.Error().
 				Int64("job_id", job.ID).
 				Str("queue", job.QueueName).
@@ -80,7 +80,7 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 				Str("last_error", job.LastError.String).
 				Msg("queue job permanently failed")
 		},
-		OnJobStuck: func(_ context.Context, result pgqueue.ReapResult) {
+		OnJobStuck: func(_ context.Context, result queue.ReapResult) {
 			logger.WithLevel(reapLogLevel(result)).
 				Int64("requeued", result.Requeued).
 				Int64("failed", result.Failed).
@@ -132,18 +132,18 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 // registerQueueHandlers wires all queue handler functions into the registry.
 // Returns non-nil error if any registration fails (already logs the error).
 func registerQueueHandlers(
-	registry *pgqueue.HandlerRegistry,
+	registry *queue.HandlerRegistry,
 	svc IntegrationService,
 	logger zerolog.Logger,
 ) error {
-	if err := registry.Register(integrationQueueName, func(ctx context.Context, job pgqueue.Job) error {
+	if err := registry.Register(integrationQueueName, func(ctx context.Context, job queue.Job) error {
 		return svc.ProcessQueueJob(ctx, job)
 	}); err != nil {
 		logger.Error().Err(err).Msg("failed to register integration queue handler")
 		return err
 	}
 
-	if err := registry.Register(integrationReconcileQueueName, func(ctx context.Context, job pgqueue.Job) error {
+	if err := registry.Register(integrationReconcileQueueName, func(ctx context.Context, job queue.Job) error {
 		return svc.ProcessReconcileQueueJob(ctx, job)
 	}); err != nil {
 		logger.Error().Err(err).Msg("failed to register integration reconcile queue handler")
@@ -177,10 +177,10 @@ func parseScheduleInterval(logger zerolog.Logger, cfg *serviceconfig.CoreConfig)
 }
 
 // hasPendingOrProcessingSchedulerJob checks if a scheduler job is already in the queue.
-func hasPendingOrProcessingSchedulerJob(ctx context.Context, queue *pgqueue.Client) (bool, error) {
+func hasPendingOrProcessingSchedulerJob(ctx context.Context, queueClient *queue.Client) (bool, error) {
 	const maxSchedulerJobsToInspect = 1000
-	for _, status := range []pgqueue.JobStatus{pgqueue.StatusPending, pgqueue.StatusProcessing} {
-		jobs, err := queue.ListJobs(ctx, pgqueue.ListJobsParams{
+	for _, status := range []queue.JobStatus{queue.StatusPending, queue.StatusProcessing} {
+		jobs, err := queueClient.ListJobs(ctx, queue.ListJobsParams{
 			QueueName: integrationReconcileQueueName,
 			Status:    status,
 			Limit:     maxSchedulerJobsToInspect,
@@ -205,7 +205,7 @@ func hasPendingOrProcessingSchedulerJob(ctx context.Context, queue *pgqueue.Clie
 func seedReconcileScheduler(
 	ctx context.Context,
 	lock *pglock.Client,
-	queue *pgqueue.Client,
+	queueClient *queue.Client,
 	instanceRepo repository.IntegrationInstanceRepository,
 	registry *provider.Registry,
 	scheduleInterval time.Duration,
@@ -240,7 +240,7 @@ func seedReconcileScheduler(
 		}
 
 		// Check if a scheduler is already queued or processing.
-		hasScheduler, err := hasPendingOrProcessingSchedulerJob(ctx, queue)
+		hasScheduler, err := hasPendingOrProcessingSchedulerJob(ctx, queueClient)
 		if err != nil {
 			return err
 		}
@@ -248,7 +248,7 @@ func seedReconcileScheduler(
 			return nil // Already queued or processing
 		}
 
-		return enqueueReconcileSchedulerJob(ctx, queue, nil)
+		return enqueueReconcileSchedulerJob(ctx, queueClient, nil)
 	})
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to seed initial reconcile scheduler job")

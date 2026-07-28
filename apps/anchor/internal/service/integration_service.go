@@ -19,7 +19,7 @@ import (
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -95,13 +95,13 @@ type IntegrationService interface {
 		input integration.IngestWebhookInput,
 	) (integration.Event, error)
 
-	// ProcessQueueJob processes a claimed pgqueue job.
-	ProcessQueueJob(ctx context.Context, job pgqueue.Job) error
+	// ProcessQueueJob processes a claimed pgkit queue job.
+	ProcessQueueJob(ctx context.Context, job queue.Job) error
 
 	// ProcessReconcileQueueJob processes a reconciliation queue job. When the job
 	// payload has IsScheduler=true it performs a full scheduler across all Clerk instances;
 	// otherwise it reconciles a single instance identified by IntegrationInstanceID.
-	ProcessReconcileQueueJob(ctx context.Context, job pgqueue.Job) error
+	ProcessReconcileQueueJob(ctx context.Context, job queue.Job) error
 }
 
 var (
@@ -155,7 +155,7 @@ type integrationService struct {
 	eventRepo                 repository.IntegrationEventRepository
 	auditLogRepo              repository.IntegrationAuditLogRepository
 	registry                  *provider.Registry
-	queue                     *pgqueue.Client
+	queue                     *queue.Client
 	lock                      *pglock.Client
 	db                        *sql.DB
 	transactor                transactor.Transactor
@@ -170,7 +170,7 @@ func NewIntegrationService(
 	eventRepo repository.IntegrationEventRepository,
 	auditLogRepo repository.IntegrationAuditLogRepository,
 	registry *provider.Registry,
-	queue *pgqueue.Client,
+	queueClient *queue.Client,
 	lock *pglock.Client,
 	db *sql.DB,
 	transactor transactor.Transactor,
@@ -182,7 +182,7 @@ func NewIntegrationService(
 		eventRepo:                 eventRepo,
 		auditLogRepo:              auditLogRepo,
 		registry:                  registry,
-		queue:                     queue,
+		queue:                     queueClient,
 		lock:                      lock,
 		db:                        db,
 		transactor:                transactor,
@@ -782,7 +782,7 @@ func (s *integrationService) persistPendingEvent(
 			return payloadErr
 		}
 
-		_, enqueueErr := s.queue.EnqueueTx(txCtx, transactor.CurrentTx(txCtx), pgqueue.EnqueueParams{
+		_, enqueueErr := s.queue.EnqueueTx(txCtx, transactor.CurrentTx(txCtx), queue.EnqueueParams{
 			QueueName:   integrationQueueName,
 			Payload:     payload,
 			MaxAttempts: integrationMaxAttempts,
@@ -824,13 +824,13 @@ func (s *integrationService) persistPendingEvent(
 // Async Event Processing (called by worker)
 // ---------------------------------------------------------------------------
 
-// ProcessQueueJob processes a claimed pgqueue job.
-func (s *integrationService) ProcessQueueJob(ctx context.Context, job pgqueue.Job) error {
+// ProcessQueueJob processes a claimed pgkit queue job.
+func (s *integrationService) ProcessQueueJob(ctx context.Context, job queue.Job) error {
 	logger := s.logger.With().Str("operation", "ProcessQueueJob").Logger()
 	return s.processOneEvent(ctx, logger, &job)
 }
 
-// ProcessReconcileQueueJob processes a claimed reconciliation pgqueue job.
+// ProcessReconcileQueueJob processes a claimed reconciliation pgkit queue job.
 //
 // When the payload has IsScheduler=true the job is a periodic scheduler: it lists all
 // Clerk instances with an API key, enqueues a per-instance reconcile job for
@@ -839,12 +839,12 @@ func (s *integrationService) ProcessQueueJob(ctx context.Context, job pgqueue.Jo
 //
 // When IsScheduler=false (or unset) the job reconciles a single instance identified
 // by IntegrationInstanceID.
-func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job pgqueue.Job) error {
+func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job queue.Job) error {
 	logger := s.logger.With().Str("operation", "ProcessReconcileQueueJob").Logger()
 
 	var payload integrationReconcileQueuePayload
 	if err := json.Unmarshal(job.Payload, &payload); err != nil {
-		return pgqueue.NonRetryable(fmt.Errorf("invalid reconcile queue payload: %w", err))
+		return queue.NonRetryable(fmt.Errorf("invalid reconcile queue payload: %w", err))
 	}
 
 	if payload.IsScheduler {
@@ -852,7 +852,7 @@ func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job p
 	}
 
 	if payload.IntegrationInstanceID == "" {
-		return pgqueue.NonRetryable(errors.New("reconcile queue payload missing integration_instance_id"))
+		return queue.NonRetryable(errors.New("reconcile queue payload missing integration_instance_id"))
 	}
 
 	return s.runInstanceReconcile(ctx, logger, payload.IntegrationInstanceID)
@@ -860,7 +860,7 @@ func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job p
 
 // runReconcileScheduler lists all Clerk instances that have an API key, enqueues a
 // per-instance reconcile job for each, then re-schedules the next scheduler job via
-// pgqueue so the cycle continues without an in-process goroutine.
+// the queue so the cycle continues without an in-process goroutine.
 func (s *integrationService) runReconcileScheduler(ctx context.Context, logger zerolog.Logger) error {
 	instances, err := s.instanceRepo.ListByProviderInternal(
 		ctx,
@@ -885,7 +885,7 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 			return marshalErr
 		}
 
-		if _, enqueueErr := s.queue.Enqueue(ctx, pgqueue.EnqueueParams{
+		if _, enqueueErr := s.queue.Enqueue(ctx, queue.EnqueueParams{
 			QueueName:   integrationReconcileQueueName,
 			Payload:     payload,
 			MaxAttempts: integrationMaxAttempts,
@@ -908,13 +908,13 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 		Msg("reconcile scheduler completed")
 
 	// Re-schedule the next scheduler job. This makes the scheduler self-sustaining via
-	// pgqueue without any in-process goroutine or external cron.
+	// the queue without any in-process goroutine or external cron.
 	nextAt := time.Now().Add(s.reconcileScheduleInterval)
 	if reEnqueueErr := enqueueReconcileSchedulerJob(ctx, s.queue, &nextAt); reEnqueueErr != nil {
 		logger.Error().Err(reEnqueueErr).
 			Time("next_at", nextAt).
 			Msg("failed to re-schedule reconcile scheduler job")
-		// Return the re-schedule error so pgqueue can retry the scheduler job itself.
+		// Return the re-schedule error so the queue worker can retry the scheduler job itself.
 		return reEnqueueErr
 	}
 
@@ -936,14 +936,14 @@ func (s *integrationService) runInstanceReconcile(
 		return findErr
 	}
 	if instance == nil {
-		return pgqueue.NonRetryable(
+		return queue.NonRetryable(
 			fmt.Errorf("integration instance not found: %s", instanceID),
 		)
 	}
 
 	prov, provErr := s.registry.GetProvider(string(instance.ProviderType))
 	if provErr != nil {
-		return pgqueue.NonRetryable(
+		return queue.NonRetryable(
 			fmt.Errorf("provider %s not registered", instance.ProviderType),
 		)
 	}
@@ -958,7 +958,7 @@ func (s *integrationService) runInstanceReconcile(
 	// WebhookIngestor capability (Clerk implements both).
 	webhookProv, isIngestor := prov.(provider.WebhookIngestor)
 	if !isIngestor {
-		return pgqueue.NonRetryable(
+		return queue.NonRetryable(
 			fmt.Errorf("provider %s reconciles but is not a webhook ingestor", instance.ProviderType),
 		)
 	}
@@ -1033,8 +1033,8 @@ const (
 
 // hasSchedulerJob checks if there are any scheduler jobs currently pending or processing.
 func (s *integrationService) hasSchedulerJob(ctx context.Context) (bool, error) {
-	for _, status := range []pgqueue.JobStatus{pgqueue.StatusPending, pgqueue.StatusProcessing} {
-		jobs, err := s.queue.ListJobs(ctx, pgqueue.ListJobsParams{
+	for _, status := range []queue.JobStatus{queue.StatusPending, queue.StatusProcessing} {
+		jobs, err := s.queue.ListJobs(ctx, queue.ListJobsParams{
 			QueueName: integrationReconcileQueueName,
 			Status:    status,
 			Limit:     maxSchedulerJobsToInspect,
@@ -1104,9 +1104,9 @@ func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, 
 
 	// No instances with keys remain — delete all pending scheduler jobs.
 	const maxSchedulerJobsToDelete = 1000
-	jobs, listErr := s.queue.ListJobs(ctx, pgqueue.ListJobsParams{
+	jobs, listErr := s.queue.ListJobs(ctx, queue.ListJobsParams{
 		QueueName: integrationReconcileQueueName,
-		Status:    pgqueue.StatusPending,
+		Status:    queue.StatusPending,
 		Limit:     maxSchedulerJobsToDelete,
 	})
 	if listErr != nil {
@@ -1138,13 +1138,13 @@ func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, 
 
 // enqueueReconcileSchedulerJob enqueues a scheduler job into the reconcile queue.
 // availableAt=nil means immediate; otherwise the job is deferred to that time.
-func enqueueReconcileSchedulerJob(ctx context.Context, queue *pgqueue.Client, availableAt *time.Time) error {
+func enqueueReconcileSchedulerJob(ctx context.Context, queueClient *queue.Client, availableAt *time.Time) error {
 	payload, err := json.Marshal(integrationReconcileQueuePayload{IsScheduler: true})
 	if err != nil {
 		return err
 	}
 
-	_, err = queue.Enqueue(ctx, pgqueue.EnqueueParams{
+	_, err = queueClient.Enqueue(ctx, queue.EnqueueParams{
 		QueueName:   integrationReconcileQueueName,
 		Payload:     payload,
 		AvailableAt: availableAt,
@@ -1166,14 +1166,14 @@ func enqueueReconcileSchedulerJob(ctx context.Context, queue *pgqueue.Client, av
 func (s *integrationService) processOneEvent(
 	ctx context.Context,
 	logger zerolog.Logger,
-	job *pgqueue.Job,
+	job *queue.Job,
 ) error {
 	var payload integrationQueuePayload
 	if unmarshalErr := json.Unmarshal(job.Payload, &payload); unmarshalErr != nil {
-		return pgqueue.NonRetryable(fmt.Errorf("invalid queue payload: %w", unmarshalErr))
+		return queue.NonRetryable(fmt.Errorf("invalid queue payload: %w", unmarshalErr))
 	}
 	if payload.EventID == "" {
-		return pgqueue.NonRetryable(errors.New("queue payload missing event_id"))
+		return queue.NonRetryable(errors.New("queue payload missing event_id"))
 	}
 
 	event, findErr := s.eventRepo.FindByIDInternal(ctx, payload.EventID)
@@ -1181,7 +1181,7 @@ func (s *integrationService) processOneEvent(
 		return findErr
 	}
 	if event == nil {
-		return pgqueue.NonRetryable(fmt.Errorf("integration event not found: %s", payload.EventID))
+		return queue.NonRetryable(fmt.Errorf("integration event not found: %s", payload.EventID))
 	}
 
 	eventLogger := logger.With().
@@ -1210,7 +1210,7 @@ func (s *integrationService) processOneEvent(
 
 	// Phase 2: command tx rolled back. Persist failure/retry state in a
 	// separate transaction so it is durably committed regardless of the
-	// error returned to pgqueue.
+	// error returned to queue.
 	return s.handleEventFailure(ctx, eventLogger, event, job, resolvedInstance, procErr)
 }
 
@@ -1221,7 +1221,7 @@ func (s *integrationService) executeEventTransaction(
 	ctx context.Context,
 	logger zerolog.Logger,
 	event *integration.Event,
-	job *pgqueue.Job,
+	job *queue.Job,
 ) (*integration.Instance, error) {
 	// Mark as PROCESSING.
 	if statusErr := s.eventRepo.UpdateStatusInternal(
@@ -1308,7 +1308,7 @@ func (s *integrationService) handleEventFailure(
 	ctx context.Context,
 	logger zerolog.Logger,
 	event *integration.Event,
-	job *pgqueue.Job,
+	job *queue.Job,
 	instance *integration.Instance,
 	cause error,
 ) error {
@@ -1348,24 +1348,24 @@ func (s *integrationService) handleEventFailure(
 		logger.Error().Err(failErr).Msg("failed to persist event failure state")
 	}
 
-	// Tell pgqueue whether this job should be retried or not.
+	// Tell the queue worker whether this job should be retried or not.
 	if job.Attempts < job.MaxAttempts {
 		return cause
 	}
-	return pgqueue.NonRetryable(cause)
+	return queue.NonRetryable(cause)
 }
 
-// scheduleRetry reverts event status to PENDING and delegates retry timing to pgqueue.
+// scheduleRetry reverts event status to PENDING and delegates retry timing to queue.
 // It runs inside the failure transaction so the status update is committed.
 func (s *integrationService) scheduleRetry(
 	ctx context.Context,
 	logger zerolog.Logger,
 	event *integration.Event,
-	job *pgqueue.Job,
+	job *queue.Job,
 	instance *integration.Instance,
 	cause error,
 ) error {
-	backoff := pgqueue.ExponentialBackoff(
+	backoff := queue.ExponentialBackoff(
 		integrationBackoffBase,
 		job.Attempts,
 		integrationBackoffMax,
@@ -1775,7 +1775,7 @@ func (s *integrationService) enqueueReconcileJobIfRequired(
 		return err
 	}
 
-	if _, enqueueErr := s.queue.EnqueueTx(ctx, tx, pgqueue.EnqueueParams{
+	if _, enqueueErr := s.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 		QueueName:   integrationReconcileQueueName,
 		Payload:     payload,
 		MaxAttempts: integrationMaxAttempts,
