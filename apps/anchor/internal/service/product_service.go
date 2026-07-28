@@ -13,9 +13,17 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product"
+
 	"anchor/internal/repository"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+
 	"github.com/rs/zerolog"
+)
+
+const (
+	productCacheTTL    = 30 * time.Minute
+	productCachePrefix = "product"
 )
 
 type ProductService interface {
@@ -38,7 +46,7 @@ type ProductService interface {
 type productService struct {
 	productRepo           repository.ProductRepository
 	productPermissionRepo repository.ProductPermissionRepository
-	cacheService          ProductCacheService
+	products              cache.Cache[product.Product]
 	logger                zerolog.Logger
 	transactor            transactor.Transactor
 }
@@ -46,12 +54,12 @@ type productService struct {
 func NewProductService(
 	productRepo repository.ProductRepository,
 	productPermissionRepo repository.ProductPermissionRepository,
-	cacheService ProductCacheService, transactor transactor.Transactor, logger zerolog.Logger,
+	cacheStore cache.Store, transactor transactor.Transactor, logger zerolog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
-		cacheService:          cacheService,
+		products:              cache.New[product.Product](cacheStore, productCachePrefix, productCacheTTL, logger),
 		logger:                logger.With().Str("component", "product_service").Logger(),
 		transactor:            transactor,
 	}
@@ -95,8 +103,8 @@ func (s *productService) GetWithCache(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	cachedProduct, err := s.cacheService.GetOrElseProduct(
-		ctx, input.TenantID, input.ProductID, func() (*product.Product, error) {
+	cachedProduct, err := s.products.Key(input.TenantID, input.ProductID).GetOrElse(
+		ctx, func() (*product.Product, error) {
 			return s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
 		},
 	)
@@ -311,7 +319,7 @@ func (s *productService) validateNameUniqueness(
 func (s *productService) evictProductFromCache(
 	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
 ) {
-	if evictErr := s.cacheService.EvictProduct(ctx, tenantID, productID); evictErr != nil {
+	if evictErr := s.products.Key(tenantID, productID).Evict(ctx); evictErr != nil {
 		logger.Warn().Err(evictErr).Msg("failed to evict product from cache")
 	}
 }
@@ -325,9 +333,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 
 	err := s.productRepo.DeleteByID(ctx, input.TenantID, input.ProductID)
 	if err == nil {
-		if evictErr := s.cacheService.EvictProduct(
-			ctx, input.TenantID, input.ProductID,
-		); evictErr != nil {
+		if evictErr := s.products.Key(input.TenantID, input.ProductID).Evict(ctx); evictErr != nil {
 			logger.Warn().Err(evictErr).Msg("failed to evict product from cache after delete")
 		}
 		logger.Info().Str("product_id", input.ProductID).Msg("product deleted")
