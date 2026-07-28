@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 
 	"github.com/rs/zerolog"
 )
@@ -19,19 +19,19 @@ func NewIntegrationLock(db *sql.DB) (*pglock.Client, error) {
 func NewIntegrationQueue(
 	db *sql.DB,
 	logger zerolog.Logger,
-) (*pgqueue.Client, error) {
-	queue, err := pgqueue.New(db)
+) (*queue.Client, error) {
+	queueClient, err := queue.New(db)
 	if err != nil {
 		return nil, err
 	}
 
-	queue.SetLogger(zerologQueueAdapter{logger: logger.With().Str("component", "pgqueue").Logger()})
+	queueClient.SetLogger(zerologQueueAdapter{logger: logger.With().Str("component", "pgqueue").Logger()})
 
-	if schemaErr := queue.EnsureSchema(context.Background()); schemaErr != nil {
+	if schemaErr := queueClient.EnsureSchema(context.Background()); schemaErr != nil {
 		return nil, schemaErr
 	}
 
-	return queue, nil
+	return queueClient, nil
 }
 
 type zerologQueueAdapter struct {

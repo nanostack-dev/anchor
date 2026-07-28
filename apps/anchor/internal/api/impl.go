@@ -5,7 +5,7 @@ import (
 	"anchor/internal/service"
 	"anchor/internal/service/config"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
@@ -29,7 +29,7 @@ type AnchorAPI struct {
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
-	Queue                         *pgqueue.Client
+	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
 }
@@ -52,7 +52,7 @@ type Params struct {
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
-	Queue                         *pgqueue.Client
+	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
 }

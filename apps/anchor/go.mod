@@ -27,7 +27,7 @@ require (
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/moby/moby/api v1.55.0
-	github.com/nanostack-dev/pgkit v0.0.10
+	github.com/nanostack-dev/pgkit v0.0.29
 )
 
 require (

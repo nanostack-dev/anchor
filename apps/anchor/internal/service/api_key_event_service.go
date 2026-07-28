@@ -6,12 +6,12 @@ import (
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 )
 
 type OrganizationAPIKeyEventService interface {
-	ProcessQueueJob(ctx context.Context, job pgqueue.Job) error
+	ProcessQueueJob(ctx context.Context, job queue.Job) error
 }
 
 type organizationAPIKeyEventService struct {

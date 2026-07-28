@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -16,8 +16,8 @@ import (
 )
 
 // Queue is populated by fx.Populate via ExtraPopulateTargets so that tests can
-// inspect pgqueue state directly without going through the HTTP API.
-var Queue *pgqueue.Client
+// inspect queue state directly without going through the HTTP API.
+var Queue *queue.Client
 
 const integrationReconcileQueueName = "integration-reconcile"
 
@@ -55,9 +55,9 @@ func countPendingSchedulerJobs(t *testing.T) int {
 	t.Helper()
 
 	const maxJobs = 1000
-	jobs, err := Queue.ListJobs(context.Background(), pgqueue.ListJobsParams{
+	jobs, err := Queue.ListJobs(context.Background(), queue.ListJobsParams{
 		QueueName: integrationReconcileQueueName,
-		Status:    pgqueue.StatusPending,
+		Status:    queue.StatusPending,
 		Limit:     maxJobs,
 	})
 	require.NoError(t, err)
