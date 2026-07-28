@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"github.com/rs/zerolog"
@@ -28,20 +27,18 @@ type AuthMiddleware struct {
 	jwtHelper               service.JWTHelper
 	productAPIKeyKeyService service.ProductAPIKeyService
 	productService          service.ProductService
-	cache                   cache.Cache
 	logger                  zerolog.Logger
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance.
 func NewAuthMiddleware(
 	jwtHelper service.JWTHelper, productAPIKeyKeyService service.ProductAPIKeyService,
-	productService service.ProductService, cacheInstance cache.Cache, logger zerolog.Logger,
+	productService service.ProductService, logger zerolog.Logger,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtHelper:               jwtHelper,
 		productAPIKeyKeyService: productAPIKeyKeyService,
 		productService:          productService,
-		cache:                   cacheInstance,
 		logger:                  logger.With().Str("component", "auth_middleware").Logger(),
 	}
 }
