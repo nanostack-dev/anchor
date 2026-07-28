@@ -122,7 +122,7 @@ func (r *productAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.ProductAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt)
+	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -139,7 +139,7 @@ func (r *productAPIKeyRepository) Create(
 			),
 		).MODELS(permissions)
 
-		err = transactor.Exec(ctx, r.db, permStmt)
+		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
 			r.logger.Error().Err(err).
 				Str("api_key_id", apiKey.ID).
@@ -169,11 +169,11 @@ func (r *productAPIKeyRepository) GetByID(
 		),
 	)
 
-	return transactor.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndName(
@@ -193,11 +193,11 @@ func (r *productAPIKeyRepository) GetByProductIDAndName(
 			AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))),
 	)
 
-	return transactor.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
@@ -216,7 +216,7 @@ func (r *productAPIKeyRepository) Update(
 	)
 	updated, err := transactor.Query[model.ProductAPIKeys](
 		ctx, r.db, stmt,
-	)
+	).Value()
 	if err != nil {
 		return apikey.ProductAPIKey{}, err
 	}
@@ -240,7 +240,7 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, deleteStmt); err != nil {
+	if err := transactor.Exec(ctx, r.db, deleteStmt).Err(); err != nil {
 		return err
 	}
 
@@ -255,7 +255,7 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 		),
 	).MODELS(entities)
 
-	return transactor.Exec(ctx, r.db, insertStmt)
+	return transactor.Exec(ctx, r.db, insertStmt).Err()
 }
 
 func (r *productAPIKeyRepository) DeletePermissionsByName(
@@ -268,7 +268,7 @@ func (r *productAPIKeyRepository) DeletePermissionsByName(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productAPIKeyRepository) Delete(
@@ -280,7 +280,7 @@ func (r *productAPIKeyRepository) Delete(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productAPIKeyRepository) SearchByProductID(
@@ -301,7 +301,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		ctx,
 		r.db,
 		table.ProductAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", input.ProductID,
@@ -341,7 +341,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		func(entity model.ProductAPIKeys) model.ProductAPIKeys {
 			return entity
 		},
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", input.ProductID,
@@ -409,7 +409,7 @@ func (r *productAPIKeyRepository) UpdateLastUsedAt(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
@@ -430,11 +430,11 @@ func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
 		),
 	)
 
-	return transactor.QueryOptionalMap[productAPIKeyWithPermissions, apikey.ProductAPIKey](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 func (r *productAPIKeyRepository) getPermissionEntities(
 	ctx context.Context, productID, apiKeyID string,
@@ -452,7 +452,7 @@ func (r *productAPIKeyRepository) getPermissionEntities(
 		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions {
 			return entity
 		},
-	)
+	).Value()
 }
 
 func (r *productAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
@@ -476,7 +476,7 @@ func (r *productAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions {
 			return entity
 		},
-	)
+	).Value()
 }
 
 //nolint:dupl // mirrored by organization API key repository with equivalent filter semantics

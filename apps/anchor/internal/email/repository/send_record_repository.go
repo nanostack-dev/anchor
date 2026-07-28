@@ -59,9 +59,9 @@ func (r *sendRecordRepositoryImpl) CreateInternal(
 	stmt := table.EmailSendRecords.INSERT(emailSendRecordsUpdatableColumns()).
 		MODEL(entity).
 		RETURNING(table.EmailSendRecords.AllColumns)
-	return transactor.QueryMap[model.EmailSendRecords, email.SendRecord](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *sendRecordRepositoryImpl) UpdateStatus(
@@ -89,7 +89,7 @@ func (r *sendRecordRepositoryImpl) UpdateStatus(
 		table.EmailSendRecords.ID.EQ(postgres.String(id)).
 			AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *sendRecordRepositoryImpl) UpdateStatusInternal(
@@ -115,7 +115,7 @@ func (r *sendRecordRepositoryImpl) UpdateStatusInternal(
 	stmt := table.EmailSendRecords.UPDATE(cols).MODEL(entity).WHERE(
 		table.EmailSendRecords.ID.EQ(postgres.String(id)),
 	)
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKey(
@@ -128,9 +128,9 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailSendRecords, email.SendRecord](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
@@ -142,9 +142,9 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailSendRecords, email.SendRecord](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *sendRecordRepositoryImpl) FindByID(
@@ -157,9 +157,9 @@ func (r *sendRecordRepositoryImpl) FindByID(
 				AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap[model.EmailSendRecords, email.SendRecord](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *sendRecordRepositoryImpl) List(
@@ -183,7 +183,7 @@ func (r *sendRecordRepositoryImpl) List(
 		WHERE(where).
 		ORDER_BY(table.EmailSendRecords.CreatedAt.DESC()).
 		LIMIT(limit).OFFSET(input.Offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *sendRecordRepositoryImpl) CountSince(
@@ -196,7 +196,7 @@ func (r *sendRecordRepositoryImpl) CountSince(
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailSendRecords.CreatedAt.GT_EQ(postgres.TimestampzT(since))),
 		)
-	return transactor.QueryCount(ctx, r.db, stmt)
+	return transactor.QueryCount(ctx, r.db, stmt).Value()
 }
 
 func (r *sendRecordRepositoryImpl) CountSinceInternal(
@@ -208,5 +208,5 @@ func (r *sendRecordRepositoryImpl) CountSinceInternal(
 			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailSendRecords.CreatedAt.GT_EQ(postgres.TimestampzT(since))),
 		)
-	return transactor.QueryCount(ctx, r.db, stmt)
+	return transactor.QueryCount(ctx, r.db, stmt).Value()
 }

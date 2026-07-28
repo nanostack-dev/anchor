@@ -10,7 +10,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/mapper"
@@ -77,10 +76,10 @@ func (r *organizationRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.Organizations, organization.Organization](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.organizationMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *organizationRepositoryImpl) Create(
@@ -92,9 +91,9 @@ func (r *organizationRepositoryImpl) Create(
 		organizationsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Organizations.AllColumns)
 
-	return transactor.QueryMap[model.Organizations, organization.Organization](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.organizationMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *organizationRepositoryImpl) Update(
@@ -116,9 +115,9 @@ func (r *organizationRepositoryImpl) Update(
 		),
 	).RETURNING(table.Organizations.AllColumns)
 
-	return transactor.QueryMap[model.Organizations, organization.Organization](
+	return transactor.QueryMap(
 		ctx, r.db, updateStmt, r.organizationMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *organizationRepositoryImpl) DeleteByID(
@@ -130,7 +129,7 @@ func (r *organizationRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationRepositoryImpl) SearchByProductID(
@@ -175,7 +174,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		ctx,
 		r.db,
 		table.Organizations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}
@@ -203,7 +202,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain)
+	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain).Value()
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}

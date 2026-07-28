@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -98,12 +99,12 @@ func (r *productRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	)
+	).Value()
 }
 
 func (r *productRepositoryImpl) FindByIDInternal(
@@ -121,12 +122,12 @@ func (r *productRepositoryImpl) FindByIDInternal(
 		table.Products.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	)
+	).Value()
 }
 
 func (r *productRepositoryImpl) FindByTenantIDAndName(
@@ -146,13 +147,32 @@ func (r *productRepositoryImpl) FindByTenantIDAndName(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[productWithOrganizationAPIKeyConfig, product.Product](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	)
+	).Value()
 }
+
+// Product names are guarded by two unique constraints, and a racing create can
+// trip either one:
+//   - productNameUniqueConstraint — the original UNIQUE (platform_tenant_id,
+//     name) from 000001_init, violated by a byte-identical name;
+//   - productNameLowerUniqueIndex — the case-insensitive index added in
+//     000019_case_insensitive_names, violated by a name differing only in case.
+//     That is the one the service's pre-check compares on, so it is where a race
+//     most often lands.
+const (
+	productNameUniqueConstraint = "products_platform_tenant_id_name_key"
+	productNameLowerUniqueIndex = "idx_products_tenant_lower_name_unique"
+)
+
+// ErrProductExists is returned by Create when the tenant already has a product
+// with that name. The service pre-checks, but that check is not race-free: a
+// concurrent insert landing between it and the INSERT trips one of the unique
+// guards, and the DB is the only race-free arbiter.
+var ErrProductExists = errors.New("product already exists for tenant and name")
 
 func (r *productRepositoryImpl) Create(
 	ctx context.Context, prod product.Product,
@@ -164,7 +184,9 @@ func (r *productRepositoryImpl) Create(
 		productsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Products.AllColumns)
 
-	created, err := transactor.Query[model.Products](ctx, r.db, stmt)
+	created, err := transactor.Query[model.Products](ctx, r.db, stmt).
+		OnUnique(ErrProductExists, productNameUniqueConstraint, productNameLowerUniqueIndex).
+		Value()
 	if err != nil {
 		return product.Product{}, err
 	}
@@ -198,7 +220,7 @@ func (r *productRepositoryImpl) UpsertOrganizationAPIKeyConfig(
 			),
 		)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productRepositoryImpl) Update(
@@ -220,7 +242,7 @@ func (r *productRepositoryImpl) Update(
 		),
 	).RETURNING(table.Products.AllColumns)
 
-	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt)
+	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt).Value()
 	if err != nil {
 		return product.Product{}, err
 	}
@@ -243,7 +265,7 @@ func (r *productRepositoryImpl) DeleteByID(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productRepositoryImpl) SearchByTenantID(
@@ -285,7 +307,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		ctx,
 		r.db,
 		table.Products.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -325,7 +347,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
@@ -353,9 +375,9 @@ func (r *productRepositoryImpl) FindAllInternal(
 		),
 	)
 
-	return transactor.QueryMapSlice[productWithOrganizationAPIKeyConfig, product.Product](
+	return transactor.QueryMapSlice(
 		ctx, r.db, stmt, func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	)
+	).Value()
 }

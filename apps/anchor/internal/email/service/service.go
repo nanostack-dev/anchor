@@ -17,7 +17,7 @@ import (
 	"anchor/internal/logx"
 	intrepo "anchor/internal/repository"
 
-	"github.com/lib/pq"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -792,9 +792,10 @@ func (s *emailService) Send(
 	return persisted, nil
 }
 
+// isEmailSendDedupeConflict reports whether err is the unique violation raised
+// when a concurrent send races on the same dedupe key.
 func isEmailSendDedupeConflict(err error) bool {
-	var pqErr *pq.Error
-	return errors.As(err, &pqErr) && pqErr.Code == "23505" && pqErr.Constraint == emailSendDedupeConstraint
+	return pgerr.IsUniqueViolation(err, emailSendDedupeConstraint)
 }
 
 func (s *emailService) createSendRecord(
