@@ -7,7 +7,7 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/service"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 	ProductRepository      repository.ProductRepository
 	TenantRepository       repository.TenantRepository
 	UserRepository         repository.UserRepository
-	Queue                  *pgqueue.Client
+	Queue                  *queue.Client
 	APIKeyEventSvc         service.OrganizationAPIKeyEventService
 )
 

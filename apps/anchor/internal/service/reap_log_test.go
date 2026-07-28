@@ -3,7 +3,7 @@ package service_test
 import (
 	"testing"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/service"
@@ -12,13 +12,13 @@ import (
 func TestReapLogLevel(t *testing.T) {
 	tests := []struct {
 		name   string
-		result pgqueue.ReapResult
+		result queue.ReapResult
 		want   zerolog.Level
 	}{
-		{"nothing reaped stays a warning", pgqueue.ReapResult{}, zerolog.WarnLevel},
-		{"only requeued is routine recovery", pgqueue.ReapResult{Requeued: 3}, zerolog.WarnLevel},
-		{"failed jobs escalate to error", pgqueue.ReapResult{Requeued: 1, Failed: 2}, zerolog.ErrorLevel},
-		{"failed only escalates to error", pgqueue.ReapResult{Failed: 1}, zerolog.ErrorLevel},
+		{"nothing reaped stays a warning", queue.ReapResult{}, zerolog.WarnLevel},
+		{"only requeued is routine recovery", queue.ReapResult{Requeued: 3}, zerolog.WarnLevel},
+		{"failed jobs escalate to error", queue.ReapResult{Requeued: 1, Failed: 2}, zerolog.ErrorLevel},
+		{"failed only escalates to error", queue.ReapResult{Failed: 1}, zerolog.ErrorLevel},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

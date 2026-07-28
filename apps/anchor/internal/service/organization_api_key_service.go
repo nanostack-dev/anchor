@@ -11,7 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -53,7 +53,7 @@ type OrganizationAPIKeyService interface {
 
 type organizationAPIKeyService struct {
 	transactor       transactor.Transactor
-	queue            *pgqueue.Client
+	queue            *queue.Client
 	apiKeyRepo       repository.OrganizationAPIKeyRepository
 	organizationRepo repository.OrganizationRepository
 	productRepo      repository.ProductRepository
@@ -63,7 +63,7 @@ type organizationAPIKeyService struct {
 
 func NewOrganizationAPIKeyService(
 	transactor transactor.Transactor,
-	queue *pgqueue.Client,
+	queueClient *queue.Client,
 	apiKeyRepo repository.OrganizationAPIKeyRepository,
 	organizationRepo repository.OrganizationRepository,
 	productRepo repository.ProductRepository,
@@ -72,7 +72,7 @@ func NewOrganizationAPIKeyService(
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
 		transactor:       transactor,
-		queue:            queue,
+		queue:            queueClient,
 		apiKeyRepo:       apiKeyRepo,
 		organizationRepo: organizationRepo,
 		productRepo:      productRepo,
@@ -353,9 +353,9 @@ func (s *organizationAPIKeyService) Delete(
 			return nil
 		}
 
-		jobs, listErr := s.queue.ListJobs(txCtx, pgqueue.ListJobsParams{
+		jobs, listErr := s.queue.ListJobs(txCtx, queue.ListJobsParams{
 			QueueName: organizationAPIKeyEventQueueName,
-			Status:    pgqueue.StatusPending,
+			Status:    queue.StatusPending,
 			Limit:     organizationAPIKeyEventListLimit,
 		})
 		if listErr != nil {
@@ -604,7 +604,7 @@ func (s *organizationAPIKeyService) enqueueExpirationEvent(
 		return err
 	}
 
-	_, err = s.queue.EnqueueTx(ctx, transactor.CurrentTx(ctx), pgqueue.EnqueueParams{
+	_, err = s.queue.EnqueueTx(ctx, transactor.CurrentTx(ctx), queue.EnqueueParams{
 		QueueName:   organizationAPIKeyEventQueueName,
 		Payload:     payload,
 		AvailableAt: apiKey.ExpiresAt,

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nanostack-dev/pgkit/pgqueue"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
@@ -36,16 +36,16 @@ type APIKeyEventWorkerParams struct {
 	fx.In
 	Lifecycle                      fx.Lifecycle
 	OrganizationAPIKeyEventService OrganizationAPIKeyEventService
-	Queue                          *pgqueue.Client
+	Queue                          *queue.Client
 	Logger                         zerolog.Logger
 }
 
 func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 	logger := p.Logger.With().Str("component", "organization_api_key_event_worker").Logger()
 
-	registry := pgqueue.NewHandlerRegistry()
+	registry := queue.NewHandlerRegistry()
 	if err := registry.Register(
-		organizationAPIKeyEventQueueName, func(ctx context.Context, job pgqueue.Job) error {
+		organizationAPIKeyEventQueueName, func(ctx context.Context, job queue.Job) error {
 			return p.OrganizationAPIKeyEventService.ProcessQueueJob(ctx, job)
 		},
 	); err != nil {
@@ -53,8 +53,8 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 		return
 	}
 
-	worker, err := pgqueue.NewWorker(
-		p.Queue, registry, pgqueue.WorkerConfig{
+	worker, err := queue.NewWorker(
+		p.Queue, registry, queue.WorkerConfig{
 			WorkerID:          organizationAPIKeyEventWorkerID,
 			PollInterval:      organizationAPIKeyEventPollInterval,
 			ReapInterval:      organizationAPIKeyEventReapInterval,
@@ -62,7 +62,7 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 			BatchSizePerQueue: organizationAPIKeyEventBatchSize,
 			BackoffBase:       organizationAPIKeyEventBackoffBase,
 			BackoffMax:        organizationAPIKeyEventBackoffMax,
-			OnJobFailed: func(_ context.Context, job pgqueue.Job) {
+			OnJobFailed: func(_ context.Context, job queue.Job) {
 				logger.Error().
 					Int64("job_id", job.ID).
 					Str("queue", job.QueueName).
@@ -70,7 +70,7 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 					Str("last_error", job.LastError.String).
 					Msg("organization api key event job permanently failed")
 			},
-			OnJobStuck: func(_ context.Context, result pgqueue.ReapResult) {
+			OnJobStuck: func(_ context.Context, result queue.ReapResult) {
 				logger.WithLevel(reapLogLevel(result)).
 					Int64("requeued", result.Requeued).
 					Int64("failed", result.Failed).
@@ -117,31 +117,31 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 }
 
 func (s *organizationAPIKeyEventService) ProcessQueueJob(
-	ctx context.Context, job pgqueue.Job,
+	ctx context.Context, job queue.Job,
 ) error {
 	var payload organizationAPIKeyEventPayload
 	if err := json.Unmarshal(job.Payload, &payload); err != nil {
-		return pgqueue.NonRetryable(
+		return queue.NonRetryable(
 			fmt.Errorf(
 				"invalid organization api key event payload: %w", err,
 			),
 		)
 	}
 	if payload.EventType == "" {
-		return pgqueue.NonRetryable(errors.New("organization api key event payload missing event_type"))
+		return queue.NonRetryable(errors.New("organization api key event payload missing event_type"))
 	}
 	if payload.OrganizationID == "" {
-		return pgqueue.NonRetryable(errors.New("organization api key event payload missing organization_id"))
+		return queue.NonRetryable(errors.New("organization api key event payload missing organization_id"))
 	}
 	if payload.APIKeyID == "" {
-		return pgqueue.NonRetryable(errors.New("organization api key event payload missing api_key_id"))
+		return queue.NonRetryable(errors.New("organization api key event payload missing api_key_id"))
 	}
 
 	switch payload.EventType {
 	case organizationAPIKeyEventTypeExpiration:
 		return s.processOrganizationAPIKeyExpiration(ctx, payload)
 	default:
-		return pgqueue.NonRetryable(
+		return queue.NonRetryable(
 			fmt.Errorf(
 				"unsupported organization api key event type: %s", payload.EventType,
 			),
