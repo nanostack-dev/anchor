@@ -6,7 +6,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
@@ -64,9 +63,9 @@ func (r *integrationAuditLogRepositoryImpl) Create(
 		table.IntegrationAuditLogs.AllColumns.Except(table.IntegrationAuditLogs.CreatedAt),
 	).MODEL(entity).RETURNING(table.IntegrationAuditLogs.AllColumns)
 
-	return transactor.QueryMap[model.IntegrationAuditLogs, integration.AuditLog](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *integrationAuditLogRepositoryImpl) ListByInstanceInternal(
@@ -82,7 +81,7 @@ func (r *integrationAuditLogRepositoryImpl) ListByInstanceInternal(
 		table.IntegrationAuditLogs.CreatedAt.DESC(),
 	).LIMIT(limit)
 
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *integrationAuditLogRepositoryImpl) ListByInstanceScoped(
@@ -110,5 +109,5 @@ func (r *integrationAuditLogRepositoryImpl) ListByInstanceScoped(
 		auditLogsTable.CreatedAt.DESC(),
 	).LIMIT(limit).OFFSET(offset)
 
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }

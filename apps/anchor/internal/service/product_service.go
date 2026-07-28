@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -146,6 +147,14 @@ func (s *productService) Create(
 		var createErr error
 		productCreated, createErr = s.productRepo.Create(txCtx, prod)
 		if createErr != nil {
+			// A concurrent create can win the race after the FindByTenantIDAndName
+			// check above passed, tripping one of the name unique guards. That is
+			// the same logical condition as the pre-check, so surface the same
+			// client error instead of leaking the raw DB error as a 500.
+			if errors.Is(createErr, repository.ErrProductExists) {
+				logger.Debug().Str("name", prod.Name).Msg("product already exists (unique constraint)")
+				return ErrProductAlreadyExists
+			}
 			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
 			return createErr
 		}

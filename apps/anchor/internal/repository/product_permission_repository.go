@@ -11,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/permission"
 	"anchor/internal/mapper"
@@ -96,10 +95,10 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 			AND(postgres.LOWER(table.ProductPermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.ProductPermissions, permission.ProductPermission](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productPermissionMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productPermissionRepositoryImpl) Create(
@@ -111,9 +110,9 @@ func (r *productPermissionRepositoryImpl) Create(
 		productPermissionsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductPermissions.AllColumns)
 
-	return transactor.QueryMap[model.ProductPermissions, permission.ProductPermission](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productPermissionRepositoryImpl) Update(
@@ -135,9 +134,9 @@ func (r *productPermissionRepositoryImpl) Update(
 			AND(table.ProductPermissions.Name.EQ(postgres.String(perm.Name))),
 	).RETURNING(table.ProductPermissions.AllColumns)
 
-	return transactor.QueryMap[model.ProductPermissions, permission.ProductPermission](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *productPermissionRepositoryImpl) DeleteByID(
@@ -148,7 +147,7 @@ func (r *productPermissionRepositoryImpl) DeleteByID(
 			AND(table.ProductPermissions.Name.EQ(postgres.String(name))),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productPermissionRepositoryImpl) SearchByProduct(
@@ -183,7 +182,7 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		ctx,
 		r.db,
 		table.ProductPermissions.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -218,7 +217,7 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 
 	slice, err := transactor.QueryMapSlice(
 		ctx, r.db, query, r.productPermissionMapper.ToDomain,
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -243,7 +242,7 @@ func (r *productPermissionRepositoryImpl) CountAPIKeyAssignments(
 		ctx,
 		r.db,
 		table.ProductAPIKeyPermissions.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		return 0, err
 	}
@@ -266,9 +265,9 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionNames(
 			AND(postgres.LOWER(table.ProductPermissions.Name).IN(jetx.ToStringExpressions(lowerStrings(permissions))...)),
 	)
 
-	return transactor.QueryMapSlice[model.ProductPermissions, permission.ProductPermission](
+	return transactor.QueryMapSlice(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
-	)
+	).Value()
 }
 
 func lowerStrings(values []string) []string {

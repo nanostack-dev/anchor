@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/mapper"
@@ -60,9 +59,9 @@ func (r *tenantRepositoryImpl) FindByID(
 		table.PlatformTenants.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.PlatformTenants, tenant.PlatformTenant](
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *tenantRepositoryImpl) Create(
@@ -74,9 +73,9 @@ func (r *tenantRepositoryImpl) Create(
 		platformTenantsUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.PlatformTenants.AllColumns)
 
-	return transactor.QueryMap[model.PlatformTenants, tenant.PlatformTenant](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *tenantRepositoryImpl) DeleteByID(
@@ -84,11 +83,11 @@ func (r *tenantRepositoryImpl) DeleteByID(
 ) error {
 	stmt := table.PlatformTenants.DELETE().WHERE(table.PlatformTenants.ID.EQ(postgres.String(id)))
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *tenantRepositoryImpl) Count(ctx context.Context) (int64, error) {
-	return transactor.QueryCount(ctx, r.db, table.PlatformTenants.SELECT(postgres.COUNT(postgres.STAR)))
+	return transactor.QueryCount(ctx, r.db, table.PlatformTenants.SELECT(postgres.COUNT(postgres.STAR))).Value()
 }
 
 func (r *tenantRepositoryImpl) FindAll(
@@ -96,7 +95,7 @@ func (r *tenantRepositoryImpl) FindAll(
 ) ([]tenant.PlatformTenant, error) {
 	stmt := table.PlatformTenants.SELECT(table.PlatformTenants.AllColumns)
 
-	return transactor.QueryMap[[]model.PlatformTenants, []tenant.PlatformTenant](
+	return transactor.QueryMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomainList,
-	)
+	).Value()
 }

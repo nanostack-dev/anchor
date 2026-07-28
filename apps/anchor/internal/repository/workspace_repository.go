@@ -13,7 +13,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/mapper"
@@ -101,12 +100,12 @@ func (r *workspaceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
@@ -125,12 +124,12 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap[model.Workspaces, workspace.Workspace](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	)
+	).Value()
 }
 
 func (r *workspaceRepositoryImpl) Create(
@@ -143,12 +142,12 @@ func (r *workspaceRepositoryImpl) Create(
 		workspacesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.Workspaces.AllColumns)
 
-	created, err := transactor.QueryMap[model.Workspaces, workspace.Workspace](
+	created, err := transactor.QueryMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	)
+	).Value()
 	if err != nil {
 		return workspace.Workspace{}, err
 	}
@@ -181,7 +180,7 @@ func (r *workspaceRepositoryImpl) Update(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, updateStmt); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt).Err(); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -208,7 +207,7 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, deleteStmt); err != nil {
+	if err := transactor.Exec(ctx, r.db, deleteStmt).Err(); err != nil {
 		return err
 	}
 
@@ -257,7 +256,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		postgres.COUNT(postgres.STAR).AS("count_result.count"),
 	).FROM(r.joinOrganizations()).WHERE(whereStmt)
 
-	total, err := transactor.QueryCount(ctx, r.db, countStmt)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
@@ -283,7 +282,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 
-	items, err := transactor.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain)
+	items, err := transactor.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain).Value()
 	if err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}

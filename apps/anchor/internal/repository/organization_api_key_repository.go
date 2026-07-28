@@ -122,7 +122,7 @@ func (r *organizationAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.OrganizationAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt)
+	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -140,7 +140,7 @@ func (r *organizationAPIKeyRepository) Create(
 			),
 		).MODELS(permissions)
 
-		err = transactor.Exec(ctx, r.db, permStmt)
+		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
 			r.logger.Error().Err(err).
 				Str("api_key_id", apiKey.ID).
@@ -171,17 +171,14 @@ func (r *organizationAPIKeyRepository) GetByID(
 		),
 	)
 
-	return transactor.QueryOptionalMap[
-		organizationAPIKeyWithPermissions,
-		orgapikey.OrganizationAPIKey,
-	](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationAPIKeyRepository) GetByIDInternal(
@@ -200,17 +197,14 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)),
 	)
 
-	return transactor.QueryOptionalMap[
-		organizationAPIKeyWithPermissions,
-		orgapikey.OrganizationAPIKey,
-	](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
@@ -231,17 +225,14 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 		),
 	)
 
-	return transactor.QueryOptionalMap[
-		organizationAPIKeyWithPermissions,
-		orgapikey.OrganizationAPIKey,
-	](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
@@ -262,17 +253,14 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		),
 	)
 
-	return transactor.QueryOptionalMap[
-		organizationAPIKeyWithPermissions,
-		orgapikey.OrganizationAPIKey,
-	](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 // GetByProductIDAndHashedValueInternal resolves an organization API key by its hashed
@@ -302,17 +290,14 @@ func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 		),
 	)
 
-	return transactor.QueryOptionalMap[
-		organizationAPIKeyWithPermissions,
-		orgapikey.OrganizationAPIKey,
-	](
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	)
+	).Value()
 }
 
 //nolint:dupl // mirrors product API key update flow with organization-scoped tables
@@ -332,7 +317,7 @@ func (r *organizationAPIKeyRepository) Update(
 		table.OrganizationAPIKeys.AllColumns,
 	)
 
-	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt)
+	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
@@ -361,7 +346,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		ctx,
 		r.db,
 		table.OrganizationAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
@@ -397,7 +382,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		func(entity model.OrganizationAPIKeys) model.OrganizationAPIKeys {
 			return entity
 		},
-	)
+	).Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
@@ -461,7 +446,7 @@ func (r *organizationAPIKeyRepository) Delete(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
@@ -482,7 +467,7 @@ func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationAPIKeyRepository) UpdateStatus(
@@ -506,7 +491,7 @@ func (r *organizationAPIKeyRepository) UpdateStatus(
 		),
 	)
 
-	return transactor.Exec(ctx, r.db, stmt)
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationAPIKeyRepository) getPermissionEntities(
@@ -528,7 +513,7 @@ func (r *organizationAPIKeyRepository) getPermissionEntities(
 		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions {
 			return entity
 		},
-	)
+	).Value()
 }
 
 func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
@@ -556,7 +541,7 @@ func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
 		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions {
 			return entity
 		},
-	)
+	).Value()
 }
 
 //nolint:dupl // mirrors product API key filter logic with organization-scoped fields
