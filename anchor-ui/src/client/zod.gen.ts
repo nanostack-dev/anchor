@@ -659,6 +659,11 @@ export const zOrganizationApiKeyValidateRequest = z.object({
     required_scopes: z.array(z.string())
 });
 
+export const zOrganizationApiKeyIntrospectRequest = z.object({
+    api_key: z.string(),
+    required_scopes: z.optional(z.array(z.string()))
+});
+
 export const zOrganizationApiKeyValidateResponse = z.object({
     api_key: zOrganizationApiKeyResponse,
     permissions: z.array(z.string()),
@@ -2005,6 +2010,19 @@ export const zValidateOrganizationApiKeyData = z.object({
  * Organization API key validation result.
  */
 export const zValidateOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
+
+export const zIntrospectOrganizationApiKeyData = z.object({
+    body: zOrganizationApiKeyIntrospectRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Organization API key introspection result.
+ */
+export const zIntrospectOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
 
 export const zCreateProductOrganizationData = z.object({
     body: zProductOrganizationRequest,
