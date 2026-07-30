@@ -5,3 +5,10 @@ generate:
   models: true
   strict-server: true
 output: ./internal/api/gen.go
+compatibility:
+  # oapi-codegen v2.8.0 stopped emitting the per-scheme context keys and scope
+  # constants by default. internal/middleware/auth_middleware.go reads
+  # api.PlatformBearerAuthScopes / api.ProductApiKeyAuthScopes out of the
+  # request context, so keep them until authorization moves to the
+  # request-validation middleware (upstream oapi-codegen#1524).
+  enable-auth-scopes-on-context: true
