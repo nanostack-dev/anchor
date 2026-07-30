@@ -23,7 +23,7 @@ on:
 
 jobs:
   frontend-verify:
-    uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
+    uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@ci/timeouts-and-playwright-cache
     with:
       app_name: Anchor
       working_directory: anchor-ui
@@ -37,7 +37,7 @@ jobs:
 
   go-build-test:
     needs: frontend-verify
-    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
+    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@ci/timeouts-and-playwright-cache
     permissions:
       contents: read
       packages: write
