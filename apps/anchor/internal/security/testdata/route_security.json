@@ -1,0 +1,387 @@
+{
+  "DELETE /v1/platform-invitations/{invitation_id}": {
+    "platformBearerAuth": []
+  },
+  "DELETE /v1/platform-users/{platform_user_id}": {
+    "platformBearerAuth": []
+  },
+  "DELETE /v1/products/{product_id}": {
+    "platformBearerAuth": []
+  },
+  "DELETE /v1/products/{product_id}/api-keys/{api_key_id}": {
+    "platformBearerAuth": []
+  },
+  "DELETE /v1/products/{product_id}/email/templates/{email_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/integrations/{integration_instance_id}": {
+    "platformBearerAuth": []
+  },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}": {
+    "productApiKeyAuth": [
+      "organization:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}": {
+    "productApiKeyAuth": [
+      "organization_api_key:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_member:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
+    "productApiKeyAuth": [
+      "workspace:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/product-users/{product_user_id}": {
+    "productApiKeyAuth": [
+      "product_user:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/resource-permissions/{permission_name}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resources_permissions:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:delete"
+    ]
+  },
+  "DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:update"
+    ]
+  },
+  "GET /v1/me": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/platform-invitations/{invitation_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/platform-users/{platform_user_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/api-keys/{api_key_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/email/sends": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/email/templates": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/email/templates/{email_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/email/templates/{email_template_id}/draft": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/email/templates/{email_template_id}/examples": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/integrations": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/integrations/{integration_instance_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}": {
+    "productApiKeyAuth": [
+      "organization:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_api_key:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_member:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workspace:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/permissions/{permission_id}": {
+    "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/product-users/{product_user_id}": {
+    "productApiKeyAuth": [
+      "product_user:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/product-users/{product_user_id}/organizations": {
+    "productApiKeyAuth": [
+      "product_user:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/product-users/{product_user_id}/organizations/{organization_id}": {
+    "productApiKeyAuth": [
+      "product_user:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/resource-permissions/{permission_name}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resources_permissions:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:read"
+    ]
+  },
+  "POST /v1/auth/login": {
+    "\u003cpublic\u003e": []
+  },
+  "POST /v1/auth/logout": {
+    "\u003cpublic\u003e": []
+  },
+  "POST /v1/auth/refresh": {
+    "\u003cpublic\u003e": []
+  },
+  "POST /v1/auth/register": {
+    "\u003cpublic\u003e": []
+  },
+  "POST /v1/platform-invitations": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/platform-invitations/search": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/platform-users/search": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/search": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/api-keys": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/api-keys/search": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/auth/introspect": {
+    "productApiKeyAuth": [
+      "organization_api_key:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/email/sends": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email:send"
+    ]
+  },
+  "POST /v1/products/{product_id}/email/templates": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/email/templates/{email_template_id}/preview": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/email/templates/{email_template_id}/publish": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:update"
+    ]
+  },
+  "POST /v1/products/{product_id}/integrations": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
+    "\u003cpublic\u003e": []
+  },
+  "POST /v1/products/{product_id}/organizations": {
+    "productApiKeyAuth": [
+      "organization:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/api-keys": {
+    "productApiKeyAuth": [
+      "organization_api_key:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/api-keys/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_api_key:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/api-keys/validate": {
+    "productApiKeyAuth": [
+      "organization_api_key:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/members": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_member:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/members/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_member:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces": {
+    "productApiKeyAuth": [
+      "workspace:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workspace:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/permissions/search": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/product-users": {
+    "productApiKeyAuth": [
+      "product_user:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/product-users/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_user:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/resource-permissions": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resources_permissions:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/resource-permissions/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resources_permissions:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/roles": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/roles/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/roles/{role_id}/permissions": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/api-keys/{api_key_id}": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/email/templates/{email_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/email/templates/{email_template_id}/draft": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/email/templates/{email_template_id}/examples": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/integrations/{integration_instance_id}": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}": {
+    "productApiKeyAuth": [
+      "organization:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}": {
+    "productApiKeyAuth": [
+      "organization_api_key:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_member:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
+    "productApiKeyAuth": [
+      "workspace:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/resource-permissions/{permission_name}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resources_permissions:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_role:update"
+    ]
+  }
+}

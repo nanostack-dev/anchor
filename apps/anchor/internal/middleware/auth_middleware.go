@@ -67,7 +67,7 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			r = r.WithContext(security.WithRequirements(r.Context(), requirements))
+			r = r.WithContext(apisec.WithRequirements(r.Context(), requirements))
 
 			if requirements.Public() {
 				next.ServeHTTP(w, r)
