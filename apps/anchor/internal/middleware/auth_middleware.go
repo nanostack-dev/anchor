@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"github.com/rs/zerolog"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"anchor/internal/api"
 	"anchor/internal/domain/product/apikey"
 
 	"anchor/internal/security"
@@ -28,28 +28,48 @@ type AuthMiddleware struct {
 	productAPIKeyKeyService service.ProductAPIKeyService
 	productService          service.ProductService
 	logger                  zerolog.Logger
+	// resolver reads each operation's security requirements from the OpenAPI
+	// document, replacing oapi-codegen's generated `<Scheme>Scopes` context
+	// keys, which flattened them and could not represent alternative or
+	// combined schemes (oapi-codegen#1524).
+	resolver *apisec.Resolver
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance.
 func NewAuthMiddleware(
 	jwtHelper service.JWTHelper, productAPIKeyKeyService service.ProductAPIKeyService,
 	productService service.ProductService, logger zerolog.Logger,
+	resolver *apisec.Resolver,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtHelper:               jwtHelper,
 		productAPIKeyKeyService: productAPIKeyKeyService,
 		productService:          productService,
 		logger:                  logger.With().Str("component", "auth_middleware").Logger(),
+		resolver:                resolver,
 	}
 }
 
 func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			platformBearerAuthScopes := r.Context().Value(api.PlatformBearerAuthScopes)
-			productAPIKeyScopes := r.Context().Value(api.ProductApiKeyAuthScopes)
+			// Attach the operation's security requirements before attempting
+			// any authentication; every decision below reads them. A request
+			// matching no documented operation is refused rather than treated
+			// as unrestricted — an unresolvable route must never fall through
+			// with an empty requirement set, which would read as "public".
+			requirements, resolved := auth.resolver.For(r)
+			if !resolved {
+				auth.logger.Warn().
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Msg("no OpenAPI operation matched; refusing the request")
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			r = r.WithContext(security.WithRequirements(r.Context(), requirements))
 
-			if platformBearerAuthScopes == nil && productAPIKeyScopes == nil {
+			if requirements.Public() {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -70,8 +90,8 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 	w http.ResponseWriter, r *http.Request, next http.Handler,
 ) bool {
-	productAPIKeyScopes := r.Context().Value(api.ProductApiKeyAuthScopes)
-	if productAPIKeyScopes == nil {
+	values, allowed := security.ProductAPIKeyScopes(r.Context())
+	if !allowed {
 		return false
 	}
 
@@ -81,8 +101,7 @@ func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 	}
 
 	productIDPath := chi.URLParam(r, "product_id")
-	values, ok := productAPIKeyScopes.([]string)
-	if !ok || len(values) == 0 {
+	if len(values) == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return true
 	}
@@ -123,8 +142,7 @@ func (auth *AuthMiddleware) handleProductAPIKeyAuth(
 func (auth *AuthMiddleware) handlePlatformBearerAuth(
 	w http.ResponseWriter, r *http.Request, next http.Handler,
 ) bool {
-	platformBearerAuthScopes := r.Context().Value(api.PlatformBearerAuthScopes)
-	if platformBearerAuthScopes == nil {
+	if _, allowed := security.PlatformBearerScopes(r.Context()); !allowed {
 		return false
 	}
 
