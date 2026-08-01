@@ -16,7 +16,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -125,7 +124,7 @@ func (r *organizationAPIKeyRepository) Create(
 
 	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).
+		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
 			Str("organization_id", apiKey.OrganizationID).
 			Msg("Failed to create organization API key")
@@ -143,7 +142,7 @@ func (r *organizationAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).
+			r.logger.Error().Err(err).
 				Str("api_key_id", apiKey.ID).
 				Str("organization_id", apiKey.OrganizationID).
 				Msg("Failed to create organization API key permissions")
@@ -349,7 +348,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		table.OrganizationAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str(
+		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
 		).Msg("failed to count organization API keys")
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
@@ -385,7 +384,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		},
 	).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str(
+		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
 		).Msg("failed to search organization API keys")
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
@@ -409,7 +408,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		apiKeyIDs,
 	)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str(
+		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
 		).Msg("failed to load organization API key permissions")
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err

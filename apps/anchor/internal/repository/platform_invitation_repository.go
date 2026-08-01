@@ -11,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
@@ -101,7 +100,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 		table.PlatformInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str(
+		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
 		).Msg("failed to count platform invitations")
 		return search.Result[invitation.PlatformInvitation]{}, err
@@ -133,7 +132,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
 	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str(
+		r.logger.Error().Err(err).Str(
 			"tenantID", tenantID,
 		).Msg("failed to search platform invitations")
 		return search.Result[invitation.PlatformInvitation]{}, err

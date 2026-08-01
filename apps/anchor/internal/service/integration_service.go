@@ -1684,7 +1684,8 @@ func (s *integrationService) verifyAndActivate(
 	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
 	if findErr != nil {
 		// Context deadline/cancellation here is a benign timeout, not a fault;
-		// EventForError downgrades those to Warn and keeps real errors at Error.
+		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
+		// and everything else stays at Error.
 		log.Event(&logger, findErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
 		return

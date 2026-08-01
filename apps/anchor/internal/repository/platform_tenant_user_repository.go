@@ -16,7 +16,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -72,7 +71,7 @@ func (r *platformTenantUserRepositoryImpl) Create(
 		},
 	).Value()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).
+		r.logger.Error().Err(err).
 			Str("platform_user_id", platformUser.ID).
 			Str("platform_tenant_id", platformUser.PlatformTenantID).
 			Msg("Failed to create platform user")
