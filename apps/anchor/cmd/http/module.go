@@ -3,6 +3,7 @@ package httpserver
 import (
 	_ "embed"
 
+	apisecmodule "github.com/nanostack-dev/nanostack-framework/modules/apisec"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
 
 	"go.uber.org/fx"
@@ -21,6 +22,10 @@ func NewHTTPServerModule() fx.Option {
 				return &config, nil
 			},
 		),
+		// The auth middleware resolves each operation's security requirements
+		// from this document; the framework module owns building that resolver.
+		fx.Supply(apisecmodule.Document(OpenAPI)),
+		apisecmodule.NewModule(),
 		fx.Invoke(
 			RegisterServer,
 		),
