@@ -1,9 +1,11 @@
 package middleware_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
+
+	"net/http"
+	"net/http/httptest"
 
 	"anchor/internal/middleware"
 	"anchor/internal/security"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/modules/logging"
 	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
+	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
@@ -47,16 +50,33 @@ func TestModuleRegistersLogEnrichers(t *testing.T) {
 		t.Fatalf("building the middleware module failed: %v", err)
 	}
 
-	ctx := security.SetCurrentUserID(context.Background(), "usr_wired")
-	ctx = security.SetTenantID(ctx, "tnt_wired")
-	log.Ctx(binder.Bind(ctx)).Info().Msg("wired")
+	// Both registered enrichers must be asserted. Checking only the security
+	// fields would leave the requestlog registration unpinned: deleting it keeps
+	// this green while production silently loses request_id from every bound
+	// line. So the Bind runs inside a real Contextualize.
+	var line map[string]any
+	handler := requestlog.Contextualize(zerolog.New(&sink))(http.HandlerFunc(
+		func(_ http.ResponseWriter, r *http.Request) {
+			ctx := security.SetCurrentUserID(r.Context(), "usr_wired")
+			ctx = security.SetTenantID(ctx, "tnt_wired")
+			log.Ctx(binder.Bind(ctx)).Info().Msg("wired")
+			line = sink.decode(t)
+		},
+	))
 
-	line := sink.decode(t)
-	if line["user_id"] != "usr_wired" {
-		t.Errorf("user_id = %v — the security enricher is not reaching the Binder", line["user_id"])
-	}
-	if line["tenant_id"] != "tnt_wired" {
-		t.Errorf("tenant_id = %v — the security enricher is not reaching the Binder", line["tenant_id"])
+	request := httptest.NewRequest(http.MethodGet, "/tenants/abc", nil)
+	request.Header.Set(requestlog.RequestIDHeader, "req_wired")
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+
+	for key, want := range map[string]string{
+		"user_id":    "usr_wired", // security enricher
+		"tenant_id":  "tnt_wired", // security enricher
+		"request_id": "req_wired", // requestlog enricher
+		"path":       "/tenants/abc",
+	} {
+		if line[key] != want {
+			t.Errorf("%s = %v, want %v — an enricher is not reaching the Binder", key, line[key], want)
+		}
 	}
 }
 
