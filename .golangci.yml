@@ -209,6 +209,17 @@ linters:
           deny:
             - pkg: log$
               desc: Use log/slog instead, see https://go.dev/blog/slog
+        # Every log line should come from the context, so it carries the request
+        # id, tenant and caller that log.Bind put there. Reaching for zerolog's
+        # own global skips all of it. Test support is exempt: it builds loggers
+        # before any request exists.
+        "context-scoped logging":
+          files:
+            - "!$test"
+            - "!**/cmd/it/**"
+          deny:
+            - pkg: github.com/rs/zerolog/log$
+              desc: Use nanostack-framework/pkg/log — the zerolog global carries no request context
 
     errcheck:
       # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.

@@ -14,10 +14,10 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
-	"anchor/internal/logx"
 	"anchor/internal/repository"
 	serviceconfig "anchor/internal/service/config"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -1684,8 +1684,9 @@ func (s *integrationService) verifyAndActivate(
 	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
 	if findErr != nil {
 		// Context deadline/cancellation here is a benign timeout, not a fault;
-		// EventForError downgrades those to Warn and keeps real errors at Error.
-		logx.EventForError(&logger, findErr).Err(findErr).Str("instance_id", inst.ID).
+		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
+		// and everything else stays at Error.
+		log.Event(&logger, findErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
 		return
 	}
@@ -1713,7 +1714,7 @@ func (s *integrationService) verifyAndActivate(
 
 	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live); updateErr != nil {
 		// As above: a persist-context timeout is benign and downgraded to Warn.
-		logx.EventForError(&logger, updateErr).Err(updateErr).Str("instance_id", inst.ID).
+		log.Event(&logger, updateErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to persist verification result")
 	}
 }

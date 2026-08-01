@@ -16,6 +16,7 @@ import (
 	"anchor/internal/middleware"
 
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
+	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/nanostack-dev/pgkit/adminui"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -153,6 +154,11 @@ func setupRouter(params ServerParams) *chi.Mux {
 		},
 	)
 	router.Use(corsMiddleware.Handler)
+
+	// Establishes the per-request correlation id and the request-scoped logger
+	// every later stage builds on. It has to run before the access log and
+	// before auth binds the caller onto the logger.
+	router.Use(requestlog.Contextualize(params.Logger))
 
 	swagger, err := openapi3.NewLoader().LoadFromData(OpenAPI)
 	if err != nil {
