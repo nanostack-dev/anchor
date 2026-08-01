@@ -18,9 +18,12 @@ import (
 // carries the correlation id and the authenticated caller without the call site
 // naming either.
 //
-// This also pins the middleware order the design depends on — Contextualize
-// must run before the Bind that follows authentication. A future reorder would
-// otherwise regress silently, since nothing else asserts it.
+// This exercises the framework contract the wiring relies on — Contextualize
+// then Bind — with a hand-assembled chain. It does NOT pin the production
+// middleware order: it never touches cmd/http/server.go or AuthMiddleware, so
+// moving router.Use or reordering the Middlewares slice would leave it green.
+// TestModuleRegistersLogEnrichers in internal/middleware covers the wiring;
+// the ordering itself is still unpinned.
 func TestBoundRequestLineCarriesIdentity(t *testing.T) {
 	var sink capture
 	base := zerolog.New(&sink).Level(zerolog.DebugLevel)
