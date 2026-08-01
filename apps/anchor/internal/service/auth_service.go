@@ -247,8 +247,16 @@ func (s *authService) Login(
 		return auth.LoginOutput{}, err
 	}
 	if platformUser == nil {
-		logger.Error().Str("user_id", user.ID).Msg("platform user not found")
-		return auth.LoginOutput{}, errors.New("platform user not found")
+		// A valid email/password whose user has no platform-tenant membership is
+		// an authentication failure, not a server error. Return the same modelled
+		// credential error as the sibling branches above so the strict handler
+		// responds 400 (logged at info) instead of collapsing an unmodelled error
+		// into a 500 logged at error. Warn keeps the data-consistency signal
+		// visible (the user exists but is not provisioned) without the false
+		// server-error alarm, and mirroring the other branches avoids leaking
+		// whether an address is provisioned.
+		logger.Warn().Str("user_id", user.ID).Msg("platform user not found for authenticated user")
+		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
 
 	accessToken, refreshToken, err := s.jwt.GenerateTokens(
