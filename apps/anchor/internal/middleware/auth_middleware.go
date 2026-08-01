@@ -5,6 +5,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"github.com/rs/zerolog"
 
@@ -78,6 +79,12 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 				auth.renderAuthFailure(w, err)
 				return
 			}
+
+			// Rebuild the request logger now that the caller is resolved, so
+			// every line for this request carries the user and tenant. The
+			// fields come from the enrichers each package registers, not from
+			// a list maintained here.
+			authorized = log.Bind(authorized)
 
 			next.ServeHTTP(w, r.WithContext(authorized))
 		},
