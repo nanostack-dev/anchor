@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
@@ -353,7 +352,7 @@ func (s *AnchorAPI) IngestWebhook(
 	// Re-marshal the decoded body back to raw bytes for signature validation.
 	payload, err := json.Marshal(request.Body)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to marshal webhook body")
+		s.logger.Error().Err(err).Msg("failed to marshal webhook body")
 		return nil, err
 	}
 

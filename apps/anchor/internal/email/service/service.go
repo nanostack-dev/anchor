@@ -97,7 +97,7 @@ var (
 // and surfaces as a 422 EMAIL_DELIVERY_REJECTED; every other transport failure
 // is a modelled 500 EMAIL_DELIVERY_FAILED. A cancelled context means the caller
 // (or shutdown) went away mid-send, not a delivery fault, so it is returned
-// unchanged to keep the context-cancellation logging policy (logx) from
+// unchanged to keep the context-cancellation logging policy (pkg/log) from
 // surfacing it on error dashboards and alerts.
 func classifyDispatchError(err error) error {
 	if log.IsContextError(err) {
@@ -526,7 +526,7 @@ func (s *emailService) PublishTemplate(
 	// not roll back the publish.
 	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
-		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
+		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
 	}
 	newDraft := email.TemplateVersion{
@@ -541,13 +541,13 @@ func (s *emailService) PublishTemplate(
 	newDraft.GenerateID()
 	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
-		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
+		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
 	}
 	if err = s.templateRepo.SetVersionPointers(
 		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
 	); err != nil {
-		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
+		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
 	}
 	return *published, nil
 }
