@@ -17,6 +17,7 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -309,7 +310,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		table.Products.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"tenantID", tenantID,
 		).Msg("failed to count products")
 		return search.Result[product.Product]{}, err
@@ -349,7 +350,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		},
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"tenantID", tenantID,
 		).Msg("failed to search products")
 		return search.Result[product.Product]{}, err

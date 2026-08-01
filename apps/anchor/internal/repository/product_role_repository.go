@@ -17,6 +17,7 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -154,7 +155,7 @@ func (r *productRoleRepositoryImpl) Create(
 			),
 		).MODELS(permissions)
 		if err = transactor.Exec(ctx, r.db, permStmt).Err(); err != nil {
-			r.logger.Error().Err(err).
+			log.Ctx(ctx).Error().Err(err).
 				Str("product_role_id", productRole.ID).
 				Str("product_id", productRole.ProductID).
 				Msg("Failed to create product role permissions")
@@ -200,7 +201,7 @@ func (r *productRoleRepositoryImpl) Update(
 	newPerms := r.productRoleMapper.PermissionsToEntities(domainRole.Permissions)
 	toAdd, toRemove := r.diffRolePermissions(currentPerms, newPerms)
 	if len(toRemove) > 0 {
-		r.logger.Info().Str(
+		log.Ctx(ctx).Info().Str(
 			"product_role_id", domainRole.ID,
 		).Str(
 			"product_id", domainRole.ProductID,
@@ -326,7 +327,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"productID", productID,
 		).Msg("failed to count product roles")
 		return search.Result[role.ProductRole]{}, err
@@ -359,7 +360,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 
 	pagedRoles, err := transactor.Query[[]model.ProductRoles](ctx, r.db, idStmt).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"productID", productID,
 		).Msg("failed to page product role ids")
 		return search.Result[role.ProductRole]{}, err

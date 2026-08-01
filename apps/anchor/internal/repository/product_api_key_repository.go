@@ -17,6 +17,7 @@ import (
 	"anchor/internal/domain/product/apikey"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -124,7 +125,7 @@ func (r *productAPIKeyRepository) Create(
 
 	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
-		r.logger.Error().Err(err).
+		log.Ctx(ctx).Error().Err(err).
 			Str("api_key_id", apiKey.ID).
 			Str("product_id", apiKey.ProductID).
 			Msg("Failed to create product API key")
@@ -141,7 +142,7 @@ func (r *productAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			r.logger.Error().Err(err).
+			log.Ctx(ctx).Error().Err(err).
 				Str("api_key_id", apiKey.ID).
 				Str("product_id", apiKey.ProductID).
 				Msg("Failed to create product API key permissions")
@@ -303,7 +304,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		table.ProductAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to count product API keys")
 		return search.Result[apikey.ProductAPIKey]{}, err
@@ -343,7 +344,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		},
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to search product API keys")
 		return search.Result[apikey.ProductAPIKey]{}, err
@@ -365,7 +366,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		ctx, input.ProductID, apiKeyIDs,
 	)
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Ctx(ctx).Error().Err(err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to load product API key permissions")
 		return search.Result[apikey.ProductAPIKey]{}, err
