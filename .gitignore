@@ -110,3 +110,4 @@ apps/anchor/cmd/http/openapi-cleaned.yaml
 terraform/**/.terraform/
 terraform/**/.terraform.lock.hcl
 /apps/anchor/main
+.test_credentials
