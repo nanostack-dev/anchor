@@ -33,11 +33,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-const (
-	PlatformBearerAuthScopes platformBearerAuthContextKey = "platformBearerAuth.Scopes"
-	ProductApiKeyAuthScopes  productApiKeyAuthContextKey  = "productApiKeyAuth.Scopes"
-)
-
 // Defines values for ClerkIntegrationInstanceCreateRequestProviderType.
 const (
 	CLERK ClerkIntegrationInstanceCreateRequestProviderType = "CLERK"
@@ -2155,12 +2150,6 @@ type Forbidden = ApiErrorResponse
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ApiErrorResponse
 
-// platformBearerAuthContextKey is the context key for platformBearerAuth security scheme
-type platformBearerAuthContextKey string
-
-// productApiKeyAuthContextKey is the context key for productApiKeyAuth security scheme
-type productApiKeyAuthContextKey string
-
 // RefreshTokenParams defines parameters for RefreshToken.
 type RefreshTokenParams struct {
 	// RefreshToken Refresh token cookie to refresh the authentication token.
@@ -3403,12 +3392,6 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 // GetCurrentUser operation middleware
 func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCurrentUser(w, r)
 	}))
@@ -3423,12 +3406,6 @@ func (siw *ServerInterfaceWrapper) GetCurrentUser(w http.ResponseWriter, r *http
 // CreatePlatformInvitation operation middleware
 func (siw *ServerInterfaceWrapper) CreatePlatformInvitation(w http.ResponseWriter, r *http.Request) {
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreatePlatformInvitation(w, r)
 	}))
@@ -3442,12 +3419,6 @@ func (siw *ServerInterfaceWrapper) CreatePlatformInvitation(w http.ResponseWrite
 
 // SearchPlatformInvitations operation middleware
 func (siw *ServerInterfaceWrapper) SearchPlatformInvitations(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchPlatformInvitations(w, r)
@@ -3475,12 +3446,6 @@ func (siw *ServerInterfaceWrapper) DeletePlatformInvitation(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeletePlatformInvitation(w, r, invitationId)
 	}))
@@ -3507,12 +3472,6 @@ func (siw *ServerInterfaceWrapper) GetPlatformInvitation(w http.ResponseWriter, 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPlatformInvitation(w, r, invitationId)
 	}))
@@ -3526,12 +3485,6 @@ func (siw *ServerInterfaceWrapper) GetPlatformInvitation(w http.ResponseWriter, 
 
 // SearchPlatformUsers operation middleware
 func (siw *ServerInterfaceWrapper) SearchPlatformUsers(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchPlatformUsers(w, r)
@@ -3559,12 +3512,6 @@ func (siw *ServerInterfaceWrapper) DeletePlatformUser(w http.ResponseWriter, r *
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeletePlatformUser(w, r, platformUserId)
 	}))
@@ -3591,12 +3538,6 @@ func (siw *ServerInterfaceWrapper) GetPlatformUser(w http.ResponseWriter, r *htt
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPlatformUser(w, r, platformUserId)
 	}))
@@ -3611,12 +3552,6 @@ func (siw *ServerInterfaceWrapper) GetPlatformUser(w http.ResponseWriter, r *htt
 // CreateProduct operation middleware
 func (siw *ServerInterfaceWrapper) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProduct(w, r)
 	}))
@@ -3630,12 +3565,6 @@ func (siw *ServerInterfaceWrapper) CreateProduct(w http.ResponseWriter, r *http.
 
 // SearchProducts operation middleware
 func (siw *ServerInterfaceWrapper) SearchProducts(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProducts(w, r)
@@ -3663,12 +3592,6 @@ func (siw *ServerInterfaceWrapper) DeleteProduct(w http.ResponseWriter, r *http.
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProduct(w, r, productId)
 	}))
@@ -3694,12 +3617,6 @@ func (siw *ServerInterfaceWrapper) GetProduct(w http.ResponseWriter, r *http.Req
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProduct(w, r, productId)
@@ -3727,12 +3644,6 @@ func (siw *ServerInterfaceWrapper) UpdateProduct(w http.ResponseWriter, r *http.
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProduct(w, r, productId)
 	}))
@@ -3759,12 +3670,6 @@ func (siw *ServerInterfaceWrapper) CreateProductAPIKey(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProductAPIKey(w, r, productId)
 	}))
@@ -3790,12 +3695,6 @@ func (siw *ServerInterfaceWrapper) SearchProductAPIKeys(w http.ResponseWriter, r
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductAPIKeys(w, r, productId)
@@ -3832,12 +3731,6 @@ func (siw *ServerInterfaceWrapper) DeleteProductAPIKey(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProductAPIKey(w, r, productId, apiKeyId)
 	}))
@@ -3872,12 +3765,6 @@ func (siw *ServerInterfaceWrapper) GetProductAPIKey(w http.ResponseWriter, r *ht
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "api_key_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductAPIKey(w, r, productId, apiKeyId)
@@ -3914,12 +3801,6 @@ func (siw *ServerInterfaceWrapper) UpdateProductAPIKey(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductAPIKey(w, r, productId, apiKeyId)
 	}))
@@ -3946,12 +3827,6 @@ func (siw *ServerInterfaceWrapper) IntrospectOrganizationAPIKey(w http.ResponseW
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.IntrospectOrganizationAPIKey(w, r, productId)
 	}))
@@ -3977,12 +3852,6 @@ func (siw *ServerInterfaceWrapper) ListEmailSends(w http.ResponseWriter, r *http
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListEmailSendsParams
@@ -4065,14 +3934,6 @@ func (siw *ServerInterfaceWrapper) SendEmail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email:send"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SendEmail(w, r, productId)
 	}))
@@ -4098,14 +3959,6 @@ func (siw *ServerInterfaceWrapper) ListEmailTemplates(w http.ResponseWriter, r *
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
-
-	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListEmailTemplatesParams
@@ -4162,14 +4015,6 @@ func (siw *ServerInterfaceWrapper) CreateEmailTemplate(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateEmailTemplate(w, r, productId)
 	}))
@@ -4204,14 +4049,6 @@ func (siw *ServerInterfaceWrapper) DeleteEmailTemplate(w http.ResponseWriter, r 
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email_template_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:delete"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteEmailTemplate(w, r, productId, emailTemplateId)
@@ -4248,14 +4085,6 @@ func (siw *ServerInterfaceWrapper) GetEmailTemplate(w http.ResponseWriter, r *ht
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetEmailTemplate(w, r, productId, emailTemplateId)
 	}))
@@ -4290,14 +4119,6 @@ func (siw *ServerInterfaceWrapper) UpdateEmailTemplate(w http.ResponseWriter, r 
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email_template_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateEmailTemplate(w, r, productId, emailTemplateId)
@@ -4334,14 +4155,6 @@ func (siw *ServerInterfaceWrapper) GetEmailTemplateDraft(w http.ResponseWriter, 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetEmailTemplateDraft(w, r, productId, emailTemplateId)
 	}))
@@ -4376,14 +4189,6 @@ func (siw *ServerInterfaceWrapper) UpdateEmailTemplateDraft(w http.ResponseWrite
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email_template_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateEmailTemplateDraft(w, r, productId, emailTemplateId)
@@ -4420,12 +4225,6 @@ func (siw *ServerInterfaceWrapper) GetEmailTemplateExamples(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetEmailTemplateExamples(w, r, productId, emailTemplateId)
 	}))
@@ -4460,12 +4259,6 @@ func (siw *ServerInterfaceWrapper) SaveEmailTemplateExamples(w http.ResponseWrit
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email_template_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SaveEmailTemplateExamples(w, r, productId, emailTemplateId)
@@ -4502,14 +4295,6 @@ func (siw *ServerInterfaceWrapper) PreviewEmailTemplate(w http.ResponseWriter, r
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PreviewEmailTemplate(w, r, productId, emailTemplateId)
 	}))
@@ -4545,14 +4330,6 @@ func (siw *ServerInterfaceWrapper) PublishEmailTemplate(w http.ResponseWriter, r
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"email_template:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PublishEmailTemplate(w, r, productId, emailTemplateId)
 	}))
@@ -4579,12 +4356,6 @@ func (siw *ServerInterfaceWrapper) ListIntegrationInstances(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListIntegrationInstances(w, r, productId)
 	}))
@@ -4610,12 +4381,6 @@ func (siw *ServerInterfaceWrapper) CreateIntegrationInstance(w http.ResponseWrit
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateIntegrationInstance(w, r, productId)
@@ -4687,12 +4452,6 @@ func (siw *ServerInterfaceWrapper) DeleteIntegrationInstance(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteIntegrationInstance(w, r, productId, integrationInstanceId)
 	}))
@@ -4727,12 +4486,6 @@ func (siw *ServerInterfaceWrapper) GetIntegrationInstance(w http.ResponseWriter,
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "integration_instance_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetIntegrationInstance(w, r, productId, integrationInstanceId)
@@ -4769,12 +4522,6 @@ func (siw *ServerInterfaceWrapper) UpdateIntegrationInstance(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateIntegrationInstance(w, r, productId, integrationInstanceId)
 	}))
@@ -4810,12 +4557,6 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListIntegrationAuditLogs(w, r, productId, integrationInstanceId)
 	}))
@@ -4842,12 +4583,6 @@ func (siw *ServerInterfaceWrapper) CreateProductOrganization(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProductOrganization(w, r, productId)
 	}))
@@ -4873,14 +4608,6 @@ func (siw *ServerInterfaceWrapper) SearchProductOrganizations(w http.ResponseWri
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductOrganizations(w, r, productId)
@@ -4917,12 +4644,6 @@ func (siw *ServerInterfaceWrapper) DeleteProductOrganization(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProductOrganization(w, r, productId, organizationId)
 	}))
@@ -4957,12 +4678,6 @@ func (siw *ServerInterfaceWrapper) GetProductOrganization(w http.ResponseWriter,
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductOrganization(w, r, productId, organizationId)
@@ -4999,12 +4714,6 @@ func (siw *ServerInterfaceWrapper) UpdateProductOrganization(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductOrganization(w, r, productId, organizationId)
 	}))
@@ -5039,12 +4748,6 @@ func (siw *ServerInterfaceWrapper) CreateOrganizationAPIKey(w http.ResponseWrite
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:create"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateOrganizationAPIKey(w, r, productId, organizationId)
@@ -5081,14 +4784,6 @@ func (siw *ServerInterfaceWrapper) SearchOrganizationAPIKeys(w http.ResponseWrit
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchOrganizationAPIKeys(w, r, productId, organizationId)
 	}))
@@ -5123,12 +4818,6 @@ func (siw *ServerInterfaceWrapper) ValidateOrganizationAPIKey(w http.ResponseWri
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ValidateOrganizationAPIKey(w, r, productId, organizationId)
@@ -5174,12 +4863,6 @@ func (siw *ServerInterfaceWrapper) DeleteOrganizationAPIKey(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteOrganizationAPIKey(w, r, productId, organizationId, apiKeyId)
 	}))
@@ -5223,14 +4906,6 @@ func (siw *ServerInterfaceWrapper) GetOrganizationAPIKey(w http.ResponseWriter, 
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "api_key_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetOrganizationAPIKey(w, r, productId, organizationId, apiKeyId)
@@ -5276,12 +4951,6 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationAPIKey(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_api_key:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganizationAPIKey(w, r, productId, organizationId, apiKeyId)
 	}))
@@ -5317,14 +4986,6 @@ func (siw *ServerInterfaceWrapper) AddOrganizationMember(w http.ResponseWriter, 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_member:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddOrganizationMember(w, r, productId, organizationId)
 	}))
@@ -5359,14 +5020,6 @@ func (siw *ServerInterfaceWrapper) SearchOrganizationMembers(w http.ResponseWrit
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_member:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchOrganizationMembers(w, r, productId, organizationId)
@@ -5412,14 +5065,6 @@ func (siw *ServerInterfaceWrapper) RemoveOrganizationMember(w http.ResponseWrite
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_member:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RemoveOrganizationMember(w, r, productId, organizationId, productUserId)
 	}))
@@ -5463,14 +5108,6 @@ func (siw *ServerInterfaceWrapper) GetOrganizationMember(w http.ResponseWriter, 
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_member:read"})
-
-	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetOrganizationMemberParams
@@ -5532,14 +5169,6 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationMemberRole(w http.ResponseW
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"organization_member:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganizationMemberRole(w, r, productId, organizationId, productUserId)
 	}))
@@ -5575,12 +5204,6 @@ func (siw *ServerInterfaceWrapper) CreateOrganizationWorkspace(w http.ResponseWr
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"workspace:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateOrganizationWorkspace(w, r, productId, organizationId)
 	}))
@@ -5615,14 +5238,6 @@ func (siw *ServerInterfaceWrapper) SearchOrganizationWorkspaces(w http.ResponseW
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"workspace:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchOrganizationWorkspaces(w, r, productId, organizationId)
@@ -5668,12 +5283,6 @@ func (siw *ServerInterfaceWrapper) DeleteOrganizationWorkspace(w http.ResponseWr
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"workspace:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
 	}))
@@ -5717,14 +5326,6 @@ func (siw *ServerInterfaceWrapper) GetOrganizationWorkspace(w http.ResponseWrite
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"workspace:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
@@ -5770,12 +5371,6 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationWorkspace(w http.ResponseWr
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"workspace:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
 	}))
@@ -5801,12 +5396,6 @@ func (siw *ServerInterfaceWrapper) SearchProductPermissions(w http.ResponseWrite
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductPermissions(w, r, productId)
@@ -5843,12 +5432,6 @@ func (siw *ServerInterfaceWrapper) GetProductPermission(w http.ResponseWriter, r
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductPermission(w, r, productId, permissionId)
 	}))
@@ -5875,12 +5458,6 @@ func (siw *ServerInterfaceWrapper) CreateProductUser(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProductUser(w, r, productId)
 	}))
@@ -5906,14 +5483,6 @@ func (siw *ServerInterfaceWrapper) SearchProductUsers(w http.ResponseWriter, r *
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductUsers(w, r, productId)
@@ -5950,12 +5519,6 @@ func (siw *ServerInterfaceWrapper) DeleteProductUser(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProductUser(w, r, productId, productUserId)
 	}))
@@ -5991,12 +5554,6 @@ func (siw *ServerInterfaceWrapper) GetProductUser(w http.ResponseWriter, r *http
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:read"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductUser(w, r, productId, productUserId)
 	}))
@@ -6031,12 +5588,6 @@ func (siw *ServerInterfaceWrapper) ListUserOrganizations(w http.ResponseWriter, 
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:read"})
-
-	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListUserOrganizationsParams
@@ -6098,12 +5649,6 @@ func (siw *ServerInterfaceWrapper) GetUserOrganization(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_user:read"})
-
-	r = r.WithContext(ctx)
-
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUserOrganizationParams
 
@@ -6146,14 +5691,6 @@ func (siw *ServerInterfaceWrapper) CreateProductResourcePermission(w http.Respon
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"resources_permissions:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProductResourcePermission(w, r, productId)
 	}))
@@ -6179,14 +5716,6 @@ func (siw *ServerInterfaceWrapper) SearchProductResourcePermissions(w http.Respo
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"resources_permissions:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductResourcePermissions(w, r, productId)
@@ -6223,14 +5752,6 @@ func (siw *ServerInterfaceWrapper) DeleteProductResourcePermission(w http.Respon
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"resources_permissions:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProductResourcePermission(w, r, productId, permissionName)
 	}))
@@ -6265,14 +5786,6 @@ func (siw *ServerInterfaceWrapper) GetProductResourcePermission(w http.ResponseW
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "permission_name", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"resources_permissions:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductResourcePermission(w, r, productId, permissionName)
@@ -6309,14 +5822,6 @@ func (siw *ServerInterfaceWrapper) UpdateProductResourcePermission(w http.Respon
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"resources_permissions:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductResourcePermission(w, r, productId, permissionName)
 	}))
@@ -6343,14 +5848,6 @@ func (siw *ServerInterfaceWrapper) CreateProductRole(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:create"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProductRole(w, r, productId)
 	}))
@@ -6376,14 +5873,6 @@ func (siw *ServerInterfaceWrapper) SearchProductRoles(w http.ResponseWriter, r *
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchProductRoles(w, r, productId)
@@ -6420,14 +5909,6 @@ func (siw *ServerInterfaceWrapper) DeleteProductRole(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:delete"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteProductRole(w, r, productId, roleId)
 	}))
@@ -6462,14 +5943,6 @@ func (siw *ServerInterfaceWrapper) GetProductRole(w http.ResponseWriter, r *http
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:read"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductRole(w, r, productId, roleId)
@@ -6506,14 +5979,6 @@ func (siw *ServerInterfaceWrapper) UpdateProductRole(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:update"})
-
-	r = r.WithContext(ctx)
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProductRole(w, r, productId, roleId)
 	}))
@@ -6548,14 +6013,6 @@ func (siw *ServerInterfaceWrapper) AssignPermissionToProductRole(w http.Response
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:update"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AssignPermissionToProductRole(w, r, productId, roleId)
@@ -6600,14 +6057,6 @@ func (siw *ServerInterfaceWrapper) UnassignPermissionFromProductRole(w http.Resp
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "permission_id", Err: err})
 		return
 	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, PlatformBearerAuthScopes, []string{})
-
-	ctx = context.WithValue(ctx, ProductApiKeyAuthScopes, []string{"product_role:update"})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UnassignPermissionFromProductRole(w, r, productId, roleId, permissionId)
