@@ -14,13 +14,13 @@ import (
 	"anchor/internal/email/renderer"
 	emailrepo "anchor/internal/email/repository"
 	"anchor/internal/integration/provider"
-	"anchor/internal/logx"
 	intrepo "anchor/internal/repository"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 )
 
@@ -100,7 +100,7 @@ var (
 // unchanged to keep the context-cancellation logging policy (logx) from
 // surfacing it on error dashboards and alerts.
 func classifyDispatchError(err error) error {
-	if logx.IsContextError(err) {
+	if log.IsContextError(err) {
 		return err
 	}
 	if errors.Is(err, provider.ErrMessageRejected) {
@@ -526,7 +526,7 @@ func (s *emailService) PublishTemplate(
 	// not roll back the publish.
 	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
+		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
 	}
 	newDraft := email.TemplateVersion{
@@ -541,13 +541,13 @@ func (s *emailService) PublishTemplate(
 	newDraft.GenerateID()
 	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
+		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
 		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
 	}
 	if err = s.templateRepo.SetVersionPointers(
 		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
 	); err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
+		log.Ctx(ctx).Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
 	}
 	return *published, nil
 }
@@ -774,7 +774,7 @@ func (s *emailService) Send(
 		if updErr := s.sendRepo.UpdateStatus(
 			ctx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
-			logx.EventForError(&s.logger, updErr).Err(updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
+			log.Event(&s.logger, updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
@@ -785,7 +785,7 @@ func (s *emailService) Send(
 	if err = s.sendRepo.UpdateStatus(
 		ctx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
-		logx.EventForError(&s.logger, err).Err(err).Str("send_id", persisted.ID).Msg("update SENT status")
+		log.Event(&s.logger, err).Str("send_id", persisted.ID).Msg("update SENT status")
 	}
 	persisted.Status = email.SendStatusSent
 	persisted.SentAt = &now

@@ -7,6 +7,7 @@ import (
 
 	clerkapi "github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/integration/provider"
 )
@@ -23,7 +24,7 @@ func (p *Provider) Reconcile(
 
 	apiKey := strings.TrimSpace(cfg.APIKey)
 	if apiKey == "" {
-		p.logger.Info().Msg("clerk api key not configured, reconciliation skipped")
+		log.Ctx(ctx).Info().Msg("clerk api key not configured, reconciliation skipped")
 		return nil, nil
 	}
 
