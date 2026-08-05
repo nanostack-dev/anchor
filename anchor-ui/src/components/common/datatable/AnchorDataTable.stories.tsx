@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, within } from "storybook/test";
 
 import { StatusBadge } from "@/components/common/StatusBadge";
 
@@ -102,53 +102,119 @@ export const Empty: Story = {
 };
 
 /**
- * KNOWN DEFECT — the header select control is inert.
- *
- * It is a `DropdownMenuTrigger` whose `render` prop is a `Checkbox`. Clicking it
- * does NOTHING: no Select menu opens, and `onCheckedChange` never fires, so
- * `selectAllMode` never leaves "none". Both behaviours are lost in the
- * composition — the same family of Base UI `render`-prop trap as the
- * `Menu.GroupLabel` error #31 case, and like that one the fix belongs at this
- * call site, not in `components/ui/dropdown-menu.tsx`.
- *
- * The assertions below pin the CURRENT broken behaviour so the fix has a
- * failing baseline. When the control works, invert them: the menu opens, "All
- * in current page" selects every visible row.
+ * Every assertion below re-queries the checkboxes instead of holding a
+ * reference across a click. `columns` is rebuilt on each render, so `flexRender`
+ * hands React a fresh cell component type and the whole cell subtree remounts
+ * whenever the selection changes — a reference captured before a click points
+ * at a detached node that still reads `aria-checked="false"`.
  */
-export const SelectAllIsInert: Story = {
+const selectionState = (canvasElement: HTMLElement) =>
+	within(canvasElement)
+		.getAllByLabelText("Select row")
+		.map((box) => box.getAttribute("aria-checked"));
+
+/**
+ * The header checkbox and the header menu are two controls, not one.
+ *
+ * They used to be a single `DropdownMenuTrigger` rendered *as* the `Checkbox`,
+ * and neither half worked. This pins the checkbox half: ticking it selects every
+ * row on the page, unticking it clears them. What blocked that was not the
+ * merged trigger but the header cell around it — an unsortable column was
+ * wrapped in a `disabled` button, and a disabled button eats clicks meant for
+ * anything inside it.
+ */
+export const SelectAllTogglesPage: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
 		await userEvent.click(canvas.getByLabelText("Select all"));
+		await expect(selectionState(canvasElement)).toEqual([
+			"true",
+			"true",
+			"true",
+		]);
 
-		await expect(
-			screen.queryByRole("menuitem", { name: "All in current page" }),
-		).not.toBeInTheDocument();
-
-		for (const box of canvas.getAllByLabelText("Select row")) {
-			await expect(box).not.toBeChecked();
-		}
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await expect(selectionState(canvasElement)).toEqual([
+			"false",
+			"false",
+			"false",
+		]);
 	},
 };
 
 /**
- * KNOWN DEFECT — selecting ONE row does not stick.
- *
- * The row checkbox's `onCheckedChange` calls `row.toggleSelected(value)` and
- * then `setSelectAllMode("none")`; the effect watching `selectAllMode` responds
- * to "none" by clearing `rowSelection` outright, so the toggle is wiped on the
- * next render. `onSelectionChange` fires with `[]` and the box stays unchecked.
- *
- * Same deal as above: the assertion pins the bug so the fix breaks it loudly.
+ * And this pins the menu half — the scope choices the checkbox alone cannot
+ * express. THIS is what the merged trigger/checkbox broke: a `Menu.Trigger`
+ * rendered as a `Checkbox` never opens its menu, clickable or not. It needs a
+ * trigger of its own.
  */
-export const RowSelectionDoesNotStick: Story = {
+export const SelectAllMenuOpens: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		const [firstRow] = canvas.getAllByLabelText("Select row");
 
-		await userEvent.click(firstRow);
+		await userEvent.click(canvas.getByLabelText("Selection options"));
 
-		await expect(firstRow).not.toBeChecked();
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "All in current page" }),
+		);
+
+		await expect(selectionState(canvasElement)).toEqual([
+			"true",
+			"true",
+			"true",
+		]);
+	},
+};
+
+/**
+ * Selecting ONE row sticks, and gets reported.
+ *
+ * The row checkbox used to call `row.toggleSelected(value)` and then
+ * `setSelectAllMode("none")`. From a cleared table that was a no-op write —
+ * React bails out of a same-value `setState`, the effect never re-ran, and the
+ * tick survived by accident. What did NOT survive is the report: the caller was
+ * only ever told about a selection by that effect, so an individually picked row
+ * left `onSelectionChange` stuck on its mount-time `[]`. The `toggleSelected`
+ * assertion is a regression guard; the `onSelectionChange` one is the defect.
+ */
+export const RowSelectionSticks: Story = {
+	args: {
+		onSelectionChange: fn(),
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await userEvent.click(canvas.getAllByLabelText("Select row")[0]);
+
+		await expect(selectionState(canvasElement)).toEqual([
+			"true",
+			"false",
+			"false",
+		]);
+		await expect(canvas.getByText(/1 of 3 row\(s\) selected/)).toBeVisible();
+		await expect(args.onSelectionChange).toHaveBeenLastCalledWith([rows[0]]);
+	},
+};
+
+/**
+ * Deselecting one row out of a whole-page selection keeps the rest. This is the
+ * case the old "none"-means-both state machine could not express at all: the
+ * moment any row checkbox moved, every row was cleared.
+ */
+export const RowDeselectionKeepsTheRest: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await userEvent.click(canvas.getAllByLabelText("Select row")[1]);
+
+		await expect(selectionState(canvasElement)).toEqual([
+			"true",
+			"false",
+			"true",
+		]);
+		await expect(canvas.getByText(/2 of 3 row\(s\) selected/)).toBeVisible();
 	},
 };
 
