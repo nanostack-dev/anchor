@@ -298,8 +298,10 @@ components:
     Metadata:
       type: object
       additionalProperties: true
-      description: Optional key-value metadata. Values can be string, number, 
-        boolean.
+      description: Optional key-value metadata. Values can be string, number,
+        boolean. At most 50 keys; keys are at most 64 characters and string
+        values at most 512 characters. Sending metadata replaces the stored
+        metadata in full.
       examples: [{"billing_ref": "cust_abc123", "region": "us-east-1", "sla_level": "gold"}]
     # Auth
     AuthTokenResponse:

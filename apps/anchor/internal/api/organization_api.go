@@ -2,11 +2,37 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/organization"
 )
+
+// mapMetadataToResponse decodes stored organization metadata for the API
+// response. Metadata is written through a validating service path, so a value
+// that no longer decodes is treated as absent rather than failing the read.
+func mapMetadataToResponse(metadataJSON json.RawMessage) *Metadata {
+	if len(metadataJSON) == 0 {
+		return nil
+	}
+
+	var metadata Metadata
+	if err := json.Unmarshal(metadataJSON, &metadata); err != nil {
+		return nil
+	}
+
+	return &metadata
+}
+
+// mapMetadataToInput converts a request-body metadata object into the plain map
+// the service layer validates.
+func mapMetadataToInput(metadata *Metadata) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	return *metadata
+}
 
 func mapOrganizationToResponse(org organization.Organization) ProductOrganizationResponse {
 	return ProductOrganizationResponse{
@@ -14,6 +40,7 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 		ProductId:   org.ProductID,
 		Name:        org.Name,
 		Description: org.Description,
+		Metadata:    mapMetadataToResponse(org.MetadataJSON),
 		CreatedAt:   org.CreatedAt,
 		UpdatedAt:   org.UpdatedAt,
 	}
@@ -27,6 +54,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 			ProductID:     request.ProductId,
 			Name:          request.Body.Name,
 			Description:   request.Body.Description,
+			Metadata:      mapMetadataToInput(request.Body.Metadata),
 			ProductUserID: request.Body.FoundingMember.ProductUserId,
 			RoleID:        request.Body.FoundingMember.RoleId,
 		}
@@ -48,6 +76,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 		ProductID:   request.ProductId,
 		Name:        request.Body.Name,
 		Description: request.Body.Description,
+		Metadata:    mapMetadataToInput(request.Body.Metadata),
 	}
 
 	createdOrganization, err := s.OrganizationService.Create(ctx, input)
@@ -139,6 +168,7 @@ func (s *AnchorAPI) UpdateProductOrganization(
 		OrganizationID: request.OrganizationId,
 		Name:           &request.Body.Name,
 		Description:    request.Body.Description,
+		Metadata:       mapMetadataToInput(request.Body.Metadata),
 	}
 
 	updatedOrganization, err := s.OrganizationService.Update(ctx, input)

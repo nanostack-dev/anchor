@@ -464,5 +464,6 @@ func mapUserOrgMembershipToResponse(
 	response.Organization.Id = m.OrganizationID
 	response.Organization.Name = m.OrganizationName
 	response.Organization.Description = m.OrganizationDescription
+	response.Organization.Metadata = mapMetadataToResponse(m.OrganizationMetadataJSON)
 	return response
 }
