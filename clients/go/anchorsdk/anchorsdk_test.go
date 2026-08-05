@@ -553,6 +553,17 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantPath:   "/v1/products/prd_test/auth/introspect",
 			wantBody:   `{"api_key":"anchor_org_apikey_x","required_scopes":["flow:read"]}`,
 		},
+		{
+			name:  "introspect without scopes still sends required_scopes",
+			reply: stubResponse{status: http.StatusOK, body: `{"api_key":{},"permissions":[],"missing_privileges":[]}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Introspect(ctx, "anchor_org_apikey_x")
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/auth/introspect",
+			wantBody:   `{"api_key":"anchor_org_apikey_x","required_scopes":[]}`,
+		},
 	}
 
 	for _, tt := range tests {
