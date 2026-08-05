@@ -12,20 +12,21 @@ Licensing is the largest new subsystem Anchor has taken on. Building it flat wou
 
 ## Decision
 
-Licensing is built as `internal/feature/licenses/`, following echopoint's slice layout:
+Licensing is built as a self-contained package tree with its own fx module, following the shape `internal/email/` already established in this repository:
 
 ```
-internal/feature/licenses/
+internal/license/
 ├── module.go              fx wiring
-├── handler.go
-├── service.go             validation, status derivation
-├── repository.go          go-jet, hypertable reads
-├── api_mapper.go
-├── db_mapper.go
-├── errors.go
-├── validation_errors.go
+├── service/               validation, status derivation
+├── repository/            go-jet, hypertable reads
 └── rules/                 validation-rule evaluator, import-clean
 ```
+
+**Amended after implementation began.** This ADR originally specified `internal/feature/licenses/` with `handler.go` inside the slice, copying echopoint verbatim. That is not achievable here: anchor's generated API is a single `StrictServerInterface` implemented by one `AnchorAPI` struct, so no feature package can own its own HTTP handler without regenerating the API surface into per-tag interfaces — a change well outside this work.
+
+`internal/email/` is the real in-repo precedent and already achieves the goal: a subsystem's layers co-located in its own tree with its own module, rather than smeared across the flat `internal/service` and `internal/repository` packages. Matching it introduces **one** new pattern to anchor rather than two.
+
+API handler methods therefore stay in `internal/api`, alongside the existing email handlers, and delegate to the licensing service. That is the seam the generated interface forces.
 
 The `rules/` subpackage holds the structured-rule evaluator from [ADR-0004](0004-license-schema-template-and-copy.md) and imports nothing licensing-specific. It is a candidate for later extraction into `nanostack-framework` — but only once a second real caller exists. Today the email subsystem has no validation rules, so extracting now would produce "shared" code with exactly one caller, moved somewhere harder to change.
 
