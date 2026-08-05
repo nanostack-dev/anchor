@@ -101,13 +101,7 @@ export const Empty: Story = {
 	},
 };
 
-/**
- * Every assertion below re-queries the checkboxes instead of holding a
- * reference across a click. `columns` is rebuilt on each render, so `flexRender`
- * hands React a fresh cell component type and the whole cell subtree remounts
- * whenever the selection changes — a reference captured before a click points
- * at a detached node that still reads `aria-checked="false"`.
- */
+/** Reads the tick state of every row checkbox, in row order. */
 const selectionState = (canvasElement: HTMLElement) =>
 	within(canvasElement)
 		.getAllByLabelText("Select row")
@@ -215,6 +209,32 @@ export const RowDeselectionKeepsTheRest: Story = {
 			"true",
 		]);
 		await expect(canvas.getByText(/2 of 3 row\(s\) selected/)).toBeVisible();
+	},
+};
+
+/**
+ * Cells survive a selection change instead of being remounted.
+ *
+ * The column array handed to `useReactTable` used to be rebuilt inline on every
+ * render, so `flexRender` handed React a brand new component type each time and
+ * every header and cell subtree unmounted — on each selection toggle, and on
+ * each keystroke in the search box. A node captured before a click ended up
+ * detached, still reading `aria-checked="false"` while the live table showed the
+ * row selected. Holding the reference across the click is the assertion: it only
+ * passes while the column definitions stay referentially stable.
+ */
+export const SelectionDoesNotRemountCells: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		const firstRowCheckbox = canvas.getAllByLabelText("Select row")[0];
+		await userEvent.click(firstRowCheckbox);
+
+		await expect(firstRowCheckbox).toBeInTheDocument();
+		await expect(firstRowCheckbox).toHaveAttribute("aria-checked", "true");
+		await expect(canvas.getAllByLabelText("Select row")[0]).toBe(
+			firstRowCheckbox,
+		);
 	},
 };
 
