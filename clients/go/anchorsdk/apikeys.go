@@ -37,9 +37,17 @@ func (c *Client) Introspect(
 ) (*nanoclient.OrganizationAPIKeyValidateResponse, error) {
 	const op = "Client.Introspect"
 
-	body := nanoclient.IntrospectOrganizationAPIKeyJSONRequestBody{ApiKey: rawKey}
-	if len(requiredScopes) > 0 {
-		body.RequiredScopes = new(requiredScopes)
+	// Anchor models required_scopes as optional here but required on the validate
+	// endpoint. Always send it, normalized to a non-nil slice, so an empty scope
+	// set produces the same body shape as a populated one — callers stubbing this
+	// endpoint can then match one request shape instead of two.
+	scopes := requiredScopes
+	if scopes == nil {
+		scopes = []string{}
+	}
+	body := nanoclient.IntrospectOrganizationAPIKeyJSONRequestBody{
+		ApiKey:         rawKey,
+		RequiredScopes: &scopes,
 	}
 
 	return retrying(ctx, c, func(ctx context.Context) (*nanoclient.OrganizationAPIKeyValidateResponse, error) {
