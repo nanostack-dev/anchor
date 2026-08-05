@@ -26,6 +26,16 @@ function getBreadcrumbs(pathname: string) {
 	return crumbs;
 }
 
+/**
+ * A breadcrumb trail must carry exactly one `aria-current="page"`, on the final
+ * crumb. TanStack Router marks a `<Link>` active on a prefix match by default
+ * (`exact: false`), so every ancestor crumb would also claim to be the current
+ * page — three claims at /products/checkout-api/api-keys, all announced by a
+ * screen reader. Ancestors are by definition not the current page, so the crumb
+ * links opt into exact matching and leave the marker to `BreadcrumbPage`.
+ */
+const crumbActiveOptions = { exact: true } as const;
+
 type PageVariant = "full" | "wide" | "narrow" | "default";
 
 type PageProps = {
@@ -84,6 +94,7 @@ export function Page({
 										{idx === 0 ? (
 											<Link
 												to={crumb.path}
+												activeOptions={crumbActiveOptions}
 												className="inline-flex items-center gap-1 transition-colors hover:text-foreground focus-visible:underline"
 												aria-label="Dashboard"
 											>
@@ -107,6 +118,7 @@ export function Page({
 										) : (
 											<Link
 												to={crumb.path}
+												activeOptions={crumbActiveOptions}
 												className="transition-colors hover:text-foreground focus-visible:underline"
 											>
 												<span

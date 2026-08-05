@@ -31,6 +31,7 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
@@ -60,9 +61,18 @@ import {
 	TableRow,
 } from "../../ui/table";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { FacetedFilter } from "./FacetedFilter";
+
+/**
+ * How the current selection came to be.
+ *
+ * "custom" is what individual row checkboxes produce. It exists so the effect
+ * below can tell "the user picked these rows" apart from "the selection was
+ * cleared" — collapsing both onto "none" is what made a row toggle wipe itself.
+ */
+type SelectAllMode = "none" | "page" | "all-matching" | "custom";
 
 type FilterDef =
 	| {
@@ -161,15 +171,16 @@ export function AnchorDataTable<
 }: AnchorDataTableProps<TData, TFilters>) {
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-	const [selectAllMode, setSelectAllMode] = useState<
-		"none" | "page" | "all-matching"
-	>("none");
+	const [selectAllMode, setSelectAllMode] = useState<SelectAllMode>("none");
 
 	const buildFilterValues = () =>
 		Object.fromEntries(
 			(filters ?? []).map((filter) => [filter.key, filter.value]),
 		);
 
+	// Bulk modes own `rowSelection` outright: each one rewrites it from the mode.
+	// "custom" is deliberately absent — under it the row checkboxes are the only
+	// writer, so this effect must not touch the selection at all.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: page selection must resync when visible rows change across pagination and filtering.
 	useEffect(() => {
 		if (!enableRowSelection) return;
@@ -199,6 +210,25 @@ export function AnchorDataTable<
 		data,
 		pagination.pageIndex,
 		pagination.pageSize,
+	]);
+
+	// Reporting half of "custom": read the selection the row checkboxes wrote and
+	// hand it out. Kept separate from the effect above so that `rowSelection` can
+	// be a dependency here without the bulk modes re-triggering on the very state
+	// they just wrote.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the report must resend when the picked rows change identity across pagination and filtering.
+	useEffect(() => {
+		if (!enableRowSelection) return;
+		if (selectAllMode !== "custom") return;
+		onSelectionChange?.(
+			table.getSelectedRowModel().rows.map((row) => row.original),
+		);
+	}, [
+		selectAllMode,
+		enableRowSelection,
+		onSelectionChange,
+		rowSelection,
+		data,
 	]);
 
 	const hasActiveFilters = (filters ?? []).some(
@@ -286,71 +316,110 @@ export function AnchorDataTable<
 		);
 	};
 
+	// The select column is read through a ref rather than closing over
+	// `selectAllMode` directly. A column definition that changes identity makes
+	// `flexRender` hand React a brand new component type for every header and
+	// cell, so the entire table body unmounts and remounts — on each selection
+	// toggle, each keystroke, each page change. Reading the mode from a ref keeps
+	// the definition referentially stable while the header still renders the
+	// current value: React re-renders the header whenever this component
+	// re-renders, which is exactly when the mode changes.
+	const selectAllModeRef = useRef(selectAllMode);
+	selectAllModeRef.current = selectAllMode;
+
+	const selectColumn = useMemo<DataTableColumnDef<TData>>(
+		() => ({
+			id: "select",
+			// The checkbox and the menu are siblings, not one control.
+			//
+			// This used to be a single `DropdownMenuTrigger` whose `render` was
+			// the Checkbox, and it was inert for two independent reasons. The
+			// menu never opened: merging the two through `render` drops the
+			// trigger's own open behaviour, and it stays dropped even once the
+			// element is clickable. `onCheckedChange` never fired either, but
+			// for the unrelated reason below — the `disabled` header button
+			// this sat inside swallowed the click before it arrived.
+			//
+			// Splitting them is the call-site fix. `components/ui/dropdown-menu.tsx`
+			// is canonical shadcn and is not where this gets patched.
+			header: ({ table }) => (
+				<div className="flex items-center gap-1">
+					<Checkbox
+						checked={
+							selectAllModeRef.current === "all-matching" ||
+							table.getIsAllPageRowsSelected()
+						}
+						indeterminate={
+							selectAllModeRef.current !== "all-matching" &&
+							!table.getIsAllPageRowsSelected() &&
+							table.getIsSomePageRowsSelected()
+						}
+						aria-label="Select all"
+						onCheckedChange={(checked) =>
+							setSelectAllMode(checked ? "page" : "none")
+						}
+					/>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={
+								<Button
+									variant="ghost"
+									size="icon-xs"
+									aria-label="Selection options"
+									className="text-muted-foreground hover:text-foreground"
+								/>
+							}
+						>
+							<ChevronDown />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							{/* The label has to sit inside a Group — Base UI's
+								GroupLabel throws "MenuGroupContext is missing" outside
+								one, which took the whole popup down with it. */}
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Select</DropdownMenuLabel>
+								<DropdownMenuItem onClick={() => setSelectAllMode("none")}>
+									None
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setSelectAllMode("page")}>
+									All in current page
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={() => setSelectAllMode("all-matching")}
+								>
+									All matching query
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+			),
+			cell: ({ row }) => (
+				<Checkbox
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => {
+						row.toggleSelected(!!value);
+						setSelectAllMode("custom");
+					}}
+					aria-label="Select row"
+				/>
+			),
+			enableSorting: false,
+			enableHiding: false,
+		}),
+		[],
+	);
+
+	// Memoized for the same reason the definition above is: a fresh array here
+	// rebuilds every column on every render, which is what remounts the table.
+	const tableColumns = useMemo(
+		() => (enableRowSelection ? [selectColumn, ...columns] : columns),
+		[enableRowSelection, selectColumn, columns],
+	);
+
 	const table = useReactTable({
 		data,
-		columns: enableRowSelection
-			? [
-					{
-						id: "select",
-						header: ({ table }) => (
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={
-										<Checkbox
-											checked={
-												selectAllMode === "all-matching" ||
-												table.getIsAllPageRowsSelected()
-											}
-											indeterminate={
-												selectAllMode !== "all-matching" &&
-												!table.getIsAllPageRowsSelected() &&
-												table.getIsSomePageRowsSelected()
-											}
-											aria-label="Select all"
-											onCheckedChange={() => {
-												setSelectAllMode((prev) =>
-													prev === "none"
-														? "page"
-														: prev === "page"
-															? "all-matching"
-															: "none",
-												);
-											}}
-										/>
-									}
-								/>
-								<DropdownMenuContent align="start">
-									<DropdownMenuLabel>Select</DropdownMenuLabel>
-									<DropdownMenuItem onClick={() => setSelectAllMode("none")}>
-										None
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => setSelectAllMode("page")}>
-										All in current page
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => setSelectAllMode("all-matching")}
-									>
-										All matching query
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						),
-						cell: ({ row }) => (
-							<Checkbox
-								checked={row.getIsSelected()}
-								onCheckedChange={(value) => {
-									row.toggleSelected(!!value);
-									setSelectAllMode("none");
-								}}
-								aria-label="Select row"
-							/>
-						),
-						enableSorting: false,
-						enableHiding: false,
-					},
-					...columns,
-				]
-			: columns,
+		columns: tableColumns,
 		pageCount: Math.ceil(total / pagination.pageSize),
 		state: {
 			pagination,
@@ -451,33 +520,38 @@ export function AnchorDataTable<
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
 									<TableHead key={header.id}>
-										{header.isPlaceholder ? null : (
+										{header.isPlaceholder ? null : header.column.getCanSort() ? (
 											<button
 												type="button"
-												className={`flex items-center gap-2 ${
-													header.column.getCanSort()
-														? "cursor-pointer select-none hover:text-foreground"
-														: ""
-												}`}
+												className="flex cursor-pointer items-center gap-2 select-none hover:text-foreground"
 												onClick={header.column.getToggleSortingHandler()}
-												disabled={!header.column.getCanSort()}
 											>
 												{flexRender(
 													header.column.columnDef.header,
 													header.getContext(),
 												)}
-												{header.column.getCanSort() && (
-													<span className="ml-1">
-														{header.column.getIsSorted() === "desc" ? (
-															<ArrowDown className="size-4" />
-														) : header.column.getIsSorted() === "asc" ? (
-															<ArrowUp className="size-4" />
-														) : (
-															<ArrowUpDown className="size-4 text-muted-foreground" />
-														)}
-													</span>
-												)}
+												<span className="ml-1">
+													{header.column.getIsSorted() === "desc" ? (
+														<ArrowDown className="size-4" />
+													) : header.column.getIsSorted() === "asc" ? (
+														<ArrowUp className="size-4" />
+													) : (
+														<ArrowUpDown className="size-4 text-muted-foreground" />
+													)}
+												</span>
 											</button>
+										) : (
+											// Unsortable headers render bare. Every header used to be
+											// wrapped in a button that was `disabled` when the column
+											// could not sort, and a disabled button makes its whole
+											// subtree unclickable — which is what kept the selection
+											// header's checkbox from ever seeing a click.
+											<div className="flex items-center gap-2">
+												{flexRender(
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
+											</div>
 										)}
 									</TableHead>
 								))}
@@ -491,10 +565,7 @@ export function AnchorDataTable<
 									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder rows have no stable id.
 									key={`skeleton-row-${rowIndex}`}
 								>
-									{(enableRowSelection
-										? [{ id: "select" }, ...columns]
-										: columns
-									).map((column, cellIndex) => (
+									{tableColumns.map((column, cellIndex) => (
 										<TableCell
 											key={`skeleton-cell-${rowIndex}-${column.id ?? cellIndex}`}
 										>

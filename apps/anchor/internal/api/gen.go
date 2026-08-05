@@ -676,7 +676,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// Metadata Optional key-value metadata. Values can be string, number, boolean.
+// Metadata Optional key-value metadata. Values can be string, number, boolean. At most 50 keys; keys are at most 64 characters and string values at most 512 characters. Sending metadata replaces the stored metadata in full.
 //
 // Examples: {"billing_ref":"cust_abc123","region":"us-east-1","sla_level":"gold"}
 type Metadata map[string]interface{}
