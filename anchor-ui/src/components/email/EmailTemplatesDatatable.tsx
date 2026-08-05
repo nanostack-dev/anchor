@@ -72,7 +72,7 @@ export function EmailTemplatesDatatable() {
 		};
 	}, [pagination, productId]);
 
-	const { data, isLoading, error } = useQuery({
+	const { data, isLoading, error, refetch } = useQuery({
 		...listEmailTemplatesOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct,
@@ -229,6 +229,11 @@ export function EmailTemplatesDatatable() {
 				columns={columns}
 				data={data?.items ?? []}
 				loading={isLoading}
+				resourceName="templates"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={data?.count ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -236,11 +241,6 @@ export function EmailTemplatesDatatable() {
 				onSortingChange={setSorting}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<p className="text-sm text-destructive">
-					Failed to load templates: {error.message}
-				</p>
-			)}
 		</div>
 	);
 }

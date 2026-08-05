@@ -70,6 +70,7 @@ export function ProductPermissionDatatable({
 		data: productPermissionData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductPermissionsOptions(searchProductPermissionsOptionsParams),
 		placeholderData: keepPreviousData,
@@ -157,6 +158,11 @@ export function ProductPermissionDatatable({
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="permissions"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -182,11 +188,6 @@ export function ProductPermissionDatatable({
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load permissions: {error.message}
-				</div>
-			)}
 		</>
 	);
 }

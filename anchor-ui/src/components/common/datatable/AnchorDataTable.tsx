@@ -13,8 +13,18 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
+import {
+	ArrowDown,
+	ArrowUp,
+	ArrowUpDown,
+	ChevronDown,
+	Inbox,
+	RotateCw,
+	SearchX,
+	TriangleAlert,
+} from "lucide-react";
 
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import {
@@ -25,6 +35,13 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "../../ui/empty";
 import { Input } from "../../ui/input";
 import {
 	Select,
@@ -94,6 +111,27 @@ interface AnchorDataTableProps<
 	pageSizeOptions?: number[];
 	onSelectionChange?: (selected: TData[] | "all-matching" | []) => void;
 	enableRowSelection?: boolean;
+	/**
+	 * Plural noun for the rows, e.g. `"organizations"`. Used verbatim in the
+	 * empty and error copy so every table names what it could not show.
+	 */
+	resourceName?: string;
+	/** Load failure for `data`. The table renders it in place of the rows. */
+	error?: unknown;
+	/** Wire to the query's `refetch` so the error state can offer a retry. */
+	onRetry?: () => void;
+}
+
+/**
+ * API messages arrive with inconsistent punctuation, and these are stitched
+ * into sentences alongside our own copy. Terminate them so the seam reads.
+ */
+function errorMessage(error: unknown): string | undefined {
+	const raw =
+		getApiErrorMessage(error) ??
+		(error instanceof Error ? error.message : undefined);
+	if (!raw) return undefined;
+	return /[.!?]$/.test(raw) ? raw : `${raw}.`;
 }
 
 export function AnchorDataTable<
@@ -117,6 +155,9 @@ export function AnchorDataTable<
 	pageSizeOptions = [10, 20, 50, 100],
 	onSelectionChange,
 	enableRowSelection = true,
+	resourceName,
+	error,
+	onRetry,
 }: AnchorDataTableProps<TData, TFilters>) {
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -160,22 +201,41 @@ export function AnchorDataTable<
 		pagination.pageSize,
 	]);
 
+	const hasActiveFilters = (filters ?? []).some(
+		(filter) => filter.value.length > 0,
+	);
+	const hasActiveSearch = (fullTextSearch ?? "").length > 0;
+	// A narrowed view: the user asked for a subset, so "nothing here" means
+	// "nothing matched", not "you have none".
+	const isNarrowed = hasActiveFilters || hasActiveSearch;
+	// Name what the user actually applied, so the recovery button names its action.
+	const narrowedBy =
+		hasActiveFilters && hasActiveSearch
+			? "search and filters"
+			: hasActiveFilters
+				? "filters"
+				: "search";
+
+	const clearAllFilters = () => {
+		if (!filters || !onFiltersChange) return;
+		onFiltersChange(
+			Object.fromEntries(
+				filters.map((f) => [f.key, f.type === "text" ? "" : []]),
+			) as TFilters,
+		);
+	};
+
+	// Recovery action offered by the "no matches" state: drop every constraint
+	// the user has applied, search included, and go back to page one.
+	const resetQuery = () => {
+		clearAllFilters();
+		onFullTextSearchChange?.("");
+		onPaginationChange({ ...pagination, pageIndex: 0 });
+	};
+
 	// Render standard filters UI if filters prop is provided
 	const renderFilters = () => {
 		if (!filters || !onFiltersChange) return null;
-
-		const hasActiveFilters = filters.some((filter) =>
-			filter.type === "text"
-				? filter.value.length > 0
-				: filter.value.length > 0,
-		);
-
-		const clearAllFilters = () => {
-			const clearedFilters = Object.fromEntries(
-				filters.map((f) => [f.key, f.type === "text" ? "" : []]),
-			);
-			onFiltersChange(clearedFilters as TFilters);
-		};
 
 		return (
 			<div className="flex gap-2 items-center">
@@ -314,6 +374,23 @@ export function AnchorDataTable<
 		debugTable: false,
 	});
 
+	const rows = table.getRowModel().rows;
+	const bodyColSpan = table.getVisibleLeafColumns().length;
+	const noun = resourceName ?? "results";
+	const detail = errorMessage(error);
+	// A failed refetch behind `keepPreviousData` still has usable rows on screen.
+	// Blanking them out would destroy more than it explains, so the full-body
+	// error state is reserved for the case where there is nothing left to read.
+	const showErrorState = !loading && !!error && rows.length === 0;
+	const showStaleWarning = !loading && !!error && rows.length > 0;
+
+	const retryButton = onRetry ? (
+		<Button variant="outline" size="sm" onClick={onRetry}>
+			<RotateCw />
+			Try again
+		</Button>
+	) : null;
+
 	return (
 		<div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
 			<div className="flex flex-col gap-2 p-4">
@@ -356,6 +433,16 @@ export function AnchorDataTable<
 					</DropdownMenu>
 				</div>
 				{renderFilters()}
+				{showStaleWarning && (
+					<output className="flex items-center gap-2 text-sm text-destructive">
+						<TriangleAlert className="size-4 shrink-0" />
+						<span>
+							Couldn&rsquo;t refresh {noun}
+							{detail ? `: ${detail}` : "."} Showing the last results loaded.
+						</span>
+						{retryButton}
+					</output>
+				)}
 			</div>
 			<div className="border-y border-border">
 				<Table>
@@ -416,8 +503,29 @@ export function AnchorDataTable<
 									))}
 								</TableRow>
 							))
-						) : table.getRowModel().rows.length ? (
-							table.getRowModel().rows.map((row) => (
+						) : showErrorState ? (
+							<TableRow className="hover:bg-transparent">
+								<TableCell colSpan={bodyColSpan} className="p-0">
+									<Empty
+										aria-live="polite"
+										className="border-none bg-transparent py-10"
+									>
+										<EmptyHeader>
+											<EmptyMedia variant="icon" className="text-destructive">
+												<TriangleAlert />
+											</EmptyMedia>
+											<EmptyTitle>Couldn&rsquo;t load {noun}</EmptyTitle>
+											<EmptyDescription>
+												{detail ??
+													"The request did not complete. Check your connection and try again."}
+											</EmptyDescription>
+										</EmptyHeader>
+										{retryButton}
+									</Empty>
+								</TableCell>
+							</TableRow>
+						) : rows.length ? (
+							rows.map((row) => (
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
@@ -433,14 +541,30 @@ export function AnchorDataTable<
 								</TableRow>
 							))
 						) : (
-							<TableRow>
-								<TableCell
-									colSpan={
-										enableRowSelection ? columns.length + 1 : columns.length
-									}
-									className="h-24 text-center text-sm text-muted-foreground"
-								>
-									No results.
+							<TableRow className="hover:bg-transparent">
+								<TableCell colSpan={bodyColSpan} className="p-0">
+									<Empty className="border-none bg-transparent py-10">
+										<EmptyHeader>
+											<EmptyMedia variant="icon">
+												{isNarrowed ? <SearchX /> : <Inbox />}
+											</EmptyMedia>
+											<EmptyTitle>
+												{isNarrowed
+													? `No ${noun} match your ${narrowedBy}`
+													: `No ${noun} yet`}
+											</EmptyTitle>
+											<EmptyDescription>
+												{isNarrowed
+													? `Try something broader, or clear the ${narrowedBy} you have applied.`
+													: `Once ${noun} exist, they will appear here.`}
+											</EmptyDescription>
+										</EmptyHeader>
+										{isNarrowed && (
+											<Button variant="outline" size="sm" onClick={resetQuery}>
+												Clear {narrowedBy}
+											</Button>
+										)}
+									</Empty>
 								</TableCell>
 							</TableRow>
 						)}
@@ -459,7 +583,7 @@ export function AnchorDataTable<
 						variant="outline"
 						size="sm"
 						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage() || loading}
+						disabled={!table.getCanPreviousPage() || loading || showErrorState}
 					>
 						Previous
 					</Button>
@@ -467,7 +591,7 @@ export function AnchorDataTable<
 						variant="outline"
 						size="sm"
 						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage() || loading}
+						disabled={!table.getCanNextPage() || loading || showErrorState}
 					>
 						Next
 					</Button>
@@ -497,7 +621,9 @@ export function AnchorDataTable<
 						))}
 					</SelectContent>
 				</Select>
-				<span className="ml-auto">{total} total</span>
+				<span className="ml-auto text-sm text-muted-foreground">
+					{showErrorState ? "" : `${total} total`}
+				</span>
 			</div>
 		</div>
 	);
