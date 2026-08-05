@@ -74,17 +74,16 @@ export const Breadcrumbs: Story = {
 };
 
 /**
- * KNOWN DEFECT — deliberately asserted as-is so the fix has a failing baseline.
- *
  * A breadcrumb trail must carry exactly ONE `aria-current="page"`, on the final
- * crumb. Here every intermediate crumb is a TanStack `<Link>`, and the router
- * marks a link active on a PREFIX match — so at /products/checkout-api/api-keys
- * the /products and /products/checkout-api links both get `aria-current="page"`
- * too, on top of the `BreadcrumbPage`'s own. A screen reader is told three
- * different elements are the current page.
+ * crumb.
  *
- * The fix is `activeOptions={{ exact: true }}` on the crumb links. When that
- * lands, change the expected count to 1 — do not delete this story.
+ * This used to be a known defect: every ancestor crumb is a TanStack `<Link>`,
+ * and the router marks a link active on a PREFIX match by default — so at
+ * /products/checkout-api/api-keys the ancestor links each claimed
+ * `aria-current="page"` on top of the `BreadcrumbPage`'s own, and a screen
+ * reader was told several different elements were the current page. The crumb
+ * links now pass `activeOptions={{ exact: true }}`, so the marker is left to
+ * the final crumb alone. This story is the regression guard.
  */
 export const BreadcrumbsOverclaimCurrentPage: Story = {
 	play: async ({ canvasElement }) => {
@@ -92,7 +91,10 @@ export const BreadcrumbsOverclaimCurrentPage: Story = {
 		const nav = canvas.getByRole("navigation", { name: "Breadcrumb" });
 
 		const current = nav.querySelectorAll('[aria-current="page"]');
-		await expect(current).toHaveLength(3);
+		await expect(current).toHaveLength(1);
+
+		// ...and it is the final crumb, not one of its ancestors.
+		await expect(current[0]).toHaveTextContent("Api Keys");
 	},
 };
 
