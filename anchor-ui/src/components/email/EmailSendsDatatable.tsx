@@ -46,7 +46,7 @@ export function EmailSendsDatatable() {
 		};
 	}, [pagination, productId, statusFilter]);
 
-	const { data, isLoading, error } = useQuery({
+	const { data, isLoading, error, refetch } = useQuery({
 		...listEmailSendsOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct,
@@ -137,6 +137,11 @@ export function EmailSendsDatatable() {
 				columns={columns}
 				data={data?.items ?? []}
 				loading={isLoading}
+				resourceName="sends"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={data?.count ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -160,11 +165,6 @@ export function EmailSendsDatatable() {
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<p className="text-sm text-destructive mt-2">
-					Failed to load sends: {error.message}
-				</p>
-			)}
 		</>
 	);
 }
