@@ -12,10 +12,11 @@ import (
 )
 
 type Organizations struct {
-	ID          string `sql:"primary_key"`
-	ProductID   string
-	Name        string
-	Description *string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           string `sql:"primary_key"`
+	ProductID    string
+	Name         string
+	Description  *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	MetadataJSON *string
 }

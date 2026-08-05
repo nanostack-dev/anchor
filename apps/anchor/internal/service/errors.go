@@ -240,3 +240,46 @@ func NewOrganizationMembershipNotFoundError(
 		http.StatusNotFound,
 	)
 }
+
+func NewOrganizationMetadataTooManyKeysError(keyCount, maxKeys int) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_METADATA_TOO_MANY_KEYS",
+		fmt.Sprintf("Organization metadata accepts at most %d keys, got %d", maxKeys, keyCount),
+	).Metadata(map[string]any{
+		"key_count": keyCount,
+		"max_keys":  maxKeys,
+	})
+}
+
+func NewOrganizationMetadataInvalidKeyError(key string, maxKeyLength int) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_METADATA_INVALID_KEY",
+		fmt.Sprintf(
+			"Organization metadata keys must be non-blank and at most %d characters",
+			maxKeyLength,
+		),
+	).Metadata(map[string]any{
+		fieldMetadataKeyKey: key,
+	})
+}
+
+func NewOrganizationMetadataInvalidValueError(key string) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_METADATA_INVALID_VALUE",
+		"Organization metadata values must be a string, number, or boolean",
+	).Metadata(map[string]any{
+		fieldMetadataKeyKey: key,
+	})
+}
+
+func NewOrganizationMetadataValueTooLongError(key string, maxValueLength int) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_METADATA_VALUE_TOO_LONG",
+		fmt.Sprintf(
+			"Organization metadata string values must be at most %d characters",
+			maxValueLength,
+		),
+	).Metadata(map[string]any{
+		fieldMetadataKeyKey: key,
+	})
+}

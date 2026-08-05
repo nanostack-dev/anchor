@@ -1,6 +1,7 @@
 package user
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -32,11 +33,12 @@ func (u *ProductUser) GenerateID() {
 // OrganizationMembership represents an organization from the user's perspective,
 // including their role and membership details within that organization.
 type OrganizationMembership struct {
-	OrganizationID          string
-	OrganizationName        string
-	OrganizationDescription *string
-	RoleID                  string
-	RoleName                string
-	RolePermissions         []string // Only populated when include=role_permissions
-	JoinedAt                time.Time
+	OrganizationID           string
+	OrganizationName         string
+	OrganizationDescription  *string
+	OrganizationMetadataJSON json.RawMessage
+	RoleID                   string
+	RoleName                 string
+	RolePermissions          []string // Only populated when include=role_permissions
+	JoinedAt                 time.Time
 }
