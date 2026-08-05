@@ -73,7 +73,7 @@ docker run -d \
   -e POSTGRES_DB=anchor \
   -v anchor_postgres_data:/var/lib/postgresql/data \
   -p 5432:5432 \
-  postgres:16-alpine
+  timescale/timescaledb:2.23.0-pg18
 ```
 
 ### 3. Wait for PostgreSQL to be Ready
@@ -141,7 +141,7 @@ These have sensible defaults but can be customized:
 version: '3.8'
 services:
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:2.23.0-pg18
     restart: unless-stopped
     environment:
       POSTGRES_USER_FILE: /run/secrets/postgres_user
