@@ -8,7 +8,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 - Every exported service method validates its input via `nanostack-framework/pkg/validate` before any repository or transaction call.
 - Business rules live in the service layer, never in SQL. New migrations must not add `CHECK` constraints or business triggers — the DB keeps PK/FK/UNIQUE/NOT NULL/defaults and the `updated_at` trigger only. One exception: time-series aggregation is delegated to TimescaleDB (`time_bucket`, continuous aggregates, retention and compression policies) — see `docs/adr/0005-timescaledb-for-usage-history.md`. Interpreting a series is still service-layer work.
-- Layout is migrating to echopoint's vertical feature slices (`internal/feature/<plural>/`). New subsystems use them; the flat `internal/service` and `internal/api` packages are the older pattern, not the target. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
+- New subsystems get their own package tree with an fx module (`internal/email/`, `internal/license/`), not another file in the flat `internal/service` and `internal/repository` packages. API handler methods stay in `internal/api` because the generated `StrictServerInterface` is implemented by one struct. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
 - Tenant-facing paths stay tenant-scoped at the repository/service boundary. Methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers.
 - Public IDs are KSUIDs.
 - `Create`/`Update` repository methods return domain values, not pointers — re-query after update.
