@@ -11,8 +11,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
@@ -20,13 +22,18 @@ import (
 	"anchor/internal/license/rules"
 )
 
+// licenseSchemaProductConstraint is the UNIQUE (product_id) index on
+// license_schemas, postgres-named. It is the real guard against two products
+// declaring a schema at once.
+const licenseSchemaProductConstraint = "license_schemas_product_id_key"
+
 var (
 	ErrLicenseSchemaNotFound = fault.NewWithStatus(
 		"LICENSE_SCHEMA_NOT_FOUND",
 		"This product has not declared a license schema",
 		http.StatusNotFound,
 	)
-	ErrLicenseSchemaAlreadyExists = fault.Conflict(
+	ErrLicenseSchemaAlreadyExists = fault.BadRequest(
 		"LICENSE_SCHEMA_EXISTS",
 		"This product has already declared a license schema; update it instead",
 	)
@@ -91,23 +98,21 @@ func NewLicenseService(
 
 // declareFields checks a declaration and turns it into storable fields.
 //
-// The rule check is delegated wholesale to the rules evaluator: this is the
-// authoring-time half of ADR-0004, and duplicating any of it here would let the
-// two drift. Only name uniqueness is checked locally, because it is a property
-// of the set rather than of any one field.
+// The rule check is delegated wholesale to the rules evaluator; duplicating any
+// of it here would let the two drift. Only name uniqueness is checked locally,
+// because it is a property of the set rather than of any one field.
 func declareFields(declarations []license.FieldDeclaration) ([]license.Field, error) {
 	seen := make(map[string]struct{}, len(declarations))
 	fields := make([]license.Field, 0, len(declarations))
 
-	for i, d := range declarations {
+	for _, d := range declarations {
 		if _, duplicate := seen[d.Name]; duplicate {
 			return nil, errLicenseFieldNameDuplicate(d.Name)
 		}
 		seen[d.Name] = struct{}{}
 
 		if err := rules.ValidateDeclaration(d.Type, d.Rules); err != nil {
-			var violation *rules.ViolationError
-			if errors.As(err, &violation) {
+			if violation, ok := errors.AsType[*rules.ViolationError](err); ok {
 				return nil, errLicenseFieldRuleInvalid(d.Name, violation)
 			}
 			return nil, err
@@ -119,7 +124,6 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 			Required:    d.Required,
 			Description: d.Description,
 			Rules:       d.Rules,
-			Ordinal:     int32(i),
 		}
 		field.GenerateID()
 		fields = append(fields, field)
@@ -131,21 +135,13 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 func (s *licenseService) CreateSchema(
 	ctx context.Context, in license.CreateSchemaInput,
 ) (license.Schema, error) {
-	if err := validateStruct(in); err != nil {
+	if err := validate.ValidateStruct(in); err != nil {
 		return license.Schema{}, err
 	}
 
 	fields, err := declareFields(in.Fields)
 	if err != nil {
 		return license.Schema{}, err
-	}
-
-	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err != nil {
-		return license.Schema{}, err
-	}
-	if existing != nil {
-		return license.Schema{}, ErrLicenseSchemaAlreadyExists
 	}
 
 	schema := license.Schema{
@@ -157,11 +153,26 @@ func (s *licenseService) CreateSchema(
 
 	// The envelope and its fields are one declaration, so they land together or
 	// not at all: a schema row without its fields would read as an empty
-	// declaration rather than as a failed write.
+	// declaration rather than as a failed write. The "already declared" check
+	// runs in here too, so it reads the same snapshot the insert writes to.
 	var created license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
+		if findErr != nil {
+			return findErr
+		}
+		if existing != nil {
+			return ErrLicenseSchemaAlreadyExists
+		}
+
 		created, err = s.schemaRepo.Create(txCtx, schema)
 		if err != nil {
+			// Two creates racing both pass the check above at READ COMMITTED, so
+			// the unique index is what actually decides. Last one in loses, and
+			// loses the same way it would have lost the check.
+			if pgerr.IsUniqueViolation(err, licenseSchemaProductConstraint) {
+				return ErrLicenseSchemaAlreadyExists
+			}
 			return err
 		}
 		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, created.ID, fields)
@@ -180,7 +191,7 @@ func (s *licenseService) CreateSchema(
 func (s *licenseService) GetSchema(
 	ctx context.Context, in license.GetSchemaInput,
 ) (*license.Schema, error) {
-	if err := validateStruct(in); err != nil {
+	if err := validate.ValidateStruct(in); err != nil {
 		return nil, err
 	}
 
@@ -204,7 +215,7 @@ func (s *licenseService) GetSchema(
 func (s *licenseService) UpdateSchema(
 	ctx context.Context, in license.UpdateSchemaInput,
 ) (license.Schema, error) {
-	if err := validateStruct(in); err != nil {
+	if err := validate.ValidateStruct(in); err != nil {
 		return license.Schema{}, err
 	}
 
@@ -260,7 +271,7 @@ func (s *licenseService) UpdateSchema(
 func (s *licenseService) DeleteSchema(
 	ctx context.Context, in license.DeleteSchemaInput,
 ) error {
-	if err := validateStruct(in); err != nil {
+	if err := validate.ValidateStruct(in); err != nil {
 		return err
 	}
 

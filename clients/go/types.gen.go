@@ -191,25 +191,25 @@ func (e IntegrationProviderType) Valid() bool {
 
 // Defines values for LicenseFieldType.
 const (
-	LicenseFieldTypeBoolean LicenseFieldType = "boolean"
-	LicenseFieldTypeEnum    LicenseFieldType = "enum"
-	LicenseFieldTypeLimit   LicenseFieldType = "limit"
-	LicenseFieldTypeNumber  LicenseFieldType = "number"
-	LicenseFieldTypeString  LicenseFieldType = "string"
+	LicenseFieldTypeBOOLEAN LicenseFieldType = "BOOLEAN"
+	LicenseFieldTypeENUM    LicenseFieldType = "ENUM"
+	LicenseFieldTypeLIMIT   LicenseFieldType = "LIMIT"
+	LicenseFieldTypeNUMBER  LicenseFieldType = "NUMBER"
+	LicenseFieldTypeSTRING  LicenseFieldType = "STRING"
 )
 
 // Valid indicates whether the value is a known member of the LicenseFieldType enum.
 func (e LicenseFieldType) Valid() bool {
 	switch e {
-	case LicenseFieldTypeBoolean:
+	case LicenseFieldTypeBOOLEAN:
 		return true
-	case LicenseFieldTypeEnum:
+	case LicenseFieldTypeENUM:
 		return true
-	case LicenseFieldTypeLimit:
+	case LicenseFieldTypeLIMIT:
 		return true
-	case LicenseFieldTypeNumber:
+	case LicenseFieldTypeNUMBER:
 		return true
-	case LicenseFieldTypeString:
+	case LicenseFieldTypeSTRING:
 		return true
 	default:
 		return false
@@ -2803,9 +2803,6 @@ type WorkspaceIdParameter = Ksuid
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
-
-// Conflict defines model for Conflict.
-type Conflict = ApiErrorResponse
 
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse

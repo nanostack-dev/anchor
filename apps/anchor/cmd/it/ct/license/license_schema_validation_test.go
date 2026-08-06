@@ -26,7 +26,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 	}{
 		{
 			name:  "unknown field type",
-			field: ct.LicenseFieldDeclaration{Name: "flows", Type: ct.LicenseFieldType("counter")},
+			field: ct.LicenseFieldDeclaration{Name: "flows", Type: ct.LicenseFieldType("COUNTER")},
 			code:  "LICENSE_FIELD_RULE_INVALID",
 			rule:  "type",
 		},
@@ -34,7 +34,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "min above max",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "flows",
-				Type:  ct.LicenseFieldTypeLimit,
+				Type:  ct.LicenseFieldTypeLIMIT,
 				Rules: limitRules(100, 10),
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -44,7 +44,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "negative minimum on a limit",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "flows",
-				Type:  ct.LicenseFieldTypeLimit,
+				Type:  ct.LicenseFieldTypeLIMIT,
 				Rules: &ct.LicenseFieldRules{Min: new(-1.0)},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -54,7 +54,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "regular expression that does not compile",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "region",
-				Type:  ct.LicenseFieldTypeString,
+				Type:  ct.LicenseFieldTypeSTRING,
 				Rules: &ct.LicenseFieldRules{Pattern: new("[unterminated")},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -64,7 +64,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "enum with no allowed values",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "support_tier",
-				Type:  ct.LicenseFieldTypeEnum,
+				Type:  ct.LicenseFieldTypeENUM,
 				Rules: &ct.LicenseFieldRules{Values: enumValues()},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -74,7 +74,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "enum with a duplicate allowed value",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "support_tier",
-				Type:  ct.LicenseFieldTypeEnum,
+				Type:  ct.LicenseFieldTypeENUM,
 				Rules: &ct.LicenseFieldRules{Values: enumValues("basic", "basic")},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -84,7 +84,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "numeric bound on a boolean field",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "sso",
-				Type:  ct.LicenseFieldTypeBoolean,
+				Type:  ct.LicenseFieldTypeBOOLEAN,
 				Rules: &ct.LicenseFieldRules{Max: new(1.0)},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -94,7 +94,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "pattern on a numeric field",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "flows",
-				Type:  ct.LicenseFieldTypeLimit,
+				Type:  ct.LicenseFieldTypeLIMIT,
 				Rules: &ct.LicenseFieldRules{Pattern: new("^[0-9]+$")},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -104,7 +104,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "allowed values on a string field",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "region",
-				Type:  ct.LicenseFieldTypeString,
+				Type:  ct.LicenseFieldTypeSTRING,
 				Rules: &ct.LicenseFieldRules{Values: enumValues("ca-central")},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -114,7 +114,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			name: "length bounds that cross",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "region",
-				Type:  ct.LicenseFieldTypeString,
+				Type:  ct.LicenseFieldTypeSTRING,
 				Rules: &ct.LicenseFieldRules{MinLength: new(20), MaxLength: new(5)},
 			},
 			code: "LICENSE_FIELD_RULE_INVALID",
@@ -171,8 +171,8 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			tc.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
 				Fields: []ct.LicenseFieldDeclaration{
-					{Name: name, Type: ct.LicenseFieldTypeLimit},
-					{Name: name, Type: ct.LicenseFieldTypeBoolean},
+					{Name: name, Type: ct.LicenseFieldTypeLIMIT},
+					{Name: name, Type: ct.LicenseFieldTypeBOOLEAN},
 				},
 			},
 		)
@@ -189,7 +189,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
-				Fields: []ct.LicenseFieldDeclaration{{Name: "", Type: ct.LicenseFieldTypeLimit}},
+				Fields: []ct.LicenseFieldDeclaration{{Name: "", Type: ct.LicenseFieldTypeLIMIT}},
 			},
 		)
 		require.NoError(t, err)

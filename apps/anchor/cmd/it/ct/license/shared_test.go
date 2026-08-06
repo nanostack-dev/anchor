@@ -95,6 +95,28 @@ func limitRules(minValue, maxValue float64) *ct.LicenseFieldRules {
 	return &ct.LicenseFieldRules{Min: &minValue, Max: &maxValue}
 }
 
+// fieldByName looks a declared field up by name. Fields are read back ordered
+// by name, so asserting through this rather than an index keeps a test about
+// one field's rules from breaking when a neighbour is renamed.
+func fieldByName(t *testing.T, fields []ct.LicenseFieldResponse, name string) ct.LicenseFieldResponse {
+	t.Helper()
+	for _, f := range fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	require.FailNowf(t, "field not declared", "no field named %q in the schema", name)
+	return ct.LicenseFieldResponse{}
+}
+
+func fieldNames(fields []ct.LicenseFieldResponse) []string {
+	names := make([]string, 0, len(fields))
+	for _, f := range fields {
+		names = append(names, f.Name)
+	}
+	return names
+}
+
 // enumValues builds the allowed-value list an enum field draws from. The
 // generated client models an optional array as a pointer, so an empty list has
 // to stay distinguishable from an absent one — that difference is exactly what

@@ -56,11 +56,8 @@ type Field struct {
 	Required    bool
 	Description string
 	Rules       FieldRules
-	// Ordinal is the field's position in the declaration, so a rendered form and
-	// an error list read in the order their author wrote them.
-	Ordinal   int32
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // GenerateID sets the field's ID to a new prefixed KSUID.

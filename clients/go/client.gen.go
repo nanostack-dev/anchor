@@ -11542,8 +11542,6 @@ type CreateLicenseSchemaResponse struct {
 	JSON201 *LicenseSchemaResponse
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *BadRequest
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -11554,11 +11552,6 @@ func (r CreateLicenseSchemaResponse) GetJSON201() *LicenseSchemaResponse {
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
 func (r CreateLicenseSchemaResponse) GetJSON400() *BadRequest {
 	return r.JSON400
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateLicenseSchemaResponse) GetJSON409() *Conflict {
-	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
@@ -17793,13 +17786,6 @@ func ParseCreateLicenseSchemaResponse(rsp *http.Response) (*CreateLicenseSchemaR
 			return nil, err
 		}
 		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	}
 

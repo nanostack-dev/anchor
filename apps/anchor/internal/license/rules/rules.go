@@ -43,15 +43,15 @@ type FieldType string
 const (
 	// Limit is a non-negative numeric ceiling. Limits are the only fields that
 	// carry usage and a derived status.
-	Limit FieldType = "limit"
+	Limit FieldType = "LIMIT"
 	// Number is an arbitrary numeric value, which may be negative.
-	Number FieldType = "number"
+	Number FieldType = "NUMBER"
 	// Boolean is an on/off field, such as a feature being available.
-	Boolean FieldType = "boolean"
+	Boolean FieldType = "BOOLEAN"
 	// Enum is a value drawn from a declared list.
-	Enum FieldType = "enum"
+	Enum FieldType = "ENUM"
 	// String is free text, optionally constrained by pattern or length.
-	String FieldType = "string"
+	String FieldType = "STRING"
 )
 
 // FieldTypes lists every recognised field type, for validation and for

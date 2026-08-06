@@ -2869,16 +2869,18 @@ components:
     # Only `limit` fields ever carry usage and a derived status.
     LicenseFieldType:
       type: string
-      enum: [limit, number, boolean, enum, string]
-      # Pinned: the values are lowercase, so the generator would otherwise name
-      # the client constants Limit/Number/Boolean/Enum/String — package-level
-      # names too generic to survive the next enum added to this contract.
+      enum: [LIMIT, NUMBER, BOOLEAN, ENUM, STRING]
+      # Pinned, and it is load-bearing. Without explicit names the generator
+      # derives client constant names from the whole spec at once: NUMBER and
+      # STRING collide with EmailVariableType, and it resolves that by renaming
+      # *its* five constants — a silent breaking change to the published client,
+      # caused by adding an unrelated enum. Naming ours leaves it alone.
       x-enum-varnames:
-        - LicenseFieldTypeLimit
-        - LicenseFieldTypeNumber
-        - LicenseFieldTypeBoolean
-        - LicenseFieldTypeEnum
-        - LicenseFieldTypeString
+        - LicenseFieldTypeLIMIT
+        - LicenseFieldTypeNUMBER
+        - LicenseFieldTypeBOOLEAN
+        - LicenseFieldTypeENUM
+        - LicenseFieldTypeSTRING
       x-go-type: license.FieldType
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -5494,13 +5496,6 @@ paths:
   # ---------------------------------------------------------------------------
   # Licensing
   # ---------------------------------------------------------------------------
-  # `licensing/` is the subsystem namespace, following `email/`. It is not
-  # `license/`: CONTEXT.md defines a license as one Organization's own copy of
-  # a template's values, and that noun is spent on the organization-scoped
-  # routes — one path segment, one meaning.
-  #
-  # A Product declares exactly one license schema, so the resource is a
-  # singleton on the product rather than a collection with its own identifier.
   /v1/products/{product_id}/licensing/schema:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -5533,8 +5528,6 @@ paths:
                 $ref: '#/components/schemas/LicenseSchemaResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
     get:
       summary: Get License Schema
       operationId: getLicenseSchema

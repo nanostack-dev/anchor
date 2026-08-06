@@ -58,7 +58,6 @@ func (m *LicenseSchemaFieldMapper) ToDomain(entity model.LicenseSchemaFields) li
 		Required:    entity.IsRequired,
 		Description: entity.Description,
 		Rules:       set,
-		Ordinal:     entity.Ordinal,
 		CreatedAt:   entity.CreatedAt,
 		UpdatedAt:   entity.UpdatedAt,
 	}
@@ -77,7 +76,6 @@ func (m *LicenseSchemaFieldMapper) ToEntity(domain license.Field) model.LicenseS
 		IsRequired:      domain.Required,
 		Description:     domain.Description,
 		RulesJSON:       rulesJSON,
-		Ordinal:         domain.Ordinal,
 		CreatedAt:       domain.CreatedAt,
 		UpdatedAt:       domain.UpdatedAt,
 	}

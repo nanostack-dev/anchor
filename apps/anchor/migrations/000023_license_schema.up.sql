@@ -39,7 +39,8 @@ CREATE TRIGGER update_license_schemas_updated_at BEFORE UPDATE ON license_schema
 -- One row per declared license field. Fields are rows rather than a single
 -- JSONB document on the schema because the later usage path resolves a reported
 -- key to a field and has to answer "does this key exist, and is it a limit" —
--- an indexed lookup, not a load-and-scan.
+-- an indexed lookup, not a load-and-scan. They are read back ordered by name;
+-- the declaration carries no order of its own.
 --
 -- rules_json holds the structured validation rules, mirroring how
 -- email_template_versions.variables_json stores a declared VariableSchema[].
@@ -49,21 +50,17 @@ CREATE TABLE license_schema_fields (
     id VARCHAR(255) PRIMARY KEY, -- KSUID prefix: lfld_
     license_schema_id VARCHAR(255) NOT NULL REFERENCES license_schemas(id) ON DELETE CASCADE,
     name VARCHAR(120) NOT NULL, -- stable identifier used by product code
-    -- One of limit / number / boolean / enum / string. Kept out of a CHECK so
+    -- One of LIMIT / NUMBER / BOOLEAN / ENUM / STRING. Kept out of a CHECK so
     -- adding a type is a service change, not a migration.
     field_type VARCHAR(50) NOT NULL,
     is_required BOOLEAN NOT NULL DEFAULT FALSE,
     description TEXT NOT NULL DEFAULT '',
     rules_json JSONB NOT NULL DEFAULT '{}', -- declared license.FieldRules
-    -- Declaration order, so a rendered form and an error message list fields
-    -- the way their author wrote them.
-    ordinal INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (license_schema_id, name)
 );
 
 CREATE INDEX idx_license_schema_fields_schema_id ON license_schema_fields(license_schema_id);
-CREATE INDEX idx_license_schema_fields_ordinal ON license_schema_fields(license_schema_id, ordinal);
 
 CREATE TRIGGER update_license_schema_fields_updated_at BEFORE UPDATE ON license_schema_fields FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

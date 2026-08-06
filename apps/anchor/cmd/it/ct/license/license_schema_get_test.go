@@ -22,8 +22,8 @@ func TestLicenseSchemaGet(t *testing.T) {
 				ProductAlias: "p",
 				Description:  new("Pro tier surface"),
 				Fields: []ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("flows", ct.LicenseFieldTypeLimit, true, limitRules(0, 500)),
-					itdsl.LicenseField("sso", ct.LicenseFieldTypeBoolean, false, nil),
+					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, true, limitRules(0, 500)),
+					itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, false, nil),
 				},
 			}).
 			Build()
