@@ -267,7 +267,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 			apiKeyName := "OrgKey-" + uuid.NewString()
 			apiKeyDescription := itshared.Faker.Lorem().Sentence(5)
-			expiresAt := time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)
+			expiresAt := nearFutureExpiry()
 			response, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
 				ctx,
 				product.ProductID,
