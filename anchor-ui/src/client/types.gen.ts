@@ -73,7 +73,7 @@ export enum SortDirection {
 }
 
 /**
- * Optional key-value metadata. Values can be string, number, boolean.
+ * Optional key-value metadata. Values can be string, number, boolean. At most 50 keys; keys are at most 64 characters and string values at most 512 characters. Sending metadata replaces the stored metadata in full.
  */
 export type Metadata = {
     [key: string]: unknown;
