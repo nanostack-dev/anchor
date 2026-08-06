@@ -145,6 +145,8 @@ github.com/mattn/go-colorable v0.1.15 h1:+u9SLTRGnXv73cEsnsmoZBom+dMU88B2M0aDcWy
 github.com/mattn/go-colorable v0.1.15/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
+github.com/mdelapenya/tlscert v0.2.0 h1:7H81W6Z/4weDvZBNOfQte5GpIMo0lGYEeWbkGp5LJHI=
+github.com/mdelapenya/tlscert v0.2.0/go.mod h1:O4njj3ELLnJjGdkN7M/vIVCpZ+Cf0L6muqOG4tLSl8o=
 github.com/moby/docker-image-spec v1.3.1 h1:jMKff3w6PgbfSa69GfNg+zN/XLhfXJGnEx3Nl2EsFP0=
 github.com/moby/docker-image-spec v1.3.1/go.mod h1:eKmb5VW8vQEh/BAr2yvVNvuiJuY6UIocYsFu/DxxRpo=
 github.com/moby/go-archive v0.2.1 h1:fAa0wUS/ikZKyx7o/1fhUYmhZ7RgpthdeoDhJvunTLc=
@@ -165,8 +167,6 @@ github.com/moby/term v0.5.2 h1:6qk3FJAFDs6i/q3W/pQ97SX192qKfZgGjCQqfCJkgzQ=
 github.com/moby/term v0.5.2/go.mod h1:d3djjFCrjnB+fl8NJux+EJzu0msscUP+f8it8hPkFLc=
 github.com/morikuni/aec v1.1.0 h1:vBBl0pUnvi/Je71dsRrhMBtreIqNMYErSAbEeb8jrXQ=
 github.com/morikuni/aec v1.1.0/go.mod h1:xDRgiq/iw5l+zkao76YTKzKttOp2cwPEne25HDkJnBw=
-github.com/nanostack-dev/nanostack-framework v0.4.0 h1:44G3pAssSJNIJx2S/NKEwpNYOvkHCq3+8i54LJf0Q3M=
-github.com/nanostack-dev/nanostack-framework v0.4.0/go.mod h1:Dc1yMJNZifAi2wz//A0lNgmSvXnyYcugFDPdGiIj1ys=
 github.com/nanostack-dev/nanostack-framework v0.5.0 h1:qKvz03dePd5soQn05SoqtlysyB2md2D9oMMw9ng5V+0=
 github.com/nanostack-dev/nanostack-framework v0.5.0/go.mod h1:Dc1yMJNZifAi2wz//A0lNgmSvXnyYcugFDPdGiIj1ys=
 github.com/nanostack-dev/pgkit v0.0.29 h1:TjXZtkglRcCL4WqC11hviCrq3jxVT+Qs9ZyZ+pfm3Zk=

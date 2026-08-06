@@ -320,85 +320,29 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		}
 	}
 
-	resultCount, err := transactor.QueryCount(
-		ctx,
+	// Page over roles, not over the role⋈permissions join. Applying LIMIT/OFFSET
+	// to joined rows would truncate a role's permissions to the page size (e.g. a
+	// 19-permission role under LIMIT 10 would return only 10 permissions), so the
+	// page is taken on roles alone and permissions are fetched separately for the
+	// paged roles with no limit/offset. See product_api_key_repository.go's
+	// SearchByProductID for the same pattern.
+	pageResult, err := transactor.Page(
 		r.db,
-		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to count product roles")
-		return search.Result[role.ProductRole]{}, err
-	}
-
-	var orderBys []postgres.OrderByClause
-	for _, sort := range input.Sort {
-		switch sort.Field {
-		case role.SortFieldProductRoleCreatedAt:
-			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.CreatedAt, sort.Direction))
-		case role.SortFieldProductRoleUpdatedAt:
-			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.UpdatedAt, sort.Direction))
-		case role.SortFieldProductRoleName:
-			orderBys = append(orderBys, jetx.OrderBy(table.ProductRoles.Name, sort.Direction))
-		}
-	}
-
-	// Paginate over roles, not over the role⋈permissions join. Applying
-	// LIMIT/OFFSET to the joined rows truncates a role's permissions to the page
-	// size (e.g. a 19-permission role under LIMIT 10 returns only 10). So the
-	// page is taken on role IDs first, then all permissions are fetched for the
-	// paged roles with no limit/offset.
-	idStmt := table.ProductRoles.
-		SELECT(table.ProductRoles.ID).
-		WHERE(whereStmt)
-	if len(orderBys) > 0 {
-		idStmt = idStmt.ORDER_BY(orderBys...)
-	}
-	idStmt = idStmt.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	pagedRoles, err := transactor.Query[[]model.ProductRoles](ctx, r.db, idStmt).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to page product role ids")
-		return search.Result[role.ProductRole]{}, err
-	}
-	if len(pagedRoles) == 0 {
-		return search.Result[role.ProductRole]{
-			Items: []role.ProductRole{},
-			Total: resultCount,
-			Count: 0,
-		}, nil
-	}
-
-	pagedIDs := make([]string, len(pagedRoles))
-	for i, pr := range pagedRoles {
-		pagedIDs[i] = pr.ID
-	}
-
-	query := table.ProductRoles.SELECT(
+		func(entity model.ProductRoles) model.ProductRoles { return entity },
 		table.ProductRoles.AllColumns,
-		table.ProductRoleResourcePermissions.AllColumns,
-	).FROM(
-		table.ProductRoles.
-			LEFT_JOIN(
-				table.ProductRoleResourcePermissions,
-				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
-			),
-	).WHERE(
-		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductRoles.ID.IN(jetx.ToStringExpressions(pagedIDs)...)),
-	)
-	if len(orderBys) > 0 {
-		query = query.ORDER_BY(orderBys...)
-	}
-
-	slice, err := transactor.QueryMapSlice(
-		ctx, r.db, query, func(permission productRoleWithPermission) role.ProductRole {
-			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
-		},
-	).Value()
+	).
+		From(table.ProductRoles).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[role.SortFieldProductRole]postgres.Column{
+				role.SortFieldProductRoleCreatedAt: table.ProductRoles.CreatedAt,
+				role.SortFieldProductRoleUpdatedAt: table.ProductRoles.UpdatedAt,
+				role.SortFieldProductRoleName:      table.ProductRoles.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", productID,
@@ -406,9 +350,47 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		return search.Result[role.ProductRole]{}, err
 	}
 
+	if len(pageResult.Items) == 0 {
+		return search.Result[role.ProductRole]{
+			Items: []role.ProductRole{},
+			Total: pageResult.Total,
+			Count: 0,
+		}, nil
+	}
+
+	pagedIDs := make([]string, len(pageResult.Items))
+	for i, entity := range pageResult.Items {
+		pagedIDs[i] = entity.ID
+	}
+
+	permissionEntities, err := transactor.Query[[]model.ProductRoleResourcePermissions](
+		ctx, r.db,
+		table.ProductRoleResourcePermissions.SELECT(table.ProductRoleResourcePermissions.AllColumns).WHERE(
+			table.ProductRoleResourcePermissions.ProductRoleID.IN(jetx.ToStringExpressions(pagedIDs)...),
+		),
+	).Value()
+	if err != nil {
+		r.logger.Error().Err(err).Str(
+			"productID", productID,
+		).Msg("failed to load product role permissions")
+		return search.Result[role.ProductRole]{}, err
+	}
+
+	permissionsByRoleID := make(map[string][]model.ProductRoleResourcePermissions, len(pageResult.Items))
+	for _, permission := range permissionEntities {
+		permissionsByRoleID[permission.ProductRoleID] = append(
+			permissionsByRoleID[permission.ProductRoleID], permission,
+		)
+	}
+
+	items := make([]role.ProductRole, len(pageResult.Items))
+	for i, entity := range pageResult.Items {
+		items[i] = r.productRoleMapper.ToDomain(entity, permissionsByRoleID[entity.ID])
+	}
+
 	return search.Result[role.ProductRole]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
+		Items: items,
+		Total: pageResult.Total,
+		Count: len(items),
 	}, nil
 }

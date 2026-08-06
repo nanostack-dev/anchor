@@ -291,63 +291,36 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
-	query := table.ProductAPIKeys.SELECT(
-		table.ProductAPIKeys.AllColumns,
-	).WHERE(
-		whereStmt,
-	)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
+	pageResult, err := transactor.Page(
 		r.db,
-		table.ProductAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", input.ProductID,
-		).Msg("failed to count product API keys")
-		return search.Result[apikey.ProductAPIKey]{}, err
-	}
-
-	if len(input.Request.Sort) > 0 {
-		for _, sort := range input.Request.Sort {
-			switch sort.Field {
-			case apikey.SortFieldProductAPIKeyCreatedAt:
-				query = query.ORDER_BY(
-					jetx.OrderBy(table.ProductAPIKeys.CreatedAt, sort.Direction),
-				)
-			case apikey.SortFieldProductAPIKeyUpdatedAt:
-				query = query.ORDER_BY(
-					jetx.OrderBy(table.ProductAPIKeys.UpdatedAt, sort.Direction),
-				)
-			case apikey.SortFieldProductAPIKeyName:
-				query = query.ORDER_BY(
-					jetx.OrderBy(table.ProductAPIKeys.Name, sort.Direction),
-				)
-			case apikey.SortFieldProductAPIKeyStatus:
-				query = query.ORDER_BY(
-					jetx.OrderBy(table.ProductAPIKeys.Status, sort.Direction),
-				)
-			case apikey.SortFieldProductAPIKeyLastUsed:
-				query = query.ORDER_BY(
-					jetx.OrderBy(table.ProductAPIKeys.LastUsedAt, sort.Direction),
-				)
-			}
-		}
-	}
-	query = query.LIMIT(int64(input.Request.Pagination.Limit)).OFFSET(int64(input.Request.Pagination.Offset))
-	itemEntities, err := transactor.QueryMapSlice(
-		ctx, r.db, query,
 		func(entity model.ProductAPIKeys) model.ProductAPIKeys {
 			return entity
 		},
-	).Value()
+		table.ProductAPIKeys.AllColumns,
+	).
+		From(table.ProductAPIKeys).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Request.Sort,
+			map[apikey.SortFieldProductAPIKey]postgres.Column{
+				apikey.SortFieldProductAPIKeyCreatedAt: table.ProductAPIKeys.CreatedAt,
+				apikey.SortFieldProductAPIKeyUpdatedAt: table.ProductAPIKeys.UpdatedAt,
+				apikey.SortFieldProductAPIKeyName:      table.ProductAPIKeys.Name,
+				apikey.SortFieldProductAPIKeyStatus:    table.ProductAPIKeys.Status,
+				apikey.SortFieldProductAPIKeyLastUsed:  table.ProductAPIKeys.LastUsedAt,
+			},
+		)...).
+		Run(ctx, input.Request.Pagination).
+		Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to search product API keys")
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
+
+	itemEntities := pageResult.Items
+	resultCount := pageResult.Total
 
 	if len(itemEntities) == 0 {
 		return search.Result[apikey.ProductAPIKey]{
