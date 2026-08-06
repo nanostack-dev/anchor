@@ -90,58 +90,19 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 			table.PlatformInvitations.Email.LIKE(postgres.String("%" + *input.FullTextSearch + "%")),
 		)
 	}
-	query := table.PlatformInvitations.SELECT(
-		table.PlatformInvitations.AllColumns,
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.PlatformInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"tenantID", tenantID,
-		).Msg("failed to count platform invitations")
-		return search.Result[invitation.PlatformInvitation]{}, err
-	}
-
-	if input.Sort != nil {
-		if len(input.Sort) > 0 {
-			for _, sort := range input.Sort {
-				switch sort.Field {
-				case invitation.SortFieldPlatformInvitationCreatedAt:
-					fieldToOrderBy := table.PlatformInvitations.CreatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case invitation.SortFieldPlatformInvitationUpdatedAt:
-					fieldToOrderBy := table.PlatformInvitations.UpdatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case invitation.SortFieldPlatformInvitationEmail:
-					fieldToOrderBy := table.PlatformInvitations.Email
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				}
-			}
-		}
-	}
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.mapper.ToDomain).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"tenantID", tenantID,
-		).Msg("failed to search platform invitations")
-		return search.Result[invitation.PlatformInvitation]{}, err
-	}
-	return search.Result[invitation.PlatformInvitation]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
-	}, nil
+	return transactor.Page(r.db, r.mapper.ToDomain, table.PlatformInvitations.AllColumns).
+		From(table.PlatformInvitations).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[invitation.SortFieldPlatformInvitation]postgres.Column{
+				invitation.SortFieldPlatformInvitationCreatedAt: table.PlatformInvitations.CreatedAt,
+				invitation.SortFieldPlatformInvitationUpdatedAt: table.PlatformInvitations.UpdatedAt,
+				invitation.SortFieldPlatformInvitationEmail:     table.PlatformInvitations.Email,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 // invitationTenantEmailUniqueIndex is the UNIQUE (platform_tenant_id, email)
