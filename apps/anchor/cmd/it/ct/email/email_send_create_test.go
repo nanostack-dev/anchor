@@ -17,8 +17,7 @@ import (
 )
 
 func TestEmailSendCreate(t *testing.T) {
-	mp := mailpit.Start(t)
-	defer mp.Stop(t)
+	mp := mailpit.Shared(t)
 
 	tc := newTestCtx(t)
 	seedSMTPInstance(t, tc, mp)

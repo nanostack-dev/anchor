@@ -76,6 +76,11 @@ type TestConfig struct {
 	// repository/service set. Each entry must be a pointer to the destination variable.
 	ExtraPopulateTargets []any
 	AfterInit            func()
+	// AfterRun runs once the package's tests have finished, before the shared
+	// containers are torn down. Packages use it to release their own process-wide
+	// resources (e.g. mailpit.StopShared); a defer in TestMain would never run
+	// because RunTestMain exits the process.
+	AfterRun func()
 }
 
 func SetupTest(config TestConfig) func() {
@@ -408,6 +413,9 @@ func RunTestMain(m *testing.M, config TestConfig) {
 		config.AfterInit()
 	}
 	exitCode := m.Run()
+	if config.AfterRun != nil {
+		config.AfterRun()
+	}
 	if teardown != nil {
 		teardown()
 	}
