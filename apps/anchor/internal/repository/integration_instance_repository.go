@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -17,14 +16,6 @@ import (
 )
 
 var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
-
-// ErrInstanceNotFound reports that Update's UPDATE ... RETURNING matched no
-// rows: the instance named by ID/tenant is not there any more. It is the
-// repository-layer sentinel for that condition — deliberately not an HTTP
-// fault, since whether a vanished row is benign (a concurrent delete) or a
-// bug (updating an ID that should exist) is a call-site judgment, not this
-// repository's to make.
-var ErrInstanceNotFound = errors.New("integration instance no longer exists")
 
 func integrationInstancesUpdatableColumns() postgres.ColumnList {
 	return table.IntegrationInstances.AllColumns.Except(
@@ -67,6 +58,14 @@ type IntegrationInstanceRepository interface {
 	Update(
 		ctx context.Context, tenantID string, instance integration.Instance,
 	) (integration.Instance, error)
+	// UpdateOptional is Update for a caller that already expects the row might
+	// be gone by the time the write lands (e.g. a concurrent tenant delete
+	// racing a background verification pass). A zero-row UPDATE ... RETURNING
+	// comes back as an absent Optional rather than an error to catch — ask
+	// result.IsPresent() instead of matching a driver sentinel.
+	UpdateOptional(
+		ctx context.Context, tenantID string, instance integration.Instance,
+	) transactor.Optional[integration.Instance]
 	DeleteByID(
 		ctx context.Context, tenantID string, id string,
 	) error
@@ -230,7 +229,29 @@ func (r *integrationInstanceRepositoryImpl) Update(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).OnNoRows(ErrInstanceNotFound).Value()
+	).Value()
+}
+
+func (r *integrationInstanceRepositoryImpl) UpdateOptional(
+	ctx context.Context, tenantID string, instance integration.Instance,
+) transactor.Optional[integration.Instance] {
+	instance.UpdatedAt = time.Now()
+	entity := r.mapper.ToEntity(instance)
+
+	stmt := table.IntegrationInstances.UPDATE(
+		integrationInstancesUpdatableColumns().Except(
+			table.IntegrationInstances.ID,
+			table.IntegrationInstances.PlatformTenantID,
+			table.IntegrationInstances.ProductID,
+			table.IntegrationInstances.ProviderType,
+		),
+	).MODEL(entity).WHERE(
+		table.IntegrationInstances.ID.EQ(postgres.String(instance.ID)).AND(
+			table.IntegrationInstances.PlatformTenantID.EQ(postgres.String(tenantID)),
+		),
+	).RETURNING(table.IntegrationInstances.AllColumns)
+
+	return transactor.QueryOptionalResultMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(

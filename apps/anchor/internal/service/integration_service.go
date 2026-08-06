@@ -1712,20 +1712,20 @@ func (s *integrationService) verifyAndActivate(
 		live.LastError = nil
 	}
 
-	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live); updateErr != nil {
-		if errors.Is(updateErr, repository.ErrInstanceNotFound) {
-			// The instance was deleted between the re-fetch above and this
-			// update — the same expected tenant-delete race as the live == nil
-			// branch. The UPDATE ... RETURNING matched no rows, so there is
-			// nothing to persist and nothing is wrong; treat it as the benign
-			// race rather than letting log.Event surface it at Error and page.
-			logger.Warn().Str("instance_id", inst.ID).
-				Msg("verifyAndActivate: instance no longer exists, skipping verification update")
-			return
-		}
+	result := s.instanceRepo.UpdateOptional(persistCtx, live.PlatformTenantID, *live)
+	if updateErr := result.Err(); updateErr != nil {
 		// As above: a persist-context timeout is benign and downgraded to Warn.
 		log.Event(&logger, updateErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to persist verification result")
+		return
+	}
+	if !result.IsPresent() {
+		// The instance was deleted between the re-fetch above and this
+		// update — the same expected tenant-delete race as the live == nil
+		// branch. The UPDATE ... RETURNING matched no rows, so there is
+		// nothing to persist and nothing is wrong.
+		logger.Warn().Str("instance_id", inst.ID).
+			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
 	}
 }
 
