@@ -48,8 +48,13 @@ tags:
 - name: OrganizationMember
   description: Manage members within an Organization. (Requires Product API Key)
 - name: Integration
-  description: Manage integration instances and process inbound webhooks for 
+  description: Manage integration instances and process inbound webhooks for
     Products. (Admin + public webhook endpoint)
+- name: Licensing
+  description: >-
+    Declare what a Product's licenses may contain. Anchor validates a license
+    schema on write and never blocks an action on it — gating belongs to the
+    consuming Product. (Admin + Product API Key operation)
 components:
   parameters:
     # --- Define Path Parameters for re-use ---
@@ -2860,6 +2865,139 @@ components:
         count:
           type: integer
 
+    # --- Licensing ---
+    # A license field's type. Flat and closed: a license field is never a list
+    # or a nested object, so this deliberately does not reuse EmailVariableType.
+    # Only `limit` fields ever carry usage and a derived status.
+    LicenseFieldType:
+      type: string
+      enum: [LIMIT, NUMBER, BOOLEAN, ENUM, STRING]
+      x-go-type: license.FieldType
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    # Validation rules are structured data, never an encoded tag string: this
+    # contract is public and a tag string would put a Go library's DSL into it.
+    # Every rule is optional and which ones apply depends on the field type —
+    # a rule that carries no meaning for its type is rejected on write.
+    LicenseFieldRules:
+      type: object
+      x-go-type: license.FieldRules
+      x-go-type-import:
+        path: anchor/internal/domain/license
+      properties:
+        min:
+          type: number
+          format: double
+          description: Inclusive lower bound. Numeric fields only.
+        max:
+          type: number
+          format: double
+          description: Inclusive upper bound. Numeric fields only.
+        pattern:
+          type: string
+          description: Regular expression the value must match. String fields only.
+        min_length:
+          type: integer
+          description: Inclusive minimum length in runes. String fields only.
+        max_length:
+          type: integer
+          description: Inclusive maximum length in runes. String fields only.
+        values:
+          type: array
+          items:
+            type: string
+          description: The list the value must be drawn from. Enum fields only.
+
+    LicenseFieldDeclaration:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          description: Stable identifier used by product code, unique within the schema.
+        type:
+          $ref: '#/components/schemas/LicenseFieldType'
+        required:
+          type: boolean
+          default: false
+          description: Whether a license template must supply a value for this field.
+        description:
+          type: string
+        rules:
+          $ref: '#/components/schemas/LicenseFieldRules'
+
+    LicenseFieldResponse:
+      type: object
+      # `rules` is always present on read, even when the field declares none:
+      # every field has a rule set, and an unconstrained one is empty rather
+      # than absent. Only the write shape lets a caller omit it.
+      required: [id, name, type, required, rules, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/LicenseFieldType'
+        required:
+          type: boolean
+        description:
+          type: string
+        rules:
+          $ref: '#/components/schemas/LicenseFieldRules'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LicenseSchemaCreateRequest:
+      type: object
+      required: [fields]
+      properties:
+        description:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseFieldDeclaration'
+
+    # Fields are replaced wholesale rather than patched: a schema is a single
+    # declaration, and a partial edit has no unambiguous meaning for removals.
+    LicenseSchemaUpdateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseFieldDeclaration'
+
+    LicenseSchemaResponse:
+      type: object
+      required: [id, product_id, fields, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        description:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseFieldResponse'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
   responses:
     BadRequest:
       description: Bad Request (e.g., validation error)
@@ -5345,3 +5483,100 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailSendRecordListResponse'
+
+  # ---------------------------------------------------------------------------
+  # Licensing
+  # ---------------------------------------------------------------------------
+  /v1/products/{product_id}/licensing/schema:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Create License Schema
+      description: >-
+        Declares the license schema for a product: every field a license may
+        carry, its type, whether it is required, and its validation rules. The
+        rule declaration is checked here, so a nonsensical rule is refused at
+        authoring time rather than the first time a value is validated.
+      operationId: createLicenseSchema
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_schema:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseSchemaCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseSchemaResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: Get License Schema
+      operationId: getLicenseSchema
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_schema:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseSchemaResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update License Schema
+      description: >-
+        Replaces the schema's declaration. Fields, when supplied, are replaced
+        wholesale — a field absent from the request is removed.
+      operationId: updateLicenseSchema
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_schema:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseSchemaUpdateRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseSchemaResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete License Schema
+      operationId: deleteLicenseSchema
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_schema:delete
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
