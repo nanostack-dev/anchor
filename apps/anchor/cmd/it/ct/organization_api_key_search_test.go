@@ -60,7 +60,7 @@ func TestOrganizationAPIKeySearch(t *testing.T) {
 	})
 
 	t.Run("Search returns inactive status after expiration queue processing", func(t *testing.T) {
-		expiresAt := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
+		expiresAt := nearFutureExpiry()
 		expiredName := "SearchExpired-" + uuid.NewString()
 
 		_, createErr := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
