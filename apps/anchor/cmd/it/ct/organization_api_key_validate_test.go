@@ -85,7 +85,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 	})
 
 	t.Run("returns typed 403 when api key is expired", func(t *testing.T) {
-		expiredAt := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
+		expiredAt := nearFutureExpiry()
 		expiredCreateResp, createErr := adminClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -100,7 +100,9 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 		require.Equal(t, http.StatusCreated, expiredCreateResp.StatusCode())
 		require.NotNil(t, expiredCreateResp.JSON201)
 
-		time.Sleep(2 * time.Second)
+		// Wait past the expiry itself so the poll below only has to absorb the
+		// latency of the expiration worker.
+		time.Sleep(time.Until(expiredAt) + time.Second)
 
 		var validateResp *ct.ValidateOrganizationAPIKeyResponse
 		require.Eventually(t, func() bool {

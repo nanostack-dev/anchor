@@ -67,7 +67,7 @@ func TestOrganizationAPIKeyGet(t *testing.T) {
 	})
 
 	t.Run("Get expired organization API key returns inactive status after queue processing", func(t *testing.T) {
-		expiresAt := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
+		expiresAt := nearFutureExpiry()
 		expiredResp, expiredErr := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
