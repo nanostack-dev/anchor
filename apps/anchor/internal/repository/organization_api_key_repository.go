@@ -338,51 +338,22 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
-	query := table.OrganizationAPIKeys.SELECT(
-		table.OrganizationAPIKeys.AllColumns,
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.OrganizationAPIKeys.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"organization_id", input.OrganizationID,
-		).Msg("failed to count organization API keys")
-		return search.Result[orgapikey.OrganizationAPIKey]{}, err
-	}
-
-	if len(input.Request.Sort) > 0 {
-		for _, sort := range input.Request.Sort {
-			switch sort.Field {
-			case orgapikey.SortFieldOrganizationAPIKeyID:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.ID, sort.Direction))
-			case orgapikey.SortFieldOrganizationAPIKeyCreatedAt:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.CreatedAt, sort.Direction))
-			case orgapikey.SortFieldOrganizationAPIKeyUpdatedAt:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.UpdatedAt, sort.Direction))
-			case orgapikey.SortFieldOrganizationAPIKeyName:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.Name, sort.Direction))
-			case orgapikey.SortFieldOrganizationAPIKeyStatus:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.Status, sort.Direction))
-			case orgapikey.SortFieldOrganizationAPIKeyLastUsed:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationAPIKeys.LastUsedAt, sort.Direction))
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Request.Pagination.Limit)).OFFSET(int64(input.Request.Pagination.Offset))
-
-	itemEntities, err := transactor.QueryMapSlice(
-		ctx,
-		r.db,
-		query,
-		func(entity model.OrganizationAPIKeys) model.OrganizationAPIKeys {
-			return entity
-		},
-	).Value()
+	result, err := transactor.Page(r.db, r.mapper.ToDomain, table.OrganizationAPIKeys.AllColumns).
+		From(table.OrganizationAPIKeys).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Request.Sort,
+			map[orgapikey.SortFieldOrganizationAPIKey]postgres.Column{
+				orgapikey.SortFieldOrganizationAPIKeyID:        table.OrganizationAPIKeys.ID,
+				orgapikey.SortFieldOrganizationAPIKeyCreatedAt: table.OrganizationAPIKeys.CreatedAt,
+				orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: table.OrganizationAPIKeys.UpdatedAt,
+				orgapikey.SortFieldOrganizationAPIKeyName:      table.OrganizationAPIKeys.Name,
+				orgapikey.SortFieldOrganizationAPIKeyStatus:    table.OrganizationAPIKeys.Status,
+				orgapikey.SortFieldOrganizationAPIKeyLastUsed:  table.OrganizationAPIKeys.LastUsedAt,
+			},
+		)...).
+		Run(ctx, input.Request.Pagination).
+		Value()
 	if err != nil {
 		r.logger.Error().Err(err).Str(
 			"organization_id", input.OrganizationID,
@@ -390,16 +361,12 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
 
-	if len(itemEntities) == 0 {
-		return search.Result[orgapikey.OrganizationAPIKey]{
-			Items: []orgapikey.OrganizationAPIKey{},
-			Count: 0,
-			Total: resultCount,
-		}, nil
+	if len(result.Items) == 0 {
+		return result, nil
 	}
 
-	apiKeyIDs := slicex.Map(itemEntities, func(entity model.OrganizationAPIKeys) string {
-		return entity.ID
+	apiKeyIDs := slicex.Map(result.Items, func(item orgapikey.OrganizationAPIKey) string {
+		return item.ID
 	})
 
 	permissionEntities, err := r.getPermissionEntitiesByAPIKeyIDs(
@@ -416,7 +383,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 
 	permissionsByAPIKeyID := make(
 		map[string][]model.OrganizationAPIKeyPermissions,
-		len(itemEntities),
+		len(result.Items),
 	)
 	for _, permissionEntity := range permissionEntities {
 		permissionsByAPIKeyID[permissionEntity.APIKeyID] = append(
@@ -425,15 +392,15 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		)
 	}
 
-	items := slicex.Map(itemEntities, func(entity model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
-		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])
+	result.Items = slicex.Map(result.Items, func(item orgapikey.OrganizationAPIKey) orgapikey.OrganizationAPIKey {
+		item.Permissions = slicex.Map(
+			permissionsByAPIKeyID[item.ID],
+			r.mapper.PermissionToDomain,
+		)
+		return item
 	})
 
-	return search.Result[orgapikey.OrganizationAPIKey]{
-		Items: items,
-		Count: len(items),
-		Total: resultCount,
-	}, nil
+	return result, nil
 }
 
 func (r *organizationAPIKeyRepository) Delete(

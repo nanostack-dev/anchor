@@ -1,0 +1,23 @@
+# Test config for the repository integration suite. Mirrors application.yaml
+# but stands alone so these tests resolve plain env vars (set by integration_test.go)
+# instead of the root application.yaml's file-based secret indirections.
+# Loaded via CONFIG_PATH (integration_test.go); the suite chdirs to the project
+# root, so relative paths here resolve from the module root. NOTE: the config
+# loader's placeholder regex scans comments too — never write a dollar-brace
+# placeholder in a comment here.
+postgres:
+  host: ${POSTGRES_HOST}
+  port: ${POSTGRES_PORT}
+  user: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
+  dbname: ${POSTGRES_DB}
+  sslmode: ${POSTGRES_SSLMODE}
+
+migrations:
+  enabled: true
+  basePath: "./migrations"
+  validate: true
+  autoFixDirty: true
+
+core:
+  environment: "test"

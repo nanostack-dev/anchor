@@ -182,58 +182,20 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 				OR(table.PlatformUsers.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
 		)
 	}
-	query := table.PlatformUsers.SELECT(
-		table.PlatformUsers.AllColumns,
-	).WHERE(whereStmt)
-	total, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.PlatformUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		return search.Result[platform.User]{}, err
-	}
-	if len(input.Sort) > 0 {
-		for _, sort := range input.Sort {
-			switch sort.Field {
-			case platform.SortFieldPlatformUserCreatedAt:
-				fieldToOrderBy := table.PlatformUsers.CreatedAt
-				query = query.ORDER_BY(
-					jetx.OrderBy(fieldToOrderBy, sort.Direction),
-				)
-			case platform.SortFieldPlatformUserUpdatedAt:
-				fieldToOrderBy := table.PlatformUsers.UpdatedAt
-				query = query.ORDER_BY(
-					jetx.OrderBy(fieldToOrderBy, sort.Direction),
-				)
-			case platform.SortFieldPlatformUserEmail:
-				fieldToOrderBy := table.PlatformUsers.Email
-				query = query.ORDER_BY(
-					jetx.OrderBy(fieldToOrderBy, sort.Direction),
-				)
-			case platform.SortFieldPlatformUserRole:
-				fieldToOrderBy := table.PlatformUsers.Role
-				query = query.ORDER_BY(
-					jetx.OrderBy(fieldToOrderBy, sort.Direction),
-				)
-			}
-		}
-	}
-
-	// Apply pagination
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	// Execute query
-	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.platformUserMapper.ToDomain).Value()
-	if err != nil {
-		return search.Result[platform.User]{}, err
-	}
-
-	return search.Result[platform.User]{
-		Items: entities,
-		Total: total,
-		Count: len(entities),
-	}, nil
+	return transactor.Page(r.db, r.platformUserMapper.ToDomain, table.PlatformUsers.AllColumns).
+		From(table.PlatformUsers).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[platform.SortFieldPlatformUser]postgres.Column{
+				platform.SortFieldPlatformUserCreatedAt: table.PlatformUsers.CreatedAt,
+				platform.SortFieldPlatformUserUpdatedAt: table.PlatformUsers.UpdatedAt,
+				platform.SortFieldPlatformUserEmail:     table.PlatformUsers.Email,
+				platform.SortFieldPlatformUserRole:      table.PlatformUsers.Role,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 func NewPlatformTenantUserRepository(
