@@ -32,7 +32,7 @@ func (s *AnchorAPI) CreateLicenseSchema(
 		in.Description = *b.Description
 	}
 
-	schema, err := s.LicenseService.CreateSchema(ctx, in)
+	schema, err := s.LicenseSchemaService.CreateSchema(ctx, in)
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license schema")
 		return nil, err
@@ -48,7 +48,7 @@ func (s *AnchorAPI) GetLicenseSchema(
 		return nil, err
 	}
 
-	schema, err := s.LicenseService.GetSchema(ctx, license.GetSchemaInput{
+	schema, err := s.LicenseSchemaService.GetSchema(ctx, license.GetSchemaInput{
 		TenantID:  tenantID,
 		ProductID: request.ProductId,
 	})
@@ -82,7 +82,7 @@ func (s *AnchorAPI) UpdateLicenseSchema(
 		in.Fields = &declared
 	}
 
-	schema, err := s.LicenseService.UpdateSchema(ctx, in)
+	schema, err := s.LicenseSchemaService.UpdateSchema(ctx, in)
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to update license schema")
 		return nil, err
@@ -98,7 +98,7 @@ func (s *AnchorAPI) DeleteLicenseSchema(
 		return nil, err
 	}
 
-	if err = s.LicenseService.DeleteSchema(ctx, license.DeleteSchemaInput{
+	if err = s.LicenseSchemaService.DeleteSchema(ctx, license.DeleteSchemaInput{
 		TenantID:  tenantID,
 		ProductID: request.ProductId,
 	}); err != nil {

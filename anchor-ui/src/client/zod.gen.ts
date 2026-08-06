@@ -1256,6 +1256,35 @@ export const zLicenseSchemaResponse = z.object({
     updated_at: z.iso.datetime()
 });
 
+export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
+
+export const zLicenseTemplateCreateRequest = z.object({
+    name: z.string().max(120),
+    description: z.optional(z.string()),
+    values: zLicenseTemplateValues
+});
+
+export const zLicenseTemplateUpdateRequest = z.object({
+    name: z.optional(z.string().max(120)),
+    description: z.optional(z.string()),
+    values: z.optional(zLicenseTemplateValues)
+});
+
+export const zLicenseTemplateResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.string()),
+    values: zLicenseTemplateValues,
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zLicenseTemplateListResponse = z.object({
+    items: z.array(zLicenseTemplateResponse),
+    count: z.int()
+});
+
 /**
  * The KSUID of the platform invitation.
  */
@@ -1325,6 +1354,11 @@ export const zProviderTypeParameter = zIntegrationProviderType;
  * The KSUID of the email template.
  */
 export const zEmailTemplateIdParameter = zKsuid;
+
+/**
+ * The KSUID of the license template.
+ */
+export const zLicenseTemplateIdParameter = zKsuid;
 
 export const zLogoutData = z.object({
     body: z.optional(z.never()),
@@ -2532,3 +2566,71 @@ export const zUpdateLicenseSchemaData = z.object({
  * Success
  */
 export const zUpdateLicenseSchemaResponse = zLicenseSchemaResponse;
+
+export const zListLicenseTemplatesData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zListLicenseTemplatesResponse = zLicenseTemplateListResponse;
+
+export const zCreateLicenseTemplateData = z.object({
+    body: zLicenseTemplateCreateRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Created
+ */
+export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zDeleteLicenseTemplateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Deleted
+ */
+export const zDeleteLicenseTemplateResponse = z.void();
+
+export const zGetLicenseTemplateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zUpdateLicenseTemplateData = z.object({
+    body: zLicenseTemplateUpdateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zUpdateLicenseTemplateResponse = zLicenseTemplateResponse;

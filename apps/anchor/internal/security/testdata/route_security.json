@@ -26,6 +26,12 @@
       "license_schema:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/licensing/templates/{license_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}": {
     "productApiKeyAuth": [
       "organization:delete"
@@ -122,6 +128,18 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "license_schema:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/licensing/templates": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/licensing/templates/{license_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:read"
     ]
   },
   "GET /v1/products/{product_id}/organizations/{organization_id}": {
@@ -251,6 +269,12 @@
       "license_schema:create"
     ]
   },
+  "POST /v1/products/{product_id}/licensing/templates": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:create"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations": {
     "productApiKeyAuth": [
       "organization:create"
@@ -373,6 +397,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "license_schema:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/licensing/templates/{license_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:update"
     ]
   },
   "PUT /v1/products/{product_id}/organizations/{organization_id}": {
