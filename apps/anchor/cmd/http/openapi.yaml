@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Anchor API (V1) # Renamed title
   version: 1.0.0 # Initial version
@@ -59,7 +59,7 @@ components:
       description: The KSUID of the platform invitation.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "pinv_9sTUV..."
+        examples: ["pinv_9sTUV..."]
       required: true
     PlatformUserIdParameter:
       name: platform_user_id
@@ -68,7 +68,7 @@ components:
       description: The KSUID of the platform invitation.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "puser_9sTUV..."
+        examples: ["puser_9sTUV..."]
     ProductIdParameter:
       name: product_id
       in: path
@@ -76,7 +76,7 @@ components:
       description: The KSUID of the product.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "prod_2iABC..."
+        examples: ["prod_2iABC..."]
     OrganizationIdParameter:
       name: organization_id
       in: path
@@ -100,7 +100,7 @@ components:
       description: The KSUID of the product Product User.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "pusr_8nOPQ..."
+        examples: ["pusr_8nOPQ..."]
     ProductRoleIdParameter:
       name: role_id
       in: path
@@ -108,7 +108,7 @@ components:
       description: The KSUID of the product role.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "role_5mNOP..."
+        examples: ["role_5mNOP..."]
     ResourcePermissionNameParameter:
       name: permission_name
       in: path
@@ -119,7 +119,7 @@ components:
         type: string
         minLength: 2
         maxLength: 200
-        example: "file:read"
+        examples: ["file:read"]
     ProductPermissionIdParameter:
       name: permission_id
       in: path
@@ -127,7 +127,7 @@ components:
       description: permission name
       schema:
         type: string
-        example: "file:read"
+        examples: ["file:read"]
     ProductAPIKeyIdParameter:
       name: api_key_id
       in: path
@@ -135,7 +135,7 @@ components:
       description: The KSUID of the product API key.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "product_apikey_5mNOP..."
+        examples: ["product_apikey_5mNOP..."]
     OrganizationAPIKeyIdParameter:
       name: api_key_id
       in: path
@@ -143,7 +143,7 @@ components:
       description: The KSUID of the organization API key.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "organization_apikey_5mNOP..."
+        examples: ["organization_apikey_5mNOP..."]
     IntegrationInstanceIdParameter:
       name: integration_instance_id
       in: path
@@ -151,7 +151,7 @@ components:
       description: The KSUID of the integration instance.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "iin_7pRST..."
+        examples: ["iin_7pRST..."]
     ProviderTypeParameter:
       name: provider_type
       in: path
@@ -166,7 +166,7 @@ components:
       description: The KSUID of the email template.
       schema:
         $ref: "#/components/schemas/ksuid"
-        example: "etpl_2iABC..."
+        examples: ["etpl_2iABC..."]
   securitySchemes:
     platformBearerAuth:
       type: http
@@ -202,7 +202,7 @@ components:
       type: string
       description: Unique identifier using KSUID format with a resource-specific
         prefix.
-      example: "prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb"
+      examples: ["prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb"]
       pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
     ApiError:
       type: object
@@ -213,20 +213,20 @@ components:
         code:
           type: string
           description: A machine-readable error code.
-          example: "VALIDATION_ERROR"
+          examples: ["VALIDATION_ERROR"]
         message:
           type: string
           description: A human-readable error message.
-          example: "Request validation failed"
+          examples: ["Request validation failed"]
         field:
           type: string
           description: The specific field that caused the error (optional).
-          example: "name"
+          examples: ["name"]
         metadata:
           type: object # Allow richer metadata
           additionalProperties: true
           description: Additional metadata about the error (optional).
-          example: {"minLength": 2}
+          examples: [{"minLength": 2}]
       required:
       - code
       - message
@@ -298,9 +298,11 @@ components:
     Metadata:
       type: object
       additionalProperties: true
-      description: Optional key-value metadata. Values can be string, number, 
-        boolean.
-      example: {"billing_ref": "cust_abc123", "region": "us-east-1", "sla_level": "gold"}
+      description: Optional key-value metadata. Values can be string, number,
+        boolean. At most 50 keys; keys are at most 64 characters and string
+        values at most 512 characters. Sending metadata replaces the stored
+        metadata in full.
+      examples: [{"billing_ref": "cust_abc123", "region": "us-east-1", "sla_level": "gold"}]
     # Auth
     AuthTokenResponse:
       additionalProperties: false
@@ -337,14 +339,14 @@ components:
         invitation_code:
           type: string
           description: Optional invitation code for registration.
-          example: "INVITE123"
+          examples: ["INVITE123"]
         tenant_name:
           type: string
           minLength: 2
           maxLength: 100
           description: Optional tenantservice name for the initial setup. If not
             provided, defaults to "Default".
-          example: "Acme Corporation"
+          examples: ["Acme Corporation"]
       required:
       - email
       - password
@@ -360,7 +362,7 @@ components:
           x-go-type: string
           description: The email address of the Product User being invited to 
             the platform.
-          example: "new.admin@example.com"
+          examples: ["new.admin@example.com"]
       required:
       - email
     PlatformInvitationResponse:
@@ -370,18 +372,18 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the platform invitation (e.g., 
             prefix 'pinv_').
-          example: "pinv_9sTUV..."
+          examples: ["pinv_9sTUV..."]
         code:
           type: string
           description: The unique invitation code that the Product User will use
             to register.
-          example: "PLATFORMINVITEABC"
+          examples: ["PLATFORMINVITEABC"]
         email:
           type: string
           format: email
           x-go-type: string
           description: The email address the invitation was sent to.
-          example: "new.admin@example.com"
+          examples: ["new.admin@example.com"]
         created_at:
           type: string
           format: date-time
@@ -394,7 +396,7 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: The ID of the PlatformTenant this invitation is 
             associated with.
-          example: "ptnt_1single..."
+          examples: ["ptnt_1single..."]
       required:
       - id
       - code
@@ -463,22 +465,22 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the platform Product User (e.g., 
             prefix 'puser_').
-          example: "puser_9sTUV..."
+          examples: ["puser_9sTUV..."]
         user_id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the Product User (e.g., prefix 
             'user_').
-          example: "user_9sTUV..."
+          examples: ["user_9sTUV..."]
         email:
           type: string
           format: email
           x-go-type: string
           description: The email address the invitation was sent to.
-          example: "new.admin@example.com"
+          examples: ["new.admin@example.com"]
         role:
           $ref: "#/components/schemas/PlatformUserRole"
           description: The role of the platform Product User.
-          example: "ADMIN"
+          examples: ["ADMIN"]
         created_at:
           type: string
           format: date-time
@@ -491,7 +493,7 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: The ID of the PlatformTenant this invitation is 
             associated with.
-          example: "tenant_1single..."
+          examples: ["tenant_1single..."]
       required:
       - id
       - email
@@ -598,13 +600,12 @@ components:
           maxLength: 100
           description: Name of the product. Must be unique within the
             PlatformTenant using case-insensitive matching.
-          example: "My Super App"
+          examples: ["My Super App"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 1000
-          nullable: true
           description: Optional description for the product.
-          example: "Real-time Product User analytics."
+          examples: ["Real-time Product User analytics."]
         config:
           $ref: "#/components/schemas/ProductConfigRequest"
           description: Product-level configuration.
@@ -630,7 +631,7 @@ components:
             appended automatically, e.g. "acme" produces
             "acme_org_apikey_...". Product API keys always use the fixed
             Anchor product API key prefix.
-          example: "anchor"
+          examples: ["anchor"]
       required:
       - prefix
     ProductConfigResponse:
@@ -649,7 +650,7 @@ components:
           description: >-
             Root prefix used when generating organization API keys for
             organizations in this product.
-          example: "anchor"
+          examples: ["anchor"]
       required:
       - prefix
     ProductResponse: # Response Schema
@@ -658,20 +659,19 @@ components:
         id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the product (e.g., prefix 'prod_').
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         tenant_id: # Included for clarity, even if fixed in OS V1
           $ref: "#/components/schemas/ksuid"
           description: Identifier of the PlatformTenant this product belongs to.
-          example: "ptnt_1single..."
+          examples: ["ptnt_1single..."]
         name:
           type: string
           description: Name of the product.
-          example: "Analytics Dashboard"
+          examples: ["Analytics Dashboard"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the product.
-          example: "Real-time Product User analytics."
+          examples: ["Real-time Product User analytics."]
         config:
           $ref: "#/components/schemas/ProductConfigResponse"
           description: Product-level configuration.
@@ -712,19 +712,18 @@ components:
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this permission is defined for.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         name:
           type: string
           description: >-
             The permission string identifier. Permission name filters and
             validation use case-insensitive matching and return the canonical
             stored casing.
-          example: "product:settings:read"
+          examples: ["product:settings:read"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Human-readable description of what this permission grants.
-          example: "Allows reading the product settings."
+          examples: ["Allows reading the product settings."]
         created_at:
           type: string
           format: date-time
@@ -766,22 +765,20 @@ components:
             "<resource>:<action>" (e.g. "document:read", "file:delete",
             "workspace:invite"). Must be unique within the product using
             case-insensitive matching.
-          example: "document:read"
+          examples: ["document:read"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional human-readable description of what this permission grants.
-          example: "Allows reading document contents."
+          examples: ["Allows reading document contents."]
         scope_modifier:
-          type: string
+          type: [string, "null"]
           maxLength: 100
-          nullable: true
           description: >-
             Optional scope qualifier that narrows the permission to a subset of
             matching resources (e.g. "own" to restrict to resources the user
             owns, "team" to restrict to resources shared within their team).
-          example: "own"
+          examples: ["own"]
       required:
       - name
 
@@ -790,11 +787,10 @@ components:
       type: object
       properties:
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Updated human-readable description of what this permission grants.
-          example: "Allows updating document contents."
+          examples: ["Allows updating document contents."]
 
     ProductResourcePermissionResponse:
       description: >-
@@ -809,26 +805,24 @@ components:
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this resource permission belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         name:
           type: string
           description: >-
             The resource permission identifier (e.g. "document:read"). This
             value is used as the primary key and path parameter.
-          example: "document:read"
+          examples: ["document:read"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Human-readable description of what this permission grants.
-          example: "Allows reading document contents."
+          examples: ["Allows reading document contents."]
         scope_modifier:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: >-
             Optional scope qualifier that narrows the permission (e.g. "own"
             restricts to resources owned by the user, "team" to resources
             shared within their team).
-          example: "own"
+          examples: ["own"]
         created_at:
           type: string
           format: date-time
@@ -885,20 +879,19 @@ components:
           maxLength: 100
           description: Name of the product role. Must be unique within the
             Product using case-insensitive matching.
-          example: "Editor"
+          examples: ["Editor"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the role's purpose.
-          example: "Can view and edit resources within assigned organizations/workspaces."
+          examples: ["Can view and edit resources within assigned organizations/workspaces."]
         permissions:
           type: array
           description: Optional list of permission names (strings) to assign 
             initially.
           items:
             type: string
-            example: "document:edit"
+            examples: ["document:edit"]
           x-go-type-skip-optional-pointer: true
       required:
       - name
@@ -913,20 +906,19 @@ components:
           maxLength: 100
           description: Name of the product role. Must be unique within the
             Product using case-insensitive matching.
-          example: "Editor"
+          examples: ["Editor"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the role's purpose.
-          example: "Can view and edit resources within assigned organizations/workspaces."
+          examples: ["Can view and edit resources within assigned organizations/workspaces."]
         permissions:
           type: array
           description: Optional list of permission names (strings) to assign 
             initially.
           items:
             type: string
-            example: "document:edit"
+            examples: ["document:edit"]
           x-go-type-skip-optional-pointer: true
     ProductRoleResponse:
       type: object
@@ -935,20 +927,19 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the product role (e.g., prefix 
             'role_').
-          example: "role_5mNOP..."
+          examples: ["role_5mNOP..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this role belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         name:
           type: string
           description: Name of the product role.
-          example: "Editor"
+          examples: ["Editor"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the role.
-          example: "Can view and edit resources within assigned organizations/workspaces."
+          examples: ["Can view and edit resources within assigned organizations/workspaces."]
         # scope: # Revisit if needed - we initially decided scope ('Org'/'WS') was implicit via Membership
         #   type: string
         #   enum: [Organization, Workspace]
@@ -982,17 +973,17 @@ components:
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this permission is defined for.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         permission_name:
           type: string
           description: >-
             The product resource permission name (e.g. "document:read",
             "file:delete"). References an existing ProductResourcePermission.
-          example: "document:read"
+          examples: ["document:read"]
         product_role_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the ProductRole this permission is assigned to.
-          example: "role_5mNOP..."
+          examples: ["role_5mNOP..."]
       required:
       - product_id
       - product_role_id
@@ -1029,7 +1020,7 @@ components:
             The name of the product resource permission to assign
             (e.g. "document:read"). Must match an existing
             ProductResourcePermission for this product.
-          example: "document:read"
+          examples: ["document:read"]
       required:
       - permission_name
     #Api key
@@ -1048,26 +1039,25 @@ components:
           maxLength: 100
           description: Name of the product API key. Must be unique within the 
             Product.
-          example: "Production Integration Key"
+          examples: ["Production Integration Key"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the API key's purpose.
-          example: "API key for production environment integration."
+          examples: ["API key for production environment integration."]
         mutable:
           type: boolean
           description: Whether this API key is allowed to update its assigned
             permissions later through the management API.
           default: false
-          example: false
+          examples: [false]
         permissions:
           type: array
           description: Optional list of permission names (strings) to assign 
             initially.
           items:
             type: string
-            example: "organization:create"
+            examples: ["organization:create"]
           x-go-type-skip-optional-pointer: true
       required:
       - name
@@ -1078,38 +1068,35 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the product API key (e.g., prefix 
             'pkey_').
-          example: "product_apikey_5mNOP..."
+          examples: ["product_apikey_5mNOP..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this API key belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         name:
           type: string
           description: Name of the product API key.
-          example: "Production Integration Key"
+          examples: ["Production Integration Key"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the API key.
-          example: "API key for production environment integration."
+          examples: ["API key for production environment integration."]
         mutable:
           type: boolean
           description: Whether the API key allows permission updates.
-          example: false
+          examples: [false]
         obfuscated_value:
           type: string
           description: Obfuscated API key value for display purposes (showing 
             only first/last characters).
-          example: "product_apikey_**********************aBc"
+          examples: ["product_apikey_**********************aBc"]
         expires_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Expiration date for the API key.
         last_used_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Last time the API key was used.
         permissions:
           type: array
@@ -1143,7 +1130,7 @@ components:
             type: string
             description: The clear API key value (only shown once at creation 
               time).
-            example: "anchor_prd_apikey_5mNOP1234567890abcdefg"
+            examples: ["anchor_prd_apikey_5mNOP1234567890abcdefg"]
         required:
         - value
         - id
@@ -1167,17 +1154,17 @@ components:
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this permission is defined for.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         permission_name:
           type: string
           description: >-
             The Anchor built-in scope granted to this API key
             (e.g. "organization:create", "product_user:read").
-          example: "organization:create"
+          examples: ["organization:create"]
         product_api_key_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the ProductAPIKey this permission is granted to.
-          example: "product_apikey_5mNOP..."
+          examples: ["product_apikey_5mNOP..."]
       required:
       - product_id
       - product_api_key_id
@@ -1206,17 +1193,15 @@ components:
           minLength: 2
           maxLength: 100
           description: Name of the organization API key. Must be unique within the organization.
-          example: "Runner Access Key"
+          examples: ["Runner Access Key"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the API key's purpose.
-          example: "Key used by the product backend to access org-scoped operations."
+          examples: ["Key used by the product backend to access org-scoped operations."]
         expires_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Optional expiration date for the API key.
         permissions:
           type: array
@@ -1226,7 +1211,7 @@ components:
             creation, so at least one must be supplied here.
           items:
             type: string
-            example: "organization:read"
+            examples: ["organization:read"]
           x-go-type-skip-optional-pointer: true
       required:
       - name
@@ -1237,33 +1222,30 @@ components:
         id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the organization API key.
-          example: "organization_apikey_5mNOP..."
+          examples: ["organization_apikey_5mNOP..."]
         organization_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the organization this API key belongs to.
-          example: "org_6jKLM..."
+          examples: ["org_6jKLM..."]
         name:
           type: string
           description: Name of the organization API key.
-          example: "Runner Access Key"
+          examples: ["Runner Access Key"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the API key.
-          example: "Key used by the product backend to access org-scoped operations."
+          examples: ["Key used by the product backend to access org-scoped operations."]
         obfuscated_value:
           type: string
           description: Obfuscated API key value for display purposes.
-          example: "anchor_org_apikey_***_a1b2c3d4"
+          examples: ["anchor_org_apikey_***_a1b2c3d4"]
         expires_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Expiration date for the API key.
         last_used_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Last time the API key was used.
         permissions:
           type: array
@@ -1295,7 +1277,7 @@ components:
           value:
             type: string
             description: The clear API key value (only shown once at creation time).
-            example: "anchor_org_apikey_5mNOP1234567890abcdefg"
+            examples: ["anchor_org_apikey_5mNOP1234567890abcdefg"]
         required:
         - value
         - id
@@ -1313,19 +1295,19 @@ components:
         organization_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the organization this permission grant belongs to.
-          example: "org_6jKLM..."
+          examples: ["org_6jKLM..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the product this permission is defined for.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         permission_name:
           type: string
           description: The Anchor built-in scope granted to this API key.
-          example: "organization:read"
+          examples: ["organization:read"]
         organization_api_key_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the OrganizationAPIKey this permission is granted to.
-          example: "organization_apikey_5mNOP..."
+          examples: ["organization_apikey_5mNOP..."]
       required:
       - organization_id
       - product_id
@@ -1347,7 +1329,7 @@ components:
       type: string
       enum: [active, invited, suspended]   # Define possible statuses
       description: The status of the product Product User account.
-      example: active
+      examples: [active]
     ProductUserRequest: # For Create and Update (PATCH)
       type: object
       properties:
@@ -1356,14 +1338,13 @@ components:
           format: email
           x-go-type: string
           description: User's email address. Must be unique within the Product.
-          example: "end.Product User@example.com"
+          examples: ["end.Product User@example.com"]
         name:
-          type: string
+          type: [string, "null"]
           minLength: 1
           maxLength: 100
-          nullable: true
           description: User's display name.
-          example: "Jane Doe"
+          examples: ["Jane Doe"]
         status:
           $ref: "#/components/schemas/ProductUserStatus"
           description: Set the status (e.g., create as 'invited' or 'active', 
@@ -1375,28 +1356,26 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the product Product User (e.g., 
             prefix 'pusr_').
-          example: "pusr_8nOPQ..."
+          examples: ["pusr_8nOPQ..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this Product User belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         email:
           type: string
           format: email
           x-go-type: string
           description: User's email address.
-          example: "end.Product User@example.com"
+          examples: ["end.Product User@example.com"]
         name:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: User's display name.
-          example: "Jane Doe"
+          examples: ["Jane Doe"]
         external_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: External identifier for the user, typically from an 
             external identity provider.
-          example: "user_2nTFC..."
+          examples: ["user_2nTFC..."]
         status:
           $ref: "#/components/schemas/ProductUserStatus"
         created_at:
@@ -1643,11 +1622,11 @@ components:
         id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the role.
-          example: "role_5mNOP..."
+          examples: ["role_5mNOP..."]
         name:
           type: string
           description: Name of the role.
-          example: "Editor"
+          examples: ["Editor"]
         permissions:
           type: array
           items:
@@ -1657,7 +1636,7 @@ components:
             (e.g. "document:read", "file:delete"). These are domain-specific
             permissions defined by the product owner. Only included when
             `include=role_permissions` is set.
-          example: ["document:read", "document:create"]
+          examples: [["document:read", "document:create"]]
       required:
       - id
       - name
@@ -1672,16 +1651,15 @@ components:
             id:
               $ref: "#/components/schemas/ksuid"
               description: Unique identifier for the organization.
-              example: "org_3iXYZ..."
+              examples: ["org_3iXYZ..."]
             name:
               type: string
               description: Name of the organization.
-              example: "Acme Corporation"
+              examples: ["Acme Corporation"]
             description:
-              type: string
-              nullable: true
+              type: [string, "null"]
               description: Description of the organization.
-              example: "Leading provider of innovative solutions."
+              examples: ["Leading provider of innovative solutions."]
             metadata:
               $ref: "#/components/schemas/Metadata"
               description: Key-value metadata for the organization.
@@ -1706,11 +1684,11 @@ components:
         organization_id:
           $ref: "#/components/schemas/ksuid"
           description: The organization to add the user to.
-          example: "org_3iXYZ..."
+          examples: ["org_3iXYZ..."]
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: The role to assign to the user within the organization.
-          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - organization_id
       - role_id
@@ -1723,7 +1701,7 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: The new role to assign to the user within the 
             organization.
-          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - role_id
     UserOrganizationListResponse:
@@ -1823,20 +1801,19 @@ components:
           maxLength: 100
           description: Name of the product API key. Must be unique within the 
             Product.
-          example: "Production Integration Key"
+          examples: ["Production Integration Key"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the API key's purpose.
-          example: "API key for production environment integration."
+          examples: ["API key for production environment integration."]
         permissions:
           type: array
           description: Optional full replacement set of permission names.
             This update is allowed only when the API key is mutable.
           items:
             type: string
-            example: "organization:create"
+            examples: ["organization:create"]
     OrganizationAPIKeyUpdateRequest:
       type: object
       required:
@@ -1847,13 +1824,12 @@ components:
           minLength: 2
           maxLength: 100
           description: Name of the organization API key. Must be unique within the organization.
-          example: "Runner Access Key"
+          examples: ["Runner Access Key"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the API key's purpose.
-          example: "Updated description for org API key."
+          examples: ["Updated description for org API key."]
         status:
           $ref: "#/components/schemas/OrganizationAPIKeyStatus"
 
@@ -1948,13 +1924,12 @@ components:
           maxLength: 100
           description: Name of the organization. Must be unique within the 
             Product.
-          example: "Acme Corporation"
+          examples: ["Acme Corporation"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the organization.
-          example: "Leading provider of innovative solutions."
+          examples: ["Leading provider of innovative solutions."]
         metadata:
           $ref: "#/components/schemas/Metadata"
           description: Optional key-value metadata for the organization.
@@ -1971,11 +1946,11 @@ components:
         product_user_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the product user to assign as founding member.
-          example: "pusr_3iXYZ..."
+          examples: ["pusr_3iXYZ..."]
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: Role to assign to the founding member.
-          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
       - role_id
@@ -1986,20 +1961,19 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the organization (e.g., prefix 
             'org_').
-          example: "org_3iXYZ..."
+          examples: ["org_3iXYZ..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this organization belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         name:
           type: string
           description: Name of the organization.
-          example: "Acme Corporation"
+          examples: ["Acme Corporation"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the organization.
-          example: "Leading provider of innovative solutions."
+          examples: ["Leading provider of innovative solutions."]
         metadata:
           $ref: "#/components/schemas/Metadata"
           description: Key-value metadata for the organization.
@@ -2056,13 +2030,12 @@ components:
           minLength: 2
           maxLength: 100
           description: Name of the workspace. Must be unique within the organization.
-          example: "Production"
+          examples: ["Production"]
         description:
-          type: string
+          type: [string, "null"]
           maxLength: 500
-          nullable: true
           description: Optional description of the workspace.
-          example: "Workspace for production users and resources."
+          examples: ["Workspace for production users and resources."]
       required:
       - name
     ProductWorkspaceResponse:
@@ -2071,20 +2044,19 @@ components:
         id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the workspace.
-          example: "ws_3iXYZ..."
+          examples: ["ws_3iXYZ..."]
         organization_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the organization this workspace belongs to.
-          example: "org_3iXYZ..."
+          examples: ["org_3iXYZ..."]
         name:
           type: string
           description: Name of the workspace.
-          example: "Production"
+          examples: ["Production"]
         description:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Description of the workspace.
-          example: "Workspace for production users and resources."
+          examples: ["Workspace for production users and resources."]
         created_at:
           type: string
           format: date-time
@@ -2138,22 +2110,20 @@ components:
         product_user_id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier of the product user.
-          example: "pusr_3iXYZ..."
+          examples: ["pusr_3iXYZ..."]
         email:
           type: string
           format: email
           description: Email address of the member.
-          example: "alice@example.com"
+          examples: ["alice@example.com"]
         name:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Display name of the member.
-          example: "Alice Smith"
+          examples: ["Alice Smith"]
         external_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: External (Clerk) user ID of the member.
-          example: "user_2NNEqL2nrIRdJ194ndJqow38MB1"
+          examples: ["user_2NNEqL2nrIRdJ194ndJqow38MB1"]
         role:
           type: object
           description: Role assigned to the member within the organization.
@@ -2161,11 +2131,11 @@ components:
             id:
               $ref: "#/components/schemas/ksuid"
               description: Unique identifier of the role.
-              example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+              examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
             name:
               type: string
               description: Display name of the role.
-              example: "Admin"
+              examples: ["Admin"]
             permissions:
               type: array
               items:
@@ -2174,7 +2144,7 @@ components:
                 Product resource permission names assigned to this role
                 (e.g. "document:read", "file:delete"). Only populated when
                 include=role_permissions.
-              example: ["org:read", "org:write"]
+              examples: [["org:read", "org:write"]]
           required:
           - id
           - name
@@ -2207,11 +2177,11 @@ components:
         product_user_id:
           $ref: "#/components/schemas/ksuid"
           description: The product user to add to the organization.
-          example: "pusr_3iXYZ..."
+          examples: ["pusr_3iXYZ..."]
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: The role to assign to the member.
-          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
       - role_id
@@ -2223,7 +2193,7 @@ components:
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: The new role to assign to the member.
-          example: "product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - role_id
     OrganizationMemberSearchRequest:
@@ -2311,8 +2281,7 @@ components:
           description: Optional Clerk API key used for reconciliation/backfill 
             workflows.
         issue_reason:
-          type: string
-          nullable: true
+          type: [string, "null"]
           maxLength: 500
           description: Optional operator note about integration issues.
       additionalProperties: false
@@ -2396,6 +2365,15 @@ components:
       additionalProperties: false
       properties:
         provider_type:
+          # Deliberately an inline single-value enum rather than a $ref to
+          # IntegrationProviderType. This is the oneOf discriminator, so it has
+          # to narrow to one value. OpenAPI 3.1 lets `const`/`enum` sit beside a
+          # `$ref`, and oapi-codegen and kin-openapi both honour that, but
+          # @hey-api/openapi-ts (0.83 and 0.88 both checked) resolves the $ref
+          # and discards the narrowing sibling. Both branches then generate
+          # `provider_type: IntegrationProviderType`, the TS union stops
+          # discriminating, and `config` collapses to `never` at every call
+          # site. Keep the copy until hey-api honours the sibling.
           type: string
           enum: [SMTP]
         config:
@@ -2404,6 +2382,7 @@ components:
       type: object
       properties:
         provider_type:
+          # Inline by necessity — see SmtpIntegrationInstanceCreateRequest.provider_type.
           type: string
           enum: [CLERK]
         config:
@@ -2431,13 +2410,11 @@ components:
             this to true only auto-promotes INACTIVE to ACTIVE. Other status 
             transitions are managed by the integration state machine.
         webhook_secret:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: The webhook signing secret for signature validation.
-          example: "whsec_..."
+          examples: ["whsec_..."]
         config:
           $ref: "#/components/schemas/IntegrationProviderConfig"
-          nullable: true
           description: Updated provider-specific configuration (JSON object).
     IntegrationInstanceResponse:
       type: object
@@ -2446,11 +2423,11 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the integration instance (prefix 
             'iin_').
-          example: "iin_7pRST..."
+          examples: ["iin_7pRST..."]
         product_id:
           $ref: "#/components/schemas/ksuid"
           description: ID of the Product this integration instance belongs to.
-          example: "prod_2iABC..."
+          examples: ["prod_2iABC..."]
         provider_type:
           $ref: "#/components/schemas/IntegrationProviderType"
         config_version:
@@ -2464,14 +2441,12 @@ components:
         status:
           $ref: "#/components/schemas/IntegrationInstanceStatus"
         last_error:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Optional operator note or latest error reason.
         webhook_secret_obfuscated:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Obfuscated marker shown when a webhook secret is stored.
-          example: "********"
+          examples: ["********"]
         created_at:
           type: string
           format: date-time
@@ -2482,7 +2457,6 @@ components:
           description: Timestamp when the integration instance was last updated.
         public_config:
           $ref: "#/components/schemas/IntegrationProviderPublicConfig"
-          nullable: true
           description: Non-sensitive provider configuration. Password and secrets are never included.
       required:
       - id
@@ -2512,11 +2486,11 @@ components:
         event_id:
           $ref: "#/components/schemas/ksuid"
           description: The ID of the created integration event (prefix 'iev_').
-          example: "iev_8qUVW..."
+          examples: ["iev_8qUVW..."]
         status:
           $ref: "#/components/schemas/IntegrationEventStatus"
           description: Processing status of the event.
-          example: "PROCESSED"
+          examples: ["PROCESSED"]
       required:
       - event_id
       - status
@@ -2534,24 +2508,23 @@ components:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the audit log entry (prefix 
             'ial_').
-          example: "ial_9rXYZ..."
+          examples: ["ial_9rXYZ..."]
         integration_instance_id:
           $ref: "#/components/schemas/ksuid"
           description: Integration instance ID this audit record belongs to.
         action:
           type: string
           description: Canonical action code for the event.
-          example: "WEBHOOK_RECEIVED"
+          examples: ["WEBHOOK_RECEIVED"]
         severity:
           $ref: "#/components/schemas/IntegrationAuditLogSeverity"
         message:
           type: string
           description: Human-readable summary for this audit record.
-          example: "Webhook accepted and queued for processing"
+          examples: ["Webhook accepted and queued for processing"]
         metadata:
-          type: object
+          type: [object, "null"]
           additionalProperties: true
-          nullable: true
           description: Optional structured context for this event.
         created_at:
           type: string
@@ -2700,11 +2673,9 @@ components:
         description:
           type: string
         draft_version_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
         published_version_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
         is_active:
           type: boolean
         created_at:
@@ -2743,9 +2714,8 @@ components:
           type: string
           format: date-time
         published_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
 
     EmailTemplateListResponse:
       type: object
@@ -2822,11 +2792,9 @@ components:
       required: [to_address]
       properties:
         template_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
         template_slug:
-          type: string
-          nullable: true
+          type: [string, "null"]
         to_address:
           type: string
           format: email
@@ -2836,8 +2804,7 @@ components:
           type: object
           additionalProperties: true
         dedupe_key:
-          type: string
-          nullable: true
+          type: [string, "null"]
         use_draft:
           type: boolean
           default: false
@@ -2853,14 +2820,11 @@ components:
         integration_instance_id:
           type: string
         template_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
         template_version_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
         dedupe_key:
-          type: string
-          nullable: true
+          type: [string, "null"]
         to_address:
           type: string
         to_name:
@@ -2874,12 +2838,10 @@ components:
         status:
           $ref: '#/components/schemas/EmailSendStatus'
         last_error:
-          type: string
-          nullable: true
+          type: [string, "null"]
         sent_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -4232,14 +4194,13 @@ paths:
                   x-go-type: string
                   description: User's email address. Must be unique within the 
                     Product.
-                  example: "new.user@company.com"
+                  examples: ["new.user@company.com"]
                 name:
-                  type: string
+                  type: [string, "null"]
                   minLength: 1
                   maxLength: 100
-                  nullable: true
                   description: User's display name.
-                  example: "New User"
+                  examples: ["New User"]
                 status:
                   $ref: "#/components/schemas/ProductUserStatus"
                   description: Initial status (e.g., 'active' or 'invited'). 

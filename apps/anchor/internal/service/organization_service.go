@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -17,6 +19,60 @@ import (
 )
 
 const lockKeyCreateWithMember = "organization:create-with-member:%s:%s"
+
+// Organization metadata limits. These are business rules, so they live here
+// rather than as CHECK constraints on the column, and they are documented in
+// the Metadata schema in openapi.yaml.
+const (
+	maxOrganizationMetadataKeys        = 50
+	maxOrganizationMetadataKeyLength   = 64
+	maxOrganizationMetadataValueLength = 512
+)
+
+// buildOrganizationMetadata validates caller-supplied metadata and encodes it
+// for storage. A nil or empty map yields nil, which is stored as SQL NULL.
+func buildOrganizationMetadata(metadata map[string]any) (json.RawMessage, error) {
+	if len(metadata) == 0 {
+		return nil, nil
+	}
+
+	if len(metadata) > maxOrganizationMetadataKeys {
+		return nil, NewOrganizationMetadataTooManyKeysError(
+			len(metadata), maxOrganizationMetadataKeys,
+		)
+	}
+
+	for key, value := range metadata {
+		if strings.TrimSpace(key) == "" || len(key) > maxOrganizationMetadataKeyLength {
+			return nil, NewOrganizationMetadataInvalidKeyError(
+				key, maxOrganizationMetadataKeyLength,
+			)
+		}
+
+		switch typed := value.(type) {
+		case string:
+			if len(typed) > maxOrganizationMetadataValueLength {
+				return nil, NewOrganizationMetadataValueTooLongError(
+					key, maxOrganizationMetadataValueLength,
+				)
+			}
+		case bool, float64, float32, json.Number,
+			int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64:
+			// Scalar values are accepted as-is.
+		default:
+			// Rejects null, arrays and nested objects.
+			return nil, NewOrganizationMetadataInvalidValueError(key)
+		}
+	}
+
+	encoded, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, fault.ErrUnexpected
+	}
+
+	return encoded, nil
+}
 
 type OrganizationService interface {
 	Find(ctx context.Context, input organization.FindOrganizationInput) (
@@ -94,10 +150,16 @@ func (s *organizationService) Create(
 		return organization.Organization{}, err
 	}
 
+	metadataJSON, err := buildOrganizationMetadata(input.Metadata)
+	if err != nil {
+		return organization.Organization{}, err
+	}
+
 	org := organization.Organization{
-		ProductID:   input.ProductID,
-		Name:        input.Name,
-		Description: input.Description,
+		ProductID:    input.ProductID,
+		Name:         input.Name,
+		Description:  input.Description,
+		MetadataJSON: metadataJSON,
 	}
 	org.GenerateID()
 
@@ -126,6 +188,11 @@ func (s *organizationService) CreateWithMember(
 	logger := s.logger.With().Str("operation", "CreateWithMember").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.OrganizationWithMemberResult{}, err
+	}
+
+	metadataJSON, err := buildOrganizationMetadata(input.Metadata)
+	if err != nil {
 		return organization.OrganizationWithMemberResult{}, err
 	}
 
@@ -215,9 +282,10 @@ func (s *organizationService) CreateWithMember(
 		}
 
 		org := organization.Organization{
-			ProductID:   input.ProductID,
-			Name:        input.Name,
-			Description: input.Description,
+			ProductID:    input.ProductID,
+			Name:         input.Name,
+			Description:  input.Description,
+			MetadataJSON: metadataJSON,
 		}
 		org.GenerateID()
 
@@ -278,6 +346,11 @@ func (s *organizationService) Update(
 		return organization.Organization{}, err
 	}
 
+	metadataJSON, err := buildOrganizationMetadata(input.Metadata)
+	if err != nil {
+		return organization.Organization{}, err
+	}
+
 	optOrg, err := s.organizationRepo.FindByID(
 		ctx, input.ProductID, input.OrganizationID,
 	)
@@ -302,6 +375,7 @@ func (s *organizationService) Update(
 		org.Name = *input.Name
 	}
 	org.Description = input.Description
+	org.MetadataJSON = metadataJSON
 
 	updated, err := s.organizationRepo.Update(ctx, input.ProductID, org)
 	if err != nil {

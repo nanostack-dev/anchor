@@ -68,6 +68,7 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 		data: productRoleData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductRolesOptions(searchProductRolesOptionsParams),
 		placeholderData: keepPreviousData,
@@ -201,6 +202,11 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="roles"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -226,11 +232,6 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load roles: {error.message}
-				</div>
-			)}
 		</>
 	);
 }

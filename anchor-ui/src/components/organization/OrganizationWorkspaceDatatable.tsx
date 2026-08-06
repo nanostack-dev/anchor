@@ -86,7 +86,7 @@ export function OrganizationWorkspaceDatatable({
 			debouncedIds,
 		]);
 
-	const { data, isLoading, error } = useQuery({
+	const { data, isLoading, error, refetch } = useQuery({
 		...searchOrganizationWorkspacesOptions(
 			queryOptions ?? {
 				path: { product_id: "", organization_id: "" },
@@ -171,6 +171,11 @@ export function OrganizationWorkspaceDatatable({
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="workspaces"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={data?.total ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -206,11 +211,6 @@ export function OrganizationWorkspaceDatatable({
 				}}
 				enableRowSelection={false}
 			/>
-			{error ? (
-				<div className="mt-3 text-sm text-destructive">
-					Failed to load workspaces: {error.message}
-				</div>
-			) : null}
 		</>
 	);
 }

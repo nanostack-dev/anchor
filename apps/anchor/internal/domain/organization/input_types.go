@@ -8,6 +8,8 @@ type CreateOrganizationInput struct {
 	ProductID   string  `validate:"required,notblank"`
 	Name        string  `validate:"required,notblank,min=2,max=100"`
 	Description *string `validate:"omitempty,max=500"`
+	// Metadata is the caller-supplied key-value metadata. Nil leaves it unset.
+	Metadata map[string]any
 }
 
 type FindOrganizationInput struct {
@@ -20,6 +22,10 @@ type UpdateOrganizationInput struct {
 	OrganizationID string  `validate:"required,notblank"`
 	Name           *string `validate:"omitempty,notblank,min=2,max=100"`
 	Description    *string `validate:"omitempty,max=500"`
+	// Metadata replaces the stored metadata wholesale, matching the
+	// full-replace semantics the PUT endpoint already applies to Description.
+	// Nil clears it.
+	Metadata map[string]any
 }
 
 type DeleteOrganizationInput struct {
@@ -52,6 +58,8 @@ type CreateOrganizationWithMemberInput struct {
 	Description   *string `validate:"omitempty,max=500"`
 	ProductUserID string  `validate:"required,notblank"`
 	RoleID        string  `validate:"required,notblank"`
+	// Metadata is the caller-supplied key-value metadata. Nil leaves it unset.
+	Metadata map[string]any
 }
 
 // OrganizationWithMemberResult is the result of CreateWithMember, containing the
