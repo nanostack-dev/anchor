@@ -17,7 +17,6 @@ import (
 	"anchor/internal/repository"
 	serviceconfig "anchor/internal/service/config"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -1714,7 +1713,7 @@ func (s *integrationService) verifyAndActivate(
 	}
 
 	if _, updateErr := s.instanceRepo.Update(persistCtx, live.PlatformTenantID, *live); updateErr != nil {
-		if errors.Is(updateErr, qrm.ErrNoRows) || errors.Is(updateErr, sql.ErrNoRows) {
+		if errors.Is(updateErr, repository.ErrInstanceNotFound) {
 			// The instance was deleted between the re-fetch above and this
 			// update — the same expected tenant-delete race as the live == nil
 			// branch. The UPDATE ... RETURNING matched no rows, so there is
