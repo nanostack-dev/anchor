@@ -2,6 +2,7 @@ package api
 
 import (
 	emailsvc "anchor/internal/email/service"
+	licensesvc "anchor/internal/license/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
 
@@ -29,6 +30,7 @@ type AnchorAPI struct {
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
+	LicenseService                licensesvc.LicenseService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
@@ -52,6 +54,7 @@ type Params struct {
 	OrganizationMembershipService service.OrganizationMembershipService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
+	LicenseService                licensesvc.LicenseService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
@@ -75,6 +78,7 @@ func NewAPI(params Params) *AnchorAPI {
 		OrganizationMembershipService: params.OrganizationMembershipService,
 		IntegrationService:            params.IntegrationService,
 		EmailService:                  params.EmailService,
+		LicenseService:                params.LicenseService,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
 		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),

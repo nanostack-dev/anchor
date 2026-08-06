@@ -43,7 +43,7 @@ export const zSearchRequest = z.object({
 });
 
 /**
- * Optional key-value metadata. Values can be string, number, boolean.
+ * Optional key-value metadata. Values can be string, number, boolean. At most 50 keys; keys are at most 64 characters and string values at most 512 characters. Sending metadata replaces the stored metadata in full.
  */
 export const zMetadata = z.record(z.string(), z.unknown());
 
@@ -1199,6 +1199,61 @@ export const zEmailSendRecordResponse = z.object({
 export const zEmailSendRecordListResponse = z.object({
     items: z.array(zEmailSendRecordResponse),
     count: z.int()
+});
+
+export const zLicenseFieldType = z.enum([
+    'LIMIT',
+    'NUMBER',
+    'BOOLEAN',
+    'ENUM',
+    'STRING'
+]);
+
+export const zLicenseFieldRules = z.object({
+    min: z.optional(z.number()),
+    max: z.optional(z.number()),
+    pattern: z.optional(z.string()),
+    min_length: z.optional(z.int()),
+    max_length: z.optional(z.int()),
+    values: z.optional(z.array(z.string()))
+});
+
+export const zLicenseFieldDeclaration = z.object({
+    name: z.string().max(120),
+    type: zLicenseFieldType,
+    required: z.optional(z.boolean()).default(false),
+    description: z.optional(z.string()),
+    rules: z.optional(zLicenseFieldRules)
+});
+
+export const zLicenseFieldResponse = z.object({
+    id: zKsuid,
+    name: z.string(),
+    type: zLicenseFieldType,
+    required: z.boolean(),
+    description: z.optional(z.string()),
+    rules: zLicenseFieldRules,
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zLicenseSchemaCreateRequest = z.object({
+    description: z.optional(z.string()),
+    fields: z.array(zLicenseFieldDeclaration)
+});
+
+export const zLicenseSchemaUpdateRequest = z.object({
+    description: z.optional(z.string()),
+    fields: z.optional(z.array(zLicenseFieldDeclaration))
+});
+
+export const zLicenseSchemaResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    description: z.optional(z.string()),
+    fields: z.array(zLicenseFieldResponse),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
 });
 
 /**
@@ -2425,3 +2480,55 @@ export const zSendEmailData = z.object({
  * Send record created
  */
 export const zSendEmailResponse = zEmailSendRecordResponse;
+
+export const zDeleteLicenseSchemaData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Deleted
+ */
+export const zDeleteLicenseSchemaResponse = z.void();
+
+export const zGetLicenseSchemaData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetLicenseSchemaResponse = zLicenseSchemaResponse;
+
+export const zCreateLicenseSchemaData = z.object({
+    body: zLicenseSchemaCreateRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Created
+ */
+export const zCreateLicenseSchemaResponse = zLicenseSchemaResponse;
+
+export const zUpdateLicenseSchemaData = z.object({
+    body: zLicenseSchemaUpdateRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zUpdateLicenseSchemaResponse = zLicenseSchemaResponse;
