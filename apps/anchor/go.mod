@@ -12,7 +12,7 @@ require (
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lib/pq v1.12.3
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
-	github.com/nanostack-dev/nanostack-framework v0.7.7-0.20260806033306-7c1ef077e800
+	github.com/nanostack-dev/nanostack-framework v0.7.7
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.6.0
