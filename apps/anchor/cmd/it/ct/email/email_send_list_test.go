@@ -28,8 +28,7 @@ func TestEmailSendList(t *testing.T) {
 	})
 
 	t.Run("returns send records after successful send", func(t *testing.T) {
-		mp := mailpit.Start(t)
-		defer mp.Stop(t)
+		mp := mailpit.Shared(t)
 
 		tc := newTestCtx(t)
 		seedSMTPInstance(t, tc, mp)

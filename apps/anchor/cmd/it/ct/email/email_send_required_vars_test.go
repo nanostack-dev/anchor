@@ -18,8 +18,7 @@ import (
 // whose schema marks a variable required is rejected when that variable is
 // absent, and succeeds once it is supplied.
 func TestEmailSendRequiredVariables(t *testing.T) {
-	mp := mailpit.Start(t)
-	defer mp.Stop(t)
+	mp := mailpit.Shared(t)
 
 	tc := newTestCtx(t)
 	seedSMTPInstance(t, tc, mp)
