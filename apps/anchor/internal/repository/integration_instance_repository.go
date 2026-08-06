@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -16,6 +17,14 @@ import (
 )
 
 var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
+
+// ErrInstanceNotFound reports that Update's UPDATE ... RETURNING matched no
+// rows: the instance named by ID/tenant is not there any more. It is the
+// repository-layer sentinel for that condition — deliberately not an HTTP
+// fault, since whether a vanished row is benign (a concurrent delete) or a
+// bug (updating an ID that should exist) is a call-site judgment, not this
+// repository's to make.
+var ErrInstanceNotFound = errors.New("integration instance no longer exists")
 
 func integrationInstancesUpdatableColumns() postgres.ColumnList {
 	return table.IntegrationInstances.AllColumns.Except(
@@ -221,7 +230,7 @@ func (r *integrationInstanceRepositoryImpl) Update(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	).OnNoRows(ErrInstanceNotFound).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(
