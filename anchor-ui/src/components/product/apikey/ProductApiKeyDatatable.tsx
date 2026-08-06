@@ -80,6 +80,7 @@ export function ProductApiKeyDatatable({
 		data: apiKeyData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductApiKeysOptions(searchProductApiKeysOptionsParams),
 		placeholderData: keepPreviousData,
@@ -238,6 +239,11 @@ export function ProductApiKeyDatatable({
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="API keys"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -273,11 +279,6 @@ export function ProductApiKeyDatatable({
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load API keys: {error.message}
-				</div>
-			)}
 		</>
 	);
 }

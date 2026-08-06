@@ -72,6 +72,7 @@ export function PlatformUserDatatable() {
 		data: userData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchPlatformUsersOptions(searchParams),
 		placeholderData: keepPreviousData,
@@ -192,6 +193,11 @@ export function PlatformUserDatatable() {
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="users"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -231,11 +237,6 @@ export function PlatformUserDatatable() {
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load users: {error.message}
-				</div>
-			)}
 		</>
 	);
 }
