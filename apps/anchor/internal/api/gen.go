@@ -15,6 +15,7 @@ import (
 	"anchor/internal/domain/email"
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/invitation"
+	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/domain/permission"
@@ -668,6 +669,71 @@ type IntegrationWebhookResponse struct {
 	//
 	// Examples: PROCESSED
 	Status IntegrationEventStatus `json:"status"`
+}
+
+// LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
+type LicenseFieldDeclaration struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Stable identifier used by product code, unique within the schema.
+	Name string `json:"name"`
+
+	// Required Whether a license template must supply a value for this field.
+	Required *bool              `json:"required,omitempty"`
+	Rules    *LicenseFieldRules `json:"rules,omitempty"`
+	Type     LicenseFieldType   `json:"type"`
+}
+
+// LicenseFieldResponse defines model for LicenseFieldResponse.
+type LicenseFieldResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id        Ksuid             `json:"id"`
+	Name      string            `json:"name"`
+	Required  bool              `json:"required"`
+	Rules     LicenseFieldRules `json:"rules"`
+	Type      LicenseFieldType  `json:"type"`
+	UpdatedAt time.Time         `json:"updated_at"`
+}
+
+// LicenseFieldRules defines model for LicenseFieldRules.
+type LicenseFieldRules = license.FieldRules
+
+// LicenseFieldType defines model for LicenseFieldType.
+type LicenseFieldType = license.FieldType
+
+// LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
+type LicenseSchemaCreateRequest struct {
+	Description *string                   `json:"description,omitempty"`
+	Fields      []LicenseFieldDeclaration `json:"fields"`
+}
+
+// LicenseSchemaResponse defines model for LicenseSchemaResponse.
+type LicenseSchemaResponse struct {
+	CreatedAt   time.Time              `json:"created_at"`
+	Description *string                `json:"description,omitempty"`
+	Fields      []LicenseFieldResponse `json:"fields"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid     `json:"product_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// LicenseSchemaUpdateRequest defines model for LicenseSchemaUpdateRequest.
+type LicenseSchemaUpdateRequest struct {
+	Description *string                    `json:"description,omitempty"`
+	Fields      *[]LicenseFieldDeclaration `json:"fields,omitempty"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -2144,6 +2210,9 @@ type WorkspaceIdParameter = Ksuid
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorResponse
+
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
 
@@ -2270,6 +2339,12 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
+
+// CreateLicenseSchemaJSONRequestBody defines body for CreateLicenseSchema for application/json ContentType.
+type CreateLicenseSchemaJSONRequestBody = LicenseSchemaCreateRequest
+
+// UpdateLicenseSchemaJSONRequestBody defines body for UpdateLicenseSchema for application/json ContentType.
+type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
 
 // CreateProductOrganizationJSONRequestBody defines body for CreateProductOrganization for application/json ContentType.
 type CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest
@@ -2670,6 +2745,18 @@ type ServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
+	// DeleteLicenseSchema Delete License Schema
+	// (DELETE /v1/products/{product_id}/licensing/schema)
+	DeleteLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// GetLicenseSchema Get License Schema
+	// (GET /v1/products/{product_id}/licensing/schema)
+	GetLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// CreateLicenseSchema Create License Schema
+	// (POST /v1/products/{product_id}/licensing/schema)
+	CreateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// UpdateLicenseSchema Update License Schema
+	// (PUT /v1/products/{product_id}/licensing/schema)
+	UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3054,6 +3141,30 @@ func (_ Unimplemented) UpdateIntegrationInstance(w http.ResponseWriter, r *http.
 // ListIntegrationAuditLogs List Integration Audit Logs
 // (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteLicenseSchema Delete License Schema
+// (DELETE /v1/products/{product_id}/licensing/schema)
+func (_ Unimplemented) DeleteLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetLicenseSchema Get License Schema
+// (GET /v1/products/{product_id}/licensing/schema)
+func (_ Unimplemented) GetLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateLicenseSchema Create License Schema
+// (POST /v1/products/{product_id}/licensing/schema)
+func (_ Unimplemented) CreateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateLicenseSchema Update License Schema
+// (PUT /v1/products/{product_id}/licensing/schema)
+func (_ Unimplemented) UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4559,6 +4670,110 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListIntegrationAuditLogs(w, r, productId, integrationInstanceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteLicenseSchema operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLicenseSchema(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLicenseSchema(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLicenseSchema operation middleware
+func (siw *ServerInterfaceWrapper) GetLicenseSchema(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLicenseSchema(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLicenseSchema operation middleware
+func (siw *ServerInterfaceWrapper) CreateLicenseSchema(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLicenseSchema(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLicenseSchema operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLicenseSchema(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLicenseSchema(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6434,11 +6649,25 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/email/sends", wrapper.SendEmail)
 	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.DeleteLicenseSchema)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.GetLicenseSchema)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.CreateLicenseSchema)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.UpdateLicenseSchema)
+	})
 
 	return r
 }
 
 type BadRequestJSONResponse ApiErrorResponse
+
+type ConflictJSONResponse ApiErrorResponse
 
 type ForbiddenJSONResponse ApiErrorResponse
 
@@ -8664,6 +8893,153 @@ func (response ListIntegrationAuditLogs403JSONResponse) VisitListIntegrationAudi
 type ListIntegrationAuditLogs404Response = NotFoundResponse
 
 func (response ListIntegrationAuditLogs404Response) VisitListIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type DeleteLicenseSchemaRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type DeleteLicenseSchemaResponseObject interface {
+	VisitDeleteLicenseSchemaResponse(w http.ResponseWriter) error
+}
+
+type DeleteLicenseSchema204Response struct {
+}
+
+func (response DeleteLicenseSchema204Response) VisitDeleteLicenseSchemaResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteLicenseSchema404Response = NotFoundResponse
+
+func (response DeleteLicenseSchema404Response) VisitDeleteLicenseSchemaResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetLicenseSchemaRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type GetLicenseSchemaResponseObject interface {
+	VisitGetLicenseSchemaResponse(w http.ResponseWriter) error
+}
+
+type GetLicenseSchema200JSONResponse LicenseSchemaResponse
+
+func (response GetLicenseSchema200JSONResponse) VisitGetLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLicenseSchema404Response = NotFoundResponse
+
+func (response GetLicenseSchema404Response) VisitGetLicenseSchemaResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type CreateLicenseSchemaRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreateLicenseSchemaJSONRequestBody
+}
+
+type CreateLicenseSchemaResponseObject interface {
+	VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error
+}
+
+type CreateLicenseSchema201JSONResponse LicenseSchemaResponse
+
+func (response CreateLicenseSchema201JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLicenseSchema400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateLicenseSchema400JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateLicenseSchema409JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLicenseSchemaRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *UpdateLicenseSchemaJSONRequestBody
+}
+
+type UpdateLicenseSchemaResponseObject interface {
+	VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error
+}
+
+type UpdateLicenseSchema200JSONResponse LicenseSchemaResponse
+
+func (response UpdateLicenseSchema200JSONResponse) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLicenseSchema400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateLicenseSchema400JSONResponse) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLicenseSchema404Response = NotFoundResponse
+
+func (response UpdateLicenseSchema404Response) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -11249,6 +11625,18 @@ type StrictServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
+	// DeleteLicenseSchema Delete License Schema
+	// (DELETE /v1/products/{product_id}/licensing/schema)
+	DeleteLicenseSchema(ctx context.Context, request DeleteLicenseSchemaRequestObject) (DeleteLicenseSchemaResponseObject, error)
+	// GetLicenseSchema Get License Schema
+	// (GET /v1/products/{product_id}/licensing/schema)
+	GetLicenseSchema(ctx context.Context, request GetLicenseSchemaRequestObject) (GetLicenseSchemaResponseObject, error)
+	// CreateLicenseSchema Create License Schema
+	// (POST /v1/products/{product_id}/licensing/schema)
+	CreateLicenseSchema(ctx context.Context, request CreateLicenseSchemaRequestObject) (CreateLicenseSchemaResponseObject, error)
+	// UpdateLicenseSchema Update License Schema
+	// (PUT /v1/products/{product_id}/licensing/schema)
+	UpdateLicenseSchema(ctx context.Context, request UpdateLicenseSchemaRequestObject) (UpdateLicenseSchemaResponseObject, error)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(ctx context.Context, request CreateProductOrganizationRequestObject) (CreateProductOrganizationResponseObject, error)
@@ -12672,6 +13060,124 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListIntegrationAuditLogsResponseObject); ok {
 		if err := validResponse.VisitListIntegrationAuditLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteLicenseSchema operation middleware
+func (sh *strictHandler) DeleteLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request DeleteLicenseSchemaRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteLicenseSchema(ctx, request.(DeleteLicenseSchemaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteLicenseSchema")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteLicenseSchemaResponseObject); ok {
+		if err := validResponse.VisitDeleteLicenseSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLicenseSchema operation middleware
+func (sh *strictHandler) GetLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request GetLicenseSchemaRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLicenseSchema(ctx, request.(GetLicenseSchemaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLicenseSchema")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLicenseSchemaResponseObject); ok {
+		if err := validResponse.VisitGetLicenseSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLicenseSchema operation middleware
+func (sh *strictHandler) CreateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreateLicenseSchemaRequestObject
+
+	request.ProductId = productId
+
+	var body CreateLicenseSchemaJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLicenseSchema(ctx, request.(CreateLicenseSchemaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLicenseSchema")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLicenseSchemaResponseObject); ok {
+		if err := validResponse.VisitCreateLicenseSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLicenseSchema operation middleware
+func (sh *strictHandler) UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request UpdateLicenseSchemaRequestObject
+
+	request.ProductId = productId
+
+	var body UpdateLicenseSchemaJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLicenseSchema(ctx, request.(UpdateLicenseSchemaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLicenseSchema")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLicenseSchemaResponseObject); ok {
+		if err := validResponse.VisitUpdateLicenseSchemaResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

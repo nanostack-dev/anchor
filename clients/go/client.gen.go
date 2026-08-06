@@ -639,6 +639,52 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteLicenseSchema Delete License Schema
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/schema (the `DeleteLicenseSchema` operationId).
+	DeleteLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLicenseSchema Get License Schema
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
+	GetLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLicenseSchemaWithBody Create License Schema
+	//
+	// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+	CreateLicenseSchemaWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLicenseSchema Create License Schema
+	//
+	// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+	CreateLicenseSchema(ctx context.Context, productId ProductIdParameter, body CreateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLicenseSchemaWithBody Update License Schema
+	//
+	// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+	UpdateLicenseSchemaWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLicenseSchema Update License Schema
+	//
+	// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+	UpdateLicenseSchema(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateProductOrganizationWithBody Create Product Organization
 	//
 	// Creates a new organization record associated with the specified Product.
@@ -2386,6 +2432,112 @@ func (c *Client) UpdateIntegrationInstance(ctx context.Context, productId Produc
 // Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListIntegrationAuditLogsRequest(c.Server, productId, integrationInstanceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLicenseSchema Delete License Schema
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/schema (the `DeleteLicenseSchema` operationId).
+func (c *Client) DeleteLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLicenseSchemaRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLicenseSchema Get License Schema
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
+func (c *Client) GetLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLicenseSchemaRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLicenseSchemaWithBody Create License Schema
+//
+// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+func (c *Client) CreateLicenseSchemaWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLicenseSchemaRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLicenseSchema Create License Schema
+//
+// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+func (c *Client) CreateLicenseSchema(ctx context.Context, productId ProductIdParameter, body CreateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLicenseSchemaRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLicenseSchemaWithBody Update License Schema
+//
+// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+func (c *Client) UpdateLicenseSchemaWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLicenseSchemaRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLicenseSchema Update License Schema
+//
+// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+func (c *Client) UpdateLicenseSchema(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLicenseSchemaRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5506,6 +5658,168 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	return req, nil
 }
 
+// NewDeleteLicenseSchemaRequest constructs an http.Request for the DeleteLicenseSchema method
+func NewDeleteLicenseSchemaRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/schema", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetLicenseSchemaRequest constructs an http.Request for the GetLicenseSchema method
+func NewGetLicenseSchemaRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/schema", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLicenseSchemaRequest calls the generic CreateLicenseSchema builder with application/json body
+func NewCreateLicenseSchemaRequest(server string, productId ProductIdParameter, body CreateLicenseSchemaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLicenseSchemaRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewCreateLicenseSchemaRequestWithBody constructs an http.Request for the CreateLicenseSchema method, with any body, and a specified content type
+func NewCreateLicenseSchemaRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/schema", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUpdateLicenseSchemaRequest calls the generic UpdateLicenseSchema builder with application/json body
+func NewUpdateLicenseSchemaRequest(server string, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLicenseSchemaRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewUpdateLicenseSchemaRequestWithBody constructs an http.Request for the UpdateLicenseSchema method, with any body, and a specified content type
+func NewUpdateLicenseSchemaRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/schema", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateProductOrganizationRequest calls the generic CreateProductOrganization builder with application/json body
 func NewCreateProductOrganizationRequest(server string, productId ProductIdParameter, body CreateProductOrganizationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -8217,6 +8531,56 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
+
+	// DeleteLicenseSchemaWithResponse Delete License Schema
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/schema (the `DeleteLicenseSchema` operationId).
+	DeleteLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseSchemaResponse, error)
+
+	// GetLicenseSchemaWithResponse Get License Schema
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
+	GetLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetLicenseSchemaResponse, error)
+
+	// CreateLicenseSchemaWithBodyWithResponse Create License Schema
+	//
+	// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+	CreateLicenseSchemaWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLicenseSchemaResponse, error)
+
+	// CreateLicenseSchemaWithResponse Create License Schema
+	//
+	// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+	CreateLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseSchemaResponse, error)
+
+	// UpdateLicenseSchemaWithBodyWithResponse Update License Schema
+	//
+	// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+	UpdateLicenseSchemaWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLicenseSchemaResponse, error)
+
+	// UpdateLicenseSchemaWithResponse Update License Schema
+	//
+	// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+	UpdateLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLicenseSchemaResponse, error)
 
 	// CreateProductOrganizationWithBodyWithResponse Create Product Organization
 	//
@@ -11090,6 +11454,184 @@ func (r ListIntegrationAuditLogsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListIntegrationAuditLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLicenseSchemaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLicenseSchemaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLicenseSchemaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLicenseSchemaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLicenseSchemaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLicenseSchemaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseSchemaResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLicenseSchemaResponse) GetJSON200() *LicenseSchemaResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLicenseSchemaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLicenseSchemaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLicenseSchemaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLicenseSchemaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLicenseSchemaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *LicenseSchemaResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateLicenseSchemaResponse) GetJSON201() *LicenseSchemaResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLicenseSchemaResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateLicenseSchemaResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLicenseSchemaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLicenseSchemaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLicenseSchemaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLicenseSchemaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLicenseSchemaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseSchemaResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLicenseSchemaResponse) GetJSON200() *LicenseSchemaResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateLicenseSchemaResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLicenseSchemaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLicenseSchemaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLicenseSchemaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLicenseSchemaResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14363,6 +14905,92 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
+// DeleteLicenseSchemaWithResponse Delete License Schema
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/schema (the `DeleteLicenseSchema` operationId).
+func (c *ClientWithResponses) DeleteLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseSchemaResponse, error) {
+	rsp, err := c.DeleteLicenseSchema(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLicenseSchemaResponse(rsp)
+}
+
+// GetLicenseSchemaWithResponse Get License Schema
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
+func (c *ClientWithResponses) GetLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetLicenseSchemaResponse, error) {
+	rsp, err := c.GetLicenseSchema(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLicenseSchemaResponse(rsp)
+}
+
+// CreateLicenseSchemaWithBodyWithResponse Create License Schema
+//
+// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+func (c *ClientWithResponses) CreateLicenseSchemaWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLicenseSchemaResponse, error) {
+	rsp, err := c.CreateLicenseSchemaWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLicenseSchemaResponse(rsp)
+}
+
+// CreateLicenseSchemaWithResponse Create License Schema
+//
+// Declares the license schema for a product: every field a license may carry, its type, whether it is required, and its validation rules. The rule declaration is checked here, so a nonsensical rule is refused at authoring time rather than the first time a value is validated.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/schema (the `CreateLicenseSchema` operationId).
+func (c *ClientWithResponses) CreateLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseSchemaResponse, error) {
+	rsp, err := c.CreateLicenseSchema(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLicenseSchemaResponse(rsp)
+}
+
+// UpdateLicenseSchemaWithBodyWithResponse Update License Schema
+//
+// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+func (c *ClientWithResponses) UpdateLicenseSchemaWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLicenseSchemaResponse, error) {
+	rsp, err := c.UpdateLicenseSchemaWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLicenseSchemaResponse(rsp)
+}
+
+// UpdateLicenseSchemaWithResponse Update License Schema
+//
+// Replaces the schema's declaration. Fields, when supplied, are replaced wholesale — a field absent from the request is removed.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
+func (c *ClientWithResponses) UpdateLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLicenseSchemaResponse, error) {
+	rsp, err := c.UpdateLicenseSchema(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLicenseSchemaResponse(rsp)
+}
+
 // CreateProductOrganizationWithBodyWithResponse Create Product Organization
 //
 // Creates a new organization record associated with the specified Product.
@@ -17084,6 +17712,127 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLicenseSchemaResponse parses an HTTP response from a DeleteLicenseSchemaWithResponse call
+func ParseDeleteLicenseSchemaResponse(rsp *http.Response) (*DeleteLicenseSchemaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLicenseSchemaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetLicenseSchemaResponse parses an HTTP response from a GetLicenseSchemaWithResponse call
+func ParseGetLicenseSchemaResponse(rsp *http.Response) (*GetLicenseSchemaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLicenseSchemaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseSchemaResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLicenseSchemaResponse parses an HTTP response from a CreateLicenseSchemaWithResponse call
+func ParseCreateLicenseSchemaResponse(rsp *http.Response) (*CreateLicenseSchemaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLicenseSchemaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LicenseSchemaResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLicenseSchemaResponse parses an HTTP response from a UpdateLicenseSchemaWithResponse call
+func ParseUpdateLicenseSchemaResponse(rsp *http.Response) (*UpdateLicenseSchemaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLicenseSchemaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseSchemaResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case rsp.StatusCode == 404:
 		break // No content-type

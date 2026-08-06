@@ -1,0 +1,277 @@
+// Package service holds the licensing orchestration layer: it validates a
+// license schema declaration and persists it.
+//
+// Anchor validates but never gates. Nothing here refuses an action on the
+// grounds that a limit was reached — the only writes it refuses are malformed
+// ones.
+package service
+
+import (
+	"context"
+	"errors"
+	"net/http"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/rs/zerolog"
+
+	"anchor/internal/domain/license"
+	licenserepo "anchor/internal/license/repository"
+	"anchor/internal/license/rules"
+)
+
+var (
+	ErrLicenseSchemaNotFound = fault.NewWithStatus(
+		"LICENSE_SCHEMA_NOT_FOUND",
+		"This product has not declared a license schema",
+		http.StatusNotFound,
+	)
+	ErrLicenseSchemaAlreadyExists = fault.Conflict(
+		"LICENSE_SCHEMA_EXISTS",
+		"This product has already declared a license schema; update it instead",
+	)
+)
+
+// errLicenseFieldNameDuplicate reports two declarations of the same field name.
+// The name is both the message subject and the structured field, so a form can
+// highlight the offending row without parsing the message.
+func errLicenseFieldNameDuplicate(name string) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "LICENSE_FIELD_NAME_DUPLICATE",
+		Message: "The license field " + name + " is declared more than once",
+		Field:   name,
+	}}, http.StatusBadRequest)
+}
+
+// errLicenseFieldRuleInvalid reports a rule declaration the evaluator refused.
+// The violated rule travels as metadata rather than being folded into the code,
+// so a caller can attribute the failure to one part of the declaration —
+// "max", "pattern", "values" — without matching on prose.
+func errLicenseFieldRuleInvalid(name string, violation *rules.ViolationError) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:     "LICENSE_FIELD_RULE_INVALID",
+		Message:  "The license field " + name + " is not well-formed: " + violation.Message,
+		Field:    name,
+		Metadata: map[string]any{"rule": violation.Rule},
+	}}, http.StatusBadRequest)
+}
+
+// LicenseService owns the license schema: the per-Product declaration of every
+// field a license may carry.
+//
+// A schema is a singleton on its Product, so every method addresses it by
+// product rather than by its own identifier.
+type LicenseService interface {
+	CreateSchema(ctx context.Context, in license.CreateSchemaInput) (license.Schema, error)
+	GetSchema(ctx context.Context, in license.GetSchemaInput) (*license.Schema, error)
+	UpdateSchema(ctx context.Context, in license.UpdateSchemaInput) (license.Schema, error)
+	DeleteSchema(ctx context.Context, in license.DeleteSchemaInput) error
+}
+
+type licenseService struct {
+	transactor transactor.Transactor
+	schemaRepo licenserepo.SchemaRepository
+	fieldRepo  licenserepo.SchemaFieldRepository
+	logger     zerolog.Logger
+}
+
+func NewLicenseService(
+	tx transactor.Transactor,
+	schemaRepo licenserepo.SchemaRepository,
+	fieldRepo licenserepo.SchemaFieldRepository,
+	logger zerolog.Logger,
+) LicenseService {
+	return &licenseService{
+		transactor: tx,
+		schemaRepo: schemaRepo,
+		fieldRepo:  fieldRepo,
+		logger:     logger.With().Str("component", "license_service").Logger(),
+	}
+}
+
+// declareFields checks a declaration and turns it into storable fields.
+//
+// The rule check is delegated wholesale to the rules evaluator: this is the
+// authoring-time half of ADR-0004, and duplicating any of it here would let the
+// two drift. Only name uniqueness is checked locally, because it is a property
+// of the set rather than of any one field.
+func declareFields(declarations []license.FieldDeclaration) ([]license.Field, error) {
+	seen := make(map[string]struct{}, len(declarations))
+	fields := make([]license.Field, 0, len(declarations))
+
+	for i, d := range declarations {
+		if _, duplicate := seen[d.Name]; duplicate {
+			return nil, errLicenseFieldNameDuplicate(d.Name)
+		}
+		seen[d.Name] = struct{}{}
+
+		if err := rules.ValidateDeclaration(d.Type, d.Rules); err != nil {
+			var violation *rules.ViolationError
+			if errors.As(err, &violation) {
+				return nil, errLicenseFieldRuleInvalid(d.Name, violation)
+			}
+			return nil, err
+		}
+
+		field := license.Field{
+			Name:        d.Name,
+			Type:        d.Type,
+			Required:    d.Required,
+			Description: d.Description,
+			Rules:       d.Rules,
+			Ordinal:     int32(i),
+		}
+		field.GenerateID()
+		fields = append(fields, field)
+	}
+
+	return fields, nil
+}
+
+func (s *licenseService) CreateSchema(
+	ctx context.Context, in license.CreateSchemaInput,
+) (license.Schema, error) {
+	if err := validateStruct(in); err != nil {
+		return license.Schema{}, err
+	}
+
+	fields, err := declareFields(in.Fields)
+	if err != nil {
+		return license.Schema{}, err
+	}
+
+	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
+		return license.Schema{}, err
+	}
+	if existing != nil {
+		return license.Schema{}, ErrLicenseSchemaAlreadyExists
+	}
+
+	schema := license.Schema{
+		PlatformTenantID: in.TenantID,
+		ProductID:        in.ProductID,
+		Description:      in.Description,
+	}
+	schema.GenerateID()
+
+	// The envelope and its fields are one declaration, so they land together or
+	// not at all: a schema row without its fields would read as an empty
+	// declaration rather than as a failed write.
+	var created license.Schema
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		created, err = s.schemaRepo.Create(txCtx, schema)
+		if err != nil {
+			return err
+		}
+		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, created.ID, fields)
+		if writeErr != nil {
+			return writeErr
+		}
+		created.Fields = written
+		return nil
+	}); txErr != nil {
+		return license.Schema{}, txErr
+	}
+
+	return created, nil
+}
+
+func (s *licenseService) GetSchema(
+	ctx context.Context, in license.GetSchemaInput,
+) (*license.Schema, error) {
+	if err := validateStruct(in); err != nil {
+		return nil, err
+	}
+
+	schema, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
+		return nil, err
+	}
+	if schema == nil {
+		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
+	}
+
+	fields, err := s.fieldRepo.ListBySchema(ctx, schema.ID)
+	if err != nil {
+		return nil, err
+	}
+	schema.Fields = fields
+
+	return schema, nil
+}
+
+func (s *licenseService) UpdateSchema(
+	ctx context.Context, in license.UpdateSchemaInput,
+) (license.Schema, error) {
+	if err := validateStruct(in); err != nil {
+		return license.Schema{}, err
+	}
+
+	var fields []license.Field
+	if in.Fields != nil {
+		declared, err := declareFields(*in.Fields)
+		if err != nil {
+			return license.Schema{}, err
+		}
+		fields = declared
+	}
+
+	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
+		return license.Schema{}, err
+	}
+	if existing == nil {
+		return license.Schema{}, ErrLicenseSchemaNotFound
+	}
+	if in.Description != nil {
+		existing.Description = *in.Description
+	}
+
+	var updated license.Schema
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, *existing)
+		if err != nil {
+			return err
+		}
+		// A nil Fields leaves the declaration alone; a non-nil one replaces it
+		// wholesale, so a field the caller omitted is a removal.
+		if in.Fields == nil {
+			current, listErr := s.fieldRepo.ListBySchema(txCtx, updated.ID)
+			if listErr != nil {
+				return listErr
+			}
+			updated.Fields = current
+			return nil
+		}
+		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, updated.ID, fields)
+		if writeErr != nil {
+			return writeErr
+		}
+		updated.Fields = written
+		return nil
+	}); txErr != nil {
+		return license.Schema{}, txErr
+	}
+
+	return updated, nil
+}
+
+func (s *licenseService) DeleteSchema(
+	ctx context.Context, in license.DeleteSchemaInput,
+) error {
+	if err := validateStruct(in); err != nil {
+		return err
+	}
+
+	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrLicenseSchemaNotFound
+	}
+
+	// Fields cascade with the envelope; the migration owns that, not this layer.
+	return s.schemaRepo.DeleteByProduct(ctx, in.TenantID, in.ProductID)
+}

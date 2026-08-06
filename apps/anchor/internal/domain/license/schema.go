@@ -1,0 +1,69 @@
+// Package license holds the licensing domain types: what a Product declares its
+// licenses may contain, and later what a license carries and what has been used
+// against it.
+//
+// Anchor validates but never gates. Nothing in this package blocks an action;
+// it describes and constrains writes only.
+package license
+
+import (
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+)
+
+// Schema is a Product's declaration of every field its licenses may carry.
+// Exactly one exists per Product — a second would have no meaning, since the
+// schema is defined as the per-Product statement of what a license can hold.
+type Schema struct {
+	ID               string
+	PlatformTenantID string
+	ProductID        string
+	Description      string
+	Fields           []Field
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+// GenerateID sets the schema's ID to a new prefixed KSUID.
+func (s *Schema) GenerateID() {
+	s.ID = ids.MustNew("lsch")
+}
+
+// FieldByName returns the declared field with the given name, or nil. The usage
+// path uses it to answer "is this reported key declared, and is it a limit"
+// without loading the whole schema into a map at every call site.
+func (s *Schema) FieldByName(name string) *Field {
+	for i := range s.Fields {
+		if s.Fields[i].Name == name {
+			return &s.Fields[i]
+		}
+	}
+	return nil
+}
+
+// Field is one declared license field: its name, its type, whether a license
+// template must supply it, and the rules a value must satisfy.
+//
+// Rules constrain decisions, not observations. They bound what a limit may be
+// set to and are never applied to a reported usage value — doing so would make
+// the "exceeded" status unreachable.
+type Field struct {
+	ID          string
+	SchemaID    string
+	Name        string
+	Type        FieldType
+	Required    bool
+	Description string
+	Rules       FieldRules
+	// Ordinal is the field's position in the declaration, so a rendered form and
+	// an error list read in the order their author wrote them.
+	Ordinal   int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// GenerateID sets the field's ID to a new prefixed KSUID.
+func (f *Field) GenerateID() {
+	f.ID = ids.MustNew("lfld")
+}

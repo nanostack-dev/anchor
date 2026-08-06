@@ -26,6 +26,8 @@ func NewModule() fx.Option {
 			NewEmailTemplateMapper,
 			NewEmailTemplateVersionMapper,
 			NewEmailSendRecordMapper,
+			NewLicenseSchemaMapper,
+			NewLicenseSchemaFieldMapper,
 		),
 	)
 }
