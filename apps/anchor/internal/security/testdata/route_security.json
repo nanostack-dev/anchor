@@ -20,6 +20,12 @@
   "DELETE /v1/products/{product_id}/integrations/{integration_instance_id}": {
     "platformBearerAuth": []
   },
+  "DELETE /v1/products/{product_id}/licensing/schema": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_schema:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}": {
     "productApiKeyAuth": [
       "organization:delete"
@@ -111,6 +117,12 @@
   },
   "GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs": {
     "platformBearerAuth": []
+  },
+  "GET /v1/products/{product_id}/licensing/schema": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_schema:read"
+    ]
   },
   "GET /v1/products/{product_id}/organizations/{organization_id}": {
     "productApiKeyAuth": [
@@ -233,6 +245,12 @@
   "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
     "\u003cpublic\u003e": []
   },
+  "POST /v1/products/{product_id}/licensing/schema": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_schema:create"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations": {
     "productApiKeyAuth": [
       "organization:create"
@@ -350,6 +368,12 @@
   },
   "PUT /v1/products/{product_id}/integrations/{integration_instance_id}": {
     "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/licensing/schema": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_schema:update"
+    ]
   },
   "PUT /v1/products/{product_id}/organizations/{organization_id}": {
     "productApiKeyAuth": [

@@ -15,6 +15,7 @@ import (
 	"anchor/internal/api"
 	"anchor/internal/email"
 	"anchor/internal/integration"
+	"anchor/internal/license"
 	"anchor/internal/mapper"
 	"anchor/internal/middleware"
 	"anchor/internal/repository"
@@ -50,6 +51,7 @@ func startAnchor(target ...any) {
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),
+		license.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),
 		httpserver.NewHTTPServerModule(),

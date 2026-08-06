@@ -1822,6 +1822,100 @@ export type EmailSendRecordListResponse = {
     count: number;
 };
 
+export enum LicenseFieldType {
+    /**
+     * LicenseFieldTypeLimit
+     */
+    LICENSE_FIELD_TYPE_LIMIT = 'limit',
+    /**
+     * LicenseFieldTypeNumber
+     */
+    LICENSE_FIELD_TYPE_NUMBER = 'number',
+    /**
+     * LicenseFieldTypeBoolean
+     */
+    LICENSE_FIELD_TYPE_BOOLEAN = 'boolean',
+    /**
+     * LicenseFieldTypeEnum
+     */
+    LICENSE_FIELD_TYPE_ENUM = 'enum',
+    /**
+     * LicenseFieldTypeString
+     */
+    LICENSE_FIELD_TYPE_STRING = 'string'
+}
+
+export type LicenseFieldRules = {
+    /**
+     * Inclusive lower bound. Numeric fields only.
+     */
+    min?: number;
+    /**
+     * Inclusive upper bound. Numeric fields only.
+     */
+    max?: number;
+    /**
+     * Regular expression the value must match. String fields only.
+     */
+    pattern?: string;
+    /**
+     * Inclusive minimum length in runes. String fields only.
+     */
+    min_length?: number;
+    /**
+     * Inclusive maximum length in runes. String fields only.
+     */
+    max_length?: number;
+    /**
+     * The list the value must be drawn from. Enum fields only.
+     */
+    values?: Array<string>;
+};
+
+export type LicenseFieldDeclaration = {
+    /**
+     * Stable identifier used by product code, unique within the schema.
+     */
+    name: string;
+    type: LicenseFieldType;
+    /**
+     * Whether a license template must supply a value for this field.
+     */
+    required?: boolean;
+    description?: string;
+    rules?: LicenseFieldRules;
+};
+
+export type LicenseFieldResponse = {
+    id: Ksuid;
+    name: string;
+    type: LicenseFieldType;
+    required: boolean;
+    description?: string;
+    rules: LicenseFieldRules;
+    created_at: string;
+    updated_at: string;
+};
+
+export type LicenseSchemaCreateRequest = {
+    description?: string;
+    fields: Array<LicenseFieldDeclaration>;
+};
+
+export type LicenseSchemaUpdateRequest = {
+    description?: string;
+    fields?: Array<LicenseFieldDeclaration>;
+};
+
+export type LicenseSchemaResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    description?: string;
+    fields: Array<LicenseFieldResponse>;
+    created_at: string;
+    updated_at: string;
+};
+
 /**
  * The KSUID of the platform invitation.
  */
@@ -5236,6 +5330,130 @@ export type SendEmailResponses = {
 };
 
 export type SendEmailResponse = SendEmailResponses[keyof SendEmailResponses];
+
+export type DeleteLicenseSchemaData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/schema';
+};
+
+export type DeleteLicenseSchemaErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeleteLicenseSchemaResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteLicenseSchemaResponse = DeleteLicenseSchemaResponses[keyof DeleteLicenseSchemaResponses];
+
+export type GetLicenseSchemaData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/schema';
+};
+
+export type GetLicenseSchemaErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetLicenseSchemaResponses = {
+    /**
+     * Success
+     */
+    200: LicenseSchemaResponse;
+};
+
+export type GetLicenseSchemaResponse = GetLicenseSchemaResponses[keyof GetLicenseSchemaResponses];
+
+export type CreateLicenseSchemaData = {
+    body: LicenseSchemaCreateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/schema';
+};
+
+export type CreateLicenseSchemaErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Conflict (e.g., resource already exists)
+     */
+    409: ApiErrorResponse;
+};
+
+export type CreateLicenseSchemaError = CreateLicenseSchemaErrors[keyof CreateLicenseSchemaErrors];
+
+export type CreateLicenseSchemaResponses = {
+    /**
+     * Created
+     */
+    201: LicenseSchemaResponse;
+};
+
+export type CreateLicenseSchemaResponse = CreateLicenseSchemaResponses[keyof CreateLicenseSchemaResponses];
+
+export type UpdateLicenseSchemaData = {
+    body: LicenseSchemaUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/schema';
+};
+
+export type UpdateLicenseSchemaErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type UpdateLicenseSchemaError = UpdateLicenseSchemaErrors[keyof UpdateLicenseSchemaErrors];
+
+export type UpdateLicenseSchemaResponses = {
+    /**
+     * Success
+     */
+    200: LicenseSchemaResponse;
+};
+
+export type UpdateLicenseSchemaResponse = UpdateLicenseSchemaResponses[keyof UpdateLicenseSchemaResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

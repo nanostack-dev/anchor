@@ -189,6 +189,33 @@ func (e IntegrationProviderType) Valid() bool {
 	}
 }
 
+// Defines values for LicenseFieldType.
+const (
+	LicenseFieldTypeBoolean LicenseFieldType = "boolean"
+	LicenseFieldTypeEnum    LicenseFieldType = "enum"
+	LicenseFieldTypeLimit   LicenseFieldType = "limit"
+	LicenseFieldTypeNumber  LicenseFieldType = "number"
+	LicenseFieldTypeString  LicenseFieldType = "string"
+)
+
+// Valid indicates whether the value is a known member of the LicenseFieldType enum.
+func (e LicenseFieldType) Valid() bool {
+	switch e {
+	case LicenseFieldTypeBoolean:
+		return true
+	case LicenseFieldTypeEnum:
+		return true
+	case LicenseFieldTypeLimit:
+		return true
+	case LicenseFieldTypeNumber:
+		return true
+	case LicenseFieldTypeString:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrganizationAPIKeySearchRequestSortBy.
 const (
 	OrganizationAPIKeySearchRequestSortByCreatedAt  OrganizationAPIKeySearchRequestSortBy = "created_at"
@@ -1176,6 +1203,89 @@ type IntegrationWebhookResponse struct {
 	//
 	// Examples: PROCESSED
 	Status IntegrationEventStatus `json:"status"`
+}
+
+// LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
+type LicenseFieldDeclaration struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Stable identifier used by product code, unique within the schema.
+	Name string `json:"name"`
+
+	// Required Whether a license template must supply a value for this field.
+	Required *bool              `json:"required,omitempty"`
+	Rules    *LicenseFieldRules `json:"rules,omitempty"`
+	Type     LicenseFieldType   `json:"type"`
+}
+
+// LicenseFieldResponse defines model for LicenseFieldResponse.
+type LicenseFieldResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id        Ksuid             `json:"id"`
+	Name      string            `json:"name"`
+	Required  bool              `json:"required"`
+	Rules     LicenseFieldRules `json:"rules"`
+	Type      LicenseFieldType  `json:"type"`
+	UpdatedAt time.Time         `json:"updated_at"`
+}
+
+// LicenseFieldRules defines model for LicenseFieldRules.
+type LicenseFieldRules struct {
+	// Max Inclusive upper bound. Numeric fields only.
+	Max *float64 `json:"max,omitempty"`
+
+	// MaxLength Inclusive maximum length in runes. String fields only.
+	MaxLength *int `json:"max_length,omitempty"`
+
+	// Min Inclusive lower bound. Numeric fields only.
+	Min *float64 `json:"min,omitempty"`
+
+	// MinLength Inclusive minimum length in runes. String fields only.
+	MinLength *int `json:"min_length,omitempty"`
+
+	// Pattern Regular expression the value must match. String fields only.
+	Pattern *string `json:"pattern,omitempty"`
+
+	// Values The list the value must be drawn from. Enum fields only.
+	Values *[]string `json:"values,omitempty"`
+}
+
+// LicenseFieldType defines model for LicenseFieldType.
+type LicenseFieldType string
+
+// LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
+type LicenseSchemaCreateRequest struct {
+	Description *string                   `json:"description,omitempty"`
+	Fields      []LicenseFieldDeclaration `json:"fields"`
+}
+
+// LicenseSchemaResponse defines model for LicenseSchemaResponse.
+type LicenseSchemaResponse struct {
+	CreatedAt   time.Time              `json:"created_at"`
+	Description *string                `json:"description,omitempty"`
+	Fields      []LicenseFieldResponse `json:"fields"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid     `json:"product_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// LicenseSchemaUpdateRequest defines model for LicenseSchemaUpdateRequest.
+type LicenseSchemaUpdateRequest struct {
+	Description *string                    `json:"description,omitempty"`
+	Fields      *[]LicenseFieldDeclaration `json:"fields,omitempty"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -2694,6 +2804,9 @@ type WorkspaceIdParameter = Ksuid
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorResponse
+
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
 
@@ -2820,6 +2933,12 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
+
+// CreateLicenseSchemaJSONRequestBody defines body for CreateLicenseSchema for application/json ContentType.
+type CreateLicenseSchemaJSONRequestBody = LicenseSchemaCreateRequest
+
+// UpdateLicenseSchemaJSONRequestBody defines body for UpdateLicenseSchema for application/json ContentType.
+type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
 
 // CreateProductOrganizationJSONRequestBody defines body for CreateProductOrganization for application/json ContentType.
 type CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest
