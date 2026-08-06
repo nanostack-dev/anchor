@@ -9,13 +9,12 @@ import "anchor/internal/license/rules"
 // maps onto, so the generated API package never reaches into the evaluator's
 // subpackage.
 //
-// It is an alias, not a distinct type. The direction of the dependency is
-// fixed — the evaluator imports nothing licensing-specific so it can later
-// move to nanostack-framework, so the domain names its type rather than the
-// other way round — and an alias keeps that a rename rather than a second
-// declaration that could drift. The values stay in [rules] for the same
-// reason; naming them again here would be the duplication the domain mapping
-// exists to avoid.
+// It is an alias, not a distinct type: there is one type here, not two that
+// could drift, and no conversion at any boundary. The declaration sits in
+// [rules] because that package is pure logic over its own inputs — a rule set
+// and a value in, a violation out — and stays testable without a database or
+// a domain import. The values stay there too; naming them again here would be
+// the duplication the domain mapping exists to avoid.
 type FieldType = rules.FieldType
 
 // FieldRules is the validation rules declared on a license field: structured

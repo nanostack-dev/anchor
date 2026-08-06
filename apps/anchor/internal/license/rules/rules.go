@@ -22,10 +22,11 @@
 //
 // # Scope
 //
-// This package imports nothing licensing-specific and holds no state, so it can
-// be lifted into nanostack-framework once a second caller needs it. Until then
-// it stays here — "shared" code with one caller is code moved somewhere harder
-// to change.
+// This package is pure logic: a rule set and a value in, a violation out. It
+// holds no state, touches no database, and imports nothing licensing-specific,
+// which is what lets its combinatorial matrix — field type × rule × valid,
+// invalid, boundary — be table-tested directly rather than through a hundred
+// HTTP round-trips. That is the whole reason it is its own package.
 package rules
 
 import (

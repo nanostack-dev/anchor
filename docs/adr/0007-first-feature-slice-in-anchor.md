@@ -28,7 +28,7 @@ internal/license/
 
 API handler methods therefore stay in `internal/api`, alongside the existing email handlers, and delegate to the licensing service. That is the seam the generated interface forces.
 
-The `rules/` subpackage holds the structured-rule evaluator from [ADR-0004](0004-license-schema-template-and-copy.md) and imports nothing licensing-specific. It is a candidate for later extraction into `nanostack-framework` — but only once a second real caller exists. Today the email subsystem has no validation rules, so extracting now would produce "shared" code with exactly one caller, moved somewhere harder to change.
+The `rules/` subpackage holds the structured-rule evaluator from [ADR-0004](0004-license-schema-template-and-copy.md). It is pure logic — a rule set and a value in, a violation out — with no state and no database, which is what lets its combinatorial matrix be table-tested directly instead of through a hundred HTTP round-trips. That testability is why it is a separate package. It is not staged for extraction into `nanostack-framework`; it is licensing's, and it stays here.
 
 ## Consequences
 
