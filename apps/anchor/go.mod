@@ -2,6 +2,8 @@ module anchor
 
 go 1.27
 
+toolchain go1.27rc2
+
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.145.0
@@ -111,5 +113,3 @@ require (
 )
 
 replace github.com/nanostack-dev/anchor/clients/go => ../../clients/go
-
-replace github.com/nanostack-dev/nanostack-framework => ../../../framework-optional-flatmap

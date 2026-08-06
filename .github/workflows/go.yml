@@ -133,9 +133,20 @@ jobs:
       id-token: write
     with:
       app_name: anchor
+      # Stays 1.26.5: apps/anchor/go.mod requires go 1.27 and pins
+      # `toolchain go1.27rc2`, so the Go installed here auto-downloads that
+      # toolchain. actions/setup-go has no 1.27 to install directly — its
+      # version manifest tops out at 1.26.5 while 1.27 is still RC.
       go_version: '1.26.5'
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
+      # TEMPORARY: golangci-lint cannot analyse anything importing
+      # nanostack-framework's pkg/functional — x/tools' gcimporter fails on
+      # go1.27 export data carrying generic methods, which poisons typecheck
+      # for every dependent package. Upstream gap, unreachable by config.
+      # Drop this (and restore the lint deploy gate) once that is fixed.
+      # See nanostack-dev/ci-workflows#14.
+      skip_lint: true
       lint_working_directory: ./apps/anchor
       lint_args: --timeout 5m --path-mode=abs
       lint_skip_cache: true
