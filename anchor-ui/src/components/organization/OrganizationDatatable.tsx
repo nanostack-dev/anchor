@@ -77,6 +77,7 @@ export function OrganizationDatatable() {
 		data: organizationData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductOrganizationsOptions(
 			searchProductOrganizationsOptionsParams,
@@ -165,51 +166,49 @@ export function OrganizationDatatable() {
 	}
 
 	return (
-		<>
-			<AnchorDataTable
-				columns={columns}
-				data={items}
-				loading={isLoading}
-				total={total}
-				pagination={pagination}
-				onPaginationChange={setPagination}
-				sorting={sorting}
-				onSortingChange={setSorting}
-				fullTextSearch={fullTextSearch}
-				onFullTextSearchChange={setFullTextSearch}
-				fullTextSearchPlaceHolder="Search organizations"
-				filters={[
-					{
-						key: "name",
-						label: "Name",
-						type: "select",
-						value: nameFilter,
-						options: nameOptions,
-						placeholder: "Filter by name",
-						multi: true,
-					},
-					{
-						key: "id",
-						label: "ID",
-						type: "select",
-						value: idFilter,
-						options: idOptions,
-						placeholder: "Filter by ID",
-						multi: true,
-					},
-				]}
-				onFiltersChange={(filters) => {
-					setPagination((p) => ({ ...p, pageIndex: 0 }));
-					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
-					setIdFilter(Array.isArray(filters.id) ? filters.id : []);
-				}}
-				enableRowSelection={false}
-			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load organizations: {error.message}
-				</div>
-			)}
-		</>
+		<AnchorDataTable
+			columns={columns}
+			data={items}
+			loading={isLoading}
+			resourceName="organizations"
+			error={error}
+			onRetry={() => {
+				void refetch();
+			}}
+			total={total}
+			pagination={pagination}
+			onPaginationChange={setPagination}
+			sorting={sorting}
+			onSortingChange={setSorting}
+			fullTextSearch={fullTextSearch}
+			onFullTextSearchChange={setFullTextSearch}
+			fullTextSearchPlaceHolder="Search organizations"
+			filters={[
+				{
+					key: "name",
+					label: "Name",
+					type: "select",
+					value: nameFilter,
+					options: nameOptions,
+					placeholder: "Filter by name",
+					multi: true,
+				},
+				{
+					key: "id",
+					label: "ID",
+					type: "select",
+					value: idFilter,
+					options: idOptions,
+					placeholder: "Filter by ID",
+					multi: true,
+				},
+			]}
+			onFiltersChange={(filters) => {
+				setPagination((p) => ({ ...p, pageIndex: 0 }));
+				setNameFilter(Array.isArray(filters.name) ? filters.name : []);
+				setIdFilter(Array.isArray(filters.id) ? filters.id : []);
+			}}
+			enableRowSelection={false}
+		/>
 	);
 }

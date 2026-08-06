@@ -12,7 +12,7 @@ require (
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lib/pq v1.12.3
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
-	github.com/nanostack-dev/nanostack-framework v0.5.0
+	github.com/nanostack-dev/nanostack-framework v0.7.6
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.6.0
@@ -38,7 +38,6 @@ require (
 	github.com/speakeasy-api/openapi v1.24.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 )
 
 require (
@@ -59,7 +58,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-connections v0.8.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/dprotaso/go-yit v0.0.0-20260623150633-6f1ed93922d1 // indirect
+	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.15 // indirect

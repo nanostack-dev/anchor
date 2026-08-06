@@ -74,6 +74,7 @@ export function PlatformInvitationDatatable() {
 		data: invitationData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchPlatformInvitationsOptions(searchParams),
 		placeholderData: keepPreviousData,
@@ -218,6 +219,11 @@ export function PlatformInvitationDatatable() {
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="invitations"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -247,11 +253,6 @@ export function PlatformInvitationDatatable() {
 					Add Invitation
 				</Button>
 			</AnchorDataTable>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load invitations: {error.message}
-				</div>
-			)}
 			<PlatformAddInvitationDialog
 				open={inviteOpen}
 				onOpenChange={setInviteOpen}

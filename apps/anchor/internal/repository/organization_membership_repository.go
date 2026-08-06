@@ -11,6 +11,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -297,13 +298,14 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 	}
 
 	return user.OrganizationMembership{
-		OrganizationID:          row.Organization.ID,
-		OrganizationName:        row.Organization.Name,
-		OrganizationDescription: row.Organization.Description,
-		RoleID:                  row.Role.ID,
-		RoleName:                row.Role.Name,
-		RolePermissions:         permissions,
-		JoinedAt:                row.OrganizationMemberships.CreatedAt,
+		OrganizationID:           row.Organization.ID,
+		OrganizationName:         row.Organization.Name,
+		OrganizationDescription:  row.Organization.Description,
+		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.Organization.MetadataJSON),
+		RoleID:                   row.Role.ID,
+		RoleName:                 row.Role.Name,
+		RolePermissions:          permissions,
+		JoinedAt:                 row.OrganizationMemberships.CreatedAt,
 	}
 }
 

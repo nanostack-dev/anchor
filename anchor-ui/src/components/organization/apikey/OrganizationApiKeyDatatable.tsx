@@ -91,6 +91,7 @@ export function OrganizationApiKeyDatatable({
 		data: apiKeyData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchOrganizationApiKeysOptions(queryOptions),
 		placeholderData: keepPreviousData,
@@ -246,13 +247,13 @@ export function OrganizationApiKeyDatatable({
 					setStatusFilter(Array.isArray(filters.status) ? filters.status : []);
 				}}
 				loading={isLoading}
+				resourceName="organization API keys"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				enableRowSelection={false}
 			/>
-			{error ? (
-				<div className="mt-4 text-sm text-destructive">
-					Failed to load organization API keys: {error.message}
-				</div>
-			) : null}
 		</>
 	);
 }

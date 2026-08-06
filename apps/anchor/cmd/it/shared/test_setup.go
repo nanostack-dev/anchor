@@ -156,7 +156,7 @@ func SetupTest(config TestConfig) func() {
 
 func setupPostgres(ctx context.Context, testLogger zerolog.Logger) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
-		Image:        "timescale/timescaledb:latest-pg18",
+		Image:        "timescale/timescaledb:2.23.0-pg18",
 		ExposedPorts: []string{"5432/tcp"},
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("5432/tcp"),

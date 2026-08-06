@@ -50,6 +50,9 @@ export type SearchRequest = {
      * Full-text search term to match against searchable fields.
      */
     full_text_search?: string;
+    /**
+     * Sorting direction
+     */
     sort_direction?: SortDirection;
 };
 
@@ -107,6 +110,9 @@ export type PlatformInvitationRequest = {
 };
 
 export type PlatformInvitationResponse = {
+    /**
+     * Unique identifier for the platform invitation (e.g., prefix 'pinv_').
+     */
     id: Ksuid;
     /**
      * The unique invitation code that the Product User will use to register.
@@ -124,6 +130,9 @@ export type PlatformInvitationResponse = {
      * Timestamp when the invitation was last updated.
      */
     updated_at: string;
+    /**
+     * The ID of the PlatformTenant this invitation is associated with.
+     */
     tenant_id: Ksuid;
 };
 
@@ -143,6 +152,9 @@ export type PlatformInvitationFilter = {
 };
 
 export type PlatformInvitationSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for platform invitations
+     */
     filter?: PlatformInvitationFilter;
     /**
      * Field to sort by
@@ -159,12 +171,21 @@ export enum PlatformUserRole {
 }
 
 export type PlatformUserResponse = {
+    /**
+     * Unique identifier for the platform Product User (e.g., prefix 'puser_').
+     */
     id: Ksuid;
+    /**
+     * Unique identifier for the Product User (e.g., prefix 'user_').
+     */
     user_id: Ksuid;
     /**
      * The email address the invitation was sent to.
      */
     email: string;
+    /**
+     * The role of the platform Product User.
+     */
     role: PlatformUserRole;
     /**
      * Timestamp when the invitation was created.
@@ -174,6 +195,9 @@ export type PlatformUserResponse = {
      * Timestamp when the invitation was last updated.
      */
     updated_at: string;
+    /**
+     * The ID of the PlatformTenant this invitation is associated with.
+     */
     tenant_id: Ksuid;
 };
 
@@ -193,6 +217,9 @@ export type PlatformUserFilter = {
 };
 
 export type PlatformUserSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for platform invitations
+     */
     filter?: PlatformUserFilter;
     /**
      * Field to sort by
@@ -216,6 +243,9 @@ export type ProductFilter = {
 };
 
 export type ProductSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for platform invitations
+     */
     filter?: ProductFilter;
     /**
      * Field to sort by
@@ -232,10 +262,16 @@ export type ProductRequest = {
      * Optional description for the product.
      */
     description?: string | null;
+    /**
+     * Product-level configuration.
+     */
     config?: ProductConfigRequest;
 };
 
 export type ProductConfigRequest = {
+    /**
+     * Organization API key configuration for this product.
+     */
     organization_api_keys?: ProductOrganizationApiKeysConfigRequest;
 };
 
@@ -247,6 +283,9 @@ export type ProductOrganizationApiKeysConfigRequest = {
 };
 
 export type ProductConfigResponse = {
+    /**
+     * Organization API key configuration for this product.
+     */
     organization_api_keys: ProductOrganizationApiKeysConfigResponse;
 };
 
@@ -258,7 +297,13 @@ export type ProductOrganizationApiKeysConfigResponse = {
 };
 
 export type ProductResponse = {
+    /**
+     * Unique identifier for the product (e.g., prefix 'prod_').
+     */
     id: Ksuid;
+    /**
+     * Identifier of the PlatformTenant this product belongs to.
+     */
     tenant_id: Ksuid;
     /**
      * Name of the product.
@@ -268,6 +313,9 @@ export type ProductResponse = {
      * Description of the product.
      */
     description?: string | null;
+    /**
+     * Product-level configuration.
+     */
     config: ProductConfigResponse;
     /**
      * Timestamp when the product was created.
@@ -287,6 +335,9 @@ export type ProductListResponse = PagedListResponse & {
  * A built-in permission that controls access to the product itself within Anchor (e.g. product:settings:read, product:billing:update). These permissions are system-defined — they cannot be created or deleted via the API. Use the search endpoint to discover which permissions are available for a product.
  */
 export type ProductPermissionResponse = {
+    /**
+     * ID of the Product this permission is defined for.
+     */
     product_id: Ksuid;
     /**
      * The permission string identifier. Permission name filters and validation use case-insensitive matching and return the canonical stored casing.
@@ -336,6 +387,9 @@ export type UpdateProductResourcePermissionRequest = {
  * A domain-resource permission defined by the product owner for their own application resources. These permissions are created by the product (e.g. "document:read", "file:delete" for a Google Drive-like product) and assigned to ProductRoles. They control what end-users can do *inside the product*, as opposed to ProductPermissions which control access to the product itself within Anchor.
  */
 export type ProductResourcePermissionResponse = {
+    /**
+     * ID of the Product this resource permission belongs to.
+     */
     product_id: Ksuid;
     /**
      * The resource permission identifier (e.g. "document:read"). This value is used as the primary key and path parameter.
@@ -409,7 +463,13 @@ export type ProductRoleUpdateRequest = {
 };
 
 export type ProductRoleResponse = {
+    /**
+     * Unique identifier for the product role (e.g., prefix 'role_').
+     */
     id: Ksuid;
+    /**
+     * ID of the Product this role belongs to.
+     */
     product_id: Ksuid;
     /**
      * Name of the product role.
@@ -431,11 +491,17 @@ export type ProductRoleResponse = {
  * Represents a product resource permission (e.g. "document:read") that has been assigned to a ProductRole. These are domain-specific permissions defined by the product owner for their own application resources, not to be confused with the built-in ProductPermissions that govern access to the product within Anchor.
  */
 export type ProductRolePermissionResponse = {
+    /**
+     * ID of the Product this permission is defined for.
+     */
     product_id: Ksuid;
     /**
      * The product resource permission name (e.g. "document:read", "file:delete"). References an existing ProductResourcePermission.
      */
     permission_name: string;
+    /**
+     * ID of the ProductRole this permission is assigned to.
+     */
     product_role_id: Ksuid;
 };
 
@@ -482,7 +548,13 @@ export type ProductApiKeyCreateRequest = {
 };
 
 export type ProductApiKeyResponse = {
+    /**
+     * Unique identifier for the product API key (e.g., prefix 'pkey_').
+     */
     id: Ksuid;
+    /**
+     * ID of the Product this API key belongs to.
+     */
     product_id: Ksuid;
     /**
      * Name of the product API key.
@@ -528,11 +600,17 @@ export type CreatedProductApiKeyResponse = ProductApiKeyResponse & {
  * Represents a Anchor built-in scope granted to a Product API Key. These are the operational permissions that control what the product backend can do within Anchor itself (e.g. "organization:create", "product_user:read"). Not to be confused with ProductResourcePermissions, which are domain-specific permissions defined by the product owner for their own end-users.
  */
 export type ProductApiKeyPermissionResponse = {
+    /**
+     * ID of the Product this permission is defined for.
+     */
     product_id: Ksuid;
     /**
      * The Anchor built-in scope granted to this API key (e.g. "organization:create", "product_user:read").
      */
     permission_name: string;
+    /**
+     * ID of the ProductAPIKey this permission is granted to.
+     */
     product_api_key_id: Ksuid;
 };
 
@@ -565,7 +643,13 @@ export type OrganizationApiKeyCreateRequest = {
 };
 
 export type OrganizationApiKeyResponse = {
+    /**
+     * Unique identifier for the organization API key.
+     */
     id: Ksuid;
+    /**
+     * ID of the organization this API key belongs to.
+     */
     organization_id: Ksuid;
     /**
      * Name of the organization API key.
@@ -607,12 +691,21 @@ export type CreatedOrganizationApiKeyResponse = OrganizationApiKeyResponse & {
  * Represents a Anchor built-in scope granted to an Organization API Key.
  */
 export type OrganizationApiKeyPermissionResponse = {
+    /**
+     * ID of the organization this permission grant belongs to.
+     */
     organization_id: Ksuid;
+    /**
+     * ID of the product this permission is defined for.
+     */
     product_id: Ksuid;
     /**
      * The Anchor built-in scope granted to this API key.
      */
     permission_name: string;
+    /**
+     * ID of the OrganizationAPIKey this permission is granted to.
+     */
     organization_api_key_id: Ksuid;
 };
 
@@ -638,11 +731,20 @@ export type ProductUserRequest = {
      * User's display name.
      */
     name?: string | null;
+    /**
+     * Set the status (e.g., create as 'invited' or 'active', update to 'suspended').
+     */
     status?: ProductUserStatus;
 };
 
 export type ProductUserResponse = {
+    /**
+     * Unique identifier for the product Product User (e.g., prefix 'pusr_').
+     */
     id: Ksuid;
+    /**
+     * ID of the Product this Product User belongs to.
+     */
     product_id: Ksuid;
     /**
      * User's email address.
@@ -815,6 +917,9 @@ export type ProductUserFilter = {
 };
 
 export type ProductUserSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for product users
+     */
     filter?: ProductUserFilter;
     /**
      * Field to sort by
@@ -833,6 +938,9 @@ export enum UserOrganizationInclude {
  * The user's role within an organization.
  */
 export type UserOrganizationRoleResponse = {
+    /**
+     * Unique identifier for the role.
+     */
     id: Ksuid;
     /**
      * Name of the role.
@@ -849,6 +957,9 @@ export type UserOrganizationRoleResponse = {
  */
 export type UserOrganizationResponse = {
     organization: {
+        /**
+         * Unique identifier for the organization.
+         */
         id: Ksuid;
         /**
          * Name of the organization.
@@ -858,6 +969,9 @@ export type UserOrganizationResponse = {
          * Description of the organization.
          */
         description?: string | null;
+        /**
+         * Key-value metadata for the organization.
+         */
         metadata?: Metadata;
     };
     role: UserOrganizationRoleResponse;
@@ -871,7 +985,13 @@ export type UserOrganizationResponse = {
  * Request body for adding a product user to an organization with a specific role.
  */
 export type OrganizationMembershipRequest = {
+    /**
+     * The organization to add the user to.
+     */
     organization_id: Ksuid;
+    /**
+     * The role to assign to the user within the organization.
+     */
     role_id: Ksuid;
 };
 
@@ -879,6 +999,9 @@ export type OrganizationMembershipRequest = {
  * Request body for updating a product user's role within an organization.
  */
 export type OrganizationMembershipUpdateRequest = {
+    /**
+     * The new role to assign to the user within the organization.
+     */
     role_id: Ksuid;
 };
 
@@ -887,6 +1010,9 @@ export type UserOrganizationListResponse = {
 };
 
 export type ProductPermissionSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for app permissions
+     */
     filter?: ProductPermissionFilter;
     /**
      * Field to sort by
@@ -895,6 +1021,9 @@ export type ProductPermissionSearchRequest = SearchRequest & {
 };
 
 export type ProductRoleSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for app roles
+     */
     filter?: ProductRoleFilter;
     /**
      * Field to sort by
@@ -903,6 +1032,9 @@ export type ProductRoleSearchRequest = SearchRequest & {
 };
 
 export type ProductApiKeySearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for product API keys
+     */
     filter?: ProductApiKeyFilter;
     /**
      * Field to sort by
@@ -911,6 +1043,9 @@ export type ProductApiKeySearchRequest = SearchRequest & {
 };
 
 export type OrganizationApiKeySearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for organization API keys
+     */
     filter?: OrganizationApiKeyFilter;
     /**
      * Field to sort by
@@ -956,6 +1091,17 @@ export type OrganizationApiKeyValidateRequest = {
     required_scopes: Array<string>;
 };
 
+export type OrganizationApiKeyIntrospectRequest = {
+    /**
+     * Raw organization API key value to introspect.
+     */
+    api_key: string;
+    /**
+     * Optional permission scopes to check. When provided, any missing scopes are reported in missing_privileges and yield a 403.
+     */
+    required_scopes?: Array<string>;
+};
+
 export type OrganizationApiKeyValidateResponse = {
     api_key: OrganizationApiKeyResponse;
     /**
@@ -995,17 +1141,35 @@ export type ProductOrganizationRequest = {
      * Optional description of the organization.
      */
     description?: string | null;
+    /**
+     * Optional key-value metadata for the organization.
+     */
     metadata?: Metadata;
+    /**
+     * Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
+     */
     founding_member?: FoundingMemberRequest;
 };
 
 export type FoundingMemberRequest = {
+    /**
+     * ID of the product user to assign as founding member.
+     */
     product_user_id: Ksuid;
+    /**
+     * Role to assign to the founding member.
+     */
     role_id: Ksuid;
 };
 
 export type ProductOrganizationResponse = {
+    /**
+     * Unique identifier for the organization (e.g., prefix 'org_').
+     */
     id: Ksuid;
+    /**
+     * ID of the Product this organization belongs to.
+     */
     product_id: Ksuid;
     /**
      * Name of the organization.
@@ -1015,6 +1179,9 @@ export type ProductOrganizationResponse = {
      * Description of the organization.
      */
     description?: string | null;
+    /**
+     * Key-value metadata for the organization.
+     */
     metadata?: Metadata;
     /**
      * Timestamp when the organization was created.
@@ -1027,6 +1194,9 @@ export type ProductOrganizationResponse = {
 };
 
 export type ProductOrganizationSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for organizations
+     */
     filter?: OrganizationFilter;
     /**
      * Field to sort by
@@ -1050,7 +1220,13 @@ export type ProductWorkspaceRequest = {
 };
 
 export type ProductWorkspaceResponse = {
+    /**
+     * Unique identifier for the workspace.
+     */
     id: Ksuid;
+    /**
+     * ID of the organization this workspace belongs to.
+     */
     organization_id: Ksuid;
     /**
      * Name of the workspace.
@@ -1071,6 +1247,9 @@ export type ProductWorkspaceResponse = {
 };
 
 export type ProductWorkspaceSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for workspaces.
+     */
     filter?: WorkspaceFilter;
     /**
      * Field to sort by.
@@ -1086,6 +1265,9 @@ export type ProductWorkspaceListResponse = PagedListResponse & {
  * Represents a member of an organization with their role details.
  */
 export type OrganizationMemberResponse = {
+    /**
+     * Unique identifier of the product user.
+     */
     product_user_id: Ksuid;
     /**
      * Email address of the member.
@@ -1103,6 +1285,9 @@ export type OrganizationMemberResponse = {
      * Role assigned to the member within the organization.
      */
     role: {
+        /**
+         * Unique identifier of the role.
+         */
         id: Ksuid;
         /**
          * Display name of the role.
@@ -1130,7 +1315,13 @@ export type OrganizationMemberListResponse = PagedListResponse & {
  * Request body for adding a member to an organization.
  */
 export type OrganizationMemberRequest = {
+    /**
+     * The product user to add to the organization.
+     */
     product_user_id: Ksuid;
+    /**
+     * The role to assign to the member.
+     */
     role_id: Ksuid;
 };
 
@@ -1138,10 +1329,16 @@ export type OrganizationMemberRequest = {
  * Request body for updating a member's role within an organization.
  */
 export type OrganizationMemberRoleRequest = {
+    /**
+     * The new role to assign to the member.
+     */
     role_id: Ksuid;
 };
 
 export type OrganizationMemberSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for organization members.
+     */
     filter?: OrganizationMemberFilter;
     /**
      * Field to sort by.
@@ -1338,11 +1535,20 @@ export type IntegrationInstanceUpdateRequest = {
      * The webhook signing secret for signature validation.
      */
     webhook_secret?: string | null;
+    /**
+     * Updated provider-specific configuration (JSON object).
+     */
     config?: IntegrationProviderConfig;
 };
 
 export type IntegrationInstanceResponse = {
+    /**
+     * Unique identifier for the integration instance (prefix 'iin_').
+     */
     id: Ksuid;
+    /**
+     * ID of the Product this integration instance belongs to.
+     */
     product_id: Ksuid;
     provider_type: IntegrationProviderType;
     /**
@@ -1370,6 +1576,9 @@ export type IntegrationInstanceResponse = {
      * Timestamp when the integration instance was last updated.
      */
     updated_at: string;
+    /**
+     * Non-sensitive provider configuration. Password and secrets are never included.
+     */
     public_config?: IntegrationProviderPublicConfig;
 };
 
@@ -1382,7 +1591,13 @@ export type IntegrationInstanceListResponse = {
 };
 
 export type IntegrationWebhookResponse = {
+    /**
+     * The ID of the created integration event (prefix 'iev_').
+     */
     event_id: Ksuid;
+    /**
+     * Processing status of the event.
+     */
     status: IntegrationEventStatus;
 };
 
@@ -1397,7 +1612,13 @@ export enum IntegrationAuditLogSeverity {
 }
 
 export type IntegrationAuditLogEntryResponse = {
+    /**
+     * Unique identifier for the audit log entry (prefix 'ial_').
+     */
     id: Ksuid;
+    /**
+     * Integration instance ID this audit record belongs to.
+     */
     integration_instance_id: Ksuid;
     /**
      * Canonical action code for the event.
@@ -3411,6 +3632,9 @@ export type CreateProductUserData = {
          * User's display name.
          */
         name?: string | null;
+        /**
+         * Initial status (e.g., 'active' or 'invited'). Defaults might apply.
+         */
         status?: ProductUserStatus;
     };
     path: {
@@ -3960,6 +4184,48 @@ export type ValidateOrganizationApiKeyResponses = {
 };
 
 export type ValidateOrganizationApiKeyResponse = ValidateOrganizationApiKeyResponses[keyof ValidateOrganizationApiKeyResponses];
+
+export type IntrospectOrganizationApiKeyData = {
+    body: OrganizationApiKeyIntrospectRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/auth/introspect';
+};
+
+export type IntrospectOrganizationApiKeyErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Unauthorized (Authentication required or invalid)
+     */
+    401: ApiErrorResponse;
+    /**
+     * Organization API key is valid but lacks one or more required scopes.
+     */
+    403: OrganizationApiKeyValidateForbiddenResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type IntrospectOrganizationApiKeyError = IntrospectOrganizationApiKeyErrors[keyof IntrospectOrganizationApiKeyErrors];
+
+export type IntrospectOrganizationApiKeyResponses = {
+    /**
+     * Organization API key introspection result.
+     */
+    200: OrganizationApiKeyValidateResponse;
+};
+
+export type IntrospectOrganizationApiKeyResponse = IntrospectOrganizationApiKeyResponses[keyof IntrospectOrganizationApiKeyResponses];
 
 export type CreateProductOrganizationData = {
     /**
