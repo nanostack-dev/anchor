@@ -293,60 +293,19 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		)
 	}
 
-	query := table.ProductUsers.SELECT(
-		table.ProductUsers.AllColumns,
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.ProductUsers.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to count product users")
-		return search.Result[user.ProductUser]{}, err
-	}
-
-	query = r.applySorting(query, request.Sort)
-
-	query = query.LIMIT(int64(request.Pagination.Limit)).OFFSET(int64(request.Pagination.Offset))
-	slice, err := transactor.QueryMapSlice(ctx, r.db, query, r.productUserMapper.ToDomain).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to search product users")
-		return search.Result[user.ProductUser]{}, err
-	}
-
-	return search.Result[user.ProductUser]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
-	}, nil
-}
-
-func (r *productUserRepositoryImpl) applySorting(
-	query postgres.SelectStatement, sorts []search.Sort[user.SortFieldProductUser],
-) postgres.SelectStatement {
-	if len(sorts) == 0 {
-		return query
-	}
-
-	for _, sort := range sorts {
-		switch sort.Field {
-		case user.SortFieldProductUserCreatedAt:
-			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.CreatedAt, sort.Direction))
-		case user.SortFieldProductUserUpdatedAt:
-			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.UpdatedAt, sort.Direction))
-		case user.SortFieldProductUserEmail:
-			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Email, sort.Direction))
-		case user.SortFieldProductUserName:
-			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Name, sort.Direction))
-		case user.SortFieldProductUserStatus:
-			query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Status, sort.Direction))
-		}
-	}
-	return query
+	return transactor.Page(r.db, r.productUserMapper.ToDomain, table.ProductUsers.AllColumns).
+		From(table.ProductUsers).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			request.Sort,
+			map[user.SortFieldProductUser]postgres.Column{
+				user.SortFieldProductUserCreatedAt: table.ProductUsers.CreatedAt,
+				user.SortFieldProductUserUpdatedAt: table.ProductUsers.UpdatedAt,
+				user.SortFieldProductUserEmail:     table.ProductUsers.Email,
+				user.SortFieldProductUserName:      table.ProductUsers.Name,
+				user.SortFieldProductUserStatus:    table.ProductUsers.Status,
+			},
+		)...).
+		Run(ctx, request.Pagination).
+		Value()
 }
