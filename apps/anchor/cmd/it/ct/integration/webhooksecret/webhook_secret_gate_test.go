@@ -17,8 +17,7 @@ import (
 // "Webhook secret is required when integration instance is active" even though
 // SMTP is outbound-only and never ingests webhooks.
 func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
-	mp := mailpit.Start(t)
-	defer mp.Stop(t)
+	mp := mailpit.Shared(t)
 
 	tc := newTestCtx(t)
 	instance := seedActiveSMTPInstance(t, tc, mp)
