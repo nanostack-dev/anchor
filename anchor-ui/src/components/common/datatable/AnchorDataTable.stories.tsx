@@ -90,14 +90,95 @@ export const Loading: Story = {
 	},
 };
 
+/**
+ * Nothing exists yet. Distinct from the filtered-empty story below: this one
+ * offers no "clear" action, because there is nothing applied to clear.
+ */
 export const Empty: Story = {
 	args: {
 		data: [],
 		total: 0,
+		resourceName: "API keys",
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.getByText("No results.")).toBeInTheDocument();
+		await expect(canvas.getByText("No API keys yet")).toBeInTheDocument();
+		await expect(
+			canvas.queryByRole("button", { name: /^Clear/ }),
+		).not.toBeInTheDocument();
+	},
+};
+
+/**
+ * Empty *because the user narrowed the view*. The copy names what was applied
+ * and the recovery button performs exactly that — clearing the search puts the
+ * user back where results exist.
+ */
+export const EmptyAfterSearch: Story = {
+	args: {
+		data: [],
+		total: 0,
+		resourceName: "API keys",
+		fullTextSearch: "zzzz",
+		onFullTextSearchChange: fn(),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByText("No API keys match your search"),
+		).toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: "Clear search" }));
+		await expect(args.onFullTextSearchChange).toHaveBeenCalledWith("");
+	},
+};
+
+/**
+ * A failed load with nothing to fall back on. The point of the state is that it
+ * cannot be mistaken for an empty list, so assert both halves: the failure is
+ * named, and the "you have none" copy is absent.
+ */
+export const LoadError: Story = {
+	args: {
+		data: [],
+		total: 0,
+		resourceName: "API keys",
+		error: new Error("api-keys service unavailable"),
+		onRetry: fn(),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByText("Couldn’t load API keys"),
+		).toBeInTheDocument();
+		await expect(
+			canvas.getByText("api-keys service unavailable."),
+		).toBeInTheDocument();
+		await expect(canvas.queryByText("No API keys yet")).not.toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
+		await expect(args.onRetry).toHaveBeenCalled();
+	},
+};
+
+/**
+ * A refetch failed while previously-loaded rows are still on screen. Those rows
+ * are the most valuable thing here, so they stay; the failure is reported
+ * alongside them rather than replacing them.
+ */
+export const RefreshErrorKeepsRows: Story = {
+	args: {
+		resourceName: "API keys",
+		error: new Error("Failed to fetch"),
+		onRetry: fn(),
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("checkout-prod")).toBeInTheDocument();
+		await expect(
+			canvas.getByText(/Couldn’t refresh API keys/),
+		).toBeInTheDocument();
+		await expect(
+			canvas.queryByText("Couldn’t load API keys"),
+		).not.toBeInTheDocument();
 	},
 };
 
