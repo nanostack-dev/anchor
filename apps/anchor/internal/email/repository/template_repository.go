@@ -51,9 +51,17 @@ func (r *templateRepositoryImpl) FindByID(
 				AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *templateRepositoryImpl) FindBySlug(
@@ -66,9 +74,17 @@ func (r *templateRepositoryImpl) FindBySlug(
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *templateRepositoryImpl) FindBySlugInternal(
@@ -80,9 +96,17 @@ func (r *templateRepositoryImpl) FindBySlugInternal(
 			table.EmailTemplates.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *templateRepositoryImpl) List(

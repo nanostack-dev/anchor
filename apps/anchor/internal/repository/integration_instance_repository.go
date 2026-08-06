@@ -100,9 +100,17 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
@@ -116,9 +124,17 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
@@ -136,9 +152,17 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
@@ -154,9 +178,17 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(
@@ -251,7 +283,7 @@ func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return transactor.QueryOptionalResultMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(

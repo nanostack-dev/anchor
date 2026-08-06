@@ -100,11 +100,19 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
@@ -128,11 +136,19 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *productRoleRepositoryImpl) Create(

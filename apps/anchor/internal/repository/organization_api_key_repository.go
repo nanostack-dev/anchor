@@ -171,14 +171,22 @@ func (r *organizationAPIKeyRepository) GetByID(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *organizationAPIKeyRepository) GetByIDInternal(
@@ -197,14 +205,22 @@ func (r *organizationAPIKeyRepository) GetByIDInternal(
 		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
@@ -225,14 +241,22 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
@@ -253,14 +277,22 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 // GetByProductIDAndHashedValueInternal resolves an organization API key by its hashed
@@ -290,14 +322,22 @@ func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 //nolint:dupl // mirrors product API key update flow with organization-scoped tables

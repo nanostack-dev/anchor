@@ -52,11 +52,19 @@ func (u *userRepositoryImpl) FindByEmail(
 		table.Users.Email.EQ(postgres.String(email)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, u.db, stmt,
 
 		u.userMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (u *userRepositoryImpl) Count(ctx context.Context) (

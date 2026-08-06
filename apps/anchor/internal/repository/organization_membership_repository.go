@@ -164,12 +164,20 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *organizationMembershipRepositoryImpl) Create(
@@ -382,12 +390,20 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByOrgID(

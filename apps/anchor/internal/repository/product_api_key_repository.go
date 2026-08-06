@@ -169,11 +169,19 @@ func (r *productAPIKeyRepository) GetByID(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndName(
@@ -193,11 +201,19 @@ func (r *productAPIKeyRepository) GetByProductIDAndName(
 			AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
@@ -403,11 +419,19 @@ func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	if !result.IsPresent() {
+		return nil, nil
+	}
+	value := result.Value()
+	return &value, nil
 }
 func (r *productAPIKeyRepository) getPermissionEntities(
 	ctx context.Context, productID, apiKeyID string,
