@@ -2870,17 +2870,6 @@ components:
     LicenseFieldType:
       type: string
       enum: [LIMIT, NUMBER, BOOLEAN, ENUM, STRING]
-      # Pinned, and it is load-bearing. Without explicit names the generator
-      # derives client constant names from the whole spec at once: NUMBER and
-      # STRING collide with EmailVariableType, and it resolves that by renaming
-      # *its* five constants — a silent breaking change to the published client,
-      # caused by adding an unrelated enum. Naming ours leaves it alone.
-      x-enum-varnames:
-        - LicenseFieldTypeLIMIT
-        - LicenseFieldTypeNUMBER
-        - LicenseFieldTypeBOOLEAN
-        - LicenseFieldTypeENUM
-        - LicenseFieldTypeSTRING
       x-go-type: license.FieldType
       x-go-type-import:
         path: anchor/internal/domain/license

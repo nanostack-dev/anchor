@@ -34,7 +34,7 @@ func TestEmailSendRequiredVariables(t *testing.T) {
 			Subject:  "Hello {{ .name }}",
 			BodyHtml: "<p>Hi {{ .name }}</p>",
 			Variables: &[]ct.EmailVariableSchema{
-				{Name: "name", Type: ct.STRING, Required: new(true)},
+				{Name: "name", Type: ct.EmailVariableTypeSTRING, Required: new(true)},
 			},
 		},
 	)

@@ -1823,26 +1823,11 @@ export type EmailSendRecordListResponse = {
 };
 
 export enum LicenseFieldType {
-    /**
-     * LicenseFieldTypeLIMIT
-     */
-    LICENSE_FIELD_TYPE_LIMIT = 'LIMIT',
-    /**
-     * LicenseFieldTypeNUMBER
-     */
-    LICENSE_FIELD_TYPE_NUMBER = 'NUMBER',
-    /**
-     * LicenseFieldTypeBOOLEAN
-     */
-    LICENSE_FIELD_TYPE_BOOLEAN = 'BOOLEAN',
-    /**
-     * LicenseFieldTypeENUM
-     */
-    LICENSE_FIELD_TYPE_ENUM = 'ENUM',
-    /**
-     * LicenseFieldTypeSTRING
-     */
-    LICENSE_FIELD_TYPE_STRING = 'STRING'
+    LIMIT = 'LIMIT',
+    NUMBER = 'NUMBER',
+    BOOLEAN = 'BOOLEAN',
+    ENUM = 'ENUM',
+    STRING = 'STRING'
 }
 
 export type LicenseFieldRules = {
