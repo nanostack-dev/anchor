@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -11,8 +12,11 @@ type Organization struct {
 	ProductID   string
 	Name        string
 	Description *string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// MetadataJSON holds the caller-supplied key-value metadata as raw JSON.
+	// Nil means the organization has no metadata stored.
+	MetadataJSON json.RawMessage
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // GenerateID sets the organization's ID to a new prefixed KSUID.

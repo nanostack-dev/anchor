@@ -65,7 +65,7 @@ export function OrganizationMembershipDatatable({
 		body: requestBody,
 	};
 
-	const { data, isLoading } = useQuery({
+	const { data, isLoading, error, refetch } = useQuery({
 		...searchOrganizationMembersOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct?.id && !!organizationId,
@@ -117,20 +117,23 @@ export function OrganizationMembershipDatatable({
 	}
 
 	return (
-		<>
-			<AnchorDataTable<OrganizationMemberResponse>
-				columns={columns}
-				data={data?.items ?? []}
-				total={data?.total ?? 0}
-				pagination={pagination}
-				onPaginationChange={setPagination}
-				sorting={sorting}
-				onSortingChange={setSorting}
-				fullTextSearch={globalFilter}
-				onFullTextSearchChange={setGlobalFilter}
-				loading={isLoading}
-				fullTextSearchPlaceHolder="Search by email or name..."
-			/>
-		</>
+		<AnchorDataTable<OrganizationMemberResponse>
+			columns={columns}
+			data={data?.items ?? []}
+			total={data?.total ?? 0}
+			pagination={pagination}
+			onPaginationChange={setPagination}
+			sorting={sorting}
+			onSortingChange={setSorting}
+			fullTextSearch={globalFilter}
+			onFullTextSearchChange={setGlobalFilter}
+			loading={isLoading}
+			resourceName="members"
+			error={error}
+			onRetry={() => {
+				void refetch();
+			}}
+			fullTextSearchPlaceHolder="Search by email or name..."
+		/>
 	);
 }

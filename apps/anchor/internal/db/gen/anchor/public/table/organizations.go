@@ -17,12 +17,13 @@ type organizationsTable struct {
 	postgres.Table
 
 	// Columns
-	ID          postgres.ColumnString
-	ProductID   postgres.ColumnString
-	Name        postgres.ColumnString
-	Description postgres.ColumnString
-	CreatedAt   postgres.ColumnTimestampz
-	UpdatedAt   postgres.ColumnTimestampz
+	ID           postgres.ColumnString
+	ProductID    postgres.ColumnString
+	Name         postgres.ColumnString
+	Description  postgres.ColumnString
+	CreatedAt    postgres.ColumnTimestampz
+	UpdatedAt    postgres.ColumnTimestampz
+	MetadataJSON postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -64,27 +65,29 @@ func newOrganizationsTable(schemaName, tableName, alias string) *OrganizationsTa
 
 func newOrganizationsTableImpl(schemaName, tableName, alias string) organizationsTable {
 	var (
-		IDColumn          = postgres.StringColumn("id")
-		ProductIDColumn   = postgres.StringColumn("product_id")
-		NameColumn        = postgres.StringColumn("name")
-		DescriptionColumn = postgres.StringColumn("description")
-		CreatedAtColumn   = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn   = postgres.TimestampzColumn("updated_at")
-		allColumns        = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns    = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns    = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		IDColumn           = postgres.StringColumn("id")
+		ProductIDColumn    = postgres.StringColumn("product_id")
+		NameColumn         = postgres.StringColumn("name")
+		DescriptionColumn  = postgres.StringColumn("description")
+		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn    = postgres.TimestampzColumn("updated_at")
+		MetadataJSONColumn = postgres.StringColumn("metadata_json")
+		allColumns         = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, MetadataJSONColumn}
+		mutableColumns     = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, MetadataJSONColumn}
+		defaultColumns     = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return organizationsTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:          IDColumn,
-		ProductID:   ProductIDColumn,
-		Name:        NameColumn,
-		Description: DescriptionColumn,
-		CreatedAt:   CreatedAtColumn,
-		UpdatedAt:   UpdatedAtColumn,
+		ID:           IDColumn,
+		ProductID:    ProductIDColumn,
+		Name:         NameColumn,
+		Description:  DescriptionColumn,
+		CreatedAt:    CreatedAtColumn,
+		UpdatedAt:    UpdatedAtColumn,
+		MetadataJSON: MetadataJSONColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

@@ -11,6 +11,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -297,13 +298,14 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 	}
 
 	return user.OrganizationMembership{
-		OrganizationID:          row.Organization.ID,
-		OrganizationName:        row.Organization.Name,
-		OrganizationDescription: row.Organization.Description,
-		RoleID:                  row.Role.ID,
-		RoleName:                row.Role.Name,
-		RolePermissions:         permissions,
-		JoinedAt:                row.OrganizationMemberships.CreatedAt,
+		OrganizationID:           row.Organization.ID,
+		OrganizationName:         row.Organization.Name,
+		OrganizationDescription:  row.Organization.Description,
+		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.Organization.MetadataJSON),
+		RoleID:                   row.Role.ID,
+		RoleName:                 row.Role.Name,
+		RolePermissions:          permissions,
+		JoinedAt:                 row.OrganizationMemberships.CreatedAt,
 	}
 }
 
@@ -455,54 +457,32 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		}
 	}
 
-	// Build the base join expression for count and data queries.
-	joinExpr := table.OrganizationMemberships.
-		INNER_JOIN(
-			table.ProductUsers,
-			table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
+	return transactor.Page(
+		r.db,
+		r.toDomainMembership,
+		table.OrganizationMemberships.AllColumns,
+		table.ProductUsers.AllColumns,
+		table.ProductRoles.AllColumns,
+	).
+		From(
+			table.OrganizationMemberships.
+				INNER_JOIN(
+					table.ProductUsers,
+					table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
+				).
+				INNER_JOIN(
+					table.ProductRoles,
+					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+				),
 		).
-		INNER_JOIN(
-			table.ProductRoles,
-			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
-		)
-
-	countStmt := postgres.SELECT(
-		postgres.COUNT(postgres.STAR).AS("count_result.count"),
-	).FROM(joinExpr).WHERE(whereStmt)
-
-	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
-	if err != nil {
-		return search.Result[organization.Membership]{}, err
-	}
-
-	query := r.buildOrgQuery(false).WHERE(whereStmt)
-
-	if len(req.Sort) > 0 {
-		for _, sort := range req.Sort {
-			switch sort.Field {
-			case organization.SortFieldMemberJoinedAt:
-				query = query.ORDER_BY(jetx.OrderBy(table.OrganizationMemberships.CreatedAt, sort.Direction))
-			case organization.SortFieldMemberEmail:
-				query = query.ORDER_BY(jetx.OrderBy(table.ProductUsers.Email, sort.Direction))
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(req.Pagination.Limit)).OFFSET(int64(req.Pagination.Offset))
-
-	entities, err := transactor.QueryMapSlice(
-		ctx, r.db, query,
-		func(row orgMembershipRow) organization.Membership {
-			return r.toDomainMembership(row)
-		},
-	).Value()
-	if err != nil {
-		return search.Result[organization.Membership]{}, err
-	}
-
-	return search.Result[organization.Membership]{
-		Items: entities,
-		Total: total,
-		Count: len(entities),
-	}, nil
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			req.Sort,
+			map[organization.SortFieldMember]postgres.Column{
+				organization.SortFieldMemberJoinedAt: table.OrganizationMemberships.CreatedAt,
+				organization.SortFieldMemberEmail:    table.ProductUsers.Email,
+			},
+		)...).
+		Run(ctx, req.Pagination).
+		Value()
 }

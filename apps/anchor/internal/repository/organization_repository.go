@@ -166,50 +166,17 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		}
 	}
 
-	query := table.Organizations.SELECT(
-		table.Organizations.AllColumns,
-	).WHERE(whereStmt)
-
-	total, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.Organizations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		return search.Result[organization.Organization]{}, err
-	}
-
-	if len(input.Sort) > 0 {
-		for _, sort := range input.Sort {
-			switch sort.Field {
-			case organization.SortFieldProductOrganizationCreatedAt:
-				query = query.ORDER_BY(
-					jetx.OrderBy(
-						table.Organizations.CreatedAt, sort.Direction,
-					),
-				)
-			case organization.SortFieldProductOrganizationUpdatedAt:
-				query = query.ORDER_BY(
-					jetx.OrderBy(
-						table.Organizations.UpdatedAt, sort.Direction,
-					),
-				)
-			case organization.SortFieldProductOrganizationName:
-				query = query.ORDER_BY(jetx.OrderBy(table.Organizations.Name, sort.Direction))
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	entities, err := transactor.QueryMapSlice(ctx, r.db, query, r.organizationMapper.ToDomain).Value()
-	if err != nil {
-		return search.Result[organization.Organization]{}, err
-	}
-
-	return search.Result[organization.Organization]{
-		Items: entities,
-		Total: total,
-		Count: len(entities),
-	}, nil
+	return transactor.Page(r.db, r.organizationMapper.ToDomain, table.Organizations.AllColumns).
+		From(table.Organizations).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[organization.SortFieldProductOrganization]postgres.Column{
+				organization.SortFieldProductOrganizationCreatedAt: table.Organizations.CreatedAt,
+				organization.SortFieldProductOrganizationUpdatedAt: table.Organizations.UpdatedAt,
+				organization.SortFieldProductOrganizationName:      table.Organizations.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
