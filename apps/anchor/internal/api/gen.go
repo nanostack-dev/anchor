@@ -2210,9 +2210,6 @@ type WorkspaceIdParameter = Ksuid
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 
-// Conflict defines model for Conflict.
-type Conflict = ApiErrorResponse
-
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
 
@@ -6667,8 +6664,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 type BadRequestJSONResponse ApiErrorResponse
 
-type ConflictJSONResponse ApiErrorResponse
-
 type ForbiddenJSONResponse ApiErrorResponse
 
 type NotFoundResponse struct {
@@ -8982,20 +8977,6 @@ func (response CreateLicenseSchema400JSONResponse) VisitCreateLicenseSchemaRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
-
-func (response CreateLicenseSchema409JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }

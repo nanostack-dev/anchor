@@ -1824,25 +1824,25 @@ export type EmailSendRecordListResponse = {
 
 export enum LicenseFieldType {
     /**
-     * LicenseFieldTypeLimit
+     * LicenseFieldTypeLIMIT
      */
-    LICENSE_FIELD_TYPE_LIMIT = 'limit',
+    LICENSE_FIELD_TYPE_LIMIT = 'LIMIT',
     /**
-     * LicenseFieldTypeNumber
+     * LicenseFieldTypeNUMBER
      */
-    LICENSE_FIELD_TYPE_NUMBER = 'number',
+    LICENSE_FIELD_TYPE_NUMBER = 'NUMBER',
     /**
-     * LicenseFieldTypeBoolean
+     * LicenseFieldTypeBOOLEAN
      */
-    LICENSE_FIELD_TYPE_BOOLEAN = 'boolean',
+    LICENSE_FIELD_TYPE_BOOLEAN = 'BOOLEAN',
     /**
-     * LicenseFieldTypeEnum
+     * LicenseFieldTypeENUM
      */
-    LICENSE_FIELD_TYPE_ENUM = 'enum',
+    LICENSE_FIELD_TYPE_ENUM = 'ENUM',
     /**
-     * LicenseFieldTypeString
+     * LicenseFieldTypeSTRING
      */
-    LICENSE_FIELD_TYPE_STRING = 'string'
+    LICENSE_FIELD_TYPE_STRING = 'STRING'
 }
 
 export type LicenseFieldRules = {
@@ -5404,10 +5404,6 @@ export type CreateLicenseSchemaErrors = {
      * Bad Request (e.g., validation error)
      */
     400: ApiErrorResponse;
-    /**
-     * Conflict (e.g., resource already exists)
-     */
-    409: ApiErrorResponse;
 };
 
 export type CreateLicenseSchemaError = CreateLicenseSchemaErrors[keyof CreateLicenseSchemaErrors];

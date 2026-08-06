@@ -24,7 +24,6 @@ type licenseSchemaFieldsTable struct {
 	IsRequired      postgres.ColumnBool
 	Description     postgres.ColumnString
 	RulesJSON       postgres.ColumnString
-	Ordinal         postgres.ColumnInteger
 	CreatedAt       postgres.ColumnTimestampz
 	UpdatedAt       postgres.ColumnTimestampz
 
@@ -75,12 +74,11 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		IsRequiredColumn      = postgres.BoolColumn("is_required")
 		DescriptionColumn     = postgres.StringColumn("description")
 		RulesJSONColumn       = postgres.StringColumn("rules_json")
-		OrdinalColumn         = postgres.IntegerColumn("ordinal")
 		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn       = postgres.TimestampzColumn("updated_at")
-		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, OrdinalColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, OrdinalColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns        = postgres.ColumnList{IsRequiredColumn, DescriptionColumn, RulesJSONColumn, OrdinalColumn, CreatedAtColumn, UpdatedAtColumn}
+		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns        = postgres.ColumnList{IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return licenseSchemaFieldsTable{
@@ -94,7 +92,6 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		IsRequired:      IsRequiredColumn,
 		Description:     DescriptionColumn,
 		RulesJSON:       RulesJSONColumn,
-		Ordinal:         OrdinalColumn,
 		CreatedAt:       CreatedAtColumn,
 		UpdatedAt:       UpdatedAtColumn,
 

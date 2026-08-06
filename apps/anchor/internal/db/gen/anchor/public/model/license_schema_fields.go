@@ -19,7 +19,6 @@ type LicenseSchemaFields struct {
 	IsRequired      bool
 	Description     string
 	RulesJSON       string
-	Ordinal         int32
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

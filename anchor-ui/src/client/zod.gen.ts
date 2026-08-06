@@ -1202,11 +1202,11 @@ export const zEmailSendRecordListResponse = z.object({
 });
 
 export const zLicenseFieldType = z.enum([
-    'limit',
-    'number',
-    'boolean',
-    'enum',
-    'string'
+    'LIMIT',
+    'NUMBER',
+    'BOOLEAN',
+    'ENUM',
+    'STRING'
 ]);
 
 export const zLicenseFieldRules = z.object({
