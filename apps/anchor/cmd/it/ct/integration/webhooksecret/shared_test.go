@@ -47,6 +47,7 @@ func TestMain(m *testing.M) {
 		PlatformUserRepository:  &itshared.PlatformTenantUserRepo,
 		JWTHelper:               &itshared.JWTHelper,
 		ExtraPopulateTargets:    []any{&IntegrationRepo},
+		AfterRun:                mailpit.StopShared,
 	})
 }
 

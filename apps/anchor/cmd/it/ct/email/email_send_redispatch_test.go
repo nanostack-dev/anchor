@@ -23,8 +23,7 @@ import (
 // failure). Otherwise a transient SMTP blip would permanently suppress the email
 // while reporting success.
 func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
-	mp := mailpit.Start(t)
-	defer mp.Stop(t)
+	mp := mailpit.Shared(t)
 
 	tc := newTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
