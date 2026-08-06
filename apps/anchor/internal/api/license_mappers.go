@@ -52,3 +52,24 @@ func mapLicenseSchemaToResponse(s license.Schema) LicenseSchemaResponse {
 	}
 	return resp
 }
+
+func mapLicenseTemplateToResponse(t license.Template) LicenseTemplateResponse {
+	// A template that sets nothing reads back as an empty object, never as a
+	// null, so a client can index into it without a nil check.
+	values := t.Values
+	if values == nil {
+		values = license.TemplateValues{}
+	}
+	resp := LicenseTemplateResponse{
+		Id:        t.ID,
+		ProductId: t.ProductID,
+		Name:      t.Name,
+		Values:    values,
+		CreatedAt: t.CreatedAt,
+		UpdatedAt: t.UpdatedAt,
+	}
+	if t.Description != "" {
+		resp.Description = new(t.Description)
+	}
+	return resp
+}

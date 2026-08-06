@@ -1288,6 +1288,50 @@ type LicenseSchemaUpdateRequest struct {
 	Fields      *[]LicenseFieldDeclaration `json:"fields,omitempty"`
 }
 
+// LicenseTemplateCreateRequest defines model for LicenseTemplateCreateRequest.
+type LicenseTemplateCreateRequest struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Operator-facing name, unique within the product.
+	Name   string                `json:"name"`
+	Values LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateListResponse defines model for LicenseTemplateListResponse.
+type LicenseTemplateListResponse struct {
+	Count int                       `json:"count"`
+	Items []LicenseTemplateResponse `json:"items"`
+}
+
+// LicenseTemplateResponse defines model for LicenseTemplateResponse.
+type LicenseTemplateResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id   Ksuid  `json:"id"`
+	Name string `json:"name"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid                 `json:"product_id"`
+	UpdatedAt time.Time             `json:"updated_at"`
+	Values    LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateUpdateRequest defines model for LicenseTemplateUpdateRequest.
+type LicenseTemplateUpdateRequest struct {
+	Description *string                `json:"description,omitempty"`
+	Name        *string                `json:"name,omitempty"`
+	Values      *LicenseTemplateValues `json:"values,omitempty"`
+}
+
+// LicenseTemplateValues defines model for LicenseTemplateValues.
+type LicenseTemplateValues map[string]interface{}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Email    string `json:"email"`
@@ -2747,6 +2791,11 @@ type EmailTemplateIdParameter = Ksuid
 // Examples: iin_7pRST...
 type IntegrationInstanceIdParameter = Ksuid
 
+// LicenseTemplateIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: ltpl_2iABC...
+type LicenseTemplateIdParameter = Ksuid
+
 // OrganizationAPIKeyIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: organization_apikey_5mNOP...
@@ -2936,6 +2985,12 @@ type CreateLicenseSchemaJSONRequestBody = LicenseSchemaCreateRequest
 
 // UpdateLicenseSchemaJSONRequestBody defines body for UpdateLicenseSchema for application/json ContentType.
 type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
+
+// CreateLicenseTemplateJSONRequestBody defines body for CreateLicenseTemplate for application/json ContentType.
+type CreateLicenseTemplateJSONRequestBody = LicenseTemplateCreateRequest
+
+// UpdateLicenseTemplateJSONRequestBody defines body for UpdateLicenseTemplate for application/json ContentType.
+type UpdateLicenseTemplateJSONRequestBody = LicenseTemplateUpdateRequest
 
 // CreateProductOrganizationJSONRequestBody defines body for CreateProductOrganization for application/json ContentType.
 type CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest

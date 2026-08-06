@@ -44,3 +44,39 @@ type SchemaFieldRepository interface {
 		ctx context.Context, schemaID string, fields []license.Field,
 	) ([]license.Field, error)
 }
+
+// TemplateRepository persists a Product's license templates.
+//
+// A template's values live on the row itself rather than in a child table, so
+// there is no second repository here: a template is written and read whole.
+//
+// Every method is tenant-scoped and product-scoped. There is no *Internal
+// variant: nothing in the licensing write path runs without an authenticated
+// tenant.
+type TemplateRepository interface {
+	// FindByID returns the template, or nil when the Product has none with that
+	// identifier. Scoping by product as well as by identifier is what stops a
+	// caller reading another Product's template by guessing its KSUID.
+	FindByID(
+		ctx context.Context, tenantID string, productID string, templateID string,
+	) (*license.Template, error)
+	// FindByName returns the Product's template with that name, or nil. Names are
+	// unique within a Product, so this is how a conflicting create is detected
+	// before the unique index has to decide it.
+	FindByName(
+		ctx context.Context, tenantID string, productID string, name string,
+	) (*license.Template, error)
+	// ListByProduct returns the Product's templates ordered by name.
+	ListByProduct(
+		ctx context.Context, tenantID string, productID string,
+	) ([]license.Template, error)
+	Create(
+		ctx context.Context, template license.Template,
+	) (license.Template, error)
+	Update(
+		ctx context.Context, tenantID string, template license.Template,
+	) (license.Template, error)
+	DeleteByID(
+		ctx context.Context, tenantID string, productID string, templateID string,
+	) error
+}

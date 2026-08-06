@@ -18,6 +18,7 @@ func UseSchema(schema string) {
 	IntegrationInstances = IntegrationInstances.FromSchema(schema)
 	LicenseSchemaFields = LicenseSchemaFields.FromSchema(schema)
 	LicenseSchemas = LicenseSchemas.FromSchema(schema)
+	LicenseTemplates = LicenseTemplates.FromSchema(schema)
 	OrganizationAPIKeyPermissions = OrganizationAPIKeyPermissions.FromSchema(schema)
 	OrganizationAPIKeys = OrganizationAPIKeys.FromSchema(schema)
 	OrganizationMemberships = OrganizationMemberships.FromSchema(schema)

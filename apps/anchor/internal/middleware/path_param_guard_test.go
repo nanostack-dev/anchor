@@ -14,6 +14,7 @@ var maintainedPathParams = map[string]struct{}{
 	"email_template_id":       {},
 	"integration_instance_id": {},
 	"invitation_id":           {},
+	"license_template_id":     {},
 	"organization_id":         {},
 	"permission_id":           {},
 	"permission_name":         {},
