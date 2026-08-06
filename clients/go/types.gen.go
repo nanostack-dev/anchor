@@ -74,25 +74,25 @@ func (e EmailTemplateVersionStatus) Valid() bool {
 
 // Defines values for EmailVariableType.
 const (
-	BOOL   EmailVariableType = "BOOL"
-	LIST   EmailVariableType = "LIST"
-	NUMBER EmailVariableType = "NUMBER"
-	OBJECT EmailVariableType = "OBJECT"
-	STRING EmailVariableType = "STRING"
+	EmailVariableTypeBOOL   EmailVariableType = "BOOL"
+	EmailVariableTypeLIST   EmailVariableType = "LIST"
+	EmailVariableTypeNUMBER EmailVariableType = "NUMBER"
+	EmailVariableTypeOBJECT EmailVariableType = "OBJECT"
+	EmailVariableTypeSTRING EmailVariableType = "STRING"
 )
 
 // Valid indicates whether the value is a known member of the EmailVariableType enum.
 func (e EmailVariableType) Valid() bool {
 	switch e {
-	case BOOL:
+	case EmailVariableTypeBOOL:
 		return true
-	case LIST:
+	case EmailVariableTypeLIST:
 		return true
-	case NUMBER:
+	case EmailVariableTypeNUMBER:
 		return true
-	case OBJECT:
+	case EmailVariableTypeOBJECT:
 		return true
-	case STRING:
+	case EmailVariableTypeSTRING:
 		return true
 	default:
 		return false
