@@ -32,6 +32,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 
 | term | means | not |
 | --- | --- | --- |
+| **licensing** | The subsystem as a whole. Never a synonym for *license* — that word names one Organization's grant, and only that. | Not "the license system". |
 | **license schema** | Per-Product declaration of every field a license may carry: name, type, required, and validation rules. | Not "plan schema". |
 | **license field** | One declared field within the schema. | Not "entitlement" — see below. Not "feature flag". |
 | **limit** | A license field of numeric type. Limits are the only fields that carry usage and a status. | Not "quota". |
