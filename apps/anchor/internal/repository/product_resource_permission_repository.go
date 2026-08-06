@@ -160,54 +160,19 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 		}
 	}
 
-	query := table.ProductResourcePermissions.SELECT(
-		table.ProductResourcePermissions.AllColumns,
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.ProductResourcePermissions.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		return search.Result[resourcepermission.ProductResourcePermission]{}, err
-	}
-
-	if input.Sort != nil {
-		if len(input.Sort) > 0 {
-			for _, sort := range input.Sort {
-				switch sort.Field {
-				case resourcepermission.SortFieldProductResourcePermissionCreatedAt:
-					query = query.ORDER_BY(
-						jetx.OrderBy(table.ProductResourcePermissions.CreatedAt, sort.Direction),
-					)
-				case resourcepermission.SortFieldProductResourcePermissionUpdatedAt:
-					query = query.ORDER_BY(
-						jetx.OrderBy(table.ProductResourcePermissions.UpdatedAt, sort.Direction),
-					)
-				case resourcepermission.SortFieldProductResourcePermissionName:
-					query = query.ORDER_BY(
-						jetx.OrderBy(table.ProductResourcePermissions.Name, sort.Direction),
-					)
-				}
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	slice, err := transactor.QueryMapSlice(
-		ctx, r.db, query, r.mapper.ToDomain,
-	).Value()
-	if err != nil {
-		return search.Result[resourcepermission.ProductResourcePermission]{}, err
-	}
-
-	return search.Result[resourcepermission.ProductResourcePermission]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
-	}, nil
+	return transactor.Page(r.db, r.mapper.ToDomain, table.ProductResourcePermissions.AllColumns).
+		From(table.ProductResourcePermissions).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[resourcepermission.SortFieldProductResourcePermission]postgres.Column{
+				resourcepermission.SortFieldProductResourcePermissionCreatedAt: table.ProductResourcePermissions.CreatedAt,
+				resourcepermission.SortFieldProductResourcePermissionUpdatedAt: table.ProductResourcePermissions.UpdatedAt,
+				resourcepermission.SortFieldProductResourcePermissionName:      table.ProductResourcePermissions.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 func (r *productResourcePermissionRepository) GetByRole(

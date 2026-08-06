@@ -1,5 +1,8 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
+  /* Build tooling runs in Node and needs node types, which app code must not
+     see. Those files are typechecked by tsconfig.node.json instead. */
+  "exclude": ["vitest.workspace.ts", "storybook-static", "dist"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

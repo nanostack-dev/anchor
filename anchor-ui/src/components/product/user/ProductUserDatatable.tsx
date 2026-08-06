@@ -86,6 +86,7 @@ export function ProductUserDatatable() {
 		data: productUserData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductUsersOptions(searchProductUsersOptionsParams),
 		placeholderData: keepPreviousData,
@@ -202,6 +203,11 @@ export function ProductUserDatatable() {
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="users"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -251,11 +257,6 @@ export function ProductUserDatatable() {
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load users: {error.message}
-				</div>
-			)}
 		</>
 	);
 }

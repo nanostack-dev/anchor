@@ -229,69 +229,40 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
 ) (search.Result[workspace.Workspace], error) {
 	whereStmt := r.scopedWhere(productID, organizationID)
+	filterBuilder := jetx.NewFilterBuilder()
 
 	if input.Filter != nil {
-		filterBuilder := jetx.NewFilterBuilder()
-
 		if ids := filterBuilder.BuildIDFilter(table.Workspaces.ID, input.Filter.IDs); ids != nil {
 			whereStmt = whereStmt.AND(ids)
 		}
-		if names := filterBuilder.BuildStringArrayFilter(table.Workspaces.Name, input.Filter.Names); names != nil {
+		if names := filterBuilder.BuildStringArrayFilter(
+			table.Workspaces.Name, input.Filter.Names,
+		); names != nil {
 			whereStmt = whereStmt.AND(names)
 		}
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		filterBuilder := jetx.NewFilterBuilder()
-		fullTextFilter := filterBuilder.BuildFullTextSearchFilter(
-			[]postgres.ColumnString{table.Workspaces.Name},
-			*input.FullTextSearch,
-		)
-		if fullTextFilter != nil {
-			whereStmt = whereStmt.AND(fullTextFilter)
+		if fullText := filterBuilder.BuildFullTextSearchFilter(
+			[]postgres.ColumnString{table.Workspaces.Name}, *input.FullTextSearch,
+		); fullText != nil {
+			whereStmt = whereStmt.AND(fullText)
 		}
 	}
 
-	countStmt := postgres.SELECT(
-		postgres.COUNT(postgres.STAR).AS("count_result.count"),
-	).FROM(r.joinOrganizations()).WHERE(whereStmt)
-
-	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
-	if err != nil {
-		return search.Result[workspace.Workspace]{}, err
-	}
-
-	query := table.Workspaces.SELECT(
-		table.Workspaces.AllColumns,
-	).FROM(
-		r.joinOrganizations(),
-	).WHERE(whereStmt)
-
-	if len(input.Sort) > 0 {
-		for _, sort := range input.Sort {
-			switch sort.Field {
-			case workspace.SortFieldProductWorkspaceCreatedAt:
-				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.CreatedAt, sort.Direction))
-			case workspace.SortFieldProductWorkspaceUpdatedAt:
-				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.UpdatedAt, sort.Direction))
-			case workspace.SortFieldProductWorkspaceName:
-				query = query.ORDER_BY(jetx.OrderBy(table.Workspaces.Name, sort.Direction))
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	items, err := transactor.QueryMapSlice(ctx, r.db, query, r.workspaceMapper.ToDomain).Value()
-	if err != nil {
-		return search.Result[workspace.Workspace]{}, err
-	}
-
-	return search.Result[workspace.Workspace]{
-		Items: items,
-		Total: total,
-		Count: len(items),
-	}, nil
+	return transactor.Page(r.db, r.workspaceMapper.ToDomain, table.Workspaces.AllColumns).
+		From(r.joinOrganizations()).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[workspace.SortFieldProductWorkspace]postgres.Column{
+				workspace.SortFieldProductWorkspaceCreatedAt: table.Workspaces.CreatedAt,
+				workspace.SortFieldProductWorkspaceUpdatedAt: table.Workspaces.UpdatedAt,
+				workspace.SortFieldProductWorkspaceName:      table.Workspaces.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 func (r *workspaceRepositoryImpl) joinOrganizations() postgres.ReadableTable {

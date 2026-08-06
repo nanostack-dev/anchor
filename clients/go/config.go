@@ -20,7 +20,11 @@ func NewClientWithConfig(cfg Config, opts ...ClientOption) (*ClientWithResponses
 		return nil, errors.New("base URL is required")
 	}
 
-	options := make([]ClientOption, 0, len(opts)+2)
+	// Room for the caller's options plus the HTTP client and the bearer editor
+	// this function may add.
+	const builtInOptions = 2
+
+	options := make([]ClientOption, 0, len(opts)+builtInOptions)
 	if cfg.HTTPClient != nil {
 		options = append(options, WithHTTPClient(cfg.HTTPClient))
 	}
@@ -31,7 +35,7 @@ func NewClientWithConfig(cfg Config, opts ...ClientOption) (*ClientWithResponses
 
 	if cfg.Token != "" {
 		token := cfg.Token
-		options = append(options, WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		options = append(options, WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
 			req.Header.Set("Authorization", "Bearer "+token)
 			return nil
 		}))

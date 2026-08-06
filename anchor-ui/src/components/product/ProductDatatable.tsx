@@ -74,6 +74,7 @@ export function ProductDatatable() {
 		data: productData,
 		isLoading,
 		error,
+		refetch,
 	} = useQuery({
 		...searchProductsOptions(searchProductsOptionsParams),
 		placeholderData: keepPreviousData,
@@ -211,6 +212,11 @@ export function ProductDatatable() {
 				columns={columns}
 				data={items}
 				loading={isLoading}
+				resourceName="products"
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
 				total={total}
 				pagination={pagination}
 				onPaginationChange={setPagination}
@@ -236,11 +242,6 @@ export function ProductDatatable() {
 				}}
 				enableRowSelection={false}
 			/>
-			{error && (
-				<div className="mt-2 text-destructive">
-					Failed to load products: {error.message}
-				</div>
-			)}
 		</>
 	);
 }

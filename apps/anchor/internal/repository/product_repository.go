@@ -293,73 +293,30 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		)
 	}
 
-	query := postgres.SELECT(
-		table.Products.AllColumns,
-		table.ProductOrganizationAPIKeyConfigs.AllColumns,
-	).FROM(
-		table.Products.LEFT_JOIN(
-			table.ProductOrganizationAPIKeyConfigs,
-			table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
-		),
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
+	return transactor.Page(
 		r.db,
-		table.Products.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"tenantID", tenantID,
-		).Msg("failed to count products")
-		return search.Result[product.Product]{}, err
-	}
-
-	if input.Sort != nil {
-		if len(input.Sort) > 0 {
-			for _, sort := range input.Sort {
-				switch sort.Field {
-				case product.SortFieldProductCreatedAt:
-					fieldToOrderBy := table.Products.CreatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case product.SortFieldProductUpdatedAt:
-					fieldToOrderBy := table.Products.UpdatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case product.SortFieldProductName:
-					fieldToOrderBy := table.Products.Name
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				}
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-	slice, err := transactor.QueryMapSlice(
-		ctx,
-		r.db,
-		query,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"tenantID", tenantID,
-		).Msg("failed to search products")
-		return search.Result[product.Product]{}, err
-	}
-
-	return search.Result[product.Product]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
-	}, nil
+		table.Products.AllColumns, table.ProductOrganizationAPIKeyConfigs.AllColumns,
+	).
+		From(
+			table.Products.LEFT_JOIN(
+				table.ProductOrganizationAPIKeyConfigs,
+				table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
+			),
+		).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[product.SortFieldProduct]postgres.Column{
+				product.SortFieldProductCreatedAt: table.Products.CreatedAt,
+				product.SortFieldProductUpdatedAt: table.Products.UpdatedAt,
+				product.SortFieldProductName:      table.Products.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 func (r *productRepositoryImpl) FindAllInternal(

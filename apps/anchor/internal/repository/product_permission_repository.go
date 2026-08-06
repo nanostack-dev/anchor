@@ -174,62 +174,19 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		)
 	}
 
-	query := table.ProductPermissions.SELECT(
-		table.ProductPermissions.AllColumns,
-	).WHERE(whereStmt)
-
-	resultCount, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.ProductPermissions.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to count product permissions")
-		return search.Result[permission.ProductPermission]{}, err
-	}
-	if input.Sort != nil {
-		if len(input.Sort) > 0 {
-			for _, sort := range input.Sort {
-				switch sort.Field {
-				case permission.SortFieldProductPermissionCreatedAt:
-					fieldToOrderBy := table.ProductPermissions.CreatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case permission.SortFieldProductPermissionUpdatedAt:
-					fieldToOrderBy := table.ProductPermissions.UpdatedAt
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				case permission.SortFieldProductPermissionName:
-					fieldToOrderBy := table.ProductPermissions.Name
-					query = query.ORDER_BY(
-						jetx.OrderBy(fieldToOrderBy, sort.Direction),
-					)
-				}
-			}
-		}
-	}
-
-	query = query.LIMIT(int64(input.Pagination.Limit)).OFFSET(int64(input.Pagination.Offset))
-
-	slice, err := transactor.QueryMapSlice(
-		ctx, r.db, query, r.productPermissionMapper.ToDomain,
-	).Value()
-	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to search product permissions")
-		return search.Result[permission.ProductPermission]{}, err
-	}
-
-	return search.Result[permission.ProductPermission]{
-		Items: slice,
-		Total: resultCount,
-		Count: len(slice),
-	}, nil
+	return transactor.Page(r.db, r.productPermissionMapper.ToDomain, table.ProductPermissions.AllColumns).
+		From(table.ProductPermissions).
+		Where(whereStmt).
+		OrderBy(transactor.SortColumns(
+			input.Sort,
+			map[permission.SortFieldProductPermission]postgres.Column{
+				permission.SortFieldProductPermissionCreatedAt: table.ProductPermissions.CreatedAt,
+				permission.SortFieldProductPermissionUpdatedAt: table.ProductPermissions.UpdatedAt,
+				permission.SortFieldProductPermissionName:      table.ProductPermissions.Name,
+			},
+		)...).
+		Run(ctx, input.Pagination).
+		Value()
 }
 
 func (r *productPermissionRepositoryImpl) CountAPIKeyAssignments(
