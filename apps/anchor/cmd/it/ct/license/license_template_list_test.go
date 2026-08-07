@@ -16,7 +16,7 @@ func TestLicenseTemplateList(t *testing.T) {
 		createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 
 		resp, err := tc.product.OwnerAuthenticatedClient().ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID,
+			context.Background(), tc.product.ProductID, nil,
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
@@ -31,7 +31,7 @@ func TestLicenseTemplateList(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID,
+			context.Background(), tc.product.ProductID, nil,
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
@@ -46,7 +46,7 @@ func TestLicenseTemplateList(t *testing.T) {
 		createTemplate(t, first, "Pro", validTemplateValues())
 
 		resp, err := second.product.OwnerAuthenticatedClient().ListLicenseTemplatesWithResponse(
-			context.Background(), second.product.ProductID,
+			context.Background(), second.product.ProductID, nil,
 		)
 		require.NoError(t, err)
 		require.NotNil(t, resp.JSON200)

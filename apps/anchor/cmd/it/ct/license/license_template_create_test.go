@@ -57,7 +57,7 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("carries no version or lifecycle state", func(t *testing.T) {
+	t.Run("carries no version and no publication workflow", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseTemplateWithResponse(
@@ -74,13 +74,17 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		// Asserted on the wire rather than on the generated struct, because the
 		// struct can only ever have the fields the contract declares. A template
 		// is consulted once, at instantiation, so there is nothing to publish and
-		// nothing to archive — and adding either later would be a design change,
-		// not an addition.
+		// no revision to pin — adding either would be a design change, not an
+		// addition.
 		var body map[string]any
 		require.NoError(t, json.Unmarshal(resp.Body, &body))
-		for _, absent := range []string{"version", "status", "state", "lifecycle", "published_at"} {
+		for _, absent := range []string{"version", "state", "lifecycle", "published_at"} {
 			assert.NotContains(t, body, absent)
 		}
+
+		// The one lifecycle step a template does carry is withdrawal, and it
+		// starts on sale. See docs/adr/0010-license-templates-are-archived.md.
+		assert.Equal(t, string(ct.LicenseTemplateStatusACTIVE), body["status"])
 	})
 
 	t.Run("templates are scoped to their own product", func(t *testing.T) {

@@ -264,13 +264,15 @@ func (h templateHandle) ReplaceValues(values ct.LicenseTemplateValues) {
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 }
 
-func (h templateHandle) Delete() {
+// Archive withdraws the tier. The record is kept, so a license that names it
+// keeps resolving.
+func (h templateHandle) Archive() {
 	h.t.Helper()
-	resp, err := h.client.DeleteLicenseTemplateWithResponse(
+	resp, err := h.client.ArchiveLicenseTemplateWithResponse(
 		context.Background(), h.productID, h.templateID,
 	)
 	require.NoError(h.t, err)
-	require.Equal(h.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 }
 
 // RedeclareSchema replaces the product's field declaration wholesale.

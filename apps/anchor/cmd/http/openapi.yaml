@@ -3019,6 +3019,17 @@ components:
         sso: true
         support_tier: priority
 
+    LicenseTemplateStatus:
+      type: string
+      description: >-
+        Whether a template is still on sale. Not a workflow — there is no draft
+        to publish, and no route back from `ARCHIVED`. A tier is offered or it is
+        withdrawn, and withdrawing it is what deleting a template means here.
+      enum: [ACTIVE, ARCHIVED]
+      x-go-type: license.TemplateStatus
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
     LicenseTemplateCreateRequest:
       type: object
       required: [name, values]
@@ -3050,7 +3061,7 @@ components:
     # at instantiation, so there is nothing to publish and nothing to archive.
     LicenseTemplateResponse:
       type: object
-      required: [id, product_id, name, values, created_at, updated_at]
+      required: [id, product_id, name, status, values, created_at, updated_at]
       properties:
         id:
           $ref: '#/components/schemas/ksuid'
@@ -3058,8 +3069,13 @@ components:
           $ref: '#/components/schemas/ksuid'
         name:
           type: string
+          description: >-
+            Unique among the product's active templates. Archiving a template
+            frees its name, so a withdrawn tier does not block its replacement.
         description:
           type: string
+        status:
+          $ref: '#/components/schemas/LicenseTemplateStatus'
         values:
           $ref: '#/components/schemas/LicenseTemplateValues'
         created_at:
@@ -5831,10 +5847,22 @@ paths:
           $ref: '#/components/responses/NotFound'
     get:
       summary: List License Templates
-      description: Lists the product's license templates, ordered by name.
+      description: >-
+        Lists the product's license templates, ordered by name. Every template
+        the product has ever offered is listed, whatever its status, because a
+        template is never deleted. Filter by `status` for one of the two:
+        `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for
+        example when moving customers off one.
       operationId: listLicenseTemplates
       tags:
       - Licensing
+      parameters:
+      - name: status
+        in: query
+        required: false
+        description: Return only templates with this status. Omit for all of them.
+        schema:
+          $ref: '#/components/schemas/LicenseTemplateStatus'
       security:
       - platformBearerAuth: []
       - productApiKeyAuth:
@@ -5875,7 +5903,9 @@ paths:
         Edits a template. Values, when supplied, are replaced wholesale — a
         license field absent from the request is unset. The result is validated
         against the schema on every write, so a rename cannot leave a template
-        that no longer satisfies the declaration it is defined against.
+        that no longer satisfies the declaration it is defined against. An
+        archived template is refused: the tier is withdrawn, so there is nothing
+        left to price.
       operationId: updateLicenseTemplate
       tags:
       - Licensing
@@ -5900,12 +5930,23 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      summary: Delete License Template
+
+  /v1/products/{product_id}/licensing/templates/{license_template_id}/archive:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/LicenseTemplateIdParameter'
+    post:
+      summary: Archive License Template
       description: >-
-        Removes a template. Organizations instantiated from it keep their own
-        copy of the values, so nothing they hold is affected.
-      operationId: deleteLicenseTemplate
+        Withdraws a tier. The template stops being offered — it can no longer be
+        instantiated or edited — but the record is kept, because the
+        organizations already licensed from it name it as the statement of what
+        they were sold. Archiving frees the name for a replacement. It is
+        idempotent, and it cannot be undone.
+
+        There is no delete. Organizations keep their own copy of the values, so
+        withdrawing a tier never affects what they hold.
+      operationId: archiveLicenseTemplate
       tags:
       - Licensing
       security:
@@ -5913,8 +5954,12 @@ paths:
       - productApiKeyAuth:
         - license_template:delete
       responses:
-        '204':
-          description: Deleted
+        '200':
+          description: Archived, or already archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateResponse'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -5929,7 +5974,8 @@ paths:
         copy is what the organization holds from then on: editing the template
         afterwards leaves this organization unchanged, and adjusting this
         organization leaves the template unchanged. An organization has at most
-        one license, so this is refused once one exists.
+        one license, so this is refused once one exists, and an archived template
+        is refused because the tier is no longer offered.
       operationId: instantiateOrganizationLicense
       tags:
       - Licensing
@@ -6017,8 +6063,8 @@ paths:
       description: >-
         Reports how an organization's license differs from the template it was
         instantiated from, one license field at a time. Use it to find accounts
-        with bespoke arrangements. Not found when the template has since been
-        deleted, because there is then nothing to compare against.
+        with bespoke arrangements. The template always resolves, archived or
+        not, so this answers for the lifetime of the license.
       operationId: getOrganizationLicenseDiff
       tags:
       - Licensing

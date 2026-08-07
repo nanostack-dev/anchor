@@ -105,6 +105,11 @@ func (s *organizationLicenseService) Instantiate(
 	if template == nil {
 		return license.OrganizationLicense{}, ErrLicenseTemplateNotFound
 	}
+	// A withdrawn tier cannot be sold to anyone else. The organizations already
+	// on it keep what they hold.
+	if template.IsArchived() {
+		return license.OrganizationLicense{}, ErrLicenseTemplateArchived
+	}
 
 	// The copied values are deliberately not re-validated: a schema tightened
 	// since the template was last written would otherwise block onboarding onto
@@ -192,8 +197,9 @@ func (s *organizationLicenseService) DiffAgainstTemplate(
 		return license.OrganizationLicenseDiff{}, ErrOrganizationLicenseNotFound
 	}
 
-	// A deleted template leaves the license intact but leaves nothing to compare
-	// against, so the diff is what is missing here, not the license.
+	// The template always resolves, archived or not: it is never deleted, and a
+	// foreign key holds the reference. The nil branch below guards a row written
+	// before that constraint existed.
 	template, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{
 		TenantID:   in.TenantID,
 		ProductID:  in.ProductID,

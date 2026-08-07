@@ -20,4 +20,5 @@ type LicenseTemplates struct {
 	ValuesJSON       string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	Status           string
 }
