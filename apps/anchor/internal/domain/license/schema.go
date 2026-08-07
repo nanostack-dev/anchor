@@ -42,8 +42,12 @@ func (s *Schema) FieldByName(name string) *Field {
 	return nil
 }
 
-// Field is one declared license field: its name, its type, whether a license
-// template must supply it, and the rules a value must satisfy.
+// Field is one declared license field: its name, its type, and the rules a
+// value must satisfy.
+//
+// There is no optionality flag. Every license template must set every field its
+// schema declares, so a reader of a template never has to invent what an absent
+// field means. See docs/adr/0009-every-license-field-is-mandatory.md.
 //
 // Rules constrain decisions, not observations. They bound what a limit may be
 // set to and are never applied to a reported usage value — doing so would make
@@ -53,7 +57,6 @@ type Field struct {
 	SchemaID    string
 	Name        string
 	Type        FieldType
-	Required    bool
 	Description string
 	Rules       FieldRules
 	CreatedAt   time.Time

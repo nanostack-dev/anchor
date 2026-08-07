@@ -694,7 +694,7 @@ type ClientInterface interface {
 
 	// CreateLicenseTemplateWithBody Create License Template
 	//
-	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -703,7 +703,7 @@ type ClientInterface interface {
 
 	// CreateLicenseTemplate Create License Template
 	//
-	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -2622,7 +2622,7 @@ func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdPa
 
 // CreateLicenseTemplateWithBody Create License Template
 //
-// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2641,7 +2641,7 @@ func (c *Client) CreateLicenseTemplateWithBody(ctx context.Context, productId Pr
 
 // CreateLicenseTemplate Create License Template
 //
-// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -8990,7 +8990,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateLicenseTemplateWithBodyWithResponse Create License Template
 	//
-	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -8999,7 +8999,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateLicenseTemplateWithResponse Create License Template
 	//
-	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -15671,7 +15671,7 @@ func (c *ClientWithResponses) ListLicenseTemplatesWithResponse(ctx context.Conte
 
 // CreateLicenseTemplateWithBodyWithResponse Create License Template
 //
-// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -15686,7 +15686,7 @@ func (c *ClientWithResponses) CreateLicenseTemplateWithBodyWithResponse(ctx cont
 
 // CreateLicenseTemplateWithResponse Create License Template
 //
-// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

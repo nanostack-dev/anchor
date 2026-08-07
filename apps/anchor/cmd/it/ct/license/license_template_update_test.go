@@ -34,9 +34,16 @@ func TestLicenseTemplateUpdate(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
-		// support_tier is dropped from the request, so it is unset rather than
-		// left at its previous value.
-		replacement := ct.LicenseTemplateValues{"flows": 900, "sso": false}
+		// Every declared field is restated, because a request that dropped one
+		// would be a removal and a removal is refused. What "wholesale" buys here
+		// is that the stored set is the request's, not a merge with what was
+		// there — so every value moves at once.
+		replacement := ct.LicenseTemplateValues{
+			"flows":        900,
+			"sso":          false,
+			"support_tier": "basic",
+			"region":       "eu-west",
+		}
 		resp, err := tc.product.OwnerAuthenticatedClient().UpdateLicenseTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -49,7 +56,8 @@ func TestLicenseTemplateUpdate(t *testing.T) {
 
 		assert.InDelta(t, 900.0, resp.JSON200.Values["flows"], 0)
 		assert.Equal(t, false, resp.JSON200.Values["sso"])
-		assert.NotContains(t, resp.JSON200.Values, "support_tier")
+		assert.Equal(t, "basic", resp.JSON200.Values["support_tier"])
+		assert.Equal(t, "eu-west", resp.JSON200.Values["region"])
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {

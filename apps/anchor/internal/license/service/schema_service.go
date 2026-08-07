@@ -83,8 +83,8 @@ type LicenseSchemaService interface {
 	DeleteSchema(ctx context.Context, in license.DeleteSchemaInput) error
 
 	// ValidateValues checks values against the Product's schema: every key is
-	// declared, every required license field is supplied, and every value
-	// satisfies its field's rules. See schema_validation.go.
+	// declared, every declared license field is set, and every value satisfies
+	// its field's rules. See schema_validation.go.
 	ValidateValues(
 		ctx context.Context, tenantID string, productID string, values license.TemplateValues,
 	) error
@@ -136,7 +136,6 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 		field := license.Field{
 			Name:        d.Name,
 			Type:        d.Type,
-			Required:    d.Required,
 			Description: d.Description,
 			Rules:       d.Rules,
 		}

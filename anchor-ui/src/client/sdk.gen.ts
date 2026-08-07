@@ -1885,7 +1885,7 @@ export const listLicenseTemplates = <ThrowOnError extends boolean = false>(optio
 
 /**
  * Create License Template
- * Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that omits a required field.
+ * Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
  */
 export const createLicenseTemplate = <ThrowOnError extends boolean = false>(options: Options<CreateLicenseTemplateData, ThrowOnError>) => {
     return (options.client ?? client).post<CreateLicenseTemplateResponses, CreateLicenseTemplateErrors, ThrowOnError>({
