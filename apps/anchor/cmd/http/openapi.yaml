@@ -3085,25 +3085,38 @@ components:
       required: [template_id]
       properties:
         template_id:
-          $ref: '#/components/schemas/ksuid'
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The license template to copy. It is read once, here. The organization
+            keeps the copy, so editing this template afterwards does not reach
+            them.
 
-    # Values are merged into the license, not substituted for it: a license field
-    # present replaces the value held, and one absent is left alone. That is the
-    # opposite of a template write, and deliberately — a template is authored
-    # whole, a license is adjusted one field at a time for one customer.
     OrganizationLicenseAdjustRequest:
       type: object
+      description: >-
+        An adjustment to one organization's license. Use it for a bespoke
+        arrangement that does not deserve a new tier.
       required: [values]
       properties:
         values:
-          $ref: '#/components/schemas/LicenseTemplateValues'
+          allOf:
+          - $ref: '#/components/schemas/LicenseTemplateValues'
+          description: >-
+            Merged into the license, not substituted for it. A license field
+            present replaces the value held. A license field absent keeps its
+            value, which is the opposite of a template write — a template is
+            authored whole, a license is adjusted one field at a time. No
+            license field can be removed this way, because every field the
+            schema declares must stay set. The merged result is validated
+            against the schema exactly as a template write is.
 
-    # An organization's license is its own copy of a template's values.
-    # `template_id` and `instantiated_at` are provenance, not a live dependency:
-    # they answer "which template was this organization sold, and when", and the
-    # template can be edited or deleted afterwards without changing `values`.
     OrganizationLicenseResponse:
       type: object
+      description: >-
+        An organization's license: its own copy of a template's values. Every
+        license field the schema declares carries a value, so a consumer can
+        read it at face value.
       required:
       - id
       - product_id
@@ -3121,12 +3134,23 @@ components:
         organization_id:
           $ref: '#/components/schemas/ksuid'
         template_id:
-          $ref: '#/components/schemas/ksuid'
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            Which template this organization was sold. Provenance, not a live
+            dependency: the template can be edited or deleted afterwards without
+            changing `values`, and it may no longer exist.
         instantiated_at:
           type: string
           format: date-time
+          description: When the copy was taken. An adjustment does not move it.
         values:
-          $ref: '#/components/schemas/LicenseTemplateValues'
+          allOf:
+          - $ref: '#/components/schemas/LicenseTemplateValues'
+          description: >-
+            What this organization is allowed, keyed by license field name. A
+            value that differs from the template is a deviation — read the diff
+            route to find them.
         created_at:
           type: string
           format: date-time
@@ -3137,15 +3161,12 @@ components:
     LicenseDifferenceKind:
       type: string
       description: >-
-        Why a license field appears in a diff. `changed` is the bespoke
-        arrangement an operator looks for: the value was adjusted for this
-        organization. The other two report that the template moved after the
-        copy was taken.
+        Why a license field appears in a diff. `changed` means the two sides hold
+        different values — either someone adjusted this organization, or the
+        template moved after the copy was taken. The kind alone does not say
+        which. `only_in_license` and `only_in_template` always mean the template
+        changed shape after the copy.
       enum: [changed, only_in_license, only_in_template]
-      x-enum-varnames:
-      - LicenseDifferenceChanged
-      - LicenseDifferenceOnlyInLicense
-      - LicenseDifferenceOnlyInTemplate
       x-go-type: license.DifferenceKind
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -3170,11 +3191,12 @@ components:
             `only_in_license`, because the template dropped this license field
             after the copy was taken.
 
-    # Templates carry no version, so drift is a field-by-field diff rather than a
-    # revision comparison. It names which license fields differ, which is what an
-    # operator hunting bespoke accounts actually needs.
     OrganizationLicenseDiffResponse:
       type: object
+      description: >-
+        How an organization's license differs from its template today. Templates
+        carry no version, so this names which license fields differ rather than
+        which revision they came from.
       required: [organization_id, template_id, differences, count]
       properties:
         organization_id:

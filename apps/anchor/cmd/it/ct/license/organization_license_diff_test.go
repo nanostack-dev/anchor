@@ -48,7 +48,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		require.Len(t, resp.JSON200.Differences, 1)
 		difference := resp.JSON200.Differences[0]
 		assert.Equal(t, "flows", difference.Field)
-		assert.Equal(t, ct.LicenseDifferenceChanged, difference.Kind)
+		assert.Equal(t, ct.Changed, difference.Kind)
 		assert.InDelta(t, 800.0, difference.LicenseValue, 0)
 		assert.InDelta(t, 500.0, difference.TemplateValue, 0)
 		assert.Equal(t, 1, resp.JSON200.Count)
@@ -75,7 +75,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		require.Len(t, resp.JSON200.Differences, 1)
 		difference := resp.JSON200.Differences[0]
 		assert.Equal(t, "flows", difference.Field)
-		assert.Equal(t, ct.LicenseDifferenceChanged, difference.Kind)
+		assert.Equal(t, ct.Changed, difference.Kind)
 		assert.InDelta(t, 500.0, difference.LicenseValue, 0)
 		assert.InDelta(t, 2000.0, difference.TemplateValue, 0)
 	})
@@ -90,7 +90,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		// The organization was never granted it, which is a different statement
 		// from holding a different value for it.
 		difference := differenceByField(t, resp.JSON200.Differences, "seats")
-		assert.Equal(t, ct.LicenseDifferenceOnlyInTemplate, difference.Kind)
+		assert.Equal(t, ct.OnlyInTemplate, difference.Kind)
 		assert.Nil(t, difference.LicenseValue)
 		assert.InDelta(t, 25.0, difference.TemplateValue, 0)
 	})
@@ -103,7 +103,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		require.NotNil(t, resp.JSON200)
 
 		difference := differenceByField(t, resp.JSON200.Differences, "region")
-		assert.Equal(t, ct.LicenseDifferenceOnlyInLicense, difference.Kind)
+		assert.Equal(t, ct.OnlyInLicense, difference.Kind)
 		assert.Equal(t, "ca-central", difference.LicenseValue)
 		assert.Nil(t, difference.TemplateValue)
 	})

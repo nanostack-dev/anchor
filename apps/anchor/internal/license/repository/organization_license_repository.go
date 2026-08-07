@@ -77,13 +77,10 @@ func (r *organizationLicenseRepositoryImpl) Create(
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
-// Update rewrites the values an Organization holds, and only those.
-//
-// Its identity, its Organization and its provenance are excluded from the
-// statement: a license moving to another Organization has no meaning, and
-// rewriting which template it came from would make the diff answer a question
-// nobody asked. Re-instantiating an Organization onto a different template is a
-// separate act, and will get its own method when it exists.
+// Update rewrites the values an Organization holds, and only those. Identity,
+// Organization and provenance are excluded from the statement, so nothing here
+// can rewrite which template a customer was sold. Re-instantiating onto a
+// different template is a separate act and will get its own method.
 func (r *organizationLicenseRepositoryImpl) Update(
 	ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
 ) (license.OrganizationLicense, error) {

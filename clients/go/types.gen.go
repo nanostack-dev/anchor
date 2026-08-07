@@ -191,19 +191,19 @@ func (e IntegrationProviderType) Valid() bool {
 
 // Defines values for LicenseDifferenceKind.
 const (
-	LicenseDifferenceChanged        LicenseDifferenceKind = "changed"
-	LicenseDifferenceOnlyInLicense  LicenseDifferenceKind = "only_in_license"
-	LicenseDifferenceOnlyInTemplate LicenseDifferenceKind = "only_in_template"
+	Changed        LicenseDifferenceKind = "changed"
+	OnlyInLicense  LicenseDifferenceKind = "only_in_license"
+	OnlyInTemplate LicenseDifferenceKind = "only_in_template"
 )
 
 // Valid indicates whether the value is a known member of the LicenseDifferenceKind enum.
 func (e LicenseDifferenceKind) Valid() bool {
 	switch e {
-	case LicenseDifferenceChanged:
+	case Changed:
 		return true
-	case LicenseDifferenceOnlyInLicense:
+	case OnlyInLicense:
 		return true
-	case LicenseDifferenceOnlyInTemplate:
+	case OnlyInTemplate:
 		return true
 	default:
 		return false
@@ -1226,7 +1226,7 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
-// LicenseDifferenceKind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+// LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
 type LicenseDifferenceKind string
 
 // LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
@@ -1244,7 +1244,7 @@ type LicenseFieldDifference struct {
 	// Field The license field the two sides disagree on.
 	Field string `json:"field"`
 
-	// Kind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+	// Kind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
 	Kind LicenseDifferenceKind `json:"kind"`
 
 	// LicenseValue The value the organization's license holds. Null when the kind is `only_in_template`, because the template gained this license field after the copy was taken.
@@ -1574,12 +1574,13 @@ type OrganizationFilter struct {
 	Names []string `json:"names,omitempty"`
 }
 
-// OrganizationLicenseAdjustRequest defines model for OrganizationLicenseAdjustRequest.
+// OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
 type OrganizationLicenseAdjustRequest struct {
+	// Values Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
 	Values LicenseTemplateValues `json:"values"`
 }
 
-// OrganizationLicenseDiffResponse defines model for OrganizationLicenseDiffResponse.
+// OrganizationLicenseDiffResponse How an organization's license differs from its template today. Templates carry no version, so this names which license fields differ rather than which revision they came from.
 type OrganizationLicenseDiffResponse struct {
 	Count int `json:"count"`
 
@@ -1599,20 +1600,20 @@ type OrganizationLicenseDiffResponse struct {
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
 type OrganizationLicenseInstantiateRequest struct {
-	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	// TemplateId The license template to copy. It is read once, here. The organization keeps the copy, so editing this template afterwards does not reach them.
 	TemplateId Ksuid `json:"template_id"`
 }
 
-// OrganizationLicenseResponse defines model for OrganizationLicenseResponse.
+// OrganizationLicenseResponse An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
 type OrganizationLicenseResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	Id             Ksuid     `json:"id"`
+	Id Ksuid `json:"id"`
+
+	// InstantiatedAt When the copy was taken. An adjustment does not move it.
 	InstantiatedAt time.Time `json:"instantiated_at"`
 
 	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1625,12 +1626,12 @@ type OrganizationLicenseResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid `json:"product_id"`
 
-	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	TemplateId Ksuid                 `json:"template_id"`
-	UpdatedAt  time.Time             `json:"updated_at"`
-	Values     LicenseTemplateValues `json:"values"`
+	// TemplateId Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
+	TemplateId Ksuid     `json:"template_id"`
+	UpdatedAt  time.Time `json:"updated_at"`
+
+	// Values What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
+	Values LicenseTemplateValues `json:"values"`
 }
 
 // OrganizationMemberFilter Filter criteria for searching organization members.

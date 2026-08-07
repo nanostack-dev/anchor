@@ -14,16 +14,13 @@ import (
 	licenserepo "anchor/internal/license/repository"
 )
 
+// Postgres-named constraints on organization_licenses. The unique index is the
+// real guard against one Organization holding two licenses. The composite
+// foreign key refuses an Organization that does not exist and one belonging to
+// another Product with the same failure, which is correct — from this Product's
+// side the two are the same thing.
 const (
-	// organizationLicenseUniqueConstraint is the UNIQUE (organization_id) index
-	// on organization_licenses, postgres-named. It is the real guard against one
-	// Organization holding two licenses.
-	organizationLicenseUniqueConstraint = "organization_licenses_organization_id_key"
-	// organizationLicenseOrganizationConstraint is the composite foreign key from
-	// organization_licenses to organizations(id, product_id). It refuses an
-	// Organization that does not exist and an Organization belonging to another
-	// Product with the same failure, which is correct: from this Product's side
-	// the two are the same thing.
+	organizationLicenseUniqueConstraint       = "organization_licenses_organization_id_key"
 	organizationLicenseOrganizationConstraint = "fk_organization_licenses_organization_product"
 )
 
@@ -45,20 +42,14 @@ var (
 )
 
 // OrganizationLicenseService owns one Organization's license: its own copy of a
-// [license.Template]'s values.
-//
-// The copy is the whole design. Editing a template afterwards cannot change a
-// live customer, and this record is the historical statement of what that
-// customer was sold. It is also why deviation needs no override layer — giving
-// one customer a bespoke limit is an edit to this record. See
+// [license.Template]'s values. See
 // docs/adr/0004-license-schema-template-and-copy.md.
 //
 // As with a template, whether a set of values satisfies the declaration is the
-// schema's question, answered by [LicenseSchemaService.ValidateValues]. An
-// adjustment is validated exactly as a template write is, and by the same code,
-// so the two cannot drift.
+// schema's question, answered by [LicenseSchemaService.ValidateValues]. This
+// service holds no schema repository, so an adjustment cannot drift from what a
+// template write is held to.
 type OrganizationLicenseService interface {
-	// Instantiate stamps a template onto an Organization, copying its values.
 	Instantiate(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -67,13 +58,9 @@ type OrganizationLicenseService interface {
 	GetLicense(
 		ctx context.Context, in license.GetLicenseInput,
 	) (*license.OrganizationLicense, error)
-	// AdjustValues deviates one Organization's license from the template it came
-	// from, without touching the template.
 	AdjustValues(
 		ctx context.Context, in license.AdjustLicenseInput,
 	) (license.OrganizationLicense, error)
-	// DiffAgainstTemplate reports how the Organization's license differs from the
-	// template it was instantiated from, license field by license field.
 	DiffAgainstTemplate(
 		ctx context.Context, in license.GetLicenseInput,
 	) (license.OrganizationLicenseDiff, error)
@@ -119,12 +106,10 @@ func (s *organizationLicenseService) Instantiate(
 		return license.OrganizationLicense{}, ErrLicenseTemplateNotFound
 	}
 
-	// The copied values are deliberately not re-validated. A schema that has
-	// tightened since the template was last written would otherwise block
-	// onboarding a customer onto a tier that is still on sale, and Anchor
-	// validates but never gates. A template keeps serving instantiation with the
-	// values it has, and the next edit to that template is what has to satisfy
-	// the new declaration. See docs/adr/0009-every-license-field-is-mandatory.md.
+	// The copied values are deliberately not re-validated: a schema tightened
+	// since the template was last written would otherwise block onboarding onto
+	// a tier still on sale, and Anchor validates but never gates. See
+	// docs/adr/0009-every-license-field-is-mandatory.md.
 	instantiated := license.OrganizationLicense{
 		PlatformTenantID: in.TenantID,
 		ProductID:        in.ProductID,
@@ -137,9 +122,9 @@ func (s *organizationLicenseService) Instantiate(
 
 	created, err := s.licenseRepo.Create(ctx, instantiated)
 	if err != nil {
-		// The Organization is checked by the composite foreign key rather than by
-		// a read before the write: one round trip, and no window in which the
-		// Organization is deleted between the check and the insert.
+		// Checked by the foreign key rather than by a read before the write: one
+		// round trip, and no window in which the Organization is deleted between
+		// the check and the insert.
 		if pgerr.IsForeignKeyViolation(err, organizationLicenseOrganizationConstraint) {
 			return license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
 		}
@@ -179,11 +164,8 @@ func (s *organizationLicenseService) AdjustValues(
 		return license.OrganizationLicense{}, ErrOrganizationLicenseNotFound
 	}
 
-	// Merged, not replaced: an adjustment names the license fields it moves and
-	// leaves the rest alone. The merged set is then validated whole, so an
-	// adjustment is held to the same declaration a template write is — and a
-	// license that has fallen behind a tightened schema is corrected rather than
-	// quietly re-saved.
+	// Merged, not replaced. The merged set is validated whole, so a license that
+	// has fallen behind a tightened schema is corrected rather than re-saved.
 	adjusted := existing.AdjustedValues(in.Values)
 	if err = s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, adjusted); err != nil {
 		return license.OrganizationLicense{}, err
@@ -210,8 +192,7 @@ func (s *organizationLicenseService) DiffAgainstTemplate(
 		return license.OrganizationLicenseDiff{}, ErrOrganizationLicenseNotFound
 	}
 
-	// A deleted template leaves the license intact — it stopped depending on the
-	// template when the values were copied — but leaves nothing to compare
+	// A deleted template leaves the license intact but leaves nothing to compare
 	// against, so the diff is what is missing here, not the license.
 	template, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{
 		TenantID:   in.TenantID,

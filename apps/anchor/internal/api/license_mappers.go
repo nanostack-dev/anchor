@@ -90,8 +90,6 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 }
 
 func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
-	// Both sides are always present members, null on the side the kind says is
-	// absent, so a client reads one shape rather than branching on presence.
 	return LicenseFieldDifference{
 		Field:         d.Field,
 		Kind:          d.Kind,
@@ -101,8 +99,7 @@ func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseField
 }
 
 func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
-	// An identical copy reads back as an empty array rather than as a null, so a
-	// client can count it without a nil check.
+	// mapItems never returns nil, so an identical copy reads back as [], not null.
 	differences := mapItems(d.Differences, mapLicenseFieldDifferenceToResponse)
 	return OrganizationLicenseDiffResponse{
 		OrganizationId: d.OrganizationID,

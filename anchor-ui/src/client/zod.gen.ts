@@ -1287,10 +1287,16 @@ export const zOrganizationLicenseInstantiateRequest = z.object({
     template_id: zKsuid
 });
 
+/**
+ * An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
+ */
 export const zOrganizationLicenseAdjustRequest = z.object({
     values: zLicenseTemplateValues
 });
 
+/**
+ * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+ */
 export const zOrganizationLicenseResponse = z.object({
     id: zKsuid,
     product_id: zKsuid,
@@ -1303,7 +1309,7 @@ export const zOrganizationLicenseResponse = z.object({
 });
 
 /**
- * Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+ * Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
  */
 export const zLicenseDifferenceKind = z.enum([
     'changed',
@@ -1318,6 +1324,9 @@ export const zLicenseFieldDifference = z.object({
     template_value: z.unknown()
 });
 
+/**
+ * How an organization's license differs from its template today. Templates carry no version, so this names which license fields differ rather than which revision they came from.
+ */
 export const zOrganizationLicenseDiffResponse = z.object({
     organization_id: zKsuid,
     template_id: zKsuid,

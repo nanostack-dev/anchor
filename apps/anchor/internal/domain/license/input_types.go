@@ -93,9 +93,8 @@ type DeleteTemplateInput struct {
 	TemplateID string `validate:"required,notblank"`
 }
 
-// InstantiateLicenseInput stamps a template onto an Organization, copying its
-// values. An Organization has at most one license, so this is refused when the
-// Organization already holds one.
+// InstantiateLicenseInput copies a template's values onto an Organization. It is
+// refused when the Organization already holds a license.
 type InstantiateLicenseInput struct {
 	TenantID       string `validate:"required,notblank"`
 	ProductID      string `validate:"required,notblank"`
@@ -111,13 +110,9 @@ type GetLicenseInput struct {
 	OrganizationID string `validate:"required,notblank"`
 }
 
-// AdjustLicenseInput deviates one Organization's license from the template it
-// came from, without touching the template.
-//
-// Values are merged rather than replaced: a license field present replaces the
-// value held, and one absent is left alone. That is the opposite of
-// [UpdateTemplateInput], and deliberately — a template is authored whole, a
-// license is adjusted one field at a time for one customer.
+// AdjustLicenseInput adjusts one Organization's license without touching the
+// template. Values are merged, not replaced — the opposite of
+// [UpdateTemplateInput]. See OrganizationLicenseAdjustRequest in the contract.
 type AdjustLicenseInput struct {
 	TenantID       string `validate:"required,notblank"`
 	ProductID      string `validate:"required,notblank"`

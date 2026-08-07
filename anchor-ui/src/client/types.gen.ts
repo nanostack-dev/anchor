@@ -1931,40 +1931,52 @@ export type LicenseTemplateListResponse = {
 };
 
 export type OrganizationLicenseInstantiateRequest = {
+    /**
+     * The license template to copy. It is read once, here. The organization keeps the copy, so editing this template afterwards does not reach them.
+     */
     template_id: Ksuid;
 };
 
+/**
+ * An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
+ */
 export type OrganizationLicenseAdjustRequest = {
+    /**
+     * Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
+     */
     values: LicenseTemplateValues;
 };
 
+/**
+ * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+ */
 export type OrganizationLicenseResponse = {
     id: Ksuid;
     product_id: Ksuid;
     organization_id: Ksuid;
+    /**
+     * Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
+     */
     template_id: Ksuid;
+    /**
+     * When the copy was taken. An adjustment does not move it.
+     */
     instantiated_at: string;
+    /**
+     * What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
+     */
     values: LicenseTemplateValues;
     created_at: string;
     updated_at: string;
 };
 
 /**
- * Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+ * Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
  */
 export enum LicenseDifferenceKind {
-    /**
-     * LicenseDifferenceChanged
-     */
-    LICENSE_DIFFERENCE_CHANGED = 'changed',
-    /**
-     * LicenseDifferenceOnlyInLicense
-     */
-    LICENSE_DIFFERENCE_ONLY_IN_LICENSE = 'only_in_license',
-    /**
-     * LicenseDifferenceOnlyInTemplate
-     */
-    LICENSE_DIFFERENCE_ONLY_IN_TEMPLATE = 'only_in_template'
+    CHANGED = 'changed',
+    ONLY_IN_LICENSE = 'only_in_license',
+    ONLY_IN_TEMPLATE = 'only_in_template'
 }
 
 export type LicenseFieldDifference = {
@@ -1983,6 +1995,9 @@ export type LicenseFieldDifference = {
     template_value: unknown;
 };
 
+/**
+ * How an organization's license differs from its template today. Templates carry no version, so this names which license fields differ rather than which revision they came from.
+ */
 export type OrganizationLicenseDiffResponse = {
     organization_id: Ksuid;
     template_id: Ksuid;

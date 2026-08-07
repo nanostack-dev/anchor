@@ -11,9 +11,8 @@ import (
 // Organization license handlers
 // ---------------------------------------------------------------------------
 //
-// An Organization's license is its own copy of a template's values, and it is a
-// singleton on that Organization. It therefore has no identifier in any path —
-// the Organization is the only address it has.
+// A license is a singleton on its Organization, so it has no identifier in any
+// path — the Organization is the only address it has.
 
 func (s *AnchorAPI) InstantiateOrganizationLicense(
 	ctx context.Context, request InstantiateOrganizationLicenseRequestObject,
@@ -84,9 +83,7 @@ func (s *AnchorAPI) AdjustOrganizationLicense(
 			TenantID:       tenantID,
 			ProductID:      request.ProductId,
 			OrganizationID: request.OrganizationId,
-			// Merged into what the license holds, so a license field absent from
-			// the request keeps its value rather than being unset.
-			Values: request.Body.Values,
+			Values:         request.Body.Values,
 		},
 	)
 	if err != nil {
