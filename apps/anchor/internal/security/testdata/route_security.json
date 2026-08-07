@@ -153,6 +153,18 @@
       "organization_api_key:read"
     ]
   },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/license": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/license/diff": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:read"
+    ]
+  },
   "GET /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -193,6 +205,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "product_role:read"
+    ]
+  },
+  "PATCH /v1/products/{product_id}/organizations/{organization_id}/license": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:update"
     ]
   },
   "POST /v1/auth/login": {
@@ -300,6 +318,12 @@
   "POST /v1/products/{product_id}/organizations/{organization_id}/api-keys/validate": {
     "productApiKeyAuth": [
       "organization_api_key:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/license": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:create"
     ]
   },
   "POST /v1/products/{product_id}/organizations/{organization_id}/members": {

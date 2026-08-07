@@ -15,4 +15,7 @@ type State struct {
 	organizations  map[string]*ProductOrganization
 	memberships    map[string]*OrganizationMembership
 	licenseSchemas map[string]*LicenseSchema
+
+	licenseTemplates     map[string]*LicenseTemplate
+	organizationLicenses map[string]*OrganizationLicense
 }
