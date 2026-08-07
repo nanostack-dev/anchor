@@ -2631,7 +2631,7 @@ export const zListLicenseTemplatesData = z.object({
         product_id: zKsuid
     }),
     query: z.optional(z.object({
-        include_archived: z.optional(z.boolean()).default(false)
+        status: z.optional(zLicenseTemplateStatus)
     }))
 });
 
@@ -2652,20 +2652,6 @@ export const zCreateLicenseTemplateData = z.object({
  * Created
  */
 export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
-
-export const zArchiveLicenseTemplateData = z.object({
-    body: z.optional(z.never()),
-    path: z.object({
-        product_id: zKsuid,
-        license_template_id: zKsuid
-    }),
-    query: z.optional(z.never())
-});
-
-/**
- * Archived, or already archived.
- */
-export const zArchiveLicenseTemplateResponse = z.void();
 
 export const zGetLicenseTemplateData = z.object({
     body: z.optional(z.never()),
@@ -2694,6 +2680,20 @@ export const zUpdateLicenseTemplateData = z.object({
  * Success
  */
 export const zUpdateLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zArchiveLicenseTemplateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Archived, or already archived.
+ */
+export const zArchiveLicenseTemplateResponse = zLicenseTemplateResponse;
 
 export const zGetOrganizationLicenseData = z.object({
     body: z.optional(z.never()),

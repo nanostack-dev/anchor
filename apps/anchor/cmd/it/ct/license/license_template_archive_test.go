@@ -19,6 +19,12 @@ func archiveTemplate(t *testing.T, tc testCtx, templateID string) *ct.ArchiveLic
 	return resp
 }
 
+// withStatus narrows a listing to one status. A nil params lists every template
+// the product has ever offered.
+func withStatus(status ct.LicenseTemplateStatus) *ct.ListLicenseTemplatesParams {
+	return &ct.ListLicenseTemplatesParams{Status: &status}
+}
+
 func listTemplates(
 	t *testing.T, tc testCtx, params *ct.ListLicenseTemplatesParams,
 ) ct.LicenseTemplateListResponse {
@@ -38,7 +44,10 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 		require.Equal(t, ct.LicenseTemplateStatusACTIVE, created.Status)
 
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, created.Id).StatusCode())
+		archived := archiveTemplate(t, tc, created.Id)
+		require.Equal(t, http.StatusOK, archived.StatusCode(), string(archived.Body))
+		require.NotNil(t, archived.JSON200)
+		assert.Equal(t, ct.LicenseTemplateStatusARCHIVED, archived.JSON200.Status)
 
 		// Still readable by identifier. An organization's license names this
 		// template as the statement of what it was sold, so the record has to
@@ -53,32 +62,39 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assertValues(t, read.JSON200.Values, validTemplateValues())
 	})
 
-	t.Run("leaves the listing", func(t *testing.T) {
-		tc := newTemplateCtx(t)
-		kept := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
-		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
-
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
-
-		assert.Equal(t, []string{kept.Name}, templateNames(listTemplates(t, tc, nil).Items))
-	})
-
-	t.Run("lists on request", func(t *testing.T) {
+	t.Run("stays in the unfiltered listing", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
 
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
+		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
 
-		listed := listTemplates(t, tc, &ct.ListLicenseTemplatesParams{IncludeArchived: new(true)})
-		assert.Equal(t, []string{"Free", "Pro"}, templateNames(listed.Items))
+		// A template is never deleted, so the default listing is everything the
+		// product has ever offered.
+		assert.Equal(t, []string{"Free", "Pro"}, templateNames(listTemplates(t, tc, nil).Items))
+	})
+
+	t.Run("filters by status", func(t *testing.T) {
+		tc := newTemplateCtx(t)
+		kept := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
+		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
+
+		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
+
+		onSale := listTemplates(t, tc, withStatus(ct.LicenseTemplateStatusACTIVE))
+		assert.Equal(t, []string{kept.Name}, templateNames(onSale.Items))
+
+		// The withdrawn listing is what an operator moving customers off an old
+		// tier starts from.
+		retired := listTemplates(t, tc, withStatus(ct.LicenseTemplateStatusARCHIVED))
+		assert.Equal(t, []string{withdrawn.Name}, templateNames(retired.Items))
 	})
 
 	t.Run("frees the name for a replacement", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
 
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
+		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, withdrawn.Id).StatusCode())
 
 		// A withdrawn tier must not block its own replacement, which is why the
 		// name is unique among active templates only.
@@ -90,14 +106,18 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, created.Id).StatusCode())
-		assert.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, created.Id).StatusCode())
+		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, created.Id).StatusCode())
+
+		again := archiveTemplate(t, tc, created.Id)
+		require.Equal(t, http.StatusOK, again.StatusCode(), string(again.Body))
+		require.NotNil(t, again.JSON200)
+		assert.Equal(t, ct.LicenseTemplateStatusARCHIVED, again.JSON200.Status)
 	})
 
 	t.Run("refuses to edit a withdrawn tier", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
-		require.Equal(t, http.StatusNoContent, archiveTemplate(t, tc, created.Id).StatusCode())
+		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, created.Id).StatusCode())
 
 		resp, err := tc.product.OwnerAuthenticatedClient().UpdateLicenseTemplateWithResponse(
 			context.Background(),

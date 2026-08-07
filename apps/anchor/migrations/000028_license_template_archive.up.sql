@@ -15,13 +15,16 @@ ALTER TABLE license_templates ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'AC
 -- The name is unique among a Product's ACTIVE templates only. Archiving "Pro"
 -- has to free the name, or a withdrawn tier would block its own replacement for
 -- ever. A partial index is the only shape that says that.
+--
+-- This is a constraint, not a lookup path. Reads are served by the index below,
+-- which covers every status.
 ALTER TABLE license_templates DROP CONSTRAINT license_templates_product_id_name_key;
 CREATE UNIQUE INDEX uq_license_templates_product_name_active
     ON license_templates(product_id, name) WHERE status = 'ACTIVE';
 
--- Archived templates are read by identifier — a license points at one, and the
--- diff resolves it — so the listing is the only place status narrows, and it
--- narrows within a product.
+-- Every status, deliberately. Listing a Product's withdrawn tiers is a real
+-- question — an operator moving customers off an old tier asks it — so it gets
+-- the same index the on-sale listing does rather than a sequential scan.
 CREATE INDEX idx_license_templates_product_status ON license_templates(product_id, status);
 
 -- Referenced by the foreign key below.

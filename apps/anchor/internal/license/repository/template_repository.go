@@ -77,11 +77,13 @@ func (r *templateRepositoryImpl) FindByName(
 }
 
 func (r *templateRepositoryImpl) ListByProduct(
-	ctx context.Context, tenantID string, productID string, includeArchived bool,
+	ctx context.Context, tenantID string, productID string, status *license.TemplateStatus,
 ) ([]license.Template, error) {
 	where := licenseTemplateScope(tenantID, productID)
-	if !includeArchived {
-		where = where.AND(activeOnly())
+	if status != nil {
+		where = where.AND(
+			table.LicenseTemplates.Status.EQ(postgres.String(string(*status))),
+		)
 	}
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
@@ -127,7 +129,7 @@ func (r *templateRepositoryImpl) Update(
 
 func (r *templateRepositoryImpl) Archive(
 	ctx context.Context, tenantID string, productID string, templateID string,
-) error {
+) (license.Template, error) {
 	stmt := table.LicenseTemplates.UPDATE(
 		table.LicenseTemplates.Status,
 	).SET(
@@ -135,6 +137,6 @@ func (r *templateRepositoryImpl) Archive(
 	).WHERE(
 		licenseTemplateScope(tenantID, productID).
 			AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
-	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
+	).RETURNING(table.LicenseTemplates.AllColumns)
+	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }

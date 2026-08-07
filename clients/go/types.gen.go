@@ -3005,8 +3005,8 @@ type IngestWebhookJSONBody map[string]interface{}
 
 // ListLicenseTemplatesParams defines parameters for ListLicenseTemplates.
 type ListLicenseTemplatesParams struct {
-	// IncludeArchived Include withdrawn tiers in the listing.
-	IncludeArchived *bool `form:"include_archived,omitempty" json:"include_archived,omitempty"`
+	// Status Return only templates with this status. Omit for all of them.
+	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.

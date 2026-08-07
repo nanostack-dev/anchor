@@ -2372,8 +2372,8 @@ type IngestWebhookJSONBody map[string]interface{}
 
 // ListLicenseTemplatesParams defines parameters for ListLicenseTemplates.
 type ListLicenseTemplatesParams struct {
-	// IncludeArchived Include withdrawn tiers in the listing.
-	IncludeArchived *bool `form:"include_archived,omitempty" json:"include_archived,omitempty"`
+	// Status Return only templates with this status. Omit for all of them.
+	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.
@@ -2909,15 +2909,15 @@ type ServerInterface interface {
 	// CreateLicenseTemplate Create License Template
 	// (POST /v1/products/{product_id}/licensing/templates)
 	CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
-	// ArchiveLicenseTemplate Archive License Template
-	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
-	ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
 	// GetLicenseTemplate Get License Template
 	// (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
 	GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
 	// UpdateLicenseTemplate Update License Template
 	// (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
 	UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
+	// ArchiveLicenseTemplate Archive License Template
+	// (POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive)
+	ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3353,12 +3353,6 @@ func (_ Unimplemented) CreateLicenseTemplate(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// ArchiveLicenseTemplate Archive License Template
-// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
-func (_ Unimplemented) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
 // GetLicenseTemplate Get License Template
 // (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
 func (_ Unimplemented) GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
@@ -3368,6 +3362,12 @@ func (_ Unimplemented) GetLicenseTemplate(w http.ResponseWriter, r *http.Request
 // UpdateLicenseTemplate Update License Template
 // (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
 func (_ Unimplemented) UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveLicenseTemplate Archive License Template
+// (POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive)
+func (_ Unimplemented) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5028,15 +5028,15 @@ func (siw *ServerInterfaceWrapper) ListLicenseTemplates(w http.ResponseWriter, r
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListLicenseTemplatesParams
 
-	// ------------- Optional query parameter "include_archived" -------------
+	// ------------- Optional query parameter "status" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "include_archived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include_archived"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_archived", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
 		}
 		return
 	}
@@ -5069,41 +5069,6 @@ func (siw *ServerInterfaceWrapper) CreateLicenseTemplate(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateLicenseTemplate(w, r, productId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ArchiveLicenseTemplate operation middleware
-func (siw *ServerInterfaceWrapper) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "license_template_id" -------------
-	var licenseTemplateId LicenseTemplateIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "license_template_id", chi.URLParam(r, "license_template_id"), &licenseTemplateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "license_template_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ArchiveLicenseTemplate(w, r, productId, licenseTemplateId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5174,6 +5139,41 @@ func (siw *ServerInterfaceWrapper) UpdateLicenseTemplate(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateLicenseTemplate(w, r, productId, licenseTemplateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveLicenseTemplate operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "license_template_id" -------------
+	var licenseTemplateId LicenseTemplateIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "license_template_id", chi.URLParam(r, "license_template_id"), &licenseTemplateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "license_template_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveLicenseTemplate(w, r, productId, licenseTemplateId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7208,13 +7208,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/templates", wrapper.CreateLicenseTemplate)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.ArchiveLicenseTemplate)
-	})
-	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.GetLicenseTemplate)
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.UpdateLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}/archive", wrapper.ArchiveLicenseTemplate)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.GetOrganizationLicense)
@@ -9662,30 +9662,6 @@ func (response CreateLicenseTemplate404Response) VisitCreateLicenseTemplateRespo
 	return nil
 }
 
-type ArchiveLicenseTemplateRequestObject struct {
-	ProductId         ProductIdParameter         `json:"product_id"`
-	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
-}
-
-type ArchiveLicenseTemplateResponseObject interface {
-	VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error
-}
-
-type ArchiveLicenseTemplate204Response struct {
-}
-
-func (response ArchiveLicenseTemplate204Response) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type ArchiveLicenseTemplate404Response = NotFoundResponse
-
-func (response ArchiveLicenseTemplate404Response) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
-}
-
 type GetLicenseTemplateRequestObject struct {
 	ProductId         ProductIdParameter         `json:"product_id"`
 	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
@@ -9757,6 +9733,36 @@ func (response UpdateLicenseTemplate400JSONResponse) VisitUpdateLicenseTemplateR
 type UpdateLicenseTemplate404Response = NotFoundResponse
 
 func (response UpdateLicenseTemplate404Response) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type ArchiveLicenseTemplateRequestObject struct {
+	ProductId         ProductIdParameter         `json:"product_id"`
+	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
+}
+
+type ArchiveLicenseTemplateResponseObject interface {
+	VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error
+}
+
+type ArchiveLicenseTemplate200JSONResponse LicenseTemplateResponse
+
+func (response ArchiveLicenseTemplate200JSONResponse) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLicenseTemplate404Response = NotFoundResponse
+
+func (response ArchiveLicenseTemplate404Response) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -12510,15 +12516,15 @@ type StrictServerInterface interface {
 	// CreateLicenseTemplate Create License Template
 	// (POST /v1/products/{product_id}/licensing/templates)
 	CreateLicenseTemplate(ctx context.Context, request CreateLicenseTemplateRequestObject) (CreateLicenseTemplateResponseObject, error)
-	// ArchiveLicenseTemplate Archive License Template
-	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
-	ArchiveLicenseTemplate(ctx context.Context, request ArchiveLicenseTemplateRequestObject) (ArchiveLicenseTemplateResponseObject, error)
 	// GetLicenseTemplate Get License Template
 	// (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
 	GetLicenseTemplate(ctx context.Context, request GetLicenseTemplateRequestObject) (GetLicenseTemplateResponseObject, error)
 	// UpdateLicenseTemplate Update License Template
 	// (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
 	UpdateLicenseTemplate(ctx context.Context, request UpdateLicenseTemplateRequestObject) (UpdateLicenseTemplateResponseObject, error)
+	// ArchiveLicenseTemplate Archive License Template
+	// (POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive)
+	ArchiveLicenseTemplate(ctx context.Context, request ArchiveLicenseTemplateRequestObject) (ArchiveLicenseTemplateResponseObject, error)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(ctx context.Context, request CreateProductOrganizationRequestObject) (CreateProductOrganizationResponseObject, error)
@@ -14139,33 +14145,6 @@ func (sh *strictHandler) CreateLicenseTemplate(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// ArchiveLicenseTemplate operation middleware
-func (sh *strictHandler) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
-	var request ArchiveLicenseTemplateRequestObject
-
-	request.ProductId = productId
-	request.LicenseTemplateId = licenseTemplateId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ArchiveLicenseTemplate(ctx, request.(ArchiveLicenseTemplateRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ArchiveLicenseTemplate")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ArchiveLicenseTemplateResponseObject); ok {
-		if err := validResponse.VisitArchiveLicenseTemplateResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetLicenseTemplate operation middleware
 func (sh *strictHandler) GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
 	var request GetLicenseTemplateRequestObject
@@ -14220,6 +14199,33 @@ func (sh *strictHandler) UpdateLicenseTemplate(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateLicenseTemplateResponseObject); ok {
 		if err := validResponse.VisitUpdateLicenseTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveLicenseTemplate operation middleware
+func (sh *strictHandler) ArchiveLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	var request ArchiveLicenseTemplateRequestObject
+
+	request.ProductId = productId
+	request.LicenseTemplateId = licenseTemplateId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveLicenseTemplate(ctx, request.(ArchiveLicenseTemplateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveLicenseTemplate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveLicenseTemplateResponseObject); ok {
+		if err := validResponse.VisitArchiveLicenseTemplateResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

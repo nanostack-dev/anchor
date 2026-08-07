@@ -76,12 +76,11 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		return nil, err
 	}
 
-	in := license.ListTemplatesInput{TenantID: tenantID, ProductID: request.ProductId}
-	if request.Params.IncludeArchived != nil {
-		in.IncludeArchived = *request.Params.IncludeArchived
-	}
-
-	templates, err := s.LicenseTemplateService.ListTemplates(ctx, in)
+	templates, err := s.LicenseTemplateService.ListTemplates(ctx, license.ListTemplatesInput{
+		TenantID:  tenantID,
+		ProductID: request.ProductId,
+		Status:    request.Params.Status,
+	})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list license templates")
 		return nil, err
@@ -130,16 +129,17 @@ func (s *AnchorAPI) ArchiveLicenseTemplate(
 		return nil, err
 	}
 
-	if err = s.LicenseTemplateService.ArchiveTemplate(ctx, license.ArchiveTemplateInput{
+	template, err := s.LicenseTemplateService.ArchiveTemplate(ctx, license.ArchiveTemplateInput{
 		TenantID:   tenantID,
 		ProductID:  request.ProductId,
 		TemplateID: request.LicenseTemplateId,
-	}); err != nil {
+	})
+	if err != nil {
 		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
 			Msg("failed to archive license template")
 		return nil, err
 	}
-	return ArchiveLicenseTemplate204Response{}, nil
+	return ArchiveLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(template)), nil
 }

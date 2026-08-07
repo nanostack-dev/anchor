@@ -20,9 +20,9 @@ A template is small, and a Product offers few of them over its life. The cost of
 
 **A license template is withdrawn by archiving it. Its row is never deleted.**
 
-`license_templates` gains `status`, which is `ACTIVE` or `ARCHIVED`. `DELETE` on the template route archives, and the operation is named `archiveLicenseTemplate` so the contract says what happens rather than implying a removal. Archiving is idempotent and cannot be undone.
+`license_templates` gains `status`, which is `ACTIVE` or `ARCHIVED`. **The `DELETE` route is removed** rather than repurposed: a verb that says one thing and does another is worse than no verb. Withdrawal is `POST .../templates/{id}/archive`, which names the one irreversible act it performs and returns the archived template so a caller sees the new status without a second read. It is idempotent.
 
-An archived template is refused wherever a caller would act as though the tier were still offered — instantiation and edits — and kept wherever the record is what is wanted: it still resolves by identifier, and the listing includes it on request.
+An archived template is refused wherever a caller would act as though the tier were still offered — instantiation and edits — and kept wherever the record is what is wanted. It still resolves by identifier, and it stays in the listing: a template is never deleted, so listing a Product's templates means all of them. An optional `status` narrows to one, which is how an operator finds the tiers they need to move customers off.
 
 **Because the row is permanent, `organization_licenses.template_id` becomes a real foreign key**, composite with `product_id`, with no `ON DELETE` clause. Nothing has to decide what happens to the licenses that name a template, because nothing deletes one.
 
@@ -32,15 +32,19 @@ This is not the lifecycle ADR-0004 ruled out. There is no draft to publish, no r
 
 ## Consequences
 
+**Good.** Every tier a Product has ever offered stays listable and indexed, so "which customers are on the tier we retired last year" is an ordinary query rather than an archaeology exercise.
+
 **Good.** Provenance always resolves. "Which tier is this account on, and how do they differ from it" is answerable for the whole life of the license, including after the tier is withdrawn — which is when an operator is most likely to ask.
 
 **Good.** The database enforces it. A dangling `template_id` is now impossible rather than merely unlikely, and the diff has no missing-template branch to handle.
 
 **Good.** Withdrawing a tier is reversible in the way that matters: the name is free, so the replacement is a new template with the old name, and every existing license keeps naming the row it was actually stamped from.
 
-**Cost.** There is no way to remove a template created by mistake. It is archived like any other, and it stays in the listing on request. Rows accumulate, bounded by the number of tiers a Product has ever offered.
+**Cost.** There is no way to remove a template created by mistake. It is archived like any other, and it stays in the unfiltered listing. Rows accumulate, bounded by the number of tiers a Product has ever offered.
 
-**Cost.** `DELETE` does not delete. The operation name and the description carry the meaning, but a reader who goes by the HTTP verb alone will be surprised once.
+**Cost.** There is no `DELETE` on a license template at all, which will read as an omission to anyone who has not found this ADR. The alternative — keeping `DELETE` and having it archive — trades that one-time surprise for a permanent lie in the contract, and a verb that quietly does not do what it says is the worse of the two.
+
+**Cost.** `POST .../archive` is an action route in an otherwise resource-shaped API. `PUT .../status` would have been the resource-shaped option, but a status you can only ever set to one value is a worse description of an irreversible act than a verb is.
 
 **Cost.** Archiving cannot be undone. An operator who archives the wrong tier recreates it, and the two rows are then distinguishable only by their identifiers and dates. This is deliberate — an un-archive would let a tier's history be rewritten, and the record is the whole reason the row is kept.
 

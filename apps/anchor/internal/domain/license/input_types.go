@@ -77,11 +77,12 @@ type GetTemplateInput struct {
 }
 
 // ListTemplatesInput is the request shape for listing a Product's license
-// templates. Archived templates are left out unless IncludeArchived is set.
+// templates. Every template the Product has ever offered is listed, because a
+// template is never deleted. A non-nil Status narrows to one of them.
 type ListTemplatesInput struct {
-	TenantID        string `validate:"required,notblank"`
-	ProductID       string `validate:"required,notblank"`
-	IncludeArchived bool
+	TenantID  string `validate:"required,notblank"`
+	ProductID string `validate:"required,notblank"`
+	Status    *TemplateStatus
 }
 
 // ArchiveTemplateInput is the request shape for withdrawing one license

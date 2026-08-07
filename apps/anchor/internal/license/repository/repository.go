@@ -67,10 +67,10 @@ type TemplateRepository interface {
 	FindByName(
 		ctx context.Context, tenantID string, productID string, name string,
 	) (*license.Template, error)
-	// ListByProduct returns the Product's templates ordered by name, archived
-	// ones only when asked for.
+	// ListByProduct returns the Product's templates ordered by name, every status
+	// unless one is named.
 	ListByProduct(
-		ctx context.Context, tenantID string, productID string, includeArchived bool,
+		ctx context.Context, tenantID string, productID string, status *license.TemplateStatus,
 	) ([]license.Template, error)
 	Create(
 		ctx context.Context, template license.Template,
@@ -81,11 +81,12 @@ type TemplateRepository interface {
 	Update(
 		ctx context.Context, tenantID string, template license.Template,
 	) (license.Template, error)
-	// Archive marks the template withdrawn. There is no delete: an Organization's
-	// license names the template it came from, and that has to keep resolving.
+	// Archive marks the template withdrawn and returns it. There is no delete: an
+	// Organization's license names the template it came from, and that has to
+	// keep resolving.
 	Archive(
 		ctx context.Context, tenantID string, productID string, templateID string,
-	) error
+	) (license.Template, error)
 }
 
 // OrganizationLicenseRepository persists one Organization's copy of a template's

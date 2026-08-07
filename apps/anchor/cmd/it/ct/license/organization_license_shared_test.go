@@ -272,7 +272,7 @@ func (h templateHandle) Archive() {
 		context.Background(), h.productID, h.templateID,
 	)
 	require.NoError(h.t, err)
-	require.Equal(h.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 }
 
 // RedeclareSchema replaces the product's field declaration wholesale.

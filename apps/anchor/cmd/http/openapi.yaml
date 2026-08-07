@@ -5848,20 +5848,21 @@ paths:
     get:
       summary: List License Templates
       description: >-
-        Lists the product's license templates, ordered by name. Archived
-        templates are left out unless asked for — they are withdrawn tiers, kept
-        so the licenses that name them keep resolving.
+        Lists the product's license templates, ordered by name. Every template
+        the product has ever offered is listed, whatever its status, because a
+        template is never deleted. Filter by `status` for one of the two:
+        `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for
+        example when moving customers off one.
       operationId: listLicenseTemplates
       tags:
       - Licensing
       parameters:
-      - name: include_archived
+      - name: status
         in: query
         required: false
-        description: Include withdrawn tiers in the listing.
+        description: Return only templates with this status. Omit for all of them.
         schema:
-          type: boolean
-          default: false
+          $ref: '#/components/schemas/LicenseTemplateStatus'
       security:
       - platformBearerAuth: []
       - productApiKeyAuth:
@@ -5929,15 +5930,22 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
+
+  /v1/products/{product_id}/licensing/templates/{license_template_id}/archive:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/LicenseTemplateIdParameter'
+    post:
       summary: Archive License Template
       description: >-
-        Withdraws a tier. The template stops being offered — it leaves the
-        listing, and it can no longer be instantiated or edited — but the record
-        is kept, because the organizations already licensed from it name it as
-        the statement of what they were sold. Archiving frees the name for a
-        replacement, and it cannot be undone. Organizations keep their own copy
-        of the values either way, so nothing they hold is affected.
+        Withdraws a tier. The template stops being offered — it can no longer be
+        instantiated or edited — but the record is kept, because the
+        organizations already licensed from it name it as the statement of what
+        they were sold. Archiving frees the name for a replacement. It is
+        idempotent, and it cannot be undone.
+
+        There is no delete. Organizations keep their own copy of the values, so
+        withdrawing a tier never affects what they hold.
       operationId: archiveLicenseTemplate
       tags:
       - Licensing
@@ -5946,8 +5954,12 @@ paths:
       - productApiKeyAuth:
         - license_template:delete
       responses:
-        '204':
+        '200':
           description: Archived, or already archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateResponse'
         '404':
           $ref: '#/components/responses/NotFound'
 

@@ -70,9 +70,11 @@ type LicenseTemplateService interface {
 	GetTemplate(ctx context.Context, in license.GetTemplateInput) (*license.Template, error)
 	ListTemplates(ctx context.Context, in license.ListTemplatesInput) ([]license.Template, error)
 	UpdateTemplate(ctx context.Context, in license.UpdateTemplateInput) (license.Template, error)
-	// ArchiveTemplate withdraws the tier. It is idempotent, and it cannot be
-	// undone.
-	ArchiveTemplate(ctx context.Context, in license.ArchiveTemplateInput) error
+	// ArchiveTemplate withdraws the tier and returns it. It is idempotent, and it
+	// cannot be undone.
+	ArchiveTemplate(
+		ctx context.Context, in license.ArchiveTemplateInput,
+	) (license.Template, error)
 }
 
 type licenseTemplateService struct {
@@ -153,7 +155,7 @@ func (s *licenseTemplateService) ListTemplates(
 		return nil, err
 	}
 
-	return s.templateRepo.ListByProduct(ctx, in.TenantID, in.ProductID, in.IncludeArchived)
+	return s.templateRepo.ListByProduct(ctx, in.TenantID, in.ProductID, in.Status)
 }
 
 func (s *licenseTemplateService) UpdateTemplate(
@@ -217,21 +219,21 @@ func (s *licenseTemplateService) UpdateTemplate(
 
 func (s *licenseTemplateService) ArchiveTemplate(
 	ctx context.Context, in license.ArchiveTemplateInput,
-) error {
+) (license.Template, error) {
 	if err := validate.ValidateStruct(in); err != nil {
-		return err
+		return license.Template{}, err
 	}
 
 	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
-		return err
+		return license.Template{}, err
 	}
 	if existing == nil {
-		return ErrLicenseTemplateNotFound
+		return license.Template{}, ErrLicenseTemplateNotFound
 	}
 	// Withdrawing a withdrawn tier is the outcome the caller asked for.
 	if existing.IsArchived() {
-		return nil
+		return *existing, nil
 	}
 
 	// Organizations instantiated from this template keep their own copy of the

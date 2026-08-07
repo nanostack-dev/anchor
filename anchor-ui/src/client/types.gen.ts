@@ -5570,9 +5570,9 @@ export type ListLicenseTemplatesData = {
     };
     query?: {
         /**
-         * Include withdrawn tiers in the listing.
+         * Return only templates with this status. Omit for all of them.
          */
-        include_archived?: boolean;
+        status?: LicenseTemplateStatus;
     };
     url: '/v1/products/{product_id}/licensing/templates';
 };
@@ -5619,38 +5619,6 @@ export type CreateLicenseTemplateResponses = {
 };
 
 export type CreateLicenseTemplateResponse = CreateLicenseTemplateResponses[keyof CreateLicenseTemplateResponses];
-
-export type ArchiveLicenseTemplateData = {
-    body?: never;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the license template.
-         */
-        license_template_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
-};
-
-export type ArchiveLicenseTemplateErrors = {
-    /**
-     * Resource Not Found
-     */
-    404: unknown;
-};
-
-export type ArchiveLicenseTemplateResponses = {
-    /**
-     * Archived, or already archived.
-     */
-    204: void;
-};
-
-export type ArchiveLicenseTemplateResponse = ArchiveLicenseTemplateResponses[keyof ArchiveLicenseTemplateResponses];
 
 export type GetLicenseTemplateData = {
     body?: never;
@@ -5721,6 +5689,38 @@ export type UpdateLicenseTemplateResponses = {
 };
 
 export type UpdateLicenseTemplateResponse = UpdateLicenseTemplateResponses[keyof UpdateLicenseTemplateResponses];
+
+export type ArchiveLicenseTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the license template.
+         */
+        license_template_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}/archive';
+};
+
+export type ArchiveLicenseTemplateErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type ArchiveLicenseTemplateResponses = {
+    /**
+     * Archived, or already archived.
+     */
+    200: LicenseTemplateResponse;
+};
+
+export type ArchiveLicenseTemplateResponse = ArchiveLicenseTemplateResponses[keyof ArchiveLicenseTemplateResponses];
 
 export type GetOrganizationLicenseData = {
     body?: never;
