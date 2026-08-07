@@ -15,6 +15,12 @@ type Builder struct {
 	organizations  map[string]*ProductOrganization
 	memberships    map[string]*OrganizationMembership
 	licenseSchemas map[string]*LicenseSchema
+	// licenseTemplates and organizationLicenses are keyed by alias like the rest.
+	// A product holds many templates, and an organization holds at most one
+	// license, so the alias names the template but only the relationship for a
+	// license.
+	licenseTemplates     map[string]*LicenseTemplate
+	organizationLicenses map[string]*OrganizationLicense
 }
 
 // Given starts a fluent test state builder.
@@ -30,6 +36,9 @@ func Given(t *testing.T) *Builder {
 		organizations:  make(map[string]*ProductOrganization),
 		memberships:    make(map[string]*OrganizationMembership),
 		licenseSchemas: make(map[string]*LicenseSchema),
+
+		licenseTemplates:     make(map[string]*LicenseTemplate),
+		organizationLicenses: make(map[string]*OrganizationLicense),
 	}
 }
 
@@ -47,5 +56,8 @@ func (b *Builder) Build() *State {
 		organizations:  b.organizations,
 		memberships:    b.memberships,
 		licenseSchemas: b.licenseSchemas,
+
+		licenseTemplates:     b.licenseTemplates,
+		organizationLicenses: b.organizationLicenses,
 	}
 }

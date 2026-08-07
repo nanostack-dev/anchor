@@ -1,43 +1,35 @@
 package license_ct_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
 
-	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInstantiateOrganizationLicense(t *testing.T) {
 	t.Run("copies the template's values onto the organization", func(t *testing.T) {
-		lc := newOrganizationLicenseCtx(t)
-		template := createTemplate(t, lc.testCtx, uniqueTemplateName(), validTemplateValues())
+		w := newLicenseWorld(t)
 
 		before := time.Now().Add(-time.Second)
-		organizationLicense := instantiateLicense(t, lc, template.Id)
+		organizationLicense := w.License().Instantiate(w.TemplateID())
 
 		assert.NotEmpty(t, organizationLicense.Id)
-		assert.Equal(t, lc.product.ProductID, organizationLicense.ProductId)
-		assert.Equal(t, lc.organizationID, organizationLicense.OrganizationId)
-
-		assert.InDelta(t, 500.0, organizationLicense.Values["flows"], 0)
-		assert.Equal(t, true, organizationLicense.Values["sso"])
-		assert.Equal(t, "priority", organizationLicense.Values["support_tier"])
-		assert.Equal(t, "ca-central", organizationLicense.Values["region"])
+		assert.Equal(t, w.productID(), organizationLicense.ProductId)
+		assert.Equal(t, w.OrganizationID(), organizationLicense.OrganizationId)
+		assertValues(t, organizationLicense.Values, validTemplateValues())
 
 		// Provenance: which template this organization was sold, and when.
-		assert.Equal(t, template.Id, organizationLicense.TemplateId)
+		assert.Equal(t, w.TemplateID(), organizationLicense.TemplateId)
 		assert.WithinRange(t, organizationLicense.InstantiatedAt, before, time.Now().Add(time.Second))
 	})
 
 	t.Run("carries a value for every declared field", func(t *testing.T) {
-		lc := newOrganizationLicenseCtx(t)
-		template := createTemplate(t, lc.testCtx, uniqueTemplateName(), validTemplateValues())
+		w := newLicenseWorld(t)
 
-		organizationLicense := instantiateLicense(t, lc, template.Id)
+		organizationLicense := w.License().Instantiate(w.TemplateID())
 
 		// A consuming product reads this and takes it at face value. Every
 		// declared license field is set, so nothing downstream has to decide what
@@ -49,85 +41,49 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("refuses a second license for the same organization", func(t *testing.T) {
-		lc, template := licensedOrganization(t)
+		w := newLicensedWorld(t)
 
-		resp, err := lc.product.OwnerAuthenticatedClient().InstantiateOrganizationLicenseWithResponse(
-			context.Background(),
-			lc.product.ProductID,
-			lc.organizationID,
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: template.Id},
-		)
-		require.NoError(t, err)
+		resp := w.License().InstantiateRaw(w.TemplateID())
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		require.NotNil(t, resp.JSON400)
 		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_EXISTS")
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
-		lc := newOrganizationLicenseCtx(t)
+		w := newLicenseWorld(t)
 
-		resp, err := lc.product.OwnerAuthenticatedClient().InstantiateOrganizationLicenseWithResponse(
-			context.Background(),
-			lc.product.ProductID,
-			lc.organizationID,
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: missingTemplateID()},
-		)
-		require.NoError(t, err)
+		resp := w.License().InstantiateRaw(missingTemplateID())
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {
-		lc := newOrganizationLicenseCtx(t)
-		template := createTemplate(t, lc.testCtx, uniqueTemplateName(), validTemplateValues())
+		w := newLicenseWorld(t)
 
-		resp, err := lc.product.OwnerAuthenticatedClient().InstantiateOrganizationLicenseWithResponse(
-			context.Background(),
-			lc.product.ProductID,
-			missingOrganizationID(),
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: template.Id},
-		)
-		require.NoError(t, err)
+		resp := w.License().For(missingOrganizationID()).InstantiateRaw(w.TemplateID())
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("404 for another product's organization", func(t *testing.T) {
-		first := newOrganizationLicenseCtx(t)
-		second := newOrganizationLicenseCtx(t)
-		template := createTemplate(t, first.testCtx, uniqueTemplateName(), validTemplateValues())
+		first := newLicenseWorld(t)
+		second := newLicenseWorld(t)
 
 		// An organization that exists but belongs elsewhere is the same answer as
 		// one that does not exist. From this product's side the two are the same
 		// thing, and saying which would leak that the identifier is real.
-		resp, err := first.product.OwnerAuthenticatedClient().InstantiateOrganizationLicenseWithResponse(
-			context.Background(),
-			first.product.ProductID,
-			second.organizationID,
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: template.Id},
-		)
-		require.NoError(t, err)
+		resp := first.License().For(second.OrganizationID()).InstantiateRaw(first.TemplateID())
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("two organizations on one template hold separate licenses", func(t *testing.T) {
-		lc := newOrganizationLicenseCtx(t)
-		template := createTemplate(t, lc.testCtx, uniqueTemplateName(), validTemplateValues())
-		first := instantiateLicense(t, lc, template.Id)
+		w := newLicensedWorld(t)
+		first := w.License().Get()
 
-		secondOrganization := newOrganization(t, lc)
-		resp, err := lc.product.OwnerAuthenticatedClient().InstantiateOrganizationLicenseWithResponse(
-			context.Background(),
-			lc.product.ProductID,
-			secondOrganization,
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: template.Id},
-		)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON201)
+		second := w.License().For(w.NewOrganization()).Instantiate(w.TemplateID())
 
 		// Same values, separate records — which is what makes adjusting one of
 		// them a local change rather than a change to the tier.
-		assert.NotEqual(t, first.Id, resp.JSON201.Id)
-		assert.Equal(t, first.TemplateId, resp.JSON201.TemplateId)
-		assert.Equal(t, first.Values, resp.JSON201.Values)
+		assert.NotEqual(t, first.Id, second.Id)
+		assert.Equal(t, first.TemplateId, second.TemplateId)
+		assertValues(t, second.Values, first.Values)
 	})
 }
