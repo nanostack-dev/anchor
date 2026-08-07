@@ -1283,6 +1283,48 @@ export const zLicenseTemplateListResponse = z.object({
     count: z.int()
 });
 
+export const zOrganizationLicenseInstantiateRequest = z.object({
+    template_id: zKsuid
+});
+
+export const zOrganizationLicenseAdjustRequest = z.object({
+    values: zLicenseTemplateValues
+});
+
+export const zOrganizationLicenseResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    template_id: zKsuid,
+    instantiated_at: z.iso.datetime(),
+    values: zLicenseTemplateValues,
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+/**
+ * Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+ */
+export const zLicenseDifferenceKind = z.enum([
+    'changed',
+    'only_in_license',
+    'only_in_template'
+]);
+
+export const zLicenseFieldDifference = z.object({
+    field: z.string(),
+    kind: zLicenseDifferenceKind,
+    license_value: z.unknown(),
+    template_value: z.unknown()
+});
+
+export const zOrganizationLicenseDiffResponse = z.object({
+    organization_id: zKsuid,
+    template_id: zKsuid,
+    differences: z.array(zLicenseFieldDifference),
+    count: z.int()
+});
+
 /**
  * The KSUID of the platform invitation.
  */
@@ -2632,3 +2674,59 @@ export const zUpdateLicenseTemplateData = z.object({
  * Success
  */
 export const zUpdateLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zGetOrganizationLicenseData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetOrganizationLicenseResponse = zOrganizationLicenseResponse;
+
+export const zAdjustOrganizationLicenseData = z.object({
+    body: zOrganizationLicenseAdjustRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zAdjustOrganizationLicenseResponse = zOrganizationLicenseResponse;
+
+export const zInstantiateOrganizationLicenseData = z.object({
+    body: zOrganizationLicenseInstantiateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Created
+ */
+export const zInstantiateOrganizationLicenseResponse = zOrganizationLicenseResponse;
+
+export const zGetOrganizationLicenseDiffData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetOrganizationLicenseDiffResponse = zOrganizationLicenseDiffResponse;

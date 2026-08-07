@@ -671,6 +671,9 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
+// LicenseDifferenceKind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+type LicenseDifferenceKind = license.DifferenceKind
+
 // LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
 type LicenseFieldDeclaration struct {
 	Description *string `json:"description,omitempty"`
@@ -679,6 +682,21 @@ type LicenseFieldDeclaration struct {
 	Name  string             `json:"name"`
 	Rules *LicenseFieldRules `json:"rules,omitempty"`
 	Type  LicenseFieldType   `json:"type"`
+}
+
+// LicenseFieldDifference defines model for LicenseFieldDifference.
+type LicenseFieldDifference struct {
+	// Field The license field the two sides disagree on.
+	Field string `json:"field"`
+
+	// Kind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+	Kind LicenseDifferenceKind `json:"kind"`
+
+	// LicenseValue The value the organization's license holds. Null when the kind is `only_in_template`, because the template gained this license field after the copy was taken.
+	LicenseValue interface{} `json:"license_value"`
+
+	// TemplateValue The value the template holds today. Null when the kind is `only_in_license`, because the template dropped this license field after the copy was taken.
+	TemplateValue interface{} `json:"template_value"`
 }
 
 // LicenseFieldResponse defines model for LicenseFieldResponse.
@@ -978,6 +996,65 @@ type OrganizationFilter struct {
 
 	// Names Filter by organization names (exact matches).
 	Names []string `json:"names,omitempty"`
+}
+
+// OrganizationLicenseAdjustRequest defines model for OrganizationLicenseAdjustRequest.
+type OrganizationLicenseAdjustRequest struct {
+	Values LicenseTemplateValues `json:"values"`
+}
+
+// OrganizationLicenseDiffResponse defines model for OrganizationLicenseDiffResponse.
+type OrganizationLicenseDiffResponse struct {
+	Count int `json:"count"`
+
+	// Differences Ordered by license field name.
+	Differences []LicenseFieldDifference `json:"differences"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
+type OrganizationLicenseInstantiateRequest struct {
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseResponse defines model for OrganizationLicenseResponse.
+type OrganizationLicenseResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id             Ksuid     `json:"id"`
+	InstantiatedAt time.Time `json:"instantiated_at"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid                 `json:"template_id"`
+	UpdatedAt  time.Time             `json:"updated_at"`
+	Values     LicenseTemplateValues `json:"values"`
 }
 
 // OrganizationMemberFilter Filter criteria for searching organization members.
@@ -2415,6 +2492,12 @@ type ValidateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyValidateReque
 // UpdateOrganizationAPIKeyJSONRequestBody defines body for UpdateOrganizationAPIKey for application/json ContentType.
 type UpdateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyUpdateRequest
 
+// AdjustOrganizationLicenseJSONRequestBody defines body for AdjustOrganizationLicense for application/json ContentType.
+type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
+
+// InstantiateOrganizationLicenseJSONRequestBody defines body for InstantiateOrganizationLicense for application/json ContentType.
+type InstantiateOrganizationLicenseJSONRequestBody = OrganizationLicenseInstantiateRequest
+
 // AddOrganizationMemberJSONRequestBody defines body for AddOrganizationMember for application/json ContentType.
 type AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest
 
@@ -2853,6 +2936,18 @@ type ServerInterface interface {
 	// UpdateOrganizationAPIKey Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter)
+	// GetOrganizationLicense Get Organization License
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+	GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// AdjustOrganizationLicense Adjust Organization License
+	// (PATCH /v1/products/{product_id}/organizations/{organization_id}/license)
+	AdjustOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// InstantiateOrganizationLicense Instantiate Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license)
+	InstantiateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
+	GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3324,6 +3419,30 @@ func (_ Unimplemented) GetOrganizationAPIKey(w http.ResponseWriter, r *http.Requ
 // UpdateOrganizationAPIKey Update Organization API Key
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 func (_ Unimplemented) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationLicense Get Organization License
+// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+func (_ Unimplemented) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdjustOrganizationLicense Adjust Organization License
+// (PATCH /v1/products/{product_id}/organizations/{organization_id}/license)
+func (_ Unimplemented) AdjustOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// InstantiateOrganizationLicense Instantiate Organization License
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license)
+func (_ Unimplemented) InstantiateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationLicenseDiff Diff Organization License Against Its Template
+// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
+func (_ Unimplemented) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5427,6 +5546,146 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationAPIKey(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
+// GetOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdjustOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) AdjustOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdjustOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// InstantiateOrganizationLicense operation middleware
+func (siw *ServerInterfaceWrapper) InstantiateOrganizationLicense(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.InstantiateOrganizationLicense(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrganizationLicenseDiff operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationLicenseDiff(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AddOrganizationMember operation middleware
 func (siw *ServerInterfaceWrapper) AddOrganizationMember(w http.ResponseWriter, r *http.Request) {
 
@@ -6925,6 +7184,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.UpdateLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.GetOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.AdjustOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license", wrapper.InstantiateOrganizationLicense)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/diff", wrapper.GetOrganizationLicenseDiff)
 	})
 
 	return r
@@ -10176,6 +10447,156 @@ func (response UpdateOrganizationAPIKey404Response) VisitUpdateOrganizationAPIKe
 	return nil
 }
 
+type GetOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type GetOrganizationLicenseResponseObject interface {
+	VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationLicense200JSONResponse OrganizationLicenseResponse
+
+func (response GetOrganizationLicense200JSONResponse) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicense404Response = NotFoundResponse
+
+func (response GetOrganizationLicense404Response) VisitGetOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type AdjustOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *AdjustOrganizationLicenseJSONRequestBody
+}
+
+type AdjustOrganizationLicenseResponseObject interface {
+	VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type AdjustOrganizationLicense200JSONResponse OrganizationLicenseResponse
+
+func (response AdjustOrganizationLicense200JSONResponse) VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdjustOrganizationLicense400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdjustOrganizationLicense400JSONResponse) VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdjustOrganizationLicense404Response = NotFoundResponse
+
+func (response AdjustOrganizationLicense404Response) VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type InstantiateOrganizationLicenseRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *InstantiateOrganizationLicenseJSONRequestBody
+}
+
+type InstantiateOrganizationLicenseResponseObject interface {
+	VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error
+}
+
+type InstantiateOrganizationLicense201JSONResponse OrganizationLicenseResponse
+
+func (response InstantiateOrganizationLicense201JSONResponse) VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type InstantiateOrganizationLicense400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response InstantiateOrganizationLicense400JSONResponse) VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type InstantiateOrganizationLicense404Response = NotFoundResponse
+
+func (response InstantiateOrganizationLicense404Response) VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetOrganizationLicenseDiffRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type GetOrganizationLicenseDiffResponseObject interface {
+	VisitGetOrganizationLicenseDiffResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationLicenseDiff200JSONResponse OrganizationLicenseDiffResponse
+
+func (response GetOrganizationLicenseDiff200JSONResponse) VisitGetOrganizationLicenseDiffResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicenseDiff404Response = NotFoundResponse
+
+func (response GetOrganizationLicenseDiff404Response) VisitGetOrganizationLicenseDiffResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type AddOrganizationMemberRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -12099,6 +12520,18 @@ type StrictServerInterface interface {
 	// UpdateOrganizationAPIKey Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(ctx context.Context, request UpdateOrganizationAPIKeyRequestObject) (UpdateOrganizationAPIKeyResponseObject, error)
+	// GetOrganizationLicense Get Organization License
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
+	GetOrganizationLicense(ctx context.Context, request GetOrganizationLicenseRequestObject) (GetOrganizationLicenseResponseObject, error)
+	// AdjustOrganizationLicense Adjust Organization License
+	// (PATCH /v1/products/{product_id}/organizations/{organization_id}/license)
+	AdjustOrganizationLicense(ctx context.Context, request AdjustOrganizationLicenseRequestObject) (AdjustOrganizationLicenseResponseObject, error)
+	// InstantiateOrganizationLicense Instantiate Organization License
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license)
+	InstantiateOrganizationLicense(ctx context.Context, request InstantiateOrganizationLicenseRequestObject) (InstantiateOrganizationLicenseResponseObject, error)
+	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
+	GetOrganizationLicenseDiff(ctx context.Context, request GetOrganizationLicenseDiffRequestObject) (GetOrganizationLicenseDiffResponseObject, error)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(ctx context.Context, request AddOrganizationMemberRequestObject) (AddOrganizationMemberResponseObject, error)
@@ -14101,6 +14534,128 @@ func (sh *strictHandler) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationAPIKeyResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationLicense operation middleware
+func (sh *strictHandler) GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request GetOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationLicense(ctx, request.(GetOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdjustOrganizationLicense operation middleware
+func (sh *strictHandler) AdjustOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request AdjustOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body AdjustOrganizationLicenseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdjustOrganizationLicense(ctx, request.(AdjustOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdjustOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdjustOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitAdjustOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// InstantiateOrganizationLicense operation middleware
+func (sh *strictHandler) InstantiateOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request InstantiateOrganizationLicenseRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body InstantiateOrganizationLicenseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.InstantiateOrganizationLicense(ctx, request.(InstantiateOrganizationLicenseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "InstantiateOrganizationLicense")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(InstantiateOrganizationLicenseResponseObject); ok {
+		if err := validResponse.VisitInstantiateOrganizationLicenseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationLicenseDiff operation middleware
+func (sh *strictHandler) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request GetOrganizationLicenseDiffRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationLicenseDiff(ctx, request.(GetOrganizationLicenseDiffRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationLicenseDiff")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationLicenseDiffResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationLicenseDiffResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

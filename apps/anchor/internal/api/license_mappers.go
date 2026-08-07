@@ -69,3 +69,45 @@ func mapLicenseTemplateToResponse(t license.Template) LicenseTemplateResponse {
 	}
 	return resp
 }
+
+func mapOrganizationLicenseToResponse(l license.OrganizationLicense) OrganizationLicenseResponse {
+	// A license that sets nothing reads back as an empty object, never as a
+	// null, so a client can index into it without a nil check.
+	values := l.Values
+	if values == nil {
+		values = license.TemplateValues{}
+	}
+	return OrganizationLicenseResponse{
+		Id:             l.ID,
+		ProductId:      l.ProductID,
+		OrganizationId: l.OrganizationID,
+		TemplateId:     l.TemplateID,
+		InstantiatedAt: l.InstantiatedAt,
+		Values:         values,
+		CreatedAt:      l.CreatedAt,
+		UpdatedAt:      l.UpdatedAt,
+	}
+}
+
+func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
+	// Both sides are always present members, null on the side the kind says is
+	// absent, so a client reads one shape rather than branching on presence.
+	return LicenseFieldDifference{
+		Field:         d.Field,
+		Kind:          d.Kind,
+		LicenseValue:  d.LicenseValue,
+		TemplateValue: d.TemplateValue,
+	}
+}
+
+func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
+	// An identical copy reads back as an empty array rather than as a null, so a
+	// client can count it without a nil check.
+	differences := mapItems(d.Differences, mapLicenseFieldDifferenceToResponse)
+	return OrganizationLicenseDiffResponse{
+		OrganizationId: d.OrganizationID,
+		TemplateId:     d.TemplateID,
+		Differences:    differences,
+		Count:          len(differences),
+	}
+}

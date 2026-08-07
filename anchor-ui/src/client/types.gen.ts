@@ -1930,6 +1930,69 @@ export type LicenseTemplateListResponse = {
     count: number;
 };
 
+export type OrganizationLicenseInstantiateRequest = {
+    template_id: Ksuid;
+};
+
+export type OrganizationLicenseAdjustRequest = {
+    values: LicenseTemplateValues;
+};
+
+export type OrganizationLicenseResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    organization_id: Ksuid;
+    template_id: Ksuid;
+    instantiated_at: string;
+    values: LicenseTemplateValues;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+ */
+export enum LicenseDifferenceKind {
+    /**
+     * LicenseDifferenceChanged
+     */
+    LICENSE_DIFFERENCE_CHANGED = 'changed',
+    /**
+     * LicenseDifferenceOnlyInLicense
+     */
+    LICENSE_DIFFERENCE_ONLY_IN_LICENSE = 'only_in_license',
+    /**
+     * LicenseDifferenceOnlyInTemplate
+     */
+    LICENSE_DIFFERENCE_ONLY_IN_TEMPLATE = 'only_in_template'
+}
+
+export type LicenseFieldDifference = {
+    /**
+     * The license field the two sides disagree on.
+     */
+    field: string;
+    kind: LicenseDifferenceKind;
+    /**
+     * The value the organization's license holds. Null when the kind is `only_in_template`, because the template gained this license field after the copy was taken.
+     */
+    license_value: unknown;
+    /**
+     * The value the template holds today. Null when the kind is `only_in_license`, because the template dropped this license field after the copy was taken.
+     */
+    template_value: unknown;
+};
+
+export type OrganizationLicenseDiffResponse = {
+    organization_id: Ksuid;
+    template_id: Ksuid;
+    /**
+     * Ordered by license field name.
+     */
+    differences: Array<LicenseFieldDifference>;
+    count: number;
+};
+
 /**
  * The KSUID of the platform invitation.
  */
@@ -5626,6 +5689,146 @@ export type UpdateLicenseTemplateResponses = {
 };
 
 export type UpdateLicenseTemplateResponse = UpdateLicenseTemplateResponses[keyof UpdateLicenseTemplateResponses];
+
+export type GetOrganizationLicenseData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license';
+};
+
+export type GetOrganizationLicenseErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetOrganizationLicenseResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseResponse;
+};
+
+export type GetOrganizationLicenseResponse = GetOrganizationLicenseResponses[keyof GetOrganizationLicenseResponses];
+
+export type AdjustOrganizationLicenseData = {
+    body: OrganizationLicenseAdjustRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license';
+};
+
+export type AdjustOrganizationLicenseErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type AdjustOrganizationLicenseError = AdjustOrganizationLicenseErrors[keyof AdjustOrganizationLicenseErrors];
+
+export type AdjustOrganizationLicenseResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseResponse;
+};
+
+export type AdjustOrganizationLicenseResponse = AdjustOrganizationLicenseResponses[keyof AdjustOrganizationLicenseResponses];
+
+export type InstantiateOrganizationLicenseData = {
+    body: OrganizationLicenseInstantiateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license';
+};
+
+export type InstantiateOrganizationLicenseErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type InstantiateOrganizationLicenseError = InstantiateOrganizationLicenseErrors[keyof InstantiateOrganizationLicenseErrors];
+
+export type InstantiateOrganizationLicenseResponses = {
+    /**
+     * Created
+     */
+    201: OrganizationLicenseResponse;
+};
+
+export type InstantiateOrganizationLicenseResponse = InstantiateOrganizationLicenseResponses[keyof InstantiateOrganizationLicenseResponses];
+
+export type GetOrganizationLicenseDiffData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/diff';
+};
+
+export type GetOrganizationLicenseDiffErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetOrganizationLicenseDiffResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseDiffResponse;
+};
+
+export type GetOrganizationLicenseDiffResponse = GetOrganizationLicenseDiffResponses[keyof GetOrganizationLicenseDiffResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

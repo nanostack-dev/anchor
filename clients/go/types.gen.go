@@ -189,6 +189,27 @@ func (e IntegrationProviderType) Valid() bool {
 	}
 }
 
+// Defines values for LicenseDifferenceKind.
+const (
+	LicenseDifferenceChanged        LicenseDifferenceKind = "changed"
+	LicenseDifferenceOnlyInLicense  LicenseDifferenceKind = "only_in_license"
+	LicenseDifferenceOnlyInTemplate LicenseDifferenceKind = "only_in_template"
+)
+
+// Valid indicates whether the value is a known member of the LicenseDifferenceKind enum.
+func (e LicenseDifferenceKind) Valid() bool {
+	switch e {
+	case LicenseDifferenceChanged:
+		return true
+	case LicenseDifferenceOnlyInLicense:
+		return true
+	case LicenseDifferenceOnlyInTemplate:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseFieldType.
 const (
 	LicenseFieldTypeBOOLEAN LicenseFieldType = "BOOLEAN"
@@ -1205,6 +1226,9 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
+// LicenseDifferenceKind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+type LicenseDifferenceKind string
+
 // LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
 type LicenseFieldDeclaration struct {
 	Description *string `json:"description,omitempty"`
@@ -1213,6 +1237,21 @@ type LicenseFieldDeclaration struct {
 	Name  string             `json:"name"`
 	Rules *LicenseFieldRules `json:"rules,omitempty"`
 	Type  LicenseFieldType   `json:"type"`
+}
+
+// LicenseFieldDifference defines model for LicenseFieldDifference.
+type LicenseFieldDifference struct {
+	// Field The license field the two sides disagree on.
+	Field string `json:"field"`
+
+	// Kind Why a license field appears in a diff. `changed` is the bespoke arrangement an operator looks for: the value was adjusted for this organization. The other two report that the template moved after the copy was taken.
+	Kind LicenseDifferenceKind `json:"kind"`
+
+	// LicenseValue The value the organization's license holds. Null when the kind is `only_in_template`, because the template gained this license field after the copy was taken.
+	LicenseValue interface{} `json:"license_value"`
+
+	// TemplateValue The value the template holds today. Null when the kind is `only_in_license`, because the template dropped this license field after the copy was taken.
+	TemplateValue interface{} `json:"template_value"`
 }
 
 // LicenseFieldResponse defines model for LicenseFieldResponse.
@@ -1533,6 +1572,65 @@ type OrganizationFilter struct {
 
 	// Names Filter by organization names (exact matches).
 	Names []string `json:"names,omitempty"`
+}
+
+// OrganizationLicenseAdjustRequest defines model for OrganizationLicenseAdjustRequest.
+type OrganizationLicenseAdjustRequest struct {
+	Values LicenseTemplateValues `json:"values"`
+}
+
+// OrganizationLicenseDiffResponse defines model for OrganizationLicenseDiffResponse.
+type OrganizationLicenseDiffResponse struct {
+	Count int `json:"count"`
+
+	// Differences Ordered by license field name.
+	Differences []LicenseFieldDifference `json:"differences"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
+type OrganizationLicenseInstantiateRequest struct {
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseResponse defines model for OrganizationLicenseResponse.
+type OrganizationLicenseResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id             Ksuid     `json:"id"`
+	InstantiatedAt time.Time `json:"instantiated_at"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// TemplateId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	TemplateId Ksuid                 `json:"template_id"`
+	UpdatedAt  time.Time             `json:"updated_at"`
+	Values     LicenseTemplateValues `json:"values"`
 }
 
 // OrganizationMemberFilter Filter criteria for searching organization members.
@@ -3008,6 +3106,12 @@ type ValidateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyValidateReque
 
 // UpdateOrganizationAPIKeyJSONRequestBody defines body for UpdateOrganizationAPIKey for application/json ContentType.
 type UpdateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyUpdateRequest
+
+// AdjustOrganizationLicenseJSONRequestBody defines body for AdjustOrganizationLicense for application/json ContentType.
+type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
+
+// InstantiateOrganizationLicenseJSONRequestBody defines body for InstantiateOrganizationLicense for application/json ContentType.
+type InstantiateOrganizationLicenseJSONRequestBody = OrganizationLicenseInstantiateRequest
 
 // AddOrganizationMemberJSONRequestBody defines body for AddOrganizationMember for application/json ContentType.
 type AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest

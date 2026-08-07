@@ -80,3 +80,27 @@ type TemplateRepository interface {
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) error
 }
+
+// OrganizationLicenseRepository persists one Organization's copy of a template's
+// values.
+//
+// There is no list method and no lookup by identifier. A license is a singleton
+// on its Organization, so the Organization is the only address it has.
+//
+// Every method is tenant-scoped and product-scoped. There is no *Internal
+// variant: nothing in the licensing write path runs without an authenticated
+// tenant.
+type OrganizationLicenseRepository interface {
+	// FindByOrganization returns the Organization's license, or nil when it has
+	// never been instantiated. Scoping by product as well as by organization is
+	// what stops a caller reading another Product's license by guessing a KSUID.
+	FindByOrganization(
+		ctx context.Context, tenantID string, productID string, organizationID string,
+	) (*license.OrganizationLicense, error)
+	Create(
+		ctx context.Context, organizationLicense license.OrganizationLicense,
+	) (license.OrganizationLicense, error)
+	Update(
+		ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
+	) (license.OrganizationLicense, error)
+}

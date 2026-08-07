@@ -7,8 +7,9 @@ import (
 	"go.uber.org/fx"
 )
 
-// NewModule wires the licensing subsystem (license schema declaration and
-// license templates).
+// NewModule wires the licensing subsystem: the per-Product license schema, the
+// license templates declared against it, and one Organization's own copy of a
+// template's values.
 func NewModule() fx.Option {
 	return fx.Module(
 		"license",
@@ -16,8 +17,10 @@ func NewModule() fx.Option {
 			repository.NewSchemaRepository,
 			repository.NewSchemaFieldRepository,
 			repository.NewTemplateRepository,
+			repository.NewOrganizationLicenseRepository,
 			service.NewLicenseSchemaService,
 			service.NewLicenseTemplateService,
+			service.NewOrganizationLicenseService,
 		),
 	)
 }
