@@ -909,6 +909,56 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 	UpdateOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrganizationLicense Get Organization License
+	//
+	// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
+	GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdjustOrganizationLicenseWithBody Adjust Organization License
+	//
+	// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+	AdjustOrganizationLicenseWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdjustOrganizationLicense Adjust Organization License
+	//
+	// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+	AdjustOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body AdjustOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InstantiateOrganizationLicenseWithBody Instantiate Organization License
+	//
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+	InstantiateOrganizationLicenseWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InstantiateOrganizationLicense Instantiate Organization License
+	//
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+	InstantiateOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body InstantiateOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
+	//
+	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
+	GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddOrganizationMemberWithBody Add Organization Member
 	//
 	// Adds a user to an organization.
@@ -3067,6 +3117,116 @@ func (c *Client) UpdateOrganizationAPIKeyWithBody(ctx context.Context, productId
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationAPIKeyRequest(c.Server, productId, organizationId, apiKeyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationLicense Get Organization License
+//
+// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
+func (c *Client) GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationLicenseRequest(c.Server, productId, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdjustOrganizationLicenseWithBody Adjust Organization License
+//
+// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+func (c *Client) AdjustOrganizationLicenseWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdjustOrganizationLicenseRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdjustOrganizationLicense Adjust Organization License
+//
+// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+func (c *Client) AdjustOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body AdjustOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdjustOrganizationLicenseRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InstantiateOrganizationLicenseWithBody Instantiate Organization License
+//
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+func (c *Client) InstantiateOrganizationLicenseWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInstantiateOrganizationLicenseRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InstantiateOrganizationLicense Instantiate Organization License
+//
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+func (c *Client) InstantiateOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body InstantiateOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInstantiateOrganizationLicenseRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationLicenseDiff Diff Organization License Against Its Template
+//
+// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
+func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationLicenseDiffRequest(c.Server, productId, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -6766,6 +6926,196 @@ func NewUpdateOrganizationAPIKeyRequestWithBody(server string, productId Product
 	return req, nil
 }
 
+// NewGetOrganizationLicenseRequest constructs an http.Request for the GetOrganizationLicense method
+func NewGetOrganizationLicenseRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdjustOrganizationLicenseRequest calls the generic AdjustOrganizationLicense builder with application/json body
+func NewAdjustOrganizationLicenseRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body AdjustOrganizationLicenseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdjustOrganizationLicenseRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewAdjustOrganizationLicenseRequestWithBody constructs an http.Request for the AdjustOrganizationLicense method, with any body, and a specified content type
+func NewAdjustOrganizationLicenseRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewInstantiateOrganizationLicenseRequest calls the generic InstantiateOrganizationLicense builder with application/json body
+func NewInstantiateOrganizationLicenseRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body InstantiateOrganizationLicenseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewInstantiateOrganizationLicenseRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewInstantiateOrganizationLicenseRequestWithBody constructs an http.Request for the InstantiateOrganizationLicense method, with any body, and a specified content type
+func NewInstantiateOrganizationLicenseRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetOrganizationLicenseDiffRequest constructs an http.Request for the GetOrganizationLicenseDiff method
+func NewGetOrganizationLicenseDiffRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license/diff", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAddOrganizationMemberRequest calls the generic AddOrganizationMember builder with application/json body
 func NewAddOrganizationMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body AddOrganizationMemberJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9216,6 +9566,60 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 	UpdateOrganizationAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationAPIKeyResponse, error)
+
+	// GetOrganizationLicenseWithResponse Get Organization License
+	//
+	// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
+	GetOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseResponse, error)
+
+	// AdjustOrganizationLicenseWithBodyWithResponse Adjust Organization License
+	//
+	// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+	AdjustOrganizationLicenseWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdjustOrganizationLicenseResponse, error)
+
+	// AdjustOrganizationLicenseWithResponse Adjust Organization License
+	//
+	// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+	AdjustOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body AdjustOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdjustOrganizationLicenseResponse, error)
+
+	// InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
+	//
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+	InstantiateOrganizationLicenseWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InstantiateOrganizationLicenseResponse, error)
+
+	// InstantiateOrganizationLicenseWithResponse Instantiate Organization License
+	//
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+	InstantiateOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body InstantiateOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*InstantiateOrganizationLicenseResponse, error)
+
+	// GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
+	//
+	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
+	GetOrganizationLicenseDiffWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseDiffResponse, error)
 
 	// AddOrganizationMemberWithBodyWithResponse Add Organization Member
 	//
@@ -12941,6 +13345,184 @@ func (r UpdateOrganizationAPIKeyResponse) ContentType() string {
 	return ""
 }
 
+type GetOrganizationLicenseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationLicenseResponse) GetJSON200() *OrganizationLicenseResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationLicenseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationLicenseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationLicenseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationLicenseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AdjustOrganizationLicenseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdjustOrganizationLicenseResponse) GetJSON200() *OrganizationLicenseResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AdjustOrganizationLicenseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r AdjustOrganizationLicenseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdjustOrganizationLicenseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdjustOrganizationLicenseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdjustOrganizationLicenseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type InstantiateOrganizationLicenseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *OrganizationLicenseResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r InstantiateOrganizationLicenseResponse) GetJSON201() *OrganizationLicenseResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r InstantiateOrganizationLicenseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r InstantiateOrganizationLicenseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r InstantiateOrganizationLicenseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r InstantiateOrganizationLicenseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r InstantiateOrganizationLicenseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrganizationLicenseDiffResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseDiffResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationLicenseDiffResponse) GetJSON200() *OrganizationLicenseDiffResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationLicenseDiffResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationLicenseDiffResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationLicenseDiffResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationLicenseDiffResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type AddOrganizationMemberResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16040,6 +16622,96 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseUpdateOrganizationAPIKeyResponse(rsp)
+}
+
+// GetOrganizationLicenseWithResponse Get Organization License
+//
+// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
+func (c *ClientWithResponses) GetOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseResponse, error) {
+	rsp, err := c.GetOrganizationLicense(ctx, productId, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationLicenseResponse(rsp)
+}
+
+// AdjustOrganizationLicenseWithBodyWithResponse Adjust Organization License
+//
+// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+func (c *ClientWithResponses) AdjustOrganizationLicenseWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdjustOrganizationLicenseResponse, error) {
+	rsp, err := c.AdjustOrganizationLicenseWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdjustOrganizationLicenseResponse(rsp)
+}
+
+// AdjustOrganizationLicenseWithResponse Adjust Organization License
+//
+// Adjusts license fields for one organization without touching the template, so a bespoke enterprise arrangement does not require a new tier. Values are merged: a license field present replaces the value held, and one absent is left alone. The result is validated against the product's license schema exactly as a template write is.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/products/{product_id}/organizations/{organization_id}/license (the `AdjustOrganizationLicense` operationId).
+func (c *ClientWithResponses) AdjustOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body AdjustOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdjustOrganizationLicenseResponse, error) {
+	rsp, err := c.AdjustOrganizationLicense(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdjustOrganizationLicenseResponse(rsp)
+}
+
+// InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
+//
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+func (c *ClientWithResponses) InstantiateOrganizationLicenseWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InstantiateOrganizationLicenseResponse, error) {
+	rsp, err := c.InstantiateOrganizationLicenseWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInstantiateOrganizationLicenseResponse(rsp)
+}
+
+// InstantiateOrganizationLicenseWithResponse Instantiate Organization License
+//
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license (the `InstantiateOrganizationLicense` operationId).
+func (c *ClientWithResponses) InstantiateOrganizationLicenseWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body InstantiateOrganizationLicenseJSONRequestBody, reqEditors ...RequestEditorFn) (*InstantiateOrganizationLicenseResponse, error) {
+	rsp, err := c.InstantiateOrganizationLicense(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInstantiateOrganizationLicenseResponse(rsp)
+}
+
+// GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
+//
+// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
+func (c *ClientWithResponses) GetOrganizationLicenseDiffWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseDiffResponse, error) {
+	rsp, err := c.GetOrganizationLicenseDiff(ctx, productId, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationLicenseDiffResponse(rsp)
 }
 
 // AddOrganizationMemberWithBodyWithResponse Add Organization Member
@@ -19243,6 +19915,136 @@ func ParseUpdateOrganizationAPIKeyResponse(rsp *http.Response) (*UpdateOrganizat
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationLicenseResponse parses an HTTP response from a GetOrganizationLicenseWithResponse call
+func ParseGetOrganizationLicenseResponse(rsp *http.Response) (*GetOrganizationLicenseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationLicenseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseAdjustOrganizationLicenseResponse parses an HTTP response from a AdjustOrganizationLicenseWithResponse call
+func ParseAdjustOrganizationLicenseResponse(rsp *http.Response) (*AdjustOrganizationLicenseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdjustOrganizationLicenseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseInstantiateOrganizationLicenseResponse parses an HTTP response from a InstantiateOrganizationLicenseWithResponse call
+func ParseInstantiateOrganizationLicenseResponse(rsp *http.Response) (*InstantiateOrganizationLicenseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &InstantiateOrganizationLicenseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest OrganizationLicenseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationLicenseDiffResponse parses an HTTP response from a GetOrganizationLicenseDiffWithResponse call
+func ParseGetOrganizationLicenseDiffResponse(rsp *http.Response) (*GetOrganizationLicenseDiffResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationLicenseDiffResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseDiffResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case rsp.StatusCode == 404:
 		break // No content-type

@@ -3080,6 +3080,137 @@ components:
         count:
           type: integer
 
+    OrganizationLicenseInstantiateRequest:
+      type: object
+      required: [template_id]
+      properties:
+        template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The license template to copy. It is read once, here. The organization
+            keeps the copy, so editing this template afterwards does not reach
+            them.
+
+    OrganizationLicenseAdjustRequest:
+      type: object
+      description: >-
+        An adjustment to one organization's license. Use it for a bespoke
+        arrangement that does not deserve a new tier.
+      required: [values]
+      properties:
+        values:
+          allOf:
+          - $ref: '#/components/schemas/LicenseTemplateValues'
+          description: >-
+            Merged into the license, not substituted for it. A license field
+            present replaces the value held. A license field absent keeps its
+            value, which is the opposite of a template write — a template is
+            authored whole, a license is adjusted one field at a time. No
+            license field can be removed this way, because every field the
+            schema declares must stay set. The merged result is validated
+            against the schema exactly as a template write is.
+
+    OrganizationLicenseResponse:
+      type: object
+      description: >-
+        An organization's license: its own copy of a template's values. Every
+        license field the schema declares carries a value, so a consumer can
+        read it at face value.
+      required:
+      - id
+      - product_id
+      - organization_id
+      - template_id
+      - instantiated_at
+      - values
+      - created_at
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            Which template this organization was sold. Provenance, not a live
+            dependency: the template can be edited or deleted afterwards without
+            changing `values`, and it may no longer exist.
+        instantiated_at:
+          type: string
+          format: date-time
+          description: When the copy was taken. An adjustment does not move it.
+        values:
+          allOf:
+          - $ref: '#/components/schemas/LicenseTemplateValues'
+          description: >-
+            What this organization is allowed, keyed by license field name. A
+            value that differs from the template is a deviation — read the diff
+            route to find them.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LicenseDifferenceKind:
+      type: string
+      description: >-
+        Why a license field appears in a diff. `changed` means the two sides hold
+        different values — either someone adjusted this organization, or the
+        template moved after the copy was taken. The kind alone does not say
+        which. `only_in_license` and `only_in_template` always mean the template
+        changed shape after the copy.
+      enum: [changed, only_in_license, only_in_template]
+      x-go-type: license.DifferenceKind
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    LicenseFieldDifference:
+      type: object
+      required: [field, kind, license_value, template_value]
+      properties:
+        field:
+          type: string
+          description: The license field the two sides disagree on.
+        kind:
+          $ref: '#/components/schemas/LicenseDifferenceKind'
+        license_value:
+          description: >-
+            The value the organization's license holds. Null when the kind is
+            `only_in_template`, because the template gained this license field
+            after the copy was taken.
+        template_value:
+          description: >-
+            The value the template holds today. Null when the kind is
+            `only_in_license`, because the template dropped this license field
+            after the copy was taken.
+
+    OrganizationLicenseDiffResponse:
+      type: object
+      description: >-
+        How an organization's license differs from its template today. Templates
+        carry no version, so this names which license fields differ rather than
+        which revision they came from.
+      required: [organization_id, template_id, differences, count]
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        template_id:
+          $ref: '#/components/schemas/ksuid'
+        differences:
+          type: array
+          description: Ordered by license field name.
+          items:
+            $ref: '#/components/schemas/LicenseFieldDifference'
+        count:
+          type: integer
+
   responses:
     BadRequest:
       description: Bad Request (e.g., validation error)
@@ -5784,5 +5915,123 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/organizations/{organization_id}/license:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Instantiate Organization License
+      description: >-
+        Stamps a license template onto an organization, copying its values. The
+        copy is what the organization holds from then on: editing the template
+        afterwards leaves this organization unchanged, and adjusting this
+        organization leaves the template unchanged. An organization has at most
+        one license, so this is refused once one exists.
+      operationId: instantiateOrganizationLicense
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationLicenseInstantiateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      summary: Get Organization License
+      description: >-
+        Reads an organization's effective license in one call: every license
+        field, its value, and the provenance of the copy.
+      operationId: getOrganizationLicense
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Adjust Organization License
+      description: >-
+        Adjusts license fields for one organization without touching the
+        template, so a bespoke enterprise arrangement does not require a new
+        tier. Values are merged: a license field present replaces the value
+        held, and one absent is left alone. The result is validated against the
+        product's license schema exactly as a template write is.
+      operationId: adjustOrganizationLicense
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationLicenseAdjustRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/organizations/{organization_id}/license/diff:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    get:
+      summary: Diff Organization License Against Its Template
+      description: >-
+        Reports how an organization's license differs from the template it was
+        instantiated from, one license field at a time. Use it to find accounts
+        with bespoke arrangements. Not found when the template has since been
+        deleted, because there is then nothing to compare against.
+      operationId: getOrganizationLicenseDiff
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseDiffResponse'
         '404':
           $ref: '#/components/responses/NotFound'
