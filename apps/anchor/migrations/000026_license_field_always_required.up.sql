@@ -1,0 +1,21 @@
+-- =============================================
+-- Migration 000026: Every license field is mandatory
+-- =============================================
+-- Drops the per-field required flag added by 000024. A license template must
+-- now set every field its product's schema declares, so "required" no longer
+-- distinguishes anything: it would be true for every row.
+--
+-- The point is that reading a template tells you the whole grant. With an
+-- optional field, a template that omits it leaves the reader guessing what the
+-- customer actually has — and the answer would have to be invented again by
+-- every consumer, at instantiation and at every status derivation after it.
+--
+-- Cost, accepted deliberately: adding a field to a schema invalidates every
+-- existing template until each one sets it. The schema write itself is not
+-- refused — Anchor validates but never gates — so a template keeps serving
+-- instantiation with the values it has, and the next edit to it is refused
+-- until the new field is set.
+--
+-- See docs/adr/0009-every-license-field-is-mandatory.md.
+
+ALTER TABLE license_schema_fields DROP COLUMN is_required;

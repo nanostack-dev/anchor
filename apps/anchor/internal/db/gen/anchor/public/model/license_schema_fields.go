@@ -16,7 +16,6 @@ type LicenseSchemaFields struct {
 	LicenseSchemaID string
 	Name            string
 	FieldType       string
-	IsRequired      bool
 	Description     string
 	RulesJSON       string
 	CreatedAt       time.Time

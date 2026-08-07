@@ -685,6 +685,61 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
 	UpdateLicenseSchema(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListLicenseTemplates List License Templates
+	//
+	// Lists the product's license templates, ordered by name.
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+	ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLicenseTemplateWithBody Create License Template
+	//
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+	CreateLicenseTemplateWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLicenseTemplate Create License Template
+	//
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+	CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLicenseTemplate Delete License Template
+	//
+	// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+	DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLicenseTemplate Get License Template
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/templates/{license_template_id} (the `GetLicenseTemplate` operationId).
+	GetLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLicenseTemplateWithBody Update License Template
+	//
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+	UpdateLicenseTemplateWithBody(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLicenseTemplate Update License Template
+	//
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+	UpdateLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, body UpdateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateProductOrganizationWithBody Create Product Organization
 	//
 	// Creates a new organization record associated with the specified Product.
@@ -2538,6 +2593,131 @@ func (c *Client) UpdateLicenseSchemaWithBody(ctx context.Context, productId Prod
 // Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
 func (c *Client) UpdateLicenseSchema(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateLicenseSchemaRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListLicenseTemplates List License Templates
+//
+// Lists the product's license templates, ordered by name.
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLicenseTemplatesRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLicenseTemplateWithBody Create License Template
+//
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+func (c *Client) CreateLicenseTemplateWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLicenseTemplateRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLicenseTemplate Create License Template
+//
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+func (c *Client) CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLicenseTemplateRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLicenseTemplate Delete License Template
+//
+// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+func (c *Client) DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLicenseTemplateRequest(c.Server, productId, licenseTemplateId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLicenseTemplate Get License Template
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/templates/{license_template_id} (the `GetLicenseTemplate` operationId).
+func (c *Client) GetLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLicenseTemplateRequest(c.Server, productId, licenseTemplateId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLicenseTemplateWithBody Update License Template
+//
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+func (c *Client) UpdateLicenseTemplateWithBody(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLicenseTemplateRequestWithBody(c.Server, productId, licenseTemplateId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLicenseTemplate Update License Template
+//
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+func (c *Client) UpdateLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, body UpdateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLicenseTemplateRequest(c.Server, productId, licenseTemplateId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5820,6 +6000,223 @@ func NewUpdateLicenseSchemaRequestWithBody(server string, productId ProductIdPar
 	return req, nil
 }
 
+// NewListLicenseTemplatesRequest constructs an http.Request for the ListLicenseTemplates method
+func NewListLicenseTemplatesRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLicenseTemplateRequest calls the generic CreateLicenseTemplate builder with application/json body
+func NewCreateLicenseTemplateRequest(server string, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLicenseTemplateRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewCreateLicenseTemplateRequestWithBody constructs an http.Request for the CreateLicenseTemplate method, with any body, and a specified content type
+func NewCreateLicenseTemplateRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteLicenseTemplateRequest constructs an http.Request for the DeleteLicenseTemplate method
+func NewDeleteLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "license_template_id", licenseTemplateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetLicenseTemplateRequest constructs an http.Request for the GetLicenseTemplate method
+func NewGetLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "license_template_id", licenseTemplateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLicenseTemplateRequest calls the generic UpdateLicenseTemplate builder with application/json body
+func NewUpdateLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, body UpdateLicenseTemplateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLicenseTemplateRequestWithBody(server, productId, licenseTemplateId, "application/json", bodyReader)
+}
+
+// NewUpdateLicenseTemplateRequestWithBody constructs an http.Request for the UpdateLicenseTemplate method, with any body, and a specified content type
+func NewUpdateLicenseTemplateRequestWithBody(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "license_template_id", licenseTemplateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateProductOrganizationRequest calls the generic CreateProductOrganization builder with application/json body
 func NewCreateProductOrganizationRequest(server string, productId ProductIdParameter, body CreateProductOrganizationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -8581,6 +8978,67 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/licensing/schema (the `UpdateLicenseSchema` operationId).
 	UpdateLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateLicenseSchemaJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLicenseSchemaResponse, error)
+
+	// ListLicenseTemplatesWithResponse List License Templates
+	//
+	// Lists the product's license templates, ordered by name.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+	ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error)
+
+	// CreateLicenseTemplateWithBodyWithResponse Create License Template
+	//
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+	CreateLicenseTemplateWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error)
+
+	// CreateLicenseTemplateWithResponse Create License Template
+	//
+	// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+	CreateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error)
+
+	// DeleteLicenseTemplateWithResponse Delete License Template
+	//
+	// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+	DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error)
+
+	// GetLicenseTemplateWithResponse Get License Template
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/licensing/templates/{license_template_id} (the `GetLicenseTemplate` operationId).
+	GetLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*GetLicenseTemplateResponse, error)
+
+	// UpdateLicenseTemplateWithBodyWithResponse Update License Template
+	//
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+	UpdateLicenseTemplateWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLicenseTemplateResponse, error)
+
+	// UpdateLicenseTemplateWithResponse Update License Template
+	//
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+	UpdateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, body UpdateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLicenseTemplateResponse, error)
 
 	// CreateProductOrganizationWithBodyWithResponse Create Product Organization
 	//
@@ -11625,6 +12083,218 @@ func (r UpdateLicenseSchemaResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateLicenseSchemaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListLicenseTemplatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseTemplateListResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLicenseTemplatesResponse) GetJSON200() *LicenseTemplateListResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLicenseTemplatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLicenseTemplatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLicenseTemplatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLicenseTemplatesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLicenseTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *LicenseTemplateResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateLicenseTemplateResponse) GetJSON201() *LicenseTemplateResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLicenseTemplateResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLicenseTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLicenseTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLicenseTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLicenseTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLicenseTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLicenseTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLicenseTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLicenseTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLicenseTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLicenseTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseTemplateResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLicenseTemplateResponse) GetJSON200() *LicenseTemplateResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLicenseTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLicenseTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLicenseTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLicenseTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLicenseTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseTemplateResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLicenseTemplateResponse) GetJSON200() *LicenseTemplateResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateLicenseTemplateResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLicenseTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLicenseTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLicenseTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLicenseTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14984,6 +15654,109 @@ func (c *ClientWithResponses) UpdateLicenseSchemaWithResponse(ctx context.Contex
 	return ParseUpdateLicenseSchemaResponse(rsp)
 }
 
+// ListLicenseTemplatesWithResponse List License Templates
+//
+// Lists the product's license templates, ordered by name.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+func (c *ClientWithResponses) ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error) {
+	rsp, err := c.ListLicenseTemplates(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLicenseTemplatesResponse(rsp)
+}
+
+// CreateLicenseTemplateWithBodyWithResponse Create License Template
+//
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+func (c *ClientWithResponses) CreateLicenseTemplateWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error) {
+	rsp, err := c.CreateLicenseTemplateWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLicenseTemplateResponse(rsp)
+}
+
+// CreateLicenseTemplateWithResponse Create License Template
+//
+// Defines a named set of values satisfying the product's license schema, so "Free" and "Pro" are reusable objects rather than values retyped for every customer. The values are validated against the schema here: a value outside its field's declared rules is refused, and so is a template that leaves any declared field unset.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
+func (c *ClientWithResponses) CreateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error) {
+	rsp, err := c.CreateLicenseTemplate(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLicenseTemplateResponse(rsp)
+}
+
+// DeleteLicenseTemplateWithResponse Delete License Template
+//
+// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+func (c *ClientWithResponses) DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error) {
+	rsp, err := c.DeleteLicenseTemplate(ctx, productId, licenseTemplateId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLicenseTemplateResponse(rsp)
+}
+
+// GetLicenseTemplateWithResponse Get License Template
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/licensing/templates/{license_template_id} (the `GetLicenseTemplate` operationId).
+func (c *ClientWithResponses) GetLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*GetLicenseTemplateResponse, error) {
+	rsp, err := c.GetLicenseTemplate(ctx, productId, licenseTemplateId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLicenseTemplateResponse(rsp)
+}
+
+// UpdateLicenseTemplateWithBodyWithResponse Update License Template
+//
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+func (c *ClientWithResponses) UpdateLicenseTemplateWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLicenseTemplateResponse, error) {
+	rsp, err := c.UpdateLicenseTemplateWithBody(ctx, productId, licenseTemplateId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLicenseTemplateResponse(rsp)
+}
+
+// UpdateLicenseTemplateWithResponse Update License Template
+//
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/licensing/templates/{license_template_id} (the `UpdateLicenseTemplate` operationId).
+func (c *ClientWithResponses) UpdateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, body UpdateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLicenseTemplateResponse, error) {
+	rsp, err := c.UpdateLicenseTemplate(ctx, productId, licenseTemplateId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLicenseTemplateResponse(rsp)
+}
+
 // CreateProductOrganizationWithBodyWithResponse Create Product Organization
 //
 // Creates a new organization record associated with the specified Product.
@@ -17808,6 +18581,149 @@ func ParseUpdateLicenseSchemaResponse(rsp *http.Response) (*UpdateLicenseSchemaR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest LicenseSchemaResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseListLicenseTemplatesResponse parses an HTTP response from a ListLicenseTemplatesWithResponse call
+func ParseListLicenseTemplatesResponse(rsp *http.Response) (*ListLicenseTemplatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLicenseTemplatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseTemplateListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLicenseTemplateResponse parses an HTTP response from a CreateLicenseTemplateWithResponse call
+func ParseCreateLicenseTemplateResponse(rsp *http.Response) (*CreateLicenseTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLicenseTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LicenseTemplateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLicenseTemplateResponse parses an HTTP response from a DeleteLicenseTemplateWithResponse call
+func ParseDeleteLicenseTemplateResponse(rsp *http.Response) (*DeleteLicenseTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLicenseTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetLicenseTemplateResponse parses an HTTP response from a GetLicenseTemplateWithResponse call
+func ParseGetLicenseTemplateResponse(rsp *http.Response) (*GetLicenseTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLicenseTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseTemplateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLicenseTemplateResponse parses an HTTP response from a UpdateLicenseTemplateWithResponse call
+func ParseUpdateLicenseTemplateResponse(rsp *http.Response) (*UpdateLicenseTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLicenseTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseTemplateResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

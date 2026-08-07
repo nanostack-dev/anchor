@@ -676,12 +676,9 @@ type LicenseFieldDeclaration struct {
 	Description *string `json:"description,omitempty"`
 
 	// Name Stable identifier used by product code, unique within the schema.
-	Name string `json:"name"`
-
-	// Required Whether a license template must supply a value for this field.
-	Required *bool              `json:"required,omitempty"`
-	Rules    *LicenseFieldRules `json:"rules,omitempty"`
-	Type     LicenseFieldType   `json:"type"`
+	Name  string             `json:"name"`
+	Rules *LicenseFieldRules `json:"rules,omitempty"`
+	Type  LicenseFieldType   `json:"type"`
 }
 
 // LicenseFieldResponse defines model for LicenseFieldResponse.
@@ -694,7 +691,6 @@ type LicenseFieldResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	Id        Ksuid             `json:"id"`
 	Name      string            `json:"name"`
-	Required  bool              `json:"required"`
 	Rules     LicenseFieldRules `json:"rules"`
 	Type      LicenseFieldType  `json:"type"`
 	UpdatedAt time.Time         `json:"updated_at"`
@@ -735,6 +731,50 @@ type LicenseSchemaUpdateRequest struct {
 	Description *string                    `json:"description,omitempty"`
 	Fields      *[]LicenseFieldDeclaration `json:"fields,omitempty"`
 }
+
+// LicenseTemplateCreateRequest defines model for LicenseTemplateCreateRequest.
+type LicenseTemplateCreateRequest struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Operator-facing name, unique within the product.
+	Name   string                `json:"name"`
+	Values LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateListResponse defines model for LicenseTemplateListResponse.
+type LicenseTemplateListResponse struct {
+	Count int                       `json:"count"`
+	Items []LicenseTemplateResponse `json:"items"`
+}
+
+// LicenseTemplateResponse defines model for LicenseTemplateResponse.
+type LicenseTemplateResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id   Ksuid  `json:"id"`
+	Name string `json:"name"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid                 `json:"product_id"`
+	UpdatedAt time.Time             `json:"updated_at"`
+	Values    LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateUpdateRequest defines model for LicenseTemplateUpdateRequest.
+type LicenseTemplateUpdateRequest struct {
+	Description *string                `json:"description,omitempty"`
+	Name        *string                `json:"name,omitempty"`
+	Values      *LicenseTemplateValues `json:"values,omitempty"`
+}
+
+// LicenseTemplateValues defines model for LicenseTemplateValues.
+type LicenseTemplateValues = license.TemplateValues
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -2153,6 +2193,11 @@ type EmailTemplateIdParameter = Ksuid
 // Examples: iin_7pRST...
 type IntegrationInstanceIdParameter = Ksuid
 
+// LicenseTemplateIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: ltpl_2iABC...
+type LicenseTemplateIdParameter = Ksuid
+
 // OrganizationAPIKeyIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: organization_apikey_5mNOP...
@@ -2342,6 +2387,12 @@ type CreateLicenseSchemaJSONRequestBody = LicenseSchemaCreateRequest
 
 // UpdateLicenseSchemaJSONRequestBody defines body for UpdateLicenseSchema for application/json ContentType.
 type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
+
+// CreateLicenseTemplateJSONRequestBody defines body for CreateLicenseTemplate for application/json ContentType.
+type CreateLicenseTemplateJSONRequestBody = LicenseTemplateCreateRequest
+
+// UpdateLicenseTemplateJSONRequestBody defines body for UpdateLicenseTemplate for application/json ContentType.
+type UpdateLicenseTemplateJSONRequestBody = LicenseTemplateUpdateRequest
 
 // CreateProductOrganizationJSONRequestBody defines body for CreateProductOrganization for application/json ContentType.
 type CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest
@@ -2754,6 +2805,21 @@ type ServerInterface interface {
 	// UpdateLicenseSchema Update License Schema
 	// (PUT /v1/products/{product_id}/licensing/schema)
 	UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// ListLicenseTemplates List License Templates
+	// (GET /v1/products/{product_id}/licensing/templates)
+	ListLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// CreateLicenseTemplate Create License Template
+	// (POST /v1/products/{product_id}/licensing/templates)
+	CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// DeleteLicenseTemplate Delete License Template
+	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
+	DeleteLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
+	// GetLicenseTemplate Get License Template
+	// (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
+	GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
+	// UpdateLicenseTemplate Update License Template
+	// (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
+	UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3162,6 +3228,36 @@ func (_ Unimplemented) CreateLicenseSchema(w http.ResponseWriter, r *http.Reques
 // UpdateLicenseSchema Update License Schema
 // (PUT /v1/products/{product_id}/licensing/schema)
 func (_ Unimplemented) UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListLicenseTemplates List License Templates
+// (GET /v1/products/{product_id}/licensing/templates)
+func (_ Unimplemented) ListLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateLicenseTemplate Create License Template
+// (POST /v1/products/{product_id}/licensing/templates)
+func (_ Unimplemented) CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteLicenseTemplate Delete License Template
+// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
+func (_ Unimplemented) DeleteLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetLicenseTemplate Get License Template
+// (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
+func (_ Unimplemented) GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateLicenseTemplate Update License Template
+// (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
+func (_ Unimplemented) UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4771,6 +4867,163 @@ func (siw *ServerInterfaceWrapper) UpdateLicenseSchema(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateLicenseSchema(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLicenseTemplates operation middleware
+func (siw *ServerInterfaceWrapper) ListLicenseTemplates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLicenseTemplates(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLicenseTemplate operation middleware
+func (siw *ServerInterfaceWrapper) CreateLicenseTemplate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLicenseTemplate(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteLicenseTemplate operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLicenseTemplate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "license_template_id" -------------
+	var licenseTemplateId LicenseTemplateIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "license_template_id", chi.URLParam(r, "license_template_id"), &licenseTemplateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "license_template_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLicenseTemplate(w, r, productId, licenseTemplateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLicenseTemplate operation middleware
+func (siw *ServerInterfaceWrapper) GetLicenseTemplate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "license_template_id" -------------
+	var licenseTemplateId LicenseTemplateIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "license_template_id", chi.URLParam(r, "license_template_id"), &licenseTemplateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "license_template_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLicenseTemplate(w, r, productId, licenseTemplateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLicenseTemplate operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "license_template_id" -------------
+	var licenseTemplateId LicenseTemplateIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "license_template_id", chi.URLParam(r, "license_template_id"), &licenseTemplateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "license_template_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLicenseTemplate(w, r, productId, licenseTemplateId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6657,6 +6910,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.UpdateLicenseSchema)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/licensing/templates", wrapper.ListLicenseTemplates)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/templates", wrapper.CreateLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.DeleteLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.GetLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.UpdateLicenseTemplate)
 	})
 
 	return r
@@ -9021,6 +9289,171 @@ func (response UpdateLicenseSchema400JSONResponse) VisitUpdateLicenseSchemaRespo
 type UpdateLicenseSchema404Response = NotFoundResponse
 
 func (response UpdateLicenseSchema404Response) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type ListLicenseTemplatesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type ListLicenseTemplatesResponseObject interface {
+	VisitListLicenseTemplatesResponse(w http.ResponseWriter) error
+}
+
+type ListLicenseTemplates200JSONResponse LicenseTemplateListResponse
+
+func (response ListLicenseTemplates200JSONResponse) VisitListLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLicenseTemplateRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreateLicenseTemplateJSONRequestBody
+}
+
+type CreateLicenseTemplateResponseObject interface {
+	VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error
+}
+
+type CreateLicenseTemplate201JSONResponse LicenseTemplateResponse
+
+func (response CreateLicenseTemplate201JSONResponse) VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLicenseTemplate400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateLicenseTemplate400JSONResponse) VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLicenseTemplate404Response = NotFoundResponse
+
+func (response CreateLicenseTemplate404Response) VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type DeleteLicenseTemplateRequestObject struct {
+	ProductId         ProductIdParameter         `json:"product_id"`
+	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
+}
+
+type DeleteLicenseTemplateResponseObject interface {
+	VisitDeleteLicenseTemplateResponse(w http.ResponseWriter) error
+}
+
+type DeleteLicenseTemplate204Response struct {
+}
+
+func (response DeleteLicenseTemplate204Response) VisitDeleteLicenseTemplateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteLicenseTemplate404Response = NotFoundResponse
+
+func (response DeleteLicenseTemplate404Response) VisitDeleteLicenseTemplateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetLicenseTemplateRequestObject struct {
+	ProductId         ProductIdParameter         `json:"product_id"`
+	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
+}
+
+type GetLicenseTemplateResponseObject interface {
+	VisitGetLicenseTemplateResponse(w http.ResponseWriter) error
+}
+
+type GetLicenseTemplate200JSONResponse LicenseTemplateResponse
+
+func (response GetLicenseTemplate200JSONResponse) VisitGetLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLicenseTemplate404Response = NotFoundResponse
+
+func (response GetLicenseTemplate404Response) VisitGetLicenseTemplateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type UpdateLicenseTemplateRequestObject struct {
+	ProductId         ProductIdParameter         `json:"product_id"`
+	LicenseTemplateId LicenseTemplateIdParameter `json:"license_template_id"`
+	Body              *UpdateLicenseTemplateJSONRequestBody
+}
+
+type UpdateLicenseTemplateResponseObject interface {
+	VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error
+}
+
+type UpdateLicenseTemplate200JSONResponse LicenseTemplateResponse
+
+func (response UpdateLicenseTemplate200JSONResponse) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLicenseTemplate400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateLicenseTemplate400JSONResponse) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLicenseTemplate404Response = NotFoundResponse
+
+func (response UpdateLicenseTemplate404Response) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
 	w.WriteHeader(404)
 	return nil
 }
@@ -11618,6 +12051,21 @@ type StrictServerInterface interface {
 	// UpdateLicenseSchema Update License Schema
 	// (PUT /v1/products/{product_id}/licensing/schema)
 	UpdateLicenseSchema(ctx context.Context, request UpdateLicenseSchemaRequestObject) (UpdateLicenseSchemaResponseObject, error)
+	// ListLicenseTemplates List License Templates
+	// (GET /v1/products/{product_id}/licensing/templates)
+	ListLicenseTemplates(ctx context.Context, request ListLicenseTemplatesRequestObject) (ListLicenseTemplatesResponseObject, error)
+	// CreateLicenseTemplate Create License Template
+	// (POST /v1/products/{product_id}/licensing/templates)
+	CreateLicenseTemplate(ctx context.Context, request CreateLicenseTemplateRequestObject) (CreateLicenseTemplateResponseObject, error)
+	// DeleteLicenseTemplate Delete License Template
+	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
+	DeleteLicenseTemplate(ctx context.Context, request DeleteLicenseTemplateRequestObject) (DeleteLicenseTemplateResponseObject, error)
+	// GetLicenseTemplate Get License Template
+	// (GET /v1/products/{product_id}/licensing/templates/{license_template_id})
+	GetLicenseTemplate(ctx context.Context, request GetLicenseTemplateRequestObject) (GetLicenseTemplateResponseObject, error)
+	// UpdateLicenseTemplate Update License Template
+	// (PUT /v1/products/{product_id}/licensing/templates/{license_template_id})
+	UpdateLicenseTemplate(ctx context.Context, request UpdateLicenseTemplateRequestObject) (UpdateLicenseTemplateResponseObject, error)
 	// CreateProductOrganization Create Product Organization
 	// (POST /v1/products/{product_id}/organizations)
 	CreateProductOrganization(ctx context.Context, request CreateProductOrganizationRequestObject) (CreateProductOrganizationResponseObject, error)
@@ -13159,6 +13607,153 @@ func (sh *strictHandler) UpdateLicenseSchema(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateLicenseSchemaResponseObject); ok {
 		if err := validResponse.VisitUpdateLicenseSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLicenseTemplates operation middleware
+func (sh *strictHandler) ListLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request ListLicenseTemplatesRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLicenseTemplates(ctx, request.(ListLicenseTemplatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLicenseTemplates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLicenseTemplatesResponseObject); ok {
+		if err := validResponse.VisitListLicenseTemplatesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLicenseTemplate operation middleware
+func (sh *strictHandler) CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreateLicenseTemplateRequestObject
+
+	request.ProductId = productId
+
+	var body CreateLicenseTemplateJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLicenseTemplate(ctx, request.(CreateLicenseTemplateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLicenseTemplate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLicenseTemplateResponseObject); ok {
+		if err := validResponse.VisitCreateLicenseTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteLicenseTemplate operation middleware
+func (sh *strictHandler) DeleteLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	var request DeleteLicenseTemplateRequestObject
+
+	request.ProductId = productId
+	request.LicenseTemplateId = licenseTemplateId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteLicenseTemplate(ctx, request.(DeleteLicenseTemplateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteLicenseTemplate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteLicenseTemplateResponseObject); ok {
+		if err := validResponse.VisitDeleteLicenseTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLicenseTemplate operation middleware
+func (sh *strictHandler) GetLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	var request GetLicenseTemplateRequestObject
+
+	request.ProductId = productId
+	request.LicenseTemplateId = licenseTemplateId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLicenseTemplate(ctx, request.(GetLicenseTemplateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLicenseTemplate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLicenseTemplateResponseObject); ok {
+		if err := validResponse.VisitGetLicenseTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLicenseTemplate operation middleware
+func (sh *strictHandler) UpdateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) {
+	var request UpdateLicenseTemplateRequestObject
+
+	request.ProductId = productId
+	request.LicenseTemplateId = licenseTemplateId
+
+	var body UpdateLicenseTemplateJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLicenseTemplate(ctx, request.(UpdateLicenseTemplateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLicenseTemplate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLicenseTemplateResponseObject); ok {
+		if err := validResponse.VisitUpdateLicenseTemplateResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

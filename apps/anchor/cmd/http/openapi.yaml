@@ -172,6 +172,14 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         examples: ["etpl_2iABC..."]
+    LicenseTemplateIdParameter:
+      name: license_template_id
+      in: path
+      required: true
+      description: The KSUID of the license template.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        examples: ["ltpl_2iABC..."]
   securitySchemes:
     platformBearerAuth:
       type: http
@@ -2909,6 +2917,10 @@ components:
             type: string
           description: The list the value must be drawn from. Enum fields only.
 
+    # A declared field carries no optionality flag: every license template must
+    # set every field its schema declares. A template that could omit a field
+    # would leave every reader — instantiation, status derivation, the admin
+    # UI — inventing its own answer for what the customer then has.
     LicenseFieldDeclaration:
       type: object
       required: [name, type]
@@ -2919,10 +2931,6 @@ components:
           description: Stable identifier used by product code, unique within the schema.
         type:
           $ref: '#/components/schemas/LicenseFieldType'
-        required:
-          type: boolean
-          default: false
-          description: Whether a license template must supply a value for this field.
         description:
           type: string
         rules:
@@ -2933,7 +2941,7 @@ components:
       # `rules` is always present on read, even when the field declares none:
       # every field has a rule set, and an unconstrained one is empty rather
       # than absent. Only the write shape lets a caller omit it.
-      required: [id, name, type, required, rules, created_at, updated_at]
+      required: [id, name, type, rules, created_at, updated_at]
       properties:
         id:
           $ref: '#/components/schemas/ksuid'
@@ -2941,8 +2949,6 @@ components:
           type: string
         type:
           $ref: '#/components/schemas/LicenseFieldType'
-        required:
-          type: boolean
         description:
           type: string
         rules:
@@ -2997,6 +3003,82 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    # What a license template sets, keyed by license field name. A value is
+    # whatever its declared field type admits — a number, a boolean, or a
+    # string — so the map is deliberately untyped here and every entry is
+    # checked against the product's license schema on write.
+    LicenseTemplateValues:
+      type: object
+      additionalProperties: true
+      x-go-type: license.TemplateValues
+      x-go-type-import:
+        path: anchor/internal/domain/license
+      example:
+        flows: 500
+        sso: true
+        support_tier: priority
+
+    LicenseTemplateCreateRequest:
+      type: object
+      required: [name, values]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          description: Operator-facing name, unique within the product.
+        description:
+          type: string
+        values:
+          $ref: '#/components/schemas/LicenseTemplateValues'
+
+    # Values are replaced wholesale rather than patched: a template is a single
+    # statement of what a tier grants, and a partial edit has no unambiguous
+    # meaning for a license field the caller dropped.
+    LicenseTemplateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        values:
+          $ref: '#/components/schemas/LicenseTemplateValues'
+
+    # A template carries no version and no lifecycle state. It is consulted once,
+    # at instantiation, so there is nothing to publish and nothing to archive.
+    LicenseTemplateResponse:
+      type: object
+      required: [id, product_id, name, values, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        name:
+          type: string
+        description:
+          type: string
+        values:
+          $ref: '#/components/schemas/LicenseTemplateValues'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LicenseTemplateListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseTemplateResponse'
+        count:
+          type: integer
 
   responses:
     BadRequest:
@@ -5575,6 +5657,130 @@ paths:
       - platformBearerAuth: []
       - productApiKeyAuth:
         - license_schema:delete
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/licensing/templates:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Create License Template
+      description: >-
+        Defines a named set of values satisfying the product's license schema,
+        so "Free" and "Pro" are reusable objects rather than values retyped for
+        every customer. The values are validated against the schema here: a
+        value outside its field's declared rules is refused, and so is a
+        template that leaves any declared field unset.
+      operationId: createLicenseTemplate
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseTemplateCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      summary: List License Templates
+      description: Lists the product's license templates, ordered by name.
+      operationId: listLicenseTemplates
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateListResponse'
+
+  /v1/products/{product_id}/licensing/templates/{license_template_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/LicenseTemplateIdParameter'
+    get:
+      summary: Get License Template
+      operationId: getLicenseTemplate
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update License Template
+      description: >-
+        Edits a template. Values, when supplied, are replaced wholesale — a
+        license field absent from the request is unset. The result is validated
+        against the schema on every write, so a rename cannot leave a template
+        that no longer satisfies the declaration it is defined against.
+      operationId: updateLicenseTemplate
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseTemplateUpdateRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete License Template
+      description: >-
+        Removes a template. Organizations instantiated from it keep their own
+        copy of the values, so nothing they hold is affected.
+      operationId: deleteLicenseTemplate
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:delete
       responses:
         '204':
           description: Deleted

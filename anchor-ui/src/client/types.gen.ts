@@ -1863,10 +1863,6 @@ export type LicenseFieldDeclaration = {
      */
     name: string;
     type: LicenseFieldType;
-    /**
-     * Whether a license template must supply a value for this field.
-     */
-    required?: boolean;
     description?: string;
     rules?: LicenseFieldRules;
 };
@@ -1875,7 +1871,6 @@ export type LicenseFieldResponse = {
     id: Ksuid;
     name: string;
     type: LicenseFieldType;
-    required: boolean;
     description?: string;
     rules: LicenseFieldRules;
     created_at: string;
@@ -1899,6 +1894,40 @@ export type LicenseSchemaResponse = {
     fields: Array<LicenseFieldResponse>;
     created_at: string;
     updated_at: string;
+};
+
+export type LicenseTemplateValues = {
+    [key: string]: unknown;
+};
+
+export type LicenseTemplateCreateRequest = {
+    /**
+     * Operator-facing name, unique within the product.
+     */
+    name: string;
+    description?: string;
+    values: LicenseTemplateValues;
+};
+
+export type LicenseTemplateUpdateRequest = {
+    name?: string;
+    description?: string;
+    values?: LicenseTemplateValues;
+};
+
+export type LicenseTemplateResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    name: string;
+    description?: string;
+    values: LicenseTemplateValues;
+    created_at: string;
+    updated_at: string;
+};
+
+export type LicenseTemplateListResponse = {
+    items: Array<LicenseTemplateResponse>;
+    count: number;
 };
 
 /**
@@ -1970,6 +1999,11 @@ export type ProviderTypeParameter = IntegrationProviderType;
  * The KSUID of the email template.
  */
 export type EmailTemplateIdParameter = Ksuid;
+
+/**
+ * The KSUID of the license template.
+ */
+export type LicenseTemplateIdParameter = Ksuid;
 
 export type LogoutData = {
     body?: never;
@@ -5435,6 +5469,163 @@ export type UpdateLicenseSchemaResponses = {
 };
 
 export type UpdateLicenseSchemaResponse = UpdateLicenseSchemaResponses[keyof UpdateLicenseSchemaResponses];
+
+export type ListLicenseTemplatesData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates';
+};
+
+export type ListLicenseTemplatesResponses = {
+    /**
+     * Success
+     */
+    200: LicenseTemplateListResponse;
+};
+
+export type ListLicenseTemplatesResponse = ListLicenseTemplatesResponses[keyof ListLicenseTemplatesResponses];
+
+export type CreateLicenseTemplateData = {
+    body: LicenseTemplateCreateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates';
+};
+
+export type CreateLicenseTemplateErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type CreateLicenseTemplateError = CreateLicenseTemplateErrors[keyof CreateLicenseTemplateErrors];
+
+export type CreateLicenseTemplateResponses = {
+    /**
+     * Created
+     */
+    201: LicenseTemplateResponse;
+};
+
+export type CreateLicenseTemplateResponse = CreateLicenseTemplateResponses[keyof CreateLicenseTemplateResponses];
+
+export type DeleteLicenseTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the license template.
+         */
+        license_template_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
+};
+
+export type DeleteLicenseTemplateErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeleteLicenseTemplateResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteLicenseTemplateResponse = DeleteLicenseTemplateResponses[keyof DeleteLicenseTemplateResponses];
+
+export type GetLicenseTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the license template.
+         */
+        license_template_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
+};
+
+export type GetLicenseTemplateErrors = {
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetLicenseTemplateResponses = {
+    /**
+     * Success
+     */
+    200: LicenseTemplateResponse;
+};
+
+export type GetLicenseTemplateResponse = GetLicenseTemplateResponses[keyof GetLicenseTemplateResponses];
+
+export type UpdateLicenseTemplateData = {
+    body: LicenseTemplateUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the license template.
+         */
+        license_template_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
+};
+
+export type UpdateLicenseTemplateErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type UpdateLicenseTemplateError = UpdateLicenseTemplateErrors[keyof UpdateLicenseTemplateErrors];
+
+export type UpdateLicenseTemplateResponses = {
+    /**
+     * Success
+     */
+    200: LicenseTemplateResponse;
+};
+
+export type UpdateLicenseTemplateResponse = UpdateLicenseTemplateResponses[keyof UpdateLicenseTemplateResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
