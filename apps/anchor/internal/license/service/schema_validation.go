@@ -38,12 +38,13 @@ func errLicenseFieldUnknown(name string) *fault.Error {
 	}}, http.StatusBadRequest)
 }
 
-// errLicenseFieldRequired reports a required license field left unset, so no
-// Organization can be instantiated with a hole in its license.
-func errLicenseFieldRequired(name string) *fault.Error {
+// errLicenseFieldMissing reports a declared license field left unset. Every
+// declared field must be set, so no Organization can be instantiated with a
+// hole in its license and no reader has to invent what an absent field means.
+func errLicenseFieldMissing(name string) *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
-		Code:    "LICENSE_FIELD_REQUIRED",
-		Message: "The license field " + name + " is required and must be set",
+		Code:    "LICENSE_FIELD_MISSING",
+		Message: "The license field " + name + " is declared by this product's license schema and must be set",
 		Field:   name,
 	}}, http.StatusBadRequest)
 }
@@ -61,7 +62,16 @@ func errLicenseValueInvalid(name string, violation *rules.ViolationError) *fault
 	}}, http.StatusBadRequest)
 }
 
-// ValidateValues reports whether values satisfy the Product's license schema.
+// ValidateValues reports whether values satisfy the Product's license schema:
+// every key is declared, every declared field is set, and every value satisfies
+// its field's rules.
+//
+// Every declared field is mandatory, so a set that omits one is refused. That
+// is what lets a reader of a template — instantiation, status derivation, the
+// admin UI — take the values at face value instead of deciding for itself what
+// an absent field grants. The cost is that adding a field to a schema
+// invalidates every existing template until each sets it; the schema write is
+// not refused for it, because Anchor validates but never gates.
 //
 // It returns ErrLicenseSchemaNotFound when the Product has declared no schema,
 // because there is then nothing for the values to satisfy.
@@ -90,14 +100,13 @@ func (s *licenseSchemaService) ValidateValues(
 		}
 	}
 
+	// Fields are read back ordered by name, so a set missing several of them
+	// always reports the same one and a test can name the field it expects.
 	for i := range schema.Fields {
 		field := schema.Fields[i]
 		value, isSet := values[field.Name]
 		if !isSet {
-			if field.Required {
-				return errLicenseFieldRequired(field.Name)
-			}
-			continue
+			return errLicenseFieldMissing(field.Name)
 		}
 
 		if err = rules.ValidateValue(field.Type, field.Rules, value); err != nil {

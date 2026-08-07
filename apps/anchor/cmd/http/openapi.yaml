@@ -2917,6 +2917,10 @@ components:
             type: string
           description: The list the value must be drawn from. Enum fields only.
 
+    # A declared field carries no optionality flag: every license template must
+    # set every field its schema declares. A template that could omit a field
+    # would leave every reader — instantiation, status derivation, the admin
+    # UI — inventing its own answer for what the customer then has.
     LicenseFieldDeclaration:
       type: object
       required: [name, type]
@@ -2927,10 +2931,6 @@ components:
           description: Stable identifier used by product code, unique within the schema.
         type:
           $ref: '#/components/schemas/LicenseFieldType'
-        required:
-          type: boolean
-          default: false
-          description: Whether a license template must supply a value for this field.
         description:
           type: string
         rules:
@@ -2941,7 +2941,7 @@ components:
       # `rules` is always present on read, even when the field declares none:
       # every field has a rule set, and an unconstrained one is empty rather
       # than absent. Only the write shape lets a caller omit it.
-      required: [id, name, type, required, rules, created_at, updated_at]
+      required: [id, name, type, rules, created_at, updated_at]
       properties:
         id:
           $ref: '#/components/schemas/ksuid'
@@ -2949,8 +2949,6 @@ components:
           type: string
         type:
           $ref: '#/components/schemas/LicenseFieldType'
-        required:
-          type: boolean
         description:
           type: string
         rules:
@@ -5675,7 +5673,7 @@ paths:
         so "Free" and "Pro" are reusable objects rather than values retyped for
         every customer. The values are validated against the schema here: a
         value outside its field's declared rules is refused, and so is a
-        template that omits a required field.
+        template that leaves any declared field unset.
       operationId: createLicenseTemplate
       tags:
       - Licensing

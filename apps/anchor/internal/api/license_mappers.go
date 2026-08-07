@@ -9,9 +9,6 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 			Name: d.Name,
 			Type: d.Type,
 		}
-		if d.Required != nil {
-			fd.Required = *d.Required
-		}
 		if d.Description != nil {
 			fd.Description = *d.Description
 		}
@@ -28,7 +25,6 @@ func mapLicenseFieldToResponse(f license.Field) LicenseFieldResponse {
 		Id:        f.ID,
 		Name:      f.Name,
 		Type:      f.Type,
-		Required:  f.Required,
 		Rules:     f.Rules,
 		CreatedAt: f.CreatedAt,
 		UpdatedAt: f.UpdatedAt,

@@ -21,7 +21,6 @@ type licenseSchemaFieldsTable struct {
 	LicenseSchemaID postgres.ColumnString
 	Name            postgres.ColumnString
 	FieldType       postgres.ColumnString
-	IsRequired      postgres.ColumnBool
 	Description     postgres.ColumnString
 	RulesJSON       postgres.ColumnString
 	CreatedAt       postgres.ColumnTimestampz
@@ -71,14 +70,13 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		LicenseSchemaIDColumn = postgres.StringColumn("license_schema_id")
 		NameColumn            = postgres.StringColumn("name")
 		FieldTypeColumn       = postgres.StringColumn("field_type")
-		IsRequiredColumn      = postgres.BoolColumn("is_required")
 		DescriptionColumn     = postgres.StringColumn("description")
 		RulesJSONColumn       = postgres.StringColumn("rules_json")
 		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn       = postgres.TimestampzColumn("updated_at")
-		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns        = postgres.ColumnList{IsRequiredColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns        = postgres.ColumnList{DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return licenseSchemaFieldsTable{
@@ -89,7 +87,6 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		LicenseSchemaID: LicenseSchemaIDColumn,
 		Name:            NameColumn,
 		FieldType:       FieldTypeColumn,
-		IsRequired:      IsRequiredColumn,
 		Description:     DescriptionColumn,
 		RulesJSON:       RulesJSONColumn,
 		CreatedAt:       CreatedAtColumn,

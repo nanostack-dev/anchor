@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +13,7 @@ func TestLicenseTemplateList(t *testing.T) {
 	t.Run("lists the product's templates by name", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Pro", validTemplateValues())
-		createTemplate(t, tc, "Free", ct.LicenseTemplateValues{"flows": 10, "sso": false})
+		createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 
 		resp, err := tc.product.OwnerAuthenticatedClient().ListLicenseTemplatesWithResponse(
 			context.Background(), tc.product.ProductID,

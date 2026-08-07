@@ -1221,7 +1221,6 @@ export const zLicenseFieldRules = z.object({
 export const zLicenseFieldDeclaration = z.object({
     name: z.string().max(120),
     type: zLicenseFieldType,
-    required: z.optional(z.boolean()).default(false),
     description: z.optional(z.string()),
     rules: z.optional(zLicenseFieldRules)
 });
@@ -1230,7 +1229,6 @@ export const zLicenseFieldResponse = z.object({
     id: zKsuid,
     name: z.string(),
     type: zLicenseFieldType,
-    required: z.boolean(),
     description: z.optional(z.string()),
     rules: zLicenseFieldRules,
     created_at: z.iso.datetime(),

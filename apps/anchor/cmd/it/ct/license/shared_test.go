@@ -132,19 +132,19 @@ func enumValues(values ...string) *[]string {
 }
 
 // templateSchemaFields is the declaration the license template tests are
-// written against: one required limit with a ceiling, one required boolean, one
-// optional enum, and one optional pattern-constrained string. Between them they
-// reach every branch a template write has to take — required and optional,
-// bounded and unbounded, numeric and not.
+// written against: a bounded limit, a boolean, an enum, and a
+// pattern-constrained string. Between them they reach every branch a template
+// write has to take — bounded and unbounded, numeric and not.
+//
+// Every one of them is mandatory, because every declared license field is.
 func templateSchemaFields() []ct.LicenseFieldDeclaration {
 	return []ct.LicenseFieldDeclaration{
 		{
-			Name:     "flows",
-			Type:     ct.LicenseFieldTypeLIMIT,
-			Required: new(true),
-			Rules:    limitRules(0, 100000),
+			Name:  "flows",
+			Type:  ct.LicenseFieldTypeLIMIT,
+			Rules: limitRules(0, 100000),
 		},
-		{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN, Required: new(true)},
+		{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN},
 		{
 			Name:  "support_tier",
 			Type:  ct.LicenseFieldTypeENUM,
@@ -180,14 +180,35 @@ func newTemplateCtx(t *testing.T) testCtx {
 	return tc
 }
 
-// validTemplateValues satisfies templateSchemaFields: both required fields set,
+// validTemplateValues satisfies templateSchemaFields: every declared field set,
 // every value inside its declared rules.
 func validTemplateValues() ct.LicenseTemplateValues {
 	return ct.LicenseTemplateValues{
 		"flows":        500,
 		"sso":          true,
 		"support_tier": "priority",
+		"region":       "ca-central",
 	}
+}
+
+// templateValuesExcept returns an otherwise-valid set with one declared field
+// removed, for the tests whose subject is the omission.
+func templateValuesExcept(name string) ct.LicenseTemplateValues {
+	values := validTemplateValues()
+	delete(values, name)
+	return values
+}
+
+// templateValuesWith returns an otherwise-valid set with one entry replaced or
+// added, for the tests whose subject is a single bad value.
+//
+// Starting from a complete set matters now that every declared field is
+// mandatory: a set assembled ad hoc would trip the missing-field check first
+// and the test would pass for the wrong reason.
+func templateValuesWith(name string, value any) ct.LicenseTemplateValues {
+	values := validTemplateValues()
+	values[name] = value
+	return values
 }
 
 // createTemplate writes a template and returns it, failing the test if the

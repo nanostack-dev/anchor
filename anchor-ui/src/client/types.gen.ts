@@ -1863,10 +1863,6 @@ export type LicenseFieldDeclaration = {
      */
     name: string;
     type: LicenseFieldType;
-    /**
-     * Whether a license template must supply a value for this field.
-     */
-    required?: boolean;
     description?: string;
     rules?: LicenseFieldRules;
 };
@@ -1875,7 +1871,6 @@ export type LicenseFieldResponse = {
     id: Ksuid;
     name: string;
     type: LicenseFieldType;
-    required: boolean;
     description?: string;
     rules: LicenseFieldRules;
     created_at: string;

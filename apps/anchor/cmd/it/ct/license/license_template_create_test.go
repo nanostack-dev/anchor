@@ -40,21 +40,21 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		assert.InDelta(t, 500.0, template.Values["flows"], 0)
 		assert.Equal(t, true, template.Values["sso"])
 		assert.Equal(t, "priority", template.Values["support_tier"])
+		assert.Equal(t, "ca-central", template.Values["region"])
 	})
 
-	t.Run("omits optional fields the template does not set", func(t *testing.T) {
+	t.Run("carries a value for every declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
-		template := createTemplate(t, tc, "Free", ct.LicenseTemplateValues{
-			"flows": 10,
-			"sso":   false,
-		})
+		template := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 
-		// An optional field left unset is absent, not present-and-null: the
-		// instantiation step has to be able to tell "not granted" from "granted
-		// nothing".
-		assert.NotContains(t, template.Values, "support_tier")
-		assert.NotContains(t, template.Values, "region")
+		// The whole point of the mandatory rule: reading a template answers what
+		// the customer has, for every field, without anyone deciding what an
+		// absent one would have meant.
+		assert.Len(t, template.Values, len(templateSchemaFields()))
+		for _, declared := range templateSchemaFields() {
+			assert.Contains(t, template.Values, declared.Name)
+		}
 	})
 
 	t.Run("carries no version or lifecycle state", func(t *testing.T) {

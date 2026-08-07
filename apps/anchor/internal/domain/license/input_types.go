@@ -5,7 +5,6 @@ package license
 type FieldDeclaration struct {
 	Name        string `validate:"required,notblank,max=120"`
 	Type        FieldType
-	Required    bool
 	Description string
 	Rules       FieldRules
 }

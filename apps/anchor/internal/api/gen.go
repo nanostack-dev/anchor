@@ -676,12 +676,9 @@ type LicenseFieldDeclaration struct {
 	Description *string `json:"description,omitempty"`
 
 	// Name Stable identifier used by product code, unique within the schema.
-	Name string `json:"name"`
-
-	// Required Whether a license template must supply a value for this field.
-	Required *bool              `json:"required,omitempty"`
-	Rules    *LicenseFieldRules `json:"rules,omitempty"`
-	Type     LicenseFieldType   `json:"type"`
+	Name  string             `json:"name"`
+	Rules *LicenseFieldRules `json:"rules,omitempty"`
+	Type  LicenseFieldType   `json:"type"`
 }
 
 // LicenseFieldResponse defines model for LicenseFieldResponse.
@@ -694,7 +691,6 @@ type LicenseFieldResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	Id        Ksuid             `json:"id"`
 	Name      string            `json:"name"`
-	Required  bool              `json:"required"`
 	Rules     LicenseFieldRules `json:"rules"`
 	Type      LicenseFieldType  `json:"type"`
 	UpdatedAt time.Time         `json:"updated_at"`

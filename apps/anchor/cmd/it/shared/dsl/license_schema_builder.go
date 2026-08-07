@@ -37,17 +37,18 @@ type LicenseSchemaOpts struct {
 
 // LicenseField builds one field declaration. rules may be nil for a field the
 // test does not constrain.
+//
+// There is no required flag to pass: every license template must set every
+// field its schema declares.
 func LicenseField(
 	name string,
 	fieldType nanostackClient.LicenseFieldType,
-	required bool,
 	fieldRules *nanostackClient.LicenseFieldRules,
 ) nanostackClient.LicenseFieldDeclaration {
 	return nanostackClient.LicenseFieldDeclaration{
-		Name:     name,
-		Type:     fieldType,
-		Required: &required,
-		Rules:    fieldRules,
+		Name:  name,
+		Type:  fieldType,
+		Rules: fieldRules,
 	}
 }
 
