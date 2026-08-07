@@ -22,6 +22,11 @@ func licenseTemplatesUpdatableColumns() postgres.ColumnList {
 	)
 }
 
+// activeOnly narrows to the tiers still on sale.
+func activeOnly() postgres.BoolExpression {
+	return table.LicenseTemplates.Status.EQ(postgres.String(string(license.TemplateActive)))
+}
+
 type templateRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.LicenseTemplateMapper
@@ -65,17 +70,24 @@ func (r *templateRepositoryImpl) FindByName(
 		FROM(table.LicenseTemplates).
 		WHERE(
 			licenseTemplateScope(tenantID, productID).
-				AND(table.LicenseTemplates.Name.EQ(postgres.String(name))),
+				AND(table.LicenseTemplates.Name.EQ(postgres.String(name))).
+				AND(activeOnly()),
 		).LIMIT(1)
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *templateRepositoryImpl) ListByProduct(
-	ctx context.Context, tenantID string, productID string,
+	ctx context.Context, tenantID string, productID string, status *license.TemplateStatus,
 ) ([]license.Template, error) {
+	where := licenseTemplateScope(tenantID, productID)
+	if status != nil {
+		where = where.AND(
+			table.LicenseTemplates.Status.EQ(postgres.String(string(*status))),
+		)
+	}
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
-		WHERE(licenseTemplateScope(tenantID, productID)).
+		WHERE(where).
 		ORDER_BY(table.LicenseTemplates.Name.ASC())
 	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
@@ -106,6 +118,7 @@ func (r *templateRepositoryImpl) Update(
 			table.LicenseTemplates.ID,
 			table.LicenseTemplates.PlatformTenantID,
 			table.LicenseTemplates.ProductID,
+			table.LicenseTemplates.Status,
 		),
 	).MODEL(entity).WHERE(
 		licenseTemplateScope(tenantID, template.ProductID).
@@ -114,12 +127,16 @@ func (r *templateRepositoryImpl) Update(
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
-func (r *templateRepositoryImpl) DeleteByID(
+func (r *templateRepositoryImpl) Archive(
 	ctx context.Context, tenantID string, productID string, templateID string,
-) error {
-	stmt := table.LicenseTemplates.DELETE().WHERE(
+) (license.Template, error) {
+	stmt := table.LicenseTemplates.UPDATE(
+		table.LicenseTemplates.Status,
+	).SET(
+		postgres.String(string(license.TemplateArchived)),
+	).WHERE(
 		licenseTemplateScope(tenantID, productID).
 			AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
-	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
+	).RETURNING(table.LicenseTemplates.AllColumns)
+	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }

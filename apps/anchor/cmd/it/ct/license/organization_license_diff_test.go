@@ -97,16 +97,19 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.License().DiffRaw().StatusCode())
 	})
 
-	t.Run("404 when the template has since been deleted", func(t *testing.T) {
+	t.Run("still answers after the template is archived", func(t *testing.T) {
 		w := newLicensedWorld(t)
+		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
-		w.Template().Delete()
+		w.Template().Archive()
 
-		// The license itself is untouched — it stopped depending on the template
-		// when the values were copied — but there is nothing left to compare
-		// against.
-		assert.Equal(t, http.StatusNotFound, w.License().DiffRaw().StatusCode())
-		assertValues(t, w.License().Get().Values, validTemplateValues())
+		// A withdrawn tier is still the tier this customer is on, so the question
+		// "how does this account differ from what it was sold" keeps its answer
+		// for the lifetime of the license.
+		diff := w.License().Diff()
+		assert.Equal(t, w.TemplateID(), diff.TemplateId)
+		require.Len(t, diff.Differences, 1)
+		assert.Equal(t, "flows", diff.Differences[0].Field)
 	})
 
 	t.Run("does not diff another product's license", func(t *testing.T) {

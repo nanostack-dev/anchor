@@ -1256,6 +1256,14 @@ export const zLicenseSchemaResponse = z.object({
 
 export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
 
+/**
+ * Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
+ */
+export const zLicenseTemplateStatus = z.enum([
+    'ACTIVE',
+    'ARCHIVED'
+]);
+
 export const zLicenseTemplateCreateRequest = z.object({
     name: z.string().max(120),
     description: z.optional(z.string()),
@@ -1273,6 +1281,7 @@ export const zLicenseTemplateResponse = z.object({
     product_id: zKsuid,
     name: z.string(),
     description: z.optional(z.string()),
+    status: zLicenseTemplateStatus,
     values: zLicenseTemplateValues,
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -2621,7 +2630,9 @@ export const zListLicenseTemplatesData = z.object({
     path: z.object({
         product_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        status: z.optional(zLicenseTemplateStatus)
+    }))
 });
 
 /**
@@ -2641,20 +2652,6 @@ export const zCreateLicenseTemplateData = z.object({
  * Created
  */
 export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
-
-export const zDeleteLicenseTemplateData = z.object({
-    body: z.optional(z.never()),
-    path: z.object({
-        product_id: zKsuid,
-        license_template_id: zKsuid
-    }),
-    query: z.optional(z.never())
-});
-
-/**
- * Deleted
- */
-export const zDeleteLicenseTemplateResponse = z.void();
 
 export const zGetLicenseTemplateData = z.object({
     body: z.optional(z.never()),
@@ -2683,6 +2680,20 @@ export const zUpdateLicenseTemplateData = z.object({
  * Success
  */
 export const zUpdateLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zArchiveLicenseTemplateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Archived, or already archived.
+ */
+export const zArchiveLicenseTemplateResponse = zLicenseTemplateResponse;
 
 export const zGetOrganizationLicenseData = z.object({
     body: z.optional(z.never()),

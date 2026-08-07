@@ -13,16 +13,26 @@ import (
 	licenserepo "anchor/internal/license/repository"
 )
 
-// licenseTemplateNameConstraint is the UNIQUE (product_id, name) index on
-// license_templates, postgres-named. It is the real guard against two templates
+// licenseTemplateNameConstraint is the partial UNIQUE (product_id, name) index
+// on license_templates, postgres-named. It covers active templates only, so
+// archiving a tier frees its name. It is the real guard against two templates
 // claiming one name; the lookup before the write only exists to turn the race
 // loser's failure into the same message the check would have produced.
-const licenseTemplateNameConstraint = "license_templates_product_id_name_key"
+const licenseTemplateNameConstraint = "uq_license_templates_product_name_active"
 
-var ErrLicenseTemplateNotFound = fault.NewWithStatus(
-	"LICENSE_TEMPLATE_NOT_FOUND",
-	"This product has no license template with that identifier",
-	http.StatusNotFound,
+var (
+	ErrLicenseTemplateNotFound = fault.NewWithStatus(
+		"LICENSE_TEMPLATE_NOT_FOUND",
+		"This product has no license template with that identifier",
+		http.StatusNotFound,
+	)
+	// ErrLicenseTemplateArchived refuses to act on a withdrawn tier. It reads
+	// rather than writes: the template is still there, and still resolves for
+	// every license that names it.
+	ErrLicenseTemplateArchived = fault.BadRequest(
+		"LICENSE_TEMPLATE_ARCHIVED",
+		"This license template is archived; the tier is no longer offered",
+	)
 )
 
 // errLicenseTemplateNameExists reports a name already taken within the Product.
@@ -48,15 +58,23 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 // What it owns is the template itself: its name, its identity, and the rule
 // that a write is refused unless the schema accepts its values.
 //
-// Templates carry no version and no lifecycle state. There is no publish step
-// and nothing to archive, because a template is consulted once — when its
-// values are copied onto an Organization's license.
+// Templates carry no version and no publish step, because a template is
+// consulted once — when its values are copied onto an Organization's license.
+// The one lifecycle step they do carry is withdrawal: a template is archived,
+// never deleted, so the licenses that name it keep resolving. See
+// docs/adr/0010-license-templates-are-archived.md.
 type LicenseTemplateService interface {
 	CreateTemplate(ctx context.Context, in license.CreateTemplateInput) (license.Template, error)
+	// GetTemplate returns the template whatever its status. An archived one still
+	// has to resolve, because a license names it.
 	GetTemplate(ctx context.Context, in license.GetTemplateInput) (*license.Template, error)
 	ListTemplates(ctx context.Context, in license.ListTemplatesInput) ([]license.Template, error)
 	UpdateTemplate(ctx context.Context, in license.UpdateTemplateInput) (license.Template, error)
-	DeleteTemplate(ctx context.Context, in license.DeleteTemplateInput) error
+	// ArchiveTemplate withdraws the tier and returns it. It is idempotent, and it
+	// cannot be undone.
+	ArchiveTemplate(
+		ctx context.Context, in license.ArchiveTemplateInput,
+	) (license.Template, error)
 }
 
 type licenseTemplateService struct {
@@ -101,6 +119,7 @@ func (s *licenseTemplateService) CreateTemplate(
 		ProductID:        in.ProductID,
 		Name:             in.Name,
 		Description:      in.Description,
+		Status:           license.TemplateActive,
 		Values:           in.Values,
 	}
 	template.GenerateID()
@@ -136,7 +155,7 @@ func (s *licenseTemplateService) ListTemplates(
 		return nil, err
 	}
 
-	return s.templateRepo.ListByProduct(ctx, in.TenantID, in.ProductID)
+	return s.templateRepo.ListByProduct(ctx, in.TenantID, in.ProductID, in.Status)
 }
 
 func (s *licenseTemplateService) UpdateTemplate(
@@ -152,6 +171,9 @@ func (s *licenseTemplateService) UpdateTemplate(
 	}
 	if existing == nil {
 		return license.Template{}, ErrLicenseTemplateNotFound
+	}
+	if existing.IsArchived() {
+		return license.Template{}, ErrLicenseTemplateArchived
 	}
 
 	if in.Description != nil {
@@ -195,22 +217,27 @@ func (s *licenseTemplateService) UpdateTemplate(
 	return updated, nil
 }
 
-func (s *licenseTemplateService) DeleteTemplate(
-	ctx context.Context, in license.DeleteTemplateInput,
-) error {
+func (s *licenseTemplateService) ArchiveTemplate(
+	ctx context.Context, in license.ArchiveTemplateInput,
+) (license.Template, error) {
 	if err := validate.ValidateStruct(in); err != nil {
-		return err
+		return license.Template{}, err
 	}
 
 	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
-		return err
+		return license.Template{}, err
 	}
 	if existing == nil {
-		return ErrLicenseTemplateNotFound
+		return license.Template{}, ErrLicenseTemplateNotFound
+	}
+	// Withdrawing a withdrawn tier is the outcome the caller asked for.
+	if existing.IsArchived() {
+		return *existing, nil
 	}
 
 	// Organizations instantiated from this template keep their own copy of the
-	// values, so there is nothing here to cascade.
-	return s.templateRepo.DeleteByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	// values, so there is nothing here to cascade. What the row is kept for is
+	// the provenance those licenses name.
+	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
 }

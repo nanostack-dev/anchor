@@ -60,6 +60,7 @@ func mapLicenseTemplateToResponse(t license.Template) LicenseTemplateResponse {
 		Id:        t.ID,
 		ProductId: t.ProductID,
 		Name:      t.Name,
+		Status:    t.Status,
 		Values:    values,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,
