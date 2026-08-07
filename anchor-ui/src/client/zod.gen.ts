@@ -1344,6 +1344,30 @@ export const zOrganizationLicenseDiffResponse = z.object({
 });
 
 /**
+ * One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
+ */
+export const zUsageReportRequest = z.object({
+    key: z.string().max(120),
+    value: z.number(),
+    window_start: z.optional(z.iso.datetime()),
+    window_end: z.optional(z.iso.datetime())
+});
+
+/**
+ * One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
+ */
+export const zUsageObservationResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    key: z.string(),
+    value: z.number(),
+    window_start: z.optional(z.iso.datetime()),
+    window_end: z.optional(z.iso.datetime()),
+    observed_at: z.iso.datetime()
+});
+
+/**
  * The KSUID of the platform invitation.
  */
 export const zPlatformInvitationIdParameter = zKsuid;
@@ -2764,3 +2788,17 @@ export const zGetOrganizationLicenseDiffData = z.object({
  * Success
  */
 export const zGetOrganizationLicenseDiffResponse = zOrganizationLicenseDiffResponse;
+
+export const zReportOrganizationUsageData = z.object({
+    body: zUsageReportRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stored.
+ */
+export const zReportOrganizationUsageResponse = zUsageObservationResponse;

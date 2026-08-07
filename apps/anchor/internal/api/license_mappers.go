@@ -90,6 +90,22 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 	}
 }
 
+func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {
+	// The window travels as it was stored: both ends on a windowed counter,
+	// neither on a gauge. Half a window is refused on write, so a reader never
+	// has to decide what one would mean.
+	return UsageObservationResponse{
+		Id:             o.ID,
+		ProductId:      o.ProductID,
+		OrganizationId: o.OrganizationID,
+		Key:            o.Key,
+		Value:          o.Value,
+		WindowStart:    o.WindowStart,
+		WindowEnd:      o.WindowEnd,
+		ObservedAt:     o.ObservedAt,
+	}
+}
+
 func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
 	return LicenseFieldDifference{
 		Field:         d.Field,

@@ -30,6 +30,7 @@ func NewModule() fx.Option {
 			NewLicenseSchemaFieldMapper,
 			NewLicenseTemplateMapper,
 			NewOrganizationLicenseMapper,
+			NewUsageObservationMapper,
 		),
 	)
 }

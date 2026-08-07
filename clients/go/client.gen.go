@@ -967,6 +967,28 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ReportOrganizationUsageWithBody Report Organization Usage
+	//
+	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+	ReportOrganizationUsageWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReportOrganizationUsage Report Organization Usage
+	//
+	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+	ReportOrganizationUsage(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddOrganizationMemberWithBody Add Organization Member
 	//
 	// Adds a user to an organization.
@@ -3253,6 +3275,48 @@ func (c *Client) InstantiateOrganizationLicense(ctx context.Context, productId P
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationLicenseDiffRequest(c.Server, productId, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReportOrganizationUsageWithBody Report Organization Usage
+//
+// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+func (c *Client) ReportOrganizationUsageWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReportOrganizationUsageRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReportOrganizationUsage Report Organization Usage
+//
+// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+func (c *Client) ReportOrganizationUsage(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReportOrganizationUsageRequest(c.Server, productId, organizationId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7210,6 +7274,60 @@ func NewGetOrganizationLicenseDiffRequest(server string, productId ProductIdPara
 	return req, nil
 }
 
+// NewReportOrganizationUsageRequest calls the generic ReportOrganizationUsage builder with application/json body
+func NewReportOrganizationUsageRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReportOrganizationUsageRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewReportOrganizationUsageRequestWithBody constructs an http.Request for the ReportOrganizationUsage method, with any body, and a specified content type
+func NewReportOrganizationUsageRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license/usage", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAddOrganizationMemberRequest calls the generic AddOrganizationMember builder with application/json body
 func NewAddOrganizationMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body AddOrganizationMemberJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9724,6 +9842,28 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiffWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseDiffResponse, error)
+
+	// ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
+	//
+	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+	ReportOrganizationUsageWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReportOrganizationUsageResponse, error)
+
+	// ReportOrganizationUsageWithResponse Report Organization Usage
+	//
+	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+	ReportOrganizationUsageWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*ReportOrganizationUsageResponse, error)
 
 	// AddOrganizationMemberWithBodyWithResponse Add Organization Member
 	//
@@ -13675,6 +13815,54 @@ func (r GetOrganizationLicenseDiffResponse) ContentType() string {
 	return ""
 }
 
+type ReportOrganizationUsageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *UsageObservationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ReportOrganizationUsageResponse) GetJSON201() *UsageObservationResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReportOrganizationUsageResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r ReportOrganizationUsageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReportOrganizationUsageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReportOrganizationUsageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReportOrganizationUsageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type AddOrganizationMemberResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16880,6 +17068,40 @@ func (c *ClientWithResponses) GetOrganizationLicenseDiffWithResponse(ctx context
 		return nil, err
 	}
 	return ParseGetOrganizationLicenseDiffResponse(rsp)
+}
+
+// ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
+//
+// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+func (c *ClientWithResponses) ReportOrganizationUsageWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReportOrganizationUsageResponse, error) {
+	rsp, err := c.ReportOrganizationUsageWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReportOrganizationUsageResponse(rsp)
+}
+
+// ReportOrganizationUsageWithResponse Report Organization Usage
+//
+// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
+func (c *ClientWithResponses) ReportOrganizationUsageWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*ReportOrganizationUsageResponse, error) {
+	rsp, err := c.ReportOrganizationUsage(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReportOrganizationUsageResponse(rsp)
 }
 
 // AddOrganizationMemberWithBodyWithResponse Add Organization Member
@@ -20258,6 +20480,42 @@ func ParseGetOrganizationLicenseDiffResponse(rsp *http.Response) (*GetOrganizati
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseReportOrganizationUsageResponse parses an HTTP response from a ReportOrganizationUsageWithResponse call
+func ParseReportOrganizationUsageResponse(rsp *http.Response) (*ReportOrganizationUsageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReportOrganizationUsageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UsageObservationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case rsp.StatusCode == 404:
 		break // No content-type

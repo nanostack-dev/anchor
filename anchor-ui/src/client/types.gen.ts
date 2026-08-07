@@ -2021,6 +2021,52 @@ export type OrganizationLicenseDiffResponse = {
 };
 
 /**
+ * One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
+ */
+export type UsageReportRequest = {
+    /**
+     * The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage.
+     */
+    key: string;
+    /**
+     * The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
+     */
+    value: number;
+    /**
+     * Send window_start and window_end together, or send neither. Neither makes this a gauge: "37 flows exist right now", a number that rises and falls. Both make it a counter over the half-open period [window_start, window_end): "412 runs between August 14 and September 14". Start a new window to reset the counter.
+     * The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
+     */
+    window_start?: string;
+    /**
+     * The exclusive end of the period. It must come after window_start.
+     */
+    window_end?: string;
+};
+
+/**
+ * One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
+ */
+export type UsageObservationResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    organization_id: Ksuid;
+    /**
+     * The license field this value was measured against.
+     */
+    key: string;
+    value: number;
+    /**
+     * Absent on a gauge. Present with window_end on a windowed counter.
+     */
+    window_start?: string;
+    window_end?: string;
+    /**
+     * When Anchor accepted the report. Anchor sets it, so a consumer cannot backdate a report or write into the future.
+     */
+    observed_at: string;
+};
+
+/**
  * The KSUID of the platform invitation.
  */
 export type PlatformInvitationIdParameter = Ksuid;
@@ -5899,6 +5945,44 @@ export type GetOrganizationLicenseDiffResponses = {
 };
 
 export type GetOrganizationLicenseDiffResponse = GetOrganizationLicenseDiffResponses[keyof GetOrganizationLicenseDiffResponses];
+
+export type ReportOrganizationUsageData = {
+    body: UsageReportRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/usage';
+};
+
+export type ReportOrganizationUsageErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type ReportOrganizationUsageError = ReportOrganizationUsageErrors[keyof ReportOrganizationUsageErrors];
+
+export type ReportOrganizationUsageResponses = {
+    /**
+     * Stored.
+     */
+    201: UsageObservationResponse;
+};
+
+export type ReportOrganizationUsageResponse = ReportOrganizationUsageResponses[keyof ReportOrganizationUsageResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

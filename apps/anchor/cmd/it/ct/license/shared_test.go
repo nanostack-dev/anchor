@@ -7,6 +7,7 @@ package license_ct_test
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"os"
 	"testing"
@@ -20,11 +21,16 @@ import (
 	itdsl "anchor/cmd/it/shared/dsl"
 )
 
+// testDB is the same connection the application uses. One assertion needs it:
+// that usage observations live in a hypertable, which no API response can show.
+var testDB *sql.DB
+
 func TestMain(m *testing.M) {
 	if err := os.Chdir(".."); err != nil {
 		panic(err)
 	}
 	itshared.RunTestMain(m, itshared.TestConfig{
+		ExtraPopulateTargets:    []any{&testDB},
 		EnableRedis:             true,
 		PopulateRepositories:    true,
 		APIKeyService:           &itshared.APIKeyService,
@@ -63,6 +69,22 @@ func newTestCtx(t *testing.T) testCtx {
 
 func uniqueFieldName() string {
 	return "field_" + ids.MustNew("ct")
+}
+
+// createOrganization adds an organization to a product. Creating one is a
+// Product API key route rather than a platform bearer one, so it cannot go
+// through the client the licensing acts use.
+func createOrganization(t *testing.T, product *itdsl.ProductContext) string {
+	t.Helper()
+	client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
+	resp, err := client.CreateProductOrganizationWithResponse(
+		context.Background(),
+		product.ProductID,
+		ct.CreateProductOrganizationJSONRequestBody{Name: "org_" + ids.MustNew("ct")},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	return resp.JSON201.Id
 }
 
 func assertAPIError(t *testing.T, errs []ct.ApiError, code string) {

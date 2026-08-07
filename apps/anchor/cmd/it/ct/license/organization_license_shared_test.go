@@ -3,7 +3,9 @@ package license_ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -94,17 +96,7 @@ func (w *licenseWorld) TemplateID() string {
 // whose subject is that one organization's license is its own.
 func (w *licenseWorld) NewOrganization() string {
 	w.t.Helper()
-	// Creating an organization is a Product API key route, not a platform bearer
-	// one, so this cannot go through the client the licensing acts use.
-	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
-	resp, err := client.CreateProductOrganizationWithResponse(
-		context.Background(),
-		w.productID(),
-		ct.CreateProductOrganizationJSONRequestBody{Name: "org_" + ids.MustNew("ct")},
-	)
-	require.NoError(w.t, err)
-	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
-	return resp.JSON201.Id
+	return createOrganization(w.t, w.product)
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +209,98 @@ func (h licenseHandle) Diff() ct.OrganizationLicenseDiffResponse {
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(h.t, resp.JSON200)
 	return *resp.JSON200
+}
+
+// ---------------------------------------------------------------------------
+// Usage handle
+// ---------------------------------------------------------------------------
+
+// usageHandle reports what one organization has used, with one credential. It
+// is separate from licenseHandle because usage needs no license: an
+// organization can report before it is on a tier, and keeps reporting after one
+// is withdrawn.
+type usageHandle struct {
+	t              *testing.T
+	client         *ct.ClientWithResponses
+	productID      string
+	organizationID string
+}
+
+// Usage addresses the world's own organization, as its owner.
+func (w *licenseWorld) Usage() usageHandle {
+	return usageHandle{
+		t:              w.t,
+		client:         w.client(),
+		productID:      w.productID(),
+		organizationID: w.OrganizationID(),
+	}
+}
+
+// For addresses another organization, keeping the credential.
+func (h usageHandle) For(organizationID string) usageHandle {
+	h.organizationID = organizationID
+	return h
+}
+
+// As swaps the credential, for the tests whose subject is a scope.
+func (h usageHandle) As(client *ct.ClientWithResponses) usageHandle {
+	h.client = client
+	return h
+}
+
+func (h usageHandle) ReportRaw(
+	report ct.UsageReportRequest,
+) *ct.ReportOrganizationUsageResponse {
+	h.t.Helper()
+	resp, err := h.client.ReportOrganizationUsageWithResponse(
+		context.Background(), h.productID, h.organizationID, report,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h usageHandle) Report(report ct.UsageReportRequest) ct.UsageObservationResponse {
+	h.t.Helper()
+	resp := h.ReportRaw(report)
+	require.Equal(h.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON201)
+	return *resp.JSON201
+}
+
+// ReportBodyRaw posts a body the generated client cannot express. It exists for
+// one case: a value that is not a number at all. The typed request models the
+// value as a float, so the only way to prove the contract refuses a string is
+// to send one.
+func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageResponse {
+	h.t.Helper()
+	resp, err := h.client.ReportOrganizationUsageWithBodyWithResponse(
+		context.Background(),
+		h.productID,
+		h.organizationID,
+		"application/json",
+		strings.NewReader(body),
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+// gauge is a report with no window: "this many exist right now", a number that
+// rises and falls.
+func gauge(key string, value float64) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value}
+}
+
+// windowed is a report over the half-open period [start, end): "this many
+// happened between these two moments".
+func windowed(key string, value float64, start, end time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value, WindowStart: &start, WindowEnd: &end}
+}
+
+// billingPeriod is a window that follows a subscription anniversary rather than
+// the calendar, which is the shape the two timestamps exist for.
+func billingPeriod() (time.Time, time.Time) {
+	start := time.Date(2026, time.August, 14, 0, 0, 0, 0, time.UTC)
+	return start, start.AddDate(0, 1, 0)
 }
 
 // ---------------------------------------------------------------------------
