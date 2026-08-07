@@ -40,7 +40,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, update.StatusCode())
 
-		del, err := readOnly.DeleteLicenseTemplateWithResponse(
+		del, err := readOnly.ArchiveLicenseTemplateWithResponse(
 			context.Background(), tc.product.ProductID, created.Id,
 		)
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, read.StatusCode())
 
 		list, err := writeOnly.ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID,
+			context.Background(), tc.product.ProductID, nil,
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())
@@ -88,7 +88,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		)
 
 		list, err := schemaOnly.ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID,
+			context.Background(), tc.product.ProductID, nil,
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())

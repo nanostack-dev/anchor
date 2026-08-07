@@ -60,23 +60,30 @@ type TemplateRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) (*license.Template, error)
-	// FindByName returns the Product's template with that name, or nil. Names are
-	// unique within a Product, so this is how a conflicting create is detected
-	// before the unique index has to decide it.
+	// FindByName returns the Product's active template with that name, or nil.
+	// Names are unique among a Product's active templates, so this is how a
+	// conflicting create is detected before the unique index has to decide it.
+	// Archived templates are skipped, because archiving frees the name.
 	FindByName(
 		ctx context.Context, tenantID string, productID string, name string,
 	) (*license.Template, error)
-	// ListByProduct returns the Product's templates ordered by name.
+	// ListByProduct returns the Product's templates ordered by name, archived
+	// ones only when asked for.
 	ListByProduct(
-		ctx context.Context, tenantID string, productID string,
+		ctx context.Context, tenantID string, productID string, includeArchived bool,
 	) ([]license.Template, error)
 	Create(
 		ctx context.Context, template license.Template,
 	) (license.Template, error)
+	// Update rewrites a template's name, description and values. Its status is
+	// excluded — withdrawing a tier goes through Archive, so no edit path can
+	// change it by accident.
 	Update(
 		ctx context.Context, tenantID string, template license.Template,
 	) (license.Template, error)
-	DeleteByID(
+	// Archive marks the template withdrawn. There is no delete: an Organization's
+	// license names the template it came from, and that has to keep resolving.
+	Archive(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) error
 }

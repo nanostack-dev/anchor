@@ -687,10 +687,10 @@ type ClientInterface interface {
 
 	// ListLicenseTemplates List License Templates
 	//
-	// Lists the product's license templates, ordered by name.
+	// Lists the product's license templates, ordered by name. Archived templates are left out unless asked for — they are withdrawn tiers, kept so the licenses that name them keep resolving.
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
-	ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateLicenseTemplateWithBody Create License Template
 	//
@@ -710,12 +710,12 @@ type ClientInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteLicenseTemplate Delete License Template
+	// ArchiveLicenseTemplate Archive License Template
 	//
-	// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+	// Withdraws a tier. The template stops being offered — it leaves the listing, and it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement, and it cannot be undone. Organizations keep their own copy of the values either way, so nothing they hold is affected.
 	//
-	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
-	DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `ArchiveLicenseTemplate` operationId).
+	ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLicenseTemplate Get License Template
 	//
@@ -724,7 +724,7 @@ type ClientInterface interface {
 
 	// UpdateLicenseTemplateWithBody Update License Template
 	//
-	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -733,7 +733,7 @@ type ClientInterface interface {
 
 	// UpdateLicenseTemplate Update License Template
 	//
-	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -936,7 +936,7 @@ type ClientInterface interface {
 
 	// InstantiateOrganizationLicenseWithBody Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -945,7 +945,7 @@ type ClientInterface interface {
 
 	// InstantiateOrganizationLicense Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -954,7 +954,7 @@ type ClientInterface interface {
 
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	//
-	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2655,11 +2655,11 @@ func (c *Client) UpdateLicenseSchema(ctx context.Context, productId ProductIdPar
 
 // ListLicenseTemplates List License Templates
 //
-// Lists the product's license templates, ordered by name.
+// Lists the product's license templates, ordered by name. Archived templates are left out unless asked for — they are withdrawn tiers, kept so the licenses that name them keep resolving.
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
-func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListLicenseTemplatesRequest(c.Server, productId)
+func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLicenseTemplatesRequest(c.Server, productId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2708,13 +2708,13 @@ func (c *Client) CreateLicenseTemplate(ctx context.Context, productId ProductIdP
 	return c.Client.Do(req)
 }
 
-// DeleteLicenseTemplate Delete License Template
+// ArchiveLicenseTemplate Archive License Template
 //
-// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+// Withdraws a tier. The template stops being offered — it leaves the listing, and it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement, and it cannot be undone. Organizations keep their own copy of the values either way, so nothing they hold is affected.
 //
-// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
-func (c *Client) DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteLicenseTemplateRequest(c.Server, productId, licenseTemplateId)
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `ArchiveLicenseTemplate` operationId).
+func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewArchiveLicenseTemplateRequest(c.Server, productId, licenseTemplateId)
 	if err != nil {
 		return nil, err
 	}
@@ -2742,7 +2742,7 @@ func (c *Client) GetLicenseTemplate(ctx context.Context, productId ProductIdPara
 
 // UpdateLicenseTemplateWithBody Update License Template
 //
-// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2761,7 +2761,7 @@ func (c *Client) UpdateLicenseTemplateWithBody(ctx context.Context, productId Pr
 
 // UpdateLicenseTemplate Update License Template
 //
-// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3184,7 +3184,7 @@ func (c *Client) AdjustOrganizationLicense(ctx context.Context, productId Produc
 
 // InstantiateOrganizationLicenseWithBody Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3203,7 +3203,7 @@ func (c *Client) InstantiateOrganizationLicenseWithBody(ctx context.Context, pro
 
 // InstantiateOrganizationLicense Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3222,7 +3222,7 @@ func (c *Client) InstantiateOrganizationLicense(ctx context.Context, productId P
 
 // GetOrganizationLicenseDiff Diff Organization License Against Its Template
 //
-// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6161,7 +6161,7 @@ func NewUpdateLicenseSchemaRequestWithBody(server string, productId ProductIdPar
 }
 
 // NewListLicenseTemplatesRequest constructs an http.Request for the ListLicenseTemplates method
-func NewListLicenseTemplatesRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+func NewListLicenseTemplatesRequest(server string, productId ProductIdParameter, params *ListLicenseTemplatesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6184,6 +6184,33 @@ func NewListLicenseTemplatesRequest(server string, productId ProductIdParameter)
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IncludeArchived != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "include_archived", *params.IncludeArchived, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -6241,8 +6268,8 @@ func NewCreateLicenseTemplateRequestWithBody(server string, productId ProductIdP
 	return req, nil
 }
 
-// NewDeleteLicenseTemplateRequest constructs an http.Request for the DeleteLicenseTemplate method
-func NewDeleteLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
+// NewArchiveLicenseTemplateRequest constructs an http.Request for the ArchiveLicenseTemplate method
+func NewArchiveLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9331,12 +9358,12 @@ type ClientWithResponsesInterface interface {
 
 	// ListLicenseTemplatesWithResponse List License Templates
 	//
-	// Lists the product's license templates, ordered by name.
+	// Lists the product's license templates, ordered by name. Archived templates are left out unless asked for — they are withdrawn tiers, kept so the licenses that name them keep resolving.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
-	ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error)
+	ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error)
 
 	// CreateLicenseTemplateWithBodyWithResponse Create License Template
 	//
@@ -9356,14 +9383,14 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error)
 
-	// DeleteLicenseTemplateWithResponse Delete License Template
+	// ArchiveLicenseTemplateWithResponse Archive License Template
 	//
-	// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+	// Withdraws a tier. The template stops being offered — it leaves the listing, and it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement, and it cannot be undone. Organizations keep their own copy of the values either way, so nothing they hold is affected.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
-	DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error)
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `ArchiveLicenseTemplate` operationId).
+	ArchiveLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*ArchiveLicenseTemplateResponse, error)
 
 	// GetLicenseTemplateWithResponse Get License Template
 	//
@@ -9374,7 +9401,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateLicenseTemplateWithBodyWithResponse Update License Template
 	//
-	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -9383,7 +9410,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateLicenseTemplateWithResponse Update License Template
 	//
-	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+	// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -9596,7 +9623,7 @@ type ClientWithResponsesInterface interface {
 
 	// InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -9605,7 +9632,7 @@ type ClientWithResponsesInterface interface {
 
 	// InstantiateOrganizationLicenseWithResponse Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -9614,7 +9641,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
 	//
-	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12582,18 +12609,18 @@ func (r CreateLicenseTemplateResponse) ContentType() string {
 	return ""
 }
 
-type DeleteLicenseTemplateResponse struct {
+type ArchiveLicenseTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // GetBody returns the raw response body bytes
-func (r DeleteLicenseTemplateResponse) GetBody() []byte {
+func (r ArchiveLicenseTemplateResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteLicenseTemplateResponse) Status() string {
+func (r ArchiveLicenseTemplateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12601,7 +12628,7 @@ func (r DeleteLicenseTemplateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteLicenseTemplateResponse) StatusCode() int {
+func (r ArchiveLicenseTemplateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12609,7 +12636,7 @@ func (r DeleteLicenseTemplateResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteLicenseTemplateResponse) ContentType() string {
+func (r ArchiveLicenseTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16238,13 +16265,13 @@ func (c *ClientWithResponses) UpdateLicenseSchemaWithResponse(ctx context.Contex
 
 // ListLicenseTemplatesWithResponse List License Templates
 //
-// Lists the product's license templates, ordered by name.
+// Lists the product's license templates, ordered by name. Archived templates are left out unless asked for — they are withdrawn tiers, kept so the licenses that name them keep resolving.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
-func (c *ClientWithResponses) ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error) {
-	rsp, err := c.ListLicenseTemplates(ctx, productId, reqEditors...)
+func (c *ClientWithResponses) ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error) {
+	rsp, err := c.ListLicenseTemplates(ctx, productId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -16281,19 +16308,19 @@ func (c *ClientWithResponses) CreateLicenseTemplateWithResponse(ctx context.Cont
 	return ParseCreateLicenseTemplateResponse(rsp)
 }
 
-// DeleteLicenseTemplateWithResponse Delete License Template
+// ArchiveLicenseTemplateWithResponse Archive License Template
 //
-// Removes a template. Organizations instantiated from it keep their own copy of the values, so nothing they hold is affected.
+// Withdraws a tier. The template stops being offered — it leaves the listing, and it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement, and it cannot be undone. Organizations keep their own copy of the values either way, so nothing they hold is affected.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
-func (c *ClientWithResponses) DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error) {
-	rsp, err := c.DeleteLicenseTemplate(ctx, productId, licenseTemplateId, reqEditors...)
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `ArchiveLicenseTemplate` operationId).
+func (c *ClientWithResponses) ArchiveLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*ArchiveLicenseTemplateResponse, error) {
+	rsp, err := c.ArchiveLicenseTemplate(ctx, productId, licenseTemplateId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteLicenseTemplateResponse(rsp)
+	return ParseArchiveLicenseTemplateResponse(rsp)
 }
 
 // GetLicenseTemplateWithResponse Get License Template
@@ -16311,7 +16338,7 @@ func (c *ClientWithResponses) GetLicenseTemplateWithResponse(ctx context.Context
 
 // UpdateLicenseTemplateWithBodyWithResponse Update License Template
 //
-// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16326,7 +16353,7 @@ func (c *ClientWithResponses) UpdateLicenseTemplateWithBodyWithResponse(ctx cont
 
 // UpdateLicenseTemplateWithResponse Update License Template
 //
-// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against.
+// Edits a template. Values, when supplied, are replaced wholesale — a license field absent from the request is unset. The result is validated against the schema on every write, so a rename cannot leave a template that no longer satisfies the declaration it is defined against. An archived template is refused: the tier is withdrawn, so there is nothing left to price.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16671,7 +16698,7 @@ func (c *ClientWithResponses) AdjustOrganizationLicenseWithResponse(ctx context.
 
 // InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16686,7 +16713,7 @@ func (c *ClientWithResponses) InstantiateOrganizationLicenseWithBodyWithResponse
 
 // InstantiateOrganizationLicenseWithResponse Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists.
+// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16701,7 +16728,7 @@ func (c *ClientWithResponses) InstantiateOrganizationLicenseWithResponse(ctx con
 
 // GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
 //
-// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. Not found when the template has since been deleted, because there is then nothing to compare against.
+// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -19335,15 +19362,15 @@ func ParseCreateLicenseTemplateResponse(rsp *http.Response) (*CreateLicenseTempl
 	return response, nil
 }
 
-// ParseDeleteLicenseTemplateResponse parses an HTTP response from a DeleteLicenseTemplateWithResponse call
-func ParseDeleteLicenseTemplateResponse(rsp *http.Response) (*DeleteLicenseTemplateResponse, error) {
+// ParseArchiveLicenseTemplateResponse parses an HTTP response from a ArchiveLicenseTemplateWithResponse call
+func ParseArchiveLicenseTemplateResponse(rsp *http.Response) (*ArchiveLicenseTemplateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteLicenseTemplateResponse{
+	response := &ArchiveLicenseTemplateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

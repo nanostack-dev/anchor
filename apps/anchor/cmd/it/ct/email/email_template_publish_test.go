@@ -35,7 +35,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 		require.NoError(t, publishErr)
 		assert.Equal(t, http.StatusOK, pub.StatusCode())
 		require.NotNil(t, pub.JSON200)
-		assert.Equal(t, ct.PUBLISHED, pub.JSON200.Status)
+		assert.Equal(t, ct.EmailTemplateVersionStatusPUBLISHED, pub.JSON200.Status)
 		assert.NotNil(t, pub.JSON200.PublishedAt)
 
 		get, getErr := client.GetEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)

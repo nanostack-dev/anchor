@@ -76,10 +76,12 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		return nil, err
 	}
 
-	templates, err := s.LicenseTemplateService.ListTemplates(ctx, license.ListTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-	})
+	in := license.ListTemplatesInput{TenantID: tenantID, ProductID: request.ProductId}
+	if request.Params.IncludeArchived != nil {
+		in.IncludeArchived = *request.Params.IncludeArchived
+	}
+
+	templates, err := s.LicenseTemplateService.ListTemplates(ctx, in)
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list license templates")
 		return nil, err
@@ -120,15 +122,15 @@ func (s *AnchorAPI) UpdateLicenseTemplate(
 	return UpdateLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(template)), nil
 }
 
-func (s *AnchorAPI) DeleteLicenseTemplate(
-	ctx context.Context, request DeleteLicenseTemplateRequestObject,
-) (DeleteLicenseTemplateResponseObject, error) {
+func (s *AnchorAPI) ArchiveLicenseTemplate(
+	ctx context.Context, request ArchiveLicenseTemplateRequestObject,
+) (ArchiveLicenseTemplateResponseObject, error) {
 	tenantID, err := security.GetTenantID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = s.LicenseTemplateService.DeleteTemplate(ctx, license.DeleteTemplateInput{
+	if err = s.LicenseTemplateService.ArchiveTemplate(ctx, license.ArchiveTemplateInput{
 		TenantID:   tenantID,
 		ProductID:  request.ProductId,
 		TemplateID: request.LicenseTemplateId,
@@ -136,8 +138,8 @@ func (s *AnchorAPI) DeleteLicenseTemplate(
 		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
-			Msg("failed to delete license template")
+			Msg("failed to archive license template")
 		return nil, err
 	}
-	return DeleteLicenseTemplate204Response{}, nil
+	return ArchiveLicenseTemplate204Response{}, nil
 }

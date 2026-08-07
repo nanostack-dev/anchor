@@ -25,6 +25,7 @@ type licenseTemplatesTable struct {
 	ValuesJSON       postgres.ColumnString
 	CreatedAt        postgres.ColumnTimestampz
 	UpdatedAt        postgres.ColumnTimestampz
+	Status           postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -74,9 +75,10 @@ func newLicenseTemplatesTableImpl(schemaName, tableName, alias string) licenseTe
 		ValuesJSONColumn       = postgres.StringColumn("values_json")
 		CreatedAtColumn        = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn        = postgres.TimestampzColumn("updated_at")
-		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, NameColumn, DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, NameColumn, DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns         = postgres.ColumnList{DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		StatusColumn           = postgres.StringColumn("status")
+		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, NameColumn, DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn, StatusColumn}
+		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, NameColumn, DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn, StatusColumn}
+		defaultColumns         = postgres.ColumnList{DescriptionColumn, ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn, StatusColumn}
 	)
 
 	return licenseTemplatesTable{
@@ -91,6 +93,7 @@ func newLicenseTemplatesTableImpl(schemaName, tableName, alias string) licenseTe
 		ValuesJSON:       ValuesJSONColumn,
 		CreatedAt:        CreatedAtColumn,
 		UpdatedAt:        UpdatedAtColumn,
+		Status:           StatusColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

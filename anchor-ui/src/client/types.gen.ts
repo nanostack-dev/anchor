@@ -1900,6 +1900,14 @@ export type LicenseTemplateValues = {
     [key: string]: unknown;
 };
 
+/**
+ * Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
+ */
+export enum LicenseTemplateStatus {
+    ACTIVE = 'ACTIVE',
+    ARCHIVED = 'ARCHIVED'
+}
+
 export type LicenseTemplateCreateRequest = {
     /**
      * Operator-facing name, unique within the product.
@@ -1918,8 +1926,12 @@ export type LicenseTemplateUpdateRequest = {
 export type LicenseTemplateResponse = {
     id: Ksuid;
     product_id: Ksuid;
+    /**
+     * Unique among the product's active templates. Archiving a template frees its name, so a withdrawn tier does not block its replacement.
+     */
     name: string;
     description?: string;
+    status: LicenseTemplateStatus;
     values: LicenseTemplateValues;
     created_at: string;
     updated_at: string;
@@ -5556,7 +5568,12 @@ export type ListLicenseTemplatesData = {
          */
         product_id: Ksuid;
     };
-    query?: never;
+    query?: {
+        /**
+         * Include withdrawn tiers in the listing.
+         */
+        include_archived?: boolean;
+    };
     url: '/v1/products/{product_id}/licensing/templates';
 };
 
@@ -5603,7 +5620,7 @@ export type CreateLicenseTemplateResponses = {
 
 export type CreateLicenseTemplateResponse = CreateLicenseTemplateResponses[keyof CreateLicenseTemplateResponses];
 
-export type DeleteLicenseTemplateData = {
+export type ArchiveLicenseTemplateData = {
     body?: never;
     path: {
         /**
@@ -5619,21 +5636,21 @@ export type DeleteLicenseTemplateData = {
     url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
 };
 
-export type DeleteLicenseTemplateErrors = {
+export type ArchiveLicenseTemplateErrors = {
     /**
      * Resource Not Found
      */
     404: unknown;
 };
 
-export type DeleteLicenseTemplateResponses = {
+export type ArchiveLicenseTemplateResponses = {
     /**
-     * Deleted
+     * Archived, or already archived.
      */
     204: void;
 };
 
-export type DeleteLicenseTemplateResponse = DeleteLicenseTemplateResponses[keyof DeleteLicenseTemplateResponses];
+export type ArchiveLicenseTemplateResponse = ArchiveLicenseTemplateResponses[keyof ArchiveLicenseTemplateResponses];
 
 export type GetLicenseTemplateData = {
     body?: never;

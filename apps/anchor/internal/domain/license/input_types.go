@@ -77,17 +77,18 @@ type GetTemplateInput struct {
 }
 
 // ListTemplatesInput is the request shape for listing a Product's license
-// templates.
+// templates. Archived templates are left out unless IncludeArchived is set.
 type ListTemplatesInput struct {
-	TenantID  string `validate:"required,notblank"`
-	ProductID string `validate:"required,notblank"`
+	TenantID        string `validate:"required,notblank"`
+	ProductID       string `validate:"required,notblank"`
+	IncludeArchived bool
 }
 
-// DeleteTemplateInput is the request shape for removing one license template.
-//
-// Deleting a template does not touch the Organizations instantiated from it:
-// an Organization's license is a copy, so it has no dependency to break.
-type DeleteTemplateInput struct {
+// ArchiveTemplateInput is the request shape for withdrawing one license
+// template. The row is kept, because the Organizations licensed from it name it
+// as the statement of what they were sold. See
+// docs/adr/0010-license-templates-are-archived.md.
+type ArchiveTemplateInput struct {
 	TenantID   string `validate:"required,notblank"`
 	ProductID  string `validate:"required,notblank"`
 	TemplateID string `validate:"required,notblank"`

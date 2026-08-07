@@ -37,6 +37,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **license field** | One declared field within the schema. Every declared field is mandatory: a license template must set all of them ([ADR-0009](docs/adr/0009-every-license-field-is-mandatory.md)). | Not "entitlement" — see below. Not "feature flag". |
 | **limit** | A license field of numeric type. Limits are the only fields that carry usage and a status. | Not "quota". |
 | **license template** | A named, validated set of values for every field its schema declares, instantiated into organization licenses. | Not "plan" — see below. |
+| **archive** | Withdraw a template. It stops being offered, its row is kept so the licenses naming it keep resolving, and its name is freed ([ADR-0010](docs/adr/0010-license-templates-are-archived.md)). | Not "delete" — a template row is never removed. |
 | **license** | One Organization's own copy of a template's values. Every Organization has exactly one. | Not "subscription". |
 | **instantiate** | Copy a template's values onto an Organization, creating its license. | Not "assign" — nothing is pointed at. |
 | **adjust** | Edit one Organization's license without touching its template. The act. | Not "override" — there is no override layer ([ADR-0004](docs/adr/0004-license-schema-template-and-copy.md)). |

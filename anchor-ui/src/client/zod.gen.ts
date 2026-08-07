@@ -1256,6 +1256,14 @@ export const zLicenseSchemaResponse = z.object({
 
 export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
 
+/**
+ * Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
+ */
+export const zLicenseTemplateStatus = z.enum([
+    'ACTIVE',
+    'ARCHIVED'
+]);
+
 export const zLicenseTemplateCreateRequest = z.object({
     name: z.string().max(120),
     description: z.optional(z.string()),
@@ -1273,6 +1281,7 @@ export const zLicenseTemplateResponse = z.object({
     product_id: zKsuid,
     name: z.string(),
     description: z.optional(z.string()),
+    status: zLicenseTemplateStatus,
     values: zLicenseTemplateValues,
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -2621,7 +2630,9 @@ export const zListLicenseTemplatesData = z.object({
     path: z.object({
         product_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include_archived: z.optional(z.boolean()).default(false)
+    }))
 });
 
 /**
@@ -2642,7 +2653,7 @@ export const zCreateLicenseTemplateData = z.object({
  */
 export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
 
-export const zDeleteLicenseTemplateData = z.object({
+export const zArchiveLicenseTemplateData = z.object({
     body: z.optional(z.never()),
     path: z.object({
         product_id: zKsuid,
@@ -2652,9 +2663,9 @@ export const zDeleteLicenseTemplateData = z.object({
 });
 
 /**
- * Deleted
+ * Archived, or already archived.
  */
-export const zDeleteLicenseTemplateResponse = z.void();
+export const zArchiveLicenseTemplateResponse = z.void();
 
 export const zGetLicenseTemplateData = z.object({
     body: z.optional(z.never()),

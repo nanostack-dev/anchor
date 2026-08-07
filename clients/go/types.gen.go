@@ -53,19 +53,19 @@ func (e EmailSendStatus) Valid() bool {
 
 // Defines values for EmailTemplateVersionStatus.
 const (
-	ARCHIVED  EmailTemplateVersionStatus = "ARCHIVED"
-	DRAFT     EmailTemplateVersionStatus = "DRAFT"
-	PUBLISHED EmailTemplateVersionStatus = "PUBLISHED"
+	EmailTemplateVersionStatusARCHIVED  EmailTemplateVersionStatus = "ARCHIVED"
+	EmailTemplateVersionStatusDRAFT     EmailTemplateVersionStatus = "DRAFT"
+	EmailTemplateVersionStatusPUBLISHED EmailTemplateVersionStatus = "PUBLISHED"
 )
 
 // Valid indicates whether the value is a known member of the EmailTemplateVersionStatus enum.
 func (e EmailTemplateVersionStatus) Valid() bool {
 	switch e {
-	case ARCHIVED:
+	case EmailTemplateVersionStatusARCHIVED:
 		return true
-	case DRAFT:
+	case EmailTemplateVersionStatusDRAFT:
 		return true
-	case PUBLISHED:
+	case EmailTemplateVersionStatusPUBLISHED:
 		return true
 	default:
 		return false
@@ -231,6 +231,24 @@ func (e LicenseFieldType) Valid() bool {
 	case LicenseFieldTypeNUMBER:
 		return true
 	case LicenseFieldTypeSTRING:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LicenseTemplateStatus.
+const (
+	LicenseTemplateStatusACTIVE   LicenseTemplateStatus = "ACTIVE"
+	LicenseTemplateStatusARCHIVED LicenseTemplateStatus = "ARCHIVED"
+)
+
+// Valid indicates whether the value is a known member of the LicenseTemplateStatus enum.
+func (e LicenseTemplateStatus) Valid() bool {
+	switch e {
+	case LicenseTemplateStatusACTIVE:
+		return true
+	case LicenseTemplateStatusARCHIVED:
 		return true
 	default:
 		return false
@@ -1346,16 +1364,24 @@ type LicenseTemplateResponse struct {
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	Id   Ksuid  `json:"id"`
+	Id Ksuid `json:"id"`
+
+	// Name Unique among the product's active templates. Archiving a template frees its name, so a withdrawn tier does not block its replacement.
 	Name string `json:"name"`
 
 	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	ProductId Ksuid                 `json:"product_id"`
+	ProductId Ksuid `json:"product_id"`
+
+	// Status Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
+	Status    LicenseTemplateStatus `json:"status"`
 	UpdatedAt time.Time             `json:"updated_at"`
 	Values    LicenseTemplateValues `json:"values"`
 }
+
+// LicenseTemplateStatus Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
+type LicenseTemplateStatus string
 
 // LicenseTemplateUpdateRequest defines model for LicenseTemplateUpdateRequest.
 type LicenseTemplateUpdateRequest struct {
@@ -2976,6 +3002,12 @@ type ListEmailTemplatesParams struct {
 
 // IngestWebhookJSONBody defines parameters for IngestWebhook.
 type IngestWebhookJSONBody map[string]interface{}
+
+// ListLicenseTemplatesParams defines parameters for ListLicenseTemplates.
+type ListLicenseTemplatesParams struct {
+	// IncludeArchived Include withdrawn tiers in the listing.
+	IncludeArchived *bool `form:"include_archived,omitempty" json:"include_archived,omitempty"`
+}
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.
 type GetOrganizationMemberParams struct {
