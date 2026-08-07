@@ -63,36 +63,51 @@ func errLicenseFieldRuleInvalid(name string, violation *rules.ViolationError) *f
 	}}, http.StatusBadRequest)
 }
 
-// LicenseService owns the license schema: the per-Product declaration of every
-// field a license may carry.
+// LicenseSchemaService owns the license schema: the per-Product declaration of
+// every field a license may carry.
 //
 // A schema is a singleton on its Product, so every method addresses it by
 // product rather than by its own identifier.
-type LicenseService interface {
+//
+// It also answers whether a set of values satisfies the declaration —
+// [LicenseSchemaService.ValidateValues], defined in schema_validation.go. That
+// question belongs to the schema because the schema is what makes a value legal
+// or not; a license template asks it on every write, and the per-Organization
+// license will ask it with the same question and the same errors. A consumer
+// that reached for the schema repositories itself would end up owning a second
+// copy of the answer, and the two would drift.
+type LicenseSchemaService interface {
 	CreateSchema(ctx context.Context, in license.CreateSchemaInput) (license.Schema, error)
 	GetSchema(ctx context.Context, in license.GetSchemaInput) (*license.Schema, error)
 	UpdateSchema(ctx context.Context, in license.UpdateSchemaInput) (license.Schema, error)
 	DeleteSchema(ctx context.Context, in license.DeleteSchemaInput) error
+
+	// ValidateValues checks values against the Product's schema: every key is
+	// declared, every declared license field is set, and every value satisfies
+	// its field's rules. See schema_validation.go.
+	ValidateValues(
+		ctx context.Context, tenantID string, productID string, values license.TemplateValues,
+	) error
 }
 
-type licenseService struct {
+type licenseSchemaService struct {
 	transactor transactor.Transactor
 	schemaRepo licenserepo.SchemaRepository
 	fieldRepo  licenserepo.SchemaFieldRepository
 	logger     zerolog.Logger
 }
 
-func NewLicenseService(
+func NewLicenseSchemaService(
 	tx transactor.Transactor,
 	schemaRepo licenserepo.SchemaRepository,
 	fieldRepo licenserepo.SchemaFieldRepository,
 	logger zerolog.Logger,
-) LicenseService {
-	return &licenseService{
+) LicenseSchemaService {
+	return &licenseSchemaService{
 		transactor: tx,
 		schemaRepo: schemaRepo,
 		fieldRepo:  fieldRepo,
-		logger:     logger.With().Str("component", "license_service").Logger(),
+		logger:     logger.With().Str("component", "license_schema_service").Logger(),
 	}
 }
 
@@ -121,7 +136,6 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 		field := license.Field{
 			Name:        d.Name,
 			Type:        d.Type,
-			Required:    d.Required,
 			Description: d.Description,
 			Rules:       d.Rules,
 		}
@@ -132,7 +146,7 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 	return fields, nil
 }
 
-func (s *licenseService) CreateSchema(
+func (s *licenseSchemaService) CreateSchema(
 	ctx context.Context, in license.CreateSchemaInput,
 ) (license.Schema, error) {
 	if err := validate.ValidateStruct(in); err != nil {
@@ -188,7 +202,7 @@ func (s *licenseService) CreateSchema(
 	return created, nil
 }
 
-func (s *licenseService) GetSchema(
+func (s *licenseSchemaService) GetSchema(
 	ctx context.Context, in license.GetSchemaInput,
 ) (*license.Schema, error) {
 	if err := validate.ValidateStruct(in); err != nil {
@@ -212,7 +226,7 @@ func (s *licenseService) GetSchema(
 	return schema, nil
 }
 
-func (s *licenseService) UpdateSchema(
+func (s *licenseSchemaService) UpdateSchema(
 	ctx context.Context, in license.UpdateSchemaInput,
 ) (license.Schema, error) {
 	if err := validate.ValidateStruct(in); err != nil {
@@ -268,7 +282,7 @@ func (s *licenseService) UpdateSchema(
 	return updated, nil
 }
 
-func (s *licenseService) DeleteSchema(
+func (s *licenseSchemaService) DeleteSchema(
 	ctx context.Context, in license.DeleteSchemaInput,
 ) error {
 	if err := validate.ValidateStruct(in); err != nil {

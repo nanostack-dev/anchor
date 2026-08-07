@@ -9,9 +9,6 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 			Name: d.Name,
 			Type: d.Type,
 		}
-		if d.Required != nil {
-			fd.Required = *d.Required
-		}
 		if d.Description != nil {
 			fd.Description = *d.Description
 		}
@@ -28,7 +25,6 @@ func mapLicenseFieldToResponse(f license.Field) LicenseFieldResponse {
 		Id:        f.ID,
 		Name:      f.Name,
 		Type:      f.Type,
-		Required:  f.Required,
 		Rules:     f.Rules,
 		CreatedAt: f.CreatedAt,
 		UpdatedAt: f.UpdatedAt,
@@ -49,6 +45,27 @@ func mapLicenseSchemaToResponse(s license.Schema) LicenseSchemaResponse {
 	}
 	if s.Description != "" {
 		resp.Description = new(s.Description)
+	}
+	return resp
+}
+
+func mapLicenseTemplateToResponse(t license.Template) LicenseTemplateResponse {
+	// A template that sets nothing reads back as an empty object, never as a
+	// null, so a client can index into it without a nil check.
+	values := t.Values
+	if values == nil {
+		values = license.TemplateValues{}
+	}
+	resp := LicenseTemplateResponse{
+		Id:        t.ID,
+		ProductId: t.ProductID,
+		Name:      t.Name,
+		Values:    values,
+		CreatedAt: t.CreatedAt,
+		UpdatedAt: t.UpdatedAt,
+	}
+	if t.Description != "" {
+		resp.Description = new(t.Description)
 	}
 	return resp
 }

@@ -22,8 +22,8 @@ func seedSchema(t *testing.T, tc testCtx) *ct.ClientWithResponses {
 			ProductAlias: "p",
 			Description:  new("original"),
 			Fields: []ct.LicenseFieldDeclaration{
-				itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, true, limitRules(0, 500)),
-				itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, false, nil),
+				itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500)),
+				itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil),
 			},
 		}).
 		Build()
@@ -40,8 +40,8 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 			tc.product.ProductID,
 			ct.UpdateLicenseSchemaJSONRequestBody{
 				Fields: &[]ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, true, limitRules(0, 5000)),
-					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, false, nil),
+					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 5000)),
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil),
 				},
 			},
 		)
@@ -120,7 +120,7 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 			tc.product.ProductID,
 			ct.UpdateLicenseSchemaJSONRequestBody{
 				Fields: &[]ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, false, limitRules(100, 10)),
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, limitRules(100, 10)),
 				},
 			},
 		)

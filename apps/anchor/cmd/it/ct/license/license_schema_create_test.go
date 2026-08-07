@@ -22,13 +22,12 @@ func TestLicenseSchemaCreate(t *testing.T) {
 				Description: new("Billing-facing declaration"),
 				Fields: []ct.LicenseFieldDeclaration{
 					{
-						Name:     "flows",
-						Type:     ct.LicenseFieldTypeLIMIT,
-						Required: new(true),
-						Rules:    limitRules(0, 100000),
+						Name:  "flows",
+						Type:  ct.LicenseFieldTypeLIMIT,
+						Rules: limitRules(0, 100000),
 					},
 					{Name: "burst_credit", Type: ct.LicenseFieldTypeNUMBER},
-					{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN, Required: new(true)},
+					{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN},
 					{
 						Name:  "support_tier",
 						Type:  ct.LicenseFieldTypeENUM,
@@ -65,7 +64,6 @@ func TestLicenseSchemaCreate(t *testing.T) {
 
 		flows := fieldByName(t, schema.Fields, "flows")
 		assert.Equal(t, ct.LicenseFieldTypeLIMIT, flows.Type)
-		assert.True(t, flows.Required)
 		require.NotNil(t, flows.Rules.Min)
 		require.NotNil(t, flows.Rules.Max)
 		assert.InDelta(t, 0.0, *flows.Rules.Min, 0)
@@ -74,7 +72,6 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		// A field declared without rules reads back as an empty rule set, not a
 		// missing one.
 		burst := fieldByName(t, schema.Fields, "burst_credit")
-		assert.False(t, burst.Required)
 		assert.Nil(t, burst.Rules.Min)
 		assert.Nil(t, burst.Rules.Max)
 

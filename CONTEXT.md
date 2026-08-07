@@ -33,10 +33,10 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | term | means | not |
 | --- | --- | --- |
 | **licensing** | The subsystem as a whole. Never a synonym for *license* — that word names one Organization's grant, and only that. | Not "the license system". |
-| **license schema** | Per-Product declaration of every field a license may carry: name, type, required, and validation rules. | Not "plan schema". |
-| **license field** | One declared field within the schema. | Not "entitlement" — see below. Not "feature flag". |
+| **license schema** | Per-Product declaration of every field a license may carry: name, type, and validation rules. | Not "plan schema". |
+| **license field** | One declared field within the schema. Every declared field is mandatory: a license template must set all of them ([ADR-0009](docs/adr/0009-every-license-field-is-mandatory.md)). | Not "entitlement" — see below. Not "feature flag". |
 | **limit** | A license field of numeric type. Limits are the only fields that carry usage and a status. | Not "quota". |
-| **license template** | A named, validated set of field values, instantiated into organization licenses. | Not "plan" — see below. |
+| **license template** | A named, validated set of values for every field its schema declares, instantiated into organization licenses. | Not "plan" — see below. |
 | **license** | One Organization's own copy of a template's values. Every Organization has exactly one. | Not "subscription". |
 | **usage report** | What a consumer POSTs: an absolute snapshot of current usage. | Not "usage event" — an event implies a delta, and Anchor does not accept deltas. |
 | **observation** | One stored raw usage report row. | |
