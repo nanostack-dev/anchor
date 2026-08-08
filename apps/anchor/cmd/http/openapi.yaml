@@ -3247,6 +3247,7 @@ components:
         value:
           type: number
           format: double
+          minimum: 0
           description: >-
             The total right now, not the change since the last report. It must
             be a finite, non-negative number. That is the only bound. A value

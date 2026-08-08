@@ -114,7 +114,7 @@ func TestReportUsage(t *testing.T) {
 		resp := w.Usage().ReportRaw(gauge("flows", -1))
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON400.Errors, "USAGE_VALUE_NEGATIVE")
+		assertValidationRule(t, resp.JSON400.Errors, "gte")
 	})
 
 	t.Run("refuses a value that is not a number", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestReportUsage(t *testing.T) {
 		resp := w.Usage().ReportRaw(ct.UsageReportRequest{Key: "flows", Value: 412, To: &to})
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_INCOMPLETE")
+		assertValidationRule(t, resp.JSON400.Errors, "required_with")
 	})
 
 	t.Run("refuses a window that holds no time", func(t *testing.T) {
@@ -141,11 +141,11 @@ func TestReportUsage(t *testing.T) {
 
 		empty := w.Usage().ReportRaw(windowed(412, from, from))
 		require.Equal(t, http.StatusBadRequest, empty.StatusCode(), string(empty.Body))
-		assertAPIError(t, empty.JSON400.Errors, "USAGE_WINDOW_EMPTY")
+		assertValidationRule(t, empty.JSON400.Errors, "gtfield")
 
 		reversed := w.Usage().ReportRaw(windowed(412, to, from))
 		require.Equal(t, http.StatusBadRequest, reversed.StatusCode(), string(reversed.Body))
-		assertAPIError(t, reversed.JSON400.Errors, "USAGE_WINDOW_EMPTY")
+		assertValidationRule(t, reversed.JSON400.Errors, "gtfield")
 	})
 
 	t.Run("refuses a window longer than a year", func(t *testing.T) {

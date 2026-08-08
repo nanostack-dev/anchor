@@ -16,22 +16,12 @@ import (
 	"anchor/internal/license/rules"
 )
 
+// The rest of a malformed report is refused by the validate tags on
+// license.ReportUsageInput, which report VALIDATION_ERROR with the rule.
 var (
-	ErrUsageValueNegative = fault.BadRequest(
-		"USAGE_VALUE_NEGATIVE",
-		"A reported usage value cannot be negative",
-	)
 	ErrUsageValueNotFinite = fault.BadRequest(
 		"USAGE_VALUE_NOT_FINITE",
 		"A reported usage value must be a finite number",
-	)
-	ErrUsageWindowIncomplete = fault.BadRequest(
-		"USAGE_WINDOW_INCOMPLETE",
-		"A usage window that gives to must also give from",
-	)
-	ErrUsageWindowEmpty = fault.BadRequest(
-		"USAGE_WINDOW_EMPTY",
-		"A usage window must start before it ends",
 	)
 	ErrUsageWindowTooLong = fault.BadRequest(
 		"USAGE_WINDOW_TOO_LONG",
@@ -78,31 +68,31 @@ func NewUsageService(
 func (s *usageService) ReportUsage(
 	ctx context.Context, in license.ReportUsageInput,
 ) (license.UsageObservation, error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	// One reading for the whole report, so a window left open ends at the same
+	// instant the observation is stamped with. Defaults are filled before the
+	// tags run, or gtfield would judge a To the caller never sent.
+	now := time.Now()
+	report := in.WithDefaults(now)
+
+	if err := validate.ValidateStruct(report); err != nil {
 		return license.UsageObservation{}, err
 	}
-
-	// One reading for the whole report, so a window left open ends at the same
-	// instant the observation is stamped with.
-	now := time.Now()
-
-	normalized, err := in.Normalize(now)
-	if err != nil {
+	if err := report.Check(); err != nil {
 		return license.UsageObservation{}, asUsageFault(err)
 	}
 
-	if err = s.resolveLimit(ctx, normalized); err != nil {
+	if err := s.resolveLimit(ctx, report); err != nil {
 		return license.UsageObservation{}, err
 	}
 
 	observation := license.UsageObservation{
-		PlatformTenantID: normalized.TenantID,
-		ProductID:        normalized.ProductID,
-		OrganizationID:   normalized.OrganizationID,
-		Key:              normalized.Key,
-		Value:            normalized.Value,
-		From:             normalized.From,
-		To:               normalized.To,
+		PlatformTenantID: report.TenantID,
+		ProductID:        report.ProductID,
+		OrganizationID:   report.OrganizationID,
+		Key:              report.Key,
+		Value:            report.Value,
+		From:             report.From,
+		To:               report.To,
 		ObservedAt:       now,
 	}
 	observation.GenerateID()
@@ -157,14 +147,8 @@ func isMissingOrganization(err error) bool {
 
 func asUsageFault(err error) error {
 	switch {
-	case errors.Is(err, license.ErrUsageValueNegative):
-		return ErrUsageValueNegative
 	case errors.Is(err, license.ErrUsageValueNotFinite):
 		return ErrUsageValueNotFinite
-	case errors.Is(err, license.ErrUsageWindowIncomplete):
-		return ErrUsageWindowIncomplete
-	case errors.Is(err, license.ErrUsageWindowEmpty):
-		return ErrUsageWindowEmpty
 	case errors.Is(err, license.ErrUsageWindowTooLong):
 		return ErrUsageWindowTooLong
 	default:

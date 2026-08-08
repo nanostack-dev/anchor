@@ -86,6 +86,17 @@ func createOrganization(t *testing.T, product *itdsl.ProductContext) string {
 	return resp.JSON201.Id
 }
 
+// assertValidationRule names the validate tag that refused a write. The tag
+// travels as metadata rather than a distinct code, so it is what tells one
+// struct-level refusal apart from another.
+func assertValidationRule(t *testing.T, errs []ct.ApiError, rule string) {
+	t.Helper()
+	require.NotEmpty(t, errs)
+	assert.Equal(t, "VALIDATION_ERROR", errs[0].Code)
+	require.NotNil(t, errs[0].Metadata)
+	assert.Equal(t, rule, (*errs[0].Metadata)["rule"])
+}
+
 func assertAPIError(t *testing.T, errs []ct.ApiError, code string) {
 	t.Helper()
 	require.Len(t, errs, 1)

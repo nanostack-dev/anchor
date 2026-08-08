@@ -1348,7 +1348,7 @@ export const zOrganizationLicenseDiffResponse = z.object({
  */
 export const zUsageReportRequest = z.object({
     key: z.string().max(120),
-    value: z.number(),
+    value: z.number().gte(0),
     from: z.optional(z.iso.datetime()),
     to: z.optional(z.iso.datetime())
 });
