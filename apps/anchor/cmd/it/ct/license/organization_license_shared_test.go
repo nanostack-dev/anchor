@@ -290,10 +290,23 @@ func gauge(key string, value float64) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: key, Value: value}
 }
 
-// windowed is a report over the half-open period [start, end): "this many
+// worldLimitKey is the one license field in templateSchemaFields that carries
+// usage. The windowed builders below take no key because of it: only a limit
+// can be reported against, and the world declares exactly one, so there is no
+// second value the key could take. The gauge builder keeps its key, because the
+// refusal tests report against an undeclared name and against a boolean.
+const worldLimitKey = "flows"
+
+// windowed is a report over the half-open period [from, to): "this many
 // happened between these two moments".
-func windowed(key string, value float64, start, end time.Time) ct.UsageReportRequest {
-	return ct.UsageReportRequest{Key: key, Value: value, WindowStart: &start, WindowEnd: &end}
+func windowed(value float64, from, to time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from, To: &to}
+}
+
+// openEnded is a report that says where it starts and lets Anchor decide where
+// it ends: "this many since then".
+func openEnded(value float64, from time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from}
 }
 
 // billingPeriod is a window that follows a subscription anniversary rather than

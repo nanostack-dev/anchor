@@ -2050,7 +2050,7 @@ export const getOrganizationLicenseDiffOptions = (options: Options<GetOrganizati
 /**
  * Report Organization Usage
  * Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
- * The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+ * The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
  * The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
  */
 export const reportOrganizationUsageMutation = (options?: Partial<Options<ReportOrganizationUsageData>>): UseMutationOptions<ReportOrganizationUsageResponse, ReportOrganizationUsageError, Options<ReportOrganizationUsageData>> => {

@@ -29,8 +29,8 @@ func (s *AnchorAPI) ReportOrganizationUsage(
 		OrganizationID: request.OrganizationId,
 		Key:            request.Body.Key,
 		Value:          request.Body.Value,
-		WindowStart:    request.Body.WindowStart,
-		WindowEnd:      request.Body.WindowEnd,
+		From:           request.Body.From,
+		To:             request.Body.To,
 	})
 	if err != nil {
 		logAPIError(s.logger, err).

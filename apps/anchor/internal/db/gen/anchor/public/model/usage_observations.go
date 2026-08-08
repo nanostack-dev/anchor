@@ -18,7 +18,7 @@ type UsageObservations struct {
 	OrganizationID   string
 	Key              string
 	Value            float64
-	WindowStart      *time.Time
-	WindowEnd        *time.Time
+	WindowFrom       *time.Time
+	WindowTo         *time.Time
 	ObservedAt       time.Time `sql:"primary_key"`
 }

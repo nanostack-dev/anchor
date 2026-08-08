@@ -32,8 +32,9 @@ import (
 var (
 	ErrUsageValueNegative    = errors.New("a reported usage value cannot be negative")
 	ErrUsageValueNotFinite   = errors.New("a reported usage value must be a finite number")
-	ErrUsageWindowIncomplete = errors.New("a usage window needs both a start and an end, or neither")
+	ErrUsageWindowIncomplete = errors.New("a usage window that ends must say where it starts")
 	ErrUsageWindowEmpty      = errors.New("a usage window must start before it ends")
+	ErrUsageWindowTooLong    = errors.New("a usage window cannot be longer than one year")
 )
 
 // UsageObservation is one stored usage report. It is written once and never
@@ -47,16 +48,16 @@ type UsageObservation struct {
 	// always of type [rules.Limit] — a boolean feature toggle carries no usage.
 	Key   string
 	Value float64
-	// WindowStart and WindowEnd are both set or both nil, which is what
-	// distinguishes the two kinds of usage. Absent is a gauge: "37 flows exist
-	// right now", a number that rises and falls. Present is a windowed counter
-	// over the half-open period [WindowStart, WindowEnd): "412 runs between
-	// August 14 and September 14", which resets by starting a new window.
+	// From and To are both set or both nil, which is what distinguishes the two
+	// kinds of usage. Nil is a gauge: "37 flows exist right now", a number that
+	// rises and falls. Set is a windowed counter over the half-open period
+	// [From, To): "412 runs between August 14 and September 14", which resets
+	// by starting a new window.
 	//
 	// Two timestamps rather than a formatted period, because real billing
 	// periods follow the subscription anniversary rather than the calendar.
-	WindowStart *time.Time
-	WindowEnd   *time.Time
+	From *time.Time
+	To   *time.Time
 	// ObservedAt is when Anchor accepted the report, and the column the
 	// hypertable partitions on. Anchor sets it, so a consumer cannot write into
 	// the future or rewrite its own history by backdating a report.
@@ -80,33 +81,63 @@ type ReportUsageInput struct {
 	// Key must name a license field the Product's schema declares, and that
 	// field must be a limit. Both are the schema's questions, so the service
 	// asks them; neither is answerable here.
-	Key         string `validate:"required,notblank,max=120"`
-	Value       float64
-	WindowStart *time.Time
-	WindowEnd   *time.Time
+	Key   string `validate:"required,notblank,max=120"`
+	Value float64
+	From  *time.Time
+	To    *time.Time
 }
 
-// Check reports whether the value and the window are coherent. It is every
-// check that needs nothing but the report itself.
+// MaxUsageWindow is the longest period one report may cover.
 //
-// A value is refused only for not being a usable number — negative, or not
+// A window longer than a year is a mistyped year far more often than a real
+// billing period — no subscription term Anchor serves runs longer than an
+// annual one. Raw observations are aged out well before that, so a window this
+// side of the bound is one the series can still be read over.
+//
+// It is a calendar year rather than a fixed count of hours, so a window that
+// crosses a leap day is measured the way a customer would describe it.
+func MaxUsageWindow(from time.Time) time.Time {
+	return from.AddDate(1, 0, 0)
+}
+
+// Normalize fills in what Anchor decides and checks everything the report can
+// be judged on by itself. It takes the clock rather than reading it, so the
+// checks stay pure and a defaulted end is an exact value in a test.
+//
+// One value is filled in: a report that says where it starts and not where it
+// ends runs to now. "412 runs since August 14" is a complete statement, and
+// making the caller send a timestamp meaning "now" would only invite clock
+// skew. An end with no start is still refused — there is nothing to run from.
+//
+// A value is refused only for not being a usable number: negative, or not
 // finite. How large it is never matters. See the file comment.
-func (in ReportUsageInput) Check() error {
+func (in ReportUsageInput) Normalize(now time.Time) (ReportUsageInput, error) {
+	if in.From != nil && in.To == nil {
+		in.To = &now
+	}
+
 	if math.IsNaN(in.Value) || math.IsInf(in.Value, 0) {
-		return ErrUsageValueNotFinite
+		return in, ErrUsageValueNotFinite
 	}
 	if in.Value < 0 {
-		return ErrUsageValueNegative
+		return in, ErrUsageValueNegative
 	}
 
-	if (in.WindowStart == nil) != (in.WindowEnd == nil) {
-		return ErrUsageWindowIncomplete
+	if in.From == nil {
+		if in.To != nil {
+			return in, ErrUsageWindowIncomplete
+		}
+		return in, nil
 	}
+
 	// A half-open window that does not start before it ends covers no time at
 	// all, so nothing could have been counted in it.
-	if in.WindowStart != nil && !in.WindowStart.Before(*in.WindowEnd) {
-		return ErrUsageWindowEmpty
+	if !in.From.Before(*in.To) {
+		return in, ErrUsageWindowEmpty
+	}
+	if in.To.After(MaxUsageWindow(*in.From)) {
+		return in, ErrUsageWindowTooLong
 	}
 
-	return nil
+	return in, nil
 }

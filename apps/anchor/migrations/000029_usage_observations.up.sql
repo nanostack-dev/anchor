@@ -25,11 +25,14 @@ CREATE TABLE usage_observations (
     key VARCHAR(255) NOT NULL,
     value DOUBLE PRECISION NOT NULL,
     -- Both set, or both null. Null is a gauge — "37 flows exist right now".
-    -- Set is a windowed counter over the half-open period [start, end). Two
+    -- Set is a windowed counter over the half-open period [from, to). Two
     -- timestamps rather than a formatted period, because real billing periods
     -- follow the subscription anniversary rather than the calendar.
-    window_start TIMESTAMPTZ,
-    window_end TIMESTAMPTZ,
+    --
+    -- Named with the window_ prefix because FROM and TO are both reserved words
+    -- in Postgres. The API calls them from and to.
+    window_from TIMESTAMPTZ,
+    window_to TIMESTAMPTZ,
     observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- observed_at is in the key because it is the partition column, and every
     -- unique index on a hypertable must carry it.

@@ -23,8 +23,8 @@ type usageObservationsTable struct {
 	OrganizationID   postgres.ColumnString
 	Key              postgres.ColumnString
 	Value            postgres.ColumnFloat
-	WindowStart      postgres.ColumnTimestampz
-	WindowEnd        postgres.ColumnTimestampz
+	WindowFrom       postgres.ColumnTimestampz
+	WindowTo         postgres.ColumnTimestampz
 	ObservedAt       postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
@@ -73,11 +73,11 @@ func newUsageObservationsTableImpl(schemaName, tableName, alias string) usageObs
 		OrganizationIDColumn   = postgres.StringColumn("organization_id")
 		KeyColumn              = postgres.StringColumn("key")
 		ValueColumn            = postgres.FloatColumn("value")
-		WindowStartColumn      = postgres.TimestampzColumn("window_start")
-		WindowEndColumn        = postgres.TimestampzColumn("window_end")
+		WindowFromColumn       = postgres.TimestampzColumn("window_from")
+		WindowToColumn         = postgres.TimestampzColumn("window_to")
 		ObservedAtColumn       = postgres.TimestampzColumn("observed_at")
-		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, KeyColumn, ValueColumn, WindowStartColumn, WindowEndColumn, ObservedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, KeyColumn, ValueColumn, WindowStartColumn, WindowEndColumn}
+		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, KeyColumn, ValueColumn, WindowFromColumn, WindowToColumn, ObservedAtColumn}
+		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, KeyColumn, ValueColumn, WindowFromColumn, WindowToColumn}
 		defaultColumns         = postgres.ColumnList{ObservedAtColumn}
 	)
 
@@ -91,8 +91,8 @@ func newUsageObservationsTableImpl(schemaName, tableName, alias string) usageObs
 		OrganizationID:   OrganizationIDColumn,
 		Key:              KeyColumn,
 		Value:            ValueColumn,
-		WindowStart:      WindowStartColumn,
-		WindowEnd:        WindowEndColumn,
+		WindowFrom:       WindowFromColumn,
+		WindowTo:         WindowToColumn,
 		ObservedAt:       ObservedAtColumn,
 
 		AllColumns:     allColumns,

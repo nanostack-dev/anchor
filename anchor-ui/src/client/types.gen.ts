@@ -2033,14 +2033,16 @@ export type UsageReportRequest = {
      */
     value: number;
     /**
-     * Send window_start and window_end together, or send neither. Neither makes this a gauge: "37 flows exist right now", a number that rises and falls. Both make it a counter over the half-open period [window_start, window_end): "412 runs between August 14 and September 14". Start a new window to reset the counter.
+     * Send no window at all to report a gauge: "37 flows exist right now", a number that rises and falls. Send `from` to report a counter over the half-open period [from, to): "412 runs between August 14 and September 14". Start a new window to reset the counter.
      * The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
      */
-    window_start?: string;
+    from?: string;
     /**
-     * The exclusive end of the period. It must come after window_start.
+     * The exclusive end of the period. It must come after `from`, and no more than one year after it.
+     * Omit it to mean now. "412 runs since August 14" is a complete statement, and sending a timestamp that means "now" only invites clock skew. Anchor fills the value in and returns it.
+     * Sending `to` without `from` is refused. There is nothing to run from.
      */
-    window_end?: string;
+    to?: string;
 };
 
 /**
@@ -2056,10 +2058,10 @@ export type UsageObservationResponse = {
     key: string;
     value: number;
     /**
-     * Absent on a gauge. Present with window_end on a windowed counter.
+     * Both `from` and `to` are absent on a gauge, and both are present on a windowed counter. A report that sent `from` alone reads back with the `to` Anchor filled in, so a reader never meets half a window.
      */
-    window_start?: string;
-    window_end?: string;
+    from?: string;
+    to?: string;
     /**
      * When Anchor accepted the report. Anchor sets it, so a consumer cannot backdate a report or write into the future.
      */

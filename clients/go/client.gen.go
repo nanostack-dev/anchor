@@ -970,7 +970,7 @@ type ClientInterface interface {
 	// ReportOrganizationUsageWithBody Report Organization Usage
 	//
 	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 	//
 	// Takes any type of body and a specified content type.
@@ -981,7 +981,7 @@ type ClientInterface interface {
 	// ReportOrganizationUsage Report Organization Usage
 	//
 	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 	//
 	// Takes a body of the `application/json` content type.
@@ -3288,7 +3288,7 @@ func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId Produ
 // ReportOrganizationUsageWithBody Report Organization Usage
 //
 // Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 // The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 //
 // Takes any type of body and a specified content type.
@@ -3309,7 +3309,7 @@ func (c *Client) ReportOrganizationUsageWithBody(ctx context.Context, productId 
 // ReportOrganizationUsage Report Organization Usage
 //
 // Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 // The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 //
 // Takes a body of the `application/json` content type.
@@ -9846,7 +9846,7 @@ type ClientWithResponsesInterface interface {
 	// ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
 	//
 	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -9857,7 +9857,7 @@ type ClientWithResponsesInterface interface {
 	// ReportOrganizationUsageWithResponse Report Organization Usage
 	//
 	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+	// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 	// The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -17073,7 +17073,7 @@ func (c *ClientWithResponses) GetOrganizationLicenseDiffWithResponse(ctx context
 // ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
 //
 // Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 // The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -17090,7 +17090,7 @@ func (c *ClientWithResponses) ReportOrganizationUsageWithBodyWithResponse(ctx co
 // ReportOrganizationUsageWithResponse Report Organization Usage
 //
 // Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
-// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
+// The report is checked for four things: the product's license schema declares the key, the field is a limit, the value is a finite non-negative number, and the window is coherent and no longer than a year. The license field's own rules are deliberately not applied. Rules bound what a limit may be set to, never what usage turns out to be, so a value past the organization's limit is stored as reported.
 // The organization does not need a license. Usage is what happened, and it stays true whether or not a limit was granted.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).

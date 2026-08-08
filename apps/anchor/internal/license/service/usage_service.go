@@ -75,11 +75,15 @@ var (
 	)
 	ErrUsageWindowIncomplete = fault.BadRequest(
 		"USAGE_WINDOW_INCOMPLETE",
-		"A usage window needs both a start and an end, or neither",
+		"A usage window that gives to must also give from",
 	)
 	ErrUsageWindowEmpty = fault.BadRequest(
 		"USAGE_WINDOW_EMPTY",
 		"A usage window must start before it ends",
+	)
+	ErrUsageWindowTooLong = fault.BadRequest(
+		"USAGE_WINDOW_TOO_LONG",
+		"A usage window cannot be longer than one year",
 	)
 )
 
@@ -133,27 +137,32 @@ func (s *usageService) ReportUsage(
 		return license.UsageObservation{}, err
 	}
 
+	// One clock reading for the whole report, so a window left open ends at the
+	// same instant the observation is stamped with rather than a moment before.
+	now := time.Now()
+
 	// Everything the report can be judged on by itself, before a schema is
 	// loaded. A malformed report costs no database round trip.
-	if err := in.Check(); err != nil {
+	normalized, err := in.Normalize(now)
+	if err != nil {
 		return license.UsageObservation{}, asUsageFault(err)
 	}
 
-	if err := s.resolveLimit(ctx, in); err != nil {
+	if err = s.resolveLimit(ctx, normalized); err != nil {
 		return license.UsageObservation{}, err
 	}
 
 	observation := license.UsageObservation{
-		PlatformTenantID: in.TenantID,
-		ProductID:        in.ProductID,
-		OrganizationID:   in.OrganizationID,
-		Key:              in.Key,
-		Value:            in.Value,
-		WindowStart:      in.WindowStart,
-		WindowEnd:        in.WindowEnd,
+		PlatformTenantID: normalized.TenantID,
+		ProductID:        normalized.ProductID,
+		OrganizationID:   normalized.OrganizationID,
+		Key:              normalized.Key,
+		Value:            normalized.Value,
+		From:             normalized.From,
+		To:               normalized.To,
 		// Set here rather than taken from the caller, so a consumer cannot
 		// write into the future or rewrite its own history by backdating.
-		ObservedAt: time.Now(),
+		ObservedAt: now,
 	}
 	observation.GenerateID()
 
@@ -210,6 +219,8 @@ func asUsageFault(err error) error {
 		return ErrUsageWindowIncomplete
 	case errors.Is(err, license.ErrUsageWindowEmpty):
 		return ErrUsageWindowEmpty
+	case errors.Is(err, license.ErrUsageWindowTooLong):
+		return ErrUsageWindowTooLong
 	default:
 		return err
 	}

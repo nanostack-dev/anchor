@@ -100,8 +100,8 @@ func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationR
 		OrganizationId: o.OrganizationID,
 		Key:            o.Key,
 		Value:          o.Value,
-		WindowStart:    o.WindowStart,
-		WindowEnd:      o.WindowEnd,
+		From:           o.From,
+		To:             o.To,
 		ObservedAt:     o.ObservedAt,
 	}
 }

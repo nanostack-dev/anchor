@@ -2194,6 +2194,9 @@ type UpdateProductResourcePermissionRequest struct {
 
 // UsageObservationResponse One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
 type UsageObservationResponse struct {
+	// From Both `from` and `to` are absent on a gauge, and both are present on a windowed counter. A report that sent `from` alone reads back with the `to` Anchor filled in, so a reader never meets half a window.
+	From *time.Time `json:"from,omitempty"`
+
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -2214,27 +2217,26 @@ type UsageObservationResponse struct {
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid      `json:"product_id"`
+	To        *time.Time `json:"to,omitempty"`
 	Value     float64    `json:"value"`
-	WindowEnd *time.Time `json:"window_end,omitempty"`
-
-	// WindowStart Absent on a gauge. Present with window_end on a windowed counter.
-	WindowStart *time.Time `json:"window_start,omitempty"`
 }
 
 // UsageReportRequest One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
 type UsageReportRequest struct {
+	// From Send no window at all to report a gauge: "37 flows exist right now", a number that rises and falls. Send `from` to report a counter over the half-open period [from, to): "412 runs between August 14 and September 14". Start a new window to reset the counter.
+	// The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
+	From *time.Time `json:"from,omitempty"`
+
 	// Key The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage.
 	Key string `json:"key"`
 
+	// To The exclusive end of the period. It must come after `from`, and no more than one year after it.
+	// Omit it to mean now. "412 runs since August 14" is a complete statement, and sending a timestamp that means "now" only invites clock skew. Anchor fills the value in and returns it.
+	// Sending `to` without `from` is refused. There is nothing to run from.
+	To *time.Time `json:"to,omitempty"`
+
 	// Value The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
 	Value float64 `json:"value"`
-
-	// WindowEnd The exclusive end of the period. It must come after window_start.
-	WindowEnd *time.Time `json:"window_end,omitempty"`
-
-	// WindowStart Send window_start and window_end together, or send neither. Neither makes this a gauge: "37 flows exist right now", a number that rises and falls. Both make it a counter over the half-open period [window_start, window_end): "412 runs between August 14 and September 14". Start a new window to reset the counter.
-	// The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
-	WindowStart *time.Time `json:"window_start,omitempty"`
 }
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.

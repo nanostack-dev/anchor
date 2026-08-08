@@ -21,8 +21,8 @@ func (m *UsageObservationMapper) ToDomain(
 		OrganizationID:   entity.OrganizationID,
 		Key:              entity.Key,
 		Value:            entity.Value,
-		WindowStart:      entity.WindowStart,
-		WindowEnd:        entity.WindowEnd,
+		From:             entity.WindowFrom,
+		To:               entity.WindowTo,
 		ObservedAt:       entity.ObservedAt,
 	}
 }
@@ -37,8 +37,8 @@ func (m *UsageObservationMapper) ToEntity(
 		OrganizationID:   domain.OrganizationID,
 		Key:              domain.Key,
 		Value:            domain.Value,
-		WindowStart:      domain.WindowStart,
-		WindowEnd:        domain.WindowEnd,
+		WindowFrom:       domain.From,
+		WindowTo:         domain.To,
 		ObservedAt:       domain.ObservedAt,
 	}
 }

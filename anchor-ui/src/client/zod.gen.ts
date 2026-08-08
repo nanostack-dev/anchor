@@ -1349,8 +1349,8 @@ export const zOrganizationLicenseDiffResponse = z.object({
 export const zUsageReportRequest = z.object({
     key: z.string().max(120),
     value: z.number(),
-    window_start: z.optional(z.iso.datetime()),
-    window_end: z.optional(z.iso.datetime())
+    from: z.optional(z.iso.datetime()),
+    to: z.optional(z.iso.datetime())
 });
 
 /**
@@ -1362,8 +1362,8 @@ export const zUsageObservationResponse = z.object({
     organization_id: zKsuid,
     key: z.string(),
     value: z.number(),
-    window_start: z.optional(z.iso.datetime()),
-    window_end: z.optional(z.iso.datetime()),
+    from: z.optional(z.iso.datetime()),
+    to: z.optional(z.iso.datetime()),
     observed_at: z.iso.datetime()
 });
 

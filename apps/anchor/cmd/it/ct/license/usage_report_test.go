@@ -27,24 +27,40 @@ func TestReportUsage(t *testing.T) {
 		assert.WithinDuration(t, time.Now(), observation.ObservedAt, time.Minute)
 		// A gauge carries no window. That absence is what tells a reader the
 		// number rises and falls rather than accumulating within a period.
-		assert.Nil(t, observation.WindowStart)
-		assert.Nil(t, observation.WindowEnd)
+		assert.Nil(t, observation.From)
+		assert.Nil(t, observation.To)
 	})
 
 	t.Run("stores a windowed counter over the period it names", func(t *testing.T) {
 		w := newLicenseWorld(t)
-		start, end := billingPeriod()
+		from, to := billingPeriod()
 
-		observation := w.Usage().Report(windowed("flows", 412, start, end))
+		observation := w.Usage().Report(windowed(412, from, to))
 
 		assert.InDelta(t, 412.0, observation.Value, 0)
-		require.NotNil(t, observation.WindowStart)
-		require.NotNil(t, observation.WindowEnd)
+		require.NotNil(t, observation.From)
+		require.NotNil(t, observation.To)
 		// The period comes back as the two moments it was sent as. A billing
 		// period following a subscription anniversary is not expressible as a
 		// formatted string, which is why it never becomes one.
-		assert.True(t, start.Equal(*observation.WindowStart))
-		assert.True(t, end.Equal(*observation.WindowEnd))
+		assert.True(t, from.Equal(*observation.From))
+		assert.True(t, to.Equal(*observation.To))
+	})
+
+	t.Run("a window left open runs to now", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		from := time.Now().Add(-24 * time.Hour)
+
+		// "412 runs since yesterday" is a complete statement. Making the caller
+		// send a timestamp meaning "now" would only invite clock skew.
+		observation := w.Usage().Report(openEnded(412, from))
+
+		require.NotNil(t, observation.From)
+		require.NotNil(t, observation.To)
+		assert.True(t, from.Equal(*observation.From))
+		// Filled in by Anchor, and equal to the moment the observation is
+		// stamped with, so the window never ends a hair before its own report.
+		assert.Equal(t, observation.ObservedAt, *observation.To)
 	})
 
 	t.Run("zero is a real observation", func(t *testing.T) {
@@ -134,36 +150,67 @@ func TestReportUsage(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("refuses half a window", func(t *testing.T) {
+	t.Run("refuses an end with no start", func(t *testing.T) {
 		w := newLicenseWorld(t)
-		start, end := billingPeriod()
+		_, to := billingPeriod()
 
-		startOnly := w.Usage().ReportRaw(
-			ct.UsageReportRequest{Key: "flows", Value: 412, WindowStart: &start},
-		)
-		require.Equal(t, http.StatusBadRequest, startOnly.StatusCode(), string(startOnly.Body))
-		assertAPIError(t, startOnly.JSON400.Errors, "USAGE_WINDOW_INCOMPLETE")
+		// The other half defaults. This one cannot: there is nothing to run
+		// from, and guessing a start would invent the number's meaning.
+		resp := w.Usage().ReportRaw(ct.UsageReportRequest{Key: "flows", Value: 412, To: &to})
 
-		endOnly := w.Usage().ReportRaw(
-			ct.UsageReportRequest{Key: "flows", Value: 412, WindowEnd: &end},
-		)
-		require.Equal(t, http.StatusBadRequest, endOnly.StatusCode(), string(endOnly.Body))
-		assertAPIError(t, endOnly.JSON400.Errors, "USAGE_WINDOW_INCOMPLETE")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_INCOMPLETE")
 	})
 
 	t.Run("refuses a window that holds no time", func(t *testing.T) {
 		w := newLicenseWorld(t)
-		start, end := billingPeriod()
+		from, to := billingPeriod()
 
 		// A half-open period that does not start before it ends covers nothing,
 		// so nothing could have been counted in it.
-		empty := w.Usage().ReportRaw(windowed("flows", 412, start, start))
+		empty := w.Usage().ReportRaw(windowed(412, from, from))
 		require.Equal(t, http.StatusBadRequest, empty.StatusCode(), string(empty.Body))
 		assertAPIError(t, empty.JSON400.Errors, "USAGE_WINDOW_EMPTY")
 
-		reversed := w.Usage().ReportRaw(windowed("flows", 412, end, start))
+		reversed := w.Usage().ReportRaw(windowed(412, to, from))
 		require.Equal(t, http.StatusBadRequest, reversed.StatusCode(), string(reversed.Body))
 		assertAPIError(t, reversed.JSON400.Errors, "USAGE_WINDOW_EMPTY")
+	})
+
+	t.Run("refuses a window longer than a year", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		_, to := billingPeriod()
+
+		// A window this long is a mistyped year far more often than a real
+		// billing period, and raw observations are aged out well before it.
+		resp := w.Usage().ReportRaw(windowed(412, to.AddDate(-1, 0, -1), to))
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
+	})
+
+	t.Run("accepts a window of exactly a year", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		_, to := billingPeriod()
+
+		// An annual subscription term is the longest real period, so the bound
+		// has to sit on the far side of it rather than under it.
+		observation := w.Usage().Report(windowed(8_640, to.AddDate(-1, 0, 0), to))
+
+		assert.InDelta(t, 8_640.0, observation.Value, 0)
+	})
+
+	t.Run("a window left open cannot outrun the year bound", func(t *testing.T) {
+		w := newLicenseWorld(t)
+
+		// The default end does not exempt a report from the bound. A start two
+		// years ago is refused whether or not the caller names the end.
+		resp := w.Usage().ReportRaw(
+			openEnded(412, time.Now().AddDate(-2, 0, 0)),
+		)
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
 	})
 
 	t.Run("refuses an organization the product does not have", func(t *testing.T) {
