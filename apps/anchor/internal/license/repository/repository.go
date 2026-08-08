@@ -81,12 +81,20 @@ type TemplateRepository interface {
 	Update(
 		ctx context.Context, tenantID string, template license.Template,
 	) (license.Template, error)
-	// Archive marks the template withdrawn and returns it. There is no delete: an
-	// Organization's license names the template it came from, and that has to
-	// keep resolving.
+	// Archive marks the template withdrawn and returns it. Prefer this once a
+	// template might have customers: an Organization's license names the
+	// template it came from, and that has to keep resolving.
 	Archive(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) (license.Template, error)
+	// Delete removes the row outright. The foreign key added by migration 000028
+	// refuses this while any Organization license names the template, so callers
+	// check with OrganizationLicenseRepository.CountLicensesForTemplate first;
+	// this exists for the template nobody was ever licensed from. See
+	// docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+	Delete(
+		ctx context.Context, tenantID string, productID string, templateID string,
+	) error
 }
 
 // OrganizationLicenseRepository persists one Organization's copy of a template's
@@ -111,4 +119,11 @@ type OrganizationLicenseRepository interface {
 	Update(
 		ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)
+	// CountLicensesForTemplate reports how many Organization licenses in this
+	// Product still name the given template. A template delete checks this
+	// before the write, mirroring how CountMembershipAssignments guards a
+	// product role delete.
+	CountLicensesForTemplate(
+		ctx context.Context, tenantID string, productID string, templateID string,
+	) (int, error)
 }

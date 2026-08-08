@@ -5620,6 +5620,44 @@ export type CreateLicenseTemplateResponses = {
 
 export type CreateLicenseTemplateResponse = CreateLicenseTemplateResponses[keyof CreateLicenseTemplateResponses];
 
+export type DeleteLicenseTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the license template.
+         */
+        license_template_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/{license_template_id}';
+};
+
+export type DeleteLicenseTemplateErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type DeleteLicenseTemplateError = DeleteLicenseTemplateErrors[keyof DeleteLicenseTemplateErrors];
+
+export type DeleteLicenseTemplateResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteLicenseTemplateResponse = DeleteLicenseTemplateResponses[keyof DeleteLicenseTemplateResponses];
+
 export type GetLicenseTemplateData = {
     body?: never;
     path: {

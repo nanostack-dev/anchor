@@ -2653,6 +2653,20 @@ export const zCreateLicenseTemplateData = z.object({
  */
 export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
 
+export const zDeleteLicenseTemplateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        license_template_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Deleted
+ */
+export const zDeleteLicenseTemplateResponse = z.void();
+
 export const zGetLicenseTemplateData = z.object({
     body: z.optional(z.never()),
     path: z.object({

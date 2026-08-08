@@ -140,3 +140,17 @@ func (r *templateRepositoryImpl) Archive(
 	).RETURNING(table.LicenseTemplates.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
+
+// Delete removes the row outright. The service checks
+// CountLicensesForTemplate before calling this; fk_organization_licenses_template
+// (migration 000028) is the guarantee, and a race that slips past the check
+// fails here instead, surfaced through pgerr.IsForeignKeyViolation.
+func (r *templateRepositoryImpl) Delete(
+	ctx context.Context, tenantID string, productID string, templateID string,
+) error {
+	stmt := table.LicenseTemplates.DELETE().WHERE(
+		licenseTemplateScope(tenantID, productID).
+			AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
+	)
+	return transactor.Exec(ctx, r.db, stmt).Err()
+}

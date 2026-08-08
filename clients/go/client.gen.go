@@ -687,7 +687,7 @@ type ClientInterface interface {
 
 	// ListLicenseTemplates List License Templates
 	//
-	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status, because a template is never deleted. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
 	ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -709,6 +709,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLicenseTemplate Delete License Template
+	//
+	// Removes a template that no Organization license has ever named. Refused with a 400 if any Organization license still names it, checked before the write — the same record a customer was sold cannot lose the statement of what they were sold. There is no cascade and no force: resolve the reference first, or archive the template instead, which withdraws it without removing the row. Archiving remains the only withdrawal for a template that might already have customers; delete exists for the one nobody was ever licensed from. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+	DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLicenseTemplate Get License Template
 	//
@@ -736,7 +743,7 @@ type ClientInterface interface {
 	// ArchiveLicenseTemplate Archive License Template
 	//
 	// Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-	// There is no delete. Organizations keep their own copy of the values, so withdrawing a tier never affects what they hold.
+	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive (the `ArchiveLicenseTemplate` operationId).
 	ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2656,7 +2663,7 @@ func (c *Client) UpdateLicenseSchema(ctx context.Context, productId ProductIdPar
 
 // ListLicenseTemplates List License Templates
 //
-// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status, because a template is never deleted. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
 func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2699,6 +2706,23 @@ func (c *Client) CreateLicenseTemplateWithBody(ctx context.Context, productId Pr
 // Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 func (c *Client) CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateLicenseTemplateRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLicenseTemplate Delete License Template
+//
+// Removes a template that no Organization license has ever named. Refused with a 400 if any Organization license still names it, checked before the write — the same record a customer was sold cannot lose the statement of what they were sold. There is no cascade and no force: resolve the reference first, or archive the template instead, which withdraws it without removing the row. Archiving remains the only withdrawal for a template that might already have customers; delete exists for the one nobody was ever licensed from. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+func (c *Client) DeleteLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLicenseTemplateRequest(c.Server, productId, licenseTemplateId)
 	if err != nil {
 		return nil, err
 	}
@@ -2765,7 +2789,7 @@ func (c *Client) UpdateLicenseTemplate(ctx context.Context, productId ProductIdP
 // ArchiveLicenseTemplate Archive License Template
 //
 // Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-// There is no delete. Organizations keep their own copy of the values, so withdrawing a tier never affects what they hold.
+// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
 //
 // Corresponds with POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive (the `ArchiveLicenseTemplate` operationId).
 func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6270,6 +6294,47 @@ func NewCreateLicenseTemplateRequestWithBody(server string, productId ProductIdP
 	return req, nil
 }
 
+// NewDeleteLicenseTemplateRequest constructs an http.Request for the DeleteLicenseTemplate method
+func NewDeleteLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "license_template_id", licenseTemplateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetLicenseTemplateRequest constructs an http.Request for the GetLicenseTemplate method
 func NewGetLicenseTemplateRequest(server string, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter) (*http.Request, error) {
 	var err error
@@ -9360,7 +9425,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListLicenseTemplatesWithResponse List License Templates
 	//
-	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status, because a template is never deleted. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9384,6 +9449,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error)
+
+	// DeleteLicenseTemplateWithResponse Delete License Template
+	//
+	// Removes a template that no Organization license has ever named. Refused with a 400 if any Organization license still names it, checked before the write — the same record a customer was sold cannot lose the statement of what they were sold. There is no cascade and no force: resolve the reference first, or archive the template instead, which withdraws it without removing the row. Archiving remains the only withdrawal for a template that might already have customers; delete exists for the one nobody was ever licensed from. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+	DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error)
 
 	// GetLicenseTemplateWithResponse Get License Template
 	//
@@ -9413,7 +9487,7 @@ type ClientWithResponsesInterface interface {
 	// ArchiveLicenseTemplateWithResponse Archive License Template
 	//
 	// Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-	// There is no delete. Organizations keep their own copy of the values, so withdrawing a tier never affects what they hold.
+	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12606,6 +12680,47 @@ func (r CreateLicenseTemplateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateLicenseTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLicenseTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteLicenseTemplateResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLicenseTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLicenseTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLicenseTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLicenseTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16275,7 +16390,7 @@ func (c *ClientWithResponses) UpdateLicenseSchemaWithResponse(ctx context.Contex
 
 // ListLicenseTemplatesWithResponse List License Templates
 //
-// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status, because a template is never deleted. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -16316,6 +16431,21 @@ func (c *ClientWithResponses) CreateLicenseTemplateWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseCreateLicenseTemplateResponse(rsp)
+}
+
+// DeleteLicenseTemplateWithResponse Delete License Template
+//
+// Removes a template that no Organization license has ever named. Refused with a 400 if any Organization license still names it, checked before the write — the same record a customer was sold cannot lose the statement of what they were sold. There is no cascade and no force: resolve the reference first, or archive the template instead, which withdraws it without removing the row. Archiving remains the only withdrawal for a template that might already have customers; delete exists for the one nobody was ever licensed from. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/licensing/templates/{license_template_id} (the `DeleteLicenseTemplate` operationId).
+func (c *ClientWithResponses) DeleteLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseTemplateResponse, error) {
+	rsp, err := c.DeleteLicenseTemplate(ctx, productId, licenseTemplateId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLicenseTemplateResponse(rsp)
 }
 
 // GetLicenseTemplateWithResponse Get License Template
@@ -16364,7 +16494,7 @@ func (c *ClientWithResponses) UpdateLicenseTemplateWithResponse(ctx context.Cont
 // ArchiveLicenseTemplateWithResponse Archive License Template
 //
 // Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-// There is no delete. Organizations keep their own copy of the values, so withdrawing a tier never affects what they hold.
+// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -19357,6 +19487,38 @@ func ParseCreateLicenseTemplateResponse(rsp *http.Response) (*CreateLicenseTempl
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLicenseTemplateResponse parses an HTTP response from a DeleteLicenseTemplateWithResponse call
+func ParseDeleteLicenseTemplateResponse(rsp *http.Response) (*DeleteLicenseTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLicenseTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
