@@ -7,14 +7,6 @@ import (
 	"anchor/internal/security"
 )
 
-// ---------------------------------------------------------------------------
-// Usage handlers
-// ---------------------------------------------------------------------------
-//
-// Usage hangs off the Organization's license path because that is what it is
-// measured against, but it needs no license to exist: the key is resolved
-// against the Product's license schema.
-
 func (s *AnchorAPI) ReportOrganizationUsage(
 	ctx context.Context, request ReportOrganizationUsageRequestObject,
 ) (ReportOrganizationUsageResponseObject, error) {

@@ -31,8 +31,6 @@ func NewUsageObservationRepository(
 	}
 }
 
-// Append writes one observation. Every column is set, because there is nothing
-// on this table a later statement could fill in.
 func (r *usageObservationRepositoryImpl) Append(
 	ctx context.Context, observation license.UsageObservation,
 ) (license.UsageObservation, error) {

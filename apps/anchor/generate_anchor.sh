@@ -32,10 +32,8 @@ check_dependencies() {
 
 # Start a PostgreSQL container and wait for it to be ready
 #
-# TimescaleDB, not plain Postgres. The usage migration creates a hypertable, so
-# a plain image fails here rather than in production. Keep this image equal to
-# the one in docker-compose.yml and in cmd/it/shared/test_setup.go, or code is
-# generated against a different engine than it runs on.
+# TimescaleDB, not plain Postgres: the usage migration creates a hypertable.
+# Keep this image equal to docker-compose.yml and cmd/it/shared/test_setup.go.
 start_postgres() {
   echo "Starting PostgreSQL container on port ${ANCHOR_DB_PORT}..."
   cleanup # Ensure no old container exists

@@ -128,17 +128,9 @@ type OrganizationLicenseRepository interface {
 	) (int, error)
 }
 
-// UsageObservationRepository persists what an Organization has used.
-//
-// Append is the only write there is. An observation is never updated and never
-// deleted, so a correction is a later observation rather than an edit of an
-// earlier one — that is what makes the table a history instead of a current
-// value with a timestamp on it. Reading the series back arrives with the usage
-// history endpoint.
-//
-// Every method is tenant-scoped and product-scoped. There is no *Internal
-// variant: nothing in the licensing write path runs without an authenticated
-// tenant.
+// UsageObservationRepository persists what an Organization has used. Append is
+// the only write there is: an observation is never updated and never deleted,
+// so a correction is a later observation rather than an edit of an earlier one.
 type UsageObservationRepository interface {
 	Append(
 		ctx context.Context, observation license.UsageObservation,

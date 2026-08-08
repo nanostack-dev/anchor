@@ -19,8 +19,6 @@ var domains = []string{
 	"license_schema",
 	"license_template",
 	"organization_license",
-	// Separate from organization_license on purpose: a key trusted to read what
-	// a customer was granted is not thereby trusted to report what they used.
 	"license_usage",
 }
 

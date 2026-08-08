@@ -215,10 +215,6 @@ func (h licenseHandle) Diff() ct.OrganizationLicenseDiffResponse {
 // Usage handle
 // ---------------------------------------------------------------------------
 
-// usageHandle reports what one organization has used, with one credential. It
-// is separate from licenseHandle because usage needs no license: an
-// organization can report before it is on a tier, and keeps reporting after one
-// is withdrawn.
 type usageHandle struct {
 	t              *testing.T
 	client         *ct.ClientWithResponses
@@ -226,7 +222,6 @@ type usageHandle struct {
 	organizationID string
 }
 
-// Usage addresses the world's own organization, as its owner.
 func (w *licenseWorld) Usage() usageHandle {
 	return usageHandle{
 		t:              w.t,
@@ -267,10 +262,8 @@ func (h usageHandle) Report(report ct.UsageReportRequest) ct.UsageObservationRes
 	return *resp.JSON201
 }
 
-// ReportBodyRaw posts a body the generated client cannot express. It exists for
-// one case: a value that is not a number at all. The typed request models the
-// value as a float, so the only way to prove the contract refuses a string is
-// to send one.
+// ReportBodyRaw posts a body the generated client cannot express — the typed
+// request models value as a float, so a non-numeric value has to be sent raw.
 func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageResponse {
 	h.t.Helper()
 	resp, err := h.client.ReportOrganizationUsageWithBodyWithResponse(
@@ -284,33 +277,22 @@ func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageRespo
 	return resp
 }
 
-// gauge is a report with no window: "this many exist right now", a number that
-// rises and falls.
 func gauge(key string, value float64) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: key, Value: value}
 }
 
-// worldLimitKey is the one license field in templateSchemaFields that carries
-// usage. The windowed builders below take no key because of it: only a limit
-// can be reported against, and the world declares exactly one, so there is no
-// second value the key could take. The gauge builder keeps its key, because the
-// refusal tests report against an undeclared name and against a boolean.
+// The one limit in templateSchemaFields. The windowed builders take no key
+// because only a limit can carry usage and the world declares exactly one.
 const worldLimitKey = "flows"
 
-// windowed is a report over the half-open period [from, to): "this many
-// happened between these two moments".
 func windowed(value float64, from, to time.Time) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from, To: &to}
 }
 
-// openEnded is a report that says where it starts and lets Anchor decide where
-// it ends: "this many since then".
 func openEnded(value float64, from time.Time) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from}
 }
 
-// billingPeriod is a window that follows a subscription anniversary rather than
-// the calendar, which is the shape the two timestamps exist for.
 func billingPeriod() (time.Time, time.Time) {
 	start := time.Date(2026, time.August, 14, 0, 0, 0, 0, time.UTC)
 	return start, start.AddDate(0, 1, 0)

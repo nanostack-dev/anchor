@@ -11,7 +11,7 @@ import (
 	"anchor/internal/domain/license"
 )
 
-// reportedAt is the fixed clock every case below is normalised against, so a
+// reportedAt is the fixed clock every case is normalised against, so a
 // defaulted window end is an exact value rather than an approximate one.
 var reportedAt = time.Date(2026, time.August, 14, 12, 0, 0, 0, time.UTC)
 
@@ -20,15 +20,6 @@ func at(offset time.Duration) *time.Time {
 	return &moment
 }
 
-// TestReportUsageInputNormalize pins every way a usage report is malformed on
-// its own terms, and the one value Anchor fills in — before a schema is loaded
-// and without a database round trip.
-//
-// The last case is the one this whole subsystem turns on: a value far past any
-// limit the field could declare is accepted here. Rules bound what a limit may
-// be set to and are never applied to an observation. Applying them would make
-// the "exceeded" status unreachable, and Anchor would keep serving a stale
-// value reading "within_limit".
 func TestReportUsageInputNormalize(t *testing.T) {
 	t.Parallel()
 
@@ -141,7 +132,6 @@ func TestReportUsageInputNormalize(t *testing.T) {
 	}
 }
 
-// oneYear is the span the cases above straddle. It is the calendar year ending
-// at reportedAt, not a fixed count of hours, because that is what the check
+// A calendar year, not a fixed count of hours, because that is what the check
 // itself measures.
 var oneYear = reportedAt.Sub(reportedAt.AddDate(-1, 0, 0))

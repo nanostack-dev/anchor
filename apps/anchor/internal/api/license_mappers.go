@@ -91,9 +91,6 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 }
 
 func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {
-	// The window travels as it was stored: both ends on a windowed counter,
-	// neither on a gauge. Half a window is refused on write, so a reader never
-	// has to decide what one would mean.
 	return UsageObservationResponse{
 		Id:             o.ID,
 		ProductId:      o.ProductID,

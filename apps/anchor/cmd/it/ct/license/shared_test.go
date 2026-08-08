@@ -21,8 +21,8 @@ import (
 	itdsl "anchor/cmd/it/shared/dsl"
 )
 
-// testDB is the same connection the application uses. One assertion needs it:
-// that usage observations live in a hypertable, which no API response can show.
+// testDB backs the assertions no API response can show, such as the usage table
+// being a hypertable.
 var testDB *sql.DB
 
 func TestMain(m *testing.M) {
@@ -71,9 +71,8 @@ func uniqueFieldName() string {
 	return "field_" + ids.MustNew("ct")
 }
 
-// createOrganization adds an organization to a product. Creating one is a
-// Product API key route rather than a platform bearer one, so it cannot go
-// through the client the licensing acts use.
+// createOrganization goes through a Product API key: creating an organization
+// is not a platform bearer route.
 func createOrganization(t *testing.T, product *itdsl.ProductContext) string {
 	t.Helper()
 	client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization:create"})

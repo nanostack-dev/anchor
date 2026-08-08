@@ -9,13 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Two properties of the usage store that no API response can show, checked
-// against the database directly.
 func TestUsageObservationStorage(t *testing.T) {
 	t.Run("observations live in a hypertable", func(t *testing.T) {
-		// The aggregation, retention and compression a usage history needs are
-		// TimescaleDB policies. A plain table would take all of them back into
-		// hand-written Go. See docs/adr/0005-timescaledb-for-usage-history.md.
 		var count int
 		err := testDB.QueryRow(
 			`SELECT count(*) FROM timescaledb_information.hypertables
@@ -29,9 +24,6 @@ func TestUsageObservationStorage(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 37))
 
-		// Cascading into a hypertable means cascading into its chunks. This
-		// proves the delete completes rather than tripping the foreign key, and
-		// losing the history with the product is deliberate.
 		resp, err := w.client().DeleteProductWithResponse(context.Background(), w.productID())
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
@@ -51,9 +43,6 @@ func TestUsageObservationStorage(t *testing.T) {
 		w.Usage().Report(gauge("flows", 37))
 		w.Usage().Report(gauge("flows", 41))
 
-		// Both rows are kept. The second report does not overwrite the first,
-		// which is the whole difference between a history and a current value
-		// with a timestamp on it.
 		var count int
 		err := testDB.QueryRow(
 			`SELECT count(*) FROM usage_observations WHERE organization_id = $1`,
