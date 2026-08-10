@@ -121,6 +121,28 @@ func (s *AnchorAPI) UpdateLicenseTemplate(
 	return UpdateLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(template)), nil
 }
 
+func (s *AnchorAPI) DeleteLicenseTemplate(
+	ctx context.Context, request DeleteLicenseTemplateRequestObject,
+) (DeleteLicenseTemplateResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.LicenseTemplateService.DeleteTemplate(ctx, license.DeleteTemplateInput{
+		TenantID:   tenantID,
+		ProductID:  request.ProductId,
+		TemplateID: request.LicenseTemplateId,
+	}); err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("license_template_id", request.LicenseTemplateId).
+			Msg("failed to delete license template")
+		return nil, err
+	}
+	return DeleteLicenseTemplate204Response{}, nil
+}
+
 func (s *AnchorAPI) ArchiveLicenseTemplate(
 	ctx context.Context, request ArchiveLicenseTemplateRequestObject,
 ) (ArchiveLicenseTemplateResponseObject, error) {
