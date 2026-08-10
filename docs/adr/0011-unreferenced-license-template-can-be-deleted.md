@@ -18,6 +18,8 @@ That cost falls hardest on exactly the workflow this repository's own Terraform 
 
 Archiving is unchanged and remains the only withdrawal for a template that might have customers. A template that could be referenced is in practice never deletable, because the foreign key forbids it — delete is only ever reachable for a template nobody was ever licensed from. **The admin UI keeps using archive**: an operator withdrawing a tier from the UI cannot generally know whether some Organization already holds it, so archive is the one verb that is always safe to offer there. The API and Terraform caller that just created a template it is about to tear down in the same test, or the same `terraform destroy`, is in a different position, and delete exists for that caller.
 
+**Archive's scope moves from `license_template:delete` to `license_template:update`.** Before this ADR, `license_template:delete` meant "call archive" and nothing stronger existed under that name, so sharing it cost nothing. Now it means "permanently remove the row," and a key an operator granted expecting only the reversible-in-listing, row-preserving act of archiving would, unchanged, have gained the ability to destroy a row outright — a capability expansion nobody consented to. Archive is an edit to the row's `status` column, not a removal of it, which is what `license_template:update` already means for every other field on a template.
+
 Status is not part of the guard. An `ARCHIVED`-but-unreferenced template can also be deleted: archiving a template by mistake is exactly the case ADR-0010 named as unrecoverable, and the reference check is sufficient on its own to keep the provenance guarantee — nothing about being archived makes a template more or less safe to remove.
 
 ## Consequences
@@ -30,4 +32,6 @@ Status is not part of the guard. An `ARCHIVED`-but-unreferenced template can als
 
 **Cost.** Two ways to remove a template now exist, and a caller has to know which applies. `LICENSE_TEMPLATE_IN_USE` on a delete attempt is the signal to archive instead, and the error message says so.
 
-**Cost.** `license_template:delete` now backs two distinct destructive verbs, `archive` and the restored `delete`. They were already the same scope in the API that predates ADR-0010, so this is a return to that shape rather than a new one, and splitting them would protect nothing: a caller trusted to withdraw a tier for good is already trusted to withdraw it archived.
+**Good.** A key scoped to `license_template:update` — the ordinary "let this integration manage its own templates" grant — can withdraw a tier by archiving it without also being trusted to permanently destroy a row. `license_template:delete` now means only the one thing its name says.
+
+**Cost.** A key that already held `license_template:delete` before this ADR, expecting it to mean "call archive," silently loses that ability the moment this ships, and needs `license_template:update` added to keep working. This is a one-time break in an API surface nothing external consumes yet — the Terraform provider and the admin UI are both unbuilt or unreleased against it — so it is taken now rather than after either exists.

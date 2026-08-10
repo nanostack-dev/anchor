@@ -743,7 +743,7 @@ type ClientInterface interface {
 	// ArchiveLicenseTemplate Archive License Template
 	//
 	// Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
+	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true. Scoped as an edit, not a delete: the row is kept, so this is closer to updating the template's status than to removing it.
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive (the `ArchiveLicenseTemplate` operationId).
 	ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2789,7 +2789,7 @@ func (c *Client) UpdateLicenseTemplate(ctx context.Context, productId ProductIdP
 // ArchiveLicenseTemplate Archive License Template
 //
 // Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
+// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true. Scoped as an edit, not a delete: the row is kept, so this is closer to updating the template's status than to removing it.
 //
 // Corresponds with POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive (the `ArchiveLicenseTemplate` operationId).
 func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9487,7 +9487,7 @@ type ClientWithResponsesInterface interface {
 	// ArchiveLicenseTemplateWithResponse Archive License Template
 	//
 	// Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
+	// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true. Scoped as an edit, not a delete: the row is kept, so this is closer to updating the template's status than to removing it.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -16494,7 +16494,7 @@ func (c *ClientWithResponses) UpdateLicenseTemplateWithResponse(ctx context.Cont
 // ArchiveLicenseTemplateWithResponse Archive License Template
 //
 // Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
-// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
+// This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true. Scoped as an edit, not a delete: the row is kept, so this is closer to updating the template's status than to removing it.
 //
 // Returns a wrapper object for the known response body format(s).
 //

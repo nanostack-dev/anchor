@@ -84,6 +84,45 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())
 	})
 
+	t.Run("delete scope cannot archive, update scope cannot delete", func(t *testing.T) {
+		// Archive is an edit to the row's status, not a removal of the row, and is
+		// scoped as one: license_template:update, not license_template:delete. A
+		// key trusted only to remove templates outright must not thereby be
+		// trusted to withdraw one in a way that keeps the record, and a key
+		// trusted to edit templates must not thereby be trusted to destroy a row.
+		// See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+		tc := newTemplateCtx(t)
+		archivable := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
+		deletable := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
+
+		deleteOnly, _ := tc.product.CreateAPIKeyClientWithScopes([]string{"license_template:delete"})
+		archive, err := deleteOnly.ArchiveLicenseTemplateWithResponse(
+			context.Background(), tc.product.ProductID, archivable.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, archive.StatusCode())
+
+		updateOnly, _ := tc.product.CreateAPIKeyClientWithScopes([]string{"license_template:update"})
+		del, err := updateOnly.DeleteLicenseTemplateWithResponse(
+			context.Background(), tc.product.ProductID, deletable.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, del.StatusCode())
+
+		// And each does grant its own verb.
+		archived, err := updateOnly.ArchiveLicenseTemplateWithResponse(
+			context.Background(), tc.product.ProductID, archivable.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, archived.StatusCode(), string(archived.Body))
+
+		deleted, err := deleteOnly.DeleteLicenseTemplateWithResponse(
+			context.Background(), tc.product.ProductID, deletable.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, deleted.StatusCode(), string(deleted.Body))
+	})
+
 	t.Run("a license schema scope does not reach templates", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		// The two resources are separate entries in the permission catalog, so a
