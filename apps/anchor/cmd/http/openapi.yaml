@@ -5849,10 +5849,11 @@ paths:
       summary: List License Templates
       description: >-
         Lists the product's license templates, ordered by name. Every template
-        the product has ever offered is listed, whatever its status, because a
-        template is never deleted. Filter by `status` for one of the two:
-        `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for
-        example when moving customers off one.
+        the product has ever offered is listed, whatever its status — archiving
+        keeps the row on purpose. A template deleted while no Organization
+        license named it is gone and will not appear here. Filter by `status`
+        for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see
+        withdrawn tiers — for example when moving customers off one.
       operationId: listLicenseTemplates
       tags:
       - Licensing
@@ -5930,6 +5931,32 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete License Template
+      description: >-
+        Removes a template that no Organization license has ever named. Refused
+        with a 400 if any Organization license still names it, checked before
+        the write — the same record a customer was sold cannot lose the
+        statement of what they were sold. There is no cascade and no force:
+        resolve the reference first, or archive the template instead, which
+        withdraws it without removing the row. Archiving remains the only
+        withdrawal for a template that might already have customers; delete
+        exists for the one nobody was ever licensed from. See
+        docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+      operationId: deleteLicenseTemplate
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:delete
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/products/{product_id}/licensing/templates/{license_template_id}/archive:
     parameters:
@@ -5944,8 +5971,10 @@ paths:
         they were sold. Archiving frees the name for a replacement. It is
         idempotent, and it cannot be undone.
 
-        There is no delete. Organizations keep their own copy of the values, so
-        withdrawing a tier never affects what they hold.
+        This is the withdrawal to use once a template might have customers.
+        DELETE on the same template removes the row outright, but only when no
+        Organization license names it — archive is what is left once that is no
+        longer true.
       operationId: archiveLicenseTemplate
       tags:
       - Licensing

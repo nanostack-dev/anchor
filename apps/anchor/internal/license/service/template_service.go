@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
@@ -35,6 +36,20 @@ var (
 	)
 )
 
+// errLicenseTemplateInUse refuses to delete a template an Organization license
+// still names. Archive is the withdrawal that stays available once this fires.
+// See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+func errLicenseTemplateInUse(licenseCount int) *fault.Error {
+	return fault.NewWithStatus(
+		"LICENSE_TEMPLATE_IN_USE",
+		fmt.Sprintf(
+			"This license template cannot be deleted because %d organization license(s) name it; archive it instead",
+			licenseCount,
+		),
+		http.StatusBadRequest,
+	)
+}
+
 // errLicenseTemplateNameExists reports a name already taken within the Product.
 //
 // Field names the request member a form has to highlight, which here is the
@@ -60,9 +75,11 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 //
 // Templates carry no version and no publish step, because a template is
 // consulted once — when its values are copied onto an Organization's license.
-// The one lifecycle step they do carry is withdrawal: a template is archived,
-// never deleted, so the licenses that name it keep resolving. See
-// docs/adr/0010-license-templates-are-archived.md.
+// The one lifecycle step every template can reach is withdrawal: archiving,
+// which never deletes the row, so the licenses that name it keep resolving.
+// See docs/adr/0010-license-templates-are-archived.md. A template no
+// Organization license has ever named can also be deleted outright. See
+// docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
 type LicenseTemplateService interface {
 	CreateTemplate(ctx context.Context, in license.CreateTemplateInput) (license.Template, error)
 	// GetTemplate returns the template whatever its status. An archived one still
@@ -71,27 +88,37 @@ type LicenseTemplateService interface {
 	ListTemplates(ctx context.Context, in license.ListTemplatesInput) ([]license.Template, error)
 	UpdateTemplate(ctx context.Context, in license.UpdateTemplateInput) (license.Template, error)
 	// ArchiveTemplate withdraws the tier and returns it. It is idempotent, and it
-	// cannot be undone.
+	// cannot be undone. Prefer this to DeleteTemplate once a template might have
+	// customers.
 	ArchiveTemplate(
 		ctx context.Context, in license.ArchiveTemplateInput,
 	) (license.Template, error)
+	// DeleteTemplate removes the template outright. Refused with
+	// errLicenseTemplateInUse if any Organization license names it — archive
+	// that one instead. Unlike ArchiveTemplate it is not idempotent: deleting an
+	// already-deleted template answers 404, the ordinary shape for a second
+	// delete of anything.
+	DeleteTemplate(ctx context.Context, in license.DeleteTemplateInput) error
 }
 
 type licenseTemplateService struct {
-	templateRepo licenserepo.TemplateRepository
-	schemas      LicenseSchemaService
-	logger       zerolog.Logger
+	templateRepo   licenserepo.TemplateRepository
+	orgLicenseRepo licenserepo.OrganizationLicenseRepository
+	schemas        LicenseSchemaService
+	logger         zerolog.Logger
 }
 
 func NewLicenseTemplateService(
 	templateRepo licenserepo.TemplateRepository,
+	orgLicenseRepo licenserepo.OrganizationLicenseRepository,
 	schemas LicenseSchemaService,
 	logger zerolog.Logger,
 ) LicenseTemplateService {
 	return &licenseTemplateService{
-		templateRepo: templateRepo,
-		schemas:      schemas,
-		logger:       logger.With().Str("component", "license_template_service").Logger(),
+		templateRepo:   templateRepo,
+		orgLicenseRepo: orgLicenseRepo,
+		schemas:        schemas,
+		logger:         logger.With().Str("component", "license_template_service").Logger(),
 	}
 }
 
@@ -240,4 +267,46 @@ func (s *licenseTemplateService) ArchiveTemplate(
 	// values, so there is nothing here to cascade. What the row is kept for is
 	// the provenance those licenses name.
 	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
+}
+
+// DeleteTemplate removes a template no Organization license names. See
+// docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+func (s *licenseTemplateService) DeleteTemplate(
+	ctx context.Context, in license.DeleteTemplateInput,
+) error {
+	if err := validate.ValidateStruct(in); err != nil {
+		return err
+	}
+
+	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrLicenseTemplateNotFound
+	}
+
+	// Checked before the write so the common case answers with the field-level
+	// count rather than the foreign key's own error. This is not atomic against
+	// a concurrent instantiation; fk_organization_licenses_template is the real
+	// guarantee, and the race is handled below the same way it is for a
+	// colliding name.
+	licenseCount, err := s.orgLicenseRepo.CountLicensesForTemplate(
+		ctx, in.TenantID, in.ProductID, in.TemplateID,
+	)
+	if err != nil {
+		return err
+	}
+	if licenseCount > 0 {
+		return errLicenseTemplateInUse(licenseCount)
+	}
+
+	if err = s.templateRepo.Delete(ctx, in.TenantID, in.ProductID, in.TemplateID); err != nil {
+		if pgerr.IsForeignKeyViolation(err, "fk_organization_licenses_template") {
+			return errLicenseTemplateInUse(1)
+		}
+		return err
+	}
+
+	return nil
 }

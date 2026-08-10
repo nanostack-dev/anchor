@@ -40,7 +40,13 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, update.StatusCode())
 
-		del, err := readOnly.ArchiveLicenseTemplateWithResponse(
+		archive, err := readOnly.ArchiveLicenseTemplateWithResponse(
+			context.Background(), tc.product.ProductID, created.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, archive.StatusCode())
+
+		del, err := readOnly.DeleteLicenseTemplateWithResponse(
 			context.Background(), tc.product.ProductID, created.Id,
 		)
 		require.NoError(t, err)

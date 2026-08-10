@@ -26,6 +26,12 @@
       "license_schema:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/licensing/templates/{license_template_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}": {
     "productApiKeyAuth": [
       "organization:delete"

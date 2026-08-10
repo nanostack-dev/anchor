@@ -95,6 +95,16 @@ type ArchiveTemplateInput struct {
 	TemplateID string `validate:"required,notblank"`
 }
 
+// DeleteTemplateInput is the request shape for removing a license template
+// outright. Refused if any Organization license names it: use
+// ArchiveTemplateInput once a template might have customers. See
+// docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+type DeleteTemplateInput struct {
+	TenantID   string `validate:"required,notblank"`
+	ProductID  string `validate:"required,notblank"`
+	TemplateID string `validate:"required,notblank"`
+}
+
 // InstantiateLicenseInput copies a template's values onto an Organization. It is
 // refused when the Organization already holds a license.
 type InstantiateLicenseInput struct {

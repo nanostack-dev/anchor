@@ -101,3 +101,24 @@ func (r *organizationLicenseRepositoryImpl) Update(
 	).RETURNING(table.OrganizationLicenses.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
+
+// CountLicensesForTemplate reports how many Organization licenses still name
+// the given template. A template delete calls this before the write, so the
+// caller gets a clean 400 instead of the foreign key's own error.
+func (r *organizationLicenseRepositoryImpl) CountLicensesForTemplate(
+	ctx context.Context, tenantID string, productID string, templateID string,
+) (int, error) {
+	count, err := transactor.QueryCount(
+		ctx, r.db,
+		table.OrganizationLicenses.SELECT(postgres.COUNT(postgres.STAR)).
+			FROM(table.OrganizationLicenses).
+			WHERE(
+				organizationLicenseScope(tenantID, productID).
+					AND(table.OrganizationLicenses.TemplateID.EQ(postgres.String(templateID))),
+			),
+	).Value()
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
