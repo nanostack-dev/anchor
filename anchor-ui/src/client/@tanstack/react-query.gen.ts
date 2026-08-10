@@ -1953,7 +1953,7 @@ export const updateLicenseTemplateMutation = (options?: Partial<Options<UpdateLi
 /**
  * Archive License Template
  * Withdraws a tier. The template stops being offered — it can no longer be instantiated or edited — but the record is kept, because the organizations already licensed from it name it as the statement of what they were sold. Archiving frees the name for a replacement. It is idempotent, and it cannot be undone.
- * This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true.
+ * This is the withdrawal to use once a template might have customers. DELETE on the same template removes the row outright, but only when no Organization license names it — archive is what is left once that is no longer true. Scoped as an edit, not a delete: the row is kept, so this is closer to updating the template's status than to removing it.
  */
 export const archiveLicenseTemplateMutation = (options?: Partial<Options<ArchiveLicenseTemplateData>>): UseMutationOptions<ArchiveLicenseTemplateResponse, DefaultError, Options<ArchiveLicenseTemplateData>> => {
     const mutationOptions: UseMutationOptions<ArchiveLicenseTemplateResponse, DefaultError, Options<ArchiveLicenseTemplateData>> = {

@@ -5974,14 +5974,15 @@ paths:
         This is the withdrawal to use once a template might have customers.
         DELETE on the same template removes the row outright, but only when no
         Organization license names it — archive is what is left once that is no
-        longer true.
+        longer true. Scoped as an edit, not a delete: the row is kept, so this
+        is closer to updating the template's status than to removing it.
       operationId: archiveLicenseTemplate
       tags:
       - Licensing
       security:
       - platformBearerAuth: []
       - productApiKeyAuth:
-        - license_template:delete
+        - license_template:update
       responses:
         '200':
           description: Archived, or already archived.

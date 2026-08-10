@@ -296,7 +296,7 @@
   "POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
-      "license_template:delete"
+      "license_template:update"
     ]
   },
   "POST /v1/products/{product_id}/organizations": {
