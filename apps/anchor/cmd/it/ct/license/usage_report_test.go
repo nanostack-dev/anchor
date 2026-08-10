@@ -35,8 +35,11 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, 412.0, observation.Value, 0)
 		require.NotNil(t, observation.From)
 		require.NotNil(t, observation.To)
-		assert.True(t, from.Equal(*observation.From))
-		assert.True(t, to.Equal(*observation.To))
+		// Postgres timestamptz stores microsecond precision; Go's clock carries
+		// nanoseconds. A round trip through storage can never satisfy Equal, so
+		// the comparison is bounded to the precision storage actually keeps.
+		assert.WithinDuration(t, from, *observation.From, time.Microsecond)
+		assert.WithinDuration(t, to, *observation.To, time.Microsecond)
 	})
 
 	t.Run("a window left open runs to now", func(t *testing.T) {
@@ -47,7 +50,10 @@ func TestReportUsage(t *testing.T) {
 
 		require.NotNil(t, observation.From)
 		require.NotNil(t, observation.To)
-		assert.True(t, from.Equal(*observation.From))
+		// Same storage-precision bound as above: from is a client-supplied
+		// time.Now(), and only billingPeriod's zero-nanosecond fixture happens
+		// to survive an exact Equal.
+		assert.WithinDuration(t, from, *observation.From, time.Microsecond)
 		assert.Equal(t, observation.ObservedAt, *observation.To)
 	})
 
