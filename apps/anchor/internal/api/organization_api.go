@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/organization"
 )
@@ -109,13 +110,8 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		return nil, err
 	}
 
-	organizations := make([]ProductOrganizationResponse, len(result.Items))
-	for i, item := range result.Items {
-		organizations[i] = mapOrganizationToResponse(item)
-	}
-
 	return SearchProductOrganizations200JSONResponse{
-		Items: organizations,
+		Items: slicex.Map(result.Items, mapOrganizationToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
