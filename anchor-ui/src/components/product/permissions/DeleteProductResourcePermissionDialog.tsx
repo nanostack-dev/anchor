@@ -5,7 +5,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -20,6 +20,7 @@ import {
 	AlertDialogTrigger,
 } from "../../ui/alert-dialog";
 import { Button } from "../../ui/button";
+import { Spinner } from "../../ui/spinner";
 
 interface DeleteProductPermissionDialogProps {
 	productId: string;
@@ -80,11 +81,7 @@ export function DeleteProductResourcePermissionDialog({
 			disabled={deleteMutation.isPending}
 		>
 			<span className="sr-only">Delete permission</span>
-			{deleteMutation.isPending ? (
-				<Loader2 className="h-4 w-4 animate-spin" />
-			) : (
-				<Trash2 className="h-4 w-4" />
-			)}
+			{deleteMutation.isPending ? <Spinner /> : <Trash2 className="size-4" />}
 		</Button>
 	);
 
@@ -124,17 +121,18 @@ export function DeleteProductResourcePermissionDialog({
 						Cancel
 					</AlertDialogCancel>
 					<AlertDialogAction
+						variant="destructive"
 						onClick={handleDelete}
 						disabled={deleteMutation.isPending}
 					>
 						{deleteMutation.isPending ? (
 							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								<Spinner className="text-current" />
 								Deleting...
 							</>
 						) : (
 							<>
-								<Trash2 className="mr-2 h-4 w-4" />
+								<Trash2 className="size-4" />
 								Delete Permission
 							</>
 						)}

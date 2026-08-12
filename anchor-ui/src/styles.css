@@ -34,7 +34,11 @@
 	--success-foreground: 0 0% 100%;
 	--warning: 33 90% 45%;
 	--warning-foreground: 0 0% 100%;
-	--destructive: 0 72% 46%;
+	/* 46% put `text-destructive` on the `bg-destructive/10` fill at 4.41:1 —
+	   under AA for 14px text, and that pair is every destructive button in the
+	   app. 44% measures 4.73:1 on the built page; hue and saturation are
+	   unchanged, so the only visible difference is a slightly deeper red. */
+	--destructive: 0 72% 44%;
 	--destructive-foreground: 0 0% 100%;
 	--border: 218 14% 88%;
 	--input: 218 14% 88%;
