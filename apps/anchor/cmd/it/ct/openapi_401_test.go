@@ -17,7 +17,7 @@ func TestOpenAPIProtected401(t *testing.T) {
 	}
 
 	spec, components, paramDefs := parseOpenAPISpec(t)
-	for _, op := range extractOperations(spec, paramDefs, noAuth, itshared.ServerURL) {
+	for _, op := range extractOperations(spec, components, paramDefs, noAuth, itshared.ServerURL) {
 		t.Run(
 			op.OpKey, func(t *testing.T) {
 				resp, err := sendRequest(op, components, nil)
