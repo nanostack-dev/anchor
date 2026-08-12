@@ -3248,6 +3248,11 @@ components:
           type: number
           format: double
           minimum: 0
+          # A pointer on the server only, so an omitted or null value is told
+          # apart from a reported 0. Zero is a real observation, so no validate
+          # tag can catch the omission. The client spec drops this hint and
+          # keeps a plain float64.
+          x-go-type: '*float64'
           description: >-
             The total right now, not the change since the last report. It must
             be a finite, non-negative number. That is the only bound. A value

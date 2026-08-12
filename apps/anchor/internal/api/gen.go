@@ -2236,7 +2236,7 @@ type UsageReportRequest struct {
 	To *time.Time `json:"to,omitempty"`
 
 	// Value The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
-	Value float64 `json:"value"`
+	Value *float64 `json:"value"`
 }
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.

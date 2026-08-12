@@ -131,6 +131,31 @@ func TestReportUsage(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	})
 
+	// A report that carries no value must not be read as a report of zero.
+	// Zero is a real observation, so the omission cannot be caught by a bound
+	// on the number, and the request validator does not check the body.
+	t.Run("refuses a report that carries no value", func(t *testing.T) {
+		w := newLicenseWorld(t)
+
+		omitted := w.Usage().ReportBodyRaw(`{"key":"flows"}`)
+		require.Equal(t, http.StatusBadRequest, omitted.StatusCode(), string(omitted.Body))
+		assertValidationRule(t, omitted.JSON400.Errors, "required")
+
+		null := w.Usage().ReportBodyRaw(`{"key":"flows","value":null}`)
+		require.Equal(t, http.StatusBadRequest, null.StatusCode(), string(null.Body))
+		assertValidationRule(t, null.JSON400.Errors, "required")
+	})
+
+	// The counterpart to the case above: the guard rejects an absent value, not
+	// a zero one, so an organization that genuinely uses nothing still reports.
+	t.Run("a report of zero is stored, not mistaken for an omission", func(t *testing.T) {
+		w := newLicenseWorld(t)
+
+		observation := w.Usage().Report(gauge("flows", 0))
+
+		assert.InDelta(t, 0.0, observation.Value, 0)
+	})
+
 	t.Run("refuses an end with no start", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		_, to := billingPeriod()
