@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/security"
@@ -35,13 +36,8 @@ func (s *AnchorAPI) SearchPlatformUsers(
 		return nil, err
 	}
 
-	users := make([]PlatformUserResponse, len(result.Items))
-	for i, item := range result.Items {
-		users[i] = mapPlatformUserToResponse(item)
-	}
-
 	return SearchPlatformUsers200JSONResponse{
-		Items: users,
+		Items: slicex.Map(result.Items, mapPlatformUserToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil

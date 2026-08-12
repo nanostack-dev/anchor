@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
@@ -109,12 +110,8 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 	if err != nil {
 		return nil, err
 	}
-	invitations := make([]PlatformInvitationResponse, len(result.Items))
-	for i, item := range result.Items {
-		invitations[i] = mapPlatformInvitationToResponse(item)
-	}
 	return SearchPlatformInvitations200JSONResponse{
-		Items: invitations,
+		Items: slicex.Map(result.Items, mapPlatformInvitationToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
