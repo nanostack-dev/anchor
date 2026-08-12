@@ -6,6 +6,8 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
 )
@@ -27,6 +29,23 @@ func errUsageValueMissing() *fault.Error {
 		Field:    "value",
 		Metadata: map[string]any{"rule": "required"},
 	}}, http.StatusBadRequest)
+}
+
+// defaultUsageSeriesLimit mirrors the openapi.yaml `limit` default for
+// getOrganizationUsageSeries. oapi-codegen leaves an optional query
+// parameter's default undeserialized — a nil pointer, not the schema
+// default — so it is applied here.
+const defaultUsageSeriesLimit int32 = 50
+
+func usageSeriesPagination(limit *int32, offset *int32) search.Pagination {
+	pagination := search.Pagination{Limit: defaultUsageSeriesLimit}
+	if limit != nil {
+		pagination.Limit = *limit
+	}
+	if offset != nil {
+		pagination.Offset = *offset
+	}
+	return pagination
 }
 
 func (s *AnchorAPI) ReportOrganizationUsage(
@@ -61,4 +80,40 @@ func (s *AnchorAPI) ReportOrganizationUsage(
 	return ReportOrganizationUsage201JSONResponse(
 		mapUsageObservationToResponse(observation),
 	), nil
+}
+
+func (s *AnchorAPI) GetOrganizationUsageSeries(
+	ctx context.Context, request GetOrganizationUsageSeriesRequestObject,
+) (GetOrganizationUsageSeriesResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	from := request.Params.From
+	result, err := s.UsageSeriesService.GetSeries(ctx, license.GetUsageSeriesInput{
+		TenantID:       tenantID,
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+		Key:            request.Params.Key,
+		Granularity:    request.Params.Granularity,
+		From:           &from,
+		To:             request.Params.To,
+		Pagination:     usageSeriesPagination(request.Params.Limit, request.Params.Offset),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Str("key", request.Params.Key).
+			Msg("failed to get organization usage series")
+		return nil, err
+	}
+
+	items := mapItems(result.Items, mapUsageSeriesPointToResponse)
+	return GetOrganizationUsageSeries200JSONResponse(UsageSeriesResponse{
+		Items: items,
+		Total: result.Total,
+		Count: result.Count,
+	}), nil
 }

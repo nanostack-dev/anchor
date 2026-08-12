@@ -103,6 +103,15 @@ func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationR
 	}
 }
 
+func mapUsageSeriesPointToResponse(p license.UsageSeriesPoint) UsageSeriesPointResponse {
+	return UsageSeriesPointResponse{
+		Bucket: p.Bucket,
+		Value:  p.Value,
+		From:   p.WindowFrom,
+		To:     p.WindowTo,
+	}
+}
+
 func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
 	return LicenseFieldDifference{
 		Field:         d.Field,

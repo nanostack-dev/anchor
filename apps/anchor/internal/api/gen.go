@@ -2192,6 +2192,9 @@ type UpdateProductResourcePermissionRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// UsageGranularity Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
+type UsageGranularity = license.UsageGranularity
+
 // UsageObservationResponse One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
 type UsageObservationResponse struct {
 	// From Both `from` and `to` are absent on a gauge, and both are present on a windowed counter. A report that sent `from` alone reads back with the `to` Anchor filled in, so a reader never meets half a window.
@@ -2237,6 +2240,29 @@ type UsageReportRequest struct {
 
 	// Value The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
 	Value *float64 `json:"value"`
+}
+
+// UsageSeriesPointResponse One bucket of an organization's usage series.
+type UsageSeriesPointResponse struct {
+	// Bucket The start of this bucket, at the requested granularity.
+	Bucket time.Time `json:"bucket"`
+
+	// From Present when the observation the bucket was built from was a windowed counter, absent for a gauge — carried through the aggregate unchanged from the underlying report.
+	From *time.Time `json:"from,omitempty"`
+	To   *time.Time `json:"to,omitempty"`
+
+	// Value The last observation's value in this bucket.
+	Value float64 `json:"value"`
+}
+
+// UsageSeriesResponse defines model for UsageSeriesResponse.
+type UsageSeriesResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []UsageSeriesPointResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
 }
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
@@ -2421,6 +2447,21 @@ type IngestWebhookJSONBody map[string]interface{}
 type ListLicenseTemplatesParams struct {
 	// Status Return only templates with this status. Omit for all of them.
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetOrganizationUsageSeriesParams defines parameters for GetOrganizationUsageSeries.
+type GetOrganizationUsageSeriesParams struct {
+	// Key The license field this series was measured against.
+	Key         string           `form:"key" json:"key"`
+	Granularity UsageGranularity `form:"granularity" json:"granularity"`
+
+	// From Inclusive start of the range.
+	From time.Time `form:"from" json:"from"`
+
+	// To Exclusive end of the range. Omit to mean now.
+	To     *time.Time `form:"to,omitempty" json:"to,omitempty"`
+	Limit  *int32     `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32     `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.
@@ -3019,6 +3060,9 @@ type ServerInterface interface {
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// GetOrganizationUsageSeries Get Organization Usage Series
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series)
+	GetOrganizationUsageSeries(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationUsageSeriesParams)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3526,6 +3570,12 @@ func (_ Unimplemented) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http
 // ReportOrganizationUsage Report Organization Usage
 // (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 func (_ Unimplemented) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationUsageSeries Get Organization Usage Series
+// (GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series)
+func (_ Unimplemented) GetOrganizationUsageSeries(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationUsageSeriesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5855,6 +5905,122 @@ func (siw *ServerInterfaceWrapper) ReportOrganizationUsage(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// GetOrganizationUsageSeries operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationUsageSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetOrganizationUsageSeriesParams
+
+	// ------------- Required query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "granularity", r.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "granularity"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "granularity", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationUsageSeries(w, r, productId, organizationId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AddOrganizationMember operation middleware
 func (siw *ServerInterfaceWrapper) AddOrganizationMember(w http.ResponseWriter, r *http.Request) {
 
@@ -7371,6 +7537,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage", wrapper.ReportOrganizationUsage)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage/series", wrapper.GetOrganizationUsageSeries)
 	})
 
 	return r
@@ -10862,6 +11031,51 @@ func (response ReportOrganizationUsage404Response) VisitReportOrganizationUsageR
 	return nil
 }
 
+type GetOrganizationUsageSeriesRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Params         GetOrganizationUsageSeriesParams
+}
+
+type GetOrganizationUsageSeriesResponseObject interface {
+	VisitGetOrganizationUsageSeriesResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationUsageSeries200JSONResponse UsageSeriesResponse
+
+func (response GetOrganizationUsageSeries200JSONResponse) VisitGetOrganizationUsageSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationUsageSeries400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetOrganizationUsageSeries400JSONResponse) VisitGetOrganizationUsageSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationUsageSeries404Response = NotFoundResponse
+
+func (response GetOrganizationUsageSeries404Response) VisitGetOrganizationUsageSeriesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type AddOrganizationMemberRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -12803,6 +13017,9 @@ type StrictServerInterface interface {
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(ctx context.Context, request ReportOrganizationUsageRequestObject) (ReportOrganizationUsageResponseObject, error)
+	// GetOrganizationUsageSeries Get Organization Usage Series
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series)
+	GetOrganizationUsageSeries(ctx context.Context, request GetOrganizationUsageSeriesRequestObject) (GetOrganizationUsageSeriesResponseObject, error)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(ctx context.Context, request AddOrganizationMemberRequestObject) (AddOrganizationMemberResponseObject, error)
@@ -14989,6 +15206,34 @@ func (sh *strictHandler) ReportOrganizationUsage(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReportOrganizationUsageResponseObject); ok {
 		if err := validResponse.VisitReportOrganizationUsageResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationUsageSeries operation middleware
+func (sh *strictHandler) GetOrganizationUsageSeries(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationUsageSeriesParams) {
+	var request GetOrganizationUsageSeriesRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationUsageSeries(ctx, request.(GetOrganizationUsageSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationUsageSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationUsageSeriesResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationUsageSeriesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

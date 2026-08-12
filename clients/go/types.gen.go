@@ -729,6 +729,27 @@ func (e SortDirection) Valid() bool {
 	}
 }
 
+// Defines values for UsageGranularity.
+const (
+	DAY    UsageGranularity = "DAY"
+	HOUR   UsageGranularity = "HOUR"
+	MINUTE UsageGranularity = "MINUTE"
+)
+
+// Valid indicates whether the value is a known member of the UsageGranularity enum.
+func (e UsageGranularity) Valid() bool {
+	switch e {
+	case DAY:
+		return true
+	case HOUR:
+		return true
+	case MINUTE:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserOrganizationInclude.
 const (
 	UserOrganizationIncludeRolePermissions UserOrganizationInclude = "role_permissions"
@@ -2825,6 +2846,9 @@ type UpdateProductResourcePermissionRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// UsageGranularity Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
+type UsageGranularity string
+
 // UsageObservationResponse One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
 type UsageObservationResponse struct {
 	// From Both `from` and `to` are absent on a gauge, and both are present on a windowed counter. A report that sent `from` alone reads back with the `to` Anchor filled in, so a reader never meets half a window.
@@ -2870,6 +2894,29 @@ type UsageReportRequest struct {
 
 	// Value The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
 	Value float64 `json:"value"`
+}
+
+// UsageSeriesPointResponse One bucket of an organization's usage series.
+type UsageSeriesPointResponse struct {
+	// Bucket The start of this bucket, at the requested granularity.
+	Bucket time.Time `json:"bucket"`
+
+	// From Present when the observation the bucket was built from was a windowed counter, absent for a gauge — carried through the aggregate unchanged from the underlying report.
+	From *time.Time `json:"from,omitempty"`
+	To   *time.Time `json:"to,omitempty"`
+
+	// Value The last observation's value in this bucket.
+	Value float64 `json:"value"`
+}
+
+// UsageSeriesResponse defines model for UsageSeriesResponse.
+type UsageSeriesResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []UsageSeriesPointResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
 }
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
@@ -3054,6 +3101,21 @@ type IngestWebhookJSONBody map[string]interface{}
 type ListLicenseTemplatesParams struct {
 	// Status Return only templates with this status. Omit for all of them.
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetOrganizationUsageSeriesParams defines parameters for GetOrganizationUsageSeries.
+type GetOrganizationUsageSeriesParams struct {
+	// Key The license field this series was measured against.
+	Key         string           `form:"key" json:"key"`
+	Granularity UsageGranularity `form:"granularity" json:"granularity"`
+
+	// From Inclusive start of the range.
+	From time.Time `form:"from" json:"from"`
+
+	// To Exclusive end of the range. Omit to mean now.
+	To     *time.Time `form:"to,omitempty" json:"to,omitempty"`
+	Limit  *int32     `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32     `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.

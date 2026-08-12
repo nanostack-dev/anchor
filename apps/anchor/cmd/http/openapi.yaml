@@ -3326,6 +3326,56 @@ components:
             When Anchor accepted the report. Anchor sets it, so a consumer
             cannot backdate a report or write into the future.
 
+    UsageGranularity:
+      type: string
+      enum: [MINUTE, HOUR, DAY]
+      description: >-
+        Which level of the continuous-aggregate cascade to read. Every level
+        reports the last observation per bucket — never a sum or an average,
+        because the underlying values are snapshots and the last one in a
+        bucket already is the bucket's value. Finer levels are retained for a
+        shorter time than coarser ones; see
+        docs/adr/0005-timescaledb-for-usage-history.md.
+      x-go-type: license.UsageGranularity
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    UsageSeriesPointResponse:
+      type: object
+      description: One bucket of an organization's usage series.
+      required: [bucket, value]
+      properties:
+        bucket:
+          type: string
+          format: date-time
+          description: The start of this bucket, at the requested granularity.
+        value:
+          type: number
+          format: double
+          description: The last observation's value in this bucket.
+        from:
+          type: string
+          format: date-time
+          description: >-
+            Present when the observation the bucket was built from was a
+            windowed counter, absent for a gauge — carried through the
+            aggregate unchanged from the underlying report.
+        to:
+          type: string
+          format: date-time
+
+    UsageSeriesResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/UsageSeriesPointResponse'
+        required:
+        - items
+
   responses:
     BadRequest:
       description: Bad Request (e.g., validation error)
@@ -6251,6 +6301,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsageObservationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/organizations/{organization_id}/license/usage/series:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    get:
+      summary: Get Organization Usage Series
+      description: >-
+        Reads an organization's usage history for one license field: filtered
+        by key and time range, and paginated. Granularity selects a level of
+        the continuous-aggregate cascade — MINUTE, HOUR or DAY — each
+        reporting the last observation per bucket, never a sum or an average,
+        because the values are snapshots.
+
+        This is a deliberately separate read from the license state: a large
+        paginated series and a small hot cacheable read want different
+        shapes. This endpoint is not cached, and reading it never touches the
+        license state read's cache.
+
+        Interpreting the series against a limit — deciding whether an
+        organization is within or past it — is not this endpoint's job. It
+        returns the series as stored; that judgment stays in the license
+        state read.
+      operationId: getOrganizationUsageSeries
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_usage:read
+      parameters:
+      - name: key
+        in: query
+        required: true
+        description: The license field this series was measured against.
+        schema:
+          type: string
+          maxLength: 120
+      - name: granularity
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/UsageGranularity'
+      - name: from
+        in: query
+        required: true
+        description: Inclusive start of the range.
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        description: Exclusive end of the range. Omit to mean now.
+        schema:
+          type: string
+          format: date-time
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 1000
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageSeriesResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':

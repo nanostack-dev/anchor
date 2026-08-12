@@ -989,6 +989,15 @@ type ClientInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
 	ReportOrganizationUsage(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrganizationUsageSeries Get Organization Usage Series
+	//
+	// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
+	// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
+	// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
+	GetOrganizationUsageSeries(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddOrganizationMemberWithBody Add Organization Member
 	//
 	// Adds a user to an organization.
@@ -3317,6 +3326,25 @@ func (c *Client) ReportOrganizationUsageWithBody(ctx context.Context, productId 
 // Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
 func (c *Client) ReportOrganizationUsage(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewReportOrganizationUsageRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationUsageSeries Get Organization Usage Series
+//
+// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
+// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
+// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
+func (c *Client) GetOrganizationUsageSeries(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationUsageSeriesRequest(c.Server, productId, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -7328,6 +7356,122 @@ func NewReportOrganizationUsageRequestWithBody(server string, productId ProductI
 	return req, nil
 }
 
+// NewGetOrganizationUsageSeriesRequest constructs an http.Request for the GetOrganizationUsageSeries method
+func NewGetOrganizationUsageSeriesRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license/usage/series", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "granularity", params.Granularity, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.To != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", *params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAddOrganizationMemberRequest calls the generic AddOrganizationMember builder with application/json body
 func NewAddOrganizationMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body AddOrganizationMemberJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9864,6 +10008,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/usage (the `ReportOrganizationUsage` operationId).
 	ReportOrganizationUsageWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody, reqEditors ...RequestEditorFn) (*ReportOrganizationUsageResponse, error)
+
+	// GetOrganizationUsageSeriesWithResponse Get Organization Usage Series
+	//
+	// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
+	// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
+	// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
+	GetOrganizationUsageSeriesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*GetOrganizationUsageSeriesResponse, error)
 
 	// AddOrganizationMemberWithBodyWithResponse Add Organization Member
 	//
@@ -13863,6 +14018,54 @@ func (r ReportOrganizationUsageResponse) ContentType() string {
 	return ""
 }
 
+type GetOrganizationUsageSeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UsageSeriesResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationUsageSeriesResponse) GetJSON200() *UsageSeriesResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationUsageSeriesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationUsageSeriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationUsageSeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationUsageSeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationUsageSeriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type AddOrganizationMemberResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17102,6 +17305,23 @@ func (c *ClientWithResponses) ReportOrganizationUsageWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseReportOrganizationUsageResponse(rsp)
+}
+
+// GetOrganizationUsageSeriesWithResponse Get Organization Usage Series
+//
+// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
+// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
+// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
+func (c *ClientWithResponses) GetOrganizationUsageSeriesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*GetOrganizationUsageSeriesResponse, error) {
+	rsp, err := c.GetOrganizationUsageSeries(ctx, productId, organizationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationUsageSeriesResponse(rsp)
 }
 
 // AddOrganizationMemberWithBodyWithResponse Add Organization Member
@@ -20509,6 +20729,42 @@ func ParseReportOrganizationUsageResponse(rsp *http.Response) (*ReportOrganizati
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationUsageSeriesResponse parses an HTTP response from a GetOrganizationUsageSeriesWithResponse call
+func ParseGetOrganizationUsageSeriesResponse(rsp *http.Response) (*GetOrganizationUsageSeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationUsageSeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UsageSeriesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
