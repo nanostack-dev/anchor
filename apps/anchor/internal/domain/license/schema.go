@@ -59,8 +59,15 @@ type Field struct {
 	Type        FieldType
 	Description string
 	Rules       FieldRules
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// ExpectedReportingInterval is how often this limit's usage is expected to
+	// arrive. Limit fields only; nil elsewhere. Anchor declares what it
+	// expects and never pulls a report itself, so a nil interval means the
+	// derived status for this field can never read `stale` from age — it can
+	// still be stale from never having reported at all. See
+	// docs/adr/0012-license-status-derived-on-read.md.
+	ExpectedReportingInterval *time.Duration
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 // GenerateID sets the field's ID to a new prefixed KSUID.

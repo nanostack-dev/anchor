@@ -12,12 +12,13 @@ import (
 )
 
 type LicenseSchemaFields struct {
-	ID              string `sql:"primary_key"`
-	LicenseSchemaID string
-	Name            string
-	FieldType       string
-	Description     string
-	RulesJSON       string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                               string `sql:"primary_key"`
+	LicenseSchemaID                  string
+	Name                             string
+	FieldType                        string
+	Description                      string
+	RulesJSON                        string
+	CreatedAt                        time.Time
+	UpdatedAt                        time.Time
+	ExpectedReportingIntervalSeconds *int32
 }

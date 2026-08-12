@@ -678,6 +678,9 @@ type LicenseDifferenceKind = license.DifferenceKind
 type LicenseFieldDeclaration struct {
 	Description *string `json:"description,omitempty"`
 
+	// ExpectedReportingIntervalSeconds How often, in seconds, this field's usage is expected to be reported. Limit fields only. When set, the license read derives `stale` for this field once longer than this has passed since the latest observation. Anchor declares what it expects here and never pulls a report or checks a schedule itself.
+	ExpectedReportingIntervalSeconds *int `json:"expected_reporting_interval_seconds,omitempty"`
+
 	// Name Stable identifier used by product code, unique within the schema.
 	Name  string             `json:"name"`
 	Rules *LicenseFieldRules `json:"rules,omitempty"`
@@ -704,6 +707,9 @@ type LicenseFieldResponse struct {
 	CreatedAt   time.Time `json:"created_at"`
 	Description *string   `json:"description,omitempty"`
 
+	// ExpectedReportingIntervalSeconds How often, in seconds, this field's usage is expected to be reported. Absent for a field that declares no expectation, and for a field that is not a limit.
+	ExpectedReportingIntervalSeconds *int `json:"expected_reporting_interval_seconds,omitempty"`
+
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -719,6 +725,21 @@ type LicenseFieldRules = license.FieldRules
 
 // LicenseFieldType defines model for LicenseFieldType.
 type LicenseFieldType = license.FieldType
+
+// LicenseFieldUsageResponse One limit field's latest reported usage and derived status, as read from an organization's license.
+type LicenseFieldUsageResponse struct {
+	// LastReportedAt When the latest usage observation was recorded. Null exactly when `usage` is null.
+	LastReportedAt *time.Time `json:"last_reported_at,omitempty"`
+
+	// Limit This organization's current value for the field, mirroring `values` on the enclosing license.
+	Limit float64 `json:"limit"`
+
+	// Status A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the latest observation cannot be trusted as current: either nothing has ever been reported for this field, or the latest report is older than the field's declared expected reporting interval. Anchor advises with this value; it never gates on it.
+	Status LicenseUsageStatus `json:"status"`
+
+	// Usage The latest reported value, or null if never reported.
+	Usage *float64 `json:"usage,omitempty"`
+}
 
 // LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
 type LicenseSchemaCreateRequest struct {
@@ -801,6 +822,9 @@ type LicenseTemplateUpdateRequest struct {
 
 // LicenseTemplateValues defines model for LicenseTemplateValues.
 type LicenseTemplateValues = license.TemplateValues
+
+// LicenseUsageStatus A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the latest observation cannot be trusted as current: either nothing has ever been reported for this field, or the latest report is older than the field's declared expected reporting interval. Anchor advises with this value; it never gates on it.
+type LicenseUsageStatus = license.UsageStatus
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -1061,6 +1085,9 @@ type OrganizationLicenseResponse struct {
 	// TemplateId Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
 	TemplateId Ksuid     `json:"template_id"`
 	UpdatedAt  time.Time `json:"updated_at"`
+
+	// Usage One entry per limit field the product's license schema declares, keyed by license field name — every declared field that is not a limit never appears here. Present on the license read, where it is computed fresh on every call; absent from the response to instantiating or adjusting a license, which does not compute it.
+	Usage *map[string]LicenseFieldUsageResponse `json:"usage,omitempty"`
 
 	// Values What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
 	Values LicenseTemplateValues `json:"values"`

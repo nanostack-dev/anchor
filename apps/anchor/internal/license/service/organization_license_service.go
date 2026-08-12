@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
@@ -12,6 +13,19 @@ import (
 
 	"anchor/internal/domain/license"
 	licenserepo "anchor/internal/license/repository"
+)
+
+// The organization license read is cached the same way the product API key
+// permission cache is: keyed by (product, organization), evicted on every
+// write, degrading to a no-op when Redis is unavailable. See
+// docs/api-key-permission-cache.md and
+// docs/adr/0012-license-status-derived-on-read.md.
+//
+// Usage is deliberately not part of the cached value — see GetLicense — so a
+// usage report becomes visible on the next read without touching this cache.
+const (
+	organizationLicenseCacheTTL    = 15 * time.Minute
+	organizationLicenseCachePrefix = "organization_license"
 )
 
 // Postgres-named constraints on organization_licenses. The unique index is the
@@ -53,11 +67,12 @@ type OrganizationLicenseService interface {
 	Instantiate(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
-	// GetLicense returns the Organization's license, or nil when it has never
-	// been instantiated.
+	// GetLicense returns the Organization's effective license — its own copy
+	// of a template's values, plus every limit field's latest usage and
+	// derived status — or nil when it has never been instantiated.
 	GetLicense(
 		ctx context.Context, in license.GetLicenseInput,
-	) (*license.OrganizationLicense, error)
+	) (*license.OrganizationLicenseRead, error)
 	AdjustValues(
 		ctx context.Context, in license.AdjustLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -70,6 +85,8 @@ type organizationLicenseService struct {
 	licenseRepo licenserepo.OrganizationLicenseRepository
 	templates   LicenseTemplateService
 	schemas     LicenseSchemaService
+	usage       licenserepo.UsageObservationRepository
+	licenses    cache.Cache[license.OrganizationLicense]
 	logger      zerolog.Logger
 }
 
@@ -77,13 +94,41 @@ func NewOrganizationLicenseService(
 	licenseRepo licenserepo.OrganizationLicenseRepository,
 	templates LicenseTemplateService,
 	schemas LicenseSchemaService,
+	usage licenserepo.UsageObservationRepository,
+	cacheStore cache.Store,
 	logger zerolog.Logger,
 ) OrganizationLicenseService {
 	return &organizationLicenseService{
 		licenseRepo: licenseRepo,
 		templates:   templates,
 		schemas:     schemas,
-		logger:      logger.With().Str("component", "organization_license_service").Logger(),
+		usage:       usage,
+		licenses: cache.New[license.OrganizationLicense](
+			cacheStore, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
+		),
+		logger: logger.With().Str("component", "organization_license_service").Logger(),
+	}
+}
+
+// licenseCacheKey addresses one Organization's cached license. Product and
+// Organization identifiers are both KSUIDs unique platform-wide, so — as with
+// the API key cache — the tenant does not need to be part of the key.
+func (s *organizationLicenseService) licenseCacheKey(
+	productID, organizationID string,
+) cache.Entry[license.OrganizationLicense] {
+	return s.licenses.Key(productID, organizationID)
+}
+
+// evictLicenseCache drops the cached license after a write. Failure is logged
+// and swallowed, matching ProductAPIKeyService: a cache that cannot be evicted
+// should not fail the write that triggered it, only degrade the next read.
+func (s *organizationLicenseService) evictLicenseCache(ctx context.Context, productID, organizationID string) {
+	if err := s.licenseCacheKey(productID, organizationID).Evict(ctx); err != nil {
+		s.logger.Error().
+			Str("product_id", productID).
+			Str("organization_id", organizationID).
+			Err(err).
+			Msg("failed to evict organization license from cache")
 	}
 }
 
@@ -139,17 +184,74 @@ func (s *organizationLicenseService) Instantiate(
 		return license.OrganizationLicense{}, err
 	}
 
+	// Nothing can be cached before the license exists — a not-found read is
+	// never cached, see cache.Cache.GetOrElse — so this is a no-op today. It
+	// stays here so every license write follows the same eviction discipline,
+	// rather than relying on that invariant to hold forever.
+	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+
 	return created, nil
 }
 
+// GetLicense reads the Organization's license record from cache — evicted on
+// every write, see evictLicenseCache — and derives usage against it fresh on
+// every call. Usage itself is never cached: were it folded into the cached
+// value, a report arriving between evictions would stay invisible until the
+// TTL expired, which is not the contract. See
+// docs/adr/0012-license-status-derived-on-read.md.
 func (s *organizationLicenseService) GetLicense(
 	ctx context.Context, in license.GetLicenseInput,
-) (*license.OrganizationLicense, error) {
+) (*license.OrganizationLicenseRead, error) {
 	if err := validate.ValidateStruct(in); err != nil {
 		return nil, err
 	}
 
-	return s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
+	base, err := s.licenseCacheKey(in.ProductID, in.OrganizationID).GetOrElse(
+		ctx, func() (*license.OrganizationLicense, error) {
+			return s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if base == nil {
+		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
+	}
+
+	read, err := s.withUsage(ctx, in.TenantID, in.ProductID, *base)
+	if err != nil {
+		return nil, err
+	}
+	return &read, nil
+}
+
+// withUsage composes the cached license record with every limit field's
+// latest usage and derived status, read fresh from the schema and the usage
+// observations — never from the license cache.
+func (s *organizationLicenseService) withUsage(
+	ctx context.Context, tenantID, productID string, base license.OrganizationLicense,
+) (license.OrganizationLicenseRead, error) {
+	read := license.OrganizationLicenseRead{OrganizationLicense: base, Usage: map[string]license.FieldUsage{}}
+
+	schema, err := s.schemas.GetSchema(ctx, license.GetSchemaInput{TenantID: tenantID, ProductID: productID})
+	if err != nil {
+		return license.OrganizationLicenseRead{}, err
+	}
+	if schema == nil {
+		return read, nil
+	}
+
+	latest, err := s.usage.LatestPerKey(ctx, tenantID, productID, base.OrganizationID)
+	if err != nil {
+		return license.OrganizationLicenseRead{}, err
+	}
+	latestByKey := make(map[string]license.UsageObservation, len(latest))
+	for _, observation := range latest {
+		latestByKey[observation.Key] = observation
+	}
+
+	read.Usage = license.DeriveUsage(schema.Fields, base.Values, latestByKey, time.Now())
+	return read, nil
 }
 
 func (s *organizationLicenseService) AdjustValues(
@@ -177,7 +279,16 @@ func (s *organizationLicenseService) AdjustValues(
 	}
 	existing.Values = adjusted
 
-	return s.licenseRepo.Update(ctx, in.TenantID, *existing)
+	updated, err := s.licenseRepo.Update(ctx, in.TenantID, *existing)
+	if err != nil {
+		return license.OrganizationLicense{}, err
+	}
+
+	// Without this, a limit lowered to make a previously-compliant Organization
+	// exceeded would read as compliant until the cache entry's TTL expired.
+	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+
+	return updated, nil
 }
 
 func (s *organizationLicenseService) DiffAgainstTemplate(

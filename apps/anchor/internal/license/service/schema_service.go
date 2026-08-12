@@ -63,6 +63,30 @@ func errLicenseFieldRuleInvalid(name string, violation *rules.ViolationError) *f
 	}}, http.StatusBadRequest)
 }
 
+// errLicenseFieldReportingIntervalNotALimit reports an expected reporting
+// interval declared on a field that is not a limit. Only a limit ever carries
+// usage, so only a limit has a reporting cadence to expect.
+func errLicenseFieldReportingIntervalNotALimit(name string, fieldType license.FieldType) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code: "LICENSE_FIELD_REPORTING_INTERVAL_NOT_A_LIMIT",
+		Message: "An expected reporting interval only applies to a limit, and the license field " +
+			name + " is not one",
+		Field:    name,
+		Metadata: map[string]any{"type": string(fieldType)},
+	}}, http.StatusBadRequest)
+}
+
+// errLicenseFieldReportingIntervalInvalid reports a non-positive expected
+// reporting interval. Zero or negative would make every read of the field
+// stale, which is never what a declaration meant to say.
+func errLicenseFieldReportingIntervalInvalid(name string) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "LICENSE_FIELD_REPORTING_INTERVAL_INVALID",
+		Message: "The license field " + name + "'s expected reporting interval must be a positive duration",
+		Field:   name,
+	}}, http.StatusBadRequest)
+}
+
 // LicenseSchemaService owns the license schema: the per-Product declaration of
 // every field a license may carry.
 //
@@ -133,11 +157,21 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 			return nil, err
 		}
 
+		if d.ExpectedReportingInterval != nil {
+			if d.Type != rules.Limit {
+				return nil, errLicenseFieldReportingIntervalNotALimit(d.Name, d.Type)
+			}
+			if *d.ExpectedReportingInterval <= 0 {
+				return nil, errLicenseFieldReportingIntervalInvalid(d.Name)
+			}
+		}
+
 		field := license.Field{
-			Name:        d.Name,
-			Type:        d.Type,
-			Description: d.Description,
-			Rules:       d.Rules,
+			Name:                      d.Name,
+			Type:                      d.Type,
+			Description:               d.Description,
+			Rules:                     d.Rules,
+			ExpectedReportingInterval: d.ExpectedReportingInterval,
 		}
 		field.GenerateID()
 		fields = append(fields, field)

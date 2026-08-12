@@ -2935,6 +2935,14 @@ components:
           type: string
         rules:
           $ref: '#/components/schemas/LicenseFieldRules'
+        expected_reporting_interval_seconds:
+          type: integer
+          description: >-
+            How often, in seconds, this field's usage is expected to be
+            reported. Limit fields only. When set, the license read derives
+            `stale` for this field once longer than this has passed since the
+            latest observation. Anchor declares what it expects here and never
+            pulls a report or checks a schedule itself.
 
     LicenseFieldResponse:
       type: object
@@ -2953,6 +2961,12 @@ components:
           type: string
         rules:
           $ref: '#/components/schemas/LicenseFieldRules'
+        expected_reporting_interval_seconds:
+          type: integer
+          description: >-
+            How often, in seconds, this field's usage is expected to be
+            reported. Absent for a field that declares no expectation, and for
+            a field that is not a limit.
         created_at:
           type: string
           format: date-time
@@ -3167,12 +3181,64 @@ components:
             What this organization is allowed, keyed by license field name. A
             value that differs from the template is a deviation — read the diff
             route to find them.
+        usage:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/LicenseFieldUsageResponse'
+          description: >-
+            One entry per limit field the product's license schema declares,
+            keyed by license field name — every declared field that is not a
+            limit never appears here. Present on the license read, where it is
+            computed fresh on every call; absent from the response to
+            instantiating or adjusting a license, which does not compute it.
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    LicenseUsageStatus:
+      type: string
+      description: >-
+        A limit field's derived state against its latest reported usage.
+        Computed on every license read and never stored. `stale` means the
+        latest observation cannot be trusted as current: either nothing has
+        ever been reported for this field, or the latest report is older than
+        the field's declared expected reporting interval. Anchor advises with
+        this value; it never gates on it.
+      enum: [within_limit, at_limit, exceeded, stale]
+      x-go-type: license.UsageStatus
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    LicenseFieldUsageResponse:
+      type: object
+      description: >-
+        One limit field's latest reported usage and derived status, as read
+        from an organization's license.
+      required: [limit, status]
+      properties:
+        limit:
+          type: number
+          format: double
+          description: >-
+            This organization's current value for the field, mirroring
+            `values` on the enclosing license.
+        usage:
+          type: number
+          format: double
+          nullable: true
+          description: The latest reported value, or null if never reported.
+        status:
+          $ref: '#/components/schemas/LicenseUsageStatus'
+        last_reported_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            When the latest usage observation was recorded. Null exactly when
+            `usage` is null.
 
     LicenseDifferenceKind:
       type: string
@@ -6128,7 +6194,14 @@ paths:
       summary: Get Organization License
       description: >-
         Reads an organization's effective license in one call: every license
-        field, its value, and the provenance of the copy.
+        field, its value, the provenance of the copy, and — for every limit
+        field — its latest reported usage and a derived status
+        (`within_limit` / `at_limit` / `exceeded` / `stale`). Embedding usage
+        here is deliberate: it saves a second call on the hot path. The status
+        is computed fresh on every call and never stored; this route is
+        cached, and the cache is evicted whenever the license is written, so a
+        usage report becomes visible on the next read without a license write.
+        This is advice, not a verdict — anchor validates but never gates.
       operationId: getOrganizationLicense
       tags:
       - Licensing

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,6 +21,13 @@ func TestGetOrganizationLicense(t *testing.T) {
 		assert.Equal(t, w.TemplateID(), organizationLicense.TemplateId)
 		assert.NotZero(t, organizationLicense.InstantiatedAt)
 		assertValues(t, organizationLicense.Values, validTemplateValues())
+
+		// It also answers "and how much have they used": one usage entry for
+		// the schema's one limit field, nothing having been reported yet.
+		usage := requireFieldUsage(t, organizationLicense)
+		assert.Equal(t, ct.Stale, usage.Status)
+		assert.Nil(t, usage.Usage)
+		assert.InDelta(t, 500.0, usage.Limit, 0)
 	})
 
 	t.Run("404 when the organization has no license", func(t *testing.T) {

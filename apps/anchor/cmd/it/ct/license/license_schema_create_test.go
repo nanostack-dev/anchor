@@ -22,9 +22,10 @@ func TestLicenseSchemaCreate(t *testing.T) {
 				Description: new("Billing-facing declaration"),
 				Fields: []ct.LicenseFieldDeclaration{
 					{
-						Name:  "flows",
-						Type:  ct.LicenseFieldTypeLIMIT,
-						Rules: limitRules(0, 100000),
+						Name:                             "flows",
+						Type:                             ct.LicenseFieldTypeLIMIT,
+						Rules:                            limitRules(0, 100000),
+						ExpectedReportingIntervalSeconds: new(3600),
 					},
 					{Name: "burst_credit", Type: ct.LicenseFieldTypeNUMBER},
 					{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN},
@@ -68,12 +69,17 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		require.NotNil(t, flows.Rules.Max)
 		assert.InDelta(t, 0.0, *flows.Rules.Min, 0)
 		assert.InDelta(t, 100000.0, *flows.Rules.Max, 0)
+		require.NotNil(t, flows.ExpectedReportingIntervalSeconds)
+		assert.Equal(t, 3600, *flows.ExpectedReportingIntervalSeconds)
 
 		// A field declared without rules reads back as an empty rule set, not a
 		// missing one.
 		burst := fieldByName(t, schema.Fields, "burst_credit")
 		assert.Nil(t, burst.Rules.Min)
 		assert.Nil(t, burst.Rules.Max)
+		// No expected reporting interval was declared on it, and it is not a
+		// limit anyway — either reason is enough for it to read back absent.
+		assert.Nil(t, burst.ExpectedReportingIntervalSeconds)
 
 		tier := fieldByName(t, schema.Fields, "support_tier")
 		require.NotNil(t, tier.Rules.Values)

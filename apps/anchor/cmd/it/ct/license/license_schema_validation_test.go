@@ -120,6 +120,33 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "min_length",
 		},
+		{
+			name: "an expected reporting interval on a field that is not a limit",
+			field: ct.LicenseFieldDeclaration{
+				Name:                             "sso",
+				Type:                             ct.LicenseFieldTypeBOOLEAN,
+				ExpectedReportingIntervalSeconds: new(3600),
+			},
+			code: "LICENSE_FIELD_REPORTING_INTERVAL_NOT_A_LIMIT",
+		},
+		{
+			name: "a zero expected reporting interval",
+			field: ct.LicenseFieldDeclaration{
+				Name:                             "flows",
+				Type:                             ct.LicenseFieldTypeLIMIT,
+				ExpectedReportingIntervalSeconds: new(0),
+			},
+			code: "LICENSE_FIELD_REPORTING_INTERVAL_INVALID",
+		},
+		{
+			name: "a negative expected reporting interval",
+			field: ct.LicenseFieldDeclaration{
+				Name:                             "flows",
+				Type:                             ct.LicenseFieldTypeLIMIT,
+				ExpectedReportingIntervalSeconds: new(-1),
+			},
+			code: "LICENSE_FIELD_REPORTING_INTERVAL_INVALID",
+		},
 	}
 
 	for _, c := range cases {

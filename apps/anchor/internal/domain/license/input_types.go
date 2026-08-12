@@ -1,5 +1,7 @@
 package license
 
+import "time"
+
 // FieldDeclaration is one license field as supplied by a caller: the authored
 // shape, before an ID or timestamps exist.
 type FieldDeclaration struct {
@@ -7,6 +9,9 @@ type FieldDeclaration struct {
 	Type        FieldType
 	Description string
 	Rules       FieldRules
+	// ExpectedReportingInterval only applies to a LIMIT field. See
+	// [Field.ExpectedReportingInterval].
+	ExpectedReportingInterval *time.Duration
 }
 
 // CreateSchemaInput declares a Product's license schema for the first time.

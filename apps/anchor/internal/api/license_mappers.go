@@ -1,6 +1,10 @@
 package api
 
-import "anchor/internal/domain/license"
+import (
+	"time"
+
+	"anchor/internal/domain/license"
+)
 
 func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []license.FieldDeclaration {
 	out := make([]license.FieldDeclaration, 0, len(declarations))
@@ -14,6 +18,10 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 		}
 		if d.Rules != nil {
 			fd.Rules = *d.Rules
+		}
+		if d.ExpectedReportingIntervalSeconds != nil {
+			interval := time.Duration(*d.ExpectedReportingIntervalSeconds) * time.Second
+			fd.ExpectedReportingInterval = &interval
 		}
 		out = append(out, fd)
 	}
@@ -31,6 +39,10 @@ func mapLicenseFieldToResponse(f license.Field) LicenseFieldResponse {
 	}
 	if f.Description != "" {
 		resp.Description = new(f.Description)
+	}
+	if f.ExpectedReportingInterval != nil {
+		seconds := int(f.ExpectedReportingInterval.Seconds())
+		resp.ExpectedReportingIntervalSeconds = &seconds
 	}
 	return resp
 }
@@ -88,6 +100,30 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 		CreatedAt:      l.CreatedAt,
 		UpdatedAt:      l.UpdatedAt,
 	}
+}
+
+func mapFieldUsageToResponse(u license.FieldUsage) LicenseFieldUsageResponse {
+	return LicenseFieldUsageResponse{
+		Limit:          u.Limit,
+		Usage:          u.Usage,
+		Status:         u.Status,
+		LastReportedAt: u.LastReportedAt,
+	}
+}
+
+// mapOrganizationLicenseReadToResponse is mapOrganizationLicenseToResponse
+// plus the per-limit usage a license read carries. Only GetOrganizationLicense
+// uses it: instantiating or adjusting a license returns
+// mapOrganizationLicenseToResponse directly, without usage, since neither
+// write computes it.
+func mapOrganizationLicenseReadToResponse(l license.OrganizationLicenseRead) OrganizationLicenseResponse {
+	resp := mapOrganizationLicenseToResponse(l.OrganizationLicense)
+	usage := make(map[string]LicenseFieldUsageResponse, len(l.Usage))
+	for name, u := range l.Usage {
+		usage[name] = mapFieldUsageToResponse(u)
+	}
+	resp.Usage = &usage
+	return resp
 }
 
 func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {

@@ -17,14 +17,15 @@ type licenseSchemaFieldsTable struct {
 	postgres.Table
 
 	// Columns
-	ID              postgres.ColumnString
-	LicenseSchemaID postgres.ColumnString
-	Name            postgres.ColumnString
-	FieldType       postgres.ColumnString
-	Description     postgres.ColumnString
-	RulesJSON       postgres.ColumnString
-	CreatedAt       postgres.ColumnTimestampz
-	UpdatedAt       postgres.ColumnTimestampz
+	ID                               postgres.ColumnString
+	LicenseSchemaID                  postgres.ColumnString
+	Name                             postgres.ColumnString
+	FieldType                        postgres.ColumnString
+	Description                      postgres.ColumnString
+	RulesJSON                        postgres.ColumnString
+	CreatedAt                        postgres.ColumnTimestampz
+	UpdatedAt                        postgres.ColumnTimestampz
+	ExpectedReportingIntervalSeconds postgres.ColumnInteger
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -66,31 +67,33 @@ func newLicenseSchemaFieldsTable(schemaName, tableName, alias string) *LicenseSc
 
 func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licenseSchemaFieldsTable {
 	var (
-		IDColumn              = postgres.StringColumn("id")
-		LicenseSchemaIDColumn = postgres.StringColumn("license_schema_id")
-		NameColumn            = postgres.StringColumn("name")
-		FieldTypeColumn       = postgres.StringColumn("field_type")
-		DescriptionColumn     = postgres.StringColumn("description")
-		RulesJSONColumn       = postgres.StringColumn("rules_json")
-		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn       = postgres.TimestampzColumn("updated_at")
-		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns        = postgres.ColumnList{DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                               = postgres.StringColumn("id")
+		LicenseSchemaIDColumn                  = postgres.StringColumn("license_schema_id")
+		NameColumn                             = postgres.StringColumn("name")
+		FieldTypeColumn                        = postgres.StringColumn("field_type")
+		DescriptionColumn                      = postgres.StringColumn("description")
+		RulesJSONColumn                        = postgres.StringColumn("rules_json")
+		CreatedAtColumn                        = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn                        = postgres.TimestampzColumn("updated_at")
+		ExpectedReportingIntervalSecondsColumn = postgres.IntegerColumn("expected_reporting_interval_seconds")
+		allColumns                             = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn, ExpectedReportingIntervalSecondsColumn}
+		mutableColumns                         = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn, ExpectedReportingIntervalSecondsColumn}
+		defaultColumns                         = postgres.ColumnList{DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return licenseSchemaFieldsTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:              IDColumn,
-		LicenseSchemaID: LicenseSchemaIDColumn,
-		Name:            NameColumn,
-		FieldType:       FieldTypeColumn,
-		Description:     DescriptionColumn,
-		RulesJSON:       RulesJSONColumn,
-		CreatedAt:       CreatedAtColumn,
-		UpdatedAt:       UpdatedAtColumn,
+		ID:                               IDColumn,
+		LicenseSchemaID:                  LicenseSchemaIDColumn,
+		Name:                             NameColumn,
+		FieldType:                        FieldTypeColumn,
+		Description:                      DescriptionColumn,
+		RulesJSON:                        RulesJSONColumn,
+		CreatedAt:                        CreatedAtColumn,
+		UpdatedAt:                        UpdatedAtColumn,
+		ExpectedReportingIntervalSeconds: ExpectedReportingIntervalSecondsColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

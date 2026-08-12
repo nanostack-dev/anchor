@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"encoding/json"
+	"time"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/license"
@@ -51,14 +52,15 @@ func (m *LicenseSchemaFieldMapper) ToDomain(entity model.LicenseSchemaFields) li
 		_ = json.Unmarshal([]byte(entity.RulesJSON), &set)
 	}
 	return license.Field{
-		ID:          entity.ID,
-		SchemaID:    entity.LicenseSchemaID,
-		Name:        entity.Name,
-		Type:        license.FieldType(entity.FieldType),
-		Description: entity.Description,
-		Rules:       set,
-		CreatedAt:   entity.CreatedAt,
-		UpdatedAt:   entity.UpdatedAt,
+		ID:                        entity.ID,
+		SchemaID:                  entity.LicenseSchemaID,
+		Name:                      entity.Name,
+		Type:                      license.FieldType(entity.FieldType),
+		Description:               entity.Description,
+		Rules:                     set,
+		ExpectedReportingInterval: secondsToDuration(entity.ExpectedReportingIntervalSeconds),
+		CreatedAt:                 entity.CreatedAt,
+		UpdatedAt:                 entity.UpdatedAt,
 	}
 }
 
@@ -68,13 +70,35 @@ func (m *LicenseSchemaFieldMapper) ToEntity(domain license.Field) model.LicenseS
 		rulesJSON = string(b)
 	}
 	return model.LicenseSchemaFields{
-		ID:              domain.ID,
-		LicenseSchemaID: domain.SchemaID,
-		Name:            domain.Name,
-		FieldType:       string(domain.Type),
-		Description:     domain.Description,
-		RulesJSON:       rulesJSON,
-		CreatedAt:       domain.CreatedAt,
-		UpdatedAt:       domain.UpdatedAt,
+		ID:                               domain.ID,
+		LicenseSchemaID:                  domain.SchemaID,
+		Name:                             domain.Name,
+		FieldType:                        string(domain.Type),
+		Description:                      domain.Description,
+		RulesJSON:                        rulesJSON,
+		ExpectedReportingIntervalSeconds: durationToSeconds(domain.ExpectedReportingInterval),
+		CreatedAt:                        domain.CreatedAt,
+		UpdatedAt:                        domain.UpdatedAt,
 	}
+}
+
+// secondsToDuration converts the stored column to the domain's time.Duration.
+// Nil stays nil: no interval was declared.
+func secondsToDuration(seconds *int32) *time.Duration {
+	if seconds == nil {
+		return nil
+	}
+	d := time.Duration(*seconds) * time.Second
+	return &d
+}
+
+// durationToSeconds is secondsToDuration's inverse, truncating to whole
+// seconds — the column's grain. A declaration finer than a second has no
+// meaning for a reporting cadence.
+func durationToSeconds(interval *time.Duration) *int32 {
+	if interval == nil {
+		return nil
+	}
+	seconds := int32(interval.Seconds())
+	return &seconds
 }
