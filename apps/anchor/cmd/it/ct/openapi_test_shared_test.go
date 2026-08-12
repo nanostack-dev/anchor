@@ -2,10 +2,13 @@ package ct_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -121,7 +124,7 @@ type extractedOp struct {
 	OpMap               map[string]any
 	RequiresBody        bool
 	RequiredPathParams  map[string]struct{}
-	RequiredQueryParams []string
+	RequiredQueryParams map[string]string
 }
 
 // parseOpenAPISpec parses the OpenAPI YAML and extracts components and parameter definitions.
@@ -151,13 +154,13 @@ func parseOpenAPISpec(t *testing.T) (OpenAPI, map[string]any, map[string]any) {
 
 // extractOperations extracts protected operations from the OpenAPI spec.
 func extractOperations(
-	spec OpenAPI, paramDefs map[string]any, noAuth map[string]struct{},
+	spec OpenAPI, components, paramDefs map[string]any, noAuth map[string]struct{},
 	baseURL string,
 ) []extractedOp {
 	var ops []extractedOp
 	for origPath, methods := range spec.Paths {
 		pathOps := extractOperationsFromPath(
-			origPath, methods, paramDefs, noAuth, baseURL,
+			origPath, methods, components, paramDefs, noAuth, baseURL,
 		)
 		ops = append(ops, pathOps...)
 	}
@@ -166,13 +169,13 @@ func extractOperations(
 
 // extractOperationsFromPath extracts operations from a single path.
 func extractOperationsFromPath(
-	origPath string, methods map[string]any, paramDefs map[string]any,
+	origPath string, methods map[string]any, components, paramDefs map[string]any,
 	noAuth map[string]struct{}, baseURL string,
 ) []extractedOp {
 	var ops []extractedOp
 	for method, rawOp := range methods {
 		op := extractSingleOperation(
-			origPath, method, rawOp, paramDefs, noAuth, baseURL,
+			origPath, method, rawOp, components, paramDefs, noAuth, baseURL,
 		)
 		if op != nil {
 			ops = append(ops, *op)
@@ -183,7 +186,7 @@ func extractOperationsFromPath(
 
 // extractSingleOperation extracts a single operation from a method.
 func extractSingleOperation(
-	origPath, method string, rawOp any, paramDefs map[string]any,
+	origPath, method string, rawOp any, components, paramDefs map[string]any,
 	noAuth map[string]struct{}, baseURL string,
 ) *extractedOp {
 	opMap, ok := rawOp.(map[string]any)
@@ -209,7 +212,7 @@ func extractSingleOperation(
 	}
 
 	requiresBody := checkIfRequiresBody(opMap)
-	requiredPathParams, requiredQueryParams := extractParameters(opMap, paramDefs)
+	requiredPathParams, requiredQueryParams := extractParameters(opMap, components, paramDefs)
 
 	path := regexp.MustCompile(`\{[^}]+}`).ReplaceAllString(origPath, ids.MustNew("test"))
 	url := buildURL(baseURL, path, requiredQueryParams)
@@ -242,9 +245,13 @@ func checkIfRequiresBody(opMap map[string]any) bool {
 }
 
 // extractParameters extracts required path and query parameters from operation.
-func extractParameters(opMap, paramDefs map[string]any) (map[string]struct{}, []string) {
+// Query parameters are resolved to a fake value satisfying their schema —
+// an enum-constrained one in particular, since a value outside its enum is
+// refused before the request ever reaches the auth check this suite exists
+// to exercise.
+func extractParameters(opMap, components, paramDefs map[string]any) (map[string]struct{}, map[string]string) {
 	requiredPathParams := map[string]struct{}{}
-	requiredQueryParams := []string{}
+	requiredQueryParams := map[string]string{}
 
 	paramsRaw, ok := opMap["parameters"]
 	if !ok {
@@ -270,7 +277,8 @@ func extractParameters(opMap, paramDefs map[string]any) (map[string]struct{}, []
 
 		if param["in"] == "query" && param["required"] == true {
 			if queryName, queryOk := param["name"].(string); queryOk {
-				requiredQueryParams = append(requiredQueryParams, queryName)
+				schema, _ := param["schema"].(map[string]any)
+				requiredQueryParams[queryName] = fmt.Sprint(fakeValueForSchema(schema, components))
 			}
 		}
 	}
@@ -300,16 +308,17 @@ func resolveParameter(p any, paramDefs map[string]any) map[string]any {
 }
 
 // buildURL builds the final URL with query parameters if needed.
-func buildURL(baseURL, path string, requiredQueryParams []string) string {
+func buildURL(baseURL, path string, requiredQueryParams map[string]string) string {
 	url := baseURL + path
 	if len(requiredQueryParams) == 0 {
 		return url
 	}
 
 	q := make([]string, 0, len(requiredQueryParams))
-	for _, k := range requiredQueryParams {
-		q = append(q, k+"=test")
+	for k, v := range requiredQueryParams {
+		q = append(q, k+"="+neturl.QueryEscape(v))
 	}
+	sort.Strings(q)
 
 	if strings.Contains(url, "?") {
 		url += "&" + strings.Join(q, "&")
@@ -418,8 +427,25 @@ func fakeValueForSchema(
 		return refValue
 	}
 
+	// An enum-constrained value has to satisfy the enum or the request never
+	// gets past schema validation to the auth check this suite exercises — the
+	// 400 it would get instead proves nothing about the route's security.
+	if enumValue := firstEnumValue(schema); enumValue != nil {
+		return enumValue
+	}
+
 	typ, _ := schema["type"].(string)
 	return generateFakeValueByType(typ, schema, components)
+}
+
+// firstEnumValue returns the first member of a schema's enum, if it declares
+// one.
+func firstEnumValue(schema map[string]any) any {
+	enumRaw, ok := schema["enum"].([]any)
+	if !ok || len(enumRaw) == 0 {
+		return nil
+	}
+	return enumRaw[0]
 }
 
 // resolveFakeValueRef resolves a reference in fake value generation.

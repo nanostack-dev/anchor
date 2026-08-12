@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -32,7 +34,7 @@ type routeSecurityCase struct {
 	Path                 string
 	OpMap                map[string]any
 	RequiresBody         bool
-	RequiredQueryParams  []string
+	RequiredQueryParams  map[string]string
 	HasExplicitSecurity  bool
 	IsPublic             bool
 	RequiresBearer       bool
@@ -162,7 +164,7 @@ func loadSecurityRouteCases(t *testing.T) ([]routeSecurityCase, map[string]any) 
 			if !ok {
 				continue
 			}
-			route := buildRouteSecurityCase(t, method, path, opMap, methods, paramDefs)
+			route := buildRouteSecurityCase(t, method, path, opMap, methods, components, paramDefs)
 			routes = append(routes, route)
 		}
 	}
@@ -184,7 +186,7 @@ func buildRouteSecurityCase(
 	method, path string,
 	opMap map[string]any,
 	pathMethods map[string]any,
-	paramDefs map[string]any,
+	components, paramDefs map[string]any,
 ) routeSecurityCase {
 	t.Helper()
 
@@ -196,7 +198,7 @@ func buildRouteSecurityCase(
 	hasExplicitSecurity, isPublic, requiresBearer, allowsAPIKey, requiredAPIKeyScopes := parseSecurity(opMap)
 
 	requiresBody := checkIfRequiresBody(opMap)
-	_, requiredQueryParams := extractParameters(opMap, pathMethods, paramDefs)
+	_, requiredQueryParams := extractParameters(opMap, pathMethods, components, paramDefs)
 
 	return routeSecurityCase{
 		OperationID:          opID,
@@ -294,13 +296,18 @@ func replacePathParams(path string, params map[string]string) string {
 	)
 }
 
+// extractParameters extracts required path and query parameters from an
+// operation. A query parameter is resolved to a fake value satisfying its
+// schema — an enum-constrained one in particular, since a value outside its
+// enum is refused before the request ever reaches the auth check this suite
+// exists to exercise.
 func extractParameters(
 	opMap map[string]any,
 	pathMethods map[string]any,
-	paramDefs map[string]any,
-) (map[string]struct{}, []string) {
+	components, paramDefs map[string]any,
+) (map[string]struct{}, map[string]string) {
 	requiredPathParams := map[string]struct{}{}
-	requiredQueryParams := []string{}
+	requiredQueryParams := map[string]string{}
 
 	parseParams := func(raw any) {
 		paramsArr, ok := raw.([]any)
@@ -319,7 +326,8 @@ func extractParameters(
 			}
 			if param["in"] == "query" && param["required"] == true {
 				if name, nameOK := param["name"].(string); nameOK {
-					requiredQueryParams = append(requiredQueryParams, name)
+					schema, _ := param["schema"].(map[string]any)
+					requiredQueryParams[name] = fmt.Sprint(fakeValueForSchema(schema, components))
 				}
 			}
 		}
@@ -364,20 +372,17 @@ func checkIfRequiresBody(opMap map[string]any) bool {
 	return ok && required
 }
 
-func buildURL(baseURL, path string, requiredQueryParams []string) string {
+func buildURL(baseURL, path string, requiredQueryParams map[string]string) string {
 	url := baseURL + path
 	if len(requiredQueryParams) == 0 {
 		return url
 	}
 
 	q := make([]string, 0, len(requiredQueryParams))
-	for _, key := range requiredQueryParams {
-		if strings.Contains(strings.ToLower(key), "limit") || strings.Contains(strings.ToLower(key), "offset") {
-			q = append(q, key+"=1")
-			continue
-		}
-		q = append(q, key+"=test")
+	for key, value := range requiredQueryParams {
+		q = append(q, key+"="+neturl.QueryEscape(value))
 	}
+	sort.Strings(q)
 
 	return url + "?" + strings.Join(q, "&")
 }
