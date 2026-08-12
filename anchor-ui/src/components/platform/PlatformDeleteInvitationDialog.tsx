@@ -1,7 +1,10 @@
 import { deletePlatformInvitationMutation } from "@/client/@tanstack/react-query.gen";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
+import { toast } from "sonner";
+import { FormAlert } from "../common/FormAlert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -14,11 +17,18 @@ import {
 	AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
 
 type PlatformDeleteInvitationDialogProps = {
 	invitationId: string;
 	onDeleted?: () => void;
-	trigger?: React.ReactNode;
+	/**
+	 * Rendered *as* the trigger, so it has to be a single element that forwards
+	 * DOM props — a `Button`, not a `Tooltip` or another composite. Base UI hands
+	 * the trigger's own props to whatever it renders, and a component that
+	 * ignores them silently drops the open behaviour.
+	 */
+	trigger?: ReactElement;
 };
 
 export function PlatformDeleteInvitationDialog({
@@ -31,33 +41,25 @@ export function PlatformDeleteInvitationDialog({
 	}
 	const [open, setOpen] = useState(false);
 
-	const { mutate, isPending, isError, error } = useMutation({
+	const { mutate, isPending, error } = useMutation({
 		...deletePlatformInvitationMutation(),
 		onSuccess: () => {
+			toast.success("Invitation deleted successfully!");
 			setOpen(false);
 			onDeleted?.();
 		},
 	});
 
-	const onDeleteInvitation = async () => {
-		mutate({ path: { invitation_id: invitationId } });
-	};
+	const defaultTrigger = (
+		<Button size="icon" variant="outlineDestructive">
+			<span className="sr-only">Delete invitation</span>
+			<Trash2 />
+		</Button>
+	);
 
 	return (
 		<AlertDialog open={open} onOpenChange={setOpen}>
-			<AlertDialogTrigger
-				render={
-					trigger ? (
-						<button type="button" onClick={() => setOpen(true)}>
-							{trigger}
-						</button>
-					) : (
-						<Button size="icon" variant="outlineDestructive">
-							<Trash2 />
-						</Button>
-					)
-				}
-			/>
+			<AlertDialogTrigger render={trigger ?? defaultTrigger} />
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete Invitation?</AlertDialogTitle>
@@ -66,21 +68,33 @@ export function PlatformDeleteInvitationDialog({
 						invitation.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
-				{isError && (
-					<div className="text-destructive text-sm mb-2">
-						{error instanceof Error
-							? error.message
-							: "Failed to delete invitation."}
-					</div>
-				)}
+
+				<FormAlert
+					message={
+						error
+							? getApiErrorMessage(error) || "Failed to delete invitation."
+							: null
+					}
+				/>
+
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
 					<AlertDialogAction
+						variant="destructive"
 						disabled={isPending}
-						onClick={onDeleteInvitation}
-						className="bg-destructive text-white hover:bg-destructive/90"
+						onClick={() => mutate({ path: { invitation_id: invitationId } })}
 					>
-						{isPending ? "Deleting..." : "Delete"}
+						{isPending ? (
+							<>
+								<Spinner className="text-current" />
+								Deleting...
+							</>
+						) : (
+							<>
+								<Trash2 />
+								Delete
+							</>
+						)}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
