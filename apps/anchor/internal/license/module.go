@@ -19,10 +19,12 @@ func NewModule() fx.Option {
 			repository.NewTemplateRepository,
 			repository.NewOrganizationLicenseRepository,
 			repository.NewUsageObservationRepository,
+			repository.NewUsageSeriesRepository,
 			service.NewLicenseSchemaService,
 			service.NewLicenseTemplateService,
 			service.NewOrganizationLicenseService,
 			service.NewUsageService,
+			service.NewUsageSeriesService,
 		),
 	)
 }

@@ -34,6 +34,7 @@ type AnchorAPI struct {
 	LicenseTemplateService        licensesvc.LicenseTemplateService
 	OrganizationLicenseService    licensesvc.OrganizationLicenseService
 	UsageService                  licensesvc.UsageService
+	UsageSeriesService            licensesvc.UsageSeriesService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
@@ -61,6 +62,7 @@ type Params struct {
 	LicenseTemplateService        licensesvc.LicenseTemplateService
 	OrganizationLicenseService    licensesvc.OrganizationLicenseService
 	UsageService                  licensesvc.UsageService
+	UsageSeriesService            licensesvc.UsageSeriesService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
@@ -88,6 +90,7 @@ func NewAPI(params Params) *AnchorAPI {
 		LicenseTemplateService:        params.LicenseTemplateService,
 		OrganizationLicenseService:    params.OrganizationLicenseService,
 		UsageService:                  params.UsageService,
+		UsageSeriesService:            params.UsageSeriesService,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
 		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),
