@@ -277,6 +277,36 @@ func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageRespo
 	return resp
 }
 
+// SeriesRaw reads the organization's usage series unadjusted, for the tests
+// whose subject is a refusal.
+func (h usageHandle) SeriesRaw(
+	params ct.GetOrganizationUsageSeriesParams,
+) *ct.GetOrganizationUsageSeriesResponse {
+	h.t.Helper()
+	resp, err := h.client.GetOrganizationUsageSeriesWithResponse(
+		context.Background(), h.productID, h.organizationID, &params,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h usageHandle) Series(params ct.GetOrganizationUsageSeriesParams) ct.UsageSeriesResponse {
+	h.t.Helper()
+	resp := h.SeriesRaw(params)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+// seriesQuery is the common shape a series read starts from: one key, one
+// granularity, a range wide enough that the test's own fixture data cannot
+// fall outside it by accident.
+func seriesQuery(key string, granularity ct.UsageGranularity, from, to time.Time) ct.GetOrganizationUsageSeriesParams {
+	return ct.GetOrganizationUsageSeriesParams{
+		Key: key, Granularity: granularity, From: from, To: &to,
+	}
+}
+
 func gauge(key string, value float64) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: key, Value: value}
 }
