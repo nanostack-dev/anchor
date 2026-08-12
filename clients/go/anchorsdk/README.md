@@ -83,6 +83,7 @@ org := c.Organization("org_3iXYZ")
 | `org.Members()` | list, search, get, add, remove, set role |
 | `org.Workspaces()` | create, get, update, delete, search, list |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
+| `org.License()` | get (cached), instantiate, adjust, diff, report usage |
 
 ### Email
 
@@ -140,6 +141,48 @@ result, err := c.Introspect(ctx, rawKey, "flow:read")
 
 A key that is valid but lacks a required scope yields `403`, so the error matches `ErrForbidden`;
 the response body naming the missing scopes is kept on `Error.Body`.
+
+### Licensing
+
+```go
+license, err := o.License().Get(ctx)     // every field's value, cached
+license.Values["max_flows"]              // any, per the product's license schema
+
+_, err = o.License().Instantiate(ctx, templateID)
+
+_, err = o.License().Adjust().
+	Set("max_flows", 500).
+	Do(ctx)
+
+_, err = o.License().ReportUsage("max_flows", 37).Do(ctx)          // a gauge
+_, err = o.License().ReportUsage("monthly_runs", 412).
+	From(periodStart).
+	Do(ctx)                                                         // an open windowed counter
+```
+
+`License.Get` never blocks and never returns an error meaning "denied" — it returns values, and the
+statement that stops a user belongs in your own repository (ADR-0001 in the Anchor repo). The read is
+cached per organization and, on a failed refresh past the cache TTL, fails open by default: the last
+known values are served (`LicenseSnapshot.Stale` is `true`) rather than an error, so an Anchor outage
+does not block a paying customer. A permanent failure (a revoked key, a deleted organization) is
+never papered over this way. Opt into fail-closed instead:
+
+```go
+c, err := anchorsdk.New(anchorsdk.Config{
+	// ...
+	LicenseCache: anchorsdk.LicenseCachePolicy{TTL: 10 * time.Second, Strict: true},
+})
+```
+
+`Instantiate` and `Adjust` write straight through to the cache, so the very next `Get` on that
+organization needs no round trip. Call `o.License().Invalidate()` if the license changed some other
+way — another service, the admin UI.
+
+**Not yet available:** a decision value (`status`, `limit`, `current`, `remaining`) and a threshold
+predicate. Both need a derived `status` on the license read, which Anchor does not return yet
+(tracked as [nanostack-dev/anchor#70](https://github.com/nanostack-dev/anchor/issues/70)); reading the
+usage series is tracked separately as
+[nanostack-dev/anchor#68](https://github.com/nanostack-dev/anchor/issues/68).
 
 ### Searching
 
