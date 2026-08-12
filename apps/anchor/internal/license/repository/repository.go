@@ -135,4 +135,14 @@ type UsageObservationRepository interface {
 	Append(
 		ctx context.Context, observation license.UsageObservation,
 	) (license.UsageObservation, error)
+	// LatestPerKey returns the most recent observation for every key the
+	// Organization has ever reported against, one row per key, newest first
+	// within each key. A key never reported does not appear. The license read
+	// uses this to derive each limit field's status, always fresh — deriving
+	// it from a cached value would let usage arriving go unseen without a
+	// license write, which is not the contract. See
+	// docs/adr/0012-license-status-derived-on-read.md.
+	LatestPerKey(
+		ctx context.Context, tenantID string, productID string, organizationID string,
+	) ([]license.UsageObservation, error)
 }

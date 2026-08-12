@@ -48,7 +48,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **gauge** | A usage report with no window: a number that rises and falls, such as "37 flows exist right now". | |
 | **windowed counter** | A usage report carrying a half-open window `[from, to)`: a number that accumulates within a period and resets when a new window starts. `to` omitted means now, and a window cannot span more than a year. | Not "counter" on its own — the window is what makes the reset unambiguous. |
 | **bucket** | A time-aggregated set of observations, produced by TimescaleDB's `time_bucket`. | |
-| **status** | Derived per limit: `within_limit`, `at_limit`, `exceeded`, or `stale`. Computed on read, never stored. | |
+| **status** | Derived per limit: `within_limit`, `at_limit`, `exceeded`, or `stale`. Computed on read, never stored. A limit with no observation on record reads `stale`. | |
 
 ### Words this project does not use
 

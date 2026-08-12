@@ -1,0 +1,113 @@
+package license
+
+import (
+	"time"
+
+	"anchor/internal/license/rules"
+)
+
+// UsageStatus is one limit field's derived state against its latest reported
+// usage. Computed on every license read; never stored. See CONTEXT.md's
+// licensing glossary and docs/adr/0012-license-status-derived-on-read.md.
+//
+// Anchor advises, never gates: this value is information a consuming product
+// uses to make its own decision, never a reason Anchor itself refuses or
+// blocks anything.
+type UsageStatus string
+
+const (
+	UsageWithinLimit UsageStatus = "within_limit"
+	UsageAtLimit     UsageStatus = "at_limit"
+	// UsageExceeded is always reachable: UsageService stores a report past the
+	// limit as-is, per ADR-0001 ("Anchor validates but never gates").
+	UsageExceeded UsageStatus = "exceeded"
+	// UsageStale means this field has never been reported against, so there is
+	// no current number to trust.
+	UsageStale UsageStatus = "stale"
+)
+
+// FieldUsage is one limit field's latest reported usage and derived status, as
+// carried by an organization's license read. Computed fresh from the latest
+// observation on record every time; never stored.
+type FieldUsage struct {
+	Field string
+	// Limit mirrors OrganizationLicense.Values[Field].
+	Limit float64
+	// Usage is nil when this field has never been reported against.
+	Usage  *float64
+	Status UsageStatus
+	// LastReportedAt is nil exactly when Usage is nil.
+	LastReportedAt *time.Time
+}
+
+// OrganizationLicenseRead is an organization's effective license: its own copy
+// of a template's values, plus every limit field's latest usage and derived
+// status. This is what the license read hands back — embedding usage saves a
+// consumer a second call on the hot path. See
+// docs/adr/0012-license-status-derived-on-read.md.
+type OrganizationLicenseRead struct {
+	OrganizationLicense
+	// Usage holds one entry per limit field the product's license schema
+	// declares, keyed by field name. A field that is not a limit never
+	// appears here.
+	Usage map[string]FieldUsage
+}
+
+// DeriveUsage computes the Usage entries a license read carries: one per limit
+// field the schema declares, given the license's own values and the latest
+// observation on record for each key.
+//
+// It is pure — schema fields, license values and latest observations all
+// arrive as arguments — so status derivation is unit-tested without a
+// database.
+func DeriveUsage(
+	fields []Field, values TemplateValues, latestByKey map[string]UsageObservation,
+) map[string]FieldUsage {
+	usage := make(map[string]FieldUsage)
+	for _, field := range fields {
+		if field.Type != rules.Limit {
+			continue
+		}
+
+		// A limit field's value is validated as numeric by rules.ValidateValue
+		// before it is ever stored, so this is unreachable in practice — a
+		// defensive skip rather than a failure of the whole read.
+		limit, ok := asFloat(values[field.Name])
+		if !ok {
+			continue
+		}
+
+		var latest *UsageObservation
+		if observation, found := latestByKey[field.Name]; found {
+			latest = &observation
+		}
+
+		usage[field.Name] = deriveFieldUsage(field.Name, limit, latest)
+	}
+	return usage
+}
+
+// deriveFieldUsage is DeriveUsage's per-field rule: a field that has never
+// reported is stale. Otherwise the latest observation decides — past the
+// limit is exceeded, equal to it is at_limit, under it is within_limit.
+func deriveFieldUsage(field string, limit float64, latest *UsageObservation) FieldUsage {
+	result := FieldUsage{Field: field, Limit: limit, Status: UsageStale}
+	if latest == nil {
+		return result
+	}
+
+	usage := latest.Value
+	result.Usage = &usage
+	lastReportedAt := latest.ObservedAt
+	result.LastReportedAt = &lastReportedAt
+
+	switch {
+	case usage > limit:
+		result.Status = UsageExceeded
+	case usage == limit:
+		result.Status = UsageAtLimit
+	default:
+		result.Status = UsageWithinLimit
+	}
+	return result
+}

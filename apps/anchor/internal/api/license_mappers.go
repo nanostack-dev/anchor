@@ -90,6 +90,30 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 	}
 }
 
+func mapFieldUsageToResponse(u license.FieldUsage) LicenseFieldUsageResponse {
+	return LicenseFieldUsageResponse{
+		Limit:          u.Limit,
+		Usage:          u.Usage,
+		Status:         u.Status,
+		LastReportedAt: u.LastReportedAt,
+	}
+}
+
+// mapOrganizationLicenseReadToResponse is mapOrganizationLicenseToResponse
+// plus the per-limit usage a license read carries. Only GetOrganizationLicense
+// uses it: instantiating or adjusting a license returns
+// mapOrganizationLicenseToResponse directly, without usage, since neither
+// write computes it.
+func mapOrganizationLicenseReadToResponse(l license.OrganizationLicenseRead) OrganizationLicenseResponse {
+	resp := mapOrganizationLicenseToResponse(l.OrganizationLicense)
+	usage := make(map[string]LicenseFieldUsageResponse, len(l.Usage))
+	for name, u := range l.Usage {
+		usage[name] = mapFieldUsageToResponse(u)
+	}
+	resp.Usage = &usage
+	return resp
+}
+
 func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {
 	return UsageObservationResponse{
 		Id:             o.ID,

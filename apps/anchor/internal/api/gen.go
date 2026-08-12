@@ -720,6 +720,21 @@ type LicenseFieldRules = license.FieldRules
 // LicenseFieldType defines model for LicenseFieldType.
 type LicenseFieldType = license.FieldType
 
+// LicenseFieldUsageResponse One limit field's latest reported usage and derived status, as read from an organization's license.
+type LicenseFieldUsageResponse struct {
+	// LastReportedAt When the latest usage observation was recorded. Null exactly when `usage` is null.
+	LastReportedAt *time.Time `json:"last_reported_at,omitempty"`
+
+	// Limit This organization's current value for the field, mirroring `values` on the enclosing license.
+	Limit float64 `json:"limit"`
+
+	// Status A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
+	Status LicenseUsageStatus `json:"status"`
+
+	// Usage The latest reported value, or null if never reported.
+	Usage *float64 `json:"usage,omitempty"`
+}
+
 // LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
 type LicenseSchemaCreateRequest struct {
 	Description *string                   `json:"description,omitempty"`
@@ -801,6 +816,9 @@ type LicenseTemplateUpdateRequest struct {
 
 // LicenseTemplateValues defines model for LicenseTemplateValues.
 type LicenseTemplateValues = license.TemplateValues
+
+// LicenseUsageStatus A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
+type LicenseUsageStatus = license.UsageStatus
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -1061,6 +1079,9 @@ type OrganizationLicenseResponse struct {
 	// TemplateId Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
 	TemplateId Ksuid     `json:"template_id"`
 	UpdatedAt  time.Time `json:"updated_at"`
+
+	// Usage One entry per limit field the product's license schema declares, keyed by license field name — every declared field that is not a limit never appears here. Present on the license read, where it is computed fresh on every call; absent from the response to instantiating or adjusting a license, which does not compute it.
+	Usage *map[string]LicenseFieldUsageResponse `json:"usage,omitempty"`
 
 	// Values What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
 	Values LicenseTemplateValues `json:"values"`
