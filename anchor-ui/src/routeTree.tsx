@@ -1,6 +1,7 @@
 import { indexRoute } from "@/routes";
 import { type RouteContext, rootRoute } from "@/routes/__root";
 import { organizationApiKeysRoute } from "@/routes/organizations/organization-api-keys";
+import { organizationLicenseRoute } from "@/routes/organizations/organization-license";
 import { organizationMembershipsRoute } from "@/routes/organizations/organization-memberships";
 import { organizationsRoute } from "@/routes/organizations/organizations";
 import { workspaceMembershipsRoute } from "@/routes/organizations/workspace-memberships";
@@ -19,6 +20,8 @@ import { productEditRoute } from "@/routes/products/$productId.edit";
 import { emailSendsRoute } from "@/routes/products/email-sends";
 import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
 import { emailTemplatesRoute } from "@/routes/products/email-templates";
+import { licenseSchemaRoute } from "@/routes/products/license-schema";
+import { licenseTemplatesRoute } from "@/routes/products/license-templates";
 import { productPermissionsRoute } from "@/routes/products/permissions";
 import { productApiKeyEditRoute } from "@/routes/products/product-api-key-edit";
 import { productApiKeyNewRoute } from "@/routes/products/product-api-key-new";
@@ -48,6 +51,7 @@ const routeTree = rootRoute.addChildren([
 	organizationsRoute,
 	organizationApiKeysRoute,
 	organizationMembershipsRoute,
+	organizationLicenseRoute,
 	workspacesRoute,
 	workspaceMembershipsRoute,
 	settingsUserRoute,
@@ -62,6 +66,8 @@ const routeTree = rootRoute.addChildren([
 	emailTemplatesRoute,
 	emailTemplateBuilderRoute,
 	emailSendsRoute,
+	licenseSchemaRoute,
+	licenseTemplatesRoute,
 ]);
 
 const routerContext = {
