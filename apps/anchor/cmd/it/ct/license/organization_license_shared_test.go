@@ -3,7 +3,9 @@ package license_ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -94,17 +96,7 @@ func (w *licenseWorld) TemplateID() string {
 // whose subject is that one organization's license is its own.
 func (w *licenseWorld) NewOrganization() string {
 	w.t.Helper()
-	// Creating an organization is a Product API key route, not a platform bearer
-	// one, so this cannot go through the client the licensing acts use.
-	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
-	resp, err := client.CreateProductOrganizationWithResponse(
-		context.Background(),
-		w.productID(),
-		ct.CreateProductOrganizationJSONRequestBody{Name: "org_" + ids.MustNew("ct")},
-	)
-	require.NoError(w.t, err)
-	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
-	return resp.JSON201.Id
+	return createOrganization(w.t, w.product)
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +209,93 @@ func (h licenseHandle) Diff() ct.OrganizationLicenseDiffResponse {
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(h.t, resp.JSON200)
 	return *resp.JSON200
+}
+
+// ---------------------------------------------------------------------------
+// Usage handle
+// ---------------------------------------------------------------------------
+
+type usageHandle struct {
+	t              *testing.T
+	client         *ct.ClientWithResponses
+	productID      string
+	organizationID string
+}
+
+func (w *licenseWorld) Usage() usageHandle {
+	return usageHandle{
+		t:              w.t,
+		client:         w.client(),
+		productID:      w.productID(),
+		organizationID: w.OrganizationID(),
+	}
+}
+
+// For addresses another organization, keeping the credential.
+func (h usageHandle) For(organizationID string) usageHandle {
+	h.organizationID = organizationID
+	return h
+}
+
+// As swaps the credential, for the tests whose subject is a scope.
+func (h usageHandle) As(client *ct.ClientWithResponses) usageHandle {
+	h.client = client
+	return h
+}
+
+func (h usageHandle) ReportRaw(
+	report ct.UsageReportRequest,
+) *ct.ReportOrganizationUsageResponse {
+	h.t.Helper()
+	resp, err := h.client.ReportOrganizationUsageWithResponse(
+		context.Background(), h.productID, h.organizationID, report,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h usageHandle) Report(report ct.UsageReportRequest) ct.UsageObservationResponse {
+	h.t.Helper()
+	resp := h.ReportRaw(report)
+	require.Equal(h.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON201)
+	return *resp.JSON201
+}
+
+// ReportBodyRaw posts a body the generated client cannot express — the typed
+// request models value as a float, so a non-numeric value has to be sent raw.
+func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageResponse {
+	h.t.Helper()
+	resp, err := h.client.ReportOrganizationUsageWithBodyWithResponse(
+		context.Background(),
+		h.productID,
+		h.organizationID,
+		"application/json",
+		strings.NewReader(body),
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func gauge(key string, value float64) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value}
+}
+
+// The one limit in templateSchemaFields. The windowed builders take no key
+// because only a limit can carry usage and the world declares exactly one.
+const worldLimitKey = "flows"
+
+func windowed(value float64, from, to time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from, To: &to}
+}
+
+func openEnded(value float64, from time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from}
+}
+
+func billingPeriod() (time.Time, time.Time) {
+	start := time.Date(2026, time.August, 14, 0, 0, 0, 0, time.UTC)
+	return start, start.AddDate(0, 1, 0)
 }
 
 // ---------------------------------------------------------------------------

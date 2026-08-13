@@ -332,6 +332,12 @@
       "organization_license:create"
     ]
   },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/license/usage": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_usage:create"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations/{organization_id}/members": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [

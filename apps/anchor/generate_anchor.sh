@@ -31,6 +31,9 @@ check_dependencies() {
 }
 
 # Start a PostgreSQL container and wait for it to be ready
+#
+# TimescaleDB, not plain Postgres: the usage migration creates a hypertable.
+# Keep this image equal to docker-compose.yml and cmd/it/shared/test_setup.go.
 start_postgres() {
   echo "Starting PostgreSQL container on port ${ANCHOR_DB_PORT}..."
   cleanup # Ensure no old container exists
@@ -38,7 +41,7 @@ start_postgres() {
   docker run --name ${POSTGRES_CONTAINER} \
     -e POSTGRES_PASSWORD=${ANCHOR_DB_PASSWORD} \
     -p ${ANCHOR_DB_PORT}:5432 \
-    -d postgres
+    -d timescale/timescaledb:2.23.0-pg18
 
   # Wait for PostgreSQL to be ready
   echo "Waiting for PostgreSQL to be ready..."

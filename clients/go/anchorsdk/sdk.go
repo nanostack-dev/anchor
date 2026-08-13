@@ -32,6 +32,9 @@ type Config struct {
 	HTTPClient *http.Client `yaml:"-"`
 	// Retry overrides the retry policy. The zero value uses the defaults.
 	Retry RetryPolicy `yaml:"-"`
+	// LicenseCache overrides how [License.Get] caches a license read. The
+	// zero value uses the defaults; see [LicenseCachePolicy].
+	LicenseCache LicenseCachePolicy `yaml:"-"`
 }
 
 func (c Config) validate() error {
@@ -78,6 +81,9 @@ type Client struct {
 	api       *nanoclient.ClientWithResponses
 	productID string
 	retry     RetryPolicy
+
+	licenses      *licenseCache
+	licensePolicy LicenseCachePolicy
 }
 
 // New builds a Client from cfg.
@@ -109,7 +115,13 @@ func New(cfg Config, opts ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{api: api, productID: cfg.ProductID, retry: cfg.Retry}, nil
+	return &Client{
+		api:           api,
+		productID:     cfg.ProductID,
+		retry:         cfg.Retry,
+		licenses:      newLicenseCache(),
+		licensePolicy: cfg.LicenseCache,
+	}, nil
 }
 
 // ProductID returns the product this client is bound to.

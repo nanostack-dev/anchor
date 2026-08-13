@@ -7,6 +7,7 @@ package license_ct_test
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"os"
 	"testing"
@@ -20,11 +21,16 @@ import (
 	itdsl "anchor/cmd/it/shared/dsl"
 )
 
+// testDB backs the assertions no API response can show, such as the usage table
+// being a hypertable.
+var testDB *sql.DB
+
 func TestMain(m *testing.M) {
 	if err := os.Chdir(".."); err != nil {
 		panic(err)
 	}
 	itshared.RunTestMain(m, itshared.TestConfig{
+		ExtraPopulateTargets:    []any{&testDB},
 		EnableRedis:             true,
 		PopulateRepositories:    true,
 		APIKeyService:           &itshared.APIKeyService,
@@ -63,6 +69,32 @@ func newTestCtx(t *testing.T) testCtx {
 
 func uniqueFieldName() string {
 	return "field_" + ids.MustNew("ct")
+}
+
+// createOrganization goes through a Product API key: creating an organization
+// is not a platform bearer route.
+func createOrganization(t *testing.T, product *itdsl.ProductContext) string {
+	t.Helper()
+	client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
+	resp, err := client.CreateProductOrganizationWithResponse(
+		context.Background(),
+		product.ProductID,
+		ct.CreateProductOrganizationJSONRequestBody{Name: "org_" + ids.MustNew("ct")},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	return resp.JSON201.Id
+}
+
+// assertValidationRule names the validate tag that refused a write. The tag
+// travels as metadata rather than a distinct code, so it is what tells one
+// struct-level refusal apart from another.
+func assertValidationRule(t *testing.T, errs []ct.ApiError, rule string) {
+	t.Helper()
+	require.NotEmpty(t, errs)
+	assert.Equal(t, "VALIDATION_ERROR", errs[0].Code)
+	require.NotNil(t, errs[0].Metadata)
+	assert.Equal(t, rule, (*errs[0].Metadata)["rule"])
 }
 
 func assertAPIError(t *testing.T, errs []ct.ApiError, code string) {

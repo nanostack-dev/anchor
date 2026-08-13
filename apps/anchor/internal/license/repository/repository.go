@@ -127,3 +127,12 @@ type OrganizationLicenseRepository interface {
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) (int, error)
 }
+
+// UsageObservationRepository persists what an Organization has used. Append is
+// the only write there is: an observation is never updated and never deleted,
+// so a correction is a later observation rather than an edit of an earlier one.
+type UsageObservationRepository interface {
+	Append(
+		ctx context.Context, observation license.UsageObservation,
+	) (license.UsageObservation, error)
+}

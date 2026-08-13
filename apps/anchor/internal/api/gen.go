@@ -2192,6 +2192,53 @@ type UpdateProductResourcePermissionRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// UsageObservationResponse One stored usage report. An observation is immutable. A correction is a new observation, never an edit of this one.
+type UsageObservationResponse struct {
+	// From Both `from` and `to` are absent on a gauge, and both are present on a windowed counter. A report that sent `from` alone reads back with the `to` Anchor filled in, so a reader never meets half a window.
+	From *time.Time `json:"from,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// Key The license field this value was measured against.
+	Key string `json:"key"`
+
+	// ObservedAt When Anchor accepted the report. Anchor sets it, so a consumer cannot backdate a report or write into the future.
+	ObservedAt time.Time `json:"observed_at"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid      `json:"product_id"`
+	To        *time.Time `json:"to,omitempty"`
+	Value     float64    `json:"value"`
+}
+
+// UsageReportRequest One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
+type UsageReportRequest struct {
+	// From Send no window at all to report a gauge: "37 flows exist right now", a number that rises and falls. Send `from` to report a counter over the half-open period [from, to): "412 runs between August 14 and September 14". Start a new window to reset the counter.
+	// The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
+	From *time.Time `json:"from,omitempty"`
+
+	// Key The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage.
+	Key string `json:"key"`
+
+	// To The exclusive end of the period. It must come after `from`, and no more than one year after it.
+	// Omit it to mean now. "412 runs since August 14" is a complete statement, and sending a timestamp that means "now" only invites clock skew. Anchor fills the value in and returns it.
+	// Sending `to` without `from` is refused. There is nothing to run from.
+	To *time.Time `json:"to,omitempty"`
+
+	// Value The total right now, not the change since the last report. It must be a finite, non-negative number. That is the only bound. A value past the organization's limit is accepted and stored, because refusing it would hide the fact that the limit was passed.
+	Value *float64 `json:"value"`
+}
+
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
 type UserOrganizationInclude string
 
@@ -2512,6 +2559,9 @@ type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
 
 // InstantiateOrganizationLicenseJSONRequestBody defines body for InstantiateOrganizationLicense for application/json ContentType.
 type InstantiateOrganizationLicenseJSONRequestBody = OrganizationLicenseInstantiateRequest
+
+// ReportOrganizationUsageJSONRequestBody defines body for ReportOrganizationUsage for application/json ContentType.
+type ReportOrganizationUsageJSONRequestBody = UsageReportRequest
 
 // AddOrganizationMemberJSONRequestBody defines body for AddOrganizationMember for application/json ContentType.
 type AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest
@@ -2966,6 +3016,9 @@ type ServerInterface interface {
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 	GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// ReportOrganizationUsage Report Organization Usage
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
+	ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3467,6 +3520,12 @@ func (_ Unimplemented) InstantiateOrganizationLicense(w http.ResponseWriter, r *
 // GetOrganizationLicenseDiff Diff Organization License Against Its Template
 // (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 func (_ Unimplemented) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ReportOrganizationUsage Report Organization Usage
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
+func (_ Unimplemented) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5761,6 +5820,41 @@ func (siw *ServerInterfaceWrapper) GetOrganizationLicenseDiff(w http.ResponseWri
 	handler.ServeHTTP(w, r)
 }
 
+// ReportOrganizationUsage operation middleware
+func (siw *ServerInterfaceWrapper) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReportOrganizationUsage(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AddOrganizationMember operation middleware
 func (siw *ServerInterfaceWrapper) AddOrganizationMember(w http.ResponseWriter, r *http.Request) {
 
@@ -7274,6 +7368,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/diff", wrapper.GetOrganizationLicenseDiff)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage", wrapper.ReportOrganizationUsage)
 	})
 
 	return r
@@ -10720,6 +10817,51 @@ func (response GetOrganizationLicenseDiff404Response) VisitGetOrganizationLicens
 	return nil
 }
 
+type ReportOrganizationUsageRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *ReportOrganizationUsageJSONRequestBody
+}
+
+type ReportOrganizationUsageResponseObject interface {
+	VisitReportOrganizationUsageResponse(w http.ResponseWriter) error
+}
+
+type ReportOrganizationUsage201JSONResponse UsageObservationResponse
+
+func (response ReportOrganizationUsage201JSONResponse) VisitReportOrganizationUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReportOrganizationUsage400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ReportOrganizationUsage400JSONResponse) VisitReportOrganizationUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReportOrganizationUsage404Response = NotFoundResponse
+
+func (response ReportOrganizationUsage404Response) VisitReportOrganizationUsageResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type AddOrganizationMemberRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -12658,6 +12800,9 @@ type StrictServerInterface interface {
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 	GetOrganizationLicenseDiff(ctx context.Context, request GetOrganizationLicenseDiffRequestObject) (GetOrganizationLicenseDiffResponseObject, error)
+	// ReportOrganizationUsage Report Organization Usage
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
+	ReportOrganizationUsage(ctx context.Context, request ReportOrganizationUsageRequestObject) (ReportOrganizationUsageResponseObject, error)
 	// AddOrganizationMember Add Organization Member
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/members)
 	AddOrganizationMember(ctx context.Context, request AddOrganizationMemberRequestObject) (AddOrganizationMemberResponseObject, error)
@@ -14810,6 +14955,40 @@ func (sh *strictHandler) GetOrganizationLicenseDiff(w http.ResponseWriter, r *ht
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetOrganizationLicenseDiffResponseObject); ok {
 		if err := validResponse.VisitGetOrganizationLicenseDiffResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReportOrganizationUsage operation middleware
+func (sh *strictHandler) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request ReportOrganizationUsageRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body ReportOrganizationUsageJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReportOrganizationUsage(ctx, request.(ReportOrganizationUsageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReportOrganizationUsage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReportOrganizationUsageResponseObject); ok {
+		if err := validResponse.VisitReportOrganizationUsageResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

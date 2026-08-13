@@ -90,6 +90,19 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 	}
 }
 
+func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {
+	return UsageObservationResponse{
+		Id:             o.ID,
+		ProductId:      o.ProductID,
+		OrganizationId: o.OrganizationID,
+		Key:            o.Key,
+		Value:          o.Value,
+		From:           o.From,
+		To:             o.To,
+		ObservedAt:     o.ObservedAt,
+	}
+}
+
 func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
 	return LicenseFieldDifference{
 		Field:         d.Field,

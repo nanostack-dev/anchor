@@ -8,8 +8,8 @@ import (
 )
 
 // NewModule wires the licensing subsystem: the per-Product license schema, the
-// license templates declared against it, and one Organization's own copy of a
-// template's values.
+// license templates declared against it, one Organization's own copy of a
+// template's values, and what that Organization has used against it.
 func NewModule() fx.Option {
 	return fx.Module(
 		"license",
@@ -18,9 +18,11 @@ func NewModule() fx.Option {
 			repository.NewSchemaFieldRepository,
 			repository.NewTemplateRepository,
 			repository.NewOrganizationLicenseRepository,
+			repository.NewUsageObservationRepository,
 			service.NewLicenseSchemaService,
 			service.NewLicenseTemplateService,
 			service.NewOrganizationLicenseService,
+			service.NewUsageService,
 		),
 	)
 }

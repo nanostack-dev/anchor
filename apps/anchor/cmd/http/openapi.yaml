@@ -3227,6 +3227,105 @@ components:
         count:
           type: integer
 
+    UsageReportRequest:
+      type: object
+      description: >-
+        One absolute snapshot of what an organization has used. Report as often
+        as you like — the cadence is your decision, not a contract shared with
+        Anchor. Anchor stores every report and never adds them together, so a
+        retry cannot double-count, and a report that never arrived corrects
+        itself on the next one.
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          maxLength: 120
+          description: >-
+            The license field this value is measured against. The product's
+            license schema must declare it, and it must be a limit. A boolean
+            feature toggle carries no usage.
+        value:
+          type: number
+          format: double
+          minimum: 0
+          # A pointer on the server only, so an omitted or null value is told
+          # apart from a reported 0. Zero is a real observation, so no validate
+          # tag can catch the omission. The client spec drops this hint and
+          # keeps a plain float64.
+          x-go-type: '*float64'
+          description: >-
+            The total right now, not the change since the last report. It must
+            be a finite, non-negative number. That is the only bound. A value
+            past the organization's limit is accepted and stored, because
+            refusing it would hide the fact that the limit was passed.
+        from:
+          type: string
+          format: date-time
+          description: >-
+            Send no window at all to report a gauge: "37 flows exist right
+            now", a number that rises and falls. Send `from` to report a counter
+            over the half-open period [from, to): "412 runs between August 14
+            and September 14". Start a new window to reset the counter.
+
+            The period is two timestamps rather than a formatted string,
+            because real billing periods follow the subscription anniversary
+            rather than the calendar.
+        to:
+          type: string
+          format: date-time
+          description: >-
+            The exclusive end of the period. It must come after `from`, and no
+            more than one year after it.
+
+            Omit it to mean now. "412 runs since August 14" is a complete
+            statement, and sending a timestamp that means "now" only invites
+            clock skew. Anchor fills the value in and returns it.
+
+            Sending `to` without `from` is refused. There is nothing to run
+            from.
+
+    UsageObservationResponse:
+      type: object
+      description: >-
+        One stored usage report. An observation is immutable. A correction is a
+        new observation, never an edit of this one.
+      required:
+      - id
+      - product_id
+      - organization_id
+      - key
+      - value
+      - observed_at
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        key:
+          type: string
+          description: The license field this value was measured against.
+        value:
+          type: number
+          format: double
+        from:
+          type: string
+          format: date-time
+          description: >-
+            Both `from` and `to` are absent on a gauge, and both are present on
+            a windowed counter. A report that sent `from` alone reads back with
+            the `to` Anchor filled in, so a reader never meets half a window.
+        to:
+          type: string
+          format: date-time
+        observed_at:
+          type: string
+          format: date-time
+          description: >-
+            When Anchor accepted the report. Anchor sets it, so a consumer
+            cannot backdate a report or write into the future.
+
   responses:
     BadRequest:
       description: Bad Request (e.g., validation error)
@@ -6109,5 +6208,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationLicenseDiffResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/organizations/{organization_id}/license/usage:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Report Organization Usage
+      description: >-
+        Records what an organization has used, as an absolute snapshot. Every
+        report is kept as an immutable observation, and Anchor never adds them
+        together, so reporting the same value twice changes nothing.
+
+        The report is checked for four things: the product's license schema
+        declares the key, the field is a limit, the value is a finite
+        non-negative number, and the window is coherent and no longer than a
+        year. The license field's own rules are deliberately not applied. Rules
+        bound what a limit may be set to, never what usage turns out to be, so a
+        value past the organization's limit is stored as reported.
+
+        The organization does not need a license. Usage is what happened, and it
+        stays true whether or not a limit was granted.
+      operationId: reportOrganizationUsage
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_usage:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageReportRequest'
+      responses:
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageObservationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'

@@ -19,6 +19,7 @@ var domains = []string{
 	"license_schema",
 	"license_template",
 	"organization_license",
+	"license_usage",
 }
 
 //nolint:gochecknoglobals // Static configuration data for permissions
