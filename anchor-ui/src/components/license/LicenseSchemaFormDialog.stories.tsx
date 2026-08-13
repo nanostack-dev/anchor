@@ -1,3 +1,4 @@
+import { LicenseFieldType, type LicenseSchemaResponse } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, within } from "storybook/test";
 
@@ -5,13 +6,42 @@ import { StoryQuery } from "@/lib/storybook/story-query";
 
 import { LicenseSchemaFormDialog } from "./LicenseSchemaFormDialog";
 
+const TIMESTAMPS = {
+	created_at: "2026-08-01T09:00:00Z",
+	updated_at: "2026-08-01T09:00:00Z",
+};
+
+const EXISTING_SCHEMA: LicenseSchemaResponse = {
+	id: "lsc_2Nq8xKf3pLmR",
+	product_id: "prd_2Nq8xKf3pLmR",
+	description: "What an Echopoint organization license may carry.",
+	fields: [
+		{
+			id: "lfd_2Nq8xKf3pLmA",
+			name: "max_flows",
+			type: LicenseFieldType.LIMIT,
+			description: "Concurrent flows an organization may run",
+			rules: { min: 0, max: 500 },
+			...TIMESTAMPS,
+		},
+		{
+			id: "lfd_2Nq8xKf3pLmB",
+			name: "tier",
+			type: LicenseFieldType.ENUM,
+			rules: { values: ["free", "pro", "enterprise"] },
+			...TIMESTAMPS,
+		},
+	],
+	...TIMESTAMPS,
+};
+
 const meta = {
 	title: "License/LicenseSchemaFormDialog",
 	component: LicenseSchemaFormDialog,
 	tags: ["autodocs"],
 	args: {
 		productId: "prd_2Nq8xKf3pLmR",
-		trigger: <button type="button">Create Schema</button>,
+		trigger: <button type="button">Open</button>,
 	},
 	decorators: [
 		(Story) => (
@@ -27,56 +57,57 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * A fresh create dialog starts with exactly one blank field row — an operator
- * declaring a schema for the first time is never shown a schema with zero
- * fields, which the API would technically accept but nobody wants.
+ * A fresh create dialog starts with exactly one blank field, already open for
+ * typing — an operator declaring a schema for the first time is never shown a
+ * schema with zero fields, which the API would technically accept but nobody
+ * wants.
+ *
+ * How fields are authored is covered by `License/LicenseSchemaEditor`; these
+ * stories cover what the dialog itself owns.
  */
 export const StartsWithOneBlankField: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(
-			canvas.getByRole("button", { name: "Create Schema" }),
-		);
+		await userEvent.click(canvas.getByRole("button", { name: "Open" }));
 
 		await screen.findByRole("heading", { name: "Create License Schema" });
-		await expect(screen.getAllByPlaceholderText("max_flows")).toHaveLength(1);
+		await expect(screen.getByText("1 field")).toBeInTheDocument();
+		await expect(screen.getByPlaceholderText("max_flows")).toBeInTheDocument();
 	},
 };
 
 /**
- * "Add field" grows the list, and each row's own remove button shrinks it
- * back down — the dynamic array editor round-trips.
+ * Edit mode seeds the draft from the schema on the server, collapsed — the
+ * reason to open an existing schema is to read it before changing one field.
  */
-export const AddAndRemoveField: Story = {
+export const EditModeSeedsTheExistingSchema: Story = {
+	args: { mode: "edit", existingSchema: EXISTING_SCHEMA },
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(
-			canvas.getByRole("button", { name: "Create Schema" }),
-		);
-		await screen.findByRole("heading", { name: "Create License Schema" });
+		await userEvent.click(canvas.getByRole("button", { name: "Open" }));
 
-		await userEvent.click(screen.getByRole("button", { name: "Add field" }));
-		await expect(screen.getAllByPlaceholderText("max_flows")).toHaveLength(2);
-
-		await userEvent.click(
-			screen.getAllByRole("button", { name: "Remove field" })[0],
-		);
-		await expect(screen.getAllByPlaceholderText("max_flows")).toHaveLength(1);
+		await screen.findByRole("heading", { name: "Edit License Schema" });
+		await expect(screen.getByText("2 fields")).toBeInTheDocument();
+		await expect(
+			screen.getByRole("button", { name: /^max_flows/ }),
+		).toHaveAttribute("aria-expanded", "false");
+		await expect(
+			screen.getByDisplayValue(
+				"What an Echopoint organization license may carry.",
+			),
+		).toBeInTheDocument();
 	},
 };
 
 /**
- * Submitting with a blank name surfaces the error against that row, not as a
- * lone toast — the acceptance criterion is "against the offending field".
- * Nothing here touches the network: client-side validation blocks the
- * mutation before a request is ever built.
+ * Submitting an incomplete draft surfaces the error against the offending row
+ * and leaves the dialog open. Nothing here touches the network: client-side
+ * validation blocks the mutation before a request is ever built.
  */
-export const BlankNameIsRejectedAgainstItsRow: Story = {
+export const InvalidSubmitNeverReachesTheApi: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(
-			canvas.getByRole("button", { name: "Create Schema" }),
-		);
+		await userEvent.click(canvas.getByRole("button", { name: "Open" }));
 		await screen.findByRole("heading", { name: "Create License Schema" });
 
 		await userEvent.click(
@@ -84,7 +115,6 @@ export const BlankNameIsRejectedAgainstItsRow: Story = {
 		);
 
 		await expect(screen.getByText("Name is required.")).toBeInTheDocument();
-		// The dialog stays open — an invalid submit never fires the mutation.
 		await expect(
 			screen.getByRole("heading", { name: "Create License Schema" }),
 		).toBeInTheDocument();
@@ -92,60 +122,26 @@ export const BlankNameIsRejectedAgainstItsRow: Story = {
 };
 
 /**
- * Two rows sharing a name both get flagged: the API keys errors by field
- * name, so a form that only highlighted one row would leave the other's
- * problem invisible until the request round-trips.
+ * Text mode can hold source the parser cannot read. Submitting then would send
+ * whatever last parsed rather than what the operator is looking at, so the
+ * submit is refused until the source reads.
  */
-export const DuplicateNamesAreBothFlagged: Story = {
+export const UnreadableSourceBlocksSubmit: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(
-			canvas.getByRole("button", { name: "Create Schema" }),
-		);
+		await userEvent.click(canvas.getByRole("button", { name: "Open" }));
 		await screen.findByRole("heading", { name: "Create License Schema" });
 
-		await userEvent.click(screen.getByRole("button", { name: "Add field" }));
-		const nameInputs = screen.getAllByPlaceholderText("max_flows");
-		await userEvent.type(nameInputs[0], "max_flows");
-		await userEvent.type(nameInputs[1], "max_flows");
+		await userEvent.click(screen.getByRole("button", { name: "Text" }));
+		const editor = screen.getByLabelText("Fields");
+		await userEvent.click(editor);
+		await userEvent.paste("max_flows: integer 0..100");
 
-		await userEvent.click(
+		await expect(
+			screen.getByText(/`integer` is not a field type/),
+		).toBeInTheDocument();
+		await expect(
 			screen.getByRole("button", { name: "Create Schema" }),
-		);
-
-		await expect(
-			screen.getAllByText("This field name is used more than once."),
-		).toHaveLength(2);
-	},
-};
-
-/**
- * Switching a field's type to Enum swaps the rule editor to the "allowed
- * values" input — the rule inputs shown are conditioned on the type selected
- * in the same row, not a fixed set.
- */
-export const TypeChangeSwapsRuleInputs: Story = {
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		await userEvent.click(
-			canvas.getByRole("button", { name: "Create Schema" }),
-		);
-		await screen.findByRole("heading", { name: "Create License Schema" });
-
-		// A new row defaults to String, whose rule editor shows a pattern and
-		// length bounds — not the numeric Min/Max a Limit or Number field gets.
-		await expect(
-			screen.getByLabelText("Pattern (regular expression)"),
-		).toBeInTheDocument();
-
-		await userEvent.click(screen.getByRole("combobox"));
-		await userEvent.click(await screen.findByRole("option", { name: "Enum" }));
-
-		await expect(
-			screen.getByLabelText("Allowed values (comma-separated)"),
-		).toBeInTheDocument();
-		await expect(
-			screen.queryByLabelText("Pattern (regular expression)"),
-		).not.toBeInTheDocument();
+		).toBeDisabled();
 	},
 };
