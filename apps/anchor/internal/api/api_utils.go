@@ -11,15 +11,3 @@ func valueOr[T any](ptr *T, fallback T) T {
 	}
 	return fallback
 }
-
-// mapItems applies mapper to every item, returning a new slice rather than
-// mutating items in place. Every handler that returns a paginated or listed
-// response uses it to turn a []Domain into a []Response without a hand-rolled
-// loop at the call site.
-func mapItems[T any, R any](items []T, mapper func(T) R) []R {
-	out := make([]R, 0, len(items))
-	for _, item := range items {
-		out = append(out, mapper(item))
-	}
-	return out
-}

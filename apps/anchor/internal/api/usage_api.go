@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
@@ -106,7 +106,7 @@ func (s *AnchorAPI) GetOrganizationUsageSeries(
 		return nil, err
 	}
 
-	items := mapItems(result.Items, mapUsageSeriesPointToResponse)
+	items := slicex.Map(result.Items, mapUsageSeriesPointToResponse)
 	return GetOrganizationUsageSeries200JSONResponse(UsageSeriesResponse{
 		Items: items,
 		Total: result.Total,

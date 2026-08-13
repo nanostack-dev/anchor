@@ -1,6 +1,10 @@
 package api
 
-import "anchor/internal/domain/license"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+
+	"anchor/internal/domain/license"
+)
 
 func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []license.FieldDeclaration {
 	out := make([]license.FieldDeclaration, 0, len(declarations))
@@ -41,7 +45,7 @@ func mapLicenseSchemaToResponse(s license.Schema) LicenseSchemaResponse {
 	resp := LicenseSchemaResponse{
 		Id:        s.ID,
 		ProductId: s.ProductID,
-		Fields:    mapItems(s.Fields, mapLicenseFieldToResponse),
+		Fields:    slicex.Map(s.Fields, mapLicenseFieldToResponse),
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
 	}
@@ -148,8 +152,14 @@ func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseField
 }
 
 func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
-	// mapItems never returns nil, so an identical copy reads back as [], not null.
-	differences := mapItems(d.Differences, mapLicenseFieldDifferenceToResponse)
+	// DiffValues returns nil, deliberately, for "nothing differs" (see its own
+	// doc) — but the contract's `differences` is a required, non-nullable
+	// array, and slicex.Map preserves a nil input as nil. An identical copy
+	// must read back as [], not null.
+	differences := slicex.Map(d.Differences, mapLicenseFieldDifferenceToResponse)
+	if differences == nil {
+		differences = []LicenseFieldDifference{}
+	}
 	return OrganizationLicenseDiffResponse{
 		OrganizationId: d.OrganizationID,
 		TemplateId:     d.TemplateID,
