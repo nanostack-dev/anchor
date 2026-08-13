@@ -1,4 +1,4 @@
-# ADR-0012: Usage shape is declared, not inferred
+# ADR-0013: Usage shape is declared, not inferred
 
 **Status:** Accepted
 

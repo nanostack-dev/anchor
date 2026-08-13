@@ -40,7 +40,7 @@ func errLicenseFieldNotALimit(name string, fieldType license.FieldType) *fault.E
 
 // errLicenseFieldUsageShapeUndeclared reports a limit whose schema field
 // carries no usage_shape. A limit declared before
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md can still have one:
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md can still have one:
 // the column was added without a backfill, since nothing but the field's own
 // owner can say whether its history reads as a gauge or a windowed counter.
 // Redeclaring the field is what fills it in.
@@ -55,7 +55,7 @@ func errLicenseFieldUsageShapeUndeclared(name string) *fault.Error {
 // errUsageShapeMismatch reports a usage report whose window presence
 // contradicts the field's declared shape: a gauge report carries no window,
 // and a windowed counter report requires one. See
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 //
 // Named without the errLicenseField prefix its neighbour above carries: the
 // field itself is well-formed here, and it is the report that is refused.

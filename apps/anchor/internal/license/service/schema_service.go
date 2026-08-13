@@ -66,7 +66,7 @@ func errLicenseFieldRuleInvalid(name string, violation *rules.ViolationError) *f
 // errLicenseFieldUsageShapeMissing reports a limit declared with no usage
 // shape. Every report against it needs to be checked as a gauge or a windowed
 // counter, and there is nothing to check it against without one. See
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 func errLicenseFieldUsageShapeMissing(name string) *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
 		Code:    "LICENSE_FIELD_USAGE_SHAPE_MISSING",
@@ -153,7 +153,7 @@ func NewLicenseSchemaService(
 // when the field is a limit and recognised when present. Every other field
 // type carries no usage, so a shape declared on one describes nothing and is
 // refused rather than silently ignored. See
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 func validateUsageShape(d license.FieldDeclaration) error {
 	if d.Type != rules.Limit {
 		if d.UsageShape != nil {

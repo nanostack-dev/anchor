@@ -83,7 +83,7 @@ func newLicensedWorld(t *testing.T) *licenseWorld {
 // newWindowedCounterWorld. It cannot be worldLimitKey: templateSchemaFields
 // declares that field GAUGE, and a field's usage_shape holds for its whole
 // lifetime rather than varying by report — see
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 const worldWindowedCounterKey = "period_flows"
 
 // newWindowedCounterWorld builds an isolated product declaring a single

@@ -231,7 +231,7 @@ func TestReportUsage(t *testing.T) {
 
 // TestReportUsageShape covers the enforcement declareFields pins on
 // declaration: a report's window presence must agree with the field's
-// declared usage_shape. See docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// declared usage_shape. See docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 func TestReportUsageShape(t *testing.T) {
 	t.Run("refuses a windowed report against a gauge field", func(t *testing.T) {
 		w := newLicenseWorld(t)

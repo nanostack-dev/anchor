@@ -3,7 +3,7 @@
 -- =============================================
 -- Whether a limit's usage is a gauge or a windowed counter is now pinned on
 -- the field, not left to whatever shape the caller happened to report last.
--- See docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+-- See docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 --
 -- Nullable, no CHECK constraint: "required for a limit, forbidden otherwise"
 -- is a service-layer rule, per this repository's invariant against business

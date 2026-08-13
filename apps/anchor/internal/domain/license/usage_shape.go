@@ -14,7 +14,7 @@ import "slices"
 // anything that differences the series afterward (which
 // docs/adr/0003-usage-reported-as-snapshots.md calls safe) would compute
 // against a value that means something categorically different. See
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 type UsageShape string
 
 const (

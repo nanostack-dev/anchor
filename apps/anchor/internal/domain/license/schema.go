@@ -56,7 +56,7 @@ func (s *Schema) FieldByName(name string) *Field {
 // UsageShape is set exactly on a Limit field, and nil everywhere else: it
 // names the one question Rules never answers, which is not "what may this be
 // set to" but "what does a reported usage value against it look like." See
-// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 type Field struct {
 	ID          string
 	SchemaID    string
