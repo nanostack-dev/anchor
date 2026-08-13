@@ -63,6 +63,43 @@ func errLicenseFieldRuleInvalid(name string, violation *rules.ViolationError) *f
 	}}, http.StatusBadRequest)
 }
 
+// errLicenseFieldUsageShapeMissing reports a limit declared with no usage
+// shape. Every report against it needs to be checked as a gauge or a windowed
+// counter, and there is nothing to check it against without one. See
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+func errLicenseFieldUsageShapeMissing(name string) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "LICENSE_FIELD_USAGE_SHAPE_MISSING",
+		Message: "The license field " + name + " is a limit and must declare a usage_shape",
+		Field:   name,
+	}}, http.StatusBadRequest)
+}
+
+// errLicenseFieldUsageShapeNotApplicable reports a usage shape declared on a
+// field that is not a limit. Only a limit ever carries usage, so a shape on
+// anything else describes nothing.
+func errLicenseFieldUsageShapeNotApplicable(name string, fieldType license.FieldType) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:     "LICENSE_FIELD_USAGE_SHAPE_NOT_APPLICABLE",
+		Message:  "The license field " + name + " is not a limit and must not declare a usage_shape",
+		Field:    name,
+		Metadata: map[string]any{"type": string(fieldType)},
+	}}, http.StatusBadRequest)
+}
+
+// errLicenseFieldUsageShapeInvalid reports a usage shape outside GAUGE and
+// WINDOWED_COUNTER. The contract's request validator does not check request
+// bodies (ExcludeRequestBody), so an unrecognised value reaches here rather
+// than being refused before the handler runs — the same reason
+// rules.ValidateDeclaration checks field type itself.
+func errLicenseFieldUsageShapeInvalid(name string, shape license.UsageShape) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "LICENSE_FIELD_USAGE_SHAPE_INVALID",
+		Message: "The license field " + name + " declares an unrecognised usage_shape " + string(shape),
+		Field:   name,
+	}}, http.StatusBadRequest)
+}
+
 // LicenseSchemaService owns the license schema: the per-Product declaration of
 // every field a license may carry.
 //
@@ -111,6 +148,28 @@ func NewLicenseSchemaService(
 	}
 }
 
+// validateUsageShape checks that a field's usage_shape is present exactly
+// when the field is a limit and recognised when present. Every other field
+// type carries no usage, so a shape declared on one describes nothing and is
+// refused rather than silently ignored. See
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+func validateUsageShape(d license.FieldDeclaration) error {
+	if d.Type != rules.Limit {
+		if d.UsageShape != nil {
+			return errLicenseFieldUsageShapeNotApplicable(d.Name, d.Type)
+		}
+		return nil
+	}
+
+	if d.UsageShape == nil {
+		return errLicenseFieldUsageShapeMissing(d.Name)
+	}
+	if !d.UsageShape.Valid() {
+		return errLicenseFieldUsageShapeInvalid(d.Name, *d.UsageShape)
+	}
+	return nil
+}
+
 // declareFields checks a declaration and turns it into storable fields.
 //
 // The rule check is delegated wholesale to the rules evaluator; duplicating any
@@ -133,11 +192,16 @@ func declareFields(declarations []license.FieldDeclaration) ([]license.Field, er
 			return nil, err
 		}
 
+		if err := validateUsageShape(d); err != nil {
+			return nil, err
+		}
+
 		field := license.Field{
 			Name:        d.Name,
 			Type:        d.Type,
 			Description: d.Description,
 			Rules:       d.Rules,
+			UsageShape:  d.UsageShape,
 		}
 		field.GenerateID()
 		fields = append(fields, field)

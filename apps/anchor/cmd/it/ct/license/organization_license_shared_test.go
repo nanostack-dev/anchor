@@ -92,6 +92,12 @@ func (w *licenseWorld) TemplateID() string {
 	return w.state.LicenseTemplate(worldTemplateAlias).ID
 }
 
+// SchemaID is the world's license schema, declared under the "s" alias by
+// both newLicenseWorld and newWindowedCounterWorld.
+func (w *licenseWorld) SchemaID() string {
+	return w.state.LicenseSchema("s").ID
+}
+
 // NewOrganization adds another organization to the same product, for the tests
 // whose subject is that one organization's license is its own.
 func (w *licenseWorld) NewOrganization() string {
@@ -311,16 +317,56 @@ func gauge(key string, value float64) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: key, Value: value}
 }
 
-// The one limit in templateSchemaFields. The windowed builders take no key
-// because only a limit can carry usage and the world declares exactly one.
+// The one limit in templateSchemaFields. It is declared GAUGE (see
+// templateSchemaFields), so every gauge() report in this package can use it;
+// a windowed report against it is refused by USAGE_SHAPE_MISMATCH. Tests
+// whose subject is a windowed counter build their own world instead — see
+// newWindowedCounterWorld and worldWindowedCounterKey.
 const worldLimitKey = "flows"
 
-func windowed(value float64, from, to time.Time) ct.UsageReportRequest {
-	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from, To: &to}
+func windowed(key string, value float64, from, to time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value, From: &from, To: &to}
 }
 
-func openEnded(value float64, from time.Time) ct.UsageReportRequest {
-	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from}
+func openEnded(key string, value float64, from time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value, From: &from}
+}
+
+// worldWindowedCounterKey is the one WINDOWED_COUNTER limit declared by
+// newWindowedCounterWorld. It cannot be worldLimitKey: templateSchemaFields
+// declares that field GAUGE, and a field's usage_shape holds for its whole
+// lifetime rather than varying by report — see
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+const worldWindowedCounterKey = "period_flows"
+
+// newWindowedCounterWorld builds an isolated product declaring a single
+// WINDOWED_COUNTER limit. Usage reporting needs no license (see
+// TestReportUsageNeedsNoLicense), so this skips the template and organization
+// license newLicenseWorld sets up and declares only what a windowed-counter
+// report needs.
+func newWindowedCounterWorld(t *testing.T) *licenseWorld {
+	t.Helper()
+	state := itdsl.Given(t).
+		Tenant(itdsl.TenantOpts{Alias: "t", Isolated: true}).
+		Product(itdsl.ProductOpts{Alias: "p", TenantAlias: "t"}).
+		LicenseSchema(itdsl.LicenseSchemaOpts{
+			Alias:        "s",
+			ProductAlias: "p",
+			Fields: []ct.LicenseFieldDeclaration{
+				itdsl.LicenseField(worldWindowedCounterKey, ct.LicenseFieldTypeLIMIT, nil, new(ct.WINDOWEDCOUNTER)),
+			},
+		}).
+		ProductOrganization(itdsl.ProductOrganizationOpts{
+			Alias: worldOrganizationAlias, ProductAlias: "p",
+		}).
+		Build()
+
+	return &licenseWorld{
+		t:        t,
+		state:    state,
+		product:  state.Product("p"),
+		tenantID: state.Tenant("t").ID,
+	}
 }
 
 func billingPeriod() (time.Time, time.Time) {

@@ -22,8 +22,8 @@ func seedSchema(t *testing.T, tc testCtx) *ct.ClientWithResponses {
 			ProductAlias: "p",
 			Description:  new("original"),
 			Fields: []ct.LicenseFieldDeclaration{
-				itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500)),
-				itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil),
+				itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500), new(ct.GAUGE)),
+				itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil, nil),
 			},
 		}).
 		Build()
@@ -40,8 +40,8 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 			tc.product.ProductID,
 			ct.UpdateLicenseSchemaJSONRequestBody{
 				Fields: &[]ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 5000)),
-					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil),
+					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 5000), new(ct.GAUGE)),
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil, new(ct.GAUGE)),
 				},
 			},
 		)
@@ -120,7 +120,9 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 			tc.product.ProductID,
 			ct.UpdateLicenseSchemaJSONRequestBody{
 				Fields: &[]ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, limitRules(100, 10)),
+					// min above max is refused before the usage_shape check ever runs, so
+					// this stays nil and still exercises the same rejection.
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, limitRules(100, 10), nil),
 				},
 			},
 		)

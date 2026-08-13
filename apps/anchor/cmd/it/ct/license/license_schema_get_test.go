@@ -22,8 +22,8 @@ func TestLicenseSchemaGet(t *testing.T) {
 				ProductAlias: "p",
 				Description:  new("Pro tier surface"),
 				Fields: []ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500)),
-					itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil),
+					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500), new(ct.GAUGE)),
+					itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil, nil),
 				},
 			}).
 			Build()
@@ -42,7 +42,10 @@ func TestLicenseSchemaGet(t *testing.T) {
 		assert.Equal(t, "flows", resp.JSON200.Fields[0].Name)
 		require.NotNil(t, resp.JSON200.Fields[0].Rules.Max)
 		assert.InDelta(t, 500.0, *resp.JSON200.Fields[0].Rules.Max, 0)
+		require.NotNil(t, resp.JSON200.Fields[0].UsageShape)
+		assert.Equal(t, ct.GAUGE, *resp.JSON200.Fields[0].UsageShape)
 		assert.Equal(t, "sso", resp.JSON200.Fields[1].Name)
+		assert.Nil(t, resp.JSON200.Fields[1].UsageShape)
 	})
 
 	t.Run("404 when the product has declared no schema", func(t *testing.T) {

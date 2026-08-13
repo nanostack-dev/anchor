@@ -7,6 +7,9 @@ type FieldDeclaration struct {
 	Type        FieldType
 	Description string
 	Rules       FieldRules
+	// UsageShape must be set for a Limit field and absent for every other
+	// type; declareFields enforces both directions. See [UsageShape].
+	UsageShape *UsageShape
 }
 
 // CreateSchemaInput declares a Product's license schema for the first time.

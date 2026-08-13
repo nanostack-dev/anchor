@@ -774,6 +774,24 @@ func (e UsageGranularity) Valid() bool {
 	}
 }
 
+// Defines values for UsageShape.
+const (
+	GAUGE           UsageShape = "GAUGE"
+	WINDOWEDCOUNTER UsageShape = "WINDOWED_COUNTER"
+)
+
+// Valid indicates whether the value is a known member of the UsageShape enum.
+func (e UsageShape) Valid() bool {
+	switch e {
+	case GAUGE:
+		return true
+	case WINDOWEDCOUNTER:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserOrganizationInclude.
 const (
 	UserOrganizationIncludeRolePermissions UserOrganizationInclude = "role_permissions"
@@ -1300,6 +1318,9 @@ type LicenseFieldDeclaration struct {
 	Name  string             `json:"name"`
 	Rules *LicenseFieldRules `json:"rules,omitempty"`
 	Type  LicenseFieldType   `json:"type"`
+
+	// UsageShape Required when type is LIMIT, and refused for every other type. Every usage report against this field must carry a window when this is WINDOWED_COUNTER, and must not when it is GAUGE.
+	UsageShape *UsageShape `json:"usage_shape,omitempty"`
 }
 
 // LicenseFieldDifference defines model for LicenseFieldDifference.
@@ -1325,11 +1346,12 @@ type LicenseFieldResponse struct {
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	Id        Ksuid             `json:"id"`
-	Name      string            `json:"name"`
-	Rules     LicenseFieldRules `json:"rules"`
-	Type      LicenseFieldType  `json:"type"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	Id         Ksuid             `json:"id"`
+	Name       string            `json:"name"`
+	Rules      LicenseFieldRules `json:"rules"`
+	Type       LicenseFieldType  `json:"type"`
+	UpdatedAt  time.Time         `json:"updated_at"`
+	UsageShape *UsageShape       `json:"usage_shape,omitempty"`
 }
 
 // LicenseFieldRules defines model for LicenseFieldRules.
@@ -2929,7 +2951,7 @@ type UsageReportRequest struct {
 	// The period is two timestamps rather than a formatted string, because real billing periods follow the subscription anniversary rather than the calendar.
 	From *time.Time `json:"from,omitempty"`
 
-	// Key The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage.
+	// Key The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage. The field also declares a usage shape — GAUGE or WINDOWED_COUNTER — and this report must carry a window if and only if the field is WINDOWED_COUNTER.
 	Key string `json:"key"`
 
 	// To The exclusive end of the period. It must come after `from`, and no more than one year after it.
@@ -2963,6 +2985,9 @@ type UsageSeriesResponse struct {
 	// Total Total number of matching items.
 	Total int64 `json:"total"`
 }
+
+// UsageShape defines model for UsageShape.
+type UsageShape string
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
 type UserOrganizationInclude string

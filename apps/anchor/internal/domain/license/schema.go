@@ -52,6 +52,11 @@ func (s *Schema) FieldByName(name string) *Field {
 // Rules constrain decisions, not observations. They bound what a limit may be
 // set to and are never applied to a reported usage value — doing so would make
 // the "exceeded" status unreachable.
+//
+// UsageShape is set exactly on a Limit field, and nil everywhere else: it
+// names the one question Rules never answers, which is not "what may this be
+// set to" but "what does a reported usage value against it look like." See
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
 type Field struct {
 	ID          string
 	SchemaID    string
@@ -59,6 +64,7 @@ type Field struct {
 	Type        FieldType
 	Description string
 	Rules       FieldRules
+	UsageShape  *UsageShape
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

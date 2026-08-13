@@ -22,9 +22,10 @@ func TestLicenseSchemaCreate(t *testing.T) {
 				Description: new("Billing-facing declaration"),
 				Fields: []ct.LicenseFieldDeclaration{
 					{
-						Name:  "flows",
-						Type:  ct.LicenseFieldTypeLIMIT,
-						Rules: limitRules(0, 100000),
+						Name:       "flows",
+						Type:       ct.LicenseFieldTypeLIMIT,
+						Rules:      limitRules(0, 100000),
+						UsageShape: new(ct.GAUGE),
 					},
 					{Name: "burst_credit", Type: ct.LicenseFieldTypeNUMBER},
 					{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN},
@@ -68,6 +69,8 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		require.NotNil(t, flows.Rules.Max)
 		assert.InDelta(t, 0.0, *flows.Rules.Min, 0)
 		assert.InDelta(t, 100000.0, *flows.Rules.Max, 0)
+		require.NotNil(t, flows.UsageShape)
+		assert.Equal(t, ct.GAUGE, *flows.UsageShape)
 
 		// A field declared without rules reads back as an empty rule set, not a
 		// missing one.
@@ -103,7 +106,9 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		tc := newTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 		body := ct.CreateLicenseSchemaJSONRequestBody{
-			Fields: []ct.LicenseFieldDeclaration{{Name: "flows", Type: ct.LicenseFieldTypeLIMIT}},
+			Fields: []ct.LicenseFieldDeclaration{
+				{Name: "flows", Type: ct.LicenseFieldTypeLIMIT, UsageShape: new(ct.GAUGE)},
+			},
 		}
 
 		first, err := client.CreateLicenseSchemaWithResponse(context.Background(), tc.product.ProductID, body)
@@ -125,7 +130,9 @@ func TestLicenseSchemaCreate(t *testing.T) {
 			context.Background(),
 			first.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
-				Fields: []ct.LicenseFieldDeclaration{{Name: "flows", Type: ct.LicenseFieldTypeLIMIT}},
+				Fields: []ct.LicenseFieldDeclaration{
+					{Name: "flows", Type: ct.LicenseFieldTypeLIMIT, UsageShape: new(ct.GAUGE)},
+				},
 			},
 		)
 		require.NoError(t, err)
@@ -137,7 +144,9 @@ func TestLicenseSchemaCreate(t *testing.T) {
 			context.Background(),
 			second.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
-				Fields: []ct.LicenseFieldDeclaration{{Name: "flows", Type: ct.LicenseFieldTypeLIMIT}},
+				Fields: []ct.LicenseFieldDeclaration{
+					{Name: "flows", Type: ct.LicenseFieldTypeLIMIT, UsageShape: new(ct.GAUGE)},
+				},
 			},
 		)
 		require.NoError(t, err)

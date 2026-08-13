@@ -41,14 +41,14 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("a windowed counter's window rides along with its bucket", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		before := time.Now().Add(-time.Minute)
 		from, to := billingPeriod()
 
-		w.Usage().Report(windowed(412, from, to))
+		w.Usage().Report(windowed(worldWindowedCounterKey, 412, from, to))
 		refreshAggregates(t)
 
-		series := w.Usage().Series(seriesQuery("flows", ct.MINUTE, before, time.Now().Add(time.Minute)))
+		series := w.Usage().Series(seriesQuery(worldWindowedCounterKey, ct.MINUTE, before, time.Now().Add(time.Minute)))
 
 		require.Len(t, series.Items, 1)
 		assert.InDelta(t, 412.0, series.Items[0].Value, 0)

@@ -2884,6 +2884,18 @@ components:
       x-go-type-import:
         path: anchor/internal/domain/license
 
+    # Whether a limit's usage is a gauge or a windowed counter, declared once
+    # on the field and checked against every report against it — never
+    # inferred from whichever shape a report happens to carry. Required on a
+    # LIMIT field, forbidden on every other type. See
+    # docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+    UsageShape:
+      type: string
+      enum: [GAUGE, WINDOWED_COUNTER]
+      x-go-type: license.UsageShape
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
     # Validation rules are structured data, never an encoded tag string: this
     # contract is public and a tag string would put a Go library's DSL into it.
     # Every rule is optional and which ones apply depends on the field type —
@@ -2935,12 +2947,21 @@ components:
           type: string
         rules:
           $ref: '#/components/schemas/LicenseFieldRules'
+        usage_shape:
+          $ref: '#/components/schemas/UsageShape'
+          description: >-
+            Required when type is LIMIT, and refused for every other type. Every
+            usage report against this field must carry a window when this is
+            WINDOWED_COUNTER, and must not when it is GAUGE.
 
     LicenseFieldResponse:
       type: object
       # `rules` is always present on read, even when the field declares none:
       # every field has a rule set, and an unconstrained one is empty rather
       # than absent. Only the write shape lets a caller omit it.
+      #
+      # `usage_shape` is the opposite: present only on a LIMIT field, absent —
+      # not defaulted — on every other type, because it names nothing for them.
       required: [id, name, type, rules, created_at, updated_at]
       properties:
         id:
@@ -2953,6 +2974,8 @@ components:
           type: string
         rules:
           $ref: '#/components/schemas/LicenseFieldRules'
+        usage_shape:
+          $ref: '#/components/schemas/UsageShape'
         created_at:
           type: string
           format: date-time
@@ -3293,7 +3316,9 @@ components:
           description: >-
             The license field this value is measured against. The product's
             license schema must declare it, and it must be a limit. A boolean
-            feature toggle carries no usage.
+            feature toggle carries no usage. The field also declares a usage
+            shape — GAUGE or WINDOWED_COUNTER — and this report must carry a
+            window if and only if the field is WINDOWED_COUNTER.
         value:
           type: number
           format: double

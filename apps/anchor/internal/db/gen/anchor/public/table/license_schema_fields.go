@@ -25,6 +25,7 @@ type licenseSchemaFieldsTable struct {
 	RulesJSON       postgres.ColumnString
 	CreatedAt       postgres.ColumnTimestampz
 	UpdatedAt       postgres.ColumnTimestampz
+	UsageShape      postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -74,8 +75,9 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		RulesJSONColumn       = postgres.StringColumn("rules_json")
 		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn       = postgres.TimestampzColumn("updated_at")
-		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		UsageShapeColumn      = postgres.StringColumn("usage_shape")
+		allColumns            = postgres.ColumnList{IDColumn, LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn, UsageShapeColumn}
+		mutableColumns        = postgres.ColumnList{LicenseSchemaIDColumn, NameColumn, FieldTypeColumn, DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn, UsageShapeColumn}
 		defaultColumns        = postgres.ColumnList{DescriptionColumn, RulesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
@@ -91,6 +93,7 @@ func newLicenseSchemaFieldsTableImpl(schemaName, tableName, alias string) licens
 		RulesJSON:       RulesJSONColumn,
 		CreatedAt:       CreatedAtColumn,
 		UpdatedAt:       UpdatedAtColumn,
+		UsageShape:      UsageShapeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

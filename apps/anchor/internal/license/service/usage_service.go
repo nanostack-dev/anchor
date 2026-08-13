@@ -38,6 +38,35 @@ func errLicenseFieldNotALimit(name string, fieldType license.FieldType) *fault.E
 	}}, http.StatusBadRequest)
 }
 
+// errLicenseFieldUsageShapeUndeclared reports a limit whose schema field
+// carries no usage_shape. A limit declared before
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md can still have one:
+// the column was added without a backfill, since nothing but the field's own
+// owner can say whether its history reads as a gauge or a windowed counter.
+// Redeclaring the field is what fills it in.
+func errLicenseFieldUsageShapeUndeclared(name string) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "LICENSE_FIELD_USAGE_SHAPE_UNDECLARED",
+		Message: "The license field " + name + " has no usage_shape declared; redeclare it before reporting usage",
+		Field:   name,
+	}}, http.StatusBadRequest)
+}
+
+// errUsageShapeMismatch reports a usage report whose window presence
+// contradicts the field's declared shape: a gauge report carries no window,
+// and a windowed counter report requires one. See
+// docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+func errUsageShapeMismatch(name string, shape license.UsageShape) *fault.Error {
+	message := "The license field " + name + " is declared " + string(shape) +
+		" and this report's window doesn't match"
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:     "USAGE_SHAPE_MISMATCH",
+		Message:  message,
+		Field:    name,
+		Metadata: map[string]any{"usage_shape": string(shape)},
+	}}, http.StatusBadRequest)
+}
+
 // UsageService records what an Organization has used. It holds no rules
 // evaluator on purpose: rules bound what a limit may be set to, never what
 // usage turns out to be, so a value past the limit is stored as reported.
@@ -128,6 +157,15 @@ func (s *usageService) resolveLimit(ctx context.Context, in license.ReportUsageI
 	}
 	if field.Type != rules.Limit {
 		return errLicenseFieldNotALimit(field.Name, field.Type)
+	}
+	if field.UsageShape == nil {
+		return errLicenseFieldUsageShapeUndeclared(field.Name)
+	}
+
+	hasWindow := in.From != nil
+	expectsWindow := *field.UsageShape == license.UsageShapeWindowedCounter
+	if hasWindow != expectsWindow {
+		return errUsageShapeMismatch(field.Name, *field.UsageShape)
 	}
 
 	return nil

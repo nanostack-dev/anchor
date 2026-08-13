@@ -6,8 +6,9 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 	out := make([]license.FieldDeclaration, 0, len(declarations))
 	for _, d := range declarations {
 		fd := license.FieldDeclaration{
-			Name: d.Name,
-			Type: d.Type,
+			Name:       d.Name,
+			Type:       d.Type,
+			UsageShape: d.UsageShape,
 		}
 		if d.Description != nil {
 			fd.Description = *d.Description
@@ -22,12 +23,13 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 
 func mapLicenseFieldToResponse(f license.Field) LicenseFieldResponse {
 	resp := LicenseFieldResponse{
-		Id:        f.ID,
-		Name:      f.Name,
-		Type:      f.Type,
-		Rules:     f.Rules,
-		CreatedAt: f.CreatedAt,
-		UpdatedAt: f.UpdatedAt,
+		Id:         f.ID,
+		Name:       f.Name,
+		Type:       f.Type,
+		Rules:      f.Rules,
+		UsageShape: f.UsageShape,
+		CreatedAt:  f.CreatedAt,
+		UpdatedAt:  f.UpdatedAt,
 	}
 	if f.Description != "" {
 		resp.Description = new(f.Description)

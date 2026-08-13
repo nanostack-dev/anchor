@@ -3,6 +3,7 @@ package license_ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -120,6 +121,24 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "min_length",
 		},
+		{
+			name: "a limit with no usage_shape",
+			field: ct.LicenseFieldDeclaration{
+				Name:  "flows",
+				Type:  ct.LicenseFieldTypeLIMIT,
+				Rules: limitRules(0, 100000),
+			},
+			code: "LICENSE_FIELD_USAGE_SHAPE_MISSING",
+		},
+		{
+			name: "a usage_shape on a field that is not a limit",
+			field: ct.LicenseFieldDeclaration{
+				Name:       "sso",
+				Type:       ct.LicenseFieldTypeBOOLEAN,
+				UsageShape: new(ct.GAUGE),
+			},
+			code: "LICENSE_FIELD_USAGE_SHAPE_NOT_APPLICABLE",
+		},
 	}
 
 	for _, c := range cases {
@@ -171,7 +190,9 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			tc.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
 				Fields: []ct.LicenseFieldDeclaration{
-					{Name: name, Type: ct.LicenseFieldTypeLIMIT},
+					// The first field must itself be well-formed — usage_shape included —
+					// so the duplicate on the second is what the write actually trips on.
+					{Name: name, Type: ct.LicenseFieldTypeLIMIT, UsageShape: new(ct.GAUGE)},
 					{Name: name, Type: ct.LicenseFieldTypeBOOLEAN},
 				},
 			},
@@ -194,5 +215,25 @@ func TestLicenseSchemaValidation(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	})
+
+	// The generated client's UsageShape type only admits GAUGE and
+	// WINDOWED_COUNTER, so an out-of-enum value has to go in as a raw body —
+	// the same reason usage reporting's "not a number" case does. The request
+	// validator excludes bodies from its own checks (ExcludeRequestBody), so
+	// this is what actually catches it.
+	t.Run("rejects a limit with an unrecognised usage_shape", func(t *testing.T) {
+		tc := newTestCtx(t)
+
+		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithBodyWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			"application/json",
+			strings.NewReader(`{"fields":[{"name":"flows","type":"LIMIT","usage_shape":"PER_SECOND"}]}`),
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_USAGE_SHAPE_INVALID", "flows", "")
 	})
 }

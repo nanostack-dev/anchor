@@ -126,9 +126,10 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 func widenSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	w.RedeclareSchema(append(templateSchemaFields(), ct.LicenseFieldDeclaration{
-		Name:  "seats",
-		Type:  ct.LicenseFieldTypeLIMIT,
-		Rules: limitRules(0, 1000),
+		Name:       "seats",
+		Type:       ct.LicenseFieldTypeLIMIT,
+		Rules:      limitRules(0, 1000),
+		UsageShape: new(ct.GAUGE),
 	}))
 	w.Template().ReplaceValues(templateValuesWith("seats", 25))
 }
