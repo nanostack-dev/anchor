@@ -238,5 +238,31 @@ func TestLicenseSchemaValidation(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		require.NotNil(t, resp.JSON400)
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_USAGE_SHAPE_INVALID", "flows", "")
+		require.NotNil(t, resp.JSON400.Errors[0].Metadata)
+		assert.Equal(t, "PER_SECOND", (*resp.JSON400.Errors[0].Metadata)["usage_shape"])
+	})
+
+	// The table above proves LICENSE_FIELD_USAGE_SHAPE_NOT_APPLICABLE fires;
+	// this pins its metadata contract, the same way
+	// usage_report_test.go's "refuses a license field that is not a limit"
+	// pins LICENSE_FIELD_NOT_A_LIMIT's.
+	t.Run("a not-applicable usage_shape names the field's actual type in metadata", func(t *testing.T) {
+		tc := newTestCtx(t)
+
+		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.CreateLicenseSchemaJSONRequestBody{
+				Fields: []ct.LicenseFieldDeclaration{
+					{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN, UsageShape: new(ct.GAUGE)},
+				},
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_USAGE_SHAPE_NOT_APPLICABLE", "sso", "")
+		require.NotNil(t, resp.JSON400.Errors[0].Metadata)
+		assert.Equal(t, "BOOLEAN", (*resp.JSON400.Errors[0].Metadata)["type"])
 	})
 }
