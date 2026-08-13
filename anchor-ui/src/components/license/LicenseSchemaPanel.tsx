@@ -17,7 +17,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { apiErrorHasCode, getApiErrorMessage } from "@/lib/api-error";
+import { apiErrorHasCode, getErrorDetail } from "@/lib/api-error";
 import { useQuery } from "@tanstack/react-query";
 import { PenLine, Plus, ScrollText, TriangleAlert } from "lucide-react";
 import { LicenseSchemaFormDialog } from "./LicenseSchemaFormDialog";
@@ -61,8 +61,8 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 					</EmptyMedia>
 					<EmptyTitle>Couldn&rsquo;t load the license schema</EmptyTitle>
 					<EmptyDescription>
-						{getApiErrorMessage(error) ??
-							"The request did not complete. Check your connection and try again."}
+						{getErrorDetail(error) ??
+							"No response was received from the API. This app's requests never got an answer at all — a genuine offline/DNS/CORS failure, not a server-side error."}
 					</EmptyDescription>
 				</EmptyHeader>
 				<Button variant="outline" size="sm" onClick={() => void refetch()}>

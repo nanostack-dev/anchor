@@ -12,7 +12,7 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiErrorHasCode, getApiErrorMessage } from "@/lib/api-error";
+import { apiErrorHasCode, getErrorDetail } from "@/lib/api-error";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { BadgeCheck, Info, TriangleAlert } from "lucide-react";
@@ -73,8 +73,8 @@ export function OrganizationLicensePanel({
 						Couldn&rsquo;t load this organization&rsquo;s license
 					</EmptyTitle>
 					<EmptyDescription>
-						{getApiErrorMessage(licenseQuery.error) ??
-							"The request did not complete. Check your connection and try again."}
+						{getErrorDetail(licenseQuery.error) ??
+							"No response was received from the API. This app's requests never got an answer at all — a genuine offline/DNS/CORS failure, not a server-side error."}
 					</EmptyDescription>
 				</EmptyHeader>
 				<Button
