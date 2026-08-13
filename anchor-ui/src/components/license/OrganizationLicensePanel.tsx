@@ -1,6 +1,7 @@
+import { getOrganizationLicense } from "@/client";
 import {
 	getLicenseSchemaOptions,
-	getOrganizationLicenseOptions,
+	getOrganizationLicenseQueryKey,
 } from "@/client/@tanstack/react-query.gen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,12 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiErrorHasCode, getErrorDetail } from "@/lib/api-error";
+import { getErrorDetail } from "@/lib/api-error";
+import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { BadgeCheck, Info, TriangleAlert } from "lucide-react";
 import { LicenseValueFields } from "./LicenseValueFields";
-
-const ORGANIZATION_LICENSE_NOT_FOUND = "ORGANIZATION_LICENSE_NOT_FOUND";
 
 interface OrganizationLicensePanelProps {
 	productId: string;
@@ -41,9 +41,20 @@ export function OrganizationLicensePanel({
 	});
 
 	const licenseQuery = useQuery({
-		...getOrganizationLicenseOptions({
+		queryKey: getOrganizationLicenseQueryKey({
 			path: { product_id: productId, organization_id: organizationId },
 		}),
+		// Raw (non-throwing) SDK call, not getOrganizationLicenseOptions(): see
+		// the matching comment in LicenseSchemaPanel — the *Options() helper's
+		// throwOnError mode loses the HTTP status once a response body doesn't
+		// parse as an ApiErrorResponse, which an empty or plain-text 404 body
+		// from an earlier middleware layer will do.
+		queryFn: () =>
+			unwrapQuery(
+				getOrganizationLicense({
+					path: { product_id: productId, organization_id: organizationId },
+				}),
+			),
 		retry: false,
 	});
 
@@ -57,12 +68,21 @@ export function OrganizationLicensePanel({
 		);
 	}
 
-	const licenseNotFound = apiErrorHasCode(
-		licenseQuery.error,
-		ORGANIZATION_LICENSE_NOT_FOUND,
-	);
+	// This route documents exactly one 404 case — the organization has no
+	// license yet — so any 404 here is treated as that, whether or not its
+	// body happened to parse into the specific ORGANIZATION_LICENSE_NOT_FOUND
+	// shape.
+	const licenseNotFound =
+		isHttpQueryError(licenseQuery.error) && licenseQuery.error.status === 404;
 
 	if (licenseQuery.error && !licenseNotFound) {
+		const error = licenseQuery.error;
+		const detail = isHttpQueryError(error)
+			? (getErrorDetail(error.body) ??
+				`The server responded with HTTP ${error.status}.`)
+			: (getErrorDetail(error) ??
+				"No response was received at all — the request never reached a server, or a browser-level failure (offline, DNS, CORS) stopped it before one could answer.");
+
 		return (
 			<Empty>
 				<EmptyHeader>
@@ -72,10 +92,7 @@ export function OrganizationLicensePanel({
 					<EmptyTitle>
 						Couldn&rsquo;t load this organization&rsquo;s license
 					</EmptyTitle>
-					<EmptyDescription>
-						{getErrorDetail(licenseQuery.error) ??
-							"No response was received from the API. This app's requests never got an answer at all — a genuine offline/DNS/CORS failure, not a server-side error."}
-					</EmptyDescription>
+					<EmptyDescription>{detail}</EmptyDescription>
 				</EmptyHeader>
 				<Button
 					variant="outline"

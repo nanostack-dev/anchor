@@ -1,4 +1,5 @@
-import { getLicenseSchemaOptions } from "@/client/@tanstack/react-query.gen";
+import { getLicenseSchema } from "@/client";
+import { getLicenseSchemaQueryKey } from "@/client/@tanstack/react-query.gen";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,13 +18,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { apiErrorHasCode, getErrorDetail } from "@/lib/api-error";
+import { getErrorDetail } from "@/lib/api-error";
+import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
 import { useQuery } from "@tanstack/react-query";
 import { PenLine, Plus, ScrollText, TriangleAlert } from "lucide-react";
 import { LicenseSchemaFormDialog } from "./LicenseSchemaFormDialog";
 import { FIELD_TYPE_LABELS, summarizeRules } from "./license-field-format";
-
-const LICENSE_SCHEMA_NOT_FOUND = "LICENSE_SCHEMA_NOT_FOUND";
 
 interface LicenseSchemaPanelProps {
 	productId: string;
@@ -36,7 +36,15 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 		error,
 		refetch,
 	} = useQuery({
-		...getLicenseSchemaOptions({ path: { product_id: productId } }),
+		queryKey: getLicenseSchemaQueryKey({ path: { product_id: productId } }),
+		// A raw (non-throwing) SDK call rather than getLicenseSchemaOptions():
+		// that helper's throwOnError mode discards the HTTP status once the
+		// body doesn't parse as an ApiErrorResponse, which is exactly what
+		// happens on some deployments' 404s (an empty or plain-text body from
+		// an earlier middleware layer, not the handler's own structured
+		// error). Matching on status here is reliable either way.
+		queryFn: () =>
+			unwrapQuery(getLicenseSchema({ path: { product_id: productId } })),
 		retry: false,
 	});
 
@@ -50,9 +58,18 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 		);
 	}
 
-	const notDeclared = apiErrorHasCode(error, LICENSE_SCHEMA_NOT_FOUND);
+	// This route documents exactly one 404 case — no schema declared yet —
+	// so any 404 here is treated as that, whether or not its body happened to
+	// parse into the specific LICENSE_SCHEMA_NOT_FOUND shape.
+	const notDeclared = isHttpQueryError(error) && error.status === 404;
 
 	if (error && !notDeclared) {
+		const detail = isHttpQueryError(error)
+			? (getErrorDetail(error.body) ??
+				`The server responded with HTTP ${error.status}.`)
+			: (getErrorDetail(error) ??
+				"No response was received at all — the request never reached a server, or a browser-level failure (offline, DNS, CORS) stopped it before one could answer.");
+
 		return (
 			<Empty>
 				<EmptyHeader>
@@ -60,10 +77,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 						<TriangleAlert />
 					</EmptyMedia>
 					<EmptyTitle>Couldn&rsquo;t load the license schema</EmptyTitle>
-					<EmptyDescription>
-						{getErrorDetail(error) ??
-							"No response was received from the API. This app's requests never got an answer at all — a genuine offline/DNS/CORS failure, not a server-side error."}
-					</EmptyDescription>
+					<EmptyDescription>{detail}</EmptyDescription>
 				</EmptyHeader>
 				<Button variant="outline" size="sm" onClick={() => void refetch()}>
 					Try again
