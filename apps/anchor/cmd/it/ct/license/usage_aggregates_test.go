@@ -217,9 +217,8 @@ func TestUsageAggregatePagination(t *testing.T) {
 		refreshAggregates(t)
 
 		query := seriesQuery("cascade_gauge", ct.MINUTE, day, day.Add(time.Hour))
-		limit := int32(2)
+		query.Limit = new(int32(2))
 		offset := int32(0)
-		query.Limit = &limit
 		query.Offset = &offset
 
 		first := w.Usage().Series(query)

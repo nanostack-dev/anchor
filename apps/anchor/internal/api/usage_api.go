@@ -38,14 +38,10 @@ func errUsageValueMissing() *fault.Error {
 const defaultUsageSeriesLimit int32 = 50
 
 func usageSeriesPagination(limit *int32, offset *int32) search.Pagination {
-	pagination := search.Pagination{Limit: defaultUsageSeriesLimit}
-	if limit != nil {
-		pagination.Limit = *limit
+	return search.Pagination{
+		Limit:  valueOr(limit, defaultUsageSeriesLimit),
+		Offset: valueOr(offset, int32(0)),
 	}
-	if offset != nil {
-		pagination.Offset = *offset
-	}
-	return pagination
 }
 
 func (s *AnchorAPI) ReportOrganizationUsage(

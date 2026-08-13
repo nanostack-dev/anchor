@@ -26,14 +26,6 @@ func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, 
 	return tenantID, limitValue, offsetValue, nil
 }
 
-func mapItems[T any, R any](items []T, mapper func(T) R) []R {
-	out := make([]R, 0, len(items))
-	for _, item := range items {
-		out = append(out, mapper(item))
-	}
-	return out
-}
-
 // ---------------------------------------------------------------------------
 // Template handlers
 // ---------------------------------------------------------------------------
