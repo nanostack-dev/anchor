@@ -30,7 +30,11 @@ var aggregateViews = []string{
 }
 
 // insertRawObservation writes directly to the hypertable, bypassing
-// ReportUsage entirely so observed_at can be placed deliberately.
+// ReportUsage entirely so observed_at can be placed deliberately. Prefer
+// licenseWorld's InsertGaugeObservation/InsertWindowedObservation below,
+// which fill tenant/product/organization in from the world and make the
+// shape explicit at the call site; this is the primitive they share, for the
+// rare case of writing against identifiers that don't come from one world.
 func insertRawObservation(
 	t *testing.T,
 	tenantID, productID, organizationID, key string,
@@ -45,6 +49,24 @@ func insertRawObservation(
 		ids.MustNew("uobs"), tenantID, productID, organizationID, key, value, from, to, observedAt,
 	)
 	require.NoError(t, err)
+}
+
+// InsertGaugeObservation seeds one gauge observation for the world's own
+// organization, at a deliberately chosen observed_at — see insertRawObservation
+// for why a test needs this instead of Usage().Report.
+func (w *licenseWorld) InsertGaugeObservation(key string, value float64, observedAt time.Time) {
+	w.t.Helper()
+	insertRawObservation(w.t, w.tenantID, w.productID(), w.OrganizationID(), key, value, observedAt, nil, nil)
+}
+
+// InsertWindowedObservation is InsertGaugeObservation for a windowed counter:
+// observedAt is when the report is deemed to have landed, from/to is the
+// window it names.
+func (w *licenseWorld) InsertWindowedObservation(
+	key string, value float64, observedAt time.Time, from, to time.Time,
+) {
+	w.t.Helper()
+	insertRawObservation(w.t, w.tenantID, w.productID(), w.OrganizationID(), key, value, observedAt, &from, &to)
 }
 
 // refreshAggregates materializes every level of the cascade over its full
@@ -98,15 +120,9 @@ func TestUsageAggregateBucketing(t *testing.T) {
 		w := newLicenseWorld(t)
 		minute := time.Date(2026, time.January, 5, 10, 30, 0, 0, time.UTC)
 
-		insertRawObservation(t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 10, minute, nil, nil)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 20,
-			minute.Add(20*time.Second), nil, nil,
-		)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 37,
-			minute.Add(40*time.Second), nil, nil,
-		)
+		w.InsertGaugeObservation("cascade_gauge", 10, minute)
+		w.InsertGaugeObservation("cascade_gauge", 20, minute.Add(20*time.Second))
+		w.InsertGaugeObservation("cascade_gauge", 37, minute.Add(40*time.Second))
 		refreshAggregates(t)
 
 		series := w.Usage().Series(seriesQuery(
@@ -124,14 +140,8 @@ func TestUsageAggregateBucketing(t *testing.T) {
 		earlyFrom, earlyTo := billingPeriod()
 		lateFrom, lateTo := earlyFrom.AddDate(0, 1, 0), earlyTo.AddDate(0, 1, 0)
 
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_counter", 100,
-			minute, &earlyFrom, &earlyTo,
-		)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_counter", 412,
-			minute.Add(30*time.Second), &lateFrom, &lateTo,
-		)
+		w.InsertWindowedObservation("cascade_counter", 100, minute, earlyFrom, earlyTo)
+		w.InsertWindowedObservation("cascade_counter", 412, minute.Add(30*time.Second), lateFrom, lateTo)
 		refreshAggregates(t)
 
 		series := w.Usage().Series(seriesQuery(
@@ -154,24 +164,12 @@ func TestUsageAggregateCascade(t *testing.T) {
 
 		// Three minutes in the same hour: the hour bucket must hold the last of
 		// the three, never the first and never a sum.
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 100,
-			day.Add(10*time.Hour), nil, nil,
-		)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 200,
-			day.Add(10*time.Hour+15*time.Minute), nil, nil,
-		)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 300,
-			day.Add(10*time.Hour+59*time.Minute), nil, nil,
-		)
+		w.InsertGaugeObservation("cascade_gauge", 100, day.Add(10*time.Hour))
+		w.InsertGaugeObservation("cascade_gauge", 200, day.Add(10*time.Hour+15*time.Minute))
+		w.InsertGaugeObservation("cascade_gauge", 300, day.Add(10*time.Hour+59*time.Minute))
 		// A second hour, later the same day: the day bucket must hold this one,
 		// not the 10:00 hour's, proving the cascade reads hour, not raw.
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 400,
-			day.Add(14*time.Hour), nil, nil,
-		)
+		w.InsertGaugeObservation("cascade_gauge", 400, day.Add(14*time.Hour))
 		refreshAggregates(t)
 
 		hourSeries := w.Usage().Series(seriesQuery("cascade_gauge", ct.HOUR, day, day.AddDate(0, 0, 1)))
@@ -190,14 +188,8 @@ func TestUsageAggregateCascade(t *testing.T) {
 		earlyFrom, earlyTo := billingPeriod()
 		lateFrom, lateTo := earlyFrom.AddDate(0, 1, 0), earlyTo.AddDate(0, 1, 0)
 
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_counter", 1000,
-			day.Add(9*time.Hour), &earlyFrom, &earlyTo,
-		)
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_counter", 2000,
-			day.Add(9*time.Hour+45*time.Minute), &lateFrom, &lateTo,
-		)
+		w.InsertWindowedObservation("cascade_counter", 1000, day.Add(9*time.Hour), earlyFrom, earlyTo)
+		w.InsertWindowedObservation("cascade_counter", 2000, day.Add(9*time.Hour+45*time.Minute), lateFrom, lateTo)
 		refreshAggregates(t)
 
 		hourSeries := w.Usage().Series(seriesQuery("cascade_counter", ct.HOUR, day, day.AddDate(0, 0, 1)))
@@ -220,10 +212,7 @@ func TestUsageAggregatePagination(t *testing.T) {
 		day := time.Date(2026, time.January, 8, 0, 0, 0, 0, time.UTC)
 
 		for i := range 5 {
-			insertRawObservation(
-				t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge",
-				float64(i), day.Add(time.Duration(i)*time.Minute), nil, nil,
-			)
+			w.InsertGaugeObservation("cascade_gauge", float64(i), day.Add(time.Duration(i)*time.Minute))
 		}
 		refreshAggregates(t)
 
@@ -253,10 +242,7 @@ func TestUsageAggregateRetention(t *testing.T) {
 		w := newLicenseWorld(t)
 		day := time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)
 
-		insertRawObservation(
-			t, w.tenantID, w.productID(), w.OrganizationID(), "cascade_gauge", 37,
-			day.Add(10*time.Hour), nil, nil,
-		)
+		w.InsertGaugeObservation("cascade_gauge", 37, day.Add(10*time.Hour))
 		refreshAggregates(t)
 
 		dropAllRawChunks(t)
