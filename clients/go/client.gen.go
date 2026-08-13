@@ -919,7 +919,7 @@ type ClientInterface interface {
 
 	// GetOrganizationLicense Get Organization License
 	//
-	// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+	// Reads an organization's effective license in one call: every license field, its value, the provenance of the copy, and — for every limit field — its latest reported usage and a derived status (`within_limit` / `at_limit` / `exceeded` / `stale`). Embedding usage here is deliberate: it saves a second call on the hot path. The status is computed fresh on every call and never stored; this route is cached, and the cache is evicted whenever the license is written, so a usage report becomes visible on the next read without a license write. This is advice, not a verdict — anchor validates but never gates.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
 	GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3177,7 +3177,7 @@ func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId Product
 
 // GetOrganizationLicense Get Organization License
 //
-// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+// Reads an organization's effective license in one call: every license field, its value, the provenance of the copy, and — for every limit field — its latest reported usage and a derived status (`within_limit` / `at_limit` / `exceeded` / `stale`). Embedding usage here is deliberate: it saves a second call on the hot path. The status is computed fresh on every call and never stored; this route is cached, and the cache is evicted whenever the license is written, so a usage report becomes visible on the next read without a license write. This is advice, not a verdict — anchor validates but never gates.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license (the `GetOrganizationLicense` operationId).
 func (c *Client) GetOrganizationLicense(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9791,7 +9791,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetOrganizationLicenseWithResponse Get Organization License
 	//
-	// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+	// Reads an organization's effective license in one call: every license field, its value, the provenance of the copy, and — for every limit field — its latest reported usage and a derived status (`within_limit` / `at_limit` / `exceeded` / `stale`). Embedding usage here is deliberate: it saves a second call on the hot path. The status is computed fresh on every call and never stored; this route is cached, and the cache is evicted whenever the license is written, so a usage report becomes visible on the next read without a license write. This is advice, not a verdict — anchor validates but never gates.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -16982,7 +16982,7 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 
 // GetOrganizationLicenseWithResponse Get Organization License
 //
-// Reads an organization's effective license in one call: every license field, its value, and the provenance of the copy.
+// Reads an organization's effective license in one call: every license field, its value, the provenance of the copy, and — for every limit field — its latest reported usage and a derived status (`within_limit` / `at_limit` / `exceeded` / `stale`). Embedding usage here is deliberate: it saves a second call on the hot path. The status is computed fresh on every call and never stored; this route is cached, and the cache is evicted whenever the license is written, so a usage report becomes visible on the next read without a license write. This is advice, not a verdict — anchor validates but never gates.
 //
 // Returns a wrapper object for the known response body format(s).
 //

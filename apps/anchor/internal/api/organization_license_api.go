@@ -66,7 +66,7 @@ func (s *AnchorAPI) GetOrganizationLicense(
 		return GetOrganizationLicense404Response{}, nil
 	}
 	return GetOrganizationLicense200JSONResponse(
-		mapOrganizationLicenseToResponse(*organizationLicense),
+		mapOrganizationLicenseReadToResponse(*organizationLicense),
 	), nil
 }
 

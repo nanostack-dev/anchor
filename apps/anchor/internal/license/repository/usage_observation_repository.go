@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/rs/zerolog"
 
@@ -42,4 +43,24 @@ func (r *usageObservationRepositoryImpl) Append(
 		MODEL(entity).
 		RETURNING(table.UsageObservations.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+}
+
+func (r *usageObservationRepositoryImpl) LatestPerKey(
+	ctx context.Context, tenantID string, productID string, organizationID string,
+) ([]license.UsageObservation, error) {
+	// DISTINCT ON (key), ordered by key then observed_at desc, is Postgres's
+	// idiom for "the latest row per key" in one pass — no aggregation and no
+	// self-join. See ADR-0005: this is the same last(value, observed_at)
+	// semantics the continuous aggregates use, expressed for a raw read.
+	stmt := table.UsageObservations.
+		SELECT(table.UsageObservations.AllColumns).
+		DISTINCT(table.UsageObservations.Key).
+		FROM(table.UsageObservations).
+		WHERE(
+			table.UsageObservations.PlatformTenantID.EQ(postgres.String(tenantID)).
+				AND(table.UsageObservations.ProductID.EQ(postgres.String(productID))).
+				AND(table.UsageObservations.OrganizationID.EQ(postgres.String(organizationID))),
+		).
+		ORDER_BY(table.UsageObservations.Key.ASC(), table.UsageObservations.ObservedAt.DESC())
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
