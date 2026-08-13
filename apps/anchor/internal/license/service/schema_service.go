@@ -94,9 +94,10 @@ func errLicenseFieldUsageShapeNotApplicable(name string, fieldType license.Field
 // rules.ValidateDeclaration checks field type itself.
 func errLicenseFieldUsageShapeInvalid(name string, shape license.UsageShape) *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
-		Code:    "LICENSE_FIELD_USAGE_SHAPE_INVALID",
-		Message: "The license field " + name + " declares an unrecognised usage_shape " + string(shape),
-		Field:   name,
+		Code:     "LICENSE_FIELD_USAGE_SHAPE_INVALID",
+		Message:  "The license field " + name + " declares an unrecognised usage_shape " + string(shape),
+		Field:    name,
+		Metadata: map[string]any{"usage_shape": string(shape)},
 	}}, http.StatusBadRequest)
 }
 

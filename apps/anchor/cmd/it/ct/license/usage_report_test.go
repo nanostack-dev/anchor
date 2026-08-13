@@ -167,23 +167,23 @@ func TestReportUsage(t *testing.T) {
 	})
 
 	t.Run("refuses a window that holds no time", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		from, to := billingPeriod()
 
-		empty := w.Usage().ReportRaw(windowed(worldLimitKey, 412, from, from))
+		empty := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, from, from))
 		require.Equal(t, http.StatusBadRequest, empty.StatusCode(), string(empty.Body))
 		assertValidationRule(t, empty.JSON400.Errors, "gtfield")
 
-		reversed := w.Usage().ReportRaw(windowed(worldLimitKey, 412, to, from))
+		reversed := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, to, from))
 		require.Equal(t, http.StatusBadRequest, reversed.StatusCode(), string(reversed.Body))
 		assertValidationRule(t, reversed.JSON400.Errors, "gtfield")
 	})
 
 	t.Run("refuses a window longer than a year", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		_, to := billingPeriod()
 
-		resp := w.Usage().ReportRaw(windowed(worldLimitKey, 412, to.AddDate(-1, 0, -1), to))
+		resp := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, to.AddDate(-1, 0, -1), to))
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
@@ -199,10 +199,10 @@ func TestReportUsage(t *testing.T) {
 	})
 
 	t.Run("a window left open cannot outrun the year bound", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 
 		resp := w.Usage().ReportRaw(
-			openEnded(worldLimitKey, 412, time.Now().AddDate(-2, 0, 0)),
+			openEnded(worldWindowedCounterKey, 412, time.Now().AddDate(-2, 0, 0)),
 		)
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -271,6 +271,11 @@ func TestReportUsageShape(t *testing.T) {
 	// answer to a question only the field's owner can settle.
 	t.Run("refuses usage against a limit with no usage_shape declared", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
+		// Scoped to this world's own schema: a field name is unique only within
+		// its schema, and every newWindowedCounterWorld declares a
+		// worldWindowedCounterKey — an update by name alone would blank the
+		// shape on every other world's copy too, breaking whichever test runs
+		// next.
 		_, err := testDB.Exec(
 			`UPDATE license_schema_fields SET usage_shape = NULL
 			 WHERE license_schema_id = $1 AND name = $2`,

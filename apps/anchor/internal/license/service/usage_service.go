@@ -56,9 +56,16 @@ func errLicenseFieldUsageShapeUndeclared(name string) *fault.Error {
 // contradicts the field's declared shape: a gauge report carries no window,
 // and a windowed counter report requires one. See
 // docs/adr/0012-usage-shape-is-declared-not-inferred.md.
+//
+// Named without the errLicenseField prefix its neighbour above carries: the
+// field itself is well-formed here, and it is the report that is refused.
 func errUsageShapeMismatch(name string, shape license.UsageShape) *fault.Error {
+	requirement := "must not carry a window"
+	if shape == license.UsageShapeWindowedCounter {
+		requirement = "must carry a window"
+	}
 	message := "The license field " + name + " is declared " + string(shape) +
-		" and this report's window doesn't match"
+		" and a usage report against it " + requirement
 	return fault.NewWithDetails([]fault.Detail{{
 		Code:     "USAGE_SHAPE_MISMATCH",
 		Message:  message,
@@ -138,7 +145,8 @@ func (s *usageService) ReportUsage(
 }
 
 // resolveLimit reports whether the key names a license field the Product
-// declares, and whether that field is a limit.
+// declares, whether that field is a limit, and whether the report's window
+// presence matches the shape that field declares.
 func (s *usageService) resolveLimit(ctx context.Context, in license.ReportUsageInput) error {
 	schema, err := s.schemas.GetSchema(ctx, license.GetSchemaInput{
 		TenantID:  in.TenantID,
@@ -162,6 +170,9 @@ func (s *usageService) resolveLimit(ctx context.Context, in license.ReportUsageI
 		return errLicenseFieldUsageShapeUndeclared(field.Name)
 	}
 
+	// From alone decides: To cannot arrive without it (required_with=To on
+	// ReportUsageInput), and WithDefaults fills To in when a window is left
+	// open, so From's presence is exactly the report's window presence.
 	hasWindow := in.From != nil
 	expectsWindow := *field.UsageShape == license.UsageShapeWindowedCounter
 	if hasWindow != expectsWindow {

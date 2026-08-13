@@ -122,6 +122,9 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			rule: "min_length",
 		},
 		{
+			// Rules are well-formed on purpose: declareFields checks rules before
+			// usage_shape, so an ill-formed rule set would mask this case behind
+			// "min above max" above instead of exercising the shape check.
 			name: "a limit with no usage_shape",
 			field: ct.LicenseFieldDeclaration{
 				Name:  "flows",
