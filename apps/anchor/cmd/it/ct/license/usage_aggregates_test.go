@@ -31,10 +31,7 @@ var aggregateViews = []string{
 
 // insertRawObservation writes directly to the hypertable, bypassing
 // ReportUsage entirely so observed_at can be placed deliberately. Prefer
-// licenseWorld's InsertGaugeObservation/InsertWindowedObservation below,
-// which fill tenant/product/organization in from the world and make the
-// shape explicit at the call site; this is the primitive they share, for the
-// rare case of writing against identifiers that don't come from one world.
+// licenseWorld's InsertGaugeObservation/InsertWindowedObservation below.
 func insertRawObservation(
 	t *testing.T,
 	tenantID, productID, organizationID, key string,
@@ -52,16 +49,13 @@ func insertRawObservation(
 }
 
 // InsertGaugeObservation seeds one gauge observation for the world's own
-// organization, at a deliberately chosen observed_at — see insertRawObservation
-// for why a test needs this instead of Usage().Report.
+// organization, at a deliberately chosen observed_at.
 func (w *licenseWorld) InsertGaugeObservation(key string, value float64, observedAt time.Time) {
 	w.t.Helper()
 	insertRawObservation(w.t, w.tenantID, w.productID(), w.OrganizationID(), key, value, observedAt, nil, nil)
 }
 
-// InsertWindowedObservation is InsertGaugeObservation for a windowed counter:
-// observedAt is when the report is deemed to have landed, from/to is the
-// window it names.
+// InsertWindowedObservation is InsertGaugeObservation for a windowed counter.
 func (w *licenseWorld) InsertWindowedObservation(
 	key string, value float64, observedAt time.Time, from, to time.Time,
 ) {

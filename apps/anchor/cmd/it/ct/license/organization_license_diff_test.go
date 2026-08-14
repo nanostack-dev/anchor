@@ -18,9 +18,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, w.OrganizationID(), diff.OrganizationId)
 		assert.Equal(t, w.TemplateID(), diff.TemplateId)
 		assert.Empty(t, diff.Differences)
-		// Empty alone passes for both [] and null — differences is a required,
-		// non-nullable array in the contract, so this is the assertion that
-		// actually pins the JSON shape rather than just the Go length.
+		// Empty alone passes for both [] and null; this pins the JSON shape.
 		assert.NotNil(t, diff.Differences)
 		assert.Equal(t, 0, diff.Count)
 	})

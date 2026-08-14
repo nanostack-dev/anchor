@@ -152,10 +152,8 @@ func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseField
 }
 
 func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
-	// DiffValues returns nil, deliberately, for "nothing differs" (see its own
-	// doc) — but the contract's `differences` is a required, non-nullable
-	// array, and slicex.Map preserves a nil input as nil. An identical copy
-	// must read back as [], not null.
+	// DiffValues returns nil for "nothing differs"; slicex.Map preserves that,
+	// but differences is a required, non-nullable array in the contract.
 	differences := slicex.Map(d.Differences, mapLicenseFieldDifferenceToResponse)
 	if differences == nil {
 		differences = []LicenseFieldDifference{}
