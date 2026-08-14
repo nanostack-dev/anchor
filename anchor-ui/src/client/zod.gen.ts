@@ -1209,6 +1209,11 @@ export const zLicenseFieldType = z.enum([
     'STRING'
 ]);
 
+export const zUsageShape = z.enum([
+    'GAUGE',
+    'WINDOWED_COUNTER'
+]);
+
 export const zLicenseFieldRules = z.object({
     min: z.optional(z.number()),
     max: z.optional(z.number()),
@@ -1222,7 +1227,8 @@ export const zLicenseFieldDeclaration = z.object({
     name: z.string().max(120),
     type: zLicenseFieldType,
     description: z.optional(z.string()),
-    rules: z.optional(zLicenseFieldRules)
+    rules: z.optional(zLicenseFieldRules),
+    usage_shape: z.optional(zUsageShape)
 });
 
 export const zLicenseFieldResponse = z.object({
@@ -1231,6 +1237,7 @@ export const zLicenseFieldResponse = z.object({
     type: zLicenseFieldType,
     description: z.optional(z.string()),
     rules: zLicenseFieldRules,
+    usage_shape: z.optional(zUsageShape),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
@@ -1304,6 +1311,26 @@ export const zOrganizationLicenseAdjustRequest = z.object({
 });
 
 /**
+ * A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
+ */
+export const zLicenseUsageStatus = z.enum([
+    'within_limit',
+    'at_limit',
+    'exceeded',
+    'stale'
+]);
+
+/**
+ * One limit field's latest reported usage and derived status, as read from an organization's license.
+ */
+export const zLicenseFieldUsageResponse = z.object({
+    limit: z.number(),
+    usage: z.optional(z.number()),
+    status: zLicenseUsageStatus,
+    last_reported_at: z.optional(z.iso.datetime())
+});
+
+/**
  * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
  */
 export const zOrganizationLicenseResponse = z.object({
@@ -1313,6 +1340,7 @@ export const zOrganizationLicenseResponse = z.object({
     template_id: zKsuid,
     instantiated_at: z.iso.datetime(),
     values: zLicenseTemplateValues,
+    usage: z.optional(z.record(z.string(), zLicenseFieldUsageResponse)),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
@@ -1366,6 +1394,29 @@ export const zUsageObservationResponse = z.object({
     to: z.optional(z.iso.datetime()),
     observed_at: z.iso.datetime()
 });
+
+/**
+ * Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
+ */
+export const zUsageGranularity = z.enum([
+    'MINUTE',
+    'HOUR',
+    'DAY'
+]);
+
+/**
+ * One bucket of an organization's usage series.
+ */
+export const zUsageSeriesPointResponse = z.object({
+    bucket: z.iso.datetime(),
+    value: z.number(),
+    from: z.optional(z.iso.datetime()),
+    to: z.optional(z.iso.datetime())
+});
+
+export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
+    items: z.array(zUsageSeriesPointResponse)
+}));
 
 /**
  * The KSUID of the platform invitation.
@@ -2802,3 +2853,24 @@ export const zReportOrganizationUsageData = z.object({
  * Stored.
  */
 export const zReportOrganizationUsageResponse = zUsageObservationResponse;
+
+export const zGetOrganizationUsageSeriesData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.object({
+        key: z.string().max(120),
+        granularity: zUsageGranularity,
+        from: z.iso.datetime(),
+        to: z.optional(z.iso.datetime()),
+        limit: z.optional(z.int().gte(1).lte(1000)).default(50),
+        offset: z.optional(z.int().gte(0)).default(0)
+    })
+});
+
+/**
+ * Success
+ */
+export const zGetOrganizationUsageSeriesResponse = zUsageSeriesResponse;
