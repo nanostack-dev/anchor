@@ -22,8 +22,9 @@ func TestLicenseSchemaGet(t *testing.T) {
 				ProductAlias: "p",
 				Description:  new("Pro tier surface"),
 				Fields: []ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500)),
-					itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil),
+					itdsl.LicenseField("flows", ct.LicenseFieldTypeLIMIT, limitRules(0, 500), new(ct.GAUGE)),
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil, new(ct.WINDOWEDCOUNTER)),
+					itdsl.LicenseField("sso", ct.LicenseFieldTypeBOOLEAN, nil, nil),
 				},
 			}).
 			Build()
@@ -38,11 +39,21 @@ func TestLicenseSchemaGet(t *testing.T) {
 		assert.Equal(t, state.LicenseSchema("schema").ID, resp.JSON200.Id)
 		require.NotNil(t, resp.JSON200.Description)
 		assert.Equal(t, "Pro tier surface", *resp.JSON200.Description)
-		require.Len(t, resp.JSON200.Fields, 2)
+		require.Len(t, resp.JSON200.Fields, 3)
 		assert.Equal(t, "flows", resp.JSON200.Fields[0].Name)
 		require.NotNil(t, resp.JSON200.Fields[0].Rules.Max)
 		assert.InDelta(t, 500.0, *resp.JSON200.Fields[0].Rules.Max, 0)
-		assert.Equal(t, "sso", resp.JSON200.Fields[1].Name)
+		require.NotNil(t, resp.JSON200.Fields[0].UsageShape)
+		assert.Equal(t, ct.GAUGE, *resp.JSON200.Fields[0].UsageShape)
+		// A WINDOWED_COUNTER field round-trips too — the mapper does not branch
+		// on which shape it is, but this pins that both halves of the enum
+		// survive write, storage and read rather than just the one already
+		// exercised above.
+		assert.Equal(t, "seats", resp.JSON200.Fields[1].Name)
+		require.NotNil(t, resp.JSON200.Fields[1].UsageShape)
+		assert.Equal(t, ct.WINDOWEDCOUNTER, *resp.JSON200.Fields[1].UsageShape)
+		assert.Equal(t, "sso", resp.JSON200.Fields[2].Name)
+		assert.Nil(t, resp.JSON200.Fields[2].UsageShape)
 	})
 
 	t.Run("404 when the product has declared no schema", func(t *testing.T) {

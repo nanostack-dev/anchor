@@ -18,6 +18,8 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, w.OrganizationID(), diff.OrganizationId)
 		assert.Equal(t, w.TemplateID(), diff.TemplateId)
 		assert.Empty(t, diff.Differences)
+		// Empty alone passes for both [] and null; this pins the JSON shape.
+		assert.NotNil(t, diff.Differences)
 		assert.Equal(t, 0, diff.Count)
 	})
 
@@ -126,9 +128,10 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 func widenSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	w.RedeclareSchema(append(templateSchemaFields(), ct.LicenseFieldDeclaration{
-		Name:  "seats",
-		Type:  ct.LicenseFieldTypeLIMIT,
-		Rules: limitRules(0, 1000),
+		Name:       "seats",
+		Type:       ct.LicenseFieldTypeLIMIT,
+		Rules:      limitRules(0, 1000),
+		UsageShape: new(ct.GAUGE),
 	}))
 	w.Template().ReplaceValues(templateValuesWith("seats", 25))
 }

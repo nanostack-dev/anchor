@@ -5,6 +5,9 @@ import (
 
 	"anchor/internal/domain/email"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, int64, int64, error) {
@@ -13,25 +16,10 @@ func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, 
 		return "", 0, 0, err
 	}
 
-	var limitValue int64
-	if limit != nil {
-		limitValue = *limit
-	}
-
-	var offsetValue int64
-	if offset != nil {
-		offsetValue = *offset
-	}
+	limitValue := ptr.DerefOr(limit, int64(0))
+	offsetValue := ptr.DerefOr(offset, int64(0))
 
 	return tenantID, limitValue, offsetValue, nil
-}
-
-func mapItems[T any, R any](items []T, mapper func(T) R) []R {
-	out := make([]R, 0, len(items))
-	for _, item := range items {
-		out = append(out, mapper(item))
-	}
-	return out
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +80,7 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
-	items := mapItems(templates, mapTemplateToResponse)
+	items := slicex.Map(templates, mapTemplateToResponse)
 	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: len(items)}), nil
 }
 
@@ -401,6 +389,6 @@ func (s *AnchorAPI) ListEmailSends(
 		return nil, err
 	}
 
-	items := mapItems(records, mapSendRecordToResponse)
+	items := slicex.Map(records, mapSendRecordToResponse)
 	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: len(items)}), nil
 }

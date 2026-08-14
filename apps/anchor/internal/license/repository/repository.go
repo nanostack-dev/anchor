@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
 	"anchor/internal/domain/license"
 )
 
@@ -145,4 +147,16 @@ type UsageObservationRepository interface {
 	LatestPerKey(
 		ctx context.Context, tenantID string, productID string, organizationID string,
 	) ([]license.UsageObservation, error)
+}
+
+// UsageSeriesRepository reads the continuous-aggregate cascade behind
+// UsageObservationRepository: minute, hour and day views, each already
+// bucketed and rolled up in SQL. Bucketing and rollup are the one sanctioned
+// exception to "no business logic in SQL" — see
+// docs/adr/0005-timescaledb-for-usage-history.md — so this repository does
+// nothing but select, filter and paginate the level the caller asked for.
+type UsageSeriesRepository interface {
+	Read(
+		ctx context.Context, in license.GetUsageSeriesInput,
+	) (search.Result[license.UsageSeriesPoint], error)
 }

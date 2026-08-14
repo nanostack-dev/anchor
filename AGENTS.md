@@ -30,3 +30,7 @@ The five canonical roles, each label string equal to its name. See `docs/agents/
 ### Domain docs
 
 Single-context — one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+
+### Coding style
+
+Anchor-specific Go/testing practices learned during review — reuse before building, verifying behavior before swapping in a replacement, comment discipline, test fixtures. Not synced with echopoint. See `docs/agents/coding-style.md`.

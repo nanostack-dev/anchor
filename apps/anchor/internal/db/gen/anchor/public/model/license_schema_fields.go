@@ -20,4 +20,5 @@ type LicenseSchemaFields struct {
 	RulesJSON       string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	UsageShape      *string
 }

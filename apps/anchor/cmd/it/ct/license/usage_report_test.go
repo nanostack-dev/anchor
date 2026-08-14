@@ -27,10 +27,10 @@ func TestReportUsage(t *testing.T) {
 	})
 
 	t.Run("stores a windowed counter over the period it names", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		from, to := billingPeriod()
 
-		observation := w.Usage().Report(windowed(412, from, to))
+		observation := w.Usage().Report(windowed(worldWindowedCounterKey, 412, from, to))
 
 		assert.InDelta(t, 412.0, observation.Value, 0)
 		require.NotNil(t, observation.From)
@@ -43,10 +43,10 @@ func TestReportUsage(t *testing.T) {
 	})
 
 	t.Run("a window left open runs to now", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		from := time.Now().Add(-24 * time.Hour)
 
-		observation := w.Usage().Report(openEnded(412, from))
+		observation := w.Usage().Report(openEnded(worldWindowedCounterKey, 412, from))
 
 		require.NotNil(t, observation.From)
 		require.NotNil(t, observation.To)
@@ -167,42 +167,42 @@ func TestReportUsage(t *testing.T) {
 	})
 
 	t.Run("refuses a window that holds no time", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		from, to := billingPeriod()
 
-		empty := w.Usage().ReportRaw(windowed(412, from, from))
+		empty := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, from, from))
 		require.Equal(t, http.StatusBadRequest, empty.StatusCode(), string(empty.Body))
 		assertValidationRule(t, empty.JSON400.Errors, "gtfield")
 
-		reversed := w.Usage().ReportRaw(windowed(412, to, from))
+		reversed := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, to, from))
 		require.Equal(t, http.StatusBadRequest, reversed.StatusCode(), string(reversed.Body))
 		assertValidationRule(t, reversed.JSON400.Errors, "gtfield")
 	})
 
 	t.Run("refuses a window longer than a year", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		_, to := billingPeriod()
 
-		resp := w.Usage().ReportRaw(windowed(412, to.AddDate(-1, 0, -1), to))
+		resp := w.Usage().ReportRaw(windowed(worldWindowedCounterKey, 412, to.AddDate(-1, 0, -1), to))
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		assertAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
 	})
 
 	t.Run("accepts a window of exactly a year", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 		_, to := billingPeriod()
 
-		observation := w.Usage().Report(windowed(8_640, to.AddDate(-1, 0, 0), to))
+		observation := w.Usage().Report(windowed(worldWindowedCounterKey, 8_640, to.AddDate(-1, 0, 0), to))
 
 		assert.InDelta(t, 8_640.0, observation.Value, 0)
 	})
 
 	t.Run("a window left open cannot outrun the year bound", func(t *testing.T) {
-		w := newLicenseWorld(t)
+		w := newWindowedCounterWorld(t)
 
 		resp := w.Usage().ReportRaw(
-			openEnded(412, time.Now().AddDate(-2, 0, 0)),
+			openEnded(worldWindowedCounterKey, 412, time.Now().AddDate(-2, 0, 0)),
 		)
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -226,6 +226,67 @@ func TestReportUsage(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
+}
+
+// TestReportUsageShape covers the enforcement declareFields pins on
+// declaration: a report's window presence must agree with the field's
+// declared usage_shape. See docs/adr/0013-usage-shape-is-declared-not-inferred.md.
+func TestReportUsageShape(t *testing.T) {
+	t.Run("refuses a windowed report against a gauge field", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		from, to := billingPeriod()
+
+		resp := w.Usage().ReportRaw(windowed(worldLimitKey, 412, from, to))
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertFieldError(t, resp.JSON400.Errors, "USAGE_SHAPE_MISMATCH", worldLimitKey, "")
+		require.NotNil(t, resp.JSON400.Errors[0].Metadata)
+		assert.Equal(t, "GAUGE", (*resp.JSON400.Errors[0].Metadata)["usage_shape"])
+	})
+
+	t.Run("refuses an open-ended report against a gauge field", func(t *testing.T) {
+		w := newLicenseWorld(t)
+
+		resp := w.Usage().ReportRaw(openEnded(worldLimitKey, 412, time.Now().Add(-time.Hour)))
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertFieldError(t, resp.JSON400.Errors, "USAGE_SHAPE_MISMATCH", worldLimitKey, "")
+	})
+
+	t.Run("refuses a windowless report against a windowed counter field", func(t *testing.T) {
+		w := newWindowedCounterWorld(t)
+
+		resp := w.Usage().ReportRaw(gauge(worldWindowedCounterKey, 37))
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertFieldError(t, resp.JSON400.Errors, "USAGE_SHAPE_MISMATCH", worldWindowedCounterKey, "")
+		require.NotNil(t, resp.JSON400.Errors[0].Metadata)
+		assert.Equal(t, "WINDOWED_COUNTER", (*resp.JSON400.Errors[0].Metadata)["usage_shape"])
+	})
+
+	// A field declared before this migration carries no usage_shape at all —
+	// the column has no backfill. resolveLimit refuses to guess one rather
+	// than defaulting to gauge or counter, either of which would be a silent
+	// answer to a question only the field's owner can settle.
+	t.Run("refuses usage against a limit with no usage_shape declared", func(t *testing.T) {
+		w := newWindowedCounterWorld(t)
+		// Scoped to this world's own schema: a field name is unique only within
+		// its schema, and every newWindowedCounterWorld declares a
+		// worldWindowedCounterKey — an update by name alone would blank the
+		// shape on every other world's copy too, breaking whichever test runs
+		// next.
+		_, err := testDB.Exec(
+			`UPDATE license_schema_fields SET usage_shape = NULL
+			 WHERE license_schema_id = $1 AND name = $2`,
+			w.SchemaID(), worldWindowedCounterKey,
+		)
+		require.NoError(t, err)
+
+		resp := w.Usage().ReportRaw(gauge(worldWindowedCounterKey, 37))
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_USAGE_SHAPE_UNDECLARED", worldWindowedCounterKey, "")
 	})
 }
 

@@ -26,8 +26,11 @@ const (
 	worldTemplateAlias     = "tpl"
 )
 
-// licenseWorld is a product declaring the schema in templateSchemaFields, with
-// one organization and one template on it.
+// licenseWorld is a product with a license schema and one organization on it.
+// newLicenseWorld declares templateSchemaFields and a template; the license
+// and template handles below assume both are present. newWindowedCounterWorld
+// declares a single WINDOWED_COUNTER limit and no template, so Template(),
+// TemplateID() and the license handle are not available on that one.
 type licenseWorld struct {
 	t        *testing.T
 	state    *itdsl.State
@@ -76,6 +79,43 @@ func newLicensedWorld(t *testing.T) *licenseWorld {
 	return world
 }
 
+// worldWindowedCounterKey is the one WINDOWED_COUNTER limit declared by
+// newWindowedCounterWorld. It cannot be worldLimitKey: templateSchemaFields
+// declares that field GAUGE, and a field's usage_shape holds for its whole
+// lifetime rather than varying by report — see
+// docs/adr/0013-usage-shape-is-declared-not-inferred.md.
+const worldWindowedCounterKey = "period_flows"
+
+// newWindowedCounterWorld builds an isolated product declaring a single
+// WINDOWED_COUNTER limit. Usage reporting needs no license (see
+// TestReportUsageNeedsNoLicense), so this skips the template and organization
+// license newLicenseWorld sets up and declares only what a windowed-counter
+// report needs.
+func newWindowedCounterWorld(t *testing.T) *licenseWorld {
+	t.Helper()
+	state := itdsl.Given(t).
+		Tenant(itdsl.TenantOpts{Alias: "t", Isolated: true}).
+		Product(itdsl.ProductOpts{Alias: "p", TenantAlias: "t"}).
+		LicenseSchema(itdsl.LicenseSchemaOpts{
+			Alias:        "s",
+			ProductAlias: "p",
+			Fields: []ct.LicenseFieldDeclaration{
+				itdsl.LicenseField(worldWindowedCounterKey, ct.LicenseFieldTypeLIMIT, nil, new(ct.WINDOWEDCOUNTER)),
+			},
+		}).
+		ProductOrganization(itdsl.ProductOrganizationOpts{
+			Alias: worldOrganizationAlias, ProductAlias: "p",
+		}).
+		Build()
+
+	return &licenseWorld{
+		t:        t,
+		state:    state,
+		product:  state.Product("p"),
+		tenantID: state.Tenant("t").ID,
+	}
+}
+
 func (w *licenseWorld) productID() string { return w.product.ProductID }
 
 func (w *licenseWorld) client() *ct.ClientWithResponses {
@@ -90,6 +130,12 @@ func (w *licenseWorld) OrganizationID() string {
 // TemplateID is the template the world's organization is licensed from.
 func (w *licenseWorld) TemplateID() string {
 	return w.state.LicenseTemplate(worldTemplateAlias).ID
+}
+
+// SchemaID is the world's license schema, declared under the "s" alias by
+// both newLicenseWorld and newWindowedCounterWorld.
+func (w *licenseWorld) SchemaID() string {
+	return w.state.LicenseSchema("s").ID
 }
 
 // NewOrganization adds another organization to the same product, for the tests
@@ -277,20 +323,53 @@ func (h usageHandle) ReportBodyRaw(body string) *ct.ReportOrganizationUsageRespo
 	return resp
 }
 
+// SeriesRaw reads the organization's usage series unadjusted, for the tests
+// whose subject is a refusal.
+func (h usageHandle) SeriesRaw(
+	params ct.GetOrganizationUsageSeriesParams,
+) *ct.GetOrganizationUsageSeriesResponse {
+	h.t.Helper()
+	resp, err := h.client.GetOrganizationUsageSeriesWithResponse(
+		context.Background(), h.productID, h.organizationID, &params,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h usageHandle) Series(params ct.GetOrganizationUsageSeriesParams) ct.UsageSeriesResponse {
+	h.t.Helper()
+	resp := h.SeriesRaw(params)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+// seriesQuery is the common shape a series read starts from: one key, one
+// granularity, a range wide enough that the test's own fixture data cannot
+// fall outside it by accident.
+func seriesQuery(key string, granularity ct.UsageGranularity, from, to time.Time) ct.GetOrganizationUsageSeriesParams {
+	return ct.GetOrganizationUsageSeriesParams{
+		Key: key, Granularity: granularity, From: from, To: &to,
+	}
+}
+
 func gauge(key string, value float64) ct.UsageReportRequest {
 	return ct.UsageReportRequest{Key: key, Value: value}
 }
 
-// The one limit in templateSchemaFields. The windowed builders take no key
-// because only a limit can carry usage and the world declares exactly one.
+// The one limit in templateSchemaFields. It is declared GAUGE (see
+// templateSchemaFields), so every gauge() report in this package can use it;
+// a windowed report against it is refused by USAGE_SHAPE_MISMATCH. Tests
+// whose subject is a windowed counter build their own world instead — see
+// newWindowedCounterWorld and worldWindowedCounterKey.
 const worldLimitKey = "flows"
 
-func windowed(value float64, from, to time.Time) ct.UsageReportRequest {
-	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from, To: &to}
+func windowed(key string, value float64, from, to time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value, From: &from, To: &to}
 }
 
-func openEnded(value float64, from time.Time) ct.UsageReportRequest {
-	return ct.UsageReportRequest{Key: worldLimitKey, Value: value, From: &from}
+func openEnded(key string, value float64, from time.Time) ct.UsageReportRequest {
+	return ct.UsageReportRequest{Key: key, Value: value, From: &from}
 }
 
 func billingPeriod() (time.Time, time.Time) {

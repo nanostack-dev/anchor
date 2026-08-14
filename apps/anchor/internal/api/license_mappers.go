@@ -1,13 +1,18 @@
 package api
 
-import "anchor/internal/domain/license"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+
+	"anchor/internal/domain/license"
+)
 
 func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []license.FieldDeclaration {
 	out := make([]license.FieldDeclaration, 0, len(declarations))
 	for _, d := range declarations {
 		fd := license.FieldDeclaration{
-			Name: d.Name,
-			Type: d.Type,
+			Name:       d.Name,
+			Type:       d.Type,
+			UsageShape: d.UsageShape,
 		}
 		if d.Description != nil {
 			fd.Description = *d.Description
@@ -22,12 +27,13 @@ func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []licen
 
 func mapLicenseFieldToResponse(f license.Field) LicenseFieldResponse {
 	resp := LicenseFieldResponse{
-		Id:        f.ID,
-		Name:      f.Name,
-		Type:      f.Type,
-		Rules:     f.Rules,
-		CreatedAt: f.CreatedAt,
-		UpdatedAt: f.UpdatedAt,
+		Id:         f.ID,
+		Name:       f.Name,
+		Type:       f.Type,
+		Rules:      f.Rules,
+		UsageShape: f.UsageShape,
+		CreatedAt:  f.CreatedAt,
+		UpdatedAt:  f.UpdatedAt,
 	}
 	if f.Description != "" {
 		resp.Description = new(f.Description)
@@ -39,7 +45,7 @@ func mapLicenseSchemaToResponse(s license.Schema) LicenseSchemaResponse {
 	resp := LicenseSchemaResponse{
 		Id:        s.ID,
 		ProductId: s.ProductID,
-		Fields:    mapItems(s.Fields, mapLicenseFieldToResponse),
+		Fields:    slicex.Map(s.Fields, mapLicenseFieldToResponse),
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
 	}
@@ -127,6 +133,15 @@ func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationR
 	}
 }
 
+func mapUsageSeriesPointToResponse(p license.UsageSeriesPoint) UsageSeriesPointResponse {
+	return UsageSeriesPointResponse{
+		Bucket: p.Bucket,
+		Value:  p.Value,
+		From:   p.WindowFrom,
+		To:     p.WindowTo,
+	}
+}
+
 func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseFieldDifference {
 	return LicenseFieldDifference{
 		Field:         d.Field,
@@ -137,8 +152,12 @@ func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseField
 }
 
 func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
-	// mapItems never returns nil, so an identical copy reads back as [], not null.
-	differences := mapItems(d.Differences, mapLicenseFieldDifferenceToResponse)
+	// DiffValues returns nil for "nothing differs"; slicex.Map preserves that,
+	// but differences is a required, non-nullable array in the contract.
+	differences := slicex.Map(d.Differences, mapLicenseFieldDifferenceToResponse)
+	if differences == nil {
+		differences = []LicenseFieldDifference{}
+	}
 	return OrganizationLicenseDiffResponse{
 		OrganizationId: d.OrganizationID,
 		TemplateId:     d.TemplateID,

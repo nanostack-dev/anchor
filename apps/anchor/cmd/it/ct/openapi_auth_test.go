@@ -17,7 +17,7 @@ func TestOpenAPIProtected403(t *testing.T) {
 	}
 
 	spec, components, paramDefs := parseOpenAPISpec(t)
-	ops := extractOperations(spec, paramDefs, noAuth, itshared.ServerURL)
+	ops := extractOperations(spec, components, paramDefs, noAuth, itshared.ServerURL)
 	// expiredToken, err =
 	for _, op := range ops {
 		t.Run(

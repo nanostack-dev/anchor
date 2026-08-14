@@ -172,9 +172,10 @@ func enumValues(values ...string) *[]string {
 func templateSchemaFields() []ct.LicenseFieldDeclaration {
 	return []ct.LicenseFieldDeclaration{
 		{
-			Name:  "flows",
-			Type:  ct.LicenseFieldTypeLIMIT,
-			Rules: limitRules(0, 100000),
+			Name:       "flows",
+			Type:       ct.LicenseFieldTypeLIMIT,
+			Rules:      limitRules(0, 100000),
+			UsageShape: new(ct.GAUGE),
 		},
 		{Name: "sso", Type: ct.LicenseFieldTypeBOOLEAN},
 		{

@@ -39,7 +39,7 @@ func TestLicenseSchemaDelete(t *testing.T) {
 			tc.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
 				Fields: []ct.LicenseFieldDeclaration{
-					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil),
+					itdsl.LicenseField("seats", ct.LicenseFieldTypeLIMIT, nil, new(ct.GAUGE)),
 				},
 			},
 		)

@@ -50,6 +50,11 @@ func (m *LicenseSchemaFieldMapper) ToDomain(entity model.LicenseSchemaFields) li
 		// the next write re-validates it.
 		_ = json.Unmarshal([]byte(entity.RulesJSON), &set)
 	}
+	var usageShape *license.UsageShape
+	if entity.UsageShape != nil {
+		shape := license.UsageShape(*entity.UsageShape)
+		usageShape = &shape
+	}
 	return license.Field{
 		ID:          entity.ID,
 		SchemaID:    entity.LicenseSchemaID,
@@ -57,6 +62,7 @@ func (m *LicenseSchemaFieldMapper) ToDomain(entity model.LicenseSchemaFields) li
 		Type:        license.FieldType(entity.FieldType),
 		Description: entity.Description,
 		Rules:       set,
+		UsageShape:  usageShape,
 		CreatedAt:   entity.CreatedAt,
 		UpdatedAt:   entity.UpdatedAt,
 	}
@@ -67,6 +73,11 @@ func (m *LicenseSchemaFieldMapper) ToEntity(domain license.Field) model.LicenseS
 	if b, err := json.Marshal(domain.Rules); err == nil {
 		rulesJSON = string(b)
 	}
+	var usageShape *string
+	if domain.UsageShape != nil {
+		shape := string(*domain.UsageShape)
+		usageShape = &shape
+	}
 	return model.LicenseSchemaFields{
 		ID:              domain.ID,
 		LicenseSchemaID: domain.SchemaID,
@@ -74,6 +85,7 @@ func (m *LicenseSchemaFieldMapper) ToEntity(domain license.Field) model.LicenseS
 		FieldType:       string(domain.Type),
 		Description:     domain.Description,
 		RulesJSON:       rulesJSON,
+		UsageShape:      usageShape,
 		CreatedAt:       domain.CreatedAt,
 		UpdatedAt:       domain.UpdatedAt,
 	}

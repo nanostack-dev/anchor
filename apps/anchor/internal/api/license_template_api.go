@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 // ---------------------------------------------------------------------------
@@ -86,7 +88,7 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		return nil, err
 	}
 
-	items := mapItems(templates, mapLicenseTemplateToResponse)
+	items := slicex.Map(templates, mapLicenseTemplateToResponse)
 	return ListLicenseTemplates200JSONResponse(LicenseTemplateListResponse{
 		Items: items,
 		Count: len(items),

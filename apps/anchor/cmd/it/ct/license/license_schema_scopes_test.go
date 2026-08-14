@@ -50,7 +50,9 @@ func TestLicenseSchemaScopes(t *testing.T) {
 			context.Background(),
 			tc.product.ProductID,
 			ct.CreateLicenseSchemaJSONRequestBody{
-				Fields: []ct.LicenseFieldDeclaration{{Name: "flows", Type: ct.LicenseFieldTypeLIMIT}},
+				Fields: []ct.LicenseFieldDeclaration{
+					{Name: "flows", Type: ct.LicenseFieldTypeLIMIT, UsageShape: new(ct.GAUGE)},
+				},
 			},
 		)
 		require.NoError(t, err)

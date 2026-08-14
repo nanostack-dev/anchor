@@ -36,7 +36,9 @@ type LicenseSchemaOpts struct {
 }
 
 // LicenseField builds one field declaration. rules may be nil for a field the
-// test does not constrain.
+// test does not constrain. usageShape is required for a LIMIT field and must
+// be nil for every other type — pass it as new(nanostackClient.GAUGE) or
+// new(nanostackClient.WINDOWEDCOUNTER).
 //
 // There is no required flag to pass: every license template must set every
 // field its schema declares.
@@ -44,11 +46,13 @@ func LicenseField(
 	name string,
 	fieldType nanostackClient.LicenseFieldType,
 	fieldRules *nanostackClient.LicenseFieldRules,
+	usageShape *nanostackClient.UsageShape,
 ) nanostackClient.LicenseFieldDeclaration {
 	return nanostackClient.LicenseFieldDeclaration{
-		Name:  name,
-		Type:  fieldType,
-		Rules: fieldRules,
+		Name:       name,
+		Type:       fieldType,
+		Rules:      fieldRules,
+		UsageShape: usageShape,
 	}
 }
 
