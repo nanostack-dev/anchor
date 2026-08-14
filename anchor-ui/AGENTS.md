@@ -27,6 +27,10 @@ Canonical strategy: `nanostack-registry/docs/testing-strategy.md`. anchor-ui is 
 
 Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.
 
+## Code style
+
+- Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
+
 ## UI work
 
 Load the `anchor-ui-design` skill before adding or reshaping components — surface/elevation rules, semantic tokens, and feedback states live there. Light mode only: never author `dark:` classes.

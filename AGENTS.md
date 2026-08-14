@@ -15,6 +15,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - OpenAPI enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
 - Product API keys are Anchor *management* credentials and keep the fixed `anchor_prd_apikey_` prefix. Configurable product-level prefixes apply only to organization API keys (`*_org_apikey_`).
 - Contract first: update `openapi.yaml`, then regenerate through the repo command. Generated files are never hand-edited.
+- Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
 
 ## Agent skills
 
