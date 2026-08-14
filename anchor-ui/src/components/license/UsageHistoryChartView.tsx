@@ -24,7 +24,11 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { formatExactNumber, formatUsageNumber } from "./license-usage-status";
+import {
+	formatExactNumber,
+	formatUsageNumber,
+	niceCeiling,
+} from "./license-usage-status";
 
 /**
  * Granularity is derived from the range rather than chosen, because the
@@ -175,7 +179,12 @@ export function UsageHistoryChartView({
 							tickLine={false}
 							axisLine={false}
 							tickMargin={8}
-							width={44}
+							width={56}
+							domain={[
+								0,
+								(dataMax: number) =>
+									niceCeiling(Math.max(dataMax, limit) * 1.05),
+							]}
 							tickFormatter={(value: number) => formatUsageNumber(value)}
 						/>
 						<ReferenceLine

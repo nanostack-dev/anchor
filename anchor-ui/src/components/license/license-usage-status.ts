@@ -64,6 +64,21 @@ export function formatExactNumber(value: number) {
 }
 
 /**
+ * Rounds up to the next 1, 2 or 5 times a power of ten, so a chart's top tick
+ * is a number a reader recognises rather than the raw headroom calculation.
+ */
+export function niceCeiling(value: number) {
+	if (!Number.isFinite(value) || value <= 0) {
+		return 1;
+	}
+	const magnitude = 10 ** Math.floor(Math.log10(value));
+	const normalized = value / magnitude;
+	const step =
+		normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+	return step * magnitude;
+}
+
+/**
  * Clamped so a limit of zero, or usage far past the limit, still yields a bar
  * width between 0 and 100 rather than a division by zero or an overflow.
  */
