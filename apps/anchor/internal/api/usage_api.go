@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
@@ -39,8 +40,8 @@ const defaultUsageSeriesLimit int32 = 50
 
 func usageSeriesPagination(limit *int32, offset *int32) search.Pagination {
 	return search.Pagination{
-		Limit:  valueOr(limit, defaultUsageSeriesLimit),
-		Offset: valueOr(offset, int32(0)),
+		Limit:  ptr.DerefOr(limit, defaultUsageSeriesLimit),
+		Offset: ptr.DerefOr(offset, int32(0)),
 	}
 }
 

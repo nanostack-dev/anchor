@@ -6,6 +6,7 @@ import (
 	"anchor/internal/domain/email"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
@@ -15,15 +16,8 @@ func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, 
 		return "", 0, 0, err
 	}
 
-	var limitValue int64
-	if limit != nil {
-		limitValue = *limit
-	}
-
-	var offsetValue int64
-	if offset != nil {
-		offsetValue = *offset
-	}
+	limitValue := ptr.DerefOr(limit, int64(0))
+	offsetValue := ptr.DerefOr(offset, int64(0))
 
 	return tenantID, limitValue, offsetValue, nil
 }
