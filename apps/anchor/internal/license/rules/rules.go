@@ -281,7 +281,12 @@ func validateStringValue(set Set, value any) error {
 	}
 
 	if set.Pattern != nil {
-		re, err := regexp.Compile(*set.Pattern)
+		// MatchString only asks whether the pattern occurs anywhere in s, so an
+		// unanchored pattern like "[a-z]+" would accept "yoW" on the strength
+		// of its "yo" substring. A declared pattern constrains the whole value,
+		// so the match is anchored to the full string here regardless of
+		// whether the author already anchored it themselves.
+		re, err := regexp.Compile(`\A(?:` + *set.Pattern + `)\z`)
 		if err != nil {
 			// A stored schema is validated on write, so this is unreachable in
 			// practice. Report it as a pattern violation rather than panicking.

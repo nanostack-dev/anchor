@@ -75,6 +75,31 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "region", "pattern")
 	})
 
+	t.Run("rejects a string that only partially matches its field's pattern", func(t *testing.T) {
+		// The "region" fixture's pattern is anchored (^...$), so a value that
+		// merely contains no valid substring at all would fail whether or not
+		// the match is anchored, and would not isolate the bug. This declares
+		// its own unanchored pattern instead, matching what a schema author is
+		// free to write, and a value that contains a matching substring
+		// without being wholly one: "yoW" against "[a-z]+".
+		tc := newTestCtx(t)
+		declareSchema(t, tc, []ct.LicenseFieldDeclaration{
+			{
+				Name:  "code",
+				Type:  ct.LicenseFieldTypeSTRING,
+				Rules: &ct.LicenseFieldRules{Pattern: new("[a-z]+")},
+			},
+		})
+
+		resp, err := createTemplateRaw(
+			t, tc, uniqueTemplateName(), ct.LicenseTemplateValues{"code": "yoW"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "code", "pattern")
+	})
+
 	t.Run("rejects a value of the wrong type for its field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
