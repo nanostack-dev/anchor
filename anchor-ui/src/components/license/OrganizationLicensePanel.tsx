@@ -3,7 +3,6 @@ import {
 	getLicenseSchemaOptions,
 	getOrganizationLicenseQueryKey,
 } from "@/client/@tanstack/react-query.gen";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
 	Empty,
@@ -17,8 +16,11 @@ import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeCheck, Info, TriangleAlert } from "lucide-react";
+import { BadgeCheck, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { LicenseValueFields } from "./LicenseValueFields";
+import { OrganizationLicenseLimits } from "./OrganizationLicenseLimits";
+import { UsageHistoryChart } from "./UsageHistoryChart";
 
 interface OrganizationLicensePanelProps {
 	productId: string;
@@ -35,6 +37,8 @@ export function OrganizationLicensePanel({
 	productId,
 	organizationId,
 }: OrganizationLicensePanelProps) {
+	const [selectedField, setSelectedField] = useState<string | null>(null);
+
 	const schemaQuery = useQuery({
 		...getLicenseSchemaOptions({ path: { product_id: productId } }),
 		retry: false,
@@ -125,9 +129,13 @@ export function OrganizationLicensePanel({
 
 	const license = licenseQuery.data;
 	const schema = schemaQuery.data;
+	const usage = license.usage ?? {};
+	const limitFields = Object.keys(usage).sort((a, b) => a.localeCompare(b));
+	const chartedField =
+		selectedField && usage[selectedField] ? selectedField : limitFields[0];
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div className="rounded-lg bg-muted/50 p-4">
 					<dt className="text-xs font-semibold text-muted-foreground">
@@ -147,30 +155,46 @@ export function OrganizationLicensePanel({
 				</div>
 			</dl>
 
-			<Alert>
-				<Info />
-				<AlertTitle>Usage and status are not shown yet</AlertTitle>
-				<AlertDescription>
-					Each limit&rsquo;s latest usage and derived status (
-					<code>within_limit</code>, <code>at_limit</code>,{" "}
-					<code>exceeded</code>, <code>stale</code>) depend on backend work that
-					has not shipped yet. This view shows the values this
-					organization&rsquo;s license currently holds.
-				</AlertDescription>
-			</Alert>
-
-			{schema ? (
-				<LicenseValueFields fields={schema.fields} values={license.values} />
-			) : (
-				<div className="divide-y divide-border rounded-lg border border-border">
-					{Object.entries(license.values).map(([name, value]) => (
-						<div key={name} className="flex items-center justify-between p-3">
-							<span className="font-mono text-sm">{name}</span>
-							<span className="text-sm">{String(value ?? "—")}</span>
-						</div>
-					))}
+			<section className="flex flex-col gap-3">
+				<div className="flex flex-col gap-0.5">
+					<h2 className="text-sm font-semibold">Limits</h2>
+					<p className="text-xs text-muted-foreground">
+						Latest reported usage against what this organization is allowed.
+						Anchor records usage past a limit and never blocks on it. Select a
+						limit to see its history.
+					</p>
 				</div>
+				<OrganizationLicenseLimits
+					usage={usage}
+					selectedField={chartedField ?? null}
+					onSelectField={setSelectedField}
+				/>
+			</section>
+
+			{chartedField && (
+				<UsageHistoryChart
+					productId={productId}
+					organizationId={organizationId}
+					field={chartedField}
+					limit={usage[chartedField].limit}
+				/>
 			)}
+
+			<section className="flex flex-col gap-3">
+				<h2 className="text-sm font-semibold">All license values</h2>
+				{schema ? (
+					<LicenseValueFields fields={schema.fields} values={license.values} />
+				) : (
+					<div className="divide-y divide-border rounded-lg border border-border">
+						{Object.entries(license.values).map(([name, value]) => (
+							<div key={name} className="flex items-center justify-between p-3">
+								<span className="font-mono text-sm">{name}</span>
+								<span className="text-sm">{String(value ?? "—")}</span>
+							</div>
+						))}
+					</div>
+				)}
+			</section>
 		</div>
 	);
 }

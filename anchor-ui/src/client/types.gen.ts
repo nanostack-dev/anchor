@@ -1830,6 +1830,11 @@ export enum LicenseFieldType {
     STRING = 'STRING'
 }
 
+export enum UsageShape {
+    GAUGE = 'GAUGE',
+    WINDOWED_COUNTER = 'WINDOWED_COUNTER'
+}
+
 export type LicenseFieldRules = {
     /**
      * Inclusive lower bound. Numeric fields only.
@@ -1865,6 +1870,10 @@ export type LicenseFieldDeclaration = {
     type: LicenseFieldType;
     description?: string;
     rules?: LicenseFieldRules;
+    /**
+     * Required when type is LIMIT, and refused for every other type. Every usage report against this field must carry a window when this is WINDOWED_COUNTER, and must not when it is GAUGE.
+     */
+    usage_shape?: UsageShape;
 };
 
 export type LicenseFieldResponse = {
@@ -1873,6 +1882,7 @@ export type LicenseFieldResponse = {
     type: LicenseFieldType;
     description?: string;
     rules: LicenseFieldRules;
+    usage_shape?: UsageShape;
     created_at: string;
     updated_at: string;
 };
@@ -1978,8 +1988,43 @@ export type OrganizationLicenseResponse = {
      * What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
      */
     values: LicenseTemplateValues;
+    /**
+     * One entry per limit field the product's license schema declares, keyed by license field name — every declared field that is not a limit never appears here. Present on the license read, where it is computed fresh on every call; absent from the response to instantiating or adjusting a license, which does not compute it.
+     */
+    usage?: {
+        [key: string]: LicenseFieldUsageResponse;
+    };
     created_at: string;
     updated_at: string;
+};
+
+/**
+ * A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
+ */
+export enum LicenseUsageStatus {
+    WITHIN_LIMIT = 'within_limit',
+    AT_LIMIT = 'at_limit',
+    EXCEEDED = 'exceeded',
+    STALE = 'stale'
+}
+
+/**
+ * One limit field's latest reported usage and derived status, as read from an organization's license.
+ */
+export type LicenseFieldUsageResponse = {
+    /**
+     * This organization's current value for the field, mirroring `values` on the enclosing license.
+     */
+    limit: number;
+    /**
+     * The latest reported value, or null if never reported.
+     */
+    usage?: number;
+    status: LicenseUsageStatus;
+    /**
+     * When the latest usage observation was recorded. Null exactly when `usage` is null.
+     */
+    last_reported_at?: string;
 };
 
 /**
@@ -2025,7 +2070,7 @@ export type OrganizationLicenseDiffResponse = {
  */
 export type UsageReportRequest = {
     /**
-     * The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage.
+     * The license field this value is measured against. The product's license schema must declare it, and it must be a limit. A boolean feature toggle carries no usage. The field also declares a usage shape — GAUGE or WINDOWED_COUNTER — and this report must carry a window if and only if the field is WINDOWED_COUNTER.
      */
     key: string;
     /**
@@ -2066,6 +2111,38 @@ export type UsageObservationResponse = {
      * When Anchor accepted the report. Anchor sets it, so a consumer cannot backdate a report or write into the future.
      */
     observed_at: string;
+};
+
+/**
+ * Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
+ */
+export enum UsageGranularity {
+    MINUTE = 'MINUTE',
+    HOUR = 'HOUR',
+    DAY = 'DAY'
+}
+
+/**
+ * One bucket of an organization's usage series.
+ */
+export type UsageSeriesPointResponse = {
+    /**
+     * The start of this bucket, at the requested granularity.
+     */
+    bucket: string;
+    /**
+     * The last observation's value in this bucket.
+     */
+    value: number;
+    /**
+     * Present when the observation the bucket was built from was a windowed counter, absent for a gauge — carried through the aggregate unchanged from the underlying report.
+     */
+    from?: string;
+    to?: string;
+};
+
+export type UsageSeriesResponse = PagedListResponse & {
+    items: Array<UsageSeriesPointResponse>;
 };
 
 /**
@@ -5985,6 +6062,60 @@ export type ReportOrganizationUsageResponses = {
 };
 
 export type ReportOrganizationUsageResponse = ReportOrganizationUsageResponses[keyof ReportOrganizationUsageResponses];
+
+export type GetOrganizationUsageSeriesData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query: {
+        /**
+         * The license field this series was measured against.
+         */
+        key: string;
+        granularity: UsageGranularity;
+        /**
+         * Inclusive start of the range.
+         */
+        from: string;
+        /**
+         * Exclusive end of the range. Omit to mean now.
+         */
+        to?: string;
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/usage/series';
+};
+
+export type GetOrganizationUsageSeriesErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetOrganizationUsageSeriesError = GetOrganizationUsageSeriesErrors[keyof GetOrganizationUsageSeriesErrors];
+
+export type GetOrganizationUsageSeriesResponses = {
+    /**
+     * Success
+     */
+    200: UsageSeriesResponse;
+};
+
+export type GetOrganizationUsageSeriesResponse = GetOrganizationUsageSeriesResponses[keyof GetOrganizationUsageSeriesResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

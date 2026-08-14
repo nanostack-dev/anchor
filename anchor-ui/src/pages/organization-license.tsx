@@ -2,6 +2,13 @@ import { searchProductOrganizationsOptions } from "@/client/@tanstack/react-quer
 import { Page } from "@/components/common/Page";
 import { OrganizationLicensePanel } from "@/components/license/OrganizationLicensePanel";
 import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "@/components/ui/empty";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -91,13 +98,18 @@ export default function OrganizationLicensePage() {
 						organizationId={selectedOrgId}
 					/>
 				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted p-12 text-center">
-						<BadgeCheck className="mb-4 size-10 text-muted-foreground" />
-						<h3 className="text-lg font-medium">No Organization Selected</h3>
-						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
-							Select an organization to review its license.
-						</p>
-					</div>
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<BadgeCheck />
+							</EmptyMedia>
+							<EmptyTitle>No organization selected</EmptyTitle>
+							<EmptyDescription>
+								Pick an organization above to see what it is allowed, how much
+								of each limit it has used, and its usage history.
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
 				)}
 			</div>
 		</Page>
