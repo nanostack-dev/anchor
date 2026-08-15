@@ -54,7 +54,7 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `workspaces.go` | done — create, get, update, delete, search, list |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
 | `users.go` | done — create, get, delete, search, list, a user's organizations |
-| `license.go` | partial — read (cached, fail-open), instantiate, adjust, diff, report usage; `Check()`/threshold blocked on #70 |
+| `license.go` | partial — read (cached, fail-open), instantiate, adjust, diff, report usage, `LimitUsage` decision value; usage series not wrapped |
 | `README.md` | done — consumer-facing quickstart |
 | `anchorsdk_test.go` | done — table-driven against an `httptest.Server` |
 | `license_test.go` | done — decision-shaped routing, error classification, cache fail-open |
@@ -74,20 +74,19 @@ Built now, against what is merged plus PR #85's branch (`feat/65-usage-observati
 - **`License.Get`** — every field's value, cached per-organization on the `Client`, fail-open on a stale entry.
 - **`License.Instantiate`**, **`License.Adjust`** (a builder: `Set`/`Values`) — both write the fresh response straight into the cache rather than merely evicting it, since they already hold the post-write state; the next `Get` is then free.
 - **`License.Diff`** — uncached, matching the epic's "state and history are separate" split; there is nothing to cache in a route nobody polls on a hot path.
-- **`License.ReportUsage`** — a builder (`From`/`To`) over PR #85's `ReportOrganizationUsage`. Does not touch the license cache: usage is a separate observation stream from a license's own field values, and today's license read carries no usage to invalidate.
+- **`License.ReportUsage`** — a builder (`From`/`To`) over PR #85's `ReportOrganizationUsage`. Does not touch the license cache. Anchor derives usage on every license read (ADR-0012), so nothing server-side goes stale; but the SDK caches the whole response, usage included, so a report reaches `Get` only on its next live refresh. Evicting on every report would defeat the cache for exactly the caller who reports most, so the cost is documented on both methods and `Invalidate` is the remedy. Worth a reviewer's eye — the opposite call is defensible.
 - **`License.Invalidate`** — manual cache clear, for when the license changed through something other than this `Client` (another service, the admin UI).
 
 Judgment calls made without a human in the loop, flagged here rather than silently baked in:
 
 - **Fail-open only covers non-permanent refresh failures.** A transport error, a 5xx, or 429-with-retries-exhausted serves the stale cache; a permanent 4xx (403, 404, a bad request) does not, even with `Strict` off. The epic's "an outage must not block a paying customer" is about outages specifically — serving frozen data forever behind a revoked key or a deleted organization seemed like the worse failure mode, and it reuses `Error.Permanent()` rather than inventing a second classification. Worth a reviewer's eye: this is a reading of intent, not a line the issue states explicitly.
 - **30s default cache TTL.** Chosen, not derived from anything in the epic or ADRs — long enough that a hot-path check adds no per-request round trip, short enough that an out-of-band change is visible reasonably quickly. Overridable via `Config.LicenseCache.TTL`.
-- **No decision value, no `Check()`, no threshold predicate.** Blocked on nanostack-dev/anchor#70 (status on a license read) and, for the predicate, the same missing data. Not stubbed, not half-built — see the PR description for the full acceptance-criteria accounting.
+- **`LimitUsage` is a value on the snapshot, not a `Check()` call.** With nanostack-dev/anchor#70 merged, the license read carries usage and a derived status, so stories 37–39 are answerable. They are answered by `LicenseSnapshot.Limit`/`Limits` returning a `LimitUsage` with `Remaining`, `Fraction`, and `Over` on it — no method named `Check`, which reads like a gate ADR-0001 forbids. `Remaining` and `Fraction` return `(value, ok)` so an unreported field cannot masquerade as zero headroom, and `Over` is false whenever there is no usage to compare, keeping a threshold warning from firing on absent data.
 - **`Adjust()` takes no arguments**, unlike `Create`/`Update` elsewhere in this package which take their one unambiguous required field positionally. A license adjustment has no field that is always "the" field being changed, so forcing one into the call felt arbitrary; `Set`/`Values` on the builder carry the whole thing.
 
 ## Remaining work
 
-- `License.Check()` and a threshold predicate, once nanostack-dev/anchor#70 adds a derived status to a license read.
-- Reading the usage series, once nanostack-dev/anchor#68 ships its endpoint.
+- Reading the usage series. nanostack-dev/anchor#68 shipped `GetOrganizationUsageSeries` on the generated client; this facade does not wrap it yet.
 
 ## Generated-client facts worth knowing
 

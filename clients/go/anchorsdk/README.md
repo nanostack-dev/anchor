@@ -178,11 +178,35 @@ c, err := anchorsdk.New(anchorsdk.Config{
 organization needs no round trip. Call `o.License().Invalidate()` if the license changed some other
 way — another service, the admin UI.
 
-**Not yet available:** a decision value (`status`, `limit`, `current`, `remaining`) and a threshold
-predicate. Both need a derived `status` on the license read, which Anchor does not return yet
-(tracked as [nanostack-dev/anchor#70](https://github.com/nanostack-dev/anchor/issues/70)); reading the
-usage series is tracked separately as
-[nanostack-dev/anchor#68](https://github.com/nanostack-dev/anchor/issues/68).
+A license read carries, per limit field, the latest reported usage and the status Anchor derives from
+it — `within_limit`, `at_limit`, `exceeded`, `stale`. `LicenseSnapshot.Limit` returns one as a
+decision value, with the headroom arithmetic and a threshold predicate already on it:
+
+```go
+snapshot, err := o.License().Get(ctx)
+
+limit, ok := snapshot.Limit("max_flows")     // ok is false for a field that is not a limit
+limit.Status                                 // nanoclient.LicenseUsageStatus
+remaining, known := limit.Remaining()        // known is false when nothing was ever reported
+if limit.Over(0.8) {                         // false when there is no usage to compare
+	// prompt an upgrade before the ceiling, not at it
+}
+
+for _, limit := range snapshot.Limits() {    // every limit field, sorted by key
+	// ...
+}
+```
+
+`stale` means the field has never been reported against, so there is no current number to trust. It
+reads "unknown", not "breached" — do not treat it as a denial.
+
+Usage travels inside the cached snapshot. Anchor recomputes it on every read, but a cached snapshot
+was computed when it was fetched, so a `ReportUsage` call reaches `Get` only on the next live
+refresh. Call `o.License().Invalidate()` between the two to read back what you just reported.
+
+**Not yet available:** reading the usage series
+([`GET .../usage/series`](https://github.com/nanostack-dev/anchor/issues/68) shipped, but this facade
+does not wrap it yet).
 
 ### Searching
 

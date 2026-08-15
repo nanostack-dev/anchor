@@ -3,10 +3,13 @@ package anchorsdk_test
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
+	nanoclient "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/anchor/clients/go/anchorsdk"
 )
 
@@ -26,6 +29,19 @@ const (
 
 	usageObservationBody = `{"id":"uob_1","organization_id":"org_1","product_id":"prd_test","key":"max_flows",` +
 		`"value":37,"observed_at":"2026-01-01T00:00:00Z"}`
+
+	// licenseBodyWithUsage is a license read carrying the usage map Anchor
+	// derives per limit field, one entry per status LimitUsage has to read:
+	// reported and under the ceiling, reported and past it, never reported,
+	// and a zero ceiling that no fraction can describe.
+	licenseBodyWithUsage = `{"id":"olic_1","organization_id":"org_1","product_id":"prd_test","template_id":"tpl_1",` +
+		`"instantiated_at":"2026-01-01T00:00:00Z","created_at":"2026-01-01T00:00:00Z",` +
+		`"updated_at":"2026-01-01T00:00:00Z","values":{"max_flows":100,"monthly_runs":500,` +
+		`"stored_bytes":50,"free_seats":0,"premium_support":true},"usage":{` +
+		`"max_flows":{"limit":100,"usage":80,"status":"within_limit","last_reported_at":"2026-03-01T00:00:00Z"},` +
+		`"monthly_runs":{"limit":500,"usage":640,"status":"exceeded","last_reported_at":"2026-03-02T00:00:00Z"},` +
+		`"stored_bytes":{"limit":50,"usage":null,"status":"stale","last_reported_at":null},` +
+		`"free_seats":{"limit":0,"usage":0,"status":"at_limit","last_reported_at":"2026-03-03T00:00:00Z"}}}`
 )
 
 // newLicenseTestClient is [newTestClient] plus a cache policy: License.Get is
@@ -552,5 +568,187 @@ func TestLicenseInvalidateForcesRefetch(t *testing.T) {
 	}
 	if got := len(stub.calls()); got != 2 {
 		t.Errorf("server saw %d requests, want 2 (Invalidate must force a live refetch)", got)
+	}
+}
+
+func getLicenseWithUsage(t *testing.T) *anchorsdk.LicenseSnapshot {
+	t.Helper()
+
+	_, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyWithUsage})
+	c := newTestClient(t, baseURL, 1)
+
+	snapshot, err := c.Organization(testOrgID).License().Get(t.Context())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	return snapshot
+}
+
+func TestLicenseSnapshotLimit(t *testing.T) {
+	snapshot := getLicenseWithUsage(t)
+
+	tests := []struct {
+		name              string
+		key               string
+		wantFound         bool
+		wantStatus        nanoclient.LicenseUsageStatus
+		wantLimit         float64
+		wantUsage         float64
+		wantReported      bool
+		wantRemaining     float64
+		wantRemainingOK   bool
+		wantFraction      float64
+		wantFractionOK    bool
+		wantOverEightyPct bool
+	}{
+		{
+			name:            "reported under the ceiling",
+			key:             "max_flows",
+			wantFound:       true,
+			wantStatus:      nanoclient.WithinLimit,
+			wantLimit:       100,
+			wantUsage:       80,
+			wantReported:    true,
+			wantRemaining:   20,
+			wantRemainingOK: true,
+			wantFraction:    0.8,
+			wantFractionOK:  true,
+			// 80 of 100 has reached 0.8, so Over(0.8) fires: a warning at the
+			// threshold, not one step past it.
+			wantOverEightyPct: true,
+		},
+		{
+			name:              "reported past the ceiling",
+			key:               "monthly_runs",
+			wantFound:         true,
+			wantStatus:        nanoclient.Exceeded,
+			wantLimit:         500,
+			wantUsage:         640,
+			wantReported:      true,
+			wantRemaining:     -140,
+			wantRemainingOK:   true,
+			wantFraction:      1.28,
+			wantFractionOK:    true,
+			wantOverEightyPct: true,
+		},
+		{
+			name:       "never reported",
+			key:        "stored_bytes",
+			wantFound:  true,
+			wantStatus: nanoclient.Stale,
+			wantLimit:  50,
+			// Remaining and Fraction give nothing, and Over stays false: an
+			// unreported field must not warn about a number nobody sent.
+			wantReported: false,
+		},
+		{
+			name:            "zero ceiling",
+			key:             "free_seats",
+			wantFound:       true,
+			wantStatus:      nanoclient.AtLimit,
+			wantLimit:       0,
+			wantUsage:       0,
+			wantReported:    true,
+			wantRemaining:   0,
+			wantRemainingOK: true,
+			// A share of nothing has no value, so Fraction and Over decline
+			// rather than dividing by zero.
+			wantFractionOK: false,
+		},
+		{
+			name:      "declared but not a limit",
+			key:       "premium_support",
+			wantFound: false,
+		},
+		{
+			name:      "not in the schema",
+			key:       "no_such_field",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			limit, found := snapshot.Limit(tt.key)
+			if found != tt.wantFound {
+				t.Fatalf("Limit(%q) found = %v, want %v", tt.key, found, tt.wantFound)
+			}
+			if !tt.wantFound {
+				return
+			}
+
+			if limit.Key != tt.key {
+				t.Errorf("Key = %q, want %q", limit.Key, tt.key)
+			}
+			if limit.Status != tt.wantStatus {
+				t.Errorf("Status = %q, want %q", limit.Status, tt.wantStatus)
+			}
+			if limit.Limit != tt.wantLimit {
+				t.Errorf("Limit = %v, want %v", limit.Limit, tt.wantLimit)
+			}
+			if limit.Usage != tt.wantUsage {
+				t.Errorf("Usage = %v, want %v", limit.Usage, tt.wantUsage)
+			}
+			if limit.Reported != tt.wantReported {
+				t.Errorf("Reported = %v, want %v", limit.Reported, tt.wantReported)
+			}
+			if limit.LastReportedAt.IsZero() == tt.wantReported {
+				t.Errorf("LastReportedAt = %v, want zero exactly when Reported is false", limit.LastReportedAt)
+			}
+
+			remaining, remainingOK := limit.Remaining()
+			if remainingOK != tt.wantRemainingOK || remaining != tt.wantRemaining {
+				t.Errorf("Remaining() = (%v, %v), want (%v, %v)",
+					remaining, remainingOK, tt.wantRemaining, tt.wantRemainingOK)
+			}
+
+			fraction, fractionOK := limit.Fraction()
+			if fractionOK != tt.wantFractionOK {
+				t.Errorf("Fraction() ok = %v, want %v", fractionOK, tt.wantFractionOK)
+			}
+			if fractionOK && math.Abs(fraction-tt.wantFraction) > 1e-9 {
+				t.Errorf("Fraction() = %v, want %v", fraction, tt.wantFraction)
+			}
+
+			if got := limit.Over(0.8); got != tt.wantOverEightyPct {
+				t.Errorf("Over(0.8) = %v, want %v", got, tt.wantOverEightyPct)
+			}
+		})
+	}
+}
+
+func TestLicenseSnapshotLimits(t *testing.T) {
+	snapshot := getLicenseWithUsage(t)
+
+	var keys []string
+	for _, limit := range snapshot.Limits() {
+		keys = append(keys, limit.Key)
+	}
+
+	want := []string{"free_seats", "max_flows", "monthly_runs", "stored_bytes"}
+	if !slices.Equal(keys, want) {
+		t.Errorf("Limits() keys = %v, want %v (every limit field, sorted by key)", keys, want)
+	}
+}
+
+// TestLicenseSnapshotLimitWithoutUsage covers the response Anchor returns from
+// a write: it computes usage on the license read only, so a snapshot built
+// from one carries none and every limit lookup must decline rather than
+// report a zero ceiling nobody set.
+func TestLicenseSnapshotLimitWithoutUsage(t *testing.T) {
+	_, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyV1})
+	c := newTestClient(t, baseURL, 1)
+
+	snapshot, err := c.Organization(testOrgID).License().Get(t.Context())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if limit, found := snapshot.Limit("max_flows"); found {
+		t.Errorf("Limit(max_flows) = %+v, found, want not found on a response carrying no usage", limit)
+	}
+	if got := snapshot.Limits(); got != nil {
+		t.Errorf("Limits() = %v, want nil on a response carrying no usage", got)
 	}
 }
