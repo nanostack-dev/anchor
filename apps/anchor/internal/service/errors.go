@@ -114,6 +114,14 @@ func NewProductUserNotFoundError(productUserID string) *fault.Error {
 	)
 }
 
+func NewOrganizationNotFoundError(organizationID string) *fault.Error {
+	return fault.NewWithStatus(
+		"ORGANIZATION_NOT_FOUND",
+		fmt.Sprintf("Organization %s does not exist", organizationID),
+		http.StatusNotFound,
+	)
+}
+
 func NewRoleWithAlreadyExistingNameError(roleName, productID string) *fault.Error {
 	return fault.BadRequest("ROLE_NAME_DUPLICATE", "Product role with this name already exists in the product").
 		Metadata(map[string]any{
