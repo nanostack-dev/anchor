@@ -130,6 +130,27 @@ type OrganizationLicenseRepository interface {
 	) (int, error)
 }
 
+// OrganizationLicenseChangeRepository persists an Organization's license
+// history. Append is the only write there is, following
+// IntegrationAuditLogRepository: an entry is never updated and never deleted,
+// so a correction is a later entry rather than an edit of an earlier one.
+//
+// Every method is tenant-scoped and product-scoped. There is no *Internal
+// variant: nothing in the licensing write path runs without an authenticated
+// tenant.
+type OrganizationLicenseChangeRepository interface {
+	// Append writes every entry of one change as a single statement, so the
+	// license fields an adjustment moved land together or not at all.
+	Append(
+		ctx context.Context, changes []license.OrganizationLicenseChange,
+	) error
+	// ListByOrganization returns the Organization's history newest first, one
+	// page at a time. An Organization with no history reads as an empty page.
+	ListByOrganization(
+		ctx context.Context, in license.ListLicenseChangesInput,
+	) (search.Result[license.OrganizationLicenseChange], error)
+}
+
 // UsageObservationRepository persists what an Organization has used. Append is
 // the only write there is: an observation is never updated and never deleted,
 // so a correction is a later observation rather than an edit of an earlier one.

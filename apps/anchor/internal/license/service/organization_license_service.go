@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -86,6 +87,8 @@ type organizationLicenseService struct {
 	templates   LicenseTemplateService
 	schemas     LicenseSchemaService
 	usage       licenserepo.UsageObservationRepository
+	changes     licenserepo.OrganizationLicenseChangeRepository
+	transactor  transactor.Transactor
 	licenses    cache.Cache[license.OrganizationLicense]
 	logger      zerolog.Logger
 }
@@ -95,6 +98,8 @@ func NewOrganizationLicenseService(
 	templates LicenseTemplateService,
 	schemas LicenseSchemaService,
 	usage licenserepo.UsageObservationRepository,
+	changes licenserepo.OrganizationLicenseChangeRepository,
+	tx transactor.Transactor,
 	cacheStore cache.Store,
 	logger zerolog.Logger,
 ) OrganizationLicenseService {
@@ -103,6 +108,8 @@ func NewOrganizationLicenseService(
 		templates:   templates,
 		schemas:     schemas,
 		usage:       usage,
+		changes:     changes,
+		transactor:  tx,
 		licenses: cache.New[license.OrganizationLicense](
 			cacheStore, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
 		),
@@ -160,28 +167,41 @@ func (s *organizationLicenseService) Instantiate(
 	// since the template was last written would otherwise block onboarding onto
 	// a tier still on sale, and Anchor validates but never gates. See
 	// docs/adr/0009-every-license-field-is-mandatory.md.
+	instantiatedAt := time.Now()
 	instantiated := license.OrganizationLicense{
 		PlatformTenantID: in.TenantID,
 		ProductID:        in.ProductID,
 		OrganizationID:   in.OrganizationID,
 		TemplateID:       template.ID,
-		InstantiatedAt:   time.Now(),
+		InstantiatedAt:   instantiatedAt,
 		Values:           template.Values,
 	}
 	instantiated.GenerateID()
 
-	created, err := s.licenseRepo.Create(ctx, instantiated)
-	if err != nil {
-		// Checked by the foreign key rather than by a read before the write: one
-		// round trip, and no window in which the Organization is deleted between
-		// the check and the insert.
-		if pgerr.IsForeignKeyViolation(err, organizationLicenseOrganizationConstraint) {
-			return license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
+	// The license and its first history entry land together or not at all: a
+	// license whose instantiation went unrecorded would read as one that was
+	// never granted.
+	var created license.OrganizationLicense
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.licenseRepo.Create(txCtx, instantiated)
+		if createErr != nil {
+			// Checked by the foreign key rather than by a read before the write:
+			// one round trip, and no window in which the Organization is deleted
+			// between the check and the insert.
+			if pgerr.IsForeignKeyViolation(createErr, organizationLicenseOrganizationConstraint) {
+				return ErrLicenseOrganizationNotFound
+			}
+			if pgerr.IsUniqueViolation(createErr, organizationLicenseUniqueConstraint) {
+				return ErrOrganizationLicenseAlreadyExists
+			}
+			return createErr
 		}
-		if pgerr.IsUniqueViolation(err, organizationLicenseUniqueConstraint) {
-			return license.OrganizationLicense{}, ErrOrganizationLicenseAlreadyExists
-		}
-		return license.OrganizationLicense{}, err
+		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
+			license.NewInstantiationChange(created, instantiatedAt),
+		})
+	}); txErr != nil {
+		return license.OrganizationLicense{}, txErr
 	}
 
 	// Nothing can be cached before the license exists — a not-found read is
@@ -273,15 +293,34 @@ func (s *organizationLicenseService) AdjustValues(
 
 	// Merged, not replaced. The merged set is validated whole, so a license that
 	// has fallen behind a tightened schema is corrected rather than re-saved.
+	previous := existing.Values
 	adjusted := existing.AdjustedValues(in.Values)
 	if err = s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, adjusted); err != nil {
 		return license.OrganizationLicense{}, err
 	}
 	existing.Values = adjusted
 
-	updated, err := s.licenseRepo.Update(ctx, in.TenantID, *existing)
-	if err != nil {
-		return license.OrganizationLicense{}, err
+	// One reading of the clock for the whole request, and the same clock every
+	// other history entry is stamped from. Taking it from the row the update
+	// returns would read the database's clock instead, and a history ordered
+	// across two clocks can report a change before the change it followed.
+	changedAt := time.Now()
+
+	// The adjustment and the entries recording it land together or not at all:
+	// a raised limit whose history entry was lost would leave the account
+	// looking like it was always on that number.
+	var updated license.OrganizationLicense
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)
+		if updateErr != nil {
+			return updateErr
+		}
+		return s.changes.Append(
+			txCtx, license.NewAdjustmentChanges(updated, previous, changedAt),
+		)
+	}); txErr != nil {
+		return license.OrganizationLicense{}, txErr
 	}
 
 	// Without this, a limit lowered to make a previously-compliant Organization

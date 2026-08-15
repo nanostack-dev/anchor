@@ -3300,6 +3300,89 @@ components:
         count:
           type: integer
 
+    LicenseChangeType:
+      type: string
+      description: >-
+        What happened to an organization's license. `INSTANTIATED` is a
+        template being stamped onto the organization: `template_id` names it
+        and `new_value` carries the whole set of values copied. `ADJUSTED` is
+        one license field moved for this organization alone: `field` names it,
+        and `old_value` and `new_value` are that field's values on either side
+        of the change.
+      enum: [INSTANTIATED, ADJUSTED]
+      x-go-type: license.ChangeType
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    OrganizationLicenseChangeResponse:
+      type: object
+      description: >-
+        One entry in an organization's license history. Entries are immutable
+        and append-only: nothing edits one, and a correction is a later entry.
+      required:
+      - id
+      - product_id
+      - organization_id
+      - license_id
+      - type
+      - changed_at
+      properties:
+        id:
+          $ref: '#/components/schemas/ksuid'
+        product_id:
+          $ref: '#/components/schemas/ksuid'
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        license_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            Which license record was changed. Provenance, not a live
+            dependency: the entry stays true whatever becomes of that record.
+        type:
+          $ref: '#/components/schemas/LicenseChangeType'
+        template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The template stamped onto the organization. Present when `type` is
+            `INSTANTIATED`, absent otherwise.
+        field:
+          type: string
+          description: >-
+            The license field that moved. Present when `type` is `ADJUSTED`,
+            absent otherwise.
+        old_value:
+          description: >-
+            The value held before the change. Absent when `type` is
+            `INSTANTIATED`, because the organization held no license, and when
+            an adjustment set a license field the license did not carry.
+        new_value:
+          description: >-
+            The value held after the change: that license field's value for an
+            adjustment, and the whole set of copied values for an
+            instantiation.
+        changed_at:
+          type: string
+          format: date-time
+          description: >-
+            When the change was recorded. Anchor sets it. Every entry of one
+            adjustment shares it, so an adjustment that touched several license
+            fields reads back as one moment.
+
+    OrganizationLicenseHistoryResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            description: Newest first.
+            items:
+              $ref: '#/components/schemas/OrganizationLicenseChangeResponse'
+        required:
+        - items
+
     UsageReportRequest:
       type: object
       description: >-
@@ -6340,6 +6423,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationLicenseDiffResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/organizations/{organization_id}/license/history:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    get:
+      summary: Get Organization License History
+      description: >-
+        Reads every change ever made to an organization's license, newest
+        first and paginated: the template it was instantiated from, and each
+        later adjustment naming the license field, the value it held and the
+        value it was given.
+
+        The history is append-only and immutable. There is no route that edits
+        or removes an entry, so "what was this customer given, and when" keeps
+        the same answer for the lifetime of the organization. Deleting the
+        organization takes its history with it.
+
+        An organization that has never been licensed reads as an empty history
+        rather than as a 404 — nothing has happened to it yet, which is a fact
+        rather than an absence. A 404 means no such organization.
+      operationId: getOrganizationLicenseHistory
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:read
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 1000
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseHistoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 

@@ -145,6 +145,19 @@ func (w *licenseWorld) NewOrganization() string {
 	return createOrganization(w.t, w.product)
 }
 
+// DeleteOrganization removes the world's organization, for the tests whose
+// subject is what the deletion takes with it. It goes through a Product API
+// key: deleting an organization is not a platform bearer route.
+func (w *licenseWorld) DeleteOrganization() {
+	w.t.Helper()
+	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:delete"})
+	resp, err := client.DeleteProductOrganizationWithResponse(
+		context.Background(), w.productID(), w.OrganizationID(),
+	)
+	require.NoError(w.t, err)
+	require.Equal(w.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+}
+
 // ---------------------------------------------------------------------------
 // License handle
 // ---------------------------------------------------------------------------
@@ -252,6 +265,32 @@ func (h licenseHandle) DiffRaw() *ct.GetOrganizationLicenseDiffResponse {
 func (h licenseHandle) Diff() ct.OrganizationLicenseDiffResponse {
 	h.t.Helper()
 	resp := h.DiffRaw()
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+func (h licenseHandle) HistoryRaw(
+	params ct.GetOrganizationLicenseHistoryParams,
+) *ct.GetOrganizationLicenseHistoryResponse {
+	h.t.Helper()
+	resp, err := h.client.GetOrganizationLicenseHistoryWithResponse(
+		context.Background(), h.productID, h.organizationID, &params,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h licenseHandle) History() ct.OrganizationLicenseHistoryResponse {
+	h.t.Helper()
+	return h.HistoryPage(ct.GetOrganizationLicenseHistoryParams{})
+}
+
+func (h licenseHandle) HistoryPage(
+	params ct.GetOrganizationLicenseHistoryParams,
+) ct.OrganizationLicenseHistoryResponse {
+	h.t.Helper()
+	resp := h.HistoryRaw(params)
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(h.t, resp.JSON200)
 	return *resp.JSON200

@@ -189,6 +189,24 @@ func (e IntegrationProviderType) Valid() bool {
 	}
 }
 
+// Defines values for LicenseChangeType.
+const (
+	ADJUSTED     LicenseChangeType = "ADJUSTED"
+	INSTANTIATED LicenseChangeType = "INSTANTIATED"
+)
+
+// Valid indicates whether the value is a known member of the LicenseChangeType enum.
+func (e LicenseChangeType) Valid() bool {
+	switch e {
+	case ADJUSTED:
+		return true
+	case INSTANTIATED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseDifferenceKind.
 const (
 	Changed        LicenseDifferenceKind = "changed"
@@ -1307,6 +1325,9 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
+// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+type LicenseChangeType string
+
 // LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
 type LicenseDifferenceKind string
 
@@ -1691,6 +1712,45 @@ type OrganizationLicenseAdjustRequest struct {
 	Values LicenseTemplateValues `json:"values"`
 }
 
+// OrganizationLicenseChangeResponse One entry in an organization's license history. Entries are immutable and append-only: nothing edits one, and a correction is a later entry.
+type OrganizationLicenseChangeResponse struct {
+	// ChangedAt When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment.
+	ChangedAt time.Time `json:"changed_at"`
+
+	// Field The license field that moved. Present when `type` is `ADJUSTED`, absent otherwise.
+	Field *string `json:"field,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// LicenseId Which license record was changed. Provenance, not a live dependency: the entry stays true whatever becomes of that record.
+	LicenseId Ksuid `json:"license_id"`
+
+	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation.
+	NewValue interface{} `json:"new_value,omitempty"`
+
+	// OldValue The value held before the change. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+	OldValue interface{} `json:"old_value,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED`, absent otherwise.
+	TemplateId *Ksuid `json:"template_id,omitempty"`
+
+	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+	Type LicenseChangeType `json:"type"`
+}
+
 // OrganizationLicenseDiffResponse How an organization's license differs from its template today. Templates carry no version, so this names which license fields differ rather than which revision they came from.
 type OrganizationLicenseDiffResponse struct {
 	Count int `json:"count"`
@@ -1707,6 +1767,18 @@ type OrganizationLicenseDiffResponse struct {
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseHistoryResponse defines model for OrganizationLicenseHistoryResponse.
+type OrganizationLicenseHistoryResponse struct {
+	// Count The number of items returned in this response.
+	Count int `json:"count"`
+
+	// Items Newest first.
+	Items []OrganizationLicenseChangeResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
 }
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
@@ -3171,6 +3243,12 @@ type IngestWebhookJSONBody map[string]interface{}
 type ListLicenseTemplatesParams struct {
 	// Status Return only templates with this status. Omit for all of them.
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetOrganizationLicenseHistoryParams defines parameters for GetOrganizationLicenseHistory.
+type GetOrganizationLicenseHistoryParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // GetOrganizationUsageSeriesParams defines parameters for GetOrganizationUsageSeries.

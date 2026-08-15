@@ -2066,6 +2066,55 @@ export type OrganizationLicenseDiffResponse = {
 };
 
 /**
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+ */
+export enum LicenseChangeType {
+    INSTANTIATED = 'INSTANTIATED',
+    ADJUSTED = 'ADJUSTED'
+}
+
+/**
+ * One entry in an organization's license history. Entries are immutable and append-only: nothing edits one, and a correction is a later entry.
+ */
+export type OrganizationLicenseChangeResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    organization_id: Ksuid;
+    /**
+     * Which license record was changed. Provenance, not a live dependency: the entry stays true whatever becomes of that record.
+     */
+    license_id: Ksuid;
+    type: LicenseChangeType;
+    /**
+     * The template stamped onto the organization. Present when `type` is `INSTANTIATED`, absent otherwise.
+     */
+    template_id?: Ksuid;
+    /**
+     * The license field that moved. Present when `type` is `ADJUSTED`, absent otherwise.
+     */
+    field?: string;
+    /**
+     * The value held before the change. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+     */
+    old_value?: unknown;
+    /**
+     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation.
+     */
+    new_value?: unknown;
+    /**
+     * When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment.
+     */
+    changed_at: string;
+};
+
+export type OrganizationLicenseHistoryResponse = PagedListResponse & {
+    /**
+     * Newest first.
+     */
+    items: Array<OrganizationLicenseChangeResponse>;
+};
+
+/**
  * One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
  */
 export type UsageReportRequest = {
@@ -6024,6 +6073,47 @@ export type GetOrganizationLicenseDiffResponses = {
 };
 
 export type GetOrganizationLicenseDiffResponse = GetOrganizationLicenseDiffResponses[keyof GetOrganizationLicenseDiffResponses];
+
+export type GetOrganizationLicenseHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: {
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/history';
+};
+
+export type GetOrganizationLicenseHistoryErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type GetOrganizationLicenseHistoryError = GetOrganizationLicenseHistoryErrors[keyof GetOrganizationLicenseHistoryErrors];
+
+export type GetOrganizationLicenseHistoryResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseHistoryResponse;
+};
+
+export type GetOrganizationLicenseHistoryResponse = GetOrganizationLicenseHistoryResponses[keyof GetOrganizationLicenseHistoryResponses];
 
 export type ReportOrganizationUsageData = {
     body: UsageReportRequest;
