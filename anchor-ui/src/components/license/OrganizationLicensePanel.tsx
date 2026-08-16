@@ -19,6 +19,7 @@ import dayjs from "dayjs";
 import { BadgeCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { LicenseValueFields } from "./LicenseValueFields";
+import { OrganizationLicenseHistory } from "./OrganizationLicenseHistory";
 import { OrganizationLicenseLimits } from "./OrganizationLicenseLimits";
 import { UsageHistoryChart } from "./UsageHistoryChart";
 
@@ -179,6 +180,20 @@ export function OrganizationLicensePanel({
 					limit={usage[chartedField].limit}
 				/>
 			)}
+
+			<section className="flex flex-col gap-3">
+				<div className="flex flex-col gap-0.5">
+					<h2 className="text-sm font-semibold">Change history</h2>
+					<p className="text-xs text-muted-foreground">
+						What this organization was given, and each later adjustment. Newest
+						first. Entries are not edited.
+					</p>
+				</div>
+				<OrganizationLicenseHistory
+					productId={productId}
+					organizationId={organizationId}
+				/>
+			</section>
 
 			<section className="flex flex-col gap-3">
 				<h2 className="text-sm font-semibold">All license values</h2>
