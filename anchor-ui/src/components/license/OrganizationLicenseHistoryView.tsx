@@ -171,15 +171,10 @@ function InstantiationBody({
 				</p>
 			)}
 			{names.length > 0 && (
-				<dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+				<dl className="flex flex-col gap-1">
 					{names.map((name) => (
-						<div
-							key={name}
-							className="flex items-baseline justify-between gap-2"
-						>
-							<dt className="font-mono text-xs text-muted-foreground">
-								{name}
-							</dt>
+						<div key={name} className="flex flex-wrap items-baseline gap-x-2">
+							<dt className="font-mono text-sm">{name}</dt>
 							<dd className="text-sm tabular-nums">
 								{formatHistoryValue(values?.[name])}
 							</dd>
