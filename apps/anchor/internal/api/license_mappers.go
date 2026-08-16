@@ -97,6 +97,21 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 	}
 }
 
+// mapOrganizationLicenseSummaryToResponse carries no usage: a page of results
+// would otherwise cost as many usage derivations as it has rows.
+func mapOrganizationLicenseSummaryToResponse(
+	s license.OrganizationLicenseSummary,
+) OrganizationLicenseSummaryResponse {
+	resp := OrganizationLicenseSummaryResponse{
+		OrganizationId:   s.OrganizationID,
+		OrganizationName: s.OrganizationName,
+	}
+	if s.License != nil {
+		resp.License = new(mapOrganizationLicenseToResponse(*s.License))
+	}
+	return resp
+}
+
 func mapFieldUsageToResponse(u license.FieldUsage) LicenseFieldUsageResponse {
 	return LicenseFieldUsageResponse{
 		Limit:          u.Limit,
@@ -209,7 +224,6 @@ func mapLicenseMigrationToResponse(m license.Migration) OrganizationLicenseMigra
 	tally := m.Tally()
 	return OrganizationLicenseMigrationResponse{
 		TemplateId: m.TemplateID,
-		DryRun:     m.DryRun,
 		MigratedAt: m.MigratedAt,
 		Results:    slicex.Map(m.Results, mapLicenseMigrationResultToResponse),
 		Count:      len(m.Results),

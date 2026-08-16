@@ -141,6 +141,12 @@ type OrganizationLicenseRepository interface {
 	ListOrganizationIDsForTemplate(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) ([]string, error)
+	// Search reads a page of the Product's customer book: each Organization and
+	// the license it holds. An Organization holding none is a result with a nil
+	// license, not an absent row.
+	Search(
+		ctx context.Context, in license.SearchOrganizationLicensesInput,
+	) (search.Result[license.OrganizationLicenseSummary], error)
 	// CountLicensesForTemplate reports how many Organization licenses in this
 	// Product still name the given template. A template delete checks this
 	// before the write, mirroring how CountMembershipAssignments guards a

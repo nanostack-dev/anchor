@@ -3,10 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -160,6 +163,84 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
 		ctx, r.db, stmt,
 		func(entity model.OrganizationLicenses) string { return entity.OrganizationID },
 	).Value()
+}
+
+// organizationLicenseJoin left-joins each Organization onto the license it
+// holds. Left, not inner: an Organization that was never licensed is a result
+// with no license, and dropping it would hide exactly the customers an operator
+// is looking for half the time. organization_licenses.organization_id is
+// unique, so the join cannot multiply rows.
+func organizationLicenseJoin() postgres.ReadableTable {
+	return table.Organizations.LEFT_JOIN(
+		table.OrganizationLicenses,
+		table.OrganizationLicenses.OrganizationID.EQ(table.Organizations.ID).
+			AND(table.OrganizationLicenses.ProductID.EQ(table.Organizations.ProductID)),
+	)
+}
+
+// licenseHeldFilter narrows to Organizations that hold a license, or to those
+// that hold none. The left join is what makes both expressible from one query.
+func licenseHeldFilter(licensed *bool) postgres.BoolExpression {
+	switch {
+	case licensed == nil:
+		return nil
+	case *licensed:
+		return table.OrganizationLicenses.ID.IS_NOT_NULL()
+	default:
+		return table.OrganizationLicenses.ID.IS_NULL()
+	}
+}
+
+func (r *organizationLicenseRepositoryImpl) Search(
+	ctx context.Context, in license.SearchOrganizationLicensesInput,
+) (search.Result[license.OrganizationLicenseSummary], error) {
+	where := table.Organizations.ProductID.EQ(postgres.String(in.ProductID))
+	filters := jetx.NewFilterBuilder()
+
+	if filter := in.Request.Filter; filter != nil {
+		if ids := filters.BuildIDFilter(
+			table.Organizations.ID, filter.OrganizationIDs,
+		); ids != nil {
+			where = where.AND(ids)
+		}
+		if templates := filters.BuildIDFilter(
+			table.OrganizationLicenses.TemplateID, filter.LicenseTemplateIDs,
+		); templates != nil {
+			where = where.AND(templates)
+		}
+		if held := licenseHeldFilter(filter.Licensed); held != nil {
+			where = where.AND(held)
+		}
+	}
+
+	// ILIKE rather than jetx.BuildFullTextSearchFilter, which builds a
+	// case-sensitive LIKE. An operator typing a customer's name into a search
+	// box does not capitalise it the way the record does, and "northwind"
+	// finding nothing reads as a broken box rather than as a precise one. The
+	// shared builder is what every other search in Anchor uses; fixing it there
+	// would change all of them at once and belongs in the framework.
+	if term := in.Request.FullTextSearch; term != nil && *term != "" {
+		lowered := postgres.String("%" + strings.ToLower(*term) + "%")
+		where = where.AND(postgres.LOWER(table.Organizations.Name).LIKE(lowered))
+	}
+
+	return transactor.Page(
+		r.db,
+		r.mapper.SummaryToDomain,
+		table.Organizations.AllColumns,
+		table.OrganizationLicenses.AllColumns,
+	).
+		From(organizationLicenseJoin()).
+		Where(where).
+		OrderBy(transactor.SortColumns(
+			in.Request.Sort,
+			map[license.SortFieldOrganizationLicense]postgres.Column{
+				license.SortFieldOrganizationLicenseOrganizationName: table.Organizations.Name,
+				license.SortFieldOrganizationLicenseInstantiatedAt:   table.OrganizationLicenses.InstantiatedAt,
+			},
+		)...).
+		Run(ctx, in.Request.Pagination).
+		Value()
 }
 
 // CountLicensesForTemplate reports how many Organization licenses still name

@@ -23,14 +23,17 @@ func (c *Client) Licensing() Licensing { return Licensing{c: c} }
 //
 //	run, err := c.Licensing().Migrate(proID).
 //	    FromTemplate(betaID).
-//	    DryRun().
 //	    Do(ctx)
 //
-// Read the dry run, then send the same call without [LicenseMigrationBuilder.DryRun].
 // Name the organizations with [LicenseMigrationBuilder.Organizations] or select
 // them with [LicenseMigrationBuilder.FromTemplate] — exactly one, never both.
 // At most 500 organizations per run; a larger selection is refused with its
 // count rather than truncated.
+//
+// A license field whose value differs from the template the organization
+// currently holds is carried forward onto the new license, so a bespoke
+// arrangement survives the move. [LicenseMigrationBuilder.DiscardDifferences]
+// takes the target template whole instead.
 func (l Licensing) Migrate(templateID string) *LicenseMigrationBuilder {
 	return &LicenseMigrationBuilder{
 		c:   l.c,
@@ -61,21 +64,15 @@ func (b *LicenseMigrationBuilder) FromTemplate(templateID string) *LicenseMigrat
 	return b
 }
 
-// Overwrite moves an organization whose license differs from the template it
-// currently holds, which is otherwise skipped and reported.
+// DiscardDifferences takes the target template whole, dropping every value that
+// differs from the template the organization currently holds. Without it those
+// values are carried forward.
 //
 // Anchor cannot tell a bespoke adjustment from a template that moved after the
-// copy was taken, so the default protects both. Read a dry run's per-field
-// changes before reaching for this: a migration replaces the values whole, and
-// a difference it overwrites is gone.
-func (b *LicenseMigrationBuilder) Overwrite() *LicenseMigrationBuilder {
-	b.req.OnDifference = new(nanoclient.OVERWRITE)
-	return b
-}
-
-// DryRun computes every outcome and writes nothing.
-func (b *LicenseMigrationBuilder) DryRun() *LicenseMigrationBuilder {
-	b.req.DryRun = new(true)
+// copy was taken, so neither choice is safe by itself. Compare the two
+// templates before reaching for this: a value it discards is gone.
+func (b *LicenseMigrationBuilder) DiscardDifferences() *LicenseMigrationBuilder {
+	b.req.OnDifference = new(nanoclient.DISCARD)
 	return b
 }
 
@@ -86,7 +83,7 @@ func (b *LicenseMigrationBuilder) DryRun() *LicenseMigrationBuilder {
 //
 // Every organization actually moved has its cached license read dropped, so the
 // next [License.Get] through this client sees the new values rather than
-// waiting out the TTL. A dry run drops nothing.
+// waiting out the TTL.
 func (b *LicenseMigrationBuilder) Do(
 	ctx context.Context,
 ) (*nanoclient.OrganizationLicenseMigrationResponse, error) {
@@ -108,11 +105,9 @@ func (b *LicenseMigrationBuilder) Do(
 		return nil, err
 	}
 
-	if !migration.DryRun {
-		for _, result := range migration.Results {
-			if result.Outcome == nanoclient.LicenseMigrationOutcomeMIGRATED {
-				c.licenses.delete(result.OrganizationId)
-			}
+	for _, result := range migration.Results {
+		if result.Outcome == nanoclient.LicenseMigrationOutcomeMIGRATED {
+			c.licenses.delete(result.OrganizationId)
 		}
 	}
 

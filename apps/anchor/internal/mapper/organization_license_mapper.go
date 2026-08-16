@@ -36,6 +36,28 @@ func (m *OrganizationLicenseMapper) ToDomain(
 	}
 }
 
+// OrganizationLicenseSummaryRow is one row of the customer-book search: an
+// Organization left-joined onto the license it holds. Licenses is a pointer
+// because the join keeps Organizations that hold none, and go-jet leaves it nil
+// for those.
+type OrganizationLicenseSummaryRow struct {
+	model.Organizations
+	License *model.OrganizationLicenses
+}
+
+func (m *OrganizationLicenseMapper) SummaryToDomain(
+	row OrganizationLicenseSummaryRow,
+) license.OrganizationLicenseSummary {
+	summary := license.OrganizationLicenseSummary{
+		OrganizationID:   row.Organizations.ID,
+		OrganizationName: row.Organizations.Name,
+	}
+	if row.License != nil {
+		summary.License = new(m.ToDomain(*row.License))
+	}
+	return summary
+}
+
 func (m *OrganizationLicenseMapper) ToEntity(
 	domain license.OrganizationLicense,
 ) model.OrganizationLicenses {

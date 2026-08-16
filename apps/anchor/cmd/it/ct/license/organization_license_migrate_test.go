@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -22,6 +23,15 @@ func proValues() ct.LicenseTemplateValues {
 	}
 }
 
+// schemaFieldsExcept drops one declaration, for the tests whose subject is a
+// license field no template declares any more.
+func schemaFieldsExcept(name string) []ct.LicenseFieldDeclaration {
+	fields := templateSchemaFields()
+	return slices.DeleteFunc(fields, func(f ct.LicenseFieldDeclaration) bool {
+		return f.Name == name
+	})
+}
+
 func migrateTo(templateID string, organizationIDs ...string) ct.OrganizationLicenseMigrationRequest {
 	return ct.OrganizationLicenseMigrationRequest{
 		TemplateId:      templateID,
@@ -30,14 +40,13 @@ func migrateTo(templateID string, organizationIDs ...string) ct.OrganizationLice
 }
 
 func TestMigrateOrganizationLicenses(t *testing.T) {
-	t.Run("copies the target template's values and restamps the provenance", func(t *testing.T) {
+	t.Run("takes the target template's values and restamps the provenance", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
 		before := time.Now().Add(-time.Second)
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
-		assert.False(t, migration.DryRun)
 		assert.Equal(t, pro.Id, migration.TemplateId)
 		assert.Equal(t, 1, migration.Migrated)
 		assert.Equal(t, ct.LicenseMigrationOutcomeMIGRATED, resultFor(t, migration, w.OrganizationID()).Outcome)
@@ -50,7 +59,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.WithinRange(t, moved.InstantiatedAt, before, time.Now().Add(time.Second))
 	})
 
-	t.Run("reports what the organization moved from", func(t *testing.T) {
+	t.Run("reports what the organization moved from and what moved", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -60,9 +69,8 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		require.NotNil(t, result.PreviousTemplateId)
 		assert.Equal(t, w.TemplateID(), *result.PreviousTemplateId)
 		assert.Equal(t, len(result.Changes), result.Count)
-		// Every declared field differs between the two tiers, so every one is
-		// named. A migration that reported fewer would be hiding a change from
-		// the operator reading the dry run.
+		// Every declared field differs between the two tiers and this customer
+		// holds no bespoke value, so every one moved.
 		assert.Len(t, result.Changes, len(templateSchemaFields()))
 		flows := differenceByField(t, result.Changes, "flows")
 		assert.Equal(t, ct.Changed, flows.Kind)
@@ -161,101 +169,105 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 	})
 }
 
-func TestMigrateOrganizationLicensesDryRun(t *testing.T) {
-	t.Run("reports the outcome and writes nothing", func(t *testing.T) {
-		w := newLicensedWorld(t)
-		pro := w.NewTemplate(proValues())
-
-		request := migrateTo(pro.Id, w.OrganizationID())
-		request.DryRun = new(true)
-		migration := w.Migration().Run(request)
-
-		assert.True(t, migration.DryRun)
-		assert.Equal(t, 1, migration.Migrated)
-		assert.Len(t, resultFor(t, migration, w.OrganizationID()).Changes, len(templateSchemaFields()))
-
-		unchanged := w.License().Get()
-		assertValues(t, unchanged.Values, validTemplateValues())
-		assert.Equal(t, w.TemplateID(), unchanged.TemplateId)
-		assert.Len(t, w.License().History().Items, 1)
-	})
-
-	t.Run("agrees with the run it precedes", func(t *testing.T) {
-		w := newLicensedWorld(t)
-		pro := w.NewTemplate(proValues())
-
-		preview := migrateTo(pro.Id, w.OrganizationID())
-		preview.DryRun = new(true)
-		previewed := w.Migration().Run(preview)
-		applied := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
-
-		previewedResult := resultFor(t, previewed, w.OrganizationID())
-		appliedResult := resultFor(t, applied, w.OrganizationID())
-		assert.Equal(t, previewedResult.Outcome, appliedResult.Outcome)
-		assert.Equal(t, previewedResult.Changes, appliedResult.Changes)
-	})
-}
-
 func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
-	t.Run("skips a license that differs from the tier it holds", func(t *testing.T) {
+	t.Run("carries a bespoke value forward onto the new tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		pro := w.NewTemplate(proValues())
 
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
-		assert.Equal(t, 1, migration.Skipped)
-		result := resultFor(t, migration, w.OrganizationID())
-		assert.Equal(t, ct.LicenseMigrationOutcomeSKIPPED, result.Outcome)
-		require.NotNil(t, result.Reason)
-		assert.Equal(t, ct.DIFFERSFROMTEMPLATE, *result.Reason)
-
-		// Skipped means untouched, and the changes are still reported so the
-		// operator can see what overwriting would cost.
-		assert.Equal(t, w.TemplateID(), w.License().Get().TemplateId)
-		assert.NotEmpty(t, result.Changes)
+		assert.Equal(t, 1, migration.Migrated)
+		// The tier moves, the deal survives: every field takes Pro's value
+		// except the one this customer was given.
+		assertValues(t, w.License().Get().Values, ct.LicenseTemplateValues{
+			"flows":        800,
+			"sso":          false,
+			"support_tier": "basic",
+			"region":       "eu-west",
+		})
 	})
 
-	t.Run("a template edited after the copy also counts as a difference", func(t *testing.T) {
+	t.Run("a carried field is not reported as a change", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		// Nobody adjusted this organization. Anchor still cannot tell that
-		// apart from a bespoke deal, so the default refuses to decide.
+		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
+		pro := w.NewTemplate(proValues())
+
+		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
+
+		// changes is what the move did, not how the two tiers differ. flows
+		// stayed at 800, so it did not move.
+		result := resultFor(t, migration, w.OrganizationID())
+		assert.Equal(t, len(result.Changes), result.Count)
+		for _, change := range result.Changes {
+			assert.NotEqual(t, "flows", change.Field)
+		}
+		assert.Len(t, result.Changes, len(templateSchemaFields())-1)
+	})
+
+	t.Run("a template edited after the copy is carried forward too", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		// Nobody adjusted this organization. Anchor cannot tell that apart from
+		// a bespoke deal, so the stale value rides along — the cost the default
+		// buys, and the reason to compare the two tiers first.
 		w.Template().ReplaceValues(templateValuesWith("flows", 900))
 		pro := w.NewTemplate(proValues())
 
-		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
+		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
-		result := resultFor(t, migration, w.OrganizationID())
-		assert.Equal(t, ct.LicenseMigrationOutcomeSKIPPED, result.Outcome)
-		require.NotNil(t, result.Reason)
-		assert.Equal(t, ct.DIFFERSFROMTEMPLATE, *result.Reason)
+		assert.InDelta(t, 500, w.License().Get().Values["flows"], 0)
 	})
 
-	t.Run("overwrite moves it and discards the difference", func(t *testing.T) {
+	t.Run("discard takes the target template whole", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		pro := w.NewTemplate(proValues())
 
 		request := migrateTo(pro.Id, w.OrganizationID())
-		request.OnDifference = new(ct.OVERWRITE)
+		request.OnDifference = new(ct.DISCARD)
 		migration := w.Migration().Run(request)
 
 		assert.Equal(t, 1, migration.Migrated)
 		assertValues(t, w.License().Get().Values, proValues())
 	})
 
-	t.Run("naming the tier it already holds restamps it from that tier", func(t *testing.T) {
+	t.Run("naming the tier it already holds resets it to that tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
 		// The out-of-scope re-sync, reachable only by naming the same template
-		// and asking to overwrite. Nothing does this on its own.
+		// and asking to discard. Nothing does this on its own.
 		request := migrateTo(w.TemplateID(), w.OrganizationID())
-		request.OnDifference = new(ct.OVERWRITE)
+		request.OnDifference = new(ct.DISCARD)
 		migration := w.Migration().Run(request)
 
 		assert.Equal(t, 1, migration.Migrated)
 		assertValues(t, w.License().Get().Values, validTemplateValues())
+	})
+
+	t.Run("carrying forward onto the tier it already holds changes nothing", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
+
+		migration := w.Migration().Run(migrateTo(w.TemplateID(), w.OrganizationID()))
+
+		// Same tier, every difference kept: there is nothing left to write, so
+		// the adjustment is not restamped over.
+		assert.Equal(t, 1, migration.Unchanged)
+		assert.InDelta(t, 800, w.License().Get().Values["flows"], 0)
+	})
+
+	t.Run("a field the target tier no longer declares is not carried forward", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		// The schema drops a field, so no template declares it any more. The
+		// license still holds it, and carrying it would resurrect a field
+		// nothing validates.
+		w.RedeclareSchema(schemaFieldsExcept("region"))
+		pro := w.NewTemplate(templateValuesExcept("region"))
+
+		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
+
+		assert.NotContains(t, w.License().Get().Values, "region")
 	})
 }
 

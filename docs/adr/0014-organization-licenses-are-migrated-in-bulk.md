@@ -28,7 +28,7 @@ Three of those are inconveniences. The first is a correctness claim ADR-0010 mak
 
 ### So the capability belongs to Anchor
 
-Only Anchor can restamp provenance, and restamping provenance is what the operation *is*. Everything else follows: the selection ("everyone currently on the tier we are retiring") is a query only Anchor can answer, the field-by-field preview is the diff Anchor already computes, and the record is the change history Anchor already keeps.
+Only Anchor can restamp provenance, and restamping provenance is what the operation *is*. Everything else follows: the selection ("everyone currently on the tier we are retiring") is a query only Anchor can answer, and the record is the change history Anchor already keeps.
 
 ## Decision
 
@@ -42,15 +42,19 @@ Scoped `organization_license:migrate`, a new entry in the permission catalog alo
 
 ### It takes a fresh copy, and stamps it
 
-For each organization, the license's values are replaced wholesale by the target template's values, and `template_id` and `instantiated_at` are restamped to the target and to the moment of the run. This is instantiation happening a second time, so it behaves like instantiation: the copied values are not re-validated against the schema, for the reason `Instantiate` gives — a schema tightened since the template was last written must not block a move onto a tier that is still on sale.
+For each organization, the license takes the target template's values, and `template_id` and `instantiated_at` are restamped to the target and to the moment of the run. This is instantiation happening a second time, so it behaves like instantiation: the copied values are not re-validated against the schema, for the reason `Instantiate` gives — a schema tightened since the template was last written must not block a move onto a tier that is still on sale.
 
 A new repository method, `Restamp`, is the only path that writes `template_id`. `Update` keeps its exclusions, so "an adjustment cannot change which template a customer was sold" remains true as a property of the code and not only of the caller.
 
-**This is not a re-sync, but it subsumes one.** Naming the template an organization already holds is allowed, and restamps it from that template, discarding differences. That is the out-of-scope operation — reachable only by naming the same template *and* asking to overwrite, since anything that differs from its own template is skipped by default. It is not a background sync, it is not implicit, and no license moves because a template moved.
+**This is not a re-sync, but it subsumes one.** Naming the template an organization already holds is allowed. With `on_difference: DISCARD` it resets that organization to its own tier — the out-of-scope operation, reachable only by naming the same template *and* asking to discard. It is not a background sync, it is not implicit, and no license moves because a template moved.
 
-### Selection is server-side
+### Selection is server-side, and the book is searchable
 
-The caller supplies exactly one of:
+`POST /v1/products/{product_id}/licensing/organization-licenses/search` reads the customer book a page at a time: every organization and the license it holds, filtered by `license_template_ids`, by `licensed`, or by a match on the organization name. An organization holding no license is a row with no license rather than a missing row, because "who is on no tier" is half of what the question is.
+
+That search is what the admin UI lists and what an operator selects from, and its template filter is the reason `organization_licenses` is left-joined onto `organizations` rather than read separately. Usage is not derived per row: a page would otherwise cost as many usage derivations as it has rows.
+
+For the run itself the caller supplies exactly one of:
 
 - `organization_ids` — an explicit list.
 - `from_template_id` — every organization in the product whose license names that template. An archived template is accepted here, because moving customers off a withdrawn tier is the main reason to run this at all.
@@ -59,21 +63,21 @@ Resolving `from_template_id` inside the request is not a convenience. A client t
 
 ### A run is bounded, and refuses rather than truncating
 
-At most 500 organizations per call. A selection matching more is refused with `LICENSE_MIGRATION_TOO_LARGE` carrying the count, for a dry run exactly as for a real one, so the operator learns the size before committing either way. Nothing is ever silently truncated.
+At most 500 organizations per call. A selection matching more is refused with `LICENSE_MIGRATION_TOO_LARGE` carrying the count. Nothing is ever silently truncated.
 
 500 organizations is a few seconds of small transactions, which fits a synchronous request honestly. A larger cohort is the operator's loop over explicit lists, which is a thin client loop rather than a script carrying licensing semantics.
 
-### A difference blocks the move by default
+### A difference is carried forward by default
 
-`on_difference` is `SKIP` or `OVERWRITE`, defaulting to `SKIP`. An organization whose license differs from the template it currently names is reported `SKIPPED` with reason `DIFFERS_FROM_TEMPLATE` and left alone.
+`on_difference` is `CARRY_FORWARD` or `DISCARD`, defaulting to `CARRY_FORWARD`. A license field whose value differs from the template the organization currently holds keeps that value on the migrated license; every other field takes the target's. `DISCARD` takes the target whole.
 
-The word is *difference*, not *deviation*, and `CONTEXT.md` explains why: a difference is either someone adjusting that customer or the template moving after the copy was taken, and the diff alone does not say which. So the default cannot be described as "protects bespoke arrangements" — it protects everything that differs, including a cohort whose only sin is that their tier was edited after they were stamped. That is what the dry run is for. The operator reads the differences, decides, and re-runs with `OVERWRITE` or handles those organizations one at a time.
+The default is the one that survives contact with a real customer book. An enterprise account given +50 flows and then moved from Pro to Enterprise should not silently lose the +50 because the tier changed — the deal outlived the tier, which is the whole reason a per-organization deviation exists at all.
 
-An organization holding no license at all is `SKIPPED` with reason `NOT_LICENSED`, whatever the policy. Instantiation is a different verb with a different scope, and the two stay distinct.
+The word is *difference*, not *deviation*, and `CONTEXT.md` explains why: a difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. So the default cannot be described as "preserves bespoke arrangements" — it preserves everything that differs, including a value that is merely stale because the tier was edited after the copy was stamped. **This is the real cost of the default, and it is silent.** What an operator has instead is the comparison between the two templates, which the admin UI renders before the run, and the per-organization `changes` the run reports afterwards.
 
-### The dry run is the same code path
+Carrying forward is bounded by the target's own declaration: only a license field the target template names can keep its value. A value the target does not name belongs to a field the schema no longer declares, and carrying it would resurrect a field nothing validates.
 
-`dry_run: true` computes every outcome and writes nothing. It is not a second implementation: the run resolves the selection, computes each organization's outcome and its field-by-field changes, and only then decides whether to write. A dry run and the real run therefore cannot disagree about anything except a failure that only a write can produce.
+An organization holding no license at all is `SKIPPED` with reason `NOT_LICENSED`. Instantiation is a different verb with a different scope, and the two stay distinct.
 
 ### One transaction per organization
 
@@ -87,17 +91,17 @@ Every entry of one run shares a single `changed_at`, exactly as the entries of o
 
 ## Consequences
 
-**Good.** "Which customers are on the tier we retired, and move them" is two calls, and the first one is a dry run.
+**Good.** "Which customers are on the tier we retired, and move them" is two calls: search by that template, then migrate the selection.
 
 **Good.** Provenance survives a tier move, so ADR-0010's promise — the record of what a customer was sold keeps resolving — holds for a customer who has been sold more than one thing.
 
 **Good.** The copy model is untouched. A license is still a copy, still has no pointer to a template, and still cannot be changed by editing a template. What is new is a second stamping, requested explicitly.
 
-**Good.** The default refuses to overwrite anything that differs, so the destructive reading of this operation requires the operator to ask for it twice: once in the dry run they read, once in the `OVERWRITE` they send.
+**Good.** The destructive reading of this operation — taking the tier whole and dropping what a customer was individually given — requires asking for it by name, in `on_difference: DISCARD`.
 
-**Cost.** `SKIP` cannot tell a bespoke arrangement from a template that moved, because nothing can. A product that edits its templates in place will see large skip lists and reach for `OVERWRITE`, which is exactly the moment the dry run matters most and exactly the moment an operator is most likely to skim it.
+**Cost, and the sharpest one.** `CARRY_FORWARD` cannot tell a bespoke arrangement from a template that moved, because nothing can. A product that edits its templates in place will carry stale values onto the new tier and say nothing about it, and the organizations affected are exactly the ones nobody deliberately touched. The mitigation is external to Anchor: manage templates as reviewed configuration (which [ADR-0006](0006-license-write-surfaces.md) already prescribes) so that in-place edits are rare, and read the template comparison before running.
 
-**Cost.** Migrating discards differences rather than carrying them forward. An organization on Beta with `flows` raised to 25 as a bespoke deal, moved to Pro, ends on Pro's `flows` and nothing else. Merging was considered and rejected: with no way to tell a deviation from a moved template, a merge would preserve stale values as often as bespoke ones, and would do it silently.
+**Cost.** There is no server-side preview. An earlier draft of this ADR specified a `dry_run` that computed every outcome and wrote nothing; it was removed as unearned complexity, because the question an operator actually asks before a tier move — "how do these two tiers differ" — is answered by the two templates, which any client already has. What a dry run would have added over that is the per-organization carry-forward resolution, and that is recoverable from the run's own `changes`. A migration that goes wrong is corrected by another migration, not by an undo.
 
 **Cost.** 500 is a cap, and a product with more customers on one tier has to batch its own calls. A cursor over the selection, or an asynchronous job with a stored batch record, is additive later and neither changes the contract's shape.
 

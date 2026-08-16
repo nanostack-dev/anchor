@@ -101,9 +101,9 @@ func NewLicenseMigrationService(
 
 // migrationRun carries what every Organization in one run is decided against:
 // the request, the target, the shared clock, and the templates already read.
-// Templates are memoised because deciding whether an Organization differs from
-// the tier it currently holds needs that tier's values, and a cohort shares a
-// handful of tiers between hundreds of Organizations.
+// Templates are memoised because carrying a difference forward needs the values
+// of the tier the Organization is on today, and a cohort shares a handful of
+// tiers between hundreds of Organizations.
 type migrationRun struct {
 	input      license.MigrateLicensesInput
 	target     license.Template
@@ -111,8 +111,11 @@ type migrationRun struct {
 	templates  map[string]*license.Template
 }
 
-func (r *migrationRun) skipsDifferences() bool {
-	return r.input.OnDifference != license.DifferenceOverwrite
+func (r *migrationRun) policy() license.DifferencePolicy {
+	if r.input.OnDifference == license.DiscardDifferences {
+		return license.DiscardDifferences
+	}
+	return license.CarryForwardDifferences
 }
 
 func (s *licenseMigrationService) Migrate(
@@ -157,7 +160,6 @@ func (s *licenseMigrationService) Migrate(
 
 	migration := license.Migration{
 		TemplateID: target.ID,
-		DryRun:     in.DryRun,
 		MigratedAt: run.migratedAt,
 		Results:    make([]license.OrganizationMigrationResult, 0, len(organizationIDs)),
 	}
@@ -169,7 +171,7 @@ func (s *licenseMigrationService) Migrate(
 	s.logger.Info().
 		Str("product_id", in.ProductID).
 		Str("license_template_id", target.ID).
-		Bool("dry_run", in.DryRun).
+		Str("on_difference", string(run.policy())).
 		Int("considered", len(migration.Results)).
 		Int("migrated", tally.Migrated).
 		Int("unchanged", tally.Unchanged).
@@ -211,15 +213,10 @@ func (s *licenseMigrationService) selectOrganizations(
 	)
 }
 
-// migrateOne decides and, unless this is a dry run, applies one Organization's
-// move, in its own transaction. A failure is reported against that
-// Organization and the batch continues: no invariant spans two Organizations'
-// licenses, so a batch-wide transaction would only mean one bad row discarding
-// several hundred good ones.
-//
-// A dry run takes the same lock and follows the same branches, and stops short
-// of the write. That is what makes it a preview rather than a second
-// implementation that can disagree with the real one.
+// migrateOne decides and applies one Organization's move, in its own
+// transaction. A failure is reported against that Organization and the batch
+// continues: no invariant spans two Organizations' licenses, so a batch-wide
+// transaction would only mean one bad row discarding several hundred good ones.
 func (s *licenseMigrationService) migrateOne(
 	ctx context.Context, run *migrationRun, organizationID string,
 ) license.OrganizationMigrationResult {
@@ -234,20 +231,18 @@ func (s *licenseMigrationService) migrateOne(
 			return findErr
 		}
 
-		decided, decideErr := s.decide(txCtx, run, organizationID, existing)
+		decided, migrated, decideErr := s.decide(txCtx, run, organizationID, existing)
 		if decideErr != nil {
 			return decideErr
 		}
 		result = decided
 
-		if run.input.DryRun || decided.Outcome != license.OutcomeMigrated {
+		if decided.Outcome != license.OutcomeMigrated {
 			return nil
 		}
 
 		previousValues := existing.Values
-		written, restampErr := s.licenseRepo.Restamp(
-			txCtx, run.input.TenantID, existing.MigratedTo(run.target, run.migratedAt),
-		)
+		written, restampErr := s.licenseRepo.Restamp(txCtx, run.input.TenantID, migrated)
 		if restampErr != nil {
 			return restampErr
 		}
@@ -277,63 +272,58 @@ func (s *licenseMigrationService) migrateOne(
 	return result
 }
 
-// decide works out what happens to one Organization without writing anything.
+// decide works out what happens to one Organization, and what its license would
+// hold afterwards, without writing anything.
 //
-// The comparison that decides a skip is against the template the Organization
-// currently holds, not against the target: what the policy protects is a
-// license that has come apart from its own tier, whether because someone
-// adjusted it or because the tier moved after the copy was taken. Nothing can
-// tell those two apart — see [license.DiffValues] — which is why the reported
-// changes are what an operator reads before choosing to overwrite.
+// Carrying a difference forward is measured against the template the
+// Organization is on today, not against the target: what survives the move is a
+// value that has come apart from its own tier. Nothing can tell a bespoke
+// adjustment from a tier that moved after the copy was taken — see
+// [license.DiffValues] — so the reported changes are what an operator reads
+// afterwards, and comparing the two templates is what they do beforehand.
 func (s *licenseMigrationService) decide(
 	ctx context.Context,
 	run *migrationRun,
 	organizationID string,
 	existing *license.OrganizationLicense,
-) (license.OrganizationMigrationResult, error) {
+) (license.OrganizationMigrationResult, license.OrganizationLicense, error) {
 	result := license.OrganizationMigrationResult{OrganizationID: organizationID}
 
 	if existing == nil {
 		organization, err := s.organizations.FindByID(ctx, run.input.ProductID, organizationID)
 		if err != nil {
-			return result, err
+			return result, license.OrganizationLicense{}, err
 		}
 		if organization == nil {
-			return result, ErrLicenseOrganizationNotFound
+			return result, license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
 		}
 		result.Outcome = license.OutcomeSkipped
 		result.Reason = new(license.SkipNotLicensed)
-		return result, nil
+		return result, license.OrganizationLicense{}, nil
 	}
 
+	current, err := s.templateByID(ctx, run, existing.TemplateID)
+	if err != nil {
+		return result, license.OrganizationLicense{}, err
+	}
+
+	migrated := existing.MigratedTo(run.target, current.Values, run.policy(), run.migratedAt)
 	result.PreviousTemplateID = new(existing.TemplateID)
-	result.Changes = license.DiffValues(existing.Values, run.target.Values)
+	result.Changes = license.DiffValues(existing.Values, migrated.Values)
 
 	if existing.TemplateID == run.target.ID && len(result.Changes) == 0 {
 		result.Outcome = license.OutcomeUnchanged
-		return result, nil
-	}
-
-	if run.skipsDifferences() {
-		current, err := s.templateByID(ctx, run, existing.TemplateID)
-		if err != nil {
-			return result, err
-		}
-		if len(license.DiffValues(existing.Values, current.Values)) > 0 {
-			result.Outcome = license.OutcomeSkipped
-			result.Reason = new(license.SkipDiffersFromTemplate)
-			return result, nil
-		}
+		return result, license.OrganizationLicense{}, nil
 	}
 
 	result.Outcome = license.OutcomeMigrated
-	return result, nil
+	return result, migrated, nil
 }
 
 // templateByID reads a template once per run. A template a license names always
 // resolves — migration 000028 made it a foreign key and nothing deletes the row
 // — so a miss here means a row written before that constraint existed, and the
-// Organization is left alone rather than judged against values that are gone.
+// Organization fails rather than being moved against values that are gone.
 func (s *licenseMigrationService) templateByID(
 	ctx context.Context, run *migrationRun, templateID string,
 ) (*license.Template, error) {

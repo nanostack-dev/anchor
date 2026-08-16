@@ -24,8 +24,7 @@ func (s *AnchorAPI) MigrateOrganizationLicenses(
 		TemplateID:      body.TemplateId,
 		OrganizationIDs: ptr.DerefOr(body.OrganizationIds, nil),
 		FromTemplateID:  ptr.DerefOr(body.FromTemplateId, ""),
-		OnDifference:    ptr.DerefOr(body.OnDifference, license.DifferenceSkip),
-		DryRun:          ptr.DerefOr(body.DryRun, false),
+		OnDifference:    ptr.DerefOr(body.OnDifference, license.CarryForwardDifferences),
 	})
 	if err != nil {
 		logAPIError(s.logger, err).

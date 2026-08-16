@@ -260,16 +260,16 @@ func (e LicenseFieldType) Valid() bool {
 
 // Defines values for LicenseMigrationDifferencePolicy.
 const (
-	OVERWRITE LicenseMigrationDifferencePolicy = "OVERWRITE"
-	SKIP      LicenseMigrationDifferencePolicy = "SKIP"
+	CARRYFORWARD LicenseMigrationDifferencePolicy = "CARRY_FORWARD"
+	DISCARD      LicenseMigrationDifferencePolicy = "DISCARD"
 )
 
 // Valid indicates whether the value is a known member of the LicenseMigrationDifferencePolicy enum.
 func (e LicenseMigrationDifferencePolicy) Valid() bool {
 	switch e {
-	case OVERWRITE:
+	case CARRYFORWARD:
 		return true
-	case SKIP:
+	case DISCARD:
 		return true
 	default:
 		return false
@@ -302,15 +302,12 @@ func (e LicenseMigrationOutcome) Valid() bool {
 
 // Defines values for LicenseMigrationSkipReason.
 const (
-	DIFFERSFROMTEMPLATE LicenseMigrationSkipReason = "DIFFERS_FROM_TEMPLATE"
-	NOTLICENSED         LicenseMigrationSkipReason = "NOT_LICENSED"
+	NOTLICENSED LicenseMigrationSkipReason = "NOT_LICENSED"
 )
 
 // Valid indicates whether the value is a known member of the LicenseMigrationSkipReason enum.
 func (e LicenseMigrationSkipReason) Valid() bool {
 	switch e {
-	case DIFFERSFROMTEMPLATE:
-		return true
 	case NOTLICENSED:
 		return true
 	default:
@@ -399,6 +396,24 @@ func (e OrganizationAPIKeyStatus) Valid() bool {
 	case OrganizationAPIKeyStatusACTIVE:
 		return true
 	case OrganizationAPIKeyStatusINACTIVE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OrganizationLicenseSortField.
+const (
+	InstantiatedAt   OrganizationLicenseSortField = "instantiated_at"
+	OrganizationName OrganizationLicenseSortField = "organization_name"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationLicenseSortField enum.
+func (e OrganizationLicenseSortField) Valid() bool {
+	switch e {
+	case InstantiatedAt:
+		return true
+	case OrganizationName:
 		return true
 	default:
 		return false
@@ -1477,14 +1492,14 @@ type LicenseFieldUsageResponse struct {
 	Usage *float64 `json:"usage,omitempty"`
 }
 
-// LicenseMigrationDifferencePolicy What to do with an organization whose license differs from the template it currently holds. `SKIP`, the default, leaves it alone and reports it. `OVERWRITE` moves it like any other.
-// A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which — so `SKIP` protects a bespoke arrangement and an out-of-date copy equally. Read the dry run and decide.
+// LicenseMigrationDifferencePolicy What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and the value is gone.
+// A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
 type LicenseMigrationDifferencePolicy string
 
-// LicenseMigrationOutcome What happened to one organization in a migration. `MIGRATED` means it now holds the target template's values — or would, on a dry run. `UNCHANGED` means it already held them, from the same template, so nothing was written. `SKIPPED` means it was deliberately left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+// LicenseMigrationOutcome What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 type LicenseMigrationOutcome string
 
-// LicenseMigrationSkipReason Why an organization was left alone. `DIFFERS_FROM_TEMPLATE` means its license differs from the template it currently holds and `on_difference` is `SKIP`. `NOT_LICENSED` means it holds no license at all — instantiate one instead, which is a separate route with a separate scope.
+// LicenseMigrationSkipReason Why an organization was left alone. `NOT_LICENSED` means it holds no license at all. A migration moves a customer between tiers and never puts one on their first: instantiation is a separate route with a separate scope.
 type LicenseMigrationSkipReason string
 
 // LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
@@ -1845,6 +1860,16 @@ type OrganizationLicenseDiffResponse struct {
 	TemplateId Ksuid `json:"template_id"`
 }
 
+// OrganizationLicenseFilter Narrows a search over a product's organizations and the licenses they hold.
+type OrganizationLicenseFilter struct {
+	// LicenseTemplateIds Keep only organizations whose license names one of these templates. An archived template is accepted, and asking for one is how an operator finds the customers still on a withdrawn tier.
+	LicenseTemplateIds []Ksuid `json:"license_template_ids,omitempty"`
+
+	// Licensed `true` keeps only organizations that hold a license, `false` only those that hold none. Omit for both.
+	Licensed        *bool   `json:"licensed,omitempty"`
+	OrganizationIds []Ksuid `json:"organization_ids,omitempty"`
+}
+
 // OrganizationLicenseHistoryResponse defines model for OrganizationLicenseHistoryResponse.
 type OrganizationLicenseHistoryResponse struct {
 	// Count The number of items returned in this response.
@@ -1863,12 +1888,10 @@ type OrganizationLicenseInstantiateRequest struct {
 	TemplateId Ksuid `json:"template_id"`
 }
 
-// OrganizationLicenseMigrationRequest Moves a set of organizations onto one license template. Each license is replaced by a fresh copy of the template's values, and its provenance is restamped, so the record says which tier the customer is on now. This is not an adjustment: adjusting cannot move provenance, by design.
+// OrganizationLicenseMigrationRequest Moves a set of organizations onto one license template. Each license takes the target template's values and its provenance is restamped, so the record says which tier the customer is on now. This is not an adjustment: adjusting cannot move provenance, by design.
+// By default a value that differs from the template the organization currently holds is carried forward onto the new license, so a bespoke arrangement survives the move. See `on_difference`.
 // Supply exactly one selection — `organization_ids` or `from_template_id`. Supplying both, or neither, is refused.
 type OrganizationLicenseMigrationRequest struct {
-	// DryRun Compute every outcome and write nothing. The same code path produces both, so a dry run and the run it precedes disagree only where a write itself fails.
-	DryRun *bool `json:"dry_run,omitempty"`
-
 	// FromTemplateId Move every organization in this product whose license names this template. Archived is accepted and is the common case: this is how a withdrawn tier is emptied. Resolved inside the request, so an organization instantiated a moment ago cannot be missed by a client that listed first.
 	FromTemplateId *Ksuid                            `json:"from_template_id,omitempty"`
 	OnDifference   *LicenseMigrationDifferencePolicy `json:"on_difference,omitempty"`
@@ -1883,14 +1906,11 @@ type OrganizationLicenseMigrationRequest struct {
 // OrganizationLicenseMigrationResponse The receipt for one migration run: every organization it considered and what happened to each. Results are ordered by organization identifier.
 type OrganizationLicenseMigrationResponse struct {
 	// Count The number of organizations considered.
-	Count int `json:"count"`
+	Count    int `json:"count"`
+	Failed   int `json:"failed"`
+	Migrated int `json:"migrated"`
 
-	// DryRun True when nothing was written. Every `MIGRATED` result then reads "would have been migrated".
-	DryRun   bool `json:"dry_run"`
-	Failed   int  `json:"failed"`
-	Migrated int  `json:"migrated"`
-
-	// MigratedAt The single moment stamped on every organization this run moved, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run. Set on a dry run too, as the moment the outcomes were computed.
+	// MigratedAt The single moment stamped on every organization this run moved, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
 	MigratedAt time.Time                            `json:"migrated_at"`
 	Results    []OrganizationLicenseMigrationResult `json:"results"`
 	Skipped    int                                  `json:"skipped"`
@@ -1902,7 +1922,7 @@ type OrganizationLicenseMigrationResponse struct {
 
 // OrganizationLicenseMigrationResult What one migration did to one organization.
 type OrganizationLicenseMigrationResult struct {
-	// Changes How the organization's license differed from the target template before the run, one license field at a time, ordered by name. `license_value` is what the organization held, `template_value` what the target grants. Empty when the two already agreed.
+	// Changes What the move actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. Empty when nothing changed.
 	Changes []LicenseFieldDifference `json:"changes"`
 
 	// Count The number of entries in `changes`.
@@ -1916,7 +1936,7 @@ type OrganizationLicenseMigrationResult struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	OrganizationId Ksuid `json:"organization_id"`
 
-	// Outcome What happened to one organization in a migration. `MIGRATED` means it now holds the target template's values — or would, on a dry run. `UNCHANGED` means it already held them, from the same template, so nothing was written. `SKIPPED` means it was deliberately left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+	// Outcome What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 	Outcome LicenseMigrationOutcome `json:"outcome"`
 
 	// PreviousTemplateId The template the organization held before this run. Absent when it holds no license.
@@ -1957,6 +1977,47 @@ type OrganizationLicenseResponse struct {
 
 	// Values What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
 	Values LicenseTemplateValues `json:"values"`
+}
+
+// OrganizationLicenseSearchRequest defines model for OrganizationLicenseSearchRequest.
+type OrganizationLicenseSearchRequest struct {
+	// Filter Narrows a search over a product's organizations and the licenses they hold.
+	Filter *OrganizationLicenseFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+	SortBy *OrganizationLicenseSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Sorting direction
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationLicenseSearchResponse defines model for OrganizationLicenseSearchResponse.
+type OrganizationLicenseSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                                  `json:"count"`
+	Items []OrganizationLicenseSummaryResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
+}
+
+// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+type OrganizationLicenseSortField string
+
+// OrganizationLicenseSummaryResponse One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.
+type OrganizationLicenseSummaryResponse struct {
+	// License Absent when the organization holds no license. `usage` is never populated here — deriving it per row would make a page of results as expensive as a page of license reads.
+	License *OrganizationLicenseResponse `json:"license,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId   Ksuid  `json:"organization_id"`
+	OrganizationName string `json:"organization_name"`
 }
 
 // OrganizationMemberFilter Filter criteria for searching organization members.
@@ -3505,6 +3566,9 @@ type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
 // MigrateOrganizationLicensesJSONRequestBody defines body for MigrateOrganizationLicenses for application/json ContentType.
 type MigrateOrganizationLicensesJSONRequestBody = OrganizationLicenseMigrationRequest
+
+// SearchOrganizationLicensesJSONRequestBody defines body for SearchOrganizationLicenses for application/json ContentType.
+type SearchOrganizationLicensesJSONRequestBody = OrganizationLicenseSearchRequest
 
 // CreateLicenseSchemaJSONRequestBody defines body for CreateLicenseSchema for application/json ContentType.
 type CreateLicenseSchemaJSONRequestBody = LicenseSchemaCreateRequest

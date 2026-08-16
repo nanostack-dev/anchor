@@ -472,6 +472,62 @@ func (h templateHandle) Archive() {
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 }
 
+// NewNamedOrganization adds an organization with a name a test can search for.
+func (w *licenseWorld) NewNamedOrganization(name string) string {
+	w.t.Helper()
+	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
+	resp, err := client.CreateProductOrganizationWithResponse(
+		context.Background(),
+		w.productID(),
+		ct.CreateProductOrganizationJSONRequestBody{Name: name},
+	)
+	require.NoError(w.t, err)
+	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	return resp.JSON201.Id
+}
+
+// ---------------------------------------------------------------------------
+// Search handle
+// ---------------------------------------------------------------------------
+
+// searchHandle reads the product's customer book with one credential.
+type searchHandle struct {
+	t         *testing.T
+	client    *ct.ClientWithResponses
+	productID string
+}
+
+func (w *licenseWorld) Search() searchHandle {
+	return searchHandle{t: w.t, client: w.client(), productID: w.productID()}
+}
+
+// As swaps the credential, for the tests whose subject is a scope.
+func (h searchHandle) As(client *ct.ClientWithResponses) searchHandle {
+	h.client = client
+	return h
+}
+
+func (h searchHandle) RunRaw(
+	request ct.OrganizationLicenseSearchRequest,
+) *ct.SearchOrganizationLicensesResponse {
+	h.t.Helper()
+	resp, err := h.client.SearchOrganizationLicensesWithResponse(
+		context.Background(), h.productID, request,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h searchHandle) Run(
+	request ct.OrganizationLicenseSearchRequest,
+) ct.OrganizationLicenseSearchResponse {
+	h.t.Helper()
+	resp := h.RunRaw(request)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
 // NewTemplate adds another tier to the same product, for the tests whose
 // subject is an organization moving between two of them.
 func (w *licenseWorld) NewTemplate(values ct.LicenseTemplateValues) ct.LicenseTemplateResponse {
