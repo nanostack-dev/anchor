@@ -29,6 +29,12 @@ export interface OrganizationLicenseHistoryViewProps {
 	onRetry?: () => void;
 	onLoadMore?: () => void;
 	isLoadingMore?: boolean;
+	/**
+	 * Resolves a template identifier to the name an operator knows it by. An
+	 * entry naming `ltpl_3I11xG...` says nothing on a page whose job is to
+	 * explain what a customer was given.
+	 */
+	templateName?: (templateId: string) => string;
 }
 
 export function OrganizationLicenseHistoryView({
@@ -39,6 +45,7 @@ export function OrganizationLicenseHistoryView({
 	onRetry,
 	onLoadMore,
 	isLoadingMore = false,
+	templateName = (templateId) => templateId,
 }: OrganizationLicenseHistoryViewProps) {
 	if (isLoading) {
 		return (
@@ -93,7 +100,11 @@ export function OrganizationLicenseHistoryView({
 		<div className="flex flex-col gap-3">
 			<ol className="divide-y divide-border rounded-lg border border-border">
 				{moments.map((group) => (
-					<HistoryMoment key={group[0].id} entries={group} />
+					<HistoryMoment
+						key={group[0].id}
+						entries={group}
+						templateName={templateName}
+					/>
 				))}
 			</ol>
 			{hasMore && (
@@ -117,8 +128,10 @@ export function OrganizationLicenseHistoryView({
 
 function HistoryMoment({
 	entries,
+	templateName,
 }: {
 	entries: OrganizationLicenseChangeResponse[];
+	templateName: (templateId: string) => string;
 }) {
 	const first = entries[0];
 	const when = dayjs(first.changed_at).format("D MMMM YYYY H:mm");
@@ -144,7 +157,7 @@ function HistoryMoment({
 			</div>
 
 			{stampsWholeSet ? (
-				<InstantiationBody entry={first} />
+				<InstantiationBody entry={first} templateName={templateName} />
 			) : (
 				<ul className="flex flex-col gap-2">
 					{entries.map((entry) => (
@@ -158,8 +171,10 @@ function HistoryMoment({
 
 function InstantiationBody({
 	entry,
+	templateName,
 }: {
 	entry: OrganizationLicenseChangeResponse;
+	templateName: (templateId: string) => string;
 }) {
 	const values = asValueSet(entry.new_value);
 	const names = values
@@ -171,15 +186,15 @@ function InstantiationBody({
 			{entry.previous_template_id && (
 				<p className="text-sm">
 					<span className="text-muted-foreground">Moved from </span>
-					<span className="font-mono break-all">
-						{entry.previous_template_id}
+					<span className="font-medium">
+						{templateName(entry.previous_template_id)}
 					</span>
 				</p>
 			)}
 			{entry.template_id && (
 				<p className="text-sm">
 					<span className="text-muted-foreground">Template </span>
-					<span className="font-mono break-all">{entry.template_id}</span>
+					<span className="font-medium">{templateName(entry.template_id)}</span>
 				</p>
 			)}
 			{names.length > 0 && (

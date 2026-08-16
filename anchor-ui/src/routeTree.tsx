@@ -1,6 +1,7 @@
 import { indexRoute } from "@/routes";
 import { type RouteContext, rootRoute } from "@/routes/__root";
 import { organizationApiKeysRoute } from "@/routes/organizations/organization-api-keys";
+import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import { organizationLicenseRoute } from "@/routes/organizations/organization-license";
 import { organizationMembershipsRoute } from "@/routes/organizations/organization-memberships";
 import { organizationsRoute } from "@/routes/organizations/organizations";
@@ -52,6 +53,7 @@ const routeTree = rootRoute.addChildren([
 	organizationApiKeysRoute,
 	organizationMembershipsRoute,
 	organizationLicenseRoute,
+	organizationLicenseDetailRoute,
 	workspacesRoute,
 	workspaceMembershipsRoute,
 	settingsUserRoute,

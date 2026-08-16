@@ -145,3 +145,35 @@ export const LoadFailed: Story = {
 export const Loading: Story = {
 	args: { items: [], total: 0, isLoading: true },
 };
+
+export const AMigrationNamesBothTiers: Story = {
+	args: {
+		total: 1,
+		templateName: (id: string) =>
+			({ ltpl_beta: "Early Access", ltpl_pro: "Pro" })[id] ?? id,
+		items: [
+			{
+				id: "lchg_migrated",
+				product_id: "prd_1",
+				organization_id: "org_1",
+				license_id: "lic_1",
+				type: LicenseChangeType.MIGRATED,
+				template_id: "ltpl_pro",
+				previous_template_id: "ltpl_beta",
+				old_value: { max_flows: 50 },
+				new_value: { max_flows: 500, sso: true },
+				changed_at: "2026-08-16T10:30:00Z",
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		// A tier move reads as one stamped moment, and names where it came from
+		// as well as where it went — by name, never by identifier.
+		await expect(canvas.getByText("Moved to another tier")).toBeVisible();
+		await expect(canvas.getByText("Early Access")).toBeVisible();
+		await expect(canvas.getByText("Pro")).toBeVisible();
+		await expect(canvas.queryByText(/ltpl_/)).toBeNull();
+	},
+};

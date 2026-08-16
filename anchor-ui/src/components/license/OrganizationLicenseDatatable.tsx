@@ -25,11 +25,10 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { ArrowRightLeft, Eye, ScrollText } from "lucide-react";
+import { ArrowRightLeft, ArrowUpRight, ScrollText } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LicenseMigrationDialog } from "./LicenseMigrationDialog";
-import { OrganizationLicenseViewDialog } from "./OrganizationLicenseViewDialog";
 import { differsFromItsTemplate } from "./license-migration-format";
 
 const columnHelper = createColumnHelper<OrganizationLicenseSummaryResponse>();
@@ -228,23 +227,25 @@ export function OrganizationLicenseDatatable({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<OrganizationLicenseViewDialog
-						productId={productId}
-						organizationId={row.original.organization_id}
-						organizationName={row.original.organization_name}
-						trigger={
-							<Button variant="outline" size="icon">
-								<span className="sr-only">
-									View {row.original.organization_name}&rsquo;s license
-								</span>
-								<Eye className="size-4" />
-							</Button>
+					<Button
+						variant="outline"
+						size="icon"
+						render={
+							<Link
+								to={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL}
+								params={{ organizationId: row.original.organization_id }}
+							/>
 						}
-					/>
+					>
+						<span className="sr-only">
+							Open {row.original.organization_name}&rsquo;s license
+						</span>
+						<ArrowUpRight className="size-4" />
+					</Button>
 				),
 			}),
 		],
-		[productId, templatesById],
+		[templatesById],
 	);
 
 	if (!schemaQuery.isLoading && !schema) {

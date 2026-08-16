@@ -44,6 +44,12 @@ type PageProps = {
 	description?: string;
 	actions?: React.ReactNode;
 	breadCrumbs?: boolean;
+	/**
+	 * Replaces the text of the last crumb. A detail route's final path segment
+	 * is an identifier, and a breadcrumb reading `Org_3Hy...` names nothing —
+	 * pass the record's own name instead.
+	 */
+	breadCrumbLabel?: string;
 	variant?: PageVariant;
 	pageInfo?: PageInfoProps;
 };
@@ -66,14 +72,21 @@ export function Page({
 	description,
 	actions,
 	breadCrumbs = true,
+	breadCrumbLabel,
 	variant = "full",
 	pageInfo,
 }: PageProps) {
 	const location = useLocation();
-	const crumbs = useMemo(
-		() => getBreadcrumbs(location.pathname),
-		[location.pathname],
-	);
+	const crumbs = useMemo(() => {
+		const trail = getBreadcrumbs(location.pathname);
+		if (breadCrumbLabel && trail.length > 0) {
+			trail[trail.length - 1] = {
+				...trail[trail.length - 1],
+				name: breadCrumbLabel,
+			};
+		}
+		return trail;
+	}, [location.pathname, breadCrumbLabel]);
 
 	return (
 		<section

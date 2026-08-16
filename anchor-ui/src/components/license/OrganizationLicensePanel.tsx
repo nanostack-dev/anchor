@@ -2,6 +2,7 @@ import { getOrganizationLicense } from "@/client";
 import {
 	getLicenseSchemaOptions,
 	getOrganizationLicenseQueryKey,
+	listLicenseTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +45,10 @@ export function OrganizationLicensePanel({
 		...getLicenseSchemaOptions({ path: { product_id: productId } }),
 		retry: false,
 	});
+
+	const templatesQuery = useQuery(
+		listLicenseTemplatesOptions({ path: { product_id: productId } }),
+	);
 
 	const licenseQuery = useQuery({
 		queryKey: getOrganizationLicenseQueryKey({
@@ -142,8 +147,10 @@ export function OrganizationLicensePanel({
 					<dt className="text-xs font-semibold text-muted-foreground">
 						Template
 					</dt>
-					<dd className="mt-1 font-mono text-sm break-all">
-						{license.template_id}
+					<dd className="mt-1 text-sm font-medium">
+						{templatesQuery.data?.items?.find(
+							(item) => item.id === license.template_id,
+						)?.name ?? license.template_id}
 					</dd>
 				</div>
 				<div className="rounded-lg bg-muted/50 p-4">
