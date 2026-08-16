@@ -44,35 +44,3 @@ CREATE INDEX idx_organization_license_changes_organization
 
 CREATE INDEX idx_organization_license_changes_platform_tenant_id
     ON organization_license_changes(platform_tenant_id);
-
--- Licenses that already exist get one INSTANTIATED row so an empty history
--- still means "never licensed". Earlier adjustments cannot be recovered.
--- The id reuses the license KSUID under the lchg_ prefix so it stays unique
--- and matches the public id pattern without inventing a new clock.
-INSERT INTO organization_license_changes (
-    id,
-    platform_tenant_id,
-    product_id,
-    organization_id,
-    license_id,
-    change_type,
-    template_id,
-    new_value_json,
-    changed_at
-)
-SELECT
-    replace(id, 'lic_', 'lchg_'),
-    platform_tenant_id,
-    product_id,
-    organization_id,
-    id,
-    'INSTANTIATED',
-    template_id,
-    values_json,
-    instantiated_at
-FROM organization_licenses
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM organization_license_changes
-    WHERE organization_license_changes.license_id = organization_licenses.id
-);

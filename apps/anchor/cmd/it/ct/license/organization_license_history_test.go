@@ -6,34 +6,9 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// backfillLicenseHistorySQL matches migration 000032. The test re-runs it
-// after a raw license insert so a pre-existing grant still reads as instantiated.
-const backfillLicenseHistorySQL = `
-INSERT INTO organization_license_changes (
-    id, platform_tenant_id, product_id, organization_id, license_id,
-    change_type, template_id, new_value_json, changed_at
-)
-SELECT
-    replace(id, 'lic_', 'lchg_'),
-    platform_tenant_id,
-    product_id,
-    organization_id,
-    id,
-    'INSTANTIATED',
-    template_id,
-    values_json,
-    instantiated_at
-FROM organization_licenses
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM organization_license_changes
-    WHERE organization_license_changes.license_id = organization_licenses.id
-)`
 
 func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 	t.Run("instantiating records the template it was stamped from", func(t *testing.T) {
@@ -228,31 +203,6 @@ func TestOrganizationLicenseHistoryStorage(t *testing.T) {
 		w.DeleteOrganization()
 
 		assert.Equal(t, 0, historyRowCount(t, w.OrganizationID()))
-	})
-
-	t.Run("a license that predates the table gets an instantiation entry", func(t *testing.T) {
-		w := newLicenseWorld(t)
-		licenseID := ids.MustNew("lic")
-		_, err := testDB.Exec(
-			`INSERT INTO organization_licenses (
-				id, platform_tenant_id, product_id, organization_id,
-				template_id, values_json, instantiated_at
-			) VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())`,
-			licenseID, w.tenantID, w.productID(), w.OrganizationID(), w.TemplateID(),
-			`{"flows":500,"sso":true,"support_tier":"priority","region":"ca-central"}`,
-		)
-		require.NoError(t, err)
-
-		_, err = testDB.Exec(backfillLicenseHistorySQL)
-		require.NoError(t, err)
-
-		history := w.License().History()
-		require.Equal(t, int64(1), history.Total)
-		require.NotNil(t, history.Items)
-		require.Len(t, history.Items, 1)
-		assert.Equal(t, ct.INSTANTIATED, history.Items[0].Type)
-		assert.Equal(t, w.TemplateID(), deref(history.Items[0].TemplateId))
-		assert.Equal(t, licenseID, history.Items[0].LicenseId)
 	})
 }
 
