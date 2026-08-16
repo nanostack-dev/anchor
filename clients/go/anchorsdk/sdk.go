@@ -75,8 +75,8 @@ func WithClientOption(opt nanoclient.ClientOption) Option {
 // use and intended to be built once and shared.
 //
 // Reach features through its facades: [Client.Email], [Client.Organizations],
-// [Client.Users], and [Client.Organization] for operations scoped to a single
-// organization.
+// [Client.Users], [Client.Licensing], and [Client.Organization] for operations
+// scoped to a single organization.
 type Client struct {
 	api       *nanoclient.ClientWithResponses
 	productID string

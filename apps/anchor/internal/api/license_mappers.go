@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/license"
@@ -124,16 +125,17 @@ func mapOrganizationLicenseChangeToResponse(
 	c license.OrganizationLicenseChange,
 ) OrganizationLicenseChangeResponse {
 	return OrganizationLicenseChangeResponse{
-		Id:             c.ID,
-		ProductId:      c.ProductID,
-		OrganizationId: c.OrganizationID,
-		LicenseId:      c.LicenseID,
-		Type:           c.Type,
-		TemplateId:     c.TemplateID,
-		Field:          c.Field,
-		OldValue:       c.OldValue,
-		NewValue:       c.NewValue,
-		ChangedAt:      c.ChangedAt,
+		Id:                 c.ID,
+		ProductId:          c.ProductID,
+		OrganizationId:     c.OrganizationID,
+		LicenseId:          c.LicenseID,
+		Type:               c.Type,
+		TemplateId:         c.TemplateID,
+		PreviousTemplateId: c.PreviousTemplateID,
+		Field:              c.Field,
+		OldValue:           c.OldValue,
+		NewValue:           c.NewValue,
+		ChangedAt:          c.ChangedAt,
 	}
 }
 
@@ -165,6 +167,56 @@ func mapLicenseFieldDifferenceToResponse(d license.FieldDifference) LicenseField
 		Kind:          d.Kind,
 		LicenseValue:  d.LicenseValue,
 		TemplateValue: d.TemplateValue,
+	}
+}
+
+// mapLicenseMigrationFailureToResponse reports why one organization was left
+// behind. A fault carries the machine-readable code a caller retries or
+// escalates on; anything else reached the handler unwrapped, so it reads as the
+// generic unexpected error rather than leaking an internal message into a
+// per-organization result.
+func mapLicenseMigrationFailureToResponse(err error) *ApiError {
+	if err == nil {
+		return nil
+	}
+	if faulted, ok := fault.As(err); ok && len(faulted.Details) > 0 {
+		return &faulted.Details[0]
+	}
+	return &ApiError{Code: fault.CodeUnexpected, Message: "Unexpected error"}
+}
+
+func mapLicenseMigrationResultToResponse(
+	r license.OrganizationMigrationResult,
+) OrganizationLicenseMigrationResult {
+	// DiffValues returns nil for "nothing differs"; slicex.Map preserves that,
+	// but changes is a required, non-nullable array in the contract.
+	changes := slicex.Map(r.Changes, mapLicenseFieldDifferenceToResponse)
+	if changes == nil {
+		changes = []LicenseFieldDifference{}
+	}
+	return OrganizationLicenseMigrationResult{
+		OrganizationId:     r.OrganizationID,
+		Outcome:            r.Outcome,
+		Reason:             r.Reason,
+		PreviousTemplateId: r.PreviousTemplateID,
+		Changes:            changes,
+		Count:              len(changes),
+		Error:              mapLicenseMigrationFailureToResponse(r.Error),
+	}
+}
+
+func mapLicenseMigrationToResponse(m license.Migration) OrganizationLicenseMigrationResponse {
+	tally := m.Tally()
+	return OrganizationLicenseMigrationResponse{
+		TemplateId: m.TemplateID,
+		DryRun:     m.DryRun,
+		MigratedAt: m.MigratedAt,
+		Results:    slicex.Map(m.Results, mapLicenseMigrationResultToResponse),
+		Count:      len(m.Results),
+		Migrated:   tally.Migrated,
+		Unchanged:  tally.Unchanged,
+		Skipped:    tally.Skipped,
+		Failed:     tally.Failed,
 	}
 }
 

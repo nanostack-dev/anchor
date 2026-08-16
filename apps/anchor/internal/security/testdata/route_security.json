@@ -293,6 +293,12 @@
   "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
     "\u003cpublic\u003e": []
   },
+  "POST /v1/products/{product_id}/licensing/organization-licenses/migrate": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:migrate"
+    ]
+  },
   "POST /v1/products/{product_id}/licensing/schema": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [

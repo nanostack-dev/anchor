@@ -23,7 +23,7 @@ func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 
 		entry := history.Items[0]
 		assert.NotEmpty(t, entry.Id)
-		assert.Equal(t, ct.INSTANTIATED, entry.Type)
+		assert.Equal(t, ct.LicenseChangeTypeINSTANTIATED, entry.Type)
 		assert.Equal(t, w.productID(), entry.ProductId)
 		assert.Equal(t, w.OrganizationID(), entry.OrganizationId)
 		assert.Equal(t, organizationLicense.Id, entry.LicenseId)
@@ -61,7 +61,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
 		entry := w.License().History().Items[0]
-		assert.Equal(t, ct.ADJUSTED, entry.Type)
+		assert.Equal(t, ct.LicenseChangeTypeADJUSTED, entry.Type)
 		assert.Equal(t, "flows", deref(entry.Field))
 		assert.InDelta(t, 500.0, entry.OldValue, 0)
 		assert.InDelta(t, 800.0, entry.NewValue, 0)
@@ -97,7 +97,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		// This is a history of changes, not of requests.
 		history := w.License().History()
 		assert.Equal(t, int64(1), history.Total)
-		assert.Equal(t, ct.INSTANTIATED, history.Items[0].Type)
+		assert.Equal(t, ct.LicenseChangeTypeINSTANTIATED, history.Items[0].Type)
 	})
 
 	t.Run("an empty adjustment records nothing", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		require.Len(t, items, 3)
 		assert.InDelta(t, 900.0, items[0].NewValue, 0)
 		assert.InDelta(t, 800.0, items[1].NewValue, 0)
-		assert.Equal(t, ct.INSTANTIATED, items[2].Type)
+		assert.Equal(t, ct.LicenseChangeTypeINSTANTIATED, items[2].Type)
 	})
 
 	t.Run("paginates without repeating or dropping an entry", func(t *testing.T) {

@@ -333,9 +333,9 @@ func (l License) Invalidate() { l.o.c.licenses.delete(l.o.id) }
 // Instantiate creates the organization's license as a copy of templateID's
 // current values. Anchor stamps template_id and instantiated_at as
 // provenance; editing the template afterwards does not reach this
-// organization. There is no re-instantiate route — moving an organization to
-// a different template is a sequence of [License.Adjust] calls, one field at
-// a time, not a single call.
+// organization. It is refused once the organization holds a license: moving
+// one that already exists onto another template is [Licensing.Migrate], which
+// restamps the provenance that [License.Adjust] deliberately cannot.
 func (l License) Instantiate(
 	ctx context.Context,
 	templateID string,

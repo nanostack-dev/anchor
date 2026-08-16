@@ -639,6 +639,30 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// MigrateOrganizationLicensesWithBody Migrate Organization Licenses Onto A Template
+	//
+	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+	// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+	// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+	// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+	MigrateOrganizationLicensesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
+	//
+	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+	// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+	// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+	// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+	MigrateOrganizationLicenses(ctx context.Context, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteLicenseSchema Delete License Schema
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/licensing/schema (the `DeleteLicenseSchema` operationId).
@@ -2585,6 +2609,50 @@ func (c *Client) UpdateIntegrationInstance(ctx context.Context, productId Produc
 // Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListIntegrationAuditLogsRequest(c.Server, productId, integrationInstanceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MigrateOrganizationLicensesWithBody Migrate Organization Licenses Onto A Template
+//
+// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+func (c *Client) MigrateOrganizationLicensesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMigrateOrganizationLicensesRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
+//
+// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+func (c *Client) MigrateOrganizationLicenses(ctx context.Context, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMigrateOrganizationLicensesRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -6140,6 +6208,53 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewMigrateOrganizationLicensesRequest calls the generic MigrateOrganizationLicenses builder with application/json body
+func NewMigrateOrganizationLicensesRequest(server string, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMigrateOrganizationLicensesRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewMigrateOrganizationLicensesRequestWithBody constructs an http.Request for the MigrateOrganizationLicenses method, with any body, and a specified content type
+func NewMigrateOrganizationLicensesRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/organization-licenses/migrate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9743,6 +9858,30 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
 
+	// MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
+	//
+	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+	// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+	// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+	// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+	MigrateOrganizationLicensesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateOrganizationLicensesResponse, error)
+
+	// MigrateOrganizationLicensesWithResponse Migrate Organization Licenses Onto A Template
+	//
+	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+	// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+	// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+	// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+	MigrateOrganizationLicensesWithResponse(ctx context.Context, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateOrganizationLicensesResponse, error)
+
 	// DeleteLicenseSchemaWithResponse Delete License Schema
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -12834,6 +12973,61 @@ func (r ListIntegrationAuditLogsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListIntegrationAuditLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MigrateOrganizationLicensesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseMigrationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MigrateOrganizationLicensesResponse) GetJSON200() *OrganizationLicenseMigrationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r MigrateOrganizationLicensesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r MigrateOrganizationLicensesResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r MigrateOrganizationLicensesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MigrateOrganizationLicensesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MigrateOrganizationLicensesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MigrateOrganizationLicensesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16860,6 +17054,42 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
+// MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
+//
+// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+func (c *ClientWithResponses) MigrateOrganizationLicensesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateOrganizationLicensesResponse, error) {
+	rsp, err := c.MigrateOrganizationLicensesWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMigrateOrganizationLicensesResponse(rsp)
+}
+
+// MigrateOrganizationLicensesWithResponse Migrate Organization Licenses Onto A Template
+//
+// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. Each license is replaced by a fresh copy of the template's values, and `template_id` and `instantiated_at` are restamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
+// Select the organizations with `organization_ids` or with `from_template_id`, which is every organization currently on a given template and accepts an archived one. At most 500 organizations per run; a larger selection is refused with its count rather than truncated, for a dry run exactly as for a real one.
+// Send `dry_run` first. The response lists every organization, the outcome it would reach, and the license fields that would change. An organization whose license already differs from the template it holds is skipped by default, because Anchor cannot tell a bespoke adjustment from a template that moved after the copy was taken — read the differences and re-run with `on_difference: OVERWRITE` if they should move anyway.
+// Each organization is written in its own transaction, so one failure is reported against that organization and the rest of the batch still lands. Every organization moved gets a `MIGRATED` entry in its license history, and every entry of one run shares a single `changed_at`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/organization-licenses/migrate (the `MigrateOrganizationLicenses` operationId).
+func (c *ClientWithResponses) MigrateOrganizationLicensesWithResponse(ctx context.Context, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateOrganizationLicensesResponse, error) {
+	rsp, err := c.MigrateOrganizationLicenses(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMigrateOrganizationLicensesResponse(rsp)
+}
+
 // DeleteLicenseSchemaWithResponse Delete License Schema
 //
 // Returns a wrapper object for the known response body format(s).
@@ -19947,6 +20177,46 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 
 	case rsp.StatusCode == 404:
 		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseMigrateOrganizationLicensesResponse parses an HTTP response from a MigrateOrganizationLicensesWithResponse call
+func ParseMigrateOrganizationLicensesResponse(rsp *http.Response) (*MigrateOrganizationLicensesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MigrateOrganizationLicensesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseMigrationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
@@ -114,6 +115,51 @@ func (r *organizationLicenseRepositoryImpl) Update(
 			AND(table.OrganizationLicenses.ID.EQ(postgres.String(organizationLicense.ID))),
 	).RETURNING(table.OrganizationLicenses.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+}
+
+// Restamp rewrites the values an Organization holds together with the
+// provenance of the copy, which Update deliberately cannot touch. It is the
+// only path that changes which template a customer is on, so the guarantee
+// Update documents holds as a property of the code rather than of its callers.
+// See docs/adr/0014-organization-licenses-are-migrated-in-bulk.md.
+func (r *organizationLicenseRepositoryImpl) Restamp(
+	ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
+) (license.OrganizationLicense, error) {
+	organizationLicense.UpdatedAt = time.Now()
+	entity := r.mapper.ToEntity(organizationLicense)
+	stmt := table.OrganizationLicenses.UPDATE(
+		organizationLicensesUpdatableColumns().Except(
+			table.OrganizationLicenses.ID,
+			table.OrganizationLicenses.PlatformTenantID,
+			table.OrganizationLicenses.ProductID,
+			table.OrganizationLicenses.OrganizationID,
+		),
+	).MODEL(entity).WHERE(
+		organizationLicenseScope(tenantID, organizationLicense.ProductID).
+			AND(table.OrganizationLicenses.ID.EQ(postgres.String(organizationLicense.ID))),
+	).RETURNING(table.OrganizationLicenses.AllColumns)
+	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+}
+
+// ListOrganizationIDsForTemplate returns every Organization in the Product
+// whose license names the given template, ordered by identifier so a run's
+// results are stable and a caller batching its own calls sees a fixed order.
+func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
+	ctx context.Context, tenantID string, productID string, templateID string,
+) ([]string, error) {
+	stmt := table.OrganizationLicenses.
+		SELECT(table.OrganizationLicenses.OrganizationID).
+		FROM(table.OrganizationLicenses).
+		WHERE(
+			organizationLicenseScope(tenantID, productID).
+				AND(table.OrganizationLicenses.TemplateID.EQ(postgres.String(templateID))),
+		).
+		ORDER_BY(table.OrganizationLicenses.OrganizationID.ASC())
+
+	return transactor.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(entity model.OrganizationLicenses) string { return entity.OrganizationID },
+	).Value()
 }
 
 // CountLicensesForTemplate reports how many Organization licenses still name

@@ -34,6 +34,7 @@ type AnchorAPI struct {
 	LicenseTemplateService        licensesvc.LicenseTemplateService
 	OrganizationLicenseService    licensesvc.OrganizationLicenseService
 	LicenseHistoryService         licensesvc.LicenseHistoryService
+	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
 	Queue                         *queue.Client
@@ -63,6 +64,7 @@ type Params struct {
 	LicenseTemplateService        licensesvc.LicenseTemplateService
 	OrganizationLicenseService    licensesvc.OrganizationLicenseService
 	LicenseHistoryService         licensesvc.LicenseHistoryService
+	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
 	Queue                         *queue.Client
@@ -92,6 +94,7 @@ func NewAPI(params Params) *AnchorAPI {
 		LicenseTemplateService:        params.LicenseTemplateService,
 		OrganizationLicenseService:    params.OrganizationLicenseService,
 		LicenseHistoryService:         params.LicenseHistoryService,
+		LicenseMigrationService:       params.LicenseMigrationService,
 		UsageService:                  params.UsageService,
 		UsageSeriesService:            params.UsageSeriesService,
 		Queue:                         params.Queue,
