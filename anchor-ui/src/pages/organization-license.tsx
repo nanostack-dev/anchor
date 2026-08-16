@@ -106,7 +106,7 @@ export default function OrganizationLicensePage() {
 							<EmptyTitle>No organization selected</EmptyTitle>
 							<EmptyDescription>
 								Pick an organization above to see what it is allowed, how much
-								of each limit it has used, and its usage history.
+								of each limit it has used, and what changed on its license.
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
