@@ -25,7 +25,7 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { ArrowRightLeft, ArrowUpRight, ScrollText } from "lucide-react";
+import { ArrowRightLeft, Eye, ScrollText } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LicenseMigrationDialog } from "./LicenseMigrationDialog";
@@ -241,7 +241,7 @@ export function OrganizationLicenseDatatable({
 						<span className="sr-only">
 							Open {row.original.organization_name}&rsquo;s license
 						</span>
-						<ArrowUpRight className="size-4" />
+						<Eye className="size-4" />
 					</Button>
 				),
 			}),
