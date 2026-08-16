@@ -178,9 +178,6 @@ func (s *organizationLicenseService) Instantiate(
 	}
 	instantiated.GenerateID()
 
-	// The license and its first history entry land together or not at all: a
-	// license whose instantiation went unrecorded would read as one that was
-	// never granted.
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var createErr error
@@ -281,51 +278,52 @@ func (s *organizationLicenseService) AdjustValues(
 		return license.OrganizationLicense{}, err
 	}
 
-	existing, err := s.licenseRepo.FindByOrganization(
-		ctx, in.TenantID, in.ProductID, in.OrganizationID,
-	)
-	if err != nil {
-		return license.OrganizationLicense{}, err
-	}
-	if existing == nil {
-		return license.OrganizationLicense{}, ErrOrganizationLicenseNotFound
-	}
-
-	// Merged, not replaced. The merged set is validated whole, so a license that
-	// has fallen behind a tightened schema is corrected rather than re-saved.
-	previous := existing.Values
-	adjusted := existing.AdjustedValues(in.Values)
-	if err = s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, adjusted); err != nil {
-		return license.OrganizationLicense{}, err
-	}
-	existing.Values = adjusted
-
-	// One reading of the clock for the whole request, and the same clock every
-	// other history entry is stamped from. Taking it from the row the update
-	// returns would read the database's clock instead, and a history ordered
-	// across two clocks can report a change before the change it followed.
+	// One clock for the request. The update row uses the database clock; mixing
+	// the two can order a later change before the one it followed.
 	changedAt := time.Now()
 
-	// The adjustment and the entries recording it land together or not at all:
-	// a raised limit whose history entry was lost would leave the account
-	// looking like it was always on that number.
 	var updated license.OrganizationLicense
+	wrote := false
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := s.licenseRepo.FindByOrganizationForUpdate(
+			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
+		)
+		if findErr != nil {
+			return findErr
+		}
+		if existing == nil {
+			return ErrOrganizationLicenseNotFound
+		}
+
+		// Merged, not replaced. The merged set is validated whole, so a license
+		// that has fallen behind a tightened schema is corrected rather than re-saved.
+		previous := existing.Values
+		adjusted := existing.AdjustedValues(in.Values)
+		if err := s.schemas.ValidateValues(txCtx, in.TenantID, in.ProductID, adjusted); err != nil {
+			return err
+		}
+		existing.Values = adjusted
+
+		changes := license.NewAdjustmentChanges(*existing, previous, changedAt)
+		if len(changes) == 0 {
+			updated = *existing
+			return nil
+		}
+
 		var updateErr error
 		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)
 		if updateErr != nil {
 			return updateErr
 		}
-		return s.changes.Append(
-			txCtx, license.NewAdjustmentChanges(updated, previous, changedAt),
-		)
+		wrote = true
+		return s.changes.Append(txCtx, changes)
 	}); txErr != nil {
 		return license.OrganizationLicense{}, txErr
 	}
 
-	// Without this, a limit lowered to make a previously-compliant Organization
-	// exceeded would read as compliant until the cache entry's TTL expired.
-	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+	if wrote {
+		s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+	}
 
 	return updated, nil
 }

@@ -21,9 +21,6 @@ func adjustedLicense(values license.TemplateValues) license.OrganizationLicense 
 	}
 }
 
-// TestNewAdjustmentChanges pins what an adjustment records. It is the whole of
-// "who raised this customer's limit, and when", so every shape the entry set
-// can take is named here.
 func TestNewAdjustmentChanges(t *testing.T) {
 	t.Parallel()
 

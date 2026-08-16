@@ -49,12 +49,27 @@ func organizationLicenseScope(tenantID, productID string) postgres.BoolExpressio
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
 ) (*license.OrganizationLicense, error) {
+	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
+}
+
+func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(
+	ctx context.Context, tenantID string, productID string, organizationID string,
+) (*license.OrganizationLicense, error) {
+	return r.findByOrganization(ctx, tenantID, productID, organizationID, true)
+}
+
+func (r *organizationLicenseRepositoryImpl) findByOrganization(
+	ctx context.Context, tenantID string, productID string, organizationID string, forUpdate bool,
+) (*license.OrganizationLicense, error) {
 	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
 		FROM(table.OrganizationLicenses).
 		WHERE(
 			organizationLicenseScope(tenantID, productID).
 				AND(table.OrganizationLicenses.OrganizationID.EQ(postgres.String(organizationID))),
 		).LIMIT(1)
+	if forUpdate {
+		stmt = stmt.FOR(postgres.UPDATE())
+	}
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
@@ -78,9 +93,8 @@ func (r *organizationLicenseRepositoryImpl) Create(
 }
 
 // Update rewrites the values an Organization holds, and only those. Identity,
-// Organization and provenance are excluded from the statement, so nothing here
-// can rewrite which template a customer was sold. Re-instantiating onto a
-// different template is a separate act and will get its own method.
+// Organization and provenance stay on the row: this path cannot change which
+// template a customer was sold.
 func (r *organizationLicenseRepositoryImpl) Update(
 	ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
 ) (license.OrganizationLicense, error) {

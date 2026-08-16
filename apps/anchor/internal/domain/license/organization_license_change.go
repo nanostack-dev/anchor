@@ -46,12 +46,7 @@ type OrganizationLicenseChange struct {
 	ChangedAt  time.Time
 }
 
-// NewInstantiationChange records a template being stamped onto an
-// Organization.
-//
-// One entry, carrying the whole copied set rather than one entry per license
-// field: what a customer was sold is a single statement, and splitting it
-// would bury the adjustments that follow it under the tier they started from.
+// NewInstantiationChange records one entry for the whole copied set.
 func NewInstantiationChange(
 	organizationLicense OrganizationLicense, changedAt time.Time,
 ) OrganizationLicenseChange {
@@ -69,12 +64,8 @@ func NewInstantiationChange(
 	return change
 }
 
-// NewAdjustmentChanges records one entry per license field the adjustment
-// moves, ordered by license field name.
-//
-// A field restated at the value it already held records nothing: this is a
-// history of changes, not of requests. Every entry shares one changedAt, so an
-// adjustment that touched several fields reads back as one moment.
+// NewAdjustmentChanges records one entry per field that actually moved.
+// Unchanged fields are omitted. Every entry shares changedAt.
 func NewAdjustmentChanges(
 	organizationLicense OrganizationLicense, previous TemplateValues, changedAt time.Time,
 ) []OrganizationLicenseChange {

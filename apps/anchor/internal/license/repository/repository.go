@@ -115,6 +115,11 @@ type OrganizationLicenseRepository interface {
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
 	) (*license.OrganizationLicense, error)
+	// FindByOrganizationForUpdate is FindByOrganization plus FOR UPDATE.
+	// Call it inside a transaction so two adjustments cannot share one previous set.
+	FindByOrganizationForUpdate(
+		ctx context.Context, tenantID string, productID string, organizationID string,
+	) (*license.OrganizationLicense, error)
 	Create(
 		ctx context.Context, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)

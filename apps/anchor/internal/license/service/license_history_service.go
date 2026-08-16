@@ -12,17 +12,9 @@ import (
 	intrepo "anchor/internal/repository"
 )
 
-// LicenseHistoryService reads what OrganizationLicenseService recorded: every
-// change ever made to one Organization's license, newest first and paginated.
-//
-// It reads and never writes. Recording belongs to the write that caused the
-// change, so an entry cannot be produced without the license move it describes
-// — the same reason UsageService owns the append that UsageSeriesService only
-// reads back.
-//
-// An Organization that has never been licensed reads as an empty history
-// rather than as a 404: nothing has happened to it yet, which is a fact rather
-// than an absence. A 404 means no such Organization.
+// LicenseHistoryService reads one Organization's license history, newest first.
+// An Organization that was never licensed returns an empty page. A 404 means
+// no such Organization.
 type LicenseHistoryService interface {
 	ListChanges(
 		ctx context.Context, in license.ListLicenseChangesInput,

@@ -127,10 +127,7 @@ type GetLicenseInput struct {
 	OrganizationID string `validate:"required,notblank"`
 }
 
-// ListLicenseChangesInput reads one Organization's license history, newest
-// first and paginated. There is no filter by change type: a history read
-// exists to show the sequence, and a caller narrowing it would be reading the
-// wrong thing.
+// ListLicenseChangesInput reads one Organization's license history, newest first.
 type ListLicenseChangesInput struct {
 	TenantID       string            `validate:"required,notblank"`
 	ProductID      string            `validate:"required,notblank"`
