@@ -9,9 +9,6 @@ ARG BUILD_DATE
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Set GOPRIVATE for private modules
-ENV GOPRIVATE=github.com/nanostack-dev/*
-
 # Set working directory to the anchor app
 WORKDIR /app
 
