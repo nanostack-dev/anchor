@@ -230,6 +230,7 @@ export function OrganizationLicenseDatatable({
 					<Button
 						variant="outline"
 						size="icon"
+						nativeButton={false}
 						render={
 							<Link
 								to={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL}

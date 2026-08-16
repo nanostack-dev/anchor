@@ -45,11 +45,11 @@ type PageProps = {
 	actions?: React.ReactNode;
 	breadCrumbs?: boolean;
 	/**
-	 * Replaces the text of the last crumb. A detail route's final path segment
-	 * is an identifier, and a breadcrumb reading `Org_3Hy...` names nothing —
-	 * pass the record's own name instead.
+	 * Renames crumbs, keyed by the path segment they were derived from. A
+	 * detail route's identifier segment reads `Org_3Hy...`, which names
+	 * nothing — pass the record's own name against that identifier instead.
 	 */
-	breadCrumbLabel?: string;
+	breadCrumbLabels?: Record<string, string>;
 	variant?: PageVariant;
 	pageInfo?: PageInfoProps;
 };
@@ -72,21 +72,20 @@ export function Page({
 	description,
 	actions,
 	breadCrumbs = true,
-	breadCrumbLabel,
+	breadCrumbLabels,
 	variant = "full",
 	pageInfo,
 }: PageProps) {
 	const location = useLocation();
 	const crumbs = useMemo(() => {
 		const trail = getBreadcrumbs(location.pathname);
-		if (breadCrumbLabel && trail.length > 0) {
-			trail[trail.length - 1] = {
-				...trail[trail.length - 1],
-				name: breadCrumbLabel,
-			};
-		}
-		return trail;
-	}, [location.pathname, breadCrumbLabel]);
+		if (!breadCrumbLabels) return trail;
+		return trail.map((crumb) => {
+			const segment = crumb.path.split("/").pop() ?? "";
+			const label = breadCrumbLabels[segment];
+			return label ? { ...crumb, name: label } : crumb;
+		});
+	}, [location.pathname, breadCrumbLabels]);
 
 	return (
 		<section
