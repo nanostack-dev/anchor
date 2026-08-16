@@ -162,10 +162,12 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		first := w.License().History().Items[0]
 		other := w.License().For(second).History().Items[0]
 		assert.Equal(t, first.ChangedAt, other.ChangedAt)
-		// The receipt reports the same instant, in whatever location the
-		// response was decoded in — the entries come back from the database in
-		// UTC, so this is an instant comparison rather than a value one.
-		assert.WithinDuration(t, migration.MigratedAt, first.ChangedAt, 0)
+		// The receipt reports the same instant, within the precision the round
+		// trip survives: the response carries Go's nanoseconds, while the entry
+		// has been through a timestamptz column, which keeps microseconds. An
+		// exact comparison passes or fails on whether those last three digits
+		// happened to be zero.
+		assert.WithinDuration(t, migration.MigratedAt, first.ChangedAt, time.Microsecond)
 	})
 }
 
