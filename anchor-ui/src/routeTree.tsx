@@ -1,8 +1,8 @@
 import { indexRoute } from "@/routes";
 import { type RouteContext, rootRoute } from "@/routes/__root";
 import { organizationApiKeysRoute } from "@/routes/organizations/organization-api-keys";
-import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import { organizationLicenseRoute } from "@/routes/organizations/organization-license";
+import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import { organizationMembershipsRoute } from "@/routes/organizations/organization-memberships";
 import { organizationsRoute } from "@/routes/organizations/organizations";
 import { workspaceMembershipsRoute } from "@/routes/organizations/workspace-memberships";
