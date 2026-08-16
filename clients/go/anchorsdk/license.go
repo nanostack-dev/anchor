@@ -1,9 +1,11 @@
 package anchorsdk
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,14 +28,13 @@ import (
 // that boundary. The statement that stops a user belongs in the caller's own
 // repository — see ADR-0001 (docs/adr/0001-anchor-validates-but-never-gates.md).
 //
-// A derived per-limit status (within_limit, at_limit, exceeded, stale), and
-// therefore a decision value carrying it plus a threshold predicate, are not
-// exposed here yet: Anchor does not return status on a license read until
-// nanostack-dev/anchor#70 ships, and the usage series a caller would need to
-// compute one independently is nanostack-dev/anchor#68. [License.Get] returns
-// every field's value today; status will land on
-// [nanoclient.OrganizationLicenseResponse] itself once #70 ships, so no shape
-// change is expected on this side.
+// A limit field's latest reported usage and its derived status
+// (within_limit, at_limit, exceeded, stale) arrive on the license read
+// itself. Anchor computes both fresh on every read and stores neither — see
+// ADR-0012 (docs/adr/0012-license-status-derived-on-read.md). Read them
+// through [LicenseSnapshot.Limit], which carries the headroom arithmetic and
+// a threshold predicate; the status it reports advises, it still never
+// denies.
 type License struct{ o *Org }
 
 // License returns the license facade for this organization.
@@ -94,6 +95,123 @@ type LicenseSnapshot struct {
 	// FetchedAt is when Anchor last confirmed these values, not when this
 	// call returned them. It moves only on a successful live refresh.
 	FetchedAt time.Time
+}
+
+// LimitUsage is one limit field as this snapshot found it: what the
+// organization is allowed, what it last reported, and the status Anchor
+// derived from the two. It is a decision value, never a verdict — nothing
+// here blocks, and the statement that stops a user stays in the caller's own
+// repository (see [License]).
+type LimitUsage struct {
+	// Key is the license field name this describes.
+	Key string
+
+	// Status is Anchor's advisory reading: within_limit, at_limit, exceeded,
+	// or stale. Stale means nothing has ever been reported against the field,
+	// so there is no current number to trust — it reads "unknown", not
+	// "breached", the same way [LicenseCachePolicy] fails open rather than
+	// treating absent data as a denial.
+	Status nanoclient.LicenseUsageStatus
+
+	// Limit is this organization's ceiling for the field, mirroring its entry
+	// in Values.
+	Limit float64
+
+	// Usage is the latest reported value. It means something only when
+	// Reported is true.
+	Usage float64
+
+	// Reported is false when the field has never been reported against.
+	// Status is then stale, and Usage, LastReportedAt,
+	// [LimitUsage.Remaining], and [LimitUsage.Fraction] all carry nothing.
+	Reported bool
+
+	// LastReportedAt is when Anchor recorded the latest observation. It is
+	// the zero time exactly when Reported is false.
+	LastReportedAt time.Time
+}
+
+// Remaining reports how much of the limit is left: Limit minus Usage, going
+// negative once usage has passed the ceiling. ok is false when nothing has
+// been reported, because "no headroom known" and "no headroom left" are
+// different answers and must not share a zero.
+func (u LimitUsage) Remaining() (float64, bool) {
+	if !u.Reported {
+		return 0, false
+	}
+	return u.Limit - u.Usage, true
+}
+
+// Fraction reports usage as a share of the limit: 0.8 for 40 of 50, above 1
+// once the ceiling is passed. ok is false when nothing has been reported, and
+// when Limit is zero or below, where a share has no meaning.
+func (u LimitUsage) Fraction() (float64, bool) {
+	if !u.Reported || u.Limit <= 0 {
+		return 0, false
+	}
+	return u.Usage / u.Limit, true
+}
+
+// Over reports whether usage has reached a share of the limit the caller
+// picks, so a warning can fire at 80% rather than at 100%:
+//
+//	if limit, ok := snapshot.Limit("max_flows"); ok && limit.Over(0.8) {
+//	    // prompt an upgrade
+//	}
+//
+// It is false whenever [LimitUsage.Fraction] has nothing to give, so a field
+// nobody has reported against never raises a warning about a number that does
+// not exist.
+func (u LimitUsage) Over(fraction float64) bool {
+	share, ok := u.Fraction()
+	return ok && share >= fraction
+}
+
+// Limit returns one limit field by license field name. ok is false when the
+// product's schema does not declare the field, when it declares it as
+// something other than a limit, and when this snapshot carries no usage at
+// all — Anchor computes usage on the license read only, never on a write, so
+// a value returned by [License.Instantiate] or [License.Adjust] has none.
+func (s *LicenseSnapshot) Limit(key string) (LimitUsage, bool) {
+	if s == nil || s.OrganizationLicenseResponse == nil || s.Usage == nil {
+		return LimitUsage{}, false
+	}
+
+	field, ok := (*s.Usage)[key]
+	if !ok {
+		return LimitUsage{}, false
+	}
+
+	return newLimitUsage(key, field), true
+}
+
+// Limits returns every limit field on this snapshot, sorted by key, for a
+// caller sweeping all of them rather than asking after one. A schema that
+// declares no limit field returns nothing.
+func (s *LicenseSnapshot) Limits() []LimitUsage {
+	if s == nil || s.OrganizationLicenseResponse == nil || s.Usage == nil {
+		return nil
+	}
+
+	limits := make([]LimitUsage, 0, len(*s.Usage))
+	for key, field := range *s.Usage {
+		limits = append(limits, newLimitUsage(key, field))
+	}
+	slices.SortFunc(limits, func(a, b LimitUsage) int { return cmp.Compare(a.Key, b.Key) })
+
+	return limits
+}
+
+func newLimitUsage(key string, field nanoclient.LicenseFieldUsageResponse) LimitUsage {
+	limit := LimitUsage{Key: key, Status: field.Status, Limit: field.Limit}
+	if field.Usage != nil {
+		limit.Usage, limit.Reported = *field.Usage, true
+	}
+	if field.LastReportedAt != nil {
+		limit.LastReportedAt = *field.LastReportedAt
+	}
+
+	return limit
 }
 
 // licenseCache holds one cached license read per organization ID, for a
@@ -160,15 +278,23 @@ func (c *licenseCache) delete(organizationID string) {
 }
 
 // Get returns the organization's current license: every field the product's
-// schema declares, with its value. A limit field carries no usage or status
-// yet — Anchor computes neither on a license read until #70 ships (see
-// [License]) — so a consumer wanting to compare a value against a limit today
-// must already know its own field's ceiling and track its own usage.
+// schema declares, with its value, and for every limit field the latest
+// reported usage plus the status Anchor derives from it. Read a limit through
+// [LicenseSnapshot.Limit] rather than through the embedded response's own
+// Usage map.
 //
-// The read is cached per [LicenseCachePolicy]; see [License] and
-// [LicenseCachePolicy] for the fail-open behaviour on a stale entry. Classify
-// a returned error exactly as any other SDK call, with [errors.Is] against
-// the package sentinels — Get itself never blocks or denies.
+//	snapshot, err := org.License().Get(ctx)
+//	if limit, ok := snapshot.Limit("max_flows"); ok && limit.Over(0.8) {
+//	    // prompt an upgrade
+//	}
+//
+// The read is cached per [LicenseCachePolicy], usage included. Anchor derives
+// usage fresh on every read, but a cached snapshot was derived when it was
+// fetched, so a usage report becomes visible here only on the next live
+// refresh — call [License.Invalidate] first to see it at once. See [License]
+// and [LicenseCachePolicy] for the fail-open behaviour on a stale entry.
+// Classify a returned error exactly as any other SDK call, with [errors.Is]
+// against the package sentinels — Get itself never blocks or denies.
 func (l License) Get(ctx context.Context) (*LicenseSnapshot, error) {
 	const op = "License.Get"
 
@@ -330,9 +456,11 @@ func (l License) Diff(ctx context.Context) (*nanoclient.OrganizationLicenseDiffR
 // value that reads within_limit for an organization genuinely past its
 // ceiling.
 //
-// Reporting usage does not touch the [License.Get] cache: usage is recorded
-// separately from a license's own field values, and today's license read
-// carries no usage or status to invalidate (see [License]).
+// Reporting usage does not touch the [License.Get] cache. Anchor recomputes a
+// limit's usage and status on every license read, but a cached snapshot was
+// computed when it was fetched, so a report made here reaches [License.Get]
+// only on its next live refresh. Call [License.Invalidate] between the two
+// when a caller must read back what it just reported.
 func (l License) ReportUsage(key string, value float64) *UsageReportBuilder {
 	return &UsageReportBuilder{o: l.o, req: nanoclient.UsageReportRequest{Key: key, Value: value}}
 }
