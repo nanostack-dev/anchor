@@ -1372,6 +1372,34 @@ export const zOrganizationLicenseDiffResponse = z.object({
 });
 
 /**
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+ */
+export const zLicenseChangeType = z.enum([
+    'INSTANTIATED',
+    'ADJUSTED'
+]);
+
+/**
+ * One entry in an organization's license history. Entries are immutable and append-only: nothing edits one, and a correction is a later entry.
+ */
+export const zOrganizationLicenseChangeResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    license_id: zKsuid,
+    type: zLicenseChangeType,
+    template_id: z.optional(zKsuid),
+    field: z.optional(z.string()),
+    old_value: z.optional(z.unknown()),
+    new_value: z.optional(z.unknown()),
+    changed_at: z.iso.datetime()
+});
+
+export const zOrganizationLicenseHistoryResponse = zPagedListResponse.and(z.object({
+    items: z.array(zOrganizationLicenseChangeResponse)
+}));
+
+/**
  * One absolute snapshot of what an organization has used. Report as often as you like — the cadence is your decision, not a contract shared with Anchor. Anchor stores every report and never adds them together, so a retry cannot double-count, and a report that never arrived corrects itself on the next one.
  */
 export const zUsageReportRequest = z.object({
@@ -2839,6 +2867,23 @@ export const zGetOrganizationLicenseDiffData = z.object({
  * Success
  */
 export const zGetOrganizationLicenseDiffResponse = zOrganizationLicenseDiffResponse;
+
+export const zGetOrganizationLicenseHistoryData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        limit: z.optional(z.int().gte(1).lte(1000)).default(50),
+        offset: z.optional(z.int().gte(0)).default(0)
+    }))
+});
+
+/**
+ * Success
+ */
+export const zGetOrganizationLicenseHistoryResponse = zOrganizationLicenseHistoryResponse;
 
 export const zReportOrganizationUsageData = z.object({
     body: zUsageReportRequest,

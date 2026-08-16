@@ -3,9 +3,19 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
 )
+
+// defaultLicenseHistoryLimit mirrors the openapi.yaml `limit` default for
+// getOrganizationLicenseHistory. oapi-codegen leaves an optional query
+// parameter's default undeserialized — a nil pointer, not the schema
+// default — so it is applied here, the same way usage_api.go applies its own.
+const defaultLicenseHistoryLimit int32 = 50
 
 // ---------------------------------------------------------------------------
 // Organization license handlers
@@ -119,4 +129,36 @@ func (s *AnchorAPI) GetOrganizationLicenseDiff(
 		return nil, err
 	}
 	return GetOrganizationLicenseDiff200JSONResponse(mapLicenseDiffToResponse(diff)), nil
+}
+
+func (s *AnchorAPI) GetOrganizationLicenseHistory(
+	ctx context.Context, request GetOrganizationLicenseHistoryRequestObject,
+) (GetOrganizationLicenseHistoryResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := s.LicenseHistoryService.ListChanges(ctx, license.ListLicenseChangesInput{
+		TenantID:       tenantID,
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+		Pagination: search.Pagination{
+			Limit:  ptr.DerefOr(request.Params.Limit, defaultLicenseHistoryLimit),
+			Offset: ptr.DerefOr(request.Params.Offset, int32(0)),
+		},
+	})
+	if err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Msg("failed to get organization license history")
+		return nil, err
+	}
+
+	return GetOrganizationLicenseHistory200JSONResponse(OrganizationLicenseHistoryResponse{
+		Items: slicex.Map(result.Items, mapOrganizationLicenseChangeToResponse),
+		Total: result.Total,
+		Count: result.Count,
+	}), nil
 }

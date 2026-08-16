@@ -165,6 +165,12 @@
       "organization_license:read"
     ]
   },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/license/history": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:read"
+    ]
+  },
   "GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [

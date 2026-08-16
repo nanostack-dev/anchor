@@ -967,6 +967,15 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrganizationLicenseHistory Get Organization License History
+	//
+	// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
+	// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+	GetOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ReportOrganizationUsageWithBody Report Organization Usage
 	//
 	// Records what an organization has used, as an absolute snapshot. Every report is kept as an immutable observation, and Anchor never adds them together, so reporting the same value twice changes nothing.
@@ -3284,6 +3293,25 @@ func (c *Client) InstantiateOrganizationLicense(ctx context.Context, productId P
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationLicenseDiffRequest(c.Server, productId, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationLicenseHistory Get Organization License History
+//
+// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
+// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+func (c *Client) GetOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationLicenseHistoryRequest(c.Server, productId, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -7302,6 +7330,86 @@ func NewGetOrganizationLicenseDiffRequest(server string, productId ProductIdPara
 	return req, nil
 }
 
+// NewGetOrganizationLicenseHistoryRequest constructs an http.Request for the GetOrganizationLicenseHistory method
+func NewGetOrganizationLicenseHistoryRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license/history", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewReportOrganizationUsageRequest calls the generic ReportOrganizationUsage builder with application/json body
 func NewReportOrganizationUsageRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9986,6 +10094,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiffWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseDiffResponse, error)
+
+	// GetOrganizationLicenseHistoryWithResponse Get Organization License History
+	//
+	// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
+	// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+	GetOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseHistoryResponse, error)
 
 	// ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
 	//
@@ -13970,6 +14089,54 @@ func (r GetOrganizationLicenseDiffResponse) ContentType() string {
 	return ""
 }
 
+type GetOrganizationLicenseHistoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseHistoryResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationLicenseHistoryResponse) GetJSON200() *OrganizationLicenseHistoryResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationLicenseHistoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationLicenseHistoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationLicenseHistoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationLicenseHistoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationLicenseHistoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ReportOrganizationUsageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17271,6 +17438,23 @@ func (c *ClientWithResponses) GetOrganizationLicenseDiffWithResponse(ctx context
 		return nil, err
 	}
 	return ParseGetOrganizationLicenseDiffResponse(rsp)
+}
+
+// GetOrganizationLicenseHistoryWithResponse Get Organization License History
+//
+// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
+// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+func (c *ClientWithResponses) GetOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseHistoryResponse, error) {
+	rsp, err := c.GetOrganizationLicenseHistory(ctx, productId, organizationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationLicenseHistoryResponse(rsp)
 }
 
 // ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
@@ -20700,6 +20884,42 @@ func ParseGetOrganizationLicenseDiffResponse(rsp *http.Response) (*GetOrganizati
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationLicenseHistoryResponse parses an HTTP response from a GetOrganizationLicenseHistoryWithResponse call
+func ParseGetOrganizationLicenseHistoryResponse(rsp *http.Response) (*GetOrganizationLicenseHistoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationLicenseHistoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseHistoryResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case rsp.StatusCode == 404:
 		break // No content-type

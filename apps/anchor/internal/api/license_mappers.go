@@ -120,6 +120,23 @@ func mapOrganizationLicenseReadToResponse(l license.OrganizationLicenseRead) Org
 	return resp
 }
 
+func mapOrganizationLicenseChangeToResponse(
+	c license.OrganizationLicenseChange,
+) OrganizationLicenseChangeResponse {
+	return OrganizationLicenseChangeResponse{
+		Id:             c.ID,
+		ProductId:      c.ProductID,
+		OrganizationId: c.OrganizationID,
+		LicenseId:      c.LicenseID,
+		Type:           c.Type,
+		TemplateId:     c.TemplateID,
+		Field:          c.Field,
+		OldValue:       c.OldValue,
+		NewValue:       c.NewValue,
+		ChangedAt:      c.ChangedAt,
+	}
+}
+
 func mapUsageObservationToResponse(o license.UsageObservation) UsageObservationResponse {
 	return UsageObservationResponse{
 		Id:             o.ID,

@@ -671,6 +671,9 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
+// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+type LicenseChangeType = license.ChangeType
+
 // LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
 type LicenseDifferenceKind = license.DifferenceKind
 
@@ -1034,6 +1037,45 @@ type OrganizationLicenseAdjustRequest struct {
 	Values LicenseTemplateValues `json:"values"`
 }
 
+// OrganizationLicenseChangeResponse One entry in an organization's license history. Entries are immutable and append-only: nothing edits one, and a correction is a later entry.
+type OrganizationLicenseChangeResponse struct {
+	// ChangedAt When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment.
+	ChangedAt time.Time `json:"changed_at"`
+
+	// Field The license field that moved. Present when `type` is `ADJUSTED`, absent otherwise.
+	Field *string `json:"field,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// LicenseId Which license record was changed. Provenance, not a live dependency: the entry stays true whatever becomes of that record.
+	LicenseId Ksuid `json:"license_id"`
+
+	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation.
+	NewValue interface{} `json:"new_value,omitempty"`
+
+	// OldValue The value held before the change. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+	OldValue interface{} `json:"old_value,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED`, absent otherwise.
+	TemplateId *Ksuid `json:"template_id,omitempty"`
+
+	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+	Type LicenseChangeType `json:"type"`
+}
+
 // OrganizationLicenseDiffResponse How an organization's license differs from its template today. Templates carry no version, so this names which license fields differ rather than which revision they came from.
 type OrganizationLicenseDiffResponse struct {
 	Count int `json:"count"`
@@ -1050,6 +1092,18 @@ type OrganizationLicenseDiffResponse struct {
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	TemplateId Ksuid `json:"template_id"`
+}
+
+// OrganizationLicenseHistoryResponse defines model for OrganizationLicenseHistoryResponse.
+type OrganizationLicenseHistoryResponse struct {
+	// Count The number of items returned in this response.
+	Count int `json:"count"`
+
+	// Items Newest first.
+	Items []OrganizationLicenseChangeResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
 }
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
@@ -2477,6 +2531,12 @@ type ListLicenseTemplatesParams struct {
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
+// GetOrganizationLicenseHistoryParams defines parameters for GetOrganizationLicenseHistory.
+type GetOrganizationLicenseHistoryParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // GetOrganizationUsageSeriesParams defines parameters for GetOrganizationUsageSeries.
 type GetOrganizationUsageSeriesParams struct {
 	// Key The license field this series was measured against.
@@ -3085,6 +3145,9 @@ type ServerInterface interface {
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 	GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// GetOrganizationLicenseHistory Get Organization License History
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+	GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationLicenseHistoryParams)
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3592,6 +3655,12 @@ func (_ Unimplemented) InstantiateOrganizationLicense(w http.ResponseWriter, r *
 // GetOrganizationLicenseDiff Diff Organization License Against Its Template
 // (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 func (_ Unimplemented) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationLicenseHistory Get Organization License History
+// (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+func (_ Unimplemented) GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationLicenseHistoryParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5898,6 +5967,70 @@ func (siw *ServerInterfaceWrapper) GetOrganizationLicenseDiff(w http.ResponseWri
 	handler.ServeHTTP(w, r)
 }
 
+// GetOrganizationLicenseHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetOrganizationLicenseHistoryParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationLicenseHistory(w, r, productId, organizationId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ReportOrganizationUsage operation middleware
 func (siw *ServerInterfaceWrapper) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request) {
 
@@ -7562,6 +7695,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/diff", wrapper.GetOrganizationLicenseDiff)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/history", wrapper.GetOrganizationLicenseHistory)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage", wrapper.ReportOrganizationUsage)
@@ -11014,6 +11150,51 @@ func (response GetOrganizationLicenseDiff404Response) VisitGetOrganizationLicens
 	return nil
 }
 
+type GetOrganizationLicenseHistoryRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Params         GetOrganizationLicenseHistoryParams
+}
+
+type GetOrganizationLicenseHistoryResponseObject interface {
+	VisitGetOrganizationLicenseHistoryResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationLicenseHistory200JSONResponse OrganizationLicenseHistoryResponse
+
+func (response GetOrganizationLicenseHistory200JSONResponse) VisitGetOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicenseHistory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetOrganizationLicenseHistory400JSONResponse) VisitGetOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationLicenseHistory404Response = NotFoundResponse
+
+func (response GetOrganizationLicenseHistory404Response) VisitGetOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type ReportOrganizationUsageRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -13042,6 +13223,9 @@ type StrictServerInterface interface {
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/diff)
 	GetOrganizationLicenseDiff(ctx context.Context, request GetOrganizationLicenseDiffRequestObject) (GetOrganizationLicenseDiffResponseObject, error)
+	// GetOrganizationLicenseHistory Get Organization License History
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+	GetOrganizationLicenseHistory(ctx context.Context, request GetOrganizationLicenseHistoryRequestObject) (GetOrganizationLicenseHistoryResponseObject, error)
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(ctx context.Context, request ReportOrganizationUsageRequestObject) (ReportOrganizationUsageResponseObject, error)
@@ -15200,6 +15384,34 @@ func (sh *strictHandler) GetOrganizationLicenseDiff(w http.ResponseWriter, r *ht
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetOrganizationLicenseDiffResponseObject); ok {
 		if err := validResponse.VisitGetOrganizationLicenseDiffResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationLicenseHistory operation middleware
+func (sh *strictHandler) GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationLicenseHistoryParams) {
+	var request GetOrganizationLicenseHistoryRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationLicenseHistory(ctx, request.(GetOrganizationLicenseHistoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationLicenseHistory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationLicenseHistoryResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationLicenseHistoryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

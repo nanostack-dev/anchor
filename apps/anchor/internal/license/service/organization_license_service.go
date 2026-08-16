@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -86,6 +87,8 @@ type organizationLicenseService struct {
 	templates   LicenseTemplateService
 	schemas     LicenseSchemaService
 	usage       licenserepo.UsageObservationRepository
+	changes     licenserepo.OrganizationLicenseChangeRepository
+	transactor  transactor.Transactor
 	licenses    cache.Cache[license.OrganizationLicense]
 	logger      zerolog.Logger
 }
@@ -95,6 +98,8 @@ func NewOrganizationLicenseService(
 	templates LicenseTemplateService,
 	schemas LicenseSchemaService,
 	usage licenserepo.UsageObservationRepository,
+	changes licenserepo.OrganizationLicenseChangeRepository,
+	tx transactor.Transactor,
 	cacheStore cache.Store,
 	logger zerolog.Logger,
 ) OrganizationLicenseService {
@@ -103,6 +108,8 @@ func NewOrganizationLicenseService(
 		templates:   templates,
 		schemas:     schemas,
 		usage:       usage,
+		changes:     changes,
+		transactor:  tx,
 		licenses: cache.New[license.OrganizationLicense](
 			cacheStore, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
 		),
@@ -160,28 +167,38 @@ func (s *organizationLicenseService) Instantiate(
 	// since the template was last written would otherwise block onboarding onto
 	// a tier still on sale, and Anchor validates but never gates. See
 	// docs/adr/0009-every-license-field-is-mandatory.md.
+	instantiatedAt := time.Now()
 	instantiated := license.OrganizationLicense{
 		PlatformTenantID: in.TenantID,
 		ProductID:        in.ProductID,
 		OrganizationID:   in.OrganizationID,
 		TemplateID:       template.ID,
-		InstantiatedAt:   time.Now(),
+		InstantiatedAt:   instantiatedAt,
 		Values:           template.Values,
 	}
 	instantiated.GenerateID()
 
-	created, err := s.licenseRepo.Create(ctx, instantiated)
-	if err != nil {
-		// Checked by the foreign key rather than by a read before the write: one
-		// round trip, and no window in which the Organization is deleted between
-		// the check and the insert.
-		if pgerr.IsForeignKeyViolation(err, organizationLicenseOrganizationConstraint) {
-			return license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
+	var created license.OrganizationLicense
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.licenseRepo.Create(txCtx, instantiated)
+		if createErr != nil {
+			// Checked by the foreign key rather than by a read before the write:
+			// one round trip, and no window in which the Organization is deleted
+			// between the check and the insert.
+			if pgerr.IsForeignKeyViolation(createErr, organizationLicenseOrganizationConstraint) {
+				return ErrLicenseOrganizationNotFound
+			}
+			if pgerr.IsUniqueViolation(createErr, organizationLicenseUniqueConstraint) {
+				return ErrOrganizationLicenseAlreadyExists
+			}
+			return createErr
 		}
-		if pgerr.IsUniqueViolation(err, organizationLicenseUniqueConstraint) {
-			return license.OrganizationLicense{}, ErrOrganizationLicenseAlreadyExists
-		}
-		return license.OrganizationLicense{}, err
+		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
+			license.NewInstantiationChange(created, instantiatedAt),
+		})
+	}); txErr != nil {
+		return license.OrganizationLicense{}, txErr
 	}
 
 	// Nothing can be cached before the license exists — a not-found read is
@@ -261,32 +278,52 @@ func (s *organizationLicenseService) AdjustValues(
 		return license.OrganizationLicense{}, err
 	}
 
-	existing, err := s.licenseRepo.FindByOrganization(
-		ctx, in.TenantID, in.ProductID, in.OrganizationID,
-	)
-	if err != nil {
-		return license.OrganizationLicense{}, err
-	}
-	if existing == nil {
-		return license.OrganizationLicense{}, ErrOrganizationLicenseNotFound
+	// One clock for the request. The update row uses the database clock; mixing
+	// the two can order a later change before the one it followed.
+	changedAt := time.Now()
+
+	var updated license.OrganizationLicense
+	wrote := false
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := s.licenseRepo.FindByOrganizationForUpdate(
+			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
+		)
+		if findErr != nil {
+			return findErr
+		}
+		if existing == nil {
+			return ErrOrganizationLicenseNotFound
+		}
+
+		// Merged, not replaced. The merged set is validated whole, so a license
+		// that has fallen behind a tightened schema is corrected rather than re-saved.
+		previous := existing.Values
+		adjusted := existing.AdjustedValues(in.Values)
+		if err := s.schemas.ValidateValues(txCtx, in.TenantID, in.ProductID, adjusted); err != nil {
+			return err
+		}
+		existing.Values = adjusted
+
+		changes := license.NewAdjustmentChanges(*existing, previous, changedAt)
+		if len(changes) == 0 {
+			updated = *existing
+			return nil
+		}
+
+		var updateErr error
+		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)
+		if updateErr != nil {
+			return updateErr
+		}
+		wrote = true
+		return s.changes.Append(txCtx, changes)
+	}); txErr != nil {
+		return license.OrganizationLicense{}, txErr
 	}
 
-	// Merged, not replaced. The merged set is validated whole, so a license that
-	// has fallen behind a tightened schema is corrected rather than re-saved.
-	adjusted := existing.AdjustedValues(in.Values)
-	if err = s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, adjusted); err != nil {
-		return license.OrganizationLicense{}, err
+	if wrote {
+		s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
 	}
-	existing.Values = adjusted
-
-	updated, err := s.licenseRepo.Update(ctx, in.TenantID, *existing)
-	if err != nil {
-		return license.OrganizationLicense{}, err
-	}
-
-	// Without this, a limit lowered to make a previously-compliant Organization
-	// exceeded would read as compliant until the cache entry's TTL expired.
-	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
 
 	return updated, nil
 }

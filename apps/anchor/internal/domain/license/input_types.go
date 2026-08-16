@@ -1,5 +1,7 @@
 package license
 
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+
 // FieldDeclaration is one license field as supplied by a caller: the authored
 // shape, before an ID or timestamps exist.
 type FieldDeclaration struct {
@@ -123,6 +125,14 @@ type GetLicenseInput struct {
 	TenantID       string `validate:"required,notblank"`
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
+}
+
+// ListLicenseChangesInput reads one Organization's license history, newest first.
+type ListLicenseChangesInput struct {
+	TenantID       string            `validate:"required,notblank"`
+	ProductID      string            `validate:"required,notblank"`
+	OrganizationID string            `validate:"required,notblank"`
+	Pagination     search.Pagination `validate:"required"`
 }
 
 // AdjustLicenseInput adjusts one Organization's license without touching the
