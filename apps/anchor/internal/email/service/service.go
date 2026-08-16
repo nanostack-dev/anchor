@@ -26,6 +26,10 @@ import (
 
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 
+// emailStatusPersistTimeout bounds the terminal send-status write that runs on
+// a context detached from the caller's request, so the write cannot hang.
+const emailStatusPersistTimeout = 5 * time.Second
+
 var (
 	ErrEmailIntegrationNotFound = fault.NewWithStatus(
 		"EMAIL_INTEGRATION_NOT_FOUND",
@@ -769,10 +773,21 @@ func (s *emailService) Send(
 		MessageID: messageID,
 	}
 
-	if dispatchErr := mailer.Send(ctx, instance, msg); dispatchErr != nil {
+	dispatchErr := mailer.Send(ctx, instance, msg)
+
+	// mailer.Send has already had its outbound side effect — the message was
+	// handed to the provider or definitively rejected — so the terminal status
+	// write must survive cancellation of the caller's request context, or a
+	// delivered email can stay recorded as unsent. Detaching drops only
+	// cancellation while keeping request-scoped values (trace correlation); the
+	// timeout keeps the detached write bounded.
+	persistCtx, cancelPersist := context.WithTimeout(context.WithoutCancel(ctx), emailStatusPersistTimeout)
+	defer cancelPersist()
+
+	if dispatchErr != nil {
 		errMsg := dispatchErr.Error()
 		if updErr := s.sendRepo.UpdateStatus(
-			ctx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
+			persistCtx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
 			log.Event(&s.logger, updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
 		}
@@ -783,7 +798,7 @@ func (s *emailService) Send(
 
 	now := time.Now()
 	if err = s.sendRepo.UpdateStatus(
-		ctx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
+		persistCtx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
 		log.Event(&s.logger, err).Str("send_id", persisted.ID).Msg("update SENT status")
 	}
