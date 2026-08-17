@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -150,6 +151,74 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 
 		require.NotEmpty(t, page.Items)
 		assert.Equal(t, "Alpha Holdings", page.Items[0].OrganizationName)
+	})
+
+	t.Run("orders by name when the request names no sort", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		w.NewNamedOrganization("Zeta Industries")
+		w.NewNamedOrganization("Alpha Holdings")
+		w.NewNamedOrganization("Mid Corp")
+
+		// The route offers two sort fields and search.Request defaults to a
+		// third one it does not offer. Unless the query supplies its own order,
+		// the page comes back unordered and paging can miss a customer.
+		page := w.Search().Run(ct.OrganizationLicenseSearchRequest{})
+
+		names := make([]string, 0, len(page.Items))
+		for _, item := range page.Items {
+			names = append(names, item.OrganizationName)
+		}
+		assert.Equal(t, slices.Sorted(slices.Values(names)), names)
+	})
+
+	t.Run("sorting by the date the copy was taken puts the unlicensed last", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		unlicensed := w.NewNamedOrganization("Never Licensed")
+
+		// Descending is the direction an operator wants for "newest on this
+		// tier first", and it is the one Postgres would otherwise answer with
+		// NULLs — the organizations holding no license — at the top.
+		for _, direction := range []ct.SortDirection{ct.ASC, ct.DESC} {
+			page := w.Search().Run(ct.OrganizationLicenseSearchRequest{
+				SortBy:        new(ct.InstantiatedAt),
+				SortDirection: &direction,
+			})
+
+			require.NotEmpty(t, page.Items)
+			last := page.Items[len(page.Items)-1]
+			assert.Equal(t, unlicensed, last.OrganizationId, "direction %s", direction)
+			assert.Nil(t, last.License)
+		}
+	})
+
+	t.Run("narrows to the organizations named", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		other := w.NewNamedOrganization("Other Customer")
+
+		// The license detail route reads one organization through this filter,
+		// so it carries a page of its own rather than being a convenience.
+		page := w.Search().Run(ct.OrganizationLicenseSearchRequest{
+			Filter: &ct.OrganizationLicenseFilter{
+				OrganizationIds: []string{w.OrganizationID()},
+			},
+		})
+
+		assert.Equal(t, []string{w.OrganizationID()}, summaryOrganizationIDs(page))
+		assert.EqualValues(t, 1, page.Total)
+		assert.NotContains(t, summaryOrganizationIDs(page), other)
+	})
+
+	t.Run("a name carrying a wildcard is matched literally", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		literal := w.NewNamedOrganization("100% Renewable")
+		w.NewNamedOrganization("100 Percent Renewable")
+
+		// Unescaped, the percent sign makes this term match both.
+		page := w.Search().Run(ct.OrganizationLicenseSearchRequest{
+			FullTextSearch: new("100% Renewable"),
+		})
+
+		assert.Equal(t, []string{literal}, summaryOrganizationIDs(page))
 	})
 
 	t.Run("another product's organizations are not reachable", func(t *testing.T) {

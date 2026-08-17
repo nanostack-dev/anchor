@@ -170,12 +170,27 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
 // with no license, and dropping it would hide exactly the customers an operator
 // is looking for half the time. organization_licenses.organization_id is
 // unique, so the join cannot multiply rows.
-func organizationLicenseJoin() postgres.ReadableTable {
+func organizationLicenseJoin(tenantID string) postgres.ReadableTable {
 	return table.Organizations.LEFT_JOIN(
 		table.OrganizationLicenses,
 		table.OrganizationLicenses.OrganizationID.EQ(table.Organizations.ID).
-			AND(table.OrganizationLicenses.ProductID.EQ(table.Organizations.ProductID)),
+			AND(table.OrganizationLicenses.ProductID.EQ(table.Organizations.ProductID)).
+			// In the join rather than the WHERE: organizations carries no tenant
+			// column of its own, so this is the only place the scope can be
+			// stated, and moving it to the WHERE would drop every Organization
+			// holding no license.
+			AND(table.OrganizationLicenses.PlatformTenantID.EQ(
+				postgres.String(tenantID),
+			)),
 	)
+}
+
+// escapeLikeTerm makes an operator's search term literal. Without it a
+// customer named "100% Renewable" is unfindable by typing its name, because
+// the percent sign matches anything.
+func escapeLikeTerm(term string) string {
+	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return replacer.Replace(term)
 }
 
 // licenseHeldFilter narrows to Organizations that hold a license, or to those
@@ -220,7 +235,7 @@ func (r *organizationLicenseRepositoryImpl) Search(
 	// shared builder is what every other search in Anchor uses; fixing it there
 	// would change all of them at once and belongs in the framework.
 	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		lowered := postgres.String("%" + strings.ToLower(*term) + "%")
+		lowered := postgres.String("%" + escapeLikeTerm(strings.ToLower(*term)) + "%")
 		where = where.AND(postgres.LOWER(table.Organizations.Name).LIKE(lowered))
 	}
 
@@ -230,17 +245,52 @@ func (r *organizationLicenseRepositoryImpl) Search(
 		table.Organizations.AllColumns,
 		table.OrganizationLicenses.AllColumns,
 	).
-		From(organizationLicenseJoin()).
+		From(organizationLicenseJoin(in.TenantID)).
 		Where(where).
-		OrderBy(transactor.SortColumns(
-			in.Request.Sort,
-			map[license.SortFieldOrganizationLicense]postgres.Column{
-				license.SortFieldOrganizationLicenseOrganizationName: table.Organizations.Name,
-				license.SortFieldOrganizationLicenseInstantiatedAt:   table.OrganizationLicenses.InstantiatedAt,
-			},
-		)...).
+		OrderBy(organizationLicenseOrder(in.Request.Sort)...).
 		Run(ctx, in.Request.Pagination).
 		Value()
+}
+
+// organizationLicenseOrder resolves the sort into an order this query can
+// actually page by.
+//
+// Two things the shared helper cannot do for this query. A field it does not
+// recognise is dropped, and search.Request defaults the field to created_at,
+// which this route does not offer — so an unsorted request would page over an
+// unordered result and an operator building a cohort could miss a customer
+// entirely. And instantiated_at comes from the outer side of a join, so it is
+// NULL for an Organization holding no license; Postgres sorts NULLs first
+// under DESC, which would put exactly the Organizations a migration skips at
+// the top of the page.
+func organizationLicenseOrder(
+	sorts []search.Sort[license.SortFieldOrganizationLicense],
+) []postgres.OrderByClause {
+	clauses := make([]postgres.OrderByClause, 0, len(sorts)+1)
+	for _, sort := range sorts {
+		switch sort.Field {
+		case license.SortFieldOrganizationLicenseOrganizationName:
+			clauses = append(
+				clauses, jetx.OrderBy(table.Organizations.Name, sort.Direction),
+			)
+		case license.SortFieldOrganizationLicenseInstantiatedAt:
+			clauses = append(clauses, postgres.CASE().
+				WHEN(table.OrganizationLicenses.InstantiatedAt.IS_NULL()).
+				THEN(postgres.Int(1)).
+				ELSE(postgres.Int(0)).
+				ASC(),
+			)
+			clauses = append(clauses, jetx.OrderBy(
+				table.OrganizationLicenses.InstantiatedAt, sort.Direction,
+			))
+		}
+	}
+
+	if len(clauses) == 0 {
+		clauses = append(clauses, table.Organizations.Name.ASC())
+	}
+	// Names repeat, so the page needs one column that cannot.
+	return append(clauses, table.Organizations.ID.ASC())
 }
 
 // CountLicensesForTemplate reports how many Organization licenses still name

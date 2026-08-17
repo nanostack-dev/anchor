@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"anchor/internal/domain/license"
+
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,6 +148,22 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		// is one event, and splitting it would read back as unrelated edits.
 		assert.Equal(t, normaliseValues(validTemplateValues()), entry.OldValue)
 		assert.Equal(t, normaliseValues(proValues()), entry.NewValue)
+	})
+
+	t.Run("a license read before the run comes back on the new tier", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		pro := w.NewTemplate(proValues())
+
+		// The read route is cached. Reading first populates that cache, so this
+		// is the test that fails if the run stops evicting: the customer would
+		// keep seeing the tier they were moved off.
+		assert.Equal(t, w.TemplateID(), w.License().Get().TemplateId)
+
+		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
+
+		reread := w.License().Get()
+		assert.Equal(t, pro.Id, reread.TemplateId)
+		assertValues(t, reread.Values, proValues())
 	})
 
 	t.Run("every organization in one run shares a changed_at", func(t *testing.T) {
@@ -351,6 +369,42 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		resp := w.Migration().RunRaw(request)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		assertAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SELECTION_INVALID")
+	})
+
+	t.Run("400 when the selection names more than the cap", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		pro := w.NewTemplate(proValues())
+
+		// One past the cap, and every identifier distinct: the cap has to be
+		// read off the list as sent, before duplicates are collapsed, or a
+		// caller naming any number of organizations is accepted.
+		organizationIDs := make([]string, license.MaxMigrationOrganizations+1)
+		for i := range organizationIDs {
+			organizationIDs[i] = missingOrganizationID()
+		}
+
+		resp := w.Migration().RunRaw(migrateTo(pro.Id, organizationIDs...))
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_TOO_LARGE")
+	})
+
+	t.Run("the cap admits a selection sitting exactly on it", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		pro := w.NewTemplate(proValues())
+
+		// The boundary belongs to the accepted side. Only the first identifier
+		// names a real organization, so the rest come back as failed results —
+		// which is the point: the run was allowed to start.
+		organizationIDs := make([]string, license.MaxMigrationOrganizations)
+		organizationIDs[0] = w.OrganizationID()
+		for i := 1; i < len(organizationIDs); i++ {
+			organizationIDs[i] = missingOrganizationID()
+		}
+
+		migration := w.Migration().Run(migrateTo(pro.Id, organizationIDs...))
+
+		assert.Equal(t, license.MaxMigrationOrganizations, migration.Count)
+		assert.Equal(t, 1, migration.Migrated)
 	})
 
 	t.Run("400 when the target template is archived", func(t *testing.T) {

@@ -189,6 +189,15 @@ func (s *licenseMigrationService) selectOrganizations(
 	ctx context.Context, in license.MigrateLicensesInput,
 ) ([]string, error) {
 	if in.FromTemplateID == "" {
+		// Bounded before the duplicates come out, not after. The contract bounds
+		// organization_ids, and nothing validates request bodies at the edge
+		// (see ExcludeRequestBody in cmd/http/server.go), so refusing the list
+		// as sent is what makes the documented cap real — a caller naming a
+		// hundred thousand organizations is answered rather than deduplicated.
+		if len(in.OrganizationIDs) > license.MaxMigrationOrganizations {
+			return nil, errLicenseMigrationTooLarge(len(in.OrganizationIDs))
+		}
+
 		unique := make(map[string]struct{}, len(in.OrganizationIDs))
 		for _, organizationID := range in.OrganizationIDs {
 			unique[organizationID] = struct{}{}
