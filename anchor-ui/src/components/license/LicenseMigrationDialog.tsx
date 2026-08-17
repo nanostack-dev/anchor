@@ -144,6 +144,10 @@ export function LicenseMigrationDialog({
 	);
 
 	const unlicensedCount = selection.filter((item) => !item.license).length;
+	// A migration moves a customer between tiers and never puts one on their
+	// first, so the button counts what will actually move rather than what was
+	// ticked. All-unlicensed is a guaranteed no-op and does not run.
+	const movable = selection.length - unlicensedCount;
 
 	const migrate = useMutation({
 		...migrateOrganizationLicensesMutation(),
@@ -199,7 +203,10 @@ export function LicenseMigrationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={close}>
-			<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+			{/* The body scrolls, not the dialog: with a long carried-adjustments
+				list the confirming button would otherwise sit below the fold with
+				nothing pointing to it. */}
+			<DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>
 						{migration
@@ -214,12 +221,14 @@ export function LicenseMigrationDialog({
 				</DialogHeader>
 
 				{migration ? (
-					<LicenseMigrationOutcomes
-						migration={migration}
-						organizationNames={migratedNames}
-					/>
+					<div className="min-h-0 flex-1 overflow-y-auto">
+						<LicenseMigrationOutcomes
+							migration={migration}
+							organizationNames={migratedNames}
+						/>
+					</div>
 				) : (
-					<div className="flex flex-col gap-5">
+					<div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
 						<div className="flex flex-col gap-2">
 							<Label htmlFor="license-migration-target">Move to tier</Label>
 							<Select
@@ -230,7 +239,7 @@ export function LicenseMigrationDialog({
 								value={targetId}
 								onValueChange={setTargetId}
 							>
-								<SelectTrigger id="license-migration-target">
+								<SelectTrigger id="license-migration-target" className="w-full">
 									<SelectValue placeholder="Select a tier..." />
 								</SelectTrigger>
 								<SelectContent>
@@ -314,12 +323,11 @@ export function LicenseMigrationDialog({
 							</Button>
 							<Button
 								onClick={run}
-								disabled={!target || migrate.isPending}
+								disabled={!target || migrate.isPending || movable === 0}
 								variant={discardDifferences ? "destructive" : "default"}
 							>
 								{migrate.isPending && <Spinner />}
-								Move {selection.length} organization
-								{selection.length === 1 ? "" : "s"}
+								Move {movable} organization{movable === 1 ? "" : "s"}
 							</Button>
 						</>
 					)}

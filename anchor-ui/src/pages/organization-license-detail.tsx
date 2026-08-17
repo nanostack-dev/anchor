@@ -111,6 +111,35 @@ export default function OrganizationLicenseDetailPage() {
 		);
 	}
 
+	// An unanswered lookup is not an absent customer. Reporting an outage as a
+	// deletion sends an operator to look for a record that is still there.
+	if (summaryQuery.error) {
+		return (
+			<Page breadCrumbs={false}>
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon" className="text-destructive">
+							<TriangleAlert />
+						</EmptyMedia>
+						<EmptyTitle>Couldn&rsquo;t load this organization</EmptyTitle>
+						<EmptyDescription>
+							{getErrorDetail(summaryQuery.error) ??
+								"The request for this organization did not come back."}
+						</EmptyDescription>
+					</EmptyHeader>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => void summaryQuery.refetch()}
+					>
+						Try again
+					</Button>
+					{backLink}
+				</Empty>
+			</Page>
+		);
+	}
+
 	if (!summary) {
 		return (
 			<Page breadCrumbs={false}>
@@ -132,7 +161,8 @@ export default function OrganizationLicenseDetailPage() {
 	}
 
 	const differs =
-		!!summary.license && differsFromItsTemplate(summary, template?.values);
+		!!summary.license &&
+		differsFromItsTemplate(summary, template?.values) === true;
 
 	// This route documents exactly one 404 case — the organization has no
 	// license yet — so any 404 here is treated as that, whether or not its body

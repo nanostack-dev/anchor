@@ -68,7 +68,7 @@ export function TemplateValuesDiff({
 
 						<div className="min-w-0 text-right">
 							{change.carried ? (
-								<span className="block truncate text-xs text-warning">
+								<span className="block truncate text-xs text-warning-strong">
 									kept for this customer
 								</span>
 							) : (

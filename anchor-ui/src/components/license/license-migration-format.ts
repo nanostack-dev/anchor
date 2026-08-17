@@ -96,12 +96,17 @@ export function carriedForwardChanges(
 export function differsFromItsTemplate(
 	summary: OrganizationLicenseSummaryResponse,
 	templateValues: LicenseTemplateValues | undefined,
-): boolean {
+): boolean | undefined {
 	if (!summary.license) return false;
+	// Undefined is not an empty template. Answering "differs" while the
+	// templates are still loading marks every customer adjusted, and answering
+	// it for a template that resolved to nothing marks one adjusted forever.
+	if (templateValues === undefined) return undefined;
 	const held = summary.license.values ?? {};
-	const template = templateValues ?? {};
-	const names = new Set([...Object.keys(held), ...Object.keys(template)]);
-	return [...names].some((name) => !sameValue(held[name], template[name]));
+	const names = new Set([...Object.keys(held), ...Object.keys(templateValues)]);
+	return [...names].some(
+		(name) => !sameValue(held[name], templateValues[name]),
+	);
 }
 
 export const OUTCOME_LABELS: Record<LicenseMigrationOutcome, string> = {

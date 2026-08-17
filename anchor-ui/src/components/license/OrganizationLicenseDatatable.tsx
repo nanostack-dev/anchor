@@ -1,6 +1,9 @@
 import {
 	type LicenseTemplateResponse,
+	type OrganizationLicenseSearchRequest,
+	OrganizationLicenseSortField,
 	type OrganizationLicenseSummaryResponse,
+	SortDirection,
 	searchOrganizationLicenses,
 } from "@/client";
 import {
@@ -19,6 +22,7 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
@@ -65,6 +69,7 @@ export function OrganizationLicenseDatatable({
 	const [selection, setSelection] = useState<
 		OrganizationLicenseSummaryResponse[]
 	>([]);
+	const [allMatching, setAllMatching] = useState(false);
 	const [migrateOpen, setMigrateOpen] = useState(false);
 	const [resolvingSelection, setResolvingSelection] = useState(false);
 
@@ -92,13 +97,19 @@ export function OrganizationLicenseDatatable({
 				limit: pagination.pageSize,
 				offset: pagination.pageIndex * pagination.pageSize,
 			},
+			// The table sorts server-side, so the header's state has to reach the
+			// route or the arrow moves and the rows do not.
+			sort_by: mapSortingToApiField<
+				OrganizationLicenseSearchRequest["sort_by"]
+			>(sorting[0]?.id, OrganizationLicenseSortField.ORGANIZATION_NAME),
+			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
 			full_text_search: debouncedSearch || undefined,
 			filter:
 				templateFilter.length > 0
 					? { license_template_ids: templateFilter }
 					: undefined,
 		}),
-		[pagination, debouncedSearch, templateFilter],
+		[pagination, sorting, debouncedSearch, templateFilter],
 	);
 
 	const licensesQuery = useQuery(
@@ -114,6 +125,12 @@ export function OrganizationLicenseDatatable({
 		() => licensesQuery.data?.items ?? [],
 		[licensesQuery.data],
 	);
+
+	const matchingTotal = licensesQuery.data?.total;
+	const matchingLabel =
+		allMatching && matchingTotal !== undefined
+			? `all ${matchingTotal}`
+			: "all matching";
 
 	const templateOptions = useMemo(
 		() =>
@@ -159,8 +176,12 @@ export function OrganizationLicenseDatatable({
 		}
 	};
 
+	// "all-matching" carries no rows, so it is kept as its own state rather
+	// than flattened to an empty selection: an operator who ticked every match
+	// and one who ticked nothing must not read the same button.
 	const handleSelectionChange = useCallback(
 		(selected: OrganizationLicenseSummaryResponse[] | "all-matching" | []) => {
+			setAllMatching(selected === "all-matching");
 			setSelection(selected === "all-matching" ? [] : selected);
 		},
 		[],
@@ -206,6 +227,9 @@ export function OrganizationLicenseDatatable({
 						row.original,
 						template?.values,
 					);
+					if (differs === undefined) {
+						return <span className="text-muted-foreground">—</span>;
+					}
 					return differs ? (
 						<StatusBadge tone="info">Adjusted</StatusBadge>
 					) : (
@@ -328,10 +352,12 @@ export function OrganizationLicenseDatatable({
 					<span className="hidden sm:inline">
 						{selection.length > 0
 							? `Move ${selection.length} to another tier`
-							: "Move all matching to another tier"}
+							: `Move ${matchingLabel} to another tier`}
 					</span>
 					<span className="sm:hidden">
-						{selection.length > 0 ? `Move ${selection.length}` : "Move all"}
+						{selection.length > 0
+							? `Move ${selection.length}`
+							: `Move ${matchingLabel}`}
 					</span>
 				</Button>
 			</AnchorDataTable>

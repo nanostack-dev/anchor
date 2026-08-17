@@ -11,12 +11,24 @@ import {
 	isFieldValueSet,
 } from "@/components/license/license-field-format";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useProduct } from "@/context/product/ProductContext";
 import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
 import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useBlocker } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -85,6 +97,17 @@ export default function OrganizationLicenseValuesPage() {
 	});
 
 	const license = licenseQuery.data;
+	const dirty = Object.keys(draft).length > 0;
+
+	// The draft lives in this component, so switching tab, following the back
+	// link, or reloading would drop an edit without saying so. Covers the
+	// browser's own reload and close through the same hook.
+	const blocker = useBlocker({
+		shouldBlockFn: () => dirty,
+		enableBeforeUnload: () => dirty,
+		withResolver: true,
+	});
+
 	if (!license || !productId) return null;
 
 	const fields = schemaQuery.data?.fields ?? [];
@@ -146,6 +169,17 @@ export default function OrganizationLicenseValuesPage() {
 		});
 	};
 
+	// "Declares no fields" is an answer, and an unanswered query is not it.
+	if (schemaQuery.isLoading) {
+		return (
+			<div className="flex flex-col gap-2">
+				<Skeleton className="h-9 w-full" />
+				<Skeleton className="h-9 w-full" />
+				<Skeleton className="h-9 w-full" />
+			</div>
+		);
+	}
+
 	if (fields.length === 0) {
 		return (
 			<p className="text-sm text-muted-foreground">
@@ -201,6 +235,32 @@ export default function OrganizationLicenseValuesPage() {
 					</div>
 				</div>
 			)}
+
+			<AlertDialog
+				open={blocker.status === "blocked"}
+				onOpenChange={(next) => {
+					if (!next) blocker.reset?.();
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Leave without adjusting?</AlertDialogTitle>
+						<AlertDialogDescription>
+							{changed.length} field{changed.length === 1 ? "" : "s"} on this
+							customer&rsquo;s license {changed.length === 1 ? "has" : "have"}{" "}
+							been changed and not saved. Leaving discards the change.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel onClick={() => blocker.reset?.()}>
+							Stay
+						</AlertDialogCancel>
+						<AlertDialogAction onClick={() => blocker.proceed?.()}>
+							Discard and leave
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

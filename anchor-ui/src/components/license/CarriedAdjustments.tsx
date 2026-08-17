@@ -79,7 +79,7 @@ export function CarriedAdjustments({
 											aria-hidden
 											className="size-4 shrink-0 self-center text-muted-foreground"
 										/>
-										<span className="text-sm font-medium tabular-nums text-warning">
+										<span className="text-sm font-medium tabular-nums text-warning-strong">
 											{formatFieldValue(
 												change.type ?? LicenseFieldType.STRING,
 												change.to,
