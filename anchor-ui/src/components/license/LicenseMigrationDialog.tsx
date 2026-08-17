@@ -31,6 +31,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CarriedAdjustments } from "./CarriedAdjustments";
 import { LicenseMigrationOutcomes } from "./LicenseMigrationOutcomes";
 import { TemplateValuesDiff } from "./TemplateValuesDiff";
 import { TemplateValuesDiffSummary } from "./TemplateValuesDiffSummary";
@@ -124,15 +125,23 @@ export function LicenseMigrationDialog({
 
 	const carried = useMemo(() => {
 		if (!target || discardDifferences) return [];
-		return selection.flatMap((item) =>
-			carriedForwardChanges(
-				item,
-				templatesById.get(item.license?.template_id ?? "")?.values,
-				target.values,
-				fields,
-			).map((change) => ({ ...change, organization: item.organization_name })),
-		);
+		return selection
+			.map((item) => ({
+				organization: item.organization_name,
+				changes: carriedForwardChanges(
+					item,
+					templatesById.get(item.license?.template_id ?? "")?.values,
+					target.values,
+					fields,
+				),
+			}))
+			.filter((group) => group.changes.length > 0);
 	}, [selection, target, templatesById, fields, discardDifferences]);
+
+	const carriedCount = carried.reduce(
+		(total, group) => total + group.changes.length,
+		0,
+	);
 
 	const unlicensedCount = selection.filter((item) => !item.license).length;
 
@@ -267,7 +276,7 @@ export function LicenseMigrationDialog({
 										{discardDifferences
 											? `Every selected organization takes ${target.name} exactly, adjustments included. An adjustment made for one customer is lost.`
 											: carried.length > 0
-												? `Every value moves to ${target.name}, except ${carried.length} adjustment${carried.length === 1 ? "" : "s"} across the selection, which ${carried.length === 1 ? "is" : "are"} kept.`
+												? `Every value moves to ${target.name}, except ${carriedCount} adjustment${carriedCount === 1 ? "" : "s"} held by ${carried.length} organization${carried.length === 1 ? "" : "s"}, which ${carriedCount === 1 ? "is" : "are"} kept.`
 												: `No organization in the selection is adjusted, so every one of them takes ${target.name} whole.`}
 									</p>
 								</div>
@@ -279,12 +288,8 @@ export function LicenseMigrationDialog({
 							</div>
 						)}
 
-						{target && !discardDifferences && carried.length > 0 && (
-							<TemplateValuesDiff
-								changes={carried}
-								fromLabel={`${target.name} grants`}
-								toLabel="Adjustment kept"
-							/>
+						{target && !discardDifferences && (
+							<CarriedAdjustments groups={carried} tierName={target.name} />
 						)}
 
 						{unlicensedCount > 0 && (
