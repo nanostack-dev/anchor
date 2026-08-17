@@ -3,6 +3,7 @@ import {
 	LicenseFieldType,
 	type LicenseTemplateValues,
 } from "@/client";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,6 +23,13 @@ interface LicenseValueFieldsProps {
 	onChange?: (name: string, value: unknown) => void;
 	errors?: Record<string, string>;
 	disabled?: boolean;
+	/**
+	 * A short note per field name, shown beside the label. The organization
+	 * license form uses it to mark the fields that have come apart from the
+	 * tier, which is the thing an operator adjusting one customer needs to see
+	 * without leaving the form.
+	 */
+	notes?: Record<string, string>;
 }
 
 /**
@@ -37,6 +45,7 @@ export function LicenseValueFields({
 	onChange,
 	errors,
 	disabled,
+	notes,
 }: LicenseValueFieldsProps) {
 	const readOnly = !onChange;
 
@@ -58,9 +67,14 @@ export function LicenseValueFields({
 				return (
 					<div key={field.id} className="flex flex-col gap-1.5 p-3">
 						<div className="flex items-baseline justify-between gap-2">
-							<Label htmlFor={inputId} className="font-mono text-sm">
-								{field.name}
-							</Label>
+							<span className="flex min-w-0 items-baseline gap-2">
+								<Label htmlFor={inputId} className="font-mono text-sm">
+									{field.name}
+								</Label>
+								{notes?.[field.name] && (
+									<StatusBadge tone="info">{notes[field.name]}</StatusBadge>
+								)}
+							</span>
 							{field.description && (
 								<span className="truncate text-xs text-muted-foreground">
 									{field.description}
