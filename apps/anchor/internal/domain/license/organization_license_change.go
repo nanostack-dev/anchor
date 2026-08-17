@@ -23,6 +23,11 @@ const (
 	// [OrganizationLicenseChange.Field] names it, OldValue and NewValue are
 	// that field's values on either side of the change.
 	ChangeAdjusted ChangeType = "ADJUSTED"
+	// ChangeMigrated is the Organization moved onto another template.
+	// [OrganizationLicenseChange.TemplateID] names the one it moved to,
+	// PreviousTemplateID the one it came from, and OldValue and NewValue carry
+	// the whole set of values on either side.
+	ChangeMigrated ChangeType = "MIGRATED"
 )
 
 // OrganizationLicenseChange is one entry in an Organization's license history.
@@ -40,10 +45,13 @@ type OrganizationLicenseChange struct {
 	LicenseID  string
 	Type       ChangeType
 	TemplateID *string
-	Field      *string
-	OldValue   any
-	NewValue   any
-	ChangedAt  time.Time
+	// PreviousTemplateID is the template the Organization held before it was
+	// moved. Set only by [NewMigrationChange].
+	PreviousTemplateID *string
+	Field              *string
+	OldValue           any
+	NewValue           any
+	ChangedAt          time.Time
 }
 
 // NewInstantiationChange records one entry for the whole copied set.

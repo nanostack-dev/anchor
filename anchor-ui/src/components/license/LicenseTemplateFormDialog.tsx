@@ -1,8 +1,7 @@
-import {
-	LicenseFieldType,
-	type LicenseSchemaResponse,
-	type LicenseTemplateResponse,
-	type LicenseTemplateValues,
+import type {
+	LicenseSchemaResponse,
+	LicenseTemplateResponse,
+	LicenseTemplateValues,
 } from "@/client";
 import {
 	createLicenseTemplateMutation,
@@ -27,6 +26,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactElement, useState } from "react";
 import { toast } from "sonner";
 import { LicenseValueFields } from "./LicenseValueFields";
+import { isFieldValueSet } from "./license-field-format";
 
 interface LicenseTemplateFormDialogProps {
 	productId: string;
@@ -35,14 +35,6 @@ interface LicenseTemplateFormDialogProps {
 	mode?: "create" | "edit";
 	existingTemplate?: LicenseTemplateResponse;
 	onSaved?: () => void;
-}
-
-function isSet(type: LicenseFieldType, value: unknown): boolean {
-	if (type === LicenseFieldType.BOOLEAN) return typeof value === "boolean";
-	if (type === LicenseFieldType.NUMBER || type === LicenseFieldType.LIMIT) {
-		return typeof value === "number" && Number.isFinite(value);
-	}
-	return typeof value === "string" && value.trim().length > 0;
 }
 
 /**
@@ -141,7 +133,7 @@ export function LicenseTemplateFormDialog({
 			errors.name = "Name is required.";
 		}
 		for (const field of schema.fields) {
-			if (!isSet(field.type, values[field.name])) {
+			if (!isFieldValueSet(field.type, values[field.name])) {
 				errors[field.name] = "This field is required.";
 			}
 		}

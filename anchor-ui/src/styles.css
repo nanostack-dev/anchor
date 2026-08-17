@@ -34,6 +34,10 @@
 	--success-foreground: 0 0% 100%;
 	--warning: 33 90% 45%;
 	--warning-foreground: 0 0% 100%;
+	/* 45% is an amber chosen to be read as a fill, and it measures about 3.1:1
+	   as text on the page background — under AA. The fill keeps it; text takes
+	   this darker one at roughly 5:1, on the same hue. */
+	--warning-strong: 33 90% 33%;
 	/* 46% put `text-destructive` on the `bg-destructive/10` fill at 4.41:1 —
 	   under AA for 14px text, and that pair is every destructive button in the
 	   app. 44% measures 4.73:1 on the built page; hue and saturation are
@@ -86,6 +90,7 @@
 	--color-success-foreground: hsl(var(--success-foreground));
 	--color-warning: hsl(var(--warning));
 	--color-warning-foreground: hsl(var(--warning-foreground));
+	--color-warning-strong: hsl(var(--warning-strong));
 	--color-destructive: hsl(var(--destructive));
 	--color-destructive-foreground: hsl(var(--destructive-foreground));
 	--color-border: hsl(var(--border));

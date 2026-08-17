@@ -472,6 +472,143 @@ func (h templateHandle) Archive() {
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 }
 
+// NewNamedOrganization adds an organization with a name a test can search for.
+func (w *licenseWorld) NewNamedOrganization(name string) string {
+	w.t.Helper()
+	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
+	resp, err := client.CreateProductOrganizationWithResponse(
+		context.Background(),
+		w.productID(),
+		ct.CreateProductOrganizationJSONRequestBody{Name: name},
+	)
+	require.NoError(w.t, err)
+	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	return resp.JSON201.Id
+}
+
+// ---------------------------------------------------------------------------
+// Search handle
+// ---------------------------------------------------------------------------
+
+// searchHandle reads the product's customer book with one credential.
+type searchHandle struct {
+	t         *testing.T
+	client    *ct.ClientWithResponses
+	productID string
+}
+
+func (w *licenseWorld) Search() searchHandle {
+	return searchHandle{t: w.t, client: w.client(), productID: w.productID()}
+}
+
+// As swaps the credential, for the tests whose subject is a scope.
+func (h searchHandle) As(client *ct.ClientWithResponses) searchHandle {
+	h.client = client
+	return h
+}
+
+func (h searchHandle) RunRaw(
+	request ct.OrganizationLicenseSearchRequest,
+) *ct.SearchOrganizationLicensesResponse {
+	h.t.Helper()
+	resp, err := h.client.SearchOrganizationLicensesWithResponse(
+		context.Background(), h.productID, request,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h searchHandle) Run(
+	request ct.OrganizationLicenseSearchRequest,
+) ct.OrganizationLicenseSearchResponse {
+	h.t.Helper()
+	resp := h.RunRaw(request)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+// NewTemplate adds another tier to the same product, for the tests whose
+// subject is an organization moving between two of them.
+func (w *licenseWorld) NewTemplate(values ct.LicenseTemplateValues) ct.LicenseTemplateResponse {
+	w.t.Helper()
+	resp, err := w.client().CreateLicenseTemplateWithResponse(
+		context.Background(),
+		w.productID(),
+		ct.CreateLicenseTemplateJSONRequestBody{Name: uniqueTemplateName(), Values: values},
+	)
+	require.NoError(w.t, err)
+	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	require.NotNil(w.t, resp.JSON201)
+	return *resp.JSON201
+}
+
+// ArchiveTemplateByID withdraws a tier other than the world's own.
+func (w *licenseWorld) ArchiveTemplateByID(templateID string) {
+	w.t.Helper()
+	templateHandle{
+		t: w.t, client: w.client(), productID: w.productID(), templateID: templateID,
+	}.Archive()
+}
+
+// ---------------------------------------------------------------------------
+// Migration handle
+// ---------------------------------------------------------------------------
+
+// migrationHandle runs one product-scoped migration with one credential.
+type migrationHandle struct {
+	t         *testing.T
+	client    *ct.ClientWithResponses
+	productID string
+}
+
+func (w *licenseWorld) Migration() migrationHandle {
+	return migrationHandle{t: w.t, client: w.client(), productID: w.productID()}
+}
+
+// As swaps the credential, for the tests whose subject is a scope.
+func (h migrationHandle) As(client *ct.ClientWithResponses) migrationHandle {
+	h.client = client
+	return h
+}
+
+func (h migrationHandle) RunRaw(
+	request ct.OrganizationLicenseMigrationRequest,
+) *ct.MigrateOrganizationLicensesResponse {
+	h.t.Helper()
+	resp, err := h.client.MigrateOrganizationLicensesWithResponse(
+		context.Background(), h.productID, request,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h migrationHandle) Run(
+	request ct.OrganizationLicenseMigrationRequest,
+) ct.OrganizationLicenseMigrationResponse {
+	h.t.Helper()
+	resp := h.RunRaw(request)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+// resultFor looks a migration result up by organization. Results come back
+// ordered by identifier, so asserting through this rather than an index keeps a
+// test about one organization from breaking when another joins the run.
+func resultFor(
+	t *testing.T, migration ct.OrganizationLicenseMigrationResponse, organizationID string,
+) ct.OrganizationLicenseMigrationResult {
+	t.Helper()
+	for _, result := range migration.Results {
+		if result.OrganizationId == organizationID {
+			return result
+		}
+	}
+	require.FailNowf(t, "organization not in the run", "no result for %q", organizationID)
+	return ct.OrganizationLicenseMigrationResult{}
+}
+
 // RedeclareSchema replaces the product's field declaration wholesale.
 func (w *licenseWorld) RedeclareSchema(fields []ct.LicenseFieldDeclaration) {
 	w.t.Helper()

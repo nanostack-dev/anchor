@@ -17,17 +17,18 @@ func (m *OrganizationLicenseChangeMapper) ToDomain(
 	entity model.OrganizationLicenseChanges,
 ) license.OrganizationLicenseChange {
 	return license.OrganizationLicenseChange{
-		ID:               entity.ID,
-		PlatformTenantID: entity.PlatformTenantID,
-		ProductID:        entity.ProductID,
-		OrganizationID:   entity.OrganizationID,
-		LicenseID:        entity.LicenseID,
-		Type:             license.ChangeType(entity.ChangeType),
-		TemplateID:       entity.TemplateID,
-		Field:            entity.Field,
-		OldValue:         decodeChangeValue(entity.OldValueJSON),
-		NewValue:         decodeChangeValue(entity.NewValueJSON),
-		ChangedAt:        entity.ChangedAt,
+		ID:                 entity.ID,
+		PlatformTenantID:   entity.PlatformTenantID,
+		ProductID:          entity.ProductID,
+		OrganizationID:     entity.OrganizationID,
+		LicenseID:          entity.LicenseID,
+		Type:               license.ChangeType(entity.ChangeType),
+		TemplateID:         entity.TemplateID,
+		PreviousTemplateID: entity.PreviousTemplateID,
+		Field:              entity.Field,
+		OldValue:           decodeChangeValue(entity.OldValueJSON),
+		NewValue:           decodeChangeValue(entity.NewValueJSON),
+		ChangedAt:          entity.ChangedAt,
 	}
 }
 
@@ -35,17 +36,18 @@ func (m *OrganizationLicenseChangeMapper) ToEntity(
 	domain license.OrganizationLicenseChange,
 ) model.OrganizationLicenseChanges {
 	return model.OrganizationLicenseChanges{
-		ID:               domain.ID,
-		PlatformTenantID: domain.PlatformTenantID,
-		ProductID:        domain.ProductID,
-		OrganizationID:   domain.OrganizationID,
-		LicenseID:        domain.LicenseID,
-		ChangeType:       string(domain.Type),
-		TemplateID:       domain.TemplateID,
-		Field:            domain.Field,
-		OldValueJSON:     encodeChangeValue(domain.OldValue),
-		NewValueJSON:     encodeChangeValue(domain.NewValue),
-		ChangedAt:        domain.ChangedAt,
+		ID:                 domain.ID,
+		PlatformTenantID:   domain.PlatformTenantID,
+		ProductID:          domain.ProductID,
+		OrganizationID:     domain.OrganizationID,
+		LicenseID:          domain.LicenseID,
+		ChangeType:         string(domain.Type),
+		TemplateID:         domain.TemplateID,
+		PreviousTemplateID: domain.PreviousTemplateID,
+		Field:              domain.Field,
+		OldValueJSON:       encodeChangeValue(domain.OldValue),
+		NewValueJSON:       encodeChangeValue(domain.NewValue),
+		ChangedAt:          domain.ChangedAt,
 	}
 }
 

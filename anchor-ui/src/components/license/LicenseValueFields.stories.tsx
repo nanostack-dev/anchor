@@ -138,3 +138,21 @@ export const SurfacesAFieldError: Story = {
 		).toBeInTheDocument();
 	},
 };
+
+/**
+ * The organization license form marks every field that has come apart from
+ * the tier, so an operator adjusting one customer can see what is already
+ * bespoke without leaving the form.
+ */
+export const MarksFieldsThatLeftTheTier: Story = {
+	args: {
+		onChange: () => {},
+		notes: { max_flows: "Tier grants 100" },
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByText("Tier grants 100")).toBeVisible();
+		await expect(canvas.queryByText(/Tier grants/)).toBeVisible();
+	},
+};

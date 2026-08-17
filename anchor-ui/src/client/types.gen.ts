@@ -2066,11 +2066,12 @@ export type OrganizationLicenseDiffResponse = {
 };
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `MIGRATED` is the organization moved onto another template: `template_id` names the one it moved to, `previous_template_id` the one it came from, and `old_value` and `new_value` carry the whole set of values on either side.
  */
 export enum LicenseChangeType {
     INSTANTIATED = 'INSTANTIATED',
-    ADJUSTED = 'ADJUSTED'
+    ADJUSTED = 'ADJUSTED',
+    MIGRATED = 'MIGRATED'
 }
 
 /**
@@ -2086,25 +2087,171 @@ export type OrganizationLicenseChangeResponse = {
     license_id: Ksuid;
     type: LicenseChangeType;
     /**
-     * The template stamped onto the organization. Present when `type` is `INSTANTIATED`, absent otherwise.
+     * The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `MIGRATED`, absent otherwise.
      */
     template_id?: Ksuid;
+    /**
+     * The template the organization held before it was moved. Present when `type` is `MIGRATED`, absent otherwise.
+     */
+    previous_template_id?: Ksuid;
     /**
      * The license field that moved. Present when `type` is `ADJUSTED`, absent otherwise.
      */
     field?: string;
     /**
-     * The value held before the change. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+     * The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a migration. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
      */
     old_value?: unknown;
     /**
-     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation.
+     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a migration.
      */
     new_value?: unknown;
     /**
-     * When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment.
+     * When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment. Every organization moved by one migration shares it too, which together with `template_id` is what identifies a migration run.
      */
     changed_at: string;
+};
+
+/**
+ * What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and the value is gone.
+ * A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
+ */
+export enum LicenseMigrationDifferencePolicy {
+    CARRY_FORWARD = 'CARRY_FORWARD',
+    DISCARD = 'DISCARD'
+}
+
+/**
+ * What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+ */
+export enum LicenseMigrationOutcome {
+    MIGRATED = 'MIGRATED',
+    UNCHANGED = 'UNCHANGED',
+    SKIPPED = 'SKIPPED',
+    FAILED = 'FAILED'
+}
+
+/**
+ * Why an organization was left alone. `NOT_LICENSED` means it holds no license at all. A migration moves a customer between tiers and never puts one on their first: instantiation is a separate route with a separate scope.
+ */
+export enum LicenseMigrationSkipReason {
+    NOT_LICENSED = 'NOT_LICENSED'
+}
+
+/**
+ * Moves a set of organizations onto one license template. Each license takes the target template's values and its provenance is restamped, so the record says which tier the customer is on now. This is not an adjustment: adjusting cannot move provenance, by design.
+ * By default a value that differs from the template the organization currently holds is carried forward onto the new license, so a bespoke arrangement survives the move. See `on_difference`.
+ * Supply exactly one selection — `organization_ids` or `from_template_id`. Supplying both, or neither, is refused.
+ */
+export type OrganizationLicenseMigrationRequest = {
+    /**
+     * The template to move onto. It must be active: a withdrawn tier cannot be sold to anyone, which is the same rule instantiation follows.
+     */
+    template_id: Ksuid;
+    /**
+     * The organizations to move, named explicitly. An identifier naming no organization in this product is reported as a failed result rather than failing the batch.
+     */
+    organization_ids?: Array<Ksuid>;
+    /**
+     * Move every organization in this product whose license names this template. Archived is accepted and is the common case: this is how a withdrawn tier is emptied. Resolved inside the request, so an organization instantiated a moment ago cannot be missed by a client that listed first.
+     */
+    from_template_id?: Ksuid;
+    on_difference?: LicenseMigrationDifferencePolicy;
+};
+
+/**
+ * What one migration did to one organization.
+ */
+export type OrganizationLicenseMigrationResult = {
+    organization_id: Ksuid;
+    outcome: LicenseMigrationOutcome;
+    /**
+     * Present when `outcome` is `SKIPPED`, absent otherwise.
+     */
+    reason?: LicenseMigrationSkipReason;
+    /**
+     * The template the organization held before this run. Absent when it holds no license.
+     */
+    previous_template_id?: Ksuid;
+    /**
+     * What the move actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. Empty when nothing changed.
+     */
+    changes: Array<LicenseFieldDifference>;
+    /**
+     * The number of entries in `changes`.
+     */
+    count: number;
+    /**
+     * Present when `outcome` is `FAILED`, absent otherwise.
+     */
+    error?: ApiError;
+};
+
+/**
+ * The receipt for one migration run: every organization it considered and what happened to each. Results are ordered by organization identifier.
+ */
+export type OrganizationLicenseMigrationResponse = {
+    /**
+     * The template every migrated organization now holds.
+     */
+    template_id: Ksuid;
+    /**
+     * The single moment stamped on every organization this run moved, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
+     */
+    migrated_at: string;
+    results: Array<OrganizationLicenseMigrationResult>;
+    /**
+     * The number of organizations considered.
+     */
+    count: number;
+    migrated: number;
+    unchanged: number;
+    skipped: number;
+    failed: number;
+};
+
+/**
+ * Narrows a search over a product's organizations and the licenses they hold.
+ */
+export type OrganizationLicenseFilter = {
+    organization_ids?: Array<Ksuid>;
+    /**
+     * Keep only organizations whose license names one of these templates. An archived template is accepted, and asking for one is how an operator finds the customers still on a withdrawn tier.
+     */
+    license_template_ids?: Array<Ksuid>;
+    /**
+     * `true` keeps only organizations that hold a license, `false` only those that hold none. Omit for both.
+     */
+    licensed?: boolean;
+};
+
+/**
+ * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+ */
+export enum OrganizationLicenseSortField {
+    ORGANIZATION_NAME = 'organization_name',
+    INSTANTIATED_AT = 'instantiated_at'
+}
+
+export type OrganizationLicenseSearchRequest = SearchRequest & {
+    filter?: OrganizationLicenseFilter;
+    sort_by?: OrganizationLicenseSortField;
+};
+
+/**
+ * One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.
+ */
+export type OrganizationLicenseSummaryResponse = {
+    organization_id: Ksuid;
+    organization_name: string;
+    /**
+     * Absent when the organization holds no license. `usage` is never populated here — deriving it per row would make a page of results as expensive as a page of license reads.
+     */
+    license?: OrganizationLicenseResponse;
+};
+
+export type OrganizationLicenseSearchResponse = PagedListResponse & {
+    items: Array<OrganizationLicenseSummaryResponse>;
 };
 
 export type OrganizationLicenseHistoryResponse = PagedListResponse & {
@@ -5933,6 +6080,74 @@ export type ArchiveLicenseTemplateResponses = {
 };
 
 export type ArchiveLicenseTemplateResponse = ArchiveLicenseTemplateResponses[keyof ArchiveLicenseTemplateResponses];
+
+export type SearchOrganizationLicensesData = {
+    body: OrganizationLicenseSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/organization-licenses/search';
+};
+
+export type SearchOrganizationLicensesErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
+};
+
+export type SearchOrganizationLicensesError = SearchOrganizationLicensesErrors[keyof SearchOrganizationLicensesErrors];
+
+export type SearchOrganizationLicensesResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseSearchResponse;
+};
+
+export type SearchOrganizationLicensesResponse = SearchOrganizationLicensesResponses[keyof SearchOrganizationLicensesResponses];
+
+export type MigrateOrganizationLicensesData = {
+    body: OrganizationLicenseMigrationRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/organization-licenses/migrate';
+};
+
+export type MigrateOrganizationLicensesErrors = {
+    /**
+     * Bad Request (e.g., validation error)
+     */
+    400: ApiErrorResponse;
+    /**
+     * No license template with that identifier. `LICENSE_TEMPLATE_NOT_FOUND` names the target, `LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND` the one selected from.
+     */
+    404: ApiErrorResponse;
+};
+
+export type MigrateOrganizationLicensesError = MigrateOrganizationLicensesErrors[keyof MigrateOrganizationLicensesErrors];
+
+export type MigrateOrganizationLicensesResponses = {
+    /**
+     * The run completed. Individual organizations may still have been skipped or failed; read `results`.
+     */
+    200: OrganizationLicenseMigrationResponse;
+};
+
+export type MigrateOrganizationLicensesResponse = MigrateOrganizationLicensesResponses[keyof MigrateOrganizationLicensesResponses];
 
 export type GetOrganizationLicenseData = {
     body?: never;

@@ -25,6 +25,8 @@ export function changeTypeLabel(type: LicenseChangeType): string {
 			return "Instantiated";
 		case LicenseChangeType.ADJUSTED:
 			return "Adjusted";
+		case LicenseChangeType.MIGRATED:
+			return "Moved to another tier";
 	}
 }
 
