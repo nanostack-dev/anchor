@@ -55,7 +55,7 @@ export const WhatChangesBetweenTwoTiers: Story = {
 export const ValuesKeptForACustomerReadTheOtherWayRound: Story = {
 	args: {
 		fromLabel: "Pro grants",
-		toLabel: "These customers keep",
+		toLabel: "Adjustment kept",
 		changes: [
 			{
 				field: "max_flows",

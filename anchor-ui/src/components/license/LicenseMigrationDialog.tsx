@@ -261,14 +261,14 @@ export function LicenseMigrationDialog({
 							<div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3 py-3">
 								<div className="flex flex-col gap-1">
 									<Label htmlFor="license-migration-discard">
-										Discard values these customers hold
+										Discard customer adjustments
 									</Label>
 									<p className="text-xs text-muted-foreground">
 										{discardDifferences
-											? "Every selected organization takes the tier exactly. Values given to individual customers are gone."
+											? `Every selected organization takes ${target.name} exactly, adjustments included. An adjustment made for one customer is lost.`
 											: carried.length > 0
-												? `${carried.length} value${carried.length === 1 ? "" : "s"} across the selection differ from the tier they are on and will be kept.`
-												: "Nothing in the selection differs from the tier it is on."}
+												? `Every value moves to ${target.name}, except ${carried.length} adjustment${carried.length === 1 ? "" : "s"} across the selection, which ${carried.length === 1 ? "is" : "are"} kept.`
+												: `No organization in the selection is adjusted, so every one of them takes ${target.name} whole.`}
 									</p>
 								</div>
 								<Switch
@@ -283,7 +283,7 @@ export function LicenseMigrationDialog({
 							<TemplateValuesDiff
 								changes={carried}
 								fromLabel={`${target.name} grants`}
-								toLabel="These customers keep"
+								toLabel="Adjustment kept"
 							/>
 						)}
 
