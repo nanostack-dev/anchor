@@ -130,15 +130,20 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.License().For(created.Id).GetRaw().StatusCode())
 	})
 
-	t.Run("a template that does not exist leaves no organization behind", func(t *testing.T) {
+	t.Run("a template that does not exist is a bad request", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		name := uniqueOrganizationName()
 
 		body := licenseBody(missingTemplateID())
 		resp := w.Create().WithLicenseRaw(name, body)
 
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-		assert.Zero(t, w.Create().CountNamed(name), "the organization was not rolled back")
+		// Not a 404: the call addressed the organization collection, which
+		// exists, and named the template in the body. The license route answers
+		// 404 for the same template, because there it is what is addressed.
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND")
+		assert.Zero(t, w.Create().CountNamed(name), "no organization was left behind")
 	})
 
 	t.Run("an archived template leaves no organization behind", func(t *testing.T) {
@@ -154,15 +159,20 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		assert.Zero(t, w.Create().CountNamed(name), "the organization was not rolled back")
 	})
 
-	t.Run("another product's template leaves no organization behind", func(t *testing.T) {
+	t.Run("another product's template is refused the same way", func(t *testing.T) {
 		first := newLicenseWorld(t)
 		second := newLicenseWorld(t)
 		name := uniqueOrganizationName()
 
+		// A template that exists but belongs elsewhere is the same answer as one
+		// that does not exist. From this product's side the two are the same
+		// thing, and saying which would leak that the identifier is real.
 		resp := first.Create().WithLicenseRaw(name, licenseBody(second.TemplateID()))
 
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-		assert.Zero(t, first.Create().CountNamed(name), "the organization was not rolled back")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND")
+		assert.Zero(t, first.Create().CountNamed(name), "no organization was left behind")
 	})
 
 	t.Run("licenses the organization it creates with a founding member", func(t *testing.T) {
@@ -181,7 +191,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		assertValues(t, created.License.Values, validTemplateValues())
 	})
 
-	t.Run("a refused template leaves no founding membership behind", func(t *testing.T) {
+	t.Run("a refused template writes no founding membership", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		founder := w.FoundingMember()
 		name := uniqueOrganizationName()
@@ -191,13 +201,13 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 			ProductUserId: founder.ProductUserID, RoleId: founder.RoleID,
 		}
 		resp := w.Create().WithLicenseRaw(name, body)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 
-		assert.Zero(t, w.Create().CountNamed(name), "the organization was not rolled back")
+		assert.Zero(t, w.Create().CountNamed(name), "no organization was left behind")
 
-		// The membership went with it: the same user can still found an
-		// organization, which the idempotent path would refuse to create had
-		// the rolled-back one survived.
+		// No membership either: the same user can still found an organization,
+		// which the idempotent path would answer with the refused one had any
+		// membership survived.
 		retry := uniqueOrganizationName()
 		retryBody := ct.CreateProductOrganizationJSONRequestBody{
 			FoundingMember: &ct.FoundingMemberRequest{

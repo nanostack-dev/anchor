@@ -101,6 +101,7 @@ type organizationService struct {
 	productUserRepo   repository.ProductUserRepository
 	productRoleRepo   repository.ProductRoleRepository
 	licenses          licensesvc.OrganizationLicenseService
+	licenseTemplates  licensesvc.LicenseTemplateService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
 	logger            zerolog.Logger
@@ -112,6 +113,7 @@ func NewOrganizationService(
 	productUserRepo repository.ProductUserRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	licenses licensesvc.OrganizationLicenseService,
+	licenseTemplates licensesvc.LicenseTemplateService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
 	logger zerolog.Logger,
@@ -122,19 +124,50 @@ func NewOrganizationService(
 		productUserRepo:   productUserRepo,
 		productRoleRepo:   productRoleRepo,
 		licenses:          licenses,
+		licenseTemplates:  licenseTemplates,
 		transactor:        tx,
 		lock:              lock,
 		logger:            logger.With().Str("component", "organization_service").Logger(),
 	}
 }
 
-// instantiateLicense stamps the named template onto a freshly created
-// Organization, inside the transaction that created it. It is a no-op when the
-// caller asked for no license.
-func (s *organizationService) instantiateLicense(
-	ctx context.Context, tenantID, productID, organizationID string, templateID *string,
-) (*license.OrganizationLicense, error) {
+// resolveLicenseTemplate reads the template a create call named, before that
+// call writes anything. A template the product does not have is a bad request
+// here rather than the 404 the license route answers: the caller addressed the
+// organization collection, which exists. Resolving first also keeps the create
+// route from reporting a missing template through a rolled-back insert.
+//
+// It answers nil when the caller asked for no license.
+func (s *organizationService) resolveLicenseTemplate(
+	ctx context.Context, tenantID, productID string, templateID *string,
+) (*license.Template, error) {
 	if templateID == nil {
+		return nil, nil //nolint:nilnil // no license asked for is not an error
+	}
+
+	template, err := s.licenseTemplates.GetTemplate(ctx, license.GetTemplateInput{
+		TenantID:   tenantID,
+		ProductID:  productID,
+		TemplateID: *templateID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if template == nil {
+		return nil, NewOrganizationLicenseTemplateNotFoundError(*templateID)
+	}
+	return template, nil
+}
+
+// instantiateLicense stamps a resolved template onto a freshly created
+// Organization, inside the transaction that created it. It is a no-op when the
+// caller asked for no license. Whether the tier is still offered stays the
+// license service's answer, so a create call and the license route refuse an
+// archived template the same way.
+func (s *organizationService) instantiateLicense(
+	ctx context.Context, tenantID, productID, organizationID string, template *license.Template,
+) (*license.OrganizationLicense, error) {
+	if template == nil {
 		return nil, nil //nolint:nilnil // no license asked for is not an error
 	}
 
@@ -142,7 +175,7 @@ func (s *organizationService) instantiateLicense(
 		TenantID:       tenantID,
 		ProductID:      productID,
 		OrganizationID: organizationID,
-		TemplateID:     *templateID,
+		TemplateID:     template.ID,
 	})
 	if err != nil {
 		return nil, err
@@ -198,6 +231,13 @@ func (s *organizationService) Create(
 	// what an unwrapped insert already was.
 	var result organization.CreateOrganizationResult
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		template, templateErr := s.resolveLicenseTemplate(
+			txCtx, input.TenantID, input.ProductID, input.LicenseTemplateID,
+		)
+		if templateErr != nil {
+			return templateErr
+		}
+
 		created, createErr := s.organizationRepo.Create(txCtx, org)
 		if createErr != nil {
 			logger.Error().
@@ -209,7 +249,7 @@ func (s *organizationService) Create(
 		}
 
 		instantiated, licenseErr := s.instantiateLicense(
-			txCtx, input.TenantID, input.ProductID, created.ID, input.LicenseTemplateID,
+			txCtx, input.TenantID, input.ProductID, created.ID, template,
 		)
 		if licenseErr != nil {
 			logger.Error().
@@ -336,6 +376,13 @@ func (s *organizationService) CreateWithMember(
 			return NewRoleNotFoundError(input.RoleID)
 		}
 
+		template, templateErr := s.resolveLicenseTemplate(
+			lockCtx, input.TenantID, input.ProductID, input.LicenseTemplateID,
+		)
+		if templateErr != nil {
+			return templateErr
+		}
+
 		org := organization.Organization{
 			ProductID:    input.ProductID,
 			Name:         input.Name,
@@ -366,7 +413,7 @@ func (s *organizationService) CreateWithMember(
 		}
 
 		createdLicense, licenseErr := s.instantiateLicense(
-			lockCtx, input.TenantID, input.ProductID, createdOrg.ID, input.LicenseTemplateID,
+			lockCtx, input.TenantID, input.ProductID, createdOrg.ID, template,
 		)
 		if licenseErr != nil {
 			logger.Error().Err(licenseErr).

@@ -1150,7 +1150,7 @@ export type ProductOrganizationRequest = {
      */
     founding_member?: FoundingMemberRequest;
     /**
-     * Optional license to stamp onto the new organization. The template is copied in the same transaction as the organization, so a refused template leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+     * Optional license to stamp onto the new organization. The template is read and then copied in the same transaction as the organization, so a template this product does not have is refused as a bad request before anything is written, and a template refused later leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
      */
     license?: OrganizationLicenseInstantiateRequest;
 };
@@ -4640,10 +4640,6 @@ export type CreateProductOrganizationErrors = {
      * Forbidden (Authenticated Product User lacks permission)
      */
     403: ApiErrorResponse;
-    /**
-     * Resource Not Found
-     */
-    404: unknown;
 };
 
 export type CreateProductOrganizationError = CreateProductOrganizationErrors[keyof CreateProductOrganizationErrors];

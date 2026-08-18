@@ -754,7 +754,10 @@ type ClientInterface interface {
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
 	// Optionally accepts `license` to stamp a license template onto the new organization
 	// in the same transaction; the `organization:create` scope covers it, and a refused
-	// template leaves no organization behind.
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type.
@@ -768,7 +771,10 @@ type ClientInterface interface {
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
 	// Optionally accepts `license` to stamp a license template onto the new organization
 	// in the same transaction; the `organization:create` scope covers it, and a refused
-	// template leaves no organization behind.
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type.
@@ -2856,7 +2862,10 @@ func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductId
 // Optionally accepts `founding_member` to atomically add an initial member with role.
 // Optionally accepts `license` to stamp a license template onto the new organization
 // in the same transaction; the `organization:create` scope covers it, and a refused
-// template leaves no organization behind.
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type.
@@ -2880,7 +2889,10 @@ func (c *Client) CreateProductOrganizationWithBody(ctx context.Context, productI
 // Optionally accepts `founding_member` to atomically add an initial member with role.
 // Optionally accepts `license` to stamp a license template onto the new organization
 // in the same transaction; the `organization:create` scope covers it, and a refused
-// template leaves no organization behind.
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type.
@@ -9882,7 +9894,10 @@ type ClientWithResponsesInterface interface {
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
 	// Optionally accepts `license` to stamp a license template onto the new organization
 	// in the same transaction; the `organization:create` scope covers it, and a refused
-	// template leaves no organization behind.
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -9896,7 +9911,10 @@ type ClientWithResponsesInterface interface {
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
 	// Optionally accepts `license` to stamp a license template onto the new organization
 	// in the same transaction; the `organization:create` scope covers it, and a refused
-	// template leaves no organization behind.
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -17089,7 +17107,10 @@ func (c *ClientWithResponses) ArchiveLicenseTemplateWithResponse(ctx context.Con
 // Optionally accepts `founding_member` to atomically add an initial member with role.
 // Optionally accepts `license` to stamp a license template onto the new organization
 // in the same transaction; the `organization:create` scope covers it, and a refused
-// template leaves no organization behind.
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -17109,7 +17130,10 @@ func (c *ClientWithResponses) CreateProductOrganizationWithBodyWithResponse(ctx 
 // Optionally accepts `founding_member` to atomically add an initial member with role.
 // Optionally accepts `license` to stamp a license template onto the new organization
 // in the same transaction; the `organization:create` scope covers it, and a refused
-// template leaves no organization behind.
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -20320,9 +20344,6 @@ func ParseCreateProductOrganizationResponse(rsp *http.Response) (*CreateProductO
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case rsp.StatusCode == 404:
-		break // No content-type
 
 	}
 

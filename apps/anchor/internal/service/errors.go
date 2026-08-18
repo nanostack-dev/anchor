@@ -241,6 +241,20 @@ func NewOrganizationMembershipNotFoundError(
 	)
 }
 
+// NewOrganizationLicenseTemplateNotFoundError refuses a create call naming a
+// license template the product does not have. It is a bad request, not a
+// not-found: the caller addressed the organization collection, which exists,
+// and named a template in the body. The license route answers 404 for the same
+// template, because there the template is what the request addresses.
+func NewOrganizationLicenseTemplateNotFoundError(templateID string) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND",
+		"This product has no license template with that identifier",
+	).Metadata(map[string]any{
+		"template_id": templateID,
+	})
+}
+
 func NewOrganizationMetadataTooManyKeysError(keyCount, maxKeys int) *fault.Error {
 	return fault.BadRequest(
 		"ORGANIZATION_METADATA_TOO_MANY_KEYS",

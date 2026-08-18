@@ -2321,7 +2321,7 @@ type ProductOrganizationRequest struct {
 	// FoundingMember Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
 	FoundingMember *FoundingMemberRequest `json:"founding_member,omitempty"`
 
-	// License Optional license to stamp onto the new organization. The template is copied in the same transaction as the organization, so a refused template leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+	// License Optional license to stamp onto the new organization. The template is read and then copied in the same transaction as the organization, so a template this product does not have is refused as a bad request before anything is written, and a template refused later leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
 	License *OrganizationLicenseInstantiateRequest `json:"license,omitempty"`
 
 	// Metadata Optional key-value metadata for the organization.

@@ -1157,7 +1157,10 @@ export const introspectOrganizationApiKeyMutation = (options?: Partial<Options<I
  * Optionally accepts `founding_member` to atomically add an initial member with role.
  * Optionally accepts `license` to stamp a license template onto the new organization
  * in the same transaction; the `organization:create` scope covers it, and a refused
- * template leaves no organization behind.
+ * template leaves no organization behind. The template is read before anything is
+ * written, so a template this product does not have is a 400
+ * (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+ * a 404 for the organization collection the call addressed.
  * Requires an API Key with `product_organization:create` permission or Platform Bearer token.
  */
 export const createProductOrganizationMutation = (options?: Partial<Options<CreateProductOrganizationData>>): UseMutationOptions<CreateProductOrganizationResponse, CreateProductOrganizationError, Options<CreateProductOrganizationData>> => {

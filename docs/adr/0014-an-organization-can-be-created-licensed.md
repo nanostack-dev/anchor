@@ -10,7 +10,11 @@ Anchor already collapses a second onboarding write into the create call: `foundi
 
 ## Decision
 
-`POST /v1/products/{product_id}/organizations` takes an optional `license`, holding the same `template_id` the license route takes. When present, the template is copied onto the new organization in the transaction that created it. A refused template — unknown, archived, or another product's — fails the whole call and leaves no organization behind.
+`POST /v1/products/{product_id}/organizations` takes an optional `license`, holding the same `template_id` the license route takes. When present, the template is read and then copied onto the new organization, both in the transaction that created it. A refused template fails the whole call and leaves no organization behind.
+
+**A template this product does not have is a 400, not a 404.** The template is resolved before the organization row is written, and its absence answers `ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND` at 400. The caller addressed the organization collection, which exists, and named the template in the body — a 404 would say the collection was missing. The license route keeps answering 404 for the same template, because there the template is what the request addresses. A template that exists but belongs to another product is the same answer, so the create route never says whether the identifier is real.
+
+Whether the tier is still offered stays the license service's answer: an archived template is refused as `LICENSE_TEMPLATE_ARCHIVED` at 400, by the create route and the license route alike.
 
 The 201 response carries the license it stamped, under `license`. A read of an organization never carries one: the license route is where an organization's license is read, usage and all.
 
@@ -23,6 +27,8 @@ The 201 response carries the license it stamped, under `license`. A read of an o
 **Good.** A product onboards a customer in one call, and a failure leaves no half-built organization.
 
 **Good.** The license service gained `InstantiateInTx`, the same work joined to the caller's transaction. The transaction runner starts a new transaction rather than joining an ambient one, so a service composing another service's write has to say so.
+
+**Cost.** The template is read twice per licensed create: once to resolve it, once inside the instantiation. Handing the resolved template to the license service would remove the second read and widen its interface for one caller.
 
 **Cost.** A key holding `organization:create` alone can now stamp a license. Separating the two would need a per-field scope check the middleware does not express today.
 
