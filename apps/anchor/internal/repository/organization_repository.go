@@ -139,14 +139,12 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 	whereStmt := table.Organizations.ProductID.EQ(postgres.String(productID))
 
 	if input.Filter != nil {
-		filterBuilder := jetx.NewFilterBuilder()
-
-		if ids := filterBuilder.BuildIDFilter(
+		if ids := jetx.BuildIDFilter(
 			table.Organizations.ID, input.Filter.IDs,
 		); ids != nil {
 			whereStmt = whereStmt.AND(ids)
 		}
-		if names := filterBuilder.BuildStringArrayFilter(
+		if names := jetx.BuildStringArrayFilter(
 			table.Organizations.Name, input.Filter.Names,
 		); names != nil {
 			whereStmt = whereStmt.AND(names)
@@ -154,11 +152,10 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		filterBuilder := jetx.NewFilterBuilder()
 		searchColumns := []postgres.ColumnString{
 			table.Organizations.Name,
 		}
-		fullTextFilter := filterBuilder.BuildFullTextSearchFilter(
+		fullTextFilter := jetx.BuildSubstringFilter(
 			searchColumns, *input.FullTextSearch,
 		)
 		if fullTextFilter != nil {

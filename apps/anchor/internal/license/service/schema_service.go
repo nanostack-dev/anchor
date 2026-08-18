@@ -235,7 +235,7 @@ func (s *licenseSchemaService) CreateSchema(
 	// declaration rather than as a failed write. The "already declared" check
 	// runs in here too, so it reads the same snapshot the insert writes to.
 	var created license.Schema
-	if txErr := inTx(ctx, s.transactor, func(txCtx context.Context) error {
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		existing, findErr := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
 		if findErr != nil {
 			return findErr
@@ -319,7 +319,7 @@ func (s *licenseSchemaService) UpdateSchema(
 	}
 
 	var updated license.Schema
-	if txErr := inTx(ctx, s.transactor, func(txCtx context.Context) error {
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, *existing)
 		if err != nil {
 			return err
