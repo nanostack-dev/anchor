@@ -1163,6 +1163,9 @@ export const introspectOrganizationApiKey = <ThrowOnError extends boolean = fals
  * Create Product Organization
  * Creates a new organization record associated with the specified Product.
  * Optionally accepts `founding_member` to atomically add an initial member with role.
+ * Optionally accepts `license` to stamp a license template onto the new organization
+ * in the same transaction; the `organization:create` scope covers it, and a refused
+ * template leaves no organization behind.
  * Requires an API Key with `product_organization:create` permission or Platform Bearer token.
  */
 export const createProductOrganization = <ThrowOnError extends boolean = false>(options: Options<CreateProductOrganizationData, ThrowOnError>) => {

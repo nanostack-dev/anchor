@@ -39,7 +39,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **license template** | A named, validated set of values for every field its schema declares, instantiated into organization licenses. | Not "plan" — see below. |
 | **archive** | Withdraw a template. It stops being offered, its row is kept so the licenses naming it keep resolving, and its name is freed ([ADR-0010](docs/adr/0010-license-templates-are-archived.md)). | Not "delete" — a template row is never removed. |
 | **license** | One Organization's own copy of a template's values. Every Organization has exactly one. | Not "subscription". |
-| **instantiate** | Copy a template's values onto an Organization, creating its license. | Not "assign" — nothing is pointed at. |
+| **instantiate** | Copy a template's values onto an Organization, creating its license. It happens on the license route, or in the same transaction as the Organization itself ([ADR-0014](docs/adr/0014-an-organization-can-be-created-licensed.md)). | Not "assign" — nothing is pointed at. |
 | **adjust** | Edit one Organization's license without touching its template. The act. | Not "override" — there is no override layer ([ADR-0004](docs/adr/0004-license-schema-template-and-copy.md)). |
 | **deviation** | A value on a license that differs from its template because someone adjusted it for that customer. The state *adjust* produces. | Not "override", for the same reason. |
 | **diff** | How an Organization's license differs from its template today, license field by license field. A difference is either a deviation or the template moving after the copy was taken — the diff alone does not say which. | Not "drift" — that word names Terraform's own comparison. |

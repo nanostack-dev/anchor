@@ -1628,6 +1628,9 @@ type ProductOrganizationRequest struct {
 	// FoundingMember Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
 	FoundingMember *FoundingMemberRequest `json:"founding_member,omitempty"`
 
+	// License Optional license to stamp onto the new organization. The template is copied in the same transaction as the organization, so a refused template leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+	License *OrganizationLicenseInstantiateRequest `json:"license,omitempty"`
+
 	// Metadata Optional key-value metadata for the organization.
 	//
 	// Examples: {"billing_ref":"cust_abc123","region":"us-east-1","sla_level":"gold"}
@@ -1653,6 +1656,9 @@ type ProductOrganizationResponse struct {
 	//
 	// Examples: org_3iXYZ...
 	Id Ksuid `json:"id"`
+
+	// License The license stamped in the same transaction as the organization. Present only on the response to a create call that asked for one, and never on a read — the license route is where an organization's license is read.
+	License *OrganizationLicenseResponse `json:"license,omitempty"`
 
 	// Metadata Key-value metadata for the organization.
 	//
@@ -10345,6 +10351,13 @@ func (response CreateProductOrganization403JSONResponse) VisitCreateProductOrgan
 	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
+}
+
+type CreateProductOrganization404Response = NotFoundResponse
+
+func (response CreateProductOrganization404Response) VisitCreateProductOrganizationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type SearchProductOrganizationsRequestObject struct {

@@ -7,7 +7,9 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
+	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/security"
 )
 
 // mapMetadataToResponse decodes stored organization metadata for the API
@@ -35,6 +37,20 @@ func mapMetadataToInput(metadata *Metadata) map[string]any {
 	return *metadata
 }
 
+// mapCreatedOrganizationToResponse answers a create call: the organization, and
+// the license stamped in the same transaction when one was asked for. A read
+// never carries a license — mapOrganizationToResponse is that shape.
+func mapCreatedOrganizationToResponse(
+	org organization.Organization, organizationLicense *license.OrganizationLicense,
+) ProductOrganizationResponse {
+	response := mapOrganizationToResponse(org)
+	if organizationLicense != nil {
+		licenseResponse := mapOrganizationLicenseToResponse(*organizationLicense)
+		response.License = &licenseResponse
+	}
+	return response
+}
+
 func mapOrganizationToResponse(org organization.Organization) ProductOrganizationResponse {
 	return ProductOrganizationResponse{
 		Id:          org.ID,
@@ -50,14 +66,29 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 func (s *AnchorAPI) CreateProductOrganization(
 	ctx context.Context, request CreateProductOrganizationRequestObject,
 ) (CreateProductOrganizationResponseObject, error) {
+	// The tenant is only read when a license is asked for: a license template
+	// is addressed tenant-scoped, an organization is not.
+	var tenantID string
+	var licenseTemplateID *string
+	if request.Body.License != nil {
+		resolved, err := security.GetTenantID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tenantID = resolved
+		licenseTemplateID = &request.Body.License.TemplateId
+	}
+
 	if request.Body.FoundingMember != nil {
 		input := organization.CreateOrganizationWithMemberInput{
-			ProductID:     request.ProductId,
-			Name:          request.Body.Name,
-			Description:   request.Body.Description,
-			Metadata:      mapMetadataToInput(request.Body.Metadata),
-			ProductUserID: request.Body.FoundingMember.ProductUserId,
-			RoleID:        request.Body.FoundingMember.RoleId,
+			TenantID:          tenantID,
+			ProductID:         request.ProductId,
+			Name:              request.Body.Name,
+			Description:       request.Body.Description,
+			Metadata:          mapMetadataToInput(request.Body.Metadata),
+			ProductUserID:     request.Body.FoundingMember.ProductUserId,
+			RoleID:            request.Body.FoundingMember.RoleId,
+			LicenseTemplateID: licenseTemplateID,
 		}
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
@@ -70,23 +101,29 @@ func (s *AnchorAPI) CreateProductOrganization(
 			return nil, err
 		}
 
-		return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(res.Organization)), nil
+		return CreateProductOrganization201JSONResponse(
+			mapCreatedOrganizationToResponse(res.Organization, res.License),
+		), nil
 	}
 
 	input := organization.CreateOrganizationInput{
-		ProductID:   request.ProductId,
-		Name:        request.Body.Name,
-		Description: request.Body.Description,
-		Metadata:    mapMetadataToInput(request.Body.Metadata),
+		TenantID:          tenantID,
+		ProductID:         request.ProductId,
+		Name:              request.Body.Name,
+		Description:       request.Body.Description,
+		Metadata:          mapMetadataToInput(request.Body.Metadata),
+		LicenseTemplateID: licenseTemplateID,
 	}
 
-	createdOrganization, err := s.OrganizationService.Create(ctx, input)
+	created, err := s.OrganizationService.Create(ctx, input)
 	if err != nil {
 		logAPIError(s.logger, err).Msg("failed to create organization")
 		return nil, err
 	}
 
-	return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(createdOrganization)), nil
+	return CreateProductOrganization201JSONResponse(
+		mapCreatedOrganizationToResponse(created.Organization, created.License),
+	), nil
 }
 
 func (s *AnchorAPI) SearchProductOrganizations(

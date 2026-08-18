@@ -68,6 +68,12 @@ type OrganizationLicenseService interface {
 	Instantiate(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
+	// InstantiateInTx is Instantiate joined to the caller's transaction, for a
+	// license written as part of a larger unit — an Organization created with
+	// its first license.
+	InstantiateInTx(
+		ctx context.Context, in license.InstantiateLicenseInput,
+	) (license.OrganizationLicense, error)
 	// GetLicense returns the Organization's effective license — its own copy
 	// of a template's values, plus every limit field's latest usage and
 	// derived status — or nil when it has never been instantiated.
@@ -146,6 +152,55 @@ func (s *organizationLicenseService) Instantiate(
 		return license.OrganizationLicense{}, err
 	}
 
+	var created license.OrganizationLicense
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var instantiateErr error
+		created, instantiateErr = s.instantiate(txCtx, in)
+		return instantiateErr
+	}); txErr != nil {
+		return license.OrganizationLicense{}, txErr
+	}
+
+	// Nothing can be cached before the license exists — a not-found read is
+	// never cached, see cache.Cache.GetOrElse — so this is a no-op today. It
+	// stays here so every license write follows the same eviction discipline,
+	// rather than relying on that invariant to hold forever.
+	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+
+	return created, nil
+}
+
+// InstantiateInTx stamps a template onto an Organization inside the caller's
+// transaction, so an Organization and its first license can be written as one
+// unit. The caller owns the commit and the rollback: on error nothing here has
+// been committed, and the Organization row the foreign key needs is one the
+// caller has already written in the same transaction.
+//
+// [Instantiate] is the same work with a transaction of its own.
+func (s *organizationLicenseService) InstantiateInTx(
+	ctx context.Context, in license.InstantiateLicenseInput,
+) (license.OrganizationLicense, error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return license.OrganizationLicense{}, err
+	}
+
+	created, err := s.instantiate(ctx, in)
+	if err != nil {
+		return license.OrganizationLicense{}, err
+	}
+
+	// Evicted before the caller commits, which is the harmless direction: a
+	// read racing this transaction cannot see the row and so caches nothing.
+	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+
+	return created, nil
+}
+
+// instantiate copies the template onto the Organization using whatever
+// transaction ctx carries. It validates nothing — both callers have.
+func (s *organizationLicenseService) instantiate(
+	ctx context.Context, in license.InstantiateLicenseInput,
+) (license.OrganizationLicense, error) {
 	template, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{
 		TenantID:   in.TenantID,
 		ProductID:  in.ProductID,
@@ -178,34 +233,25 @@ func (s *organizationLicenseService) Instantiate(
 	}
 	instantiated.GenerateID()
 
-	var created license.OrganizationLicense
-	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var createErr error
-		created, createErr = s.licenseRepo.Create(txCtx, instantiated)
-		if createErr != nil {
-			// Checked by the foreign key rather than by a read before the write:
-			// one round trip, and no window in which the Organization is deleted
-			// between the check and the insert.
-			if pgerr.IsForeignKeyViolation(createErr, organizationLicenseOrganizationConstraint) {
-				return ErrLicenseOrganizationNotFound
-			}
-			if pgerr.IsUniqueViolation(createErr, organizationLicenseUniqueConstraint) {
-				return ErrOrganizationLicenseAlreadyExists
-			}
-			return createErr
+	created, createErr := s.licenseRepo.Create(ctx, instantiated)
+	if createErr != nil {
+		// Checked by the foreign key rather than by a read before the write:
+		// one round trip, and no window in which the Organization is deleted
+		// between the check and the insert.
+		if pgerr.IsForeignKeyViolation(createErr, organizationLicenseOrganizationConstraint) {
+			return license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
 		}
-		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
-			license.NewInstantiationChange(created, instantiatedAt),
-		})
-	}); txErr != nil {
-		return license.OrganizationLicense{}, txErr
+		if pgerr.IsUniqueViolation(createErr, organizationLicenseUniqueConstraint) {
+			return license.OrganizationLicense{}, ErrOrganizationLicenseAlreadyExists
+		}
+		return license.OrganizationLicense{}, createErr
 	}
 
-	// Nothing can be cached before the license exists — a not-found read is
-	// never cached, see cache.Cache.GetOrElse — so this is a no-op today. It
-	// stays here so every license write follows the same eviction discipline,
-	// rather than relying on that invariant to hold forever.
-	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+	if appendErr := s.changes.Append(ctx, []license.OrganizationLicenseChange{
+		license.NewInstantiationChange(created, instantiatedAt),
+	}); appendErr != nil {
+		return license.OrganizationLicense{}, appendErr
+	}
 
 	return created, nil
 }

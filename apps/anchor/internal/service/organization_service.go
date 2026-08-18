@@ -12,7 +12,9 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
+	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -80,7 +82,7 @@ type OrganizationService interface {
 	)
 	Create(
 		ctx context.Context, input organization.CreateOrganizationInput,
-	) (organization.Organization, error)
+	) (organization.CreateOrganizationResult, error)
 	CreateWithMember(
 		ctx context.Context, input organization.CreateOrganizationWithMemberInput,
 	) (organization.OrganizationWithMemberResult, error)
@@ -98,6 +100,8 @@ type organizationService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productUserRepo   repository.ProductUserRepository
 	productRoleRepo   repository.ProductRoleRepository
+	licenses          licensesvc.OrganizationLicenseService
+	transactor        transactor.Transactor
 	lock              *pglock.Client
 	logger            zerolog.Logger
 }
@@ -107,6 +111,8 @@ func NewOrganizationService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productUserRepo repository.ProductUserRepository,
 	productRoleRepo repository.ProductRoleRepository,
+	licenses licensesvc.OrganizationLicenseService,
+	tx transactor.Transactor,
 	lock *pglock.Client,
 	logger zerolog.Logger,
 ) OrganizationService {
@@ -115,9 +121,33 @@ func NewOrganizationService(
 		orgMembershipRepo: orgMembershipRepo,
 		productUserRepo:   productUserRepo,
 		productRoleRepo:   productRoleRepo,
+		licenses:          licenses,
+		transactor:        tx,
 		lock:              lock,
 		logger:            logger.With().Str("component", "organization_service").Logger(),
 	}
+}
+
+// instantiateLicense stamps the named template onto a freshly created
+// Organization, inside the transaction that created it. It is a no-op when the
+// caller asked for no license.
+func (s *organizationService) instantiateLicense(
+	ctx context.Context, tenantID, productID, organizationID string, templateID *string,
+) (*license.OrganizationLicense, error) {
+	if templateID == nil {
+		return nil, nil //nolint:nilnil // no license asked for is not an error
+	}
+
+	instantiated, err := s.licenses.InstantiateInTx(ctx, license.InstantiateLicenseInput{
+		TenantID:       tenantID,
+		ProductID:      productID,
+		OrganizationID: organizationID,
+		TemplateID:     *templateID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &instantiated, nil
 }
 
 func (s *organizationService) Find(
@@ -143,16 +173,16 @@ func (s *organizationService) Find(
 
 func (s *organizationService) Create(
 	ctx context.Context, input organization.CreateOrganizationInput,
-) (organization.Organization, error) {
+) (organization.CreateOrganizationResult, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
 	if err := validateStruct(input); err != nil {
-		return organization.Organization{}, err
+		return organization.CreateOrganizationResult{}, err
 	}
 
 	metadataJSON, err := buildOrganizationMetadata(input.Metadata)
 	if err != nil {
-		return organization.Organization{}, err
+		return organization.CreateOrganizationResult{}, err
 	}
 
 	org := organization.Organization{
@@ -163,23 +193,47 @@ func (s *organizationService) Create(
 	}
 	org.GenerateID()
 
-	created, err := s.organizationRepo.Create(ctx, org)
-	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to create organization")
-		return organization.Organization{}, err
+	// One transaction so a refused license template leaves no organization
+	// behind. Without a license asked for it wraps a single insert, which is
+	// what an unwrapped insert already was.
+	var result organization.CreateOrganizationResult
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		created, createErr := s.organizationRepo.Create(txCtx, org)
+		if createErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("name", input.Name).
+				Err(createErr).
+				Msg("failed to create organization")
+			return createErr
+		}
+
+		instantiated, licenseErr := s.instantiateLicense(
+			txCtx, input.TenantID, input.ProductID, created.ID, input.LicenseTemplateID,
+		)
+		if licenseErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("organization_id", created.ID).
+				Err(licenseErr).
+				Msg("failed to license the new organization")
+			return licenseErr
+		}
+
+		result = organization.CreateOrganizationResult{Organization: created, License: instantiated}
+		return nil
+	}); txErr != nil {
+		return organization.CreateOrganizationResult{}, txErr
 	}
 
 	logger.Info().
-		Str("organization_id", created.ID).
+		Str("organization_id", result.Organization.ID).
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
+		Bool("licensed", result.License != nil).
 		Msg("organization created")
 
-	return created, nil
+	return result, nil
 }
 
 func (s *organizationService) CreateWithMember(
@@ -245,6 +299,7 @@ func (s *organizationService) CreateWithMember(
 
 	var createdOrg organization.Organization
 	var createdMembership organization.Membership
+	var instantiatedLicense *license.OrganizationLicense
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
@@ -310,6 +365,18 @@ func (s *organizationService) CreateWithMember(
 			return err
 		}
 
+		createdLicense, licenseErr := s.instantiateLicense(
+			lockCtx, input.TenantID, input.ProductID, createdOrg.ID, input.LicenseTemplateID,
+		)
+		if licenseErr != nil {
+			logger.Error().Err(licenseErr).
+				Str("product_id", input.ProductID).
+				Str("organization_id", createdOrg.ID).
+				Msg("failed to license the new organization")
+			return licenseErr
+		}
+		instantiatedLicense = createdLicense
+
 		return nil
 	})
 	if err != nil {
@@ -334,6 +401,7 @@ func (s *organizationService) CreateWithMember(
 		Organization: createdOrg,
 		Membership:   createdMembership,
 		WasExisting:  false,
+		License:      instantiatedLicense,
 	}, nil
 }
 

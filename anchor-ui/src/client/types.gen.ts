@@ -1149,6 +1149,10 @@ export type ProductOrganizationRequest = {
      * Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
      */
     founding_member?: FoundingMemberRequest;
+    /**
+     * Optional license to stamp onto the new organization. The template is copied in the same transaction as the organization, so a refused template leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+     */
+    license?: OrganizationLicenseInstantiateRequest;
 };
 
 export type FoundingMemberRequest = {
@@ -1183,6 +1187,10 @@ export type ProductOrganizationResponse = {
      * Key-value metadata for the organization.
      */
     metadata?: Metadata;
+    /**
+     * The license stamped in the same transaction as the organization. Present only on the response to a create call that asked for one, and never on a read — the license route is where an organization's license is read.
+     */
+    license?: OrganizationLicenseResponse;
     /**
      * Timestamp when the organization was created.
      */
@@ -4632,6 +4640,10 @@ export type CreateProductOrganizationErrors = {
      * Forbidden (Authenticated Product User lacks permission)
      */
     403: ApiErrorResponse;
+    /**
+     * Resource Not Found
+     */
+    404: unknown;
 };
 
 export type CreateProductOrganizationError = CreateProductOrganizationErrors[keyof CreateProductOrganizationErrors];

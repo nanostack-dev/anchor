@@ -752,6 +752,9 @@ type ClientInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type.
@@ -763,6 +766,9 @@ type ClientInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type.
@@ -2848,6 +2854,9 @@ func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductId
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type.
@@ -2869,6 +2878,9 @@ func (c *Client) CreateProductOrganizationWithBody(ctx context.Context, productI
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type.
@@ -9868,6 +9880,9 @@ type ClientWithResponsesInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -9879,6 +9894,9 @@ type ClientWithResponsesInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -17069,6 +17087,9 @@ func (c *ClientWithResponses) ArchiveLicenseTemplateWithResponse(ctx context.Con
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -17086,6 +17107,9 @@ func (c *ClientWithResponses) CreateProductOrganizationWithBodyWithResponse(ctx 
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -20296,6 +20320,9 @@ func ParseCreateProductOrganizationResponse(rsp *http.Response) (*CreateProductO
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	}
 
