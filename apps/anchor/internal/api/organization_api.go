@@ -37,9 +37,6 @@ func mapMetadataToInput(metadata *Metadata) map[string]any {
 	return *metadata
 }
 
-// mapCreatedOrganizationToResponse answers a create call: the organization, and
-// the license stamped in the same transaction when one was asked for. A read
-// never carries a license — mapOrganizationToResponse is that shape.
 func mapCreatedOrganizationToResponse(
 	org organization.Organization, organizationLicense *license.OrganizationLicense,
 ) ProductOrganizationResponse {
@@ -66,8 +63,8 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 func (s *AnchorAPI) CreateProductOrganization(
 	ctx context.Context, request CreateProductOrganizationRequestObject,
 ) (CreateProductOrganizationResponseObject, error) {
-	// The tenant is only read when a license is asked for: a license template
-	// is addressed tenant-scoped, an organization is not.
+	// Read only for a license: a template is addressed tenant-scoped, an
+	// organization is not.
 	var tenantID string
 	var licenseTemplateID *string
 	if request.Body.License != nil {

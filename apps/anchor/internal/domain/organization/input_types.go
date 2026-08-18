@@ -7,16 +7,14 @@ import (
 )
 
 type CreateOrganizationInput struct {
-	// TenantID is required only when LicenseTemplateID names a template, which
-	// is read tenant-scoped. The organization itself is addressed by product.
+	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID    string  `validate:"required_with=LicenseTemplateID"`
 	ProductID   string  `validate:"required,notblank"`
 	Name        string  `validate:"required,notblank,min=2,max=100"`
 	Description *string `validate:"omitempty,max=500"`
 	// Metadata is the caller-supplied key-value metadata. Nil leaves it unset.
 	Metadata map[string]any
-	// LicenseTemplateID stamps that template onto the new organization in the
-	// same transaction. Nil leaves the organization unlicensed.
+	// Nil leaves the organization unlicensed.
 	LicenseTemplateID *string `validate:"omitempty,notblank"`
 }
 
@@ -61,8 +59,7 @@ type SearchProductOrganizationsInput struct {
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization
 // and assigning its founding member with a role in a single transaction.
 type CreateOrganizationWithMemberInput struct {
-	// TenantID is required only when LicenseTemplateID names a template, which
-	// is read tenant-scoped. The organization itself is addressed by product.
+	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID      string  `validate:"required_with=LicenseTemplateID"`
 	ProductID     string  `validate:"required,notblank"`
 	Name          string  `validate:"required,notblank,min=2,max=100"`
@@ -71,9 +68,8 @@ type CreateOrganizationWithMemberInput struct {
 	RoleID        string  `validate:"required,notblank"`
 	// Metadata is the caller-supplied key-value metadata. Nil leaves it unset.
 	Metadata map[string]any
-	// LicenseTemplateID stamps that template onto the new organization in the
-	// same transaction. Nil leaves the organization unlicensed. It is ignored
-	// on the idempotent path, which creates no organization.
+	// Nil leaves the organization unlicensed. Ignored on the idempotent path,
+	// which creates no organization.
 	LicenseTemplateID *string `validate:"omitempty,notblank"`
 }
 
@@ -84,13 +80,10 @@ type OrganizationWithMemberResult struct { //nolint:revive // name keeps service
 	Organization Organization
 	Membership   Membership
 	WasExisting  bool
-	// License is the license stamped alongside the organization, nil when none
-	// was asked for and on the idempotent path.
+	// Nil when no license was asked for, and on the idempotent path.
 	License *license.OrganizationLicense
 }
 
-// CreateOrganizationResult is the result of Create: the organization, and the
-// license stamped in the same transaction when one was asked for.
 type CreateOrganizationResult struct {
 	Organization Organization
 	License      *license.OrganizationLicense

@@ -131,13 +131,6 @@ func NewOrganizationService(
 	}
 }
 
-// resolveLicenseTemplate reads the template a create call named, before that
-// call writes anything. A template the product does not have is a bad request
-// here rather than the 404 the license route answers: the caller addressed the
-// organization collection, which exists. Resolving first also keeps the create
-// route from reporting a missing template through a rolled-back insert.
-//
-// It answers nil when the caller asked for no license.
 func (s *organizationService) resolveLicenseTemplate(
 	ctx context.Context, tenantID, productID string, templateID *string,
 ) (*license.Template, error) {
@@ -154,16 +147,13 @@ func (s *organizationService) resolveLicenseTemplate(
 		return nil, err
 	}
 	if template == nil {
+		// A bad request, not the 404 the license route answers: this call
+		// addressed the organization collection, which exists.
 		return nil, NewOrganizationLicenseTemplateNotFoundError(*templateID)
 	}
 	return template, nil
 }
 
-// instantiateLicense stamps a resolved template onto a freshly created
-// Organization, inside the transaction that created it. It is a no-op when the
-// caller asked for no license. Whether the tier is still offered stays the
-// license service's answer, so a create call and the license route refuse an
-// archived template the same way.
 func (s *organizationService) instantiateLicense(
 	ctx context.Context, tenantID, productID, organizationID string, template *license.Template,
 ) (*license.OrganizationLicense, error) {
@@ -226,9 +216,7 @@ func (s *organizationService) Create(
 	}
 	org.GenerateID()
 
-	// One transaction so a refused license template leaves no organization
-	// behind. Without a license asked for it wraps a single insert, which is
-	// what an unwrapped insert already was.
+	// One transaction so a refused license template leaves no organization behind.
 	var result organization.CreateOrganizationResult
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		template, templateErr := s.resolveLicenseTemplate(

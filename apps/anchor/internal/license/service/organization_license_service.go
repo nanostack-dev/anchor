@@ -68,9 +68,7 @@ type OrganizationLicenseService interface {
 	Instantiate(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
-	// InstantiateInTx is Instantiate joined to the caller's transaction, for a
-	// license written as part of a larger unit — an Organization created with
-	// its first license.
+	// InstantiateInTx is Instantiate joined to the caller's transaction.
 	InstantiateInTx(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -170,13 +168,8 @@ func (s *organizationLicenseService) Instantiate(
 	return created, nil
 }
 
-// InstantiateInTx stamps a template onto an Organization inside the caller's
-// transaction, so an Organization and its first license can be written as one
-// unit. The caller owns the commit and the rollback: on error nothing here has
-// been committed, and the Organization row the foreign key needs is one the
-// caller has already written in the same transaction.
-//
-// [Instantiate] is the same work with a transaction of its own.
+// InstantiateInTx leaves the commit and the rollback to the caller, whose
+// transaction also holds the Organization row the foreign key needs.
 func (s *organizationLicenseService) InstantiateInTx(
 	ctx context.Context, in license.InstantiateLicenseInput,
 ) (license.OrganizationLicense, error) {
@@ -189,15 +182,15 @@ func (s *organizationLicenseService) InstantiateInTx(
 		return license.OrganizationLicense{}, err
 	}
 
-	// Evicted before the caller commits, which is the harmless direction: a
-	// read racing this transaction cannot see the row and so caches nothing.
+	// Evicted before the commit, the harmless direction: a read racing this
+	// transaction cannot see the row and so caches nothing.
 	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
 
 	return created, nil
 }
 
-// instantiate copies the template onto the Organization using whatever
-// transaction ctx carries. It validates nothing — both callers have.
+// instantiate uses whatever transaction ctx carries, and validates nothing —
+// both callers have.
 func (s *organizationLicenseService) instantiate(
 	ctx context.Context, in license.InstantiateLicenseInput,
 ) (license.OrganizationLicense, error) {

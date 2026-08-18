@@ -14,14 +14,6 @@ import (
 	itdsl "anchor/cmd/it/shared/dsl"
 )
 
-// Creating an organization can carry the license it starts on, so a product
-// onboarding a customer writes both as one unit. The subject of these tests is
-// that unit: what the create call answers, and what is left behind when the
-// license is refused.
-
-// createHandle creates organizations through a Product API key holding only
-// organization:create — the scope the route demands, and the one the embedded
-// license rides on.
 type createHandle struct {
 	t         *testing.T
 	client    *ct.ClientWithResponses
@@ -30,6 +22,7 @@ type createHandle struct {
 
 func (w *licenseWorld) Create() createHandle {
 	w.t.Helper()
+	// No organization_license:create — the embedded license rides on organization:create.
 	client, _ := w.product.CreateAPIKeyClientWithScopes(
 		[]string{"organization:create", "organization:read"},
 	)
@@ -58,8 +51,6 @@ func (h createHandle) WithLicense(
 	return *resp.JSON201
 }
 
-// CountNamed reports how many organizations of the product carry that name. It
-// is how a rolled-back create is told apart from a create that never ran.
 func (h createHandle) CountNamed(name string) int {
 	h.t.Helper()
 	resp, err := h.client.SearchProductOrganizationsWithResponse(
@@ -137,9 +128,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		body := licenseBody(missingTemplateID())
 		resp := w.Create().WithLicenseRaw(name, body)
 
-		// Not a 404: the call addressed the organization collection, which
-		// exists, and named the template in the body. The license route answers
-		// 404 for the same template, because there it is what is addressed.
+		// Not a 404: the call addressed the organization collection, which exists.
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		require.NotNil(t, resp.JSON400)
 		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND")
@@ -164,9 +153,8 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		second := newLicenseWorld(t)
 		name := uniqueOrganizationName()
 
-		// A template that exists but belongs elsewhere is the same answer as one
-		// that does not exist. From this product's side the two are the same
-		// thing, and saying which would leak that the identifier is real.
+		// The same answer as a template that does not exist: saying which would
+		// leak that the identifier is real.
 		resp := first.Create().WithLicenseRaw(name, licenseBody(second.TemplateID()))
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -205,9 +193,8 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 
 		assert.Zero(t, w.Create().CountNamed(name), "no organization was left behind")
 
-		// No membership either: the same user can still found an organization,
-		// which the idempotent path would answer with the refused one had any
-		// membership survived.
+		// The same user can still found one, which the idempotent path would
+		// refuse had any membership survived.
 		retry := uniqueOrganizationName()
 		retryBody := ct.CreateProductOrganizationJSONRequestBody{
 			FoundingMember: &ct.FoundingMemberRequest{
@@ -219,14 +206,11 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 }
 
-// foundingMember is the product user and role a founding-member create names.
 type foundingMember struct {
 	ProductUserID string
 	RoleID        string
 }
 
-// FoundingMember adds a product user and a role to the world, for the create
-// calls whose subject is the founding-member path.
 func (w *licenseWorld) FoundingMember() foundingMember {
 	w.t.Helper()
 	state := itdsl.Given(w.t).
