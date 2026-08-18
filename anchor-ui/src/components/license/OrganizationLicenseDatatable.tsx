@@ -44,6 +44,13 @@ const columnHelper = createColumnHelper<OrganizationLicenseSummaryResponse>();
  */
 const MIGRATION_LIMIT = 500;
 
+/**
+ * Stands in for "holds no license" in the tier filter, which otherwise only
+ * ever lists real template identifiers. Not a KSUID, so it cannot collide
+ * with one.
+ */
+const UNLICENSED_FILTER_VALUE = "unlicensed";
+
 interface OrganizationLicenseDatatableProps {
 	productId: string;
 }
@@ -104,8 +111,14 @@ export function OrganizationLicenseDatatable({
 			>(sorting[0]?.id, OrganizationLicenseSortField.ORGANIZATION_NAME),
 			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
 			full_text_search: debouncedSearch || undefined,
-			filter:
-				templateFilter.length > 0
+			// "Unlicensed" is not a template, so picking it asks the licensed:false
+			// filter for directly rather than trying to fold it into
+			// license_template_ids, which names templates only. Combined with a
+			// real tier it would ask for both at once — no organization can be
+			// both — so it wins alone.
+			filter: templateFilter.includes(UNLICENSED_FILTER_VALUE)
+				? { licensed: false }
+				: templateFilter.length > 0
 					? { license_template_ids: templateFilter }
 					: undefined,
 		}),
@@ -133,14 +146,16 @@ export function OrganizationLicenseDatatable({
 			: "all matching";
 
 	const templateOptions = useMemo(
-		() =>
-			templates.map((template) => ({
+		() => [
+			{ label: "Unlicensed", value: UNLICENSED_FILTER_VALUE },
+			...templates.map((template) => ({
 				label:
 					template.status === "ARCHIVED"
 						? `${template.name} (archived)`
 						: template.name,
 				value: template.id,
 			})),
+		],
 		[templates],
 	);
 

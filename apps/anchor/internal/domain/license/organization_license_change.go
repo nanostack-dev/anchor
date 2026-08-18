@@ -23,11 +23,14 @@ const (
 	// [OrganizationLicenseChange.Field] names it, OldValue and NewValue are
 	// that field's values on either side of the change.
 	ChangeAdjusted ChangeType = "ADJUSTED"
-	// ChangeMigrated is the Organization moved onto another template.
-	// [OrganizationLicenseChange.TemplateID] names the one it moved to,
-	// PreviousTemplateID the one it came from, and OldValue and NewValue carry
-	// the whole set of values on either side.
-	ChangeMigrated ChangeType = "MIGRATED"
+	// ChangeSet is the Organization's license set to a template through the
+	// batch migrate route — moved from another tier, or granted its first,
+	// whichever the Organization held before the run.
+	// [OrganizationLicenseChange.TemplateID] names the template it now holds,
+	// PreviousTemplateID the one it came from (absent for a first license), and
+	// OldValue and NewValue carry the whole set of values on either side
+	// (OldValue absent to match).
+	ChangeSet ChangeType = "SET"
 )
 
 // OrganizationLicenseChange is one entry in an Organization's license history.

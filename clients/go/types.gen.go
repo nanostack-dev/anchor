@@ -191,19 +191,19 @@ func (e IntegrationProviderType) Valid() bool {
 
 // Defines values for LicenseChangeType.
 const (
-	LicenseChangeTypeADJUSTED     LicenseChangeType = "ADJUSTED"
-	LicenseChangeTypeINSTANTIATED LicenseChangeType = "INSTANTIATED"
-	LicenseChangeTypeMIGRATED     LicenseChangeType = "MIGRATED"
+	ADJUSTED     LicenseChangeType = "ADJUSTED"
+	INSTANTIATED LicenseChangeType = "INSTANTIATED"
+	SET          LicenseChangeType = "SET"
 )
 
 // Valid indicates whether the value is a known member of the LicenseChangeType enum.
 func (e LicenseChangeType) Valid() bool {
 	switch e {
-	case LicenseChangeTypeADJUSTED:
+	case ADJUSTED:
 		return true
-	case LicenseChangeTypeINSTANTIATED:
+	case INSTANTIATED:
 		return true
-	case LicenseChangeTypeMIGRATED:
+	case SET:
 		return true
 	default:
 		return false
@@ -278,37 +278,19 @@ func (e LicenseMigrationDifferencePolicy) Valid() bool {
 
 // Defines values for LicenseMigrationOutcome.
 const (
+	LicenseMigrationOutcomeCHANGED   LicenseMigrationOutcome = "CHANGED"
 	LicenseMigrationOutcomeFAILED    LicenseMigrationOutcome = "FAILED"
-	LicenseMigrationOutcomeMIGRATED  LicenseMigrationOutcome = "MIGRATED"
-	LicenseMigrationOutcomeSKIPPED   LicenseMigrationOutcome = "SKIPPED"
 	LicenseMigrationOutcomeUNCHANGED LicenseMigrationOutcome = "UNCHANGED"
 )
 
 // Valid indicates whether the value is a known member of the LicenseMigrationOutcome enum.
 func (e LicenseMigrationOutcome) Valid() bool {
 	switch e {
+	case LicenseMigrationOutcomeCHANGED:
+		return true
 	case LicenseMigrationOutcomeFAILED:
 		return true
-	case LicenseMigrationOutcomeMIGRATED:
-		return true
-	case LicenseMigrationOutcomeSKIPPED:
-		return true
 	case LicenseMigrationOutcomeUNCHANGED:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for LicenseMigrationSkipReason.
-const (
-	NOTLICENSED LicenseMigrationSkipReason = "NOT_LICENSED"
-)
-
-// Valid indicates whether the value is a known member of the LicenseMigrationSkipReason enum.
-func (e LicenseMigrationSkipReason) Valid() bool {
-	switch e {
-	case NOTLICENSED:
 		return true
 	default:
 		return false
@@ -1403,7 +1385,7 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
-// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `MIGRATED` is the organization moved onto another template: `template_id` names the one it moved to, `previous_template_id` the one it came from, and `old_value` and `new_value` carry the whole set of values on either side.
+// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
 type LicenseChangeType string
 
 // LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
@@ -1496,11 +1478,8 @@ type LicenseFieldUsageResponse struct {
 // A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
 type LicenseMigrationDifferencePolicy string
 
-// LicenseMigrationOutcome What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+// LicenseMigrationOutcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 type LicenseMigrationOutcome string
-
-// LicenseMigrationSkipReason Why an organization was left alone. `NOT_LICENSED` means it holds no license at all. A migration moves a customer between tiers and never puts one on their first: instantiation is a separate route with a separate scope.
-type LicenseMigrationSkipReason string
 
 // LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
 type LicenseSchemaCreateRequest struct {
@@ -1802,7 +1781,7 @@ type OrganizationLicenseAdjustRequest struct {
 
 // OrganizationLicenseChangeResponse One entry in an organization's license history. Entries are immutable and append-only: nothing edits one, and a correction is a later entry.
 type OrganizationLicenseChangeResponse struct {
-	// ChangedAt When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment. Every organization moved by one migration shares it too, which together with `template_id` is what identifies a migration run.
+	// ChangedAt When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment. Every organization set by one migration run shares it too, which together with `template_id` is what identifies a run.
 	ChangedAt time.Time `json:"changed_at"`
 
 	// Field The license field that moved. Present when `type` is `ADJUSTED`, absent otherwise.
@@ -1816,10 +1795,10 @@ type OrganizationLicenseChangeResponse struct {
 	// LicenseId Which license record was changed. Provenance, not a live dependency: the entry stays true whatever becomes of that record.
 	LicenseId Ksuid `json:"license_id"`
 
-	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a migration.
+	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a `SET` entry.
 	NewValue interface{} `json:"new_value,omitempty"`
 
-	// OldValue The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a migration. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+	// OldValue The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
 	OldValue interface{} `json:"old_value,omitempty"`
 
 	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1827,7 +1806,7 @@ type OrganizationLicenseChangeResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	OrganizationId Ksuid `json:"organization_id"`
 
-	// PreviousTemplateId The template the organization held before it was moved. Present when `type` is `MIGRATED`, absent otherwise.
+	// PreviousTemplateId The template the organization held before it was moved. Present when `type` is `SET` and the organization held a license before this run, absent otherwise — including a `SET` entry that granted a first license.
 	PreviousTemplateId *Ksuid `json:"previous_template_id,omitempty"`
 
 	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1835,10 +1814,10 @@ type OrganizationLicenseChangeResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid `json:"product_id"`
 
-	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `MIGRATED`, absent otherwise.
+	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `SET`, absent otherwise.
 	TemplateId *Ksuid `json:"template_id,omitempty"`
 
-	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `MIGRATED` is the organization moved onto another template: `template_id` names the one it moved to, `previous_template_id` the one it came from, and `old_value` and `new_value` carry the whole set of values on either side.
+	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
 	Type LicenseChangeType `json:"type"`
 }
 
@@ -1905,24 +1884,24 @@ type OrganizationLicenseMigrationRequest struct {
 
 // OrganizationLicenseMigrationResponse The receipt for one migration run: every organization it considered and what happened to each. Results are ordered by organization identifier.
 type OrganizationLicenseMigrationResponse struct {
-	// Count The number of organizations considered.
-	Count    int `json:"count"`
-	Failed   int `json:"failed"`
-	Migrated int `json:"migrated"`
+	Changed int `json:"changed"`
 
-	// MigratedAt The single moment stamped on every organization this run moved, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
+	// Count The number of organizations considered.
+	Count  int `json:"count"`
+	Failed int `json:"failed"`
+
+	// MigratedAt The single moment stamped on every organization this run set, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
 	MigratedAt time.Time                            `json:"migrated_at"`
 	Results    []OrganizationLicenseMigrationResult `json:"results"`
-	Skipped    int                                  `json:"skipped"`
 
-	// TemplateId The template every migrated organization now holds.
+	// TemplateId The template every changed organization now holds.
 	TemplateId Ksuid `json:"template_id"`
 	Unchanged  int   `json:"unchanged"`
 }
 
 // OrganizationLicenseMigrationResult What one migration did to one organization.
 type OrganizationLicenseMigrationResult struct {
-	// Changes What the move actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. Empty when nothing changed.
+	// Changes What the run actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. An organization granted a first license reports every field the target names, since none was held before. Empty when nothing changed.
 	Changes []LicenseFieldDifference `json:"changes"`
 
 	// Count The number of entries in `changes`.
@@ -1936,14 +1915,11 @@ type OrganizationLicenseMigrationResult struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	OrganizationId Ksuid `json:"organization_id"`
 
-	// Outcome What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+	// Outcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 	Outcome LicenseMigrationOutcome `json:"outcome"`
 
-	// PreviousTemplateId The template the organization held before this run. Absent when it holds no license.
+	// PreviousTemplateId The template the organization held before this run. Absent when it held no license — this run granted its first, rather than moving it.
 	PreviousTemplateId *Ksuid `json:"previous_template_id,omitempty"`
-
-	// Reason Present when `outcome` is `SKIPPED`, absent otherwise.
-	Reason *LicenseMigrationSkipReason `json:"reason,omitempty"`
 }
 
 // OrganizationLicenseResponse An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.

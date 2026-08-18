@@ -8,42 +8,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrateOrganizationLicensesScopes proves the migrate scope is genuinely
-// its own. A migration addresses every organization the product has, chosen by
-// a selector rather than named in the path, and it restamps provenance that no
-// other write can touch — so a key trusted to adjust one customer is not
-// thereby trusted to move the whole book.
+// TestMigrateOrganizationLicensesScopes proves the migrate route shares its
+// scope with the per-organization adjust route rather than having one of its
+// own: granting and moving a license are both, from a permissions standpoint,
+// changing what an organization's license says. See
+// docs/adr/0015-migrate-grants-a-first-license.md.
 func TestMigrateOrganizationLicensesScopes(t *testing.T) {
-	t.Run("the organization license write scopes do not reach it", func(t *testing.T) {
+	t.Run("read and create alone do not reach it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
-		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes(
-			[]string{"organization_license:create", "organization_license:update"},
+		readCreateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
+			[]string{"organization_license:read", "organization_license:create"},
 		)
 
-		resp := w.Migration().As(writeOnly).RunRaw(migrateTo(pro.Id, w.OrganizationID()))
+		resp := w.Migration().As(readCreateOnly).RunRaw(migrateTo(pro.Id, w.OrganizationID()))
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode())
 	})
 
-	t.Run("the migrate scope alone is enough", func(t *testing.T) {
+	t.Run("the update scope is enough", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
-		migrateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
-			[]string{"organization_license:migrate"},
+		updateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
+			[]string{"organization_license:update"},
 		)
 
-		resp := w.Migration().As(migrateOnly).RunRaw(migrateTo(pro.Id, w.OrganizationID()))
+		resp := w.Migration().As(updateOnly).RunRaw(migrateTo(pro.Id, w.OrganizationID()))
 		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("it does not reach the per-organization routes", func(t *testing.T) {
+	t.Run("the same scope also grants a first license", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		migrateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
-			[]string{"organization_license:migrate"},
+		unlicensed := w.NewOrganization()
+		pro := w.NewTemplate(proValues())
+		updateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
+			[]string{"organization_license:update"},
 		)
-		license := w.License().As(migrateOnly)
 
-		assert.Equal(t, http.StatusForbidden, license.GetRaw().StatusCode())
-		assert.Equal(t, http.StatusForbidden, license.InstantiateRaw(w.TemplateID()).StatusCode())
+		resp := w.Migration().As(updateOnly).RunRaw(migrateTo(pro.Id, unlicensed))
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	})
 }

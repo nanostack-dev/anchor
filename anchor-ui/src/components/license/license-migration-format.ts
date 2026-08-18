@@ -1,7 +1,6 @@
 import {
 	type LicenseFieldResponse,
 	LicenseMigrationOutcome,
-	LicenseMigrationSkipReason,
 	type LicenseTemplateValues,
 	type OrganizationLicenseSummaryResponse,
 } from "@/client";
@@ -109,21 +108,20 @@ export function differsFromItsTemplate(
 	);
 }
 
+/**
+ * A result's own outcome does not say whether it moved a customer or granted
+ * their first license — a result's `previous_template_id` does, present only
+ * for a move — so a caller wanting that distinction reads it separately
+ * rather than from the label.
+ */
 export const OUTCOME_LABELS: Record<LicenseMigrationOutcome, string> = {
-	[LicenseMigrationOutcome.MIGRATED]: "Moved",
+	[LicenseMigrationOutcome.CHANGED]: "Set",
 	[LicenseMigrationOutcome.UNCHANGED]: "Already there",
-	[LicenseMigrationOutcome.SKIPPED]: "Skipped",
 	[LicenseMigrationOutcome.FAILED]: "Failed",
 };
 
 export const OUTCOME_TONES: Record<LicenseMigrationOutcome, StatusTone> = {
-	[LicenseMigrationOutcome.MIGRATED]: "success",
+	[LicenseMigrationOutcome.CHANGED]: "success",
 	[LicenseMigrationOutcome.UNCHANGED]: "neutral",
-	[LicenseMigrationOutcome.SKIPPED]: "warning",
 	[LicenseMigrationOutcome.FAILED]: "destructive",
-};
-
-export const SKIP_REASON_LABELS: Record<LicenseMigrationSkipReason, string> = {
-	[LicenseMigrationSkipReason.NOT_LICENSED]:
-		"Holds no license — instantiate one first",
 };

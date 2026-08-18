@@ -135,17 +135,17 @@ function HistoryMoment({
 }) {
 	const first = entries[0];
 	const when = dayjs(first.changed_at).format("D MMMM YYYY H:mm");
-	// A migration replaces the whole set exactly as an instantiation does, so it
+	// A SET entry replaces the whole set exactly as an instantiation does, so it
 	// reads as one stamped moment rather than as a list of field adjustments.
-	const isMigration = first.type === LicenseChangeType.MIGRATED;
 	const stampsWholeSet =
-		first.type === LicenseChangeType.INSTANTIATED || isMigration;
+		first.type === LicenseChangeType.INSTANTIATED ||
+		first.type === LicenseChangeType.SET;
 
 	return (
 		<li className="flex flex-col gap-3 p-3">
 			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 				<StatusBadge tone={stampsWholeSet ? "info" : "neutral"}>
-					{changeTypeLabel(first.type)}
+					{changeTypeLabel(first)}
 				</StatusBadge>
 				<time
 					dateTime={first.changed_at}

@@ -50,8 +50,8 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
 		assert.Equal(t, pro.Id, migration.TemplateId)
-		assert.Equal(t, 1, migration.Migrated)
-		assert.Equal(t, ct.LicenseMigrationOutcomeMIGRATED, resultFor(t, migration, w.OrganizationID()).Outcome)
+		assert.Equal(t, 1, migration.Changed)
+		assert.Equal(t, ct.LicenseMigrationOutcomeCHANGED, resultFor(t, migration, w.OrganizationID()).Outcome)
 
 		// Provenance is the whole point: adjusting every field to Pro's values
 		// would leave the license still saying it was sold the world's template.
@@ -110,7 +110,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		})
 
 		assert.Equal(t, 2, migration.Count)
-		assert.Equal(t, 2, migration.Migrated)
+		assert.Equal(t, 2, migration.Changed)
 		assertValues(t, w.License().Get().Values, proValues())
 		assertValues(t, w.License().For(second).Get().Values, proValues())
 	})
@@ -127,7 +127,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 			FromTemplateId: new(w.TemplateID()),
 		})
 
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 		assert.Equal(t, pro.Id, w.License().Get().TemplateId)
 	})
 
@@ -138,7 +138,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
 		entry := w.License().History().Items[0]
-		assert.Equal(t, ct.LicenseChangeTypeMIGRATED, entry.Type)
+		assert.Equal(t, ct.SET, entry.Type)
 		require.NotNil(t, entry.TemplateId)
 		assert.Equal(t, pro.Id, *entry.TemplateId)
 		require.NotNil(t, entry.PreviousTemplateId)
@@ -197,7 +197,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 		// The tier moves, the deal survives: every field takes Pro's value
 		// except the one this customer was given.
 		assertValues(t, w.License().Get().Values, ct.LicenseTemplateValues{
@@ -247,7 +247,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		request.OnDifference = new(ct.DISCARD)
 		migration := w.Migration().Run(request)
 
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 		assertValues(t, w.License().Get().Values, proValues())
 	})
 
@@ -261,7 +261,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		request.OnDifference = new(ct.DISCARD)
 		migration := w.Migration().Run(request)
 
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 		assertValues(t, w.License().Get().Values, validTemplateValues())
 	})
 
@@ -292,19 +292,30 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
-	t.Run("skips an organization holding no license", func(t *testing.T) {
+	t.Run("grants a first license to an organization holding none", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
 		pro := w.NewTemplate(proValues())
 
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID(), unlicensed))
 
-		assert.Equal(t, 1, migration.Migrated)
-		assert.Equal(t, 1, migration.Skipped)
+		// Both the already-licensed organization and the new one moved: a
+		// migration run no longer tells them apart.
+		assert.Equal(t, 2, migration.Changed)
 		result := resultFor(t, migration, unlicensed)
-		require.NotNil(t, result.Reason)
-		assert.Equal(t, ct.NOTLICENSED, *result.Reason)
+		assert.Equal(t, ct.LicenseMigrationOutcomeCHANGED, result.Outcome)
 		assert.Nil(t, result.PreviousTemplateId)
+		assertValues(t, w.License().For(unlicensed).Get().Values, proValues())
+
+		// The whole target, not a diff against nothing: on_difference has
+		// nothing to carry forward or discard for a first license.
+		entry := w.License().For(unlicensed).History().Items[0]
+		assert.Equal(t, ct.SET, entry.Type)
+		require.NotNil(t, entry.TemplateId)
+		assert.Equal(t, pro.Id, *entry.TemplateId)
+		assert.Nil(t, entry.PreviousTemplateId)
+		assert.Nil(t, entry.OldValue)
+		assert.Equal(t, normaliseValues(proValues()), entry.NewValue)
 	})
 
 	t.Run("one unknown organization does not abort the batch", func(t *testing.T) {
@@ -314,7 +325,7 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 
 		migration := w.Migration().Run(migrateTo(pro.Id, w.OrganizationID(), missing))
 
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 		assert.Equal(t, 1, migration.Failed)
 		failed := resultFor(t, migration, missing)
 		assert.Equal(t, ct.LicenseMigrationOutcomeFAILED, failed.Outcome)
@@ -404,7 +415,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		migration := w.Migration().Run(migrateTo(pro.Id, organizationIDs...))
 
 		assert.Equal(t, license.MaxMigrationOrganizations, migration.Count)
-		assert.Equal(t, 1, migration.Migrated)
+		assert.Equal(t, 1, migration.Changed)
 	})
 
 	t.Run("400 when the target template is archived", func(t *testing.T) {

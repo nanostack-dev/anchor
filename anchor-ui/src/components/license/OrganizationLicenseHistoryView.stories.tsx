@@ -157,7 +157,7 @@ export const AMigrationNamesBothTiers: Story = {
 				product_id: "prd_1",
 				organization_id: "org_1",
 				license_id: "lic_1",
-				type: LicenseChangeType.MIGRATED,
+				type: LicenseChangeType.SET,
 				template_id: "ltpl_pro",
 				previous_template_id: "ltpl_beta",
 				old_value: { max_flows: 50 },
@@ -175,5 +175,33 @@ export const AMigrationNamesBothTiers: Story = {
 		await expect(canvas.getByText("Early Access")).toBeVisible();
 		await expect(canvas.getByText("Pro")).toBeVisible();
 		await expect(canvas.queryByText(/ltpl_/)).toBeNull();
+	},
+};
+
+export const AGrantNamesOnlyWhereItLanded: Story = {
+	args: {
+		total: 1,
+		templateName: (id: string) => ({ ltpl_pro: "Pro" })[id] ?? id,
+		items: [
+			{
+				id: "lchg_granted",
+				product_id: "prd_1",
+				organization_id: "org_1",
+				license_id: "lic_1",
+				type: LicenseChangeType.SET,
+				template_id: "ltpl_pro",
+				new_value: { max_flows: 500, sso: true },
+				changed_at: "2026-08-16T10:30:00Z",
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		// Granted through the same route a move uses, but with no
+		// previous_template_id there is nowhere to say it came from.
+		await expect(canvas.getByText("Licensed for the first time")).toBeVisible();
+		await expect(canvas.queryByText("Moved from")).toBeNull();
+		await expect(canvas.getByText("Pro")).toBeVisible();
 	},
 };

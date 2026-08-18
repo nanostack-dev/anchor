@@ -1,6 +1,5 @@
 import {
 	LicenseMigrationOutcome,
-	LicenseMigrationSkipReason,
 	type OrganizationLicenseMigrationResponse,
 } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -19,14 +18,13 @@ const MIXED_RUN: OrganizationLicenseMigrationResponse = {
 	template_id: "ltpl_pro",
 	migrated_at: "2026-08-16T10:30:00Z",
 	count: 4,
-	migrated: 1,
+	changed: 2,
 	unchanged: 1,
-	skipped: 1,
 	failed: 1,
 	results: [
 		{
 			organization_id: "org_acme",
-			outcome: LicenseMigrationOutcome.MIGRATED,
+			outcome: LicenseMigrationOutcome.CHANGED,
 			previous_template_id: "ltpl_beta",
 			changes: [],
 			count: 3,
@@ -39,11 +37,12 @@ const MIXED_RUN: OrganizationLicenseMigrationResponse = {
 			count: 0,
 		},
 		{
+			// Held no license before this run — granted one, not moved. See
+			// docs/adr/0015-migrate-grants-a-first-license.md.
 			organization_id: "org_initech",
-			outcome: LicenseMigrationOutcome.SKIPPED,
-			reason: LicenseMigrationSkipReason.NOT_LICENSED,
+			outcome: LicenseMigrationOutcome.CHANGED,
 			changes: [],
-			count: 0,
+			count: 4,
 		},
 		{
 			organization_id: "org_umbrella",
@@ -76,13 +75,13 @@ export const WhatNeedsActingOnComesFirst: Story = {
 		// operator has to act on and they lead.
 		const headings = canvas.getAllByRole("heading", { level: 3 });
 		await expect(headings[0]).toHaveTextContent("Failed");
-		await expect(headings[1]).toHaveTextContent("Skipped");
+		await expect(headings[1]).toHaveTextContent("Set");
 
 		await expect(
 			canvas.getByText("This product has no organization with that identifier"),
 		).toBeVisible();
 		await expect(
-			canvas.getByText("Holds no license — instantiate one first"),
+			canvas.getByText("Granted this tier — held no license before this run."),
 		).toBeVisible();
 	},
 };
@@ -93,9 +92,8 @@ export const EveryOrganizationMoved: Story = {
 		migration: {
 			...MIXED_RUN,
 			count: 1,
-			migrated: 1,
+			changed: 1,
 			unchanged: 0,
-			skipped: 0,
 			failed: 0,
 			results: [MIXED_RUN.results[0]],
 		},
