@@ -32,6 +32,28 @@ The database enforces structural integrity only. Every business rule — input s
 - Wiring via Uber FX modules; DB access via go-jet generated models; schema changes via migrations only, never hot DB edits.
 - Spec-first API work: update `openapi.yaml`, regenerate through the repo command, never hand-edit generated files. Enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
 
+## API conventions
+
+### The `?include=` query parameter
+
+A read operation can let the caller ask for a related resource in the same call. The organization endpoints in anchor are the reference implementation — `OrganizationIncludeParameter` in `apps/anchor/cmd/http/openapi.yaml`. Obey the rules below in both repos.
+
+**Shape.** Declare one reusable parameter component per aggregate, and one enum schema for its values. Use `in: query` with `style: form` and `explode: false`. The caller then sends one key with comma-separated values — `?include=license`. Do not accept a repeated key. One key per request gives one canonical value in proxy caches, access logs, and test assertions. It also keeps the parameter one `$ref` that every read operation of the aggregate shares.
+
+Give each aggregate its own enum. A value that is valid for one aggregate is not valid for another. A global include enum lets a caller ask a product endpoint for `license`.
+
+**An enum, never a free string.** Map the enum schema to the domain type with `x-go-type` and `x-go-type-import`. The generated binding then refuses an unknown value with a 400, before the request gets to the service. A free string moves that work into the service. The service must then invent an error, or discard the value with no message to the caller.
+
+**Absent is not empty.** Carry the related resource as an optional pointer on the domain object, and as an optional property in the response. Nil means "the caller did not ask for it". Nil never means "the parent does not have it". Write that sentence on the domain field and in the OpenAPI description of the property. A consumer that reads absence as "none" gets a wrong answer from every call that omits the include.
+
+**One statement per included resource.** Read the page first. Then fill in each named resource for the whole page in one statement. Use a batch repository method that takes the parent IDs and returns a map keyed by parent ID — see `FindByOrganizations` in anchor. Never call the single-parent read in a loop. A loop turns a page of 100 rows into 101 statements. With the batch method, an include costs one more statement for the whole page, at any page size. Put that cost in the parameter description, so the caller knows the price.
+
+**Tenant scope.** A related resource can be tenant-scoped when its parent is not. Put `TenantID` on the read input with `validate:"required_with=Include"`. Read the tenant in the handler only when the caller named an include. A read without an include then needs no tenant.
+
+**An include never carries derived data.** An include returns the stored record only. Data that a dedicated endpoint computes stays on that endpoint. In anchor the license include returns `license.OrganizationLicense`. The license route returns `license.OrganizationLicenseRead`, which adds usage and a derived status. Two types put the rule under the compiler. There are two reasons for the rule. Derived data has its own cost, cache, and freshness rules, and a page-wide include multiplies that cost where no caller can see it. Two sources for one computed value also drift apart.
+
+**Add the parameter without a break.** Keep the parameter `required: false`. In the Go SDK, add it as a variadic argument on a single-resource read — `Get(ctx, id, include ...Include)` — and as an `Include(...)` builder method on a search. Existing callers then compile with no change. Never add the include as a new positional argument. Never change a response type to carry it. A new enum value is an additive change. Removal of an enum value is a breaking change.
+
 ## Verification
 
 - After Go edits: `golangci-lint run --path-mode=abs --timeout 5m --fix`. No `//nolint` or other suppressions without prior approval.
