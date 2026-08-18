@@ -3348,12 +3348,18 @@ components:
       type: string
       description: >-
         What happened to an organization's license. `INSTANTIATED` is a
-        template being stamped onto the organization: `template_id` names it
-        and `new_value` carries the whole set of values copied. `ADJUSTED` is
+        template being stamped onto the organization through the
+        single-organization license route: `template_id` names it and
+        `new_value` carries the whole set of values copied. `ADJUSTED` is
         one license field moved for this organization alone: `field` names it,
         and `old_value` and `new_value` are that field's values on either side
-        of the change.
-      enum: [INSTANTIATED, ADJUSTED]
+        of the change. `SET` is the organization's license set through the
+        batch migrate route — moved from another template, or granted its
+        first, whichever it held before the run: `template_id` names the
+        template it now holds, `previous_template_id` the one it came from
+        (absent for a first license), and `old_value` and `new_value` carry
+        the whole set of values on either side (`old_value` absent to match).
+      enum: [INSTANTIATED, ADJUSTED, SET]
       x-go-type: license.ChangeType
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -3390,7 +3396,15 @@ components:
           - $ref: '#/components/schemas/ksuid'
           description: >-
             The template stamped onto the organization. Present when `type` is
-            `INSTANTIATED`, absent otherwise.
+            `INSTANTIATED` or `SET`, absent otherwise.
+        previous_template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The template the organization held before it was moved. Present
+            when `type` is `SET` and the organization held a license before
+            this run, absent otherwise — including a `SET` entry that granted
+            a first license.
         field:
           type: string
           description: >-
@@ -3398,21 +3412,263 @@ components:
             absent otherwise.
         old_value:
           description: >-
-            The value held before the change. Absent when `type` is
-            `INSTANTIATED`, because the organization held no license, and when
-            an adjustment set a license field the license did not carry.
+            The value held before the change: that license field's value for
+            an adjustment, and the whole set held before the move for a `SET`
+            entry that moved an existing license. Absent when `type` is
+            `INSTANTIATED`, when an adjustment set a license field the license
+            did not carry, and when a `SET` entry granted a first license.
         new_value:
           description: >-
             The value held after the change: that license field's value for an
             adjustment, and the whole set of copied values for an
-            instantiation.
+            instantiation or a `SET` entry.
         changed_at:
           type: string
           format: date-time
           description: >-
             When the change was recorded. Anchor sets it. Every entry of one
             adjustment shares it, so an adjustment that touched several license
-            fields reads back as one moment.
+            fields reads back as one moment. Every organization set by one
+            migration run shares it too, which together with `template_id` is
+            what identifies a run.
+
+    LicenseMigrationDifferencePolicy:
+      type: string
+      description: >-
+        What to do with a license field whose value differs from the template
+        the organization currently holds. `CARRY_FORWARD`, the default, keeps
+        that value on the migrated license, so a bespoke arrangement survives a
+        tier change. `DISCARD` takes the target template whole and the value is
+        gone.
+
+        A difference is either someone adjusting that customer or the template
+        moving after the copy was taken, and the difference alone does not say
+        which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a
+        bespoke deal. Read the diff between the two templates before choosing.
+      enum: [CARRY_FORWARD, DISCARD]
+      x-go-type: license.DifferencePolicy
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    LicenseMigrationOutcome:
+      type: string
+      description: >-
+        What happened to one organization in a migration run. `CHANGED` means
+        its license was written and its provenance stamped onto the target —
+        moved from another tier, or granted its first, whichever it held
+        before the run; `previous_template_id` on the history entry says
+        which. `UNCHANGED` means it already held exactly those values from
+        that same template, so nothing was written. `FAILED` means the write
+        was attempted and refused; `error` says why, and the rest of the batch
+        was unaffected.
+      enum: [CHANGED, UNCHANGED, FAILED]
+      x-go-type: license.MigrationOutcome
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    OrganizationLicenseMigrationRequest:
+      type: object
+      description: >-
+        Moves a set of organizations onto one license template. Each license
+        takes the target template's values and its provenance is restamped, so
+        the record says which tier the customer is on now. This is not an
+        adjustment: adjusting cannot move provenance, by design.
+
+        By default a value that differs from the template the organization
+        currently holds is carried forward onto the new license, so a bespoke
+        arrangement survives the move. See `on_difference`.
+
+        Supply exactly one selection — `organization_ids` or
+        `from_template_id`. Supplying both, or neither, is refused.
+      required: [template_id]
+      properties:
+        template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The template to move onto. It must be active: a withdrawn tier
+            cannot be sold to anyone, which is the same rule instantiation
+            follows.
+        organization_ids:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/ksuid'
+          description: >-
+            The organizations to move, named explicitly. An identifier naming
+            no organization in this product is reported as a failed result
+            rather than failing the batch.
+        from_template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            Move every organization in this product whose license names this
+            template. Archived is accepted and is the common case: this is how
+            a withdrawn tier is emptied. Resolved inside the request, so an
+            organization instantiated a moment ago cannot be missed by a
+            client that listed first.
+        on_difference:
+          allOf:
+          - $ref: '#/components/schemas/LicenseMigrationDifferencePolicy'
+          default: CARRY_FORWARD
+
+    OrganizationLicenseMigrationResult:
+      type: object
+      description: What one migration did to one organization.
+      required: [organization_id, outcome, changes, count]
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        outcome:
+          $ref: '#/components/schemas/LicenseMigrationOutcome'
+        previous_template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: >-
+            The template the organization held before this run. Absent when it
+            held no license — this run granted its first, rather than moving
+            it.
+        changes:
+          type: array
+          description: >-
+            What the run actually did to this organization's license, one
+            field at a time, ordered by name. `license_value` is the value held
+            before, `template_value` the value held after. A field carried
+            forward under `CARRY_FORWARD` does not appear, because it did not
+            move. An organization granted a first license reports every field
+            the target names, since none was held before. Empty when nothing
+            changed.
+          items:
+            $ref: '#/components/schemas/LicenseFieldDifference'
+        count:
+          type: integer
+          description: The number of entries in `changes`.
+        error:
+          allOf:
+          - $ref: '#/components/schemas/ApiError'
+          description: Present when `outcome` is `FAILED`, absent otherwise.
+
+    OrganizationLicenseMigrationResponse:
+      type: object
+      description: >-
+        The receipt for one migration run: every organization it considered and
+        what happened to each. Results are ordered by organization identifier.
+      required:
+      - template_id
+      - migrated_at
+      - results
+      - count
+      - changed
+      - unchanged
+      - failed
+      properties:
+        template_id:
+          allOf:
+          - $ref: '#/components/schemas/ksuid'
+          description: The template every changed organization now holds.
+        migrated_at:
+          type: string
+          format: date-time
+          description: >-
+            The single moment stamped on every organization this run set, and
+            recorded as `changed_at` on every history entry it appended.
+            Together with `template_id` it identifies the run.
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationLicenseMigrationResult'
+        count:
+          type: integer
+          description: The number of organizations considered.
+        changed:
+          type: integer
+        unchanged:
+          type: integer
+        failed:
+          type: integer
+
+    OrganizationLicenseFilter:
+      type: object
+      description: >-
+        Narrows a search over a product's organizations and the licenses they
+        hold.
+      properties:
+        organization_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/ksuid'
+          x-go-type-skip-optional-pointer: true
+        license_template_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/ksuid'
+          description: >-
+            Keep only organizations whose license names one of these templates.
+            An archived template is accepted, and asking for one is how an
+            operator finds the customers still on a withdrawn tier.
+          x-go-type-skip-optional-pointer: true
+        licensed:
+          type: boolean
+          nullable: true
+          description: >-
+            `true` keeps only organizations that hold a license, `false` only
+            those that hold none. Omit for both.
+
+    OrganizationLicenseSortField:
+      type: string
+      enum: [organization_name, instantiated_at]
+      default: organization_name
+      description: >-
+        Field to sort by. `instantiated_at` puts organizations holding no
+        license last, because they were never stamped.
+      x-go-type: license.SortFieldOrganizationLicense
+      x-go-type-import:
+        path: anchor/internal/domain/license
+
+    OrganizationLicenseSearchRequest:
+      allOf:
+      - $ref: '#/components/schemas/SearchRequest'
+      - type: object
+        properties:
+          filter:
+            $ref: '#/components/schemas/OrganizationLicenseFilter'
+          sort_by:
+            $ref: '#/components/schemas/OrganizationLicenseSortField'
+
+    OrganizationLicenseSummaryResponse:
+      type: object
+      description: >-
+        One of the product's organizations and the license it holds, if any.
+        The organization is the subject: one that has never been licensed is
+        listed with `license` absent rather than omitted from the results,
+        because an unlicensed customer is exactly what an operator is looking
+        for half the time.
+      required: [organization_id, organization_name]
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/ksuid'
+        organization_name:
+          type: string
+        license:
+          allOf:
+          - $ref: '#/components/schemas/OrganizationLicenseResponse'
+          nullable: true
+          description: >-
+            Absent when the organization holds no license. `usage` is never
+            populated here — deriving it per row would make a page of results
+            as expensive as a page of license reads.
+
+    OrganizationLicenseSearchResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/OrganizationLicenseSummaryResponse'
+        required:
+        - items
 
     OrganizationLicenseHistoryResponse:
       allOf:
@@ -6355,6 +6611,121 @@ paths:
                 $ref: '#/components/schemas/LicenseTemplateResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/licensing/organization-licenses/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search Organization Licenses
+      description: >-
+        Lists the product's organizations alongside the license each one holds,
+        one page at a time. This is the licensing view of the customer book:
+        who is on which tier, and who is on none.
+
+        Filter by `license_template_ids` to answer "which customers are on the
+        tier we are retiring", which archived templates accept. Filter by
+        `licensed` to find organizations that were never stamped.
+        `full_text_search` matches the organization name.
+
+        An organization with no license is a result with `license` absent, not
+        a missing row. `usage` is never derived here; read one organization's
+        license for that.
+      operationId: searchOrganizationLicenses
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationLicenseSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/products/{product_id}/licensing/organization-licenses/migrate:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Migrate Organization Licenses Onto A Template
+      description: >-
+        Moves a set of organizations onto one license template, so retiring a
+        tier or graduating a cohort is one call rather than a script. An
+        organization already on another tier is moved; an organization with no
+        license yet is granted one on this tier, same as any other member of
+        the selection. Each license takes the target template's values, and
+        `template_id` and `instantiated_at` are stamped — which is what
+        separates this from adjusting every field by hand, since an adjustment
+        deliberately cannot move provenance.
+
+        Select the organizations with `organization_ids` or with
+        `from_template_id`, which is every organization currently on a given
+        template and accepts an archived one. At most 500 organizations per
+        run; a larger selection is refused with its count rather than
+        truncated.
+
+        A license field whose value differs from the template the organization
+        currently holds is carried forward onto the new license by default, so
+        a bespoke arrangement survives the move. Send
+        `on_difference: DISCARD` to take the target template whole instead.
+        Anchor cannot tell a bespoke adjustment from a template that moved
+        after the copy was taken, so neither choice is safe by itself: compare
+        the two templates before running. `on_difference` has nothing to act on
+        for an organization granted its first license — there is no held value
+        to carry forward or discard — so it always takes the target whole.
+
+        Each organization is written in its own transaction, so one failure is
+        reported against that organization and the rest of the batch still
+        lands. Every organization set gets a `SET` entry in its license
+        history, and every entry of one run shares a single `changed_at`.
+      operationId: migrateOrganizationLicenses
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationLicenseMigrationRequest'
+      responses:
+        '200':
+          description: >-
+            The run completed. Individual organizations may still have failed;
+            read `results`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseMigrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          # Declared with a body rather than sharing the empty NotFound
+          # response: two identifiers in one request can be missing, and a
+          # caller has to be able to tell which.
+          description: >-
+            No license template with that identifier. `LICENSE_TEMPLATE_NOT_FOUND`
+            names the target, `LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND` the
+            one selected from.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /v1/products/{product_id}/organizations/{organization_id}/license:
     parameters:

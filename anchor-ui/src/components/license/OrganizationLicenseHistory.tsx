@@ -1,8 +1,12 @@
 import { getOrganizationLicenseHistory } from "@/client";
-import { getOrganizationLicenseHistoryQueryKey } from "@/client/@tanstack/react-query.gen";
+import {
+	getOrganizationLicenseHistoryQueryKey,
+	listLicenseTemplatesOptions,
+} from "@/client/@tanstack/react-query.gen";
 import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { OrganizationLicenseHistoryView } from "./OrganizationLicenseHistoryView";
 
 const historyPageSize = 50;
@@ -16,6 +20,16 @@ export function OrganizationLicenseHistory({
 	productId,
 	organizationId,
 }: OrganizationLicenseHistoryProps) {
+	const templatesQuery = useQuery(
+		listLicenseTemplatesOptions({ path: { product_id: productId } }),
+	);
+	const templateName = useCallback(
+		(templateId: string) =>
+			templatesQuery.data?.items?.find((item) => item.id === templateId)
+				?.name ?? templateId,
+		[templatesQuery.data],
+	);
+
 	const historyQuery = useQuery({
 		queryKey: getOrganizationLicenseHistoryQueryKey({
 			path: { product_id: productId, organization_id: organizationId },
@@ -52,6 +66,7 @@ export function OrganizationLicenseHistory({
 	return (
 		<OrganizationLicenseHistoryView
 			items={historyQuery.data?.items ?? []}
+			templateName={templateName}
 			total={historyQuery.data?.total ?? 0}
 			isLoading={historyQuery.isLoading}
 			onRetry={() => void historyQuery.refetch()}

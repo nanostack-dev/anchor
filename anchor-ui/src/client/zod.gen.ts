@@ -1381,11 +1381,12 @@ export const zOrganizationLicenseDiffResponse = z.object({
 });
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change.
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
  */
 export const zLicenseChangeType = z.enum([
     'INSTANTIATED',
-    'ADJUSTED'
+    'ADJUSTED',
+    'SET'
 ]);
 
 /**
@@ -1398,11 +1399,102 @@ export const zOrganizationLicenseChangeResponse = z.object({
     license_id: zKsuid,
     type: zLicenseChangeType,
     template_id: z.optional(zKsuid),
+    previous_template_id: z.optional(zKsuid),
     field: z.optional(z.string()),
     old_value: z.optional(z.unknown()),
     new_value: z.optional(z.unknown()),
     changed_at: z.iso.datetime()
 });
+
+/**
+ * What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and the value is gone.
+ * A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
+ */
+export const zLicenseMigrationDifferencePolicy = z.enum([
+    'CARRY_FORWARD',
+    'DISCARD'
+]);
+
+/**
+ * What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+ */
+export const zLicenseMigrationOutcome = z.enum([
+    'CHANGED',
+    'UNCHANGED',
+    'FAILED'
+]);
+
+/**
+ * Moves a set of organizations onto one license template. Each license takes the target template's values and its provenance is restamped, so the record says which tier the customer is on now. This is not an adjustment: adjusting cannot move provenance, by design.
+ * By default a value that differs from the template the organization currently holds is carried forward onto the new license, so a bespoke arrangement survives the move. See `on_difference`.
+ * Supply exactly one selection — `organization_ids` or `from_template_id`. Supplying both, or neither, is refused.
+ */
+export const zOrganizationLicenseMigrationRequest = z.object({
+    template_id: zKsuid,
+    organization_ids: z.optional(z.array(zKsuid).max(500)),
+    from_template_id: z.optional(zKsuid),
+    on_difference: z.optional(zLicenseMigrationDifferencePolicy)
+});
+
+/**
+ * What one migration did to one organization.
+ */
+export const zOrganizationLicenseMigrationResult = z.object({
+    organization_id: zKsuid,
+    outcome: zLicenseMigrationOutcome,
+    previous_template_id: z.optional(zKsuid),
+    changes: z.array(zLicenseFieldDifference),
+    count: z.int(),
+    error: z.optional(zApiError)
+});
+
+/**
+ * The receipt for one migration run: every organization it considered and what happened to each. Results are ordered by organization identifier.
+ */
+export const zOrganizationLicenseMigrationResponse = z.object({
+    template_id: zKsuid,
+    migrated_at: z.iso.datetime(),
+    results: z.array(zOrganizationLicenseMigrationResult),
+    count: z.int(),
+    changed: z.int(),
+    unchanged: z.int(),
+    failed: z.int()
+});
+
+/**
+ * Narrows a search over a product's organizations and the licenses they hold.
+ */
+export const zOrganizationLicenseFilter = z.object({
+    organization_ids: z.optional(z.array(zKsuid)),
+    license_template_ids: z.optional(z.array(zKsuid)),
+    licensed: z.optional(z.boolean())
+});
+
+/**
+ * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+ */
+export const zOrganizationLicenseSortField = z.enum([
+    'organization_name',
+    'instantiated_at'
+]);
+
+export const zOrganizationLicenseSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zOrganizationLicenseFilter),
+    sort_by: z.optional(zOrganizationLicenseSortField)
+}));
+
+/**
+ * One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.
+ */
+export const zOrganizationLicenseSummaryResponse = z.object({
+    organization_id: zKsuid,
+    organization_name: z.string(),
+    license: z.optional(zOrganizationLicenseResponse)
+});
+
+export const zOrganizationLicenseSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zOrganizationLicenseSummaryResponse)
+}));
 
 export const zOrganizationLicenseHistoryResponse = zPagedListResponse.and(z.object({
     items: z.array(zOrganizationLicenseChangeResponse)
@@ -2829,6 +2921,32 @@ export const zArchiveLicenseTemplateData = z.object({
  * Archived, or already archived.
  */
 export const zArchiveLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zSearchOrganizationLicensesData = z.object({
+    body: zOrganizationLicenseSearchRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchOrganizationLicensesResponse = zOrganizationLicenseSearchResponse;
+
+export const zMigrateOrganizationLicensesData = z.object({
+    body: zOrganizationLicenseMigrationRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * The run completed. Individual organizations may still have failed; read `results`.
+ */
+export const zMigrateOrganizationLicensesResponse = zOrganizationLicenseMigrationResponse;
 
 export const zGetOrganizationLicenseData = z.object({
     body: z.optional(z.never()),

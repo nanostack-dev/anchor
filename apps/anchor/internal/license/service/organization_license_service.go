@@ -9,24 +9,12 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	licenserepo "anchor/internal/license/repository"
-)
-
-// The organization license read is cached the same way the product API key
-// permission cache is: keyed by (product, organization), evicted on every
-// write, degrading to a no-op when Redis is unavailable. See
-// docs/api-key-permission-cache.md and
-// docs/adr/0012-license-status-derived-on-read.md.
-//
-// Usage is deliberately not part of the cached value — see GetLicense — so a
-// usage report becomes visible on the next read without touching this cache.
-const (
-	organizationLicenseCacheTTL    = 15 * time.Minute
-	organizationLicenseCachePrefix = "organization_license"
 )
 
 // Postgres-named constraints on organization_licenses. The unique index is the
@@ -89,6 +77,12 @@ type OrganizationLicenseService interface {
 	DiffAgainstTemplate(
 		ctx context.Context, in license.GetLicenseInput,
 	) (license.OrganizationLicenseDiff, error)
+	// Search reads a page of the Product's customer book: each Organization and
+	// the license it holds. Usage is not derived — see
+	// [OrganizationLicenseService.GetLicense] for one Organization's full read.
+	Search(
+		ctx context.Context, in license.SearchOrganizationLicensesInput,
+	) (search.Result[license.OrganizationLicenseSummary], error)
 }
 
 type organizationLicenseService struct {
@@ -98,7 +92,7 @@ type organizationLicenseService struct {
 	usage       licenserepo.UsageObservationRepository
 	changes     licenserepo.OrganizationLicenseChangeRepository
 	transactor  transactor.Transactor
-	licenses    cache.Cache[license.OrganizationLicense]
+	licenses    *organizationLicenseCache
 	logger      zerolog.Logger
 }
 
@@ -119,32 +113,8 @@ func NewOrganizationLicenseService(
 		usage:       usage,
 		changes:     changes,
 		transactor:  tx,
-		licenses: cache.New[license.OrganizationLicense](
-			cacheStore, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
-		),
-		logger: logger.With().Str("component", "organization_license_service").Logger(),
-	}
-}
-
-// licenseCacheKey addresses one Organization's cached license. Product and
-// Organization IDs are KSUIDs unique platform-wide, so — as with the API key
-// cache — the tenant does not need to be part of the key.
-func (s *organizationLicenseService) licenseCacheKey(
-	productID, organizationID string,
-) cache.Entry[license.OrganizationLicense] {
-	return s.licenses.Key(productID, organizationID)
-}
-
-// evictLicenseCache logs and swallows a failure, matching ProductAPIKeyService:
-// a cache that cannot be evicted should not fail the write that triggered it,
-// only degrade the next read.
-func (s *organizationLicenseService) evictLicenseCache(ctx context.Context, productID, organizationID string) {
-	if err := s.licenseCacheKey(productID, organizationID).Evict(ctx); err != nil {
-		s.logger.Error().
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Err(err).
-			Msg("failed to evict organization license from cache")
+		licenses:    newOrganizationLicenseCache(cacheStore, logger),
+		logger:      logger.With().Str("component", "organization_license_service").Logger(),
 	}
 }
 
@@ -217,16 +187,16 @@ func (s *organizationLicenseService) Instantiate(
 	// rather than relying on that invariant to hold forever. Inside a caller's
 	// transaction it runs before their commit, the harmless direction: a read
 	// racing them cannot see the row and so caches nothing.
-	s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+	s.licenses.evict(ctx, in.ProductID, in.OrganizationID)
 
 	return created, nil
 }
 
 // GetLicense reads the Organization's license record from cache — evicted on
-// every write, see evictLicenseCache — and derives usage against it fresh on
-// every call. Usage itself is never cached: were it folded into the cached
-// value, a report arriving between evictions would stay invisible until the
-// TTL expired, which is not the contract. See
+// every write, see organizationLicenseCache — and derives usage against it
+// fresh on every call. Usage itself is never cached: were it folded into the
+// cached value, a report arriving between evictions would stay invisible until
+// the TTL expired, which is not the contract. See
 // docs/adr/0012-license-status-derived-on-read.md.
 func (s *organizationLicenseService) GetLicense(
 	ctx context.Context, in license.GetLicenseInput,
@@ -235,7 +205,7 @@ func (s *organizationLicenseService) GetLicense(
 		return nil, err
 	}
 
-	base, err := s.licenseCacheKey(in.ProductID, in.OrganizationID).GetOrElse(
+	base, err := s.licenses.key(in.ProductID, in.OrganizationID).GetOrElse(
 		ctx, func() (*license.OrganizationLicense, error) {
 			return s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
 		},
@@ -344,10 +314,23 @@ func (s *organizationLicenseService) AdjustValues(
 	}
 
 	if wrote {
-		s.evictLicenseCache(ctx, in.ProductID, in.OrganizationID)
+		s.licenses.evict(ctx, in.ProductID, in.OrganizationID)
 	}
 
 	return updated, nil
+}
+
+// Search does not read through the license cache. The cache holds one
+// Organization's record at a time, so a page of results would have to be
+// assembled from as many lookups as it has rows, and a miss on any one of them
+// would query the database anyway.
+func (s *organizationLicenseService) Search(
+	ctx context.Context, in license.SearchOrganizationLicensesInput,
+) (search.Result[license.OrganizationLicenseSummary], error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return search.Result[license.OrganizationLicenseSummary]{}, err
+	}
+	return s.licenseRepo.Search(ctx, in)
 }
 
 func (s *organizationLicenseService) DiffAgainstTemplate(

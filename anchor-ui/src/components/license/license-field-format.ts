@@ -66,6 +66,22 @@ export function summarizeRules(
 	return parts.join(" · ");
 }
 
+/**
+ * Whether a field carries a value at all. Every field the schema declares must
+ * stay set: a template is rejected without one, and an adjustment cannot
+ * remove one.
+ */
+export function isFieldValueSet(
+	type: LicenseFieldType,
+	value: unknown,
+): boolean {
+	if (type === LicenseFieldType.BOOLEAN) return typeof value === "boolean";
+	if (type === LicenseFieldType.NUMBER || type === LicenseFieldType.LIMIT) {
+		return typeof value === "number" && Number.isFinite(value);
+	}
+	return typeof value === "string" && value.trim().length > 0;
+}
+
 /** Renders a template/license value for read-only display. */
 export function formatFieldValue(
 	type: LicenseFieldType,

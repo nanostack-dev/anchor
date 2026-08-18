@@ -132,6 +132,27 @@ type OrganizationLicenseRepository interface {
 	Update(
 		ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)
+	// Restamp rewrites the values together with the provenance of the copy,
+	// which Update deliberately cannot touch. It is the only path that moves an
+	// Organization onto another template. See
+	// docs/adr/0014-organization-licenses-are-migrated-in-bulk.md.
+	Restamp(
+		ctx context.Context, tenantID string, organizationLicense license.OrganizationLicense,
+	) (license.OrganizationLicense, error)
+	// ListOrganizationIDsForTemplate returns every Organization in this Product
+	// whose license names the given template, ordered by identifier. A
+	// migration resolves its selection through this rather than letting a
+	// client list and then loop, which would miss every Organization
+	// instantiated between the two calls.
+	ListOrganizationIDsForTemplate(
+		ctx context.Context, tenantID string, productID string, templateID string,
+	) ([]string, error)
+	// Search reads a page of the Product's customer book: each Organization and
+	// the license it holds. An Organization holding none is a result with a nil
+	// license, not an absent row.
+	Search(
+		ctx context.Context, in license.SearchOrganizationLicensesInput,
+	) (search.Result[license.OrganizationLicenseSummary], error)
 	// CountLicensesForTemplate reports how many Organization licenses in this
 	// Product still name the given template. A template delete checks this
 	// before the write, mirroring how CountMembershipAssignments guards a

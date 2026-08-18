@@ -44,10 +44,13 @@ func GeneratePermissions() []permission.ProductPermission {
 		}
 	}
 
-	permissions = append(permissions, permission.ProductPermission{
-		Name:        "email:send",
-		Description: new("Allow sending transactional email for the product"),
-	})
+	permissions = append(
+		permissions,
+		permission.ProductPermission{
+			Name:        "email:send",
+			Description: new("Allow sending transactional email for the product"),
+		},
+	)
 
 	return permissions
 }

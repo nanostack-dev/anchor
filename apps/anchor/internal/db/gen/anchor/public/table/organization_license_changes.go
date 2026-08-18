@@ -17,17 +17,18 @@ type organizationLicenseChangesTable struct {
 	postgres.Table
 
 	// Columns
-	ID               postgres.ColumnString
-	PlatformTenantID postgres.ColumnString
-	ProductID        postgres.ColumnString
-	OrganizationID   postgres.ColumnString
-	LicenseID        postgres.ColumnString
-	ChangeType       postgres.ColumnString
-	TemplateID       postgres.ColumnString
-	Field            postgres.ColumnString
-	OldValueJSON     postgres.ColumnString
-	NewValueJSON     postgres.ColumnString
-	ChangedAt        postgres.ColumnTimestampz
+	ID                 postgres.ColumnString
+	PlatformTenantID   postgres.ColumnString
+	ProductID          postgres.ColumnString
+	OrganizationID     postgres.ColumnString
+	LicenseID          postgres.ColumnString
+	ChangeType         postgres.ColumnString
+	TemplateID         postgres.ColumnString
+	Field              postgres.ColumnString
+	OldValueJSON       postgres.ColumnString
+	NewValueJSON       postgres.ColumnString
+	ChangedAt          postgres.ColumnTimestampz
+	PreviousTemplateID postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -69,37 +70,39 @@ func newOrganizationLicenseChangesTable(schemaName, tableName, alias string) *Or
 
 func newOrganizationLicenseChangesTableImpl(schemaName, tableName, alias string) organizationLicenseChangesTable {
 	var (
-		IDColumn               = postgres.StringColumn("id")
-		PlatformTenantIDColumn = postgres.StringColumn("platform_tenant_id")
-		ProductIDColumn        = postgres.StringColumn("product_id")
-		OrganizationIDColumn   = postgres.StringColumn("organization_id")
-		LicenseIDColumn        = postgres.StringColumn("license_id")
-		ChangeTypeColumn       = postgres.StringColumn("change_type")
-		TemplateIDColumn       = postgres.StringColumn("template_id")
-		FieldColumn            = postgres.StringColumn("field")
-		OldValueJSONColumn     = postgres.StringColumn("old_value_json")
-		NewValueJSONColumn     = postgres.StringColumn("new_value_json")
-		ChangedAtColumn        = postgres.TimestampzColumn("changed_at")
-		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, LicenseIDColumn, ChangeTypeColumn, TemplateIDColumn, FieldColumn, OldValueJSONColumn, NewValueJSONColumn, ChangedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, LicenseIDColumn, ChangeTypeColumn, TemplateIDColumn, FieldColumn, OldValueJSONColumn, NewValueJSONColumn, ChangedAtColumn}
-		defaultColumns         = postgres.ColumnList{ChangedAtColumn}
+		IDColumn                 = postgres.StringColumn("id")
+		PlatformTenantIDColumn   = postgres.StringColumn("platform_tenant_id")
+		ProductIDColumn          = postgres.StringColumn("product_id")
+		OrganizationIDColumn     = postgres.StringColumn("organization_id")
+		LicenseIDColumn          = postgres.StringColumn("license_id")
+		ChangeTypeColumn         = postgres.StringColumn("change_type")
+		TemplateIDColumn         = postgres.StringColumn("template_id")
+		FieldColumn              = postgres.StringColumn("field")
+		OldValueJSONColumn       = postgres.StringColumn("old_value_json")
+		NewValueJSONColumn       = postgres.StringColumn("new_value_json")
+		ChangedAtColumn          = postgres.TimestampzColumn("changed_at")
+		PreviousTemplateIDColumn = postgres.StringColumn("previous_template_id")
+		allColumns               = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, LicenseIDColumn, ChangeTypeColumn, TemplateIDColumn, FieldColumn, OldValueJSONColumn, NewValueJSONColumn, ChangedAtColumn, PreviousTemplateIDColumn}
+		mutableColumns           = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, LicenseIDColumn, ChangeTypeColumn, TemplateIDColumn, FieldColumn, OldValueJSONColumn, NewValueJSONColumn, ChangedAtColumn, PreviousTemplateIDColumn}
+		defaultColumns           = postgres.ColumnList{ChangedAtColumn}
 	)
 
 	return organizationLicenseChangesTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:               IDColumn,
-		PlatformTenantID: PlatformTenantIDColumn,
-		ProductID:        ProductIDColumn,
-		OrganizationID:   OrganizationIDColumn,
-		LicenseID:        LicenseIDColumn,
-		ChangeType:       ChangeTypeColumn,
-		TemplateID:       TemplateIDColumn,
-		Field:            FieldColumn,
-		OldValueJSON:     OldValueJSONColumn,
-		NewValueJSON:     NewValueJSONColumn,
-		ChangedAt:        ChangedAtColumn,
+		ID:                 IDColumn,
+		PlatformTenantID:   PlatformTenantIDColumn,
+		ProductID:          ProductIDColumn,
+		OrganizationID:     OrganizationIDColumn,
+		LicenseID:          LicenseIDColumn,
+		ChangeType:         ChangeTypeColumn,
+		TemplateID:         TemplateIDColumn,
+		Field:              FieldColumn,
+		OldValueJSON:       OldValueJSONColumn,
+		NewValueJSON:       NewValueJSONColumn,
+		ChangedAt:          ChangedAtColumn,
+		PreviousTemplateID: PreviousTemplateIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

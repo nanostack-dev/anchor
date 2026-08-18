@@ -111,3 +111,6 @@ terraform/**/.terraform/
 terraform/**/.terraform.lock.hcl
 /apps/anchor/main
 .test_credentials
+
+# Agent worktrees, created by git worktree add
+worktrees/

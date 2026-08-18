@@ -12,15 +12,16 @@ import (
 )
 
 type OrganizationLicenseChanges struct {
-	ID               string `sql:"primary_key"`
-	PlatformTenantID string
-	ProductID        string
-	OrganizationID   string
-	LicenseID        string
-	ChangeType       string
-	TemplateID       *string
-	Field            *string
-	OldValueJSON     *string
-	NewValueJSON     *string
-	ChangedAt        time.Time
+	ID                 string `sql:"primary_key"`
+	PlatformTenantID   string
+	ProductID          string
+	OrganizationID     string
+	LicenseID          string
+	ChangeType         string
+	TemplateID         *string
+	Field              *string
+	OldValueJSON       *string
+	NewValueJSON       *string
+	ChangedAt          time.Time
+	PreviousTemplateID *string
 }

@@ -123,7 +123,7 @@ func (b *SendBuilder) dispatch(ctx context.Context) error {
 
 	// 201 does not mean delivered: a deduped replay of a previously FAILED record
 	// also returns 201. Trust the record's own status, not the HTTP code.
-	if record.Status == nanoclient.FAILED {
+	if record.Status == nanoclient.EmailSendStatusFAILED {
 		return permanentError(op, code, fmt.Sprintf("send to %s recorded as %s", b.req.ToAddress, record.Status))
 	}
 

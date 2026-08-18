@@ -19,12 +19,26 @@ export function asValueSet(value: unknown): Record<string, unknown> | null {
 	return value as Record<string, unknown>;
 }
 
-export function changeTypeLabel(type: LicenseChangeType): string {
-	switch (type) {
+/**
+ * A `SET` entry covers both a tier move and a first license granted through
+ * the migrate route, so the label needs `previous_template_id` alongside
+ * `type` to tell which happened — `type` alone no longer says.
+ */
+export function changeTypeLabel(
+	entry: Pick<
+		OrganizationLicenseChangeResponse,
+		"type" | "previous_template_id"
+	>,
+): string {
+	switch (entry.type) {
 		case LicenseChangeType.INSTANTIATED:
 			return "Instantiated";
 		case LicenseChangeType.ADJUSTED:
 			return "Adjusted";
+		case LicenseChangeType.SET:
+			return entry.previous_template_id
+				? "Moved to another tier"
+				: "Licensed for the first time";
 	}
 }
 
