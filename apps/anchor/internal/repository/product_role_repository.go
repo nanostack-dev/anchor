@@ -211,7 +211,7 @@ func (r *productRoleRepositoryImpl) Update(
 				AND(table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(domainRole.ProductID))).
 				AND(
 					table.ProductRoleResourcePermissions.PermissionName.IN(
-						jetx.ToStringExpressionSliceMap(
+						jetx.ToStringExpressionsFunc(
 							toRemove,
 							func(perm model.ProductRoleResourcePermissions) string {
 								return perm.PermissionName

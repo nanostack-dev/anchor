@@ -210,15 +210,14 @@ func (r *organizationLicenseRepositoryImpl) Search(
 	ctx context.Context, in license.SearchOrganizationLicensesInput,
 ) (search.Result[license.OrganizationLicenseSummary], error) {
 	where := table.Organizations.ProductID.EQ(postgres.String(in.ProductID))
-	filters := jetx.NewFilterBuilder()
 
 	if filter := in.Request.Filter; filter != nil {
-		if ids := filters.BuildIDFilter(
+		if ids := jetx.BuildIDFilter(
 			table.Organizations.ID, filter.OrganizationIDs,
 		); ids != nil {
 			where = where.AND(ids)
 		}
-		if templates := filters.BuildIDFilter(
+		if templates := jetx.BuildIDFilter(
 			table.OrganizationLicenses.TemplateID, filter.LicenseTemplateIDs,
 		); templates != nil {
 			where = where.AND(templates)
@@ -228,7 +227,7 @@ func (r *organizationLicenseRepositoryImpl) Search(
 		}
 	}
 
-	// ILIKE rather than jetx.BuildFullTextSearchFilter, which builds a
+	// ILIKE rather than jetx.BuildSubstringFilter, which builds a
 	// case-sensitive LIKE. An operator typing a customer's name into a search
 	// box does not capitalise it the way the record does, and "northwind"
 	// finding nothing reads as a broken box rather than as a precise one. The
