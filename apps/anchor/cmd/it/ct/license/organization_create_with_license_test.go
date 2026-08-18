@@ -56,6 +56,7 @@ func (h createHandle) CountNamed(name string) int {
 	resp, err := h.client.SearchProductOrganizationsWithResponse(
 		context.Background(),
 		h.productID,
+		nil,
 		ct.SearchProductOrganizationsJSONRequestBody{
 			Filter: &ct.OrganizationFilter{Names: []string{name}},
 		},
@@ -74,6 +75,147 @@ func licenseBody(templateID string) ct.CreateProductOrganizationJSONRequestBody 
 	return ct.CreateProductOrganizationJSONRequestBody{
 		License: &ct.OrganizationLicenseInstantiateRequest{TemplateId: templateID},
 	}
+}
+
+// GetRaw reads one organization through the create handle's credential, naming
+// the related resources to read with it.
+func (h createHandle) GetRaw(
+	organizationID string, include ...ct.OrganizationInclude,
+) *ct.GetProductOrganizationResponse {
+	h.t.Helper()
+	params := &ct.GetProductOrganizationParams{}
+	if len(include) > 0 {
+		params.Include = &include
+	}
+	resp, err := h.client.GetProductOrganizationWithResponse(
+		context.Background(), h.productID, organizationID, params,
+	)
+	require.NoError(h.t, err)
+	return resp
+}
+
+func (h createHandle) Get(
+	organizationID string, include ...ct.OrganizationInclude,
+) ct.ProductOrganizationResponse {
+	h.t.Helper()
+	resp := h.GetRaw(organizationID, include...)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return *resp.JSON200
+}
+
+// SearchNamed finds the organizations of the product carrying that name,
+// naming the related resources to read with them.
+func (h createHandle) SearchNamed(
+	name string, include ...ct.OrganizationInclude,
+) []ct.ProductOrganizationResponse {
+	h.t.Helper()
+	params := &ct.SearchProductOrganizationsParams{}
+	if len(include) > 0 {
+		params.Include = &include
+	}
+	resp, err := h.client.SearchProductOrganizationsWithResponse(
+		context.Background(),
+		h.productID,
+		params,
+		ct.SearchProductOrganizationsJSONRequestBody{
+			Filter: &ct.OrganizationFilter{Names: []string{name}},
+		},
+	)
+	require.NoError(h.t, err)
+	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(h.t, resp.JSON200)
+	return resp.JSON200.Items
+}
+
+func TestOrganizationReadIncludesLicense(t *testing.T) {
+	t.Run("get without include leaves the license out", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		created := w.Create().WithLicense(uniqueOrganizationName(), licenseBody(w.TemplateID()))
+
+		read := w.Create().Get(created.Id)
+
+		// Absent says nothing about whether the organization holds one — this
+		// organization does.
+		assert.Nil(t, read.License)
+	})
+
+	t.Run("get with include=license carries it", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		created := w.Create().WithLicense(uniqueOrganizationName(), licenseBody(w.TemplateID()))
+
+		read := w.Create().Get(created.Id, ct.OrganizationIncludeLicense)
+
+		require.NotNil(t, read.License)
+		assert.Equal(t, created.License.Id, read.License.Id)
+		assert.Equal(t, w.TemplateID(), read.License.TemplateId)
+		assertValues(t, read.License.Values, validTemplateValues())
+	})
+
+	t.Run("the include carries no usage; the license route computes that", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		created := w.Create().WithLicense(uniqueOrganizationName(), licenseBody(w.TemplateID()))
+
+		read := w.Create().Get(created.Id, ct.OrganizationIncludeLicense)
+
+		require.NotNil(t, read.License)
+		assert.Nil(t, read.License.Usage)
+		assert.NotNil(t, w.License().For(created.Id).Get().Usage)
+	})
+
+	t.Run("an unlicensed organization reads back without a license", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		created := w.Create().WithLicense(
+			uniqueOrganizationName(), ct.CreateProductOrganizationJSONRequestBody{},
+		)
+
+		read := w.Create().Get(created.Id, ct.OrganizationIncludeLicense)
+
+		assert.Nil(t, read.License)
+	})
+
+	t.Run("search with include=license carries one per organization", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		name := uniqueOrganizationName()
+		first := w.Create().WithLicense(name, licenseBody(w.TemplateID()))
+		second := w.Create().WithLicense(name, ct.CreateProductOrganizationJSONRequestBody{})
+
+		items := w.Create().SearchNamed(name, ct.OrganizationIncludeLicense)
+
+		require.Len(t, items, 2)
+		byID := map[string]ct.ProductOrganizationResponse{}
+		for _, item := range items {
+			byID[item.Id] = item
+		}
+		// One page, two organizations, and only the licensed one carries a
+		// license — the unlicensed one is not given the other's.
+		require.NotNil(t, byID[first.Id].License)
+		assert.Equal(t, first.Id, byID[first.Id].License.OrganizationId)
+		assert.Nil(t, byID[second.Id].License)
+	})
+
+	t.Run("search without include leaves every license out", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		name := uniqueOrganizationName()
+		w.Create().WithLicense(name, licenseBody(w.TemplateID()))
+
+		items := w.Create().SearchNamed(name)
+
+		require.Len(t, items, 1)
+		assert.Nil(t, items[0].License)
+	})
+
+	t.Run("another product's organization is not reachable through the include", func(t *testing.T) {
+		first := newLicenseWorld(t)
+		second := newLicenseWorld(t)
+		licensed := second.Create().WithLicense(
+			uniqueOrganizationName(), licenseBody(second.TemplateID()),
+		)
+
+		resp := first.Create().GetRaw(licensed.Id, ct.OrganizationIncludeLicense)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestCreateOrganizationWithLicense(t *testing.T) {

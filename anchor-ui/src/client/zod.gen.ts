@@ -702,6 +702,13 @@ export const zProductOrganizationRequest = z.object({
     license: z.optional(zOrganizationLicenseInstantiateRequest)
 });
 
+/**
+ * A related resource an organization read can ask for.
+ */
+export const zOrganizationInclude = z.enum([
+    'license'
+]);
+
 export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
 
 /**
@@ -1462,6 +1469,11 @@ export const zPlatformUserIdParameter = zKsuid;
  * The KSUID of the product.
  */
 export const zProductIdParameter = zKsuid;
+
+/**
+ * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ */
+export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 
 /**
  * The KSUID of the organization.
@@ -2294,7 +2306,9 @@ export const zSearchProductOrganizationsData = z.object({
     path: z.object({
         product_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include: z.optional(z.array(zOrganizationInclude))
+    }))
 });
 
 /**
@@ -2322,7 +2336,9 @@ export const zGetProductOrganizationData = z.object({
         product_id: zKsuid,
         organization_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include: z.optional(z.array(zOrganizationInclude))
+    }))
 });
 
 /**

@@ -50,6 +50,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				organizationID,
+				nil,
 			)
 			require.NoError(t, err, "get deleted organization should not error")
 			assert.Equal(

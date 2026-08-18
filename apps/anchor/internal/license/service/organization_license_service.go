@@ -76,6 +76,13 @@ type OrganizationLicenseService interface {
 	GetLicense(
 		ctx context.Context, in license.GetLicenseInput,
 	) (*license.OrganizationLicenseRead, error)
+	// ListByOrganizations reads many Organizations' licenses at once, keyed by
+	// organization ID, for a caller composing them onto something else. It
+	// carries no usage and does not go through the per-organization cache — one
+	// statement rather than a cache lookup per organization.
+	ListByOrganizations(
+		ctx context.Context, in license.ListLicensesByOrganizationsInput,
+	) (map[string]license.OrganizationLicense, error)
 	AdjustValues(
 		ctx context.Context, in license.AdjustLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -245,6 +252,16 @@ func (s *organizationLicenseService) GetLicense(
 		return nil, err
 	}
 	return &read, nil
+}
+
+func (s *organizationLicenseService) ListByOrganizations(
+	ctx context.Context, in license.ListLicensesByOrganizationsInput,
+) (map[string]license.OrganizationLicense, error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return nil, err
+	}
+
+	return s.licenseRepo.FindByOrganizations(ctx, in.TenantID, in.ProductID, in.OrganizationIDs)
 }
 
 // withUsage composes the cached license record with every limit field's

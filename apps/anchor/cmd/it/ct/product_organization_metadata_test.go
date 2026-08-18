@@ -45,7 +45,10 @@ func TestProductOrganizationMetadata(t *testing.T) {
 			assert.Equal(t, metadata, *createResponse.JSON201.Metadata)
 
 			getResponse, err := apiKeyClient.GetProductOrganizationWithResponse(
-				ctx, testProduct.ProductID, createResponse.JSON201.Id,
+				ctx,
+				testProduct.ProductID,
+				createResponse.JSON201.Id,
+				nil,
 			)
 
 			require.NoError(t, err, "get organization should not error")

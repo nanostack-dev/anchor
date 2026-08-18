@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
@@ -50,6 +51,34 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
 ) (*license.OrganizationLicense, error) {
 	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
+}
+
+func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
+	ctx context.Context, tenantID string, productID string, organizationIDs []string,
+) (map[string]license.OrganizationLicense, error) {
+	if len(organizationIDs) == 0 {
+		return map[string]license.OrganizationLicense{}, nil
+	}
+
+	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
+		FROM(table.OrganizationLicenses).
+		WHERE(
+			organizationLicenseScope(tenantID, productID).
+				AND(table.OrganizationLicenses.OrganizationID.IN(
+					jetx.ToStringExpressions(organizationIDs)...,
+				)),
+		)
+
+	rows, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	if err != nil {
+		return nil, err
+	}
+
+	byOrganization := make(map[string]license.OrganizationLicense, len(rows))
+	for _, row := range rows {
+		byOrganization[row.OrganizationID] = row
+	}
+	return byOrganization, nil
 }
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(

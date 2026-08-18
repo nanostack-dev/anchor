@@ -1182,7 +1182,9 @@ export const searchProductOrganizationsQueryKey = (options: Options<SearchProduc
 /**
  * Search Product Organizations
  * Retrieves a list of organizations associated with the specified Product,
- * allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+ * allowing filtering and pagination. Pass `include` to read a related
+ * resource alongside every organization in the page.
+ * Requires API Key with `product_organization:read` permission or Platform Bearer token.
  */
 export const searchProductOrganizationsOptions = (options: Options<SearchProductOrganizationsData>) => {
     return queryOptions({
@@ -1225,6 +1227,7 @@ export const getProductOrganizationQueryKey = (options: Options<GetProductOrgani
 /**
  * Get Product Organization
  * Retrieves a single organization within the specified Product.
+ * Pass `include` to read a related resource alongside it.
  * Only API Key authentication is supported (no bearer token access).
  * Requires an API Key with `organization:read` permission.
  */

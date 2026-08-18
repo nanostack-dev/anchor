@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -82,7 +83,7 @@ type OrganizationService interface {
 	)
 	Create(
 		ctx context.Context, input organization.CreateOrganizationInput,
-	) (organization.CreateOrganizationResult, error)
+	) (organization.Organization, error)
 	CreateWithMember(
 		ctx context.Context, input organization.CreateOrganizationWithMemberInput,
 	) (organization.OrganizationWithMemberResult, error)
@@ -191,21 +192,74 @@ func (s *organizationService) Find(
 			Msg("failed to find organization")
 		return nil, err
 	}
-	return org, nil
+	if org == nil {
+		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
+	}
+
+	attached, err := s.attachIncludes(
+		ctx,
+		input.TenantID,
+		input.ProductID,
+		[]organization.Organization{*org},
+		input.Include,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &attached[0], nil
+}
+
+// attachIncludes fills in the related resources the caller named. Each one is
+// read for the whole page at once, so a search including a resource costs one
+// statement rather than one per organization.
+func (s *organizationService) attachIncludes(
+	ctx context.Context,
+	tenantID, productID string,
+	organizations []organization.Organization,
+	includes []organization.Include,
+) ([]organization.Organization, error) {
+	if len(organizations) == 0 || !slices.Contains(includes, organization.IncludeLicense) {
+		return organizations, nil
+	}
+
+	organizationIDs := make([]string, 0, len(organizations))
+	for _, org := range organizations {
+		organizationIDs = append(organizationIDs, org.ID)
+	}
+
+	licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
+		TenantID:        tenantID,
+		ProductID:       productID,
+		OrganizationIDs: organizationIDs,
+	})
+	if err != nil {
+		s.logger.Error().
+			Str("product_id", productID).
+			Err(err).
+			Msg("failed to read the licenses of the organizations read")
+		return nil, err
+	}
+
+	for i, org := range organizations {
+		if held, ok := licenses[org.ID]; ok {
+			organizations[i].License = &held
+		}
+	}
+	return organizations, nil
 }
 
 func (s *organizationService) Create(
 	ctx context.Context, input organization.CreateOrganizationInput,
-) (organization.CreateOrganizationResult, error) {
+) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
 	if err := validateStruct(input); err != nil {
-		return organization.CreateOrganizationResult{}, err
+		return organization.Organization{}, err
 	}
 
 	metadataJSON, err := buildOrganizationMetadata(input.Metadata)
 	if err != nil {
-		return organization.CreateOrganizationResult{}, err
+		return organization.Organization{}, err
 	}
 
 	org := organization.Organization{
@@ -217,7 +271,7 @@ func (s *organizationService) Create(
 	org.GenerateID()
 
 	// One transaction so a refused license template leaves no organization behind.
-	var result organization.CreateOrganizationResult
+	var created organization.Organization
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		template, templateErr := s.resolveLicenseTemplate(
 			txCtx, input.TenantID, input.ProductID, input.LicenseTemplateID,
@@ -226,7 +280,8 @@ func (s *organizationService) Create(
 			return templateErr
 		}
 
-		created, createErr := s.organizationRepo.Create(txCtx, org)
+		var createErr error
+		created, createErr = s.organizationRepo.Create(txCtx, org)
 		if createErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
@@ -247,21 +302,21 @@ func (s *organizationService) Create(
 				Msg("failed to license the new organization")
 			return licenseErr
 		}
+		created.License = instantiated
 
-		result = organization.CreateOrganizationResult{Organization: created, License: instantiated}
 		return nil
 	}); txErr != nil {
-		return organization.CreateOrganizationResult{}, txErr
+		return organization.Organization{}, txErr
 	}
 
 	logger.Info().
-		Str("organization_id", result.Organization.ID).
+		Str("organization_id", created.ID).
 		Str("product_id", input.ProductID).
 		Str("name", input.Name).
-		Bool("licensed", result.License != nil).
+		Bool("licensed", created.License != nil).
 		Msg("organization created")
 
-	return result, nil
+	return created, nil
 }
 
 func (s *organizationService) CreateWithMember(
@@ -327,7 +382,6 @@ func (s *organizationService) CreateWithMember(
 
 	var createdOrg organization.Organization
 	var createdMembership organization.Membership
-	var instantiatedLicense *license.OrganizationLicense
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
@@ -410,7 +464,7 @@ func (s *organizationService) CreateWithMember(
 				Msg("failed to license the new organization")
 			return licenseErr
 		}
-		instantiatedLicense = createdLicense
+		createdOrg.License = createdLicense
 
 		return nil
 	})
@@ -436,7 +490,6 @@ func (s *organizationService) CreateWithMember(
 		Organization: createdOrg,
 		Membership:   createdMembership,
 		WasExisting:  false,
-		License:      instantiatedLicense,
 	}, nil
 }
 
@@ -559,6 +612,13 @@ func (s *organizationService) Search(
 			Str("product_id", input.ProductID).
 			Err(err).
 			Msg("failed to search organizations")
+		return search.Result[organization.Organization]{}, err
+	}
+
+	result.Items, err = s.attachIncludes(
+		ctx, input.TenantID, input.ProductID, result.Items, input.Include,
+	)
+	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}
 

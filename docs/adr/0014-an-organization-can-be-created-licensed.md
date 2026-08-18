@@ -16,7 +16,13 @@ Anchor already collapses a second onboarding write into the create call: `foundi
 
 Whether the tier is still offered stays the license service's answer: an archived template is refused as `LICENSE_TEMPLATE_ARCHIVED` at 400, by the create route and the license route alike.
 
-The 201 response carries the license it stamped, under `license`. A read of an organization never carries one: the license route is where an organization's license is read, usage and all.
+The organization itself carries the license, in an optional `license` field on `ProductOrganizationResponse` and on the domain object behind it. The 201 response fills it in. A read fills it in when the caller asks with `?include=license`, following the `include` convention the user-organizations routes already use — a comma-separated array of an enum, `style: form`, `explode: false`.
+
+**Absent is not "has none".** A read that did not ask leaves the field out. Only a read that asked and came back without one says the organization holds no license.
+
+**The include carries no usage.** Usage is derived on every read of the license route and never stored. An organization read is not that route, so the included license is the record alone.
+
+**One statement per included resource, never one per organization.** A search including the license reads every license in the page with a single statement keyed by organization ID.
 
 **The `organization:create` scope covers it.** The license route demands `organization_license:create`, and the create route keeps demanding only `organization:create`. Scopes are enforced per operation from the contract, so demanding both would refuse every existing key that lacks the license scope, including on calls asking for no license. Creating an organization is already a product-administrative act, and the license it can stamp is a copy of a template the same product authored.
 

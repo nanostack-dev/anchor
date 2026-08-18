@@ -30,15 +30,26 @@ func (o Organizations) Create(name string) *OrgCreateBuilder {
 	return &OrgCreateBuilder{c: o.c, req: nanoclient.ProductOrganizationRequest{Name: name}}
 }
 
-// Get returns one organization by ID.
+// Get returns one organization by ID. Name a related resource to read it
+// alongside the organization:
+//
+//	org, err := c.Organizations().Get(ctx, orgID, nanoclient.OrganizationIncludeLicense)
 func (o Organizations) Get(
 	ctx context.Context,
 	organizationID string,
+	include ...nanoclient.OrganizationInclude,
 ) (*nanoclient.ProductOrganizationResponse, error) {
 	const op = "Organizations.Get"
 
+	params := &nanoclient.GetProductOrganizationParams{}
+	if len(include) > 0 {
+		params.Include = &include
+	}
+
 	return retrying(ctx, o.c, func(ctx context.Context) (*nanoclient.ProductOrganizationResponse, error) {
-		resp, err := o.c.api.GetProductOrganizationWithResponse(ctx, o.c.productID, organizationID)
+		resp, err := o.c.api.GetProductOrganizationWithResponse(
+			ctx, o.c.productID, organizationID, params,
+		)
 		if err != nil {
 			return nil, transportError(op, err)
 		}
@@ -117,6 +128,14 @@ func (b *OrgCreateBuilder) FoundingMember(productUserID, roleID string) *OrgCrea
 	return b
 }
 
+// License stamps the named license template onto the organization, in the same
+// transaction that creates it. A refused template leaves no organization
+// behind, and the created organization carries the license it was given.
+func (b *OrgCreateBuilder) License(templateID string) *OrgCreateBuilder {
+	b.req.License = &nanoclient.OrganizationLicenseInstantiateRequest{TemplateId: templateID}
+	return b
+}
+
 // Do creates the organization.
 func (b *OrgCreateBuilder) Do(ctx context.Context) (*nanoclient.ProductOrganizationResponse, error) {
 	const op = "Organizations.Create"
@@ -173,8 +192,16 @@ func (b *OrgUpdateBuilder) Do(ctx context.Context) (*nanoclient.ProductOrganizat
 // OrgSearch accumulates an organization query. Setter methods chain;
 // [OrgSearch.Do] runs it.
 type OrgSearch struct {
-	c   *Client
-	req nanoclient.ProductOrganizationSearchRequest
+	c       *Client
+	req     nanoclient.ProductOrganizationSearchRequest
+	include []nanoclient.OrganizationInclude
+}
+
+// Include names a related resource to read alongside every organization in the
+// page. It costs one more statement for the page, not one per organization.
+func (s *OrgSearch) Include(include ...nanoclient.OrganizationInclude) *OrgSearch {
+	s.include = append(s.include, include...)
+	return s
 }
 
 // Query sets a full-text search term matched against the searchable fields.
@@ -222,8 +249,15 @@ func (s *OrgSearch) Offset(offset int32) *OrgSearch {
 func (s *OrgSearch) Do(ctx context.Context) (*nanoclient.ProductOrganizationListResponse, error) {
 	const op = "Organizations.Search"
 
+	params := &nanoclient.SearchProductOrganizationsParams{}
+	if len(s.include) > 0 {
+		params.Include = &s.include
+	}
+
 	return retrying(ctx, s.c, func(ctx context.Context) (*nanoclient.ProductOrganizationListResponse, error) {
-		resp, err := s.c.api.SearchProductOrganizationsWithResponse(ctx, s.c.productID, s.req)
+		resp, err := s.c.api.SearchProductOrganizationsWithResponse(
+			ctx, s.c.productID, params, s.req,
+		)
 		if err != nil {
 			return nil, transportError(op, err)
 		}

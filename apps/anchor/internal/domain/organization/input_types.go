@@ -2,9 +2,14 @@ package organization
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-
-	"anchor/internal/domain/license"
 )
+
+// Include names a related resource a read can ask for alongside the
+// organization. A read that does not name one leaves the field nil, which says
+// nothing about whether the organization has it.
+type Include string
+
+const IncludeLicense Include = "license"
 
 type CreateOrganizationInput struct {
 	// Needed only for LicenseTemplateID, which is read tenant-scoped.
@@ -19,8 +24,12 @@ type CreateOrganizationInput struct {
 }
 
 type FindOrganizationInput struct {
+	// TenantID is required only when Include names a related resource read
+	// tenant-scoped. The organization itself is addressed by product.
+	TenantID       string `validate:"required_with=Include"`
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
+	Include        []Include
 }
 
 type UpdateOrganizationInput struct {
@@ -52,8 +61,12 @@ const (
 )
 
 type SearchProductOrganizationsInput struct {
+	// TenantID is required only when Include names a related resource read
+	// tenant-scoped. The organization itself is addressed by product.
+	TenantID  string                                                                        `validate:"required_with=Include"`
 	ProductID string                                                                        `validate:"required,notblank"`
 	Request   search.Request[SearchProductOrganizationFilter, SortFieldProductOrganization] `validate:"required"`
+	Include   []Include
 }
 
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization
@@ -80,11 +93,4 @@ type OrganizationWithMemberResult struct { //nolint:revive // name keeps service
 	Organization Organization
 	Membership   Membership
 	WasExisting  bool
-	// Nil when no license was asked for, and on the idempotent path.
-	License *license.OrganizationLicense
-}
-
-type CreateOrganizationResult struct {
-	Organization Organization
-	License      *license.OrganizationLicense
 }
