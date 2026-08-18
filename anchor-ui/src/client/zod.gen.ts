@@ -687,6 +687,10 @@ export const zFoundingMemberRequest = z.object({
     role_id: zKsuid
 });
 
+export const zOrganizationLicenseInstantiateRequest = z.object({
+    template_id: zKsuid
+});
+
 export const zProductOrganizationRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.optional(z.union([
@@ -694,7 +698,52 @@ export const zProductOrganizationRequest = z.object({
         z.null()
     ])),
     metadata: z.optional(zMetadata),
-    founding_member: z.optional(zFoundingMemberRequest)
+    founding_member: z.optional(zFoundingMemberRequest),
+    license: z.optional(zOrganizationLicenseInstantiateRequest)
+});
+
+/**
+ * A related resource an organization read can ask for.
+ */
+export const zOrganizationInclude = z.enum([
+    'license'
+]);
+
+export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
+
+/**
+ * A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
+ */
+export const zLicenseUsageStatus = z.enum([
+    'within_limit',
+    'at_limit',
+    'exceeded',
+    'stale'
+]);
+
+/**
+ * One limit field's latest reported usage and derived status, as read from an organization's license.
+ */
+export const zLicenseFieldUsageResponse = z.object({
+    limit: z.number(),
+    usage: z.optional(z.number()),
+    status: zLicenseUsageStatus,
+    last_reported_at: z.optional(z.iso.datetime())
+});
+
+/**
+ * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+ */
+export const zOrganizationLicenseResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    template_id: zKsuid,
+    instantiated_at: z.iso.datetime(),
+    values: zLicenseTemplateValues,
+    usage: z.optional(z.record(z.string(), zLicenseFieldUsageResponse)),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
 });
 
 export const zProductOrganizationResponse = z.object({
@@ -706,6 +755,7 @@ export const zProductOrganizationResponse = z.object({
         z.null()
     ])),
     metadata: z.optional(zMetadata),
+    license: z.optional(zOrganizationLicenseResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
@@ -1261,8 +1311,6 @@ export const zLicenseSchemaResponse = z.object({
     updated_at: z.iso.datetime()
 });
 
-export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
-
 /**
  * Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
  */
@@ -1299,50 +1347,11 @@ export const zLicenseTemplateListResponse = z.object({
     count: z.int()
 });
 
-export const zOrganizationLicenseInstantiateRequest = z.object({
-    template_id: zKsuid
-});
-
 /**
  * An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
  */
 export const zOrganizationLicenseAdjustRequest = z.object({
     values: zLicenseTemplateValues
-});
-
-/**
- * A limit field's derived state against its latest reported usage. Computed on every license read and never stored. `stale` means the field has never been reported against, so there is no current number to trust. Anchor advises with this value; it never gates on it.
- */
-export const zLicenseUsageStatus = z.enum([
-    'within_limit',
-    'at_limit',
-    'exceeded',
-    'stale'
-]);
-
-/**
- * One limit field's latest reported usage and derived status, as read from an organization's license.
- */
-export const zLicenseFieldUsageResponse = z.object({
-    limit: z.number(),
-    usage: z.optional(z.number()),
-    status: zLicenseUsageStatus,
-    last_reported_at: z.optional(z.iso.datetime())
-});
-
-/**
- * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
- */
-export const zOrganizationLicenseResponse = z.object({
-    id: zKsuid,
-    product_id: zKsuid,
-    organization_id: zKsuid,
-    template_id: zKsuid,
-    instantiated_at: z.iso.datetime(),
-    values: zLicenseTemplateValues,
-    usage: z.optional(z.record(z.string(), zLicenseFieldUsageResponse)),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
 });
 
 /**
@@ -1552,6 +1561,11 @@ export const zPlatformUserIdParameter = zKsuid;
  * The KSUID of the product.
  */
 export const zProductIdParameter = zKsuid;
+
+/**
+ * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ */
+export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 
 /**
  * The KSUID of the organization.
@@ -2384,7 +2398,9 @@ export const zSearchProductOrganizationsData = z.object({
     path: z.object({
         product_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include: z.optional(z.array(zOrganizationInclude))
+    }))
 });
 
 /**
@@ -2412,7 +2428,9 @@ export const zGetProductOrganizationData = z.object({
         product_id: zKsuid,
         organization_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include: z.optional(z.array(zOrganizationInclude))
+    }))
 });
 
 /**

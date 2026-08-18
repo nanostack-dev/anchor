@@ -384,6 +384,21 @@ func (e OrganizationAPIKeyStatus) Valid() bool {
 	}
 }
 
+// Defines values for OrganizationInclude.
+const (
+	OrganizationIncludeLicense OrganizationInclude = "license"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationInclude enum.
+func (e OrganizationInclude) Valid() bool {
+	switch e {
+	case OrganizationIncludeLicense:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrganizationLicenseSortField.
 const (
 	InstantiatedAt   OrganizationLicenseSortField = "instantiated_at"
@@ -1773,6 +1788,9 @@ type OrganizationFilter struct {
 	Names []string `json:"names,omitempty"`
 }
 
+// OrganizationInclude A related resource an organization read can ask for.
+type OrganizationInclude string
+
 // OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
 type OrganizationLicenseAdjustRequest struct {
 	// Values Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
@@ -2497,6 +2515,9 @@ type ProductOrganizationRequest struct {
 	// FoundingMember Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
 	FoundingMember *FoundingMemberRequest `json:"founding_member,omitempty"`
 
+	// License Optional license to stamp onto the new organization. The template is read and then copied in the same transaction as the organization, so a template this product does not have is refused as a bad request before anything is written, and a template refused later leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+	License *OrganizationLicenseInstantiateRequest `json:"license,omitempty"`
+
 	// Metadata Optional key-value metadata for the organization.
 	//
 	// Examples: {"billing_ref":"cust_abc123","region":"us-east-1","sla_level":"gold"}
@@ -2522,6 +2543,9 @@ type ProductOrganizationResponse struct {
 	//
 	// Examples: org_3iXYZ...
 	Id Ksuid `json:"id"`
+
+	// License The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
+	License *OrganizationLicenseResponse `json:"license,omitempty"`
 
 	// Metadata Key-value metadata for the organization.
 	//
@@ -3339,6 +3363,9 @@ type OrganizationAPIKeyIdParameter = Ksuid
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 type OrganizationIdParameter = Ksuid
 
+// OrganizationIncludeParameter defines model for OrganizationIncludeParameter.
+type OrganizationIncludeParameter = []OrganizationInclude
+
 // PlatformInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: pinv_9sTUV...
@@ -3419,6 +3446,18 @@ type IngestWebhookJSONBody map[string]interface{}
 type ListLicenseTemplatesParams struct {
 	// Status Return only templates with this status. Omit for all of them.
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
+type SearchProductOrganizationsParams struct {
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetProductOrganizationParams defines parameters for GetProductOrganization.
+type GetProductOrganizationParams struct {
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetOrganizationLicenseHistoryParams defines parameters for GetOrganizationLicenseHistory.

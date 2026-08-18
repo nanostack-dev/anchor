@@ -1038,6 +1038,9 @@ type OrganizationFilter struct {
 	Names []string `json:"names,omitempty"`
 }
 
+// OrganizationInclude A related resource an organization read can ask for.
+type OrganizationInclude = organization.Include
+
 // OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
 type OrganizationLicenseAdjustRequest struct {
 	// Values Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
@@ -1744,6 +1747,9 @@ type ProductOrganizationRequest struct {
 	// FoundingMember Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
 	FoundingMember *FoundingMemberRequest `json:"founding_member,omitempty"`
 
+	// License Optional license to stamp onto the new organization. The template is read and then copied in the same transaction as the organization, so a template this product does not have is refused as a bad request before anything is written, and a template refused later leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+	License *OrganizationLicenseInstantiateRequest `json:"license,omitempty"`
+
 	// Metadata Optional key-value metadata for the organization.
 	//
 	// Examples: {"billing_ref":"cust_abc123","region":"us-east-1","sla_level":"gold"}
@@ -1769,6 +1775,9 @@ type ProductOrganizationResponse struct {
 	//
 	// Examples: org_3iXYZ...
 	Id Ksuid `json:"id"`
+
+	// License The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
+	License *OrganizationLicenseResponse `json:"license,omitempty"`
 
 	// Metadata Key-value metadata for the organization.
 	//
@@ -2565,6 +2574,9 @@ type OrganizationAPIKeyIdParameter = Ksuid
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 type OrganizationIdParameter = Ksuid
 
+// OrganizationIncludeParameter defines model for OrganizationIncludeParameter.
+type OrganizationIncludeParameter = []OrganizationInclude
+
 // PlatformInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: pinv_9sTUV...
@@ -2645,6 +2657,18 @@ type IngestWebhookJSONBody map[string]interface{}
 type ListLicenseTemplatesParams struct {
 	// Status Return only templates with this status. Omit for all of them.
 	Status *LicenseTemplateStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
+type SearchProductOrganizationsParams struct {
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// GetProductOrganizationParams defines parameters for GetProductOrganization.
+type GetProductOrganizationParams struct {
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetOrganizationLicenseHistoryParams defines parameters for GetOrganizationLicenseHistory.
@@ -3233,13 +3257,13 @@ type ServerInterface interface {
 	CreateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// SearchProductOrganizations Search Product Organizations
 	// (POST /v1/products/{product_id}/organizations/search)
-	SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params SearchProductOrganizationsParams)
 	// DeleteProductOrganization Delete Product Organization
 	// (DELETE /v1/products/{product_id}/organizations/{organization_id})
 	DeleteProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// GetProductOrganization Get Product Organization
 	// (GET /v1/products/{product_id}/organizations/{organization_id})
-	GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetProductOrganizationParams)
 	// UpdateProductOrganization Update Product Organization
 	// (PUT /v1/products/{product_id}/organizations/{organization_id})
 	UpdateProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3716,7 +3740,7 @@ func (_ Unimplemented) CreateProductOrganization(w http.ResponseWriter, r *http.
 
 // SearchProductOrganizations Search Product Organizations
 // (POST /v1/products/{product_id}/organizations/search)
-func (_ Unimplemented) SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+func (_ Unimplemented) SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params SearchProductOrganizationsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3728,7 +3752,7 @@ func (_ Unimplemented) DeleteProductOrganization(w http.ResponseWriter, r *http.
 
 // GetProductOrganization Get Product Organization
 // (GET /v1/products/{product_id}/organizations/{organization_id})
-func (_ Unimplemented) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+func (_ Unimplemented) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetProductOrganizationParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5666,8 +5690,24 @@ func (siw *ServerInterfaceWrapper) SearchProductOrganizations(w http.ResponseWri
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchProductOrganizationsParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SearchProductOrganizations(w, r, productId)
+		siw.Handler.SearchProductOrganizations(w, r, productId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5736,8 +5776,24 @@ func (siw *ServerInterfaceWrapper) GetProductOrganization(w http.ResponseWriter,
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProductOrganizationParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProductOrganization(w, r, productId, organizationId)
+		siw.Handler.GetProductOrganization(w, r, productId, organizationId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -10642,6 +10698,7 @@ func (response CreateProductOrganization403JSONResponse) VisitCreateProductOrgan
 
 type SearchProductOrganizationsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
+	Params    SearchProductOrganizationsParams
 	Body      *SearchProductOrganizationsJSONRequestBody
 }
 
@@ -10760,6 +10817,7 @@ func (response DeleteProductOrganization404Response) VisitDeleteProductOrganizat
 type GetProductOrganizationRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Params         GetProductOrganizationParams
 }
 
 type GetProductOrganizationResponseObject interface {
@@ -15321,10 +15379,11 @@ func (sh *strictHandler) CreateProductOrganization(w http.ResponseWriter, r *htt
 }
 
 // SearchProductOrganizations operation middleware
-func (sh *strictHandler) SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+func (sh *strictHandler) SearchProductOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params SearchProductOrganizationsParams) {
 	var request SearchProductOrganizationsRequestObject
 
 	request.ProductId = productId
+	request.Params = params
 
 	var body SearchProductOrganizationsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -15381,11 +15440,12 @@ func (sh *strictHandler) DeleteProductOrganization(w http.ResponseWriter, r *htt
 }
 
 // GetProductOrganization operation middleware
-func (sh *strictHandler) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+func (sh *strictHandler) GetProductOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetProductOrganizationParams) {
 	var request GetProductOrganizationRequestObject
 
 	request.ProductId = productId
 	request.OrganizationId = organizationId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProductOrganization(ctx, request.(GetProductOrganizationRequestObject))

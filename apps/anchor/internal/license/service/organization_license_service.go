@@ -53,6 +53,8 @@ var (
 // service holds no schema repository, so an adjustment cannot drift from what a
 // template write is held to.
 type OrganizationLicenseService interface {
+	// Instantiate joins the caller's transaction when ctx carries one, so an
+	// Organization and its first license can be written as one unit.
 	Instantiate(
 		ctx context.Context, in license.InstantiateLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -62,6 +64,13 @@ type OrganizationLicenseService interface {
 	GetLicense(
 		ctx context.Context, in license.GetLicenseInput,
 	) (*license.OrganizationLicenseRead, error)
+	// ListByOrganizations reads many Organizations' licenses at once, keyed by
+	// organization ID, for a caller composing them onto something else. It
+	// carries no usage and does not go through the per-organization cache — one
+	// statement rather than a cache lookup per organization.
+	ListByOrganizations(
+		ctx context.Context, in license.ListLicensesByOrganizationsInput,
+	) (map[string]license.OrganizationLicense, error)
 	AdjustValues(
 		ctx context.Context, in license.AdjustLicenseInput,
 	) (license.OrganizationLicense, error)
@@ -116,40 +125,40 @@ func (s *organizationLicenseService) Instantiate(
 		return license.OrganizationLicense{}, err
 	}
 
-	template, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{
-		TenantID:   in.TenantID,
-		ProductID:  in.ProductID,
-		TemplateID: in.TemplateID,
-	})
-	if err != nil {
-		return license.OrganizationLicense{}, err
-	}
-	if template == nil {
-		return license.OrganizationLicense{}, ErrLicenseTemplateNotFound
-	}
-	// A withdrawn tier cannot be sold to anyone else. The organizations already
-	// on it keep what they hold.
-	if template.IsArchived() {
-		return license.OrganizationLicense{}, ErrLicenseTemplateArchived
-	}
-
-	// The copied values are deliberately not re-validated: a schema tightened
-	// since the template was last written would otherwise block onboarding onto
-	// a tier still on sale, and Anchor validates but never gates. See
-	// docs/adr/0009-every-license-field-is-mandatory.md.
-	instantiatedAt := time.Now()
-	instantiated := license.OrganizationLicense{
-		PlatformTenantID: in.TenantID,
-		ProductID:        in.ProductID,
-		OrganizationID:   in.OrganizationID,
-		TemplateID:       template.ID,
-		InstantiatedAt:   instantiatedAt,
-		Values:           template.Values,
-	}
-	instantiated.GenerateID()
-
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		template, templateErr := s.templates.GetTemplate(txCtx, license.GetTemplateInput{
+			TenantID:   in.TenantID,
+			ProductID:  in.ProductID,
+			TemplateID: in.TemplateID,
+		})
+		if templateErr != nil {
+			return templateErr
+		}
+		if template == nil {
+			return ErrLicenseTemplateNotFound
+		}
+		// A withdrawn tier cannot be sold to anyone else. The organizations
+		// already on it keep what they hold.
+		if template.IsArchived() {
+			return ErrLicenseTemplateArchived
+		}
+
+		// The copied values are deliberately not re-validated: a schema tightened
+		// since the template was last written would otherwise block onboarding onto
+		// a tier still on sale, and Anchor validates but never gates. See
+		// docs/adr/0009-every-license-field-is-mandatory.md.
+		instantiatedAt := time.Now()
+		instantiated := license.OrganizationLicense{
+			PlatformTenantID: in.TenantID,
+			ProductID:        in.ProductID,
+			OrganizationID:   in.OrganizationID,
+			TemplateID:       template.ID,
+			InstantiatedAt:   instantiatedAt,
+			Values:           template.Values,
+		}
+		instantiated.GenerateID()
+
 		var createErr error
 		created, createErr = s.licenseRepo.Create(txCtx, instantiated)
 		if createErr != nil {
@@ -164,6 +173,7 @@ func (s *organizationLicenseService) Instantiate(
 			}
 			return createErr
 		}
+
 		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
 			license.NewInstantiationChange(created, instantiatedAt),
 		})
@@ -174,7 +184,9 @@ func (s *organizationLicenseService) Instantiate(
 	// Nothing can be cached before the license exists — a not-found read is
 	// never cached, see cache.Cache.GetOrElse — so this is a no-op today. It
 	// stays here so every license write follows the same eviction discipline,
-	// rather than relying on that invariant to hold forever.
+	// rather than relying on that invariant to hold forever. Inside a caller's
+	// transaction it runs before their commit, the harmless direction: a read
+	// racing them cannot see the row and so caches nothing.
 	s.licenses.evict(ctx, in.ProductID, in.OrganizationID)
 
 	return created, nil
@@ -210,6 +222,16 @@ func (s *organizationLicenseService) GetLicense(
 		return nil, err
 	}
 	return &read, nil
+}
+
+func (s *organizationLicenseService) ListByOrganizations(
+	ctx context.Context, in license.ListLicensesByOrganizationsInput,
+) (map[string]license.OrganizationLicense, error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return nil, err
+	}
+
+	return s.licenseRepo.FindByOrganizations(ctx, in.TenantID, in.ProductID, in.OrganizationIDs)
 }
 
 // withUsage composes the cached license record with every limit field's

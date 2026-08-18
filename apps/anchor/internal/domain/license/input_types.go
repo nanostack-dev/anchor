@@ -119,6 +119,14 @@ type InstantiateLicenseInput struct {
 	TemplateID     string `validate:"required,notblank"`
 }
 
+// ListLicensesByOrganizationsInput reads the licenses of many Organizations at
+// once, for a caller composing them onto something else.
+type ListLicensesByOrganizationsInput struct {
+	TenantID        string `validate:"required,notblank"`
+	ProductID       string `validate:"required,notblank"`
+	OrganizationIDs []string
+}
+
 // GetLicenseInput is the request shape for reading an Organization's license,
 // and for diffing it against the template it was instantiated from.
 type GetLicenseInput struct {

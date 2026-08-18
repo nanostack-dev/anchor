@@ -75,15 +75,10 @@ func uniqueFieldName() string {
 // is not a platform bearer route.
 func createOrganization(t *testing.T, product *itdsl.ProductContext) string {
 	t.Helper()
-	client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization:create"})
-	resp, err := client.CreateProductOrganizationWithResponse(
-		context.Background(),
-		product.ProductID,
-		ct.CreateProductOrganizationJSONRequestBody{Name: "org_" + ids.MustNew("ct")},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
-	return resp.JSON201.Id
+	return product.Organizations("organization:create", "organization:read").
+		Create(ct.CreateProductOrganizationJSONRequestBody{
+			Name: itdsl.UniqueOrganizationName(),
+		}).Id
 }
 
 // assertValidationRule names the validate tag that refused a write. The tag

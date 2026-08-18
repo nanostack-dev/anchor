@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/security"
 )
 
 // mapMetadataToResponse decodes stored organization metadata for the API
@@ -36,7 +37,7 @@ func mapMetadataToInput(metadata *Metadata) map[string]any {
 }
 
 func mapOrganizationToResponse(org organization.Organization) ProductOrganizationResponse {
-	return ProductOrganizationResponse{
+	response := ProductOrganizationResponse{
 		Id:          org.ID,
 		ProductId:   org.ProductID,
 		Name:        org.Name,
@@ -45,19 +46,55 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 		CreatedAt:   org.CreatedAt,
 		UpdatedAt:   org.UpdatedAt,
 	}
+	if org.License != nil {
+		organizationLicense := mapOrganizationLicenseToResponse(*org.License)
+		response.License = &organizationLicense
+	}
+	return response
+}
+
+// resolveIncludes reads the tenant only when the caller named a related
+// resource: an include is read tenant-scoped, an organization is not.
+func resolveIncludes(
+	ctx context.Context, include *OrganizationIncludeParameter,
+) (string, []organization.Include, error) {
+	if include == nil || len(*include) == 0 {
+		return "", nil, nil
+	}
+
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return tenantID, *include, nil
 }
 
 func (s *AnchorAPI) CreateProductOrganization(
 	ctx context.Context, request CreateProductOrganizationRequestObject,
 ) (CreateProductOrganizationResponseObject, error) {
+	// Read only for a license: a template is addressed tenant-scoped, an
+	// organization is not.
+	var tenantID string
+	var licenseTemplateID *string
+	if request.Body.License != nil {
+		resolved, err := security.GetTenantID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tenantID = resolved
+		licenseTemplateID = &request.Body.License.TemplateId
+	}
+
 	if request.Body.FoundingMember != nil {
 		input := organization.CreateOrganizationWithMemberInput{
-			ProductID:     request.ProductId,
-			Name:          request.Body.Name,
-			Description:   request.Body.Description,
-			Metadata:      mapMetadataToInput(request.Body.Metadata),
-			ProductUserID: request.Body.FoundingMember.ProductUserId,
-			RoleID:        request.Body.FoundingMember.RoleId,
+			TenantID:          tenantID,
+			ProductID:         request.ProductId,
+			Name:              request.Body.Name,
+			Description:       request.Body.Description,
+			Metadata:          mapMetadataToInput(request.Body.Metadata),
+			ProductUserID:     request.Body.FoundingMember.ProductUserId,
+			RoleID:            request.Body.FoundingMember.RoleId,
+			LicenseTemplateID: licenseTemplateID,
 		}
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
@@ -70,23 +107,27 @@ func (s *AnchorAPI) CreateProductOrganization(
 			return nil, err
 		}
 
-		return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(res.Organization)), nil
+		return CreateProductOrganization201JSONResponse(
+			mapOrganizationToResponse(res.Organization),
+		), nil
 	}
 
 	input := organization.CreateOrganizationInput{
-		ProductID:   request.ProductId,
-		Name:        request.Body.Name,
-		Description: request.Body.Description,
-		Metadata:    mapMetadataToInput(request.Body.Metadata),
+		TenantID:          tenantID,
+		ProductID:         request.ProductId,
+		Name:              request.Body.Name,
+		Description:       request.Body.Description,
+		Metadata:          mapMetadataToInput(request.Body.Metadata),
+		LicenseTemplateID: licenseTemplateID,
 	}
 
-	createdOrganization, err := s.OrganizationService.Create(ctx, input)
+	created, err := s.OrganizationService.Create(ctx, input)
 	if err != nil {
 		logAPIError(s.logger, err).Msg("failed to create organization")
 		return nil, err
 	}
 
-	return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(createdOrganization)), nil
+	return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(created)), nil
 }
 
 func (s *AnchorAPI) SearchProductOrganizations(
@@ -99,9 +140,16 @@ func (s *AnchorAPI) SearchProductOrganizations(
 
 	searchRequest := mapToSearchProductOrganizationInput(searchReqBody)
 
+	tenantID, includes, err := resolveIncludes(ctx, request.Params.Include)
+	if err != nil {
+		return nil, err
+	}
+
 	input := organization.SearchProductOrganizationsInput{
+		TenantID:  tenantID,
 		ProductID: request.ProductId,
 		Request:   searchRequest,
+		Include:   includes,
 	}
 
 	result, err := s.OrganizationService.Search(ctx, input)
@@ -120,9 +168,16 @@ func (s *AnchorAPI) SearchProductOrganizations(
 func (s *AnchorAPI) GetProductOrganization(
 	ctx context.Context, request GetProductOrganizationRequestObject,
 ) (GetProductOrganizationResponseObject, error) {
+	tenantID, includes, err := resolveIncludes(ctx, request.Params.Include)
+	if err != nil {
+		return nil, err
+	}
+
 	org, err := s.OrganizationService.Find(ctx, organization.FindOrganizationInput{
+		TenantID:       tenantID,
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
+		Include:        includes,
 	})
 	if err != nil {
 		logAPIError(s.logger, err).

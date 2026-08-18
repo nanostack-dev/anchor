@@ -57,6 +57,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(10)),
@@ -99,6 +100,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Filter: &ct.OrganizationFilter{
 						Ids: []ct.Ksuid{org1.JSON201.Id, org2.JSON201.Id},
@@ -133,6 +135,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Filter: &ct.OrganizationFilter{
 						Names: []string{"Engineering Team", "Sales Team"},
@@ -167,6 +170,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					FullTextSearch: new("Team"),
 					Pagination: &ct.PaginationRequest{
@@ -197,6 +201,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
@@ -236,6 +241,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response1, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
@@ -252,6 +258,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response2, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
 					SortDirection: ptr.Ptr(ct.ASC),
@@ -293,6 +300,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Filter: &ct.OrganizationFilter{
 						Names: []string{"Non-existent Organization"},
@@ -320,6 +328,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(-1)), // Invalid limit
@@ -345,6 +354,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				nonExistentProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(10)),
@@ -372,6 +382,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 			response, err := apiKeyClientWithBadPermissions.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
+				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(10)),
