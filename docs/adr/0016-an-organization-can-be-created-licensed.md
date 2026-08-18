@@ -1,4 +1,4 @@
-# ADR-0014: An organization can be created licensed, on the organization scope
+# ADR-0016: An organization can be created licensed, on the organization scope
 
 **Status:** Accepted
 
