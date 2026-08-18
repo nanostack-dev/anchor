@@ -1149,7 +1149,21 @@ export type ProductOrganizationRequest = {
      * Optional founding member assignment. When provided, organization creation and membership assignment happen atomically in one transaction.
      */
     founding_member?: FoundingMemberRequest;
+    /**
+     * Optional license to stamp onto the new organization. The template is read and then copied in the same transaction as the organization, so a template this product does not have is refused as a bad request before anything is written, and a template refused later leaves no organization behind. The copy is what the organization holds from then on, exactly as it is when the license route stamps it. Ignored when `founding_member` names a user who already belongs to an organization, because that call creates nothing.
+     */
+    license?: OrganizationLicenseInstantiateRequest;
 };
+
+/**
+ * A related resource an organization read can ask for.
+ */
+export enum OrganizationInclude {
+    /**
+     * OrganizationIncludeLicense
+     */
+    ORGANIZATION_INCLUDE_LICENSE = 'license'
+}
 
 export type FoundingMemberRequest = {
     /**
@@ -1183,6 +1197,10 @@ export type ProductOrganizationResponse = {
      * Key-value metadata for the organization.
      */
     metadata?: Metadata;
+    /**
+     * The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
+     */
+    license?: OrganizationLicenseResponse;
     /**
      * Timestamp when the organization was created.
      */
@@ -2342,6 +2360,11 @@ export type PlatformUserIdParameter = Ksuid;
  * The KSUID of the product.
  */
 export type ProductIdParameter = Ksuid;
+
+/**
+ * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ */
+export type OrganizationIncludeParameter = Array<OrganizationInclude>;
 
 /**
  * The KSUID of the organization.
@@ -4790,7 +4813,12 @@ export type SearchProductOrganizationsData = {
          */
         product_id: Ksuid;
     };
-    query?: never;
+    query?: {
+        /**
+         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         */
+        include?: Array<OrganizationInclude>;
+    };
     url: '/v1/products/{product_id}/organizations/search';
 };
 
@@ -4874,7 +4902,12 @@ export type GetProductOrganizationData = {
          */
         organization_id: Ksuid;
     };
-    query?: never;
+    query?: {
+        /**
+         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         */
+        include?: Array<OrganizationInclude>;
+    };
     url: '/v1/products/{product_id}/organizations/{organization_id}';
 };
 

@@ -38,6 +38,7 @@ func TestProductOrganizationGet(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				organizationID,
+				nil,
 			)
 
 			require.NoError(t, err, "get organization request should not error")
@@ -64,6 +65,7 @@ func TestProductOrganizationGet(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				ids.MustNew("org"),
+				nil,
 			)
 
 			require.NoError(t, err, "get non-existent organization should not error")
@@ -96,6 +98,7 @@ func TestProductOrganizationGet(t *testing.T) {
 				ctx,
 				testProduct.ProductID,
 				organizationID,
+				nil,
 			)
 
 			require.NoError(t, err, "get organization request should not error")

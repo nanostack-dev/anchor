@@ -1155,6 +1155,12 @@ export const introspectOrganizationApiKeyMutation = (options?: Partial<Options<I
  * Create Product Organization
  * Creates a new organization record associated with the specified Product.
  * Optionally accepts `founding_member` to atomically add an initial member with role.
+ * Optionally accepts `license` to stamp a license template onto the new organization
+ * in the same transaction; the `organization:create` scope covers it, and a refused
+ * template leaves no organization behind. The template is read before anything is
+ * written, so a template this product does not have is a 400
+ * (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+ * a 404 for the organization collection the call addressed.
  * Requires an API Key with `product_organization:create` permission or Platform Bearer token.
  */
 export const createProductOrganizationMutation = (options?: Partial<Options<CreateProductOrganizationData>>): UseMutationOptions<CreateProductOrganizationResponse, CreateProductOrganizationError, Options<CreateProductOrganizationData>> => {
@@ -1176,7 +1182,9 @@ export const searchProductOrganizationsQueryKey = (options: Options<SearchProduc
 /**
  * Search Product Organizations
  * Retrieves a list of organizations associated with the specified Product,
- * allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+ * allowing filtering and pagination. Pass `include` to read a related
+ * resource alongside every organization in the page.
+ * Requires API Key with `product_organization:read` permission or Platform Bearer token.
  */
 export const searchProductOrganizationsOptions = (options: Options<SearchProductOrganizationsData>) => {
     return queryOptions({
@@ -1219,6 +1227,7 @@ export const getProductOrganizationQueryKey = (options: Options<GetProductOrgani
 /**
  * Get Product Organization
  * Retrieves a single organization within the specified Product.
+ * Pass `include` to read a related resource alongside it.
  * Only API Key authentication is supported (no bearer token access).
  * Requires an API Key with `organization:read` permission.
  */

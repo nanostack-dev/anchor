@@ -82,6 +82,23 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         examples: ["prod_2iABC..."]
+    OrganizationIncludeParameter:
+      name: include
+      in: query
+      required: false
+      description: >-
+        Related resources to read alongside each organization, comma separated —
+        `?include=license`. A resource not named is left out of the response
+        entirely, which says nothing about whether the organization has it. Each
+        named resource is read for the whole response at once, so including one
+        costs one more statement, not one per organization.
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/OrganizationInclude"
+      style: form
+      explode: false
+      example: ["license"]
     OrganizationIdParameter:
       name: organization_id
       in: path
@@ -1951,8 +1968,27 @@ components:
           description: >-
             Optional founding member assignment. When provided, organization creation
             and membership assignment happen atomically in one transaction.
+        license:
+          $ref: "#/components/schemas/OrganizationLicenseInstantiateRequest"
+          description: >-
+            Optional license to stamp onto the new organization. The template is
+            read and then copied in the same transaction as the organization, so
+            a template this product does not have is refused as a bad request
+            before anything is written, and a template refused later leaves no
+            organization behind. The copy is what the organization holds from
+            then on, exactly as it is when the license route stamps it. Ignored
+            when `founding_member` names a user who already belongs to an
+            organization, because that call creates nothing.
       required:
       - name
+    OrganizationInclude:
+      type: string
+      description: A related resource an organization read can ask for.
+      enum: [license]
+      x-enum-varnames: [OrganizationIncludeLicense]
+      x-go-type: organization.Include
+      x-go-type-import:
+        path: anchor/internal/domain/organization
     FoundingMemberRequest:
       type: object
       properties:
@@ -1990,6 +2026,14 @@ components:
         metadata:
           $ref: "#/components/schemas/Metadata"
           description: Key-value metadata for the organization.
+        license:
+          $ref: "#/components/schemas/OrganizationLicenseResponse"
+          description: >-
+            The organization's license. Present on the response to a create call
+            that asked for one, and on a read passing `include=license`. Absent
+            otherwise, which says nothing about whether the organization holds
+            one. It never carries `usage` — the license route is where usage is
+            computed.
         created_at:
           type: string
           format: date-time
@@ -5536,6 +5580,12 @@ paths:
       description: |-
         Creates a new organization record associated with the specified Product.
         Optionally accepts `founding_member` to atomically add an initial member with role.
+        Optionally accepts `license` to stamp a license template onto the new organization
+        in the same transaction; the `organization:create` scope covers it, and a refused
+        template leaves no organization behind. The template is read before anything is
+        written, so a template this product does not have is a 400
+        (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+        a 404 for the organization collection the call addressed.
         Requires an API Key with `product_organization:create` permission or Platform Bearer token.
       operationId: createProductOrganization
       tags: [ProductOrganization]
@@ -5565,10 +5615,13 @@ paths:
     post:
       parameters:
       - $ref: "#/components/parameters/ProductIdParameter"
+      - $ref: "#/components/parameters/OrganizationIncludeParameter"
       summary: Search Product Organizations
       description: |-
         Retrieves a list of organizations associated with the specified Product,
-        allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+        allowing filtering and pagination. Pass `include` to read a related
+        resource alongside every organization in the page.
+        Requires API Key with `product_organization:read` permission or Platform Bearer token.
       operationId: searchProductOrganizations
       tags: [ProductOrganization]
       security:
@@ -5602,10 +5655,13 @@ paths:
       summary: Get Product Organization
       description: |-
         Retrieves a single organization within the specified Product.
+        Pass `include` to read a related resource alongside it.
         Only API Key authentication is supported (no bearer token access).
         Requires an API Key with `organization:read` permission.
       operationId: getProductOrganization
       tags: [ProductOrganization]
+      parameters:
+      - $ref: "#/components/parameters/OrganizationIncludeParameter"
       security:
       - productApiKeyAuth: ["organization:read"]
       responses:

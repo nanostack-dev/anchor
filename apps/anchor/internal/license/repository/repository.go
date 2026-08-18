@@ -115,6 +115,12 @@ type OrganizationLicenseRepository interface {
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
 	) (*license.OrganizationLicense, error)
+	// FindByOrganizations returns the licenses of the named Organizations,
+	// keyed by organization ID, for a caller reading many at once. An
+	// Organization holding no license has no entry.
+	FindByOrganizations(
+		ctx context.Context, tenantID string, productID string, organizationIDs []string,
+	) (map[string]license.OrganizationLicense, error)
 	// FindByOrganizationForUpdate is FindByOrganization plus FOR UPDATE.
 	// Call it inside a transaction so two adjustments cannot share one previous set.
 	FindByOrganizationForUpdate(

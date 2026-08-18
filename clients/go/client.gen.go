@@ -798,6 +798,12 @@ type ClientInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type.
@@ -809,6 +815,12 @@ type ClientInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type.
@@ -819,22 +831,26 @@ type ClientInterface interface {
 	// SearchProductOrganizationsWithBody Search Product Organizations
 	//
 	// Retrieves a list of organizations associated with the specified Product,
-	// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// allowing filtering and pagination. Pass `include` to read a related
+	// resource alongside every organization in the page.
+	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-	SearchProductOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProductOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProductOrganizations Search Product Organizations
 	//
 	// Retrieves a list of organizations associated with the specified Product,
-	// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// allowing filtering and pagination. Pass `include` to read a related
+	// resource alongside every organization in the page.
+	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-	SearchProductOrganizations(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProductOrganizations(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteProductOrganization Delete Product Organization
 	//
@@ -849,11 +865,12 @@ type ClientInterface interface {
 	// GetProductOrganization Get Product Organization
 	//
 	// Retrieves a single organization within the specified Product.
+	// Pass `include` to read a related resource alongside it.
 	// Only API Key authentication is supported (no bearer token access).
 	// Requires an API Key with `organization:read` permission.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id} (the `GetProductOrganization` operationId).
-	GetProductOrganization(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProductOrganization(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetProductOrganizationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProductOrganizationWithBody Update Product Organization
 	//
@@ -2980,6 +2997,12 @@ func (c *Client) ArchiveLicenseTemplate(ctx context.Context, productId ProductId
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type.
@@ -3001,6 +3024,12 @@ func (c *Client) CreateProductOrganizationWithBody(ctx context.Context, productI
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type.
@@ -3021,13 +3050,15 @@ func (c *Client) CreateProductOrganization(ctx context.Context, productId Produc
 // SearchProductOrganizationsWithBody Search Product Organizations
 //
 // Retrieves a list of organizations associated with the specified Product,
-// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// allowing filtering and pagination. Pass `include` to read a related
+// resource alongside every organization in the page.
+// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-func (c *Client) SearchProductOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchProductOrganizationsRequestWithBody(c.Server, productId, contentType, body)
+func (c *Client) SearchProductOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductOrganizationsRequestWithBody(c.Server, productId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3041,13 +3072,15 @@ func (c *Client) SearchProductOrganizationsWithBody(ctx context.Context, product
 // SearchProductOrganizations Search Product Organizations
 //
 // Retrieves a list of organizations associated with the specified Product,
-// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// allowing filtering and pagination. Pass `include` to read a related
+// resource alongside every organization in the page.
+// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-func (c *Client) SearchProductOrganizations(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchProductOrganizationsRequest(c.Server, productId, body)
+func (c *Client) SearchProductOrganizations(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductOrganizationsRequest(c.Server, productId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3081,12 +3114,13 @@ func (c *Client) DeleteProductOrganization(ctx context.Context, productId Produc
 // GetProductOrganization Get Product Organization
 //
 // Retrieves a single organization within the specified Product.
+// Pass `include` to read a related resource alongside it.
 // Only API Key authentication is supported (no bearer token access).
 // Requires an API Key with `organization:read` permission.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id} (the `GetProductOrganization` operationId).
-func (c *Client) GetProductOrganization(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProductOrganizationRequest(c.Server, productId, organizationId)
+func (c *Client) GetProductOrganization(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetProductOrganizationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProductOrganizationRequest(c.Server, productId, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6865,18 +6899,18 @@ func NewCreateProductOrganizationRequestWithBody(server string, productId Produc
 }
 
 // NewSearchProductOrganizationsRequest calls the generic SearchProductOrganizations builder with application/json body
-func NewSearchProductOrganizationsRequest(server string, productId ProductIdParameter, body SearchProductOrganizationsJSONRequestBody) (*http.Request, error) {
+func NewSearchProductOrganizationsRequest(server string, productId ProductIdParameter, params *SearchProductOrganizationsParams, body SearchProductOrganizationsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchProductOrganizationsRequestWithBody(server, productId, "application/json", bodyReader)
+	return NewSearchProductOrganizationsRequestWithBody(server, productId, params, "application/json", bodyReader)
 }
 
 // NewSearchProductOrganizationsRequestWithBody constructs an http.Request for the SearchProductOrganizations method, with any body, and a specified content type
-func NewSearchProductOrganizationsRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchProductOrganizationsRequestWithBody(server string, productId ProductIdParameter, params *SearchProductOrganizationsParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6899,6 +6933,33 @@ func NewSearchProductOrganizationsRequestWithBody(server string, productId Produ
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
@@ -6953,7 +7014,7 @@ func NewDeleteProductOrganizationRequest(server string, productId ProductIdParam
 }
 
 // NewGetProductOrganizationRequest constructs an http.Request for the GetProductOrganization method
-func NewGetProductOrganizationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter) (*http.Request, error) {
+func NewGetProductOrganizationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetProductOrganizationParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6983,6 +7044,33 @@ func NewGetProductOrganizationRequest(server string, productId ProductIdParamete
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -10140,6 +10228,12 @@ type ClientWithResponsesInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -10151,6 +10245,12 @@ type ClientWithResponsesInterface interface {
 	//
 	// Creates a new organization record associated with the specified Product.
 	// Optionally accepts `founding_member` to atomically add an initial member with role.
+	// Optionally accepts `license` to stamp a license template onto the new organization
+	// in the same transaction; the `organization:create` scope covers it, and a refused
+	// template leaves no organization behind. The template is read before anything is
+	// written, so a template this product does not have is a 400
+	// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+	// a 404 for the organization collection the call addressed.
 	// Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -10161,22 +10261,26 @@ type ClientWithResponsesInterface interface {
 	// SearchProductOrganizationsWithBodyWithResponse Search Product Organizations
 	//
 	// Retrieves a list of organizations associated with the specified Product,
-	// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// allowing filtering and pagination. Pass `include` to read a related
+	// resource alongside every organization in the page.
+	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-	SearchProductOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error)
+	SearchProductOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error)
 
 	// SearchProductOrganizationsWithResponse Search Product Organizations
 	//
 	// Retrieves a list of organizations associated with the specified Product,
-	// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// allowing filtering and pagination. Pass `include` to read a related
+	// resource alongside every organization in the page.
+	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-	SearchProductOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error)
+	SearchProductOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error)
 
 	// DeleteProductOrganizationWithResponse Delete Product Organization
 	//
@@ -10193,13 +10297,14 @@ type ClientWithResponsesInterface interface {
 	// GetProductOrganizationWithResponse Get Product Organization
 	//
 	// Retrieves a single organization within the specified Product.
+	// Pass `include` to read a related resource alongside it.
 	// Only API Key authentication is supported (no bearer token access).
 	// Requires an API Key with `organization:read` permission.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id} (the `GetProductOrganization` operationId).
-	GetProductOrganizationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetProductOrganizationResponse, error)
+	GetProductOrganizationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetProductOrganizationParams, reqEditors ...RequestEditorFn) (*GetProductOrganizationResponse, error)
 
 	// UpdateProductOrganizationWithBodyWithResponse Update Product Organization
 	//
@@ -17514,6 +17619,12 @@ func (c *ClientWithResponses) ArchiveLicenseTemplateWithResponse(ctx context.Con
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -17531,6 +17642,12 @@ func (c *ClientWithResponses) CreateProductOrganizationWithBodyWithResponse(ctx 
 //
 // Creates a new organization record associated with the specified Product.
 // Optionally accepts `founding_member` to atomically add an initial member with role.
+// Optionally accepts `license` to stamp a license template onto the new organization
+// in the same transaction; the `organization:create` scope covers it, and a refused
+// template leaves no organization behind. The template is read before anything is
+// written, so a template this product does not have is a 400
+// (`ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND`) naming the body field at fault, never
+// a 404 for the organization collection the call addressed.
 // Requires an API Key with `product_organization:create` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -17547,13 +17664,15 @@ func (c *ClientWithResponses) CreateProductOrganizationWithResponse(ctx context.
 // SearchProductOrganizationsWithBodyWithResponse Search Product Organizations
 //
 // Retrieves a list of organizations associated with the specified Product,
-// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// allowing filtering and pagination. Pass `include` to read a related
+// resource alongside every organization in the page.
+// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-func (c *ClientWithResponses) SearchProductOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error) {
-	rsp, err := c.SearchProductOrganizationsWithBody(ctx, productId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchProductOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error) {
+	rsp, err := c.SearchProductOrganizationsWithBody(ctx, productId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -17563,13 +17682,15 @@ func (c *ClientWithResponses) SearchProductOrganizationsWithBodyWithResponse(ctx
 // SearchProductOrganizationsWithResponse Search Product Organizations
 //
 // Retrieves a list of organizations associated with the specified Product,
-// allowing filtering and pagination. Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// allowing filtering and pagination. Pass `include` to read a related
+// resource alongside every organization in the page.
+// Requires API Key with `product_organization:read` permission or Platform Bearer token.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /v1/products/{product_id}/organizations/search (the `SearchProductOrganizations` operationId).
-func (c *ClientWithResponses) SearchProductOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error) {
-	rsp, err := c.SearchProductOrganizations(ctx, productId, body, reqEditors...)
+func (c *ClientWithResponses) SearchProductOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, params *SearchProductOrganizationsParams, body SearchProductOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationsResponse, error) {
+	rsp, err := c.SearchProductOrganizations(ctx, productId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -17597,14 +17718,15 @@ func (c *ClientWithResponses) DeleteProductOrganizationWithResponse(ctx context.
 // GetProductOrganizationWithResponse Get Product Organization
 //
 // Retrieves a single organization within the specified Product.
+// Pass `include` to read a related resource alongside it.
 // Only API Key authentication is supported (no bearer token access).
 // Requires an API Key with `organization:read` permission.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id} (the `GetProductOrganization` operationId).
-func (c *ClientWithResponses) GetProductOrganizationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*GetProductOrganizationResponse, error) {
-	rsp, err := c.GetProductOrganization(ctx, productId, organizationId, reqEditors...)
+func (c *ClientWithResponses) GetProductOrganizationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetProductOrganizationParams, reqEditors ...RequestEditorFn) (*GetProductOrganizationResponse, error) {
+	rsp, err := c.GetProductOrganization(ctx, productId, organizationId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

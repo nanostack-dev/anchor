@@ -241,6 +241,15 @@ func NewOrganizationMembershipNotFoundError(
 	)
 }
 
+func NewOrganizationLicenseTemplateNotFoundError(templateID string) *fault.Error {
+	return fault.BadRequest(
+		"ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND",
+		"This product has no license template with that identifier",
+	).Metadata(map[string]any{
+		"template_id": templateID,
+	})
+}
+
 func NewOrganizationMetadataTooManyKeysError(keyCount, maxKeys int) *fault.Error {
 	return fault.BadRequest(
 		"ORGANIZATION_METADATA_TOO_MANY_KEYS",
