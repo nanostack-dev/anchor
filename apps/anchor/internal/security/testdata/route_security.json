@@ -296,7 +296,7 @@
   "POST /v1/products/{product_id}/licensing/organization-licenses/migrate": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
-      "organization_license:migrate"
+      "organization_license:update"
     ]
   },
   "POST /v1/products/{product_id}/licensing/organization-licenses/search": {

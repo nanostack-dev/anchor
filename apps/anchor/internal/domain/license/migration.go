@@ -31,27 +31,18 @@ const (
 type MigrationOutcome string
 
 const (
-	// OutcomeMigrated is the Organization's license rewritten and its
-	// provenance restamped onto the target.
-	OutcomeMigrated MigrationOutcome = "MIGRATED"
+	// OutcomeChanged is the Organization's license written and its provenance
+	// stamped onto the target — moved from another tier, or granted its first,
+	// whichever the Organization held before the run.
+	OutcomeChanged MigrationOutcome = "CHANGED"
 	// OutcomeUnchanged is the Organization already holding exactly those
 	// values, from that same template. Nothing was written and no history entry
 	// was appended, which is what makes a second run of one migration a no-op.
 	OutcomeUnchanged MigrationOutcome = "UNCHANGED"
-	// OutcomeSkipped is the Organization left alone.
-	// [OrganizationMigrationResult.Reason] says why.
-	OutcomeSkipped MigrationOutcome = "SKIPPED"
 	// OutcomeFailed is the write attempted and refused. The rest of the batch
 	// is unaffected: each Organization is written in its own transaction.
 	OutcomeFailed MigrationOutcome = "FAILED"
 )
-
-// MigrationSkipReason says why a migration left one Organization alone.
-type MigrationSkipReason string
-
-// SkipNotLicensed is the only reason a migration leaves an Organization alone.
-// A migration moves a customer between tiers and never puts one on their first.
-const SkipNotLicensed MigrationSkipReason = "NOT_LICENSED"
 
 // MaxMigrationOrganizations bounds one run. A selection matching more is
 // refused, carrying its count, rather than truncated: a batch that silently
@@ -79,7 +70,6 @@ type MigrateLicensesInput struct {
 type OrganizationMigrationResult struct {
 	OrganizationID string
 	Outcome        MigrationOutcome
-	Reason         *MigrationSkipReason
 	// PreviousTemplateID is the template the Organization held before the run.
 	// Absent when it holds no license.
 	PreviousTemplateID *string
@@ -105,9 +95,8 @@ type Migration struct {
 
 // MigrationTally counts a run's results by outcome.
 type MigrationTally struct {
-	Migrated  int
+	Changed   int
 	Unchanged int
-	Skipped   int
 	Failed    int
 }
 
@@ -116,12 +105,10 @@ func (m Migration) Tally() MigrationTally {
 	var tally MigrationTally
 	for _, result := range m.Results {
 		switch result.Outcome {
-		case OutcomeMigrated:
-			tally.Migrated++
+		case OutcomeChanged:
+			tally.Changed++
 		case OutcomeUnchanged:
 			tally.Unchanged++
-		case OutcomeSkipped:
-			tally.Skipped++
 		case OutcomeFailed:
 			tally.Failed++
 		}
@@ -174,14 +161,18 @@ func MigratedValues(
 	return migrated
 }
 
-// NewMigrationChange records one Organization moving onto another template, as
-// a single entry carrying the whole set on either side. An adjustment records
-// one entry per field because a caller moves fields one at a time; a migration
-// replaces the set, so splitting it per field would describe a tier change as a
-// coincidence of unrelated edits.
+// NewMigrationChange records one Organization's license set by the batch
+// migrate route, as a single entry carrying the whole set on either side. An
+// adjustment records one entry per field because a caller moves fields one at
+// a time; this replaces the set, so splitting it per field would describe a
+// tier change as a coincidence of unrelated edits.
+//
+// previousTemplateID and previousValues are nil when the Organization held no
+// license before this run: it was granted one, not moved, and there is
+// nothing to record on the old side.
 func NewMigrationChange(
 	migrated OrganizationLicense,
-	previousTemplateID string,
+	previousTemplateID *string,
 	previousValues TemplateValues,
 	changedAt time.Time,
 ) OrganizationLicenseChange {
@@ -190,12 +181,14 @@ func NewMigrationChange(
 		ProductID:          migrated.ProductID,
 		OrganizationID:     migrated.OrganizationID,
 		LicenseID:          migrated.ID,
-		Type:               ChangeMigrated,
+		Type:               ChangeSet,
 		TemplateID:         new(migrated.TemplateID),
-		PreviousTemplateID: new(previousTemplateID),
-		OldValue:           map[string]any(previousValues),
+		PreviousTemplateID: previousTemplateID,
 		NewValue:           map[string]any(migrated.Values),
 		ChangedAt:          changedAt,
+	}
+	if previousTemplateID != nil {
+		change.OldValue = map[string]any(previousValues)
 	}
 	change.GenerateID()
 	return change

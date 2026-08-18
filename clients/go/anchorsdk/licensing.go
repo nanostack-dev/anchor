@@ -106,7 +106,7 @@ func (b *LicenseMigrationBuilder) Do(
 	}
 
 	for _, result := range migration.Results {
-		if result.Outcome == nanoclient.LicenseMigrationOutcomeMIGRATED {
+		if result.Outcome == nanoclient.LicenseMigrationOutcomeCHANGED {
 			c.licenses.delete(result.OrganizationId)
 		}
 	}

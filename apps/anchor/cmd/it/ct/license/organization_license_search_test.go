@@ -233,7 +233,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	t.Run("the read scope is what reaches it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes(
-			[]string{"organization_license:update", "organization_license:migrate"},
+			[]string{"organization_license:update"},
 		)
 
 		resp := w.Search().As(writeOnly).RunRaw(ct.OrganizationLicenseSearchRequest{})

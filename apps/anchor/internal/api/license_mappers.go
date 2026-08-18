@@ -212,7 +212,6 @@ func mapLicenseMigrationResultToResponse(
 	return OrganizationLicenseMigrationResult{
 		OrganizationId:     r.OrganizationID,
 		Outcome:            r.Outcome,
-		Reason:             r.Reason,
 		PreviousTemplateId: r.PreviousTemplateID,
 		Changes:            changes,
 		Count:              len(changes),
@@ -227,9 +226,8 @@ func mapLicenseMigrationToResponse(m license.Migration) OrganizationLicenseMigra
 		MigratedAt: m.MigratedAt,
 		Results:    slicex.Map(m.Results, mapLicenseMigrationResultToResponse),
 		Count:      len(m.Results),
-		Migrated:   tally.Migrated,
+		Changed:    tally.Changed,
 		Unchanged:  tally.Unchanged,
-		Skipped:    tally.Skipped,
 		Failed:     tally.Failed,
 	}
 }

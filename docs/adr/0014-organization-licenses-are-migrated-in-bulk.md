@@ -1,6 +1,8 @@
 # ADR-0014: Moving organizations onto a license template is one Anchor operation
 
-**Status:** Accepted
+**Status:** Accepted, partially superseded by [ADR-0015](0015-migrate-grants-a-first-license.md)
+
+[ADR-0015](0015-migrate-grants-a-first-license.md) reverses the "an organization holding no license is `SKIPPED` with reason `NOT_LICENSED`" clause in this ADR's Decision, and the corresponding `MIGRATED`/`SKIPPED` naming in Consequences. Everything else below — restamping provenance, `CARRY_FORWARD`/`DISCARD`, the 500 cap, one transaction per organization, the search route — is unchanged and still governs.
 
 Extends [ADR-0004](0004-license-schema-template-and-copy.md), which says an organization's license is a copy taken at instantiation. It stays a copy. This adds the operation that takes a *second* copy, from a different template, and says so in the record.
 

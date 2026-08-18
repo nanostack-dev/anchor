@@ -3304,15 +3304,18 @@ components:
       type: string
       description: >-
         What happened to an organization's license. `INSTANTIATED` is a
-        template being stamped onto the organization: `template_id` names it
-        and `new_value` carries the whole set of values copied. `ADJUSTED` is
+        template being stamped onto the organization through the
+        single-organization license route: `template_id` names it and
+        `new_value` carries the whole set of values copied. `ADJUSTED` is
         one license field moved for this organization alone: `field` names it,
         and `old_value` and `new_value` are that field's values on either side
-        of the change. `MIGRATED` is the organization moved onto another
-        template: `template_id` names the one it moved to,
-        `previous_template_id` the one it came from, and `old_value` and
-        `new_value` carry the whole set of values on either side.
-      enum: [INSTANTIATED, ADJUSTED, MIGRATED]
+        of the change. `SET` is the organization's license set through the
+        batch migrate route — moved from another template, or granted its
+        first, whichever it held before the run: `template_id` names the
+        template it now holds, `previous_template_id` the one it came from
+        (absent for a first license), and `old_value` and `new_value` carry
+        the whole set of values on either side (`old_value` absent to match).
+      enum: [INSTANTIATED, ADJUSTED, SET]
       x-go-type: license.ChangeType
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -3349,13 +3352,15 @@ components:
           - $ref: '#/components/schemas/ksuid'
           description: >-
             The template stamped onto the organization. Present when `type` is
-            `INSTANTIATED` or `MIGRATED`, absent otherwise.
+            `INSTANTIATED` or `SET`, absent otherwise.
         previous_template_id:
           allOf:
           - $ref: '#/components/schemas/ksuid'
           description: >-
             The template the organization held before it was moved. Present
-            when `type` is `MIGRATED`, absent otherwise.
+            when `type` is `SET` and the organization held a license before
+            this run, absent otherwise — including a `SET` entry that granted
+            a first license.
         field:
           type: string
           description: >-
@@ -3364,24 +3369,24 @@ components:
         old_value:
           description: >-
             The value held before the change: that license field's value for
-            an adjustment, and the whole set held before the move for a
-            migration. Absent when `type` is `INSTANTIATED`, because the
-            organization held no license, and when an adjustment set a license
-            field the license did not carry.
+            an adjustment, and the whole set held before the move for a `SET`
+            entry that moved an existing license. Absent when `type` is
+            `INSTANTIATED`, when an adjustment set a license field the license
+            did not carry, and when a `SET` entry granted a first license.
         new_value:
           description: >-
             The value held after the change: that license field's value for an
             adjustment, and the whole set of copied values for an
-            instantiation or a migration.
+            instantiation or a `SET` entry.
         changed_at:
           type: string
           format: date-time
           description: >-
             When the change was recorded. Anchor sets it. Every entry of one
             adjustment shares it, so an adjustment that touched several license
-            fields reads back as one moment. Every organization moved by one
-            migration shares it too, which together with `template_id` is what
-            identifies a migration run.
+            fields reads back as one moment. Every organization set by one
+            migration run shares it too, which together with `template_id` is
+            what identifies a run.
 
     LicenseMigrationDifferencePolicy:
       type: string
@@ -3404,26 +3409,16 @@ components:
     LicenseMigrationOutcome:
       type: string
       description: >-
-        What happened to one organization in a migration. `MIGRATED` means its
-        license was rewritten and its provenance restamped onto the target.
-        `UNCHANGED` means it already held exactly those values from that same
-        template, so nothing was written. `SKIPPED` means it was left alone;
-        `reason` says why. `FAILED` means the write was attempted and refused;
-        `error` says why, and the rest of the batch was unaffected.
-      enum: [MIGRATED, UNCHANGED, SKIPPED, FAILED]
+        What happened to one organization in a migration run. `CHANGED` means
+        its license was written and its provenance stamped onto the target —
+        moved from another tier, or granted its first, whichever it held
+        before the run; `previous_template_id` on the history entry says
+        which. `UNCHANGED` means it already held exactly those values from
+        that same template, so nothing was written. `FAILED` means the write
+        was attempted and refused; `error` says why, and the rest of the batch
+        was unaffected.
+      enum: [CHANGED, UNCHANGED, FAILED]
       x-go-type: license.MigrationOutcome
-      x-go-type-import:
-        path: anchor/internal/domain/license
-
-    LicenseMigrationSkipReason:
-      type: string
-      description: >-
-        Why an organization was left alone. `NOT_LICENSED` means it holds no
-        license at all. A migration moves a customer between tiers and never
-        puts one on their first: instantiation is a separate route with a
-        separate scope.
-      enum: [NOT_LICENSED]
-      x-go-type: license.MigrationSkipReason
       x-go-type-import:
         path: anchor/internal/domain/license
 
@@ -3482,24 +3477,23 @@ components:
           $ref: '#/components/schemas/ksuid'
         outcome:
           $ref: '#/components/schemas/LicenseMigrationOutcome'
-        reason:
-          allOf:
-          - $ref: '#/components/schemas/LicenseMigrationSkipReason'
-          description: Present when `outcome` is `SKIPPED`, absent otherwise.
         previous_template_id:
           allOf:
           - $ref: '#/components/schemas/ksuid'
           description: >-
             The template the organization held before this run. Absent when it
-            holds no license.
+            held no license — this run granted its first, rather than moving
+            it.
         changes:
           type: array
           description: >-
-            What the move actually did to this organization's license, one
+            What the run actually did to this organization's license, one
             field at a time, ordered by name. `license_value` is the value held
             before, `template_value` the value held after. A field carried
             forward under `CARRY_FORWARD` does not appear, because it did not
-            move. Empty when nothing changed.
+            move. An organization granted a first license reports every field
+            the target names, since none was held before. Empty when nothing
+            changed.
           items:
             $ref: '#/components/schemas/LicenseFieldDifference'
         count:
@@ -3520,21 +3514,20 @@ components:
       - migrated_at
       - results
       - count
-      - migrated
+      - changed
       - unchanged
-      - skipped
       - failed
       properties:
         template_id:
           allOf:
           - $ref: '#/components/schemas/ksuid'
-          description: The template every migrated organization now holds.
+          description: The template every changed organization now holds.
         migrated_at:
           type: string
           format: date-time
           description: >-
-            The single moment stamped on every organization this run moved,
-            and recorded as `changed_at` on every history entry it appended.
+            The single moment stamped on every organization this run set, and
+            recorded as `changed_at` on every history entry it appended.
             Together with `template_id` it identifies the run.
         results:
           type: array
@@ -3543,11 +3536,9 @@ components:
         count:
           type: integer
           description: The number of organizations considered.
-        migrated:
+        changed:
           type: integer
         unchanged:
-          type: integer
-        skipped:
           type: integer
         failed:
           type: integer
@@ -6615,11 +6606,13 @@ paths:
       summary: Migrate Organization Licenses Onto A Template
       description: >-
         Moves a set of organizations onto one license template, so retiring a
-        tier or graduating a cohort is one call rather than a script. Each
-        license takes the target template's values, and `template_id` and
-        `instantiated_at` are restamped — which is what separates this from
-        adjusting every field by hand, since an adjustment deliberately cannot
-        move provenance.
+        tier or graduating a cohort is one call rather than a script. An
+        organization already on another tier is moved; an organization with no
+        license yet is granted one on this tier, same as any other member of
+        the selection. Each license takes the target template's values, and
+        `template_id` and `instantiated_at` are stamped — which is what
+        separates this from adjusting every field by hand, since an adjustment
+        deliberately cannot move provenance.
 
         Select the organizations with `organization_ids` or with
         `from_template_id`, which is every organization currently on a given
@@ -6633,11 +6626,13 @@ paths:
         `on_difference: DISCARD` to take the target template whole instead.
         Anchor cannot tell a bespoke adjustment from a template that moved
         after the copy was taken, so neither choice is safe by itself: compare
-        the two templates before running.
+        the two templates before running. `on_difference` has nothing to act on
+        for an organization granted its first license — there is no held value
+        to carry forward or discard — so it always takes the target whole.
 
         Each organization is written in its own transaction, so one failure is
         reported against that organization and the rest of the batch still
-        lands. Every organization moved gets a `MIGRATED` entry in its license
+        lands. Every organization set gets a `SET` entry in its license
         history, and every entry of one run shares a single `changed_at`.
       operationId: migrateOrganizationLicenses
       tags:
@@ -6645,7 +6640,7 @@ paths:
       security:
       - platformBearerAuth: []
       - productApiKeyAuth:
-        - organization_license:migrate
+        - organization_license:update
       requestBody:
         required: true
         content:
@@ -6655,8 +6650,8 @@ paths:
       responses:
         '200':
           description: >-
-            The run completed. Individual organizations may still have been
-            skipped or failed; read `results`.
+            The run completed. Individual organizations may still have failed;
+            read `results`.
           content:
             application/json:
               schema:

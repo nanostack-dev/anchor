@@ -173,9 +173,8 @@ func (s *licenseMigrationService) Migrate(
 		Str("license_template_id", target.ID).
 		Str("on_difference", string(run.policy())).
 		Int("considered", len(migration.Results)).
-		Int("migrated", tally.Migrated).
+		Int("changed", tally.Changed).
 		Int("unchanged", tally.Unchanged).
-		Int("skipped", tally.Skipped).
 		Int("failed", tally.Failed).
 		Msg("organization license migration run finished")
 
@@ -240,26 +239,33 @@ func (s *licenseMigrationService) migrateOne(
 			return findErr
 		}
 
-		decided, migrated, decideErr := s.decide(txCtx, run, organizationID, existing)
+		decided, changed, decideErr := s.decide(txCtx, run, organizationID, existing)
 		if decideErr != nil {
 			return decideErr
 		}
 		result = decided
 
-		if decided.Outcome != license.OutcomeMigrated {
+		if decided.Outcome != license.OutcomeChanged {
 			return nil
 		}
 
-		previousValues := existing.Values
-		written, restampErr := s.licenseRepo.Restamp(txCtx, run.input.TenantID, migrated)
-		if restampErr != nil {
-			return restampErr
+		var previousValues license.TemplateValues
+		var written license.OrganizationLicense
+		var writeErr error
+		if existing == nil {
+			written, writeErr = s.licenseRepo.Create(txCtx, changed)
+		} else {
+			previousValues = existing.Values
+			written, writeErr = s.licenseRepo.Restamp(txCtx, run.input.TenantID, changed)
+		}
+		if writeErr != nil {
+			return writeErr
 		}
 		wrote = true
 
 		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
 			license.NewMigrationChange(
-				written, *decided.PreviousTemplateID, previousValues, run.migratedAt,
+				written, decided.PreviousTemplateID, previousValues, run.migratedAt,
 			),
 		})
 	}); txErr != nil {
@@ -290,6 +296,12 @@ func (s *licenseMigrationService) migrateOne(
 // adjustment from a tier that moved after the copy was taken — see
 // [license.DiffValues] — so the reported changes are what an operator reads
 // afterwards, and comparing the two templates is what they do beforehand.
+//
+// An Organization holding no license is granted one on the target, exactly as
+// a licensed Organization is moved onto it: on_difference does not apply, since
+// there is no held value to carry forward or discard, and DiffValues against a
+// nil set reports every field as only_in_template — which is what a first
+// grant is. See docs/adr/0015-migrate-grants-a-first-license.md.
 func (s *licenseMigrationService) decide(
 	ctx context.Context,
 	run *migrationRun,
@@ -306,9 +318,20 @@ func (s *licenseMigrationService) decide(
 		if organization == nil {
 			return result, license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
 		}
-		result.Outcome = license.OutcomeSkipped
-		result.Reason = new(license.SkipNotLicensed)
-		return result, license.OrganizationLicense{}, nil
+
+		granted := license.OrganizationLicense{
+			PlatformTenantID: run.input.TenantID,
+			ProductID:        run.input.ProductID,
+			OrganizationID:   organizationID,
+			TemplateID:       run.target.ID,
+			InstantiatedAt:   run.migratedAt,
+			Values:           run.target.Values,
+		}
+		granted.GenerateID()
+
+		result.Outcome = license.OutcomeChanged
+		result.Changes = license.DiffValues(nil, granted.Values)
+		return result, granted, nil
 	}
 
 	current, err := s.templateByID(ctx, run, existing.TemplateID)
@@ -325,7 +348,7 @@ func (s *licenseMigrationService) decide(
 		return result, license.OrganizationLicense{}, nil
 	}
 
-	result.Outcome = license.OutcomeMigrated
+	result.Outcome = license.OutcomeChanged
 	return result, migrated, nil
 }
 
