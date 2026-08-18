@@ -229,13 +229,12 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
 ) (search.Result[workspace.Workspace], error) {
 	whereStmt := r.scopedWhere(productID, organizationID)
-	filterBuilder := jetx.NewFilterBuilder()
 
 	if input.Filter != nil {
-		if ids := filterBuilder.BuildIDFilter(table.Workspaces.ID, input.Filter.IDs); ids != nil {
+		if ids := jetx.BuildIDFilter(table.Workspaces.ID, input.Filter.IDs); ids != nil {
 			whereStmt = whereStmt.AND(ids)
 		}
-		if names := filterBuilder.BuildStringArrayFilter(
+		if names := jetx.BuildStringArrayFilter(
 			table.Workspaces.Name, input.Filter.Names,
 		); names != nil {
 			whereStmt = whereStmt.AND(names)
@@ -243,7 +242,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		if fullText := filterBuilder.BuildFullTextSearchFilter(
+		if fullText := jetx.BuildSubstringFilter(
 			[]postgres.ColumnString{table.Workspaces.Name}, *input.FullTextSearch,
 		); fullText != nil {
 			whereStmt = whereStmt.AND(fullText)

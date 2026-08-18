@@ -421,24 +421,22 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 	)
 
 	if req.Filter != nil {
-		filterBuilder := jetx.NewFilterBuilder()
-
-		if ids := filterBuilder.BuildIDFilter(
+		if ids := jetx.BuildIDFilter(
 			table.OrganizationMemberships.ProductUserID, req.Filter.ProductUserIDs,
 		); ids != nil {
 			whereStmt = whereStmt.AND(ids)
 		}
-		if extIDs := filterBuilder.BuildIDFilter(
+		if extIDs := jetx.BuildIDFilter(
 			table.ProductUsers.ExternalID, req.Filter.ExternalIDs,
 		); extIDs != nil {
 			whereStmt = whereStmt.AND(extIDs)
 		}
-		if emails := filterBuilder.BuildStringArrayFilter(
+		if emails := jetx.BuildStringArrayFilter(
 			table.ProductUsers.Email, req.Filter.Emails,
 		); emails != nil {
 			whereStmt = whereStmt.AND(emails)
 		}
-		if roleIDs := filterBuilder.BuildIDFilter(
+		if roleIDs := jetx.BuildIDFilter(
 			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
 		); roleIDs != nil {
 			whereStmt = whereStmt.AND(roleIDs)
@@ -446,12 +444,11 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 	}
 
 	if req.FullTextSearch != nil && *req.FullTextSearch != "" {
-		filterBuilder := jetx.NewFilterBuilder()
 		searchColumns := []postgres.ColumnString{
 			table.ProductUsers.Email,
 			table.ProductUsers.Name,
 		}
-		fullTextFilter := filterBuilder.BuildFullTextSearchFilter(searchColumns, *req.FullTextSearch)
+		fullTextFilter := jetx.BuildSubstringFilter(searchColumns, *req.FullTextSearch)
 		if fullTextFilter != nil {
 			whereStmt = whereStmt.AND(fullTextFilter)
 		}
