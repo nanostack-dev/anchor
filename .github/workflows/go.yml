@@ -48,7 +48,11 @@ jobs:
         VITE_API_BASE_URL=https://apidev.tryanchor.dev
 
   go-build-test:
-    needs: frontend-verify
+    # Backend build/test has no dependency on the frontend — run it in parallel
+    # with frontend-verify rather than after it. Gating them in series meant a
+    # flaky Storybook/Playwright step skipped the backend build, and with it the
+    # deploy dispatch, silently leaving prod behind. The dispatch jobs below
+    # still read frontend-verify's result; go-build-test success is the gate.
     uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
     permissions:
       contents: read
@@ -76,7 +80,10 @@ jobs:
 
   dispatch-deploy-dev:
     needs: [frontend-verify, go-build-test]
+    # always() so a failed or skipped frontend-verify does not skip the backend
+    # deploy dispatch; go-build-test success is the real gate.
     if: |
+      always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.go-build-test.result == 'success'
@@ -94,6 +101,7 @@ jobs:
   dispatch-preview-upsert:
     needs: [frontend-verify, go-build-test]
     if: |
+      always() &&
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
