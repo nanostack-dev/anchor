@@ -161,7 +161,7 @@ func (s *organizationService) instantiateLicense(
 		return nil, nil //nolint:nilnil // no license asked for is not an error
 	}
 
-	instantiated, err := s.licenses.InstantiateInTx(ctx, license.InstantiateLicenseInput{
+	instantiated, err := s.licenses.Instantiate(ctx, license.InstantiateLicenseInput{
 		TenantID:       tenantID,
 		ProductID:      productID,
 		OrganizationID: organizationID,

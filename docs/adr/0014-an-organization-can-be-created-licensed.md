@@ -26,7 +26,7 @@ The 201 response carries the license it stamped, under `license`. A read of an o
 
 **Good.** A product onboards a customer in one call, and a failure leaves no half-built organization.
 
-**Good.** The license service gained `InstantiateInTx`, the same work joined to the caller's transaction. The transaction runner starts a new transaction rather than joining an ambient one, so a service composing another service's write has to say so.
+**Good.** Licensing writes join the transaction the context already carries, and begin one otherwise, through one `inTx` helper the subsystem shares. `Instantiate` stays a single method: a caller composing it into a larger unit calls the same thing as a caller that is not. The framework transactor always begins its own transaction, which would have put the Organization row out of reach of the license insert.
 
 **Cost.** The template is read twice per licensed create: once to resolve it, once inside the instantiation. Handing the resolved template to the license service would remove the second read and widen its interface for one caller.
 
