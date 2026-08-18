@@ -51,7 +51,10 @@ interface LicenseMigrationDialogProps {
 }
 
 /**
- * Moves the selected organizations onto one license template.
+ * Moves the selected organizations onto one license template — an
+ * organization already licensed is moved, one holding none yet is granted
+ * this tier as its first, indistinguishably from the operator's side. See
+ * docs/adr/0015-migrate-grants-a-first-license.md.
  *
  * Anchor has no dry run. What stands in for one is the comparison right here
  * between the tier the selection is on and the tier it is moving to, which is
@@ -143,12 +146,6 @@ export function LicenseMigrationDialog({
 		0,
 	);
 
-	const unlicensedCount = selection.filter((item) => !item.license).length;
-	// A migration moves a customer between tiers and never puts one on their
-	// first, so the button counts what will actually move rather than what was
-	// ticked. All-unlicensed is a guaranteed no-op and does not run.
-	const movable = selection.length - unlicensedCount;
-
 	const migrate = useMutation({
 		...migrateOrganizationLicensesMutation(),
 		onSuccess: (result: OrganizationLicenseMigrationResponse) => {
@@ -160,11 +157,11 @@ export function LicenseMigrationDialog({
 			});
 			if (result.failed > 0) {
 				toast.warning(
-					`${result.migrated} moved, ${result.failed} failed. Review the results.`,
+					`${result.changed} set, ${result.failed} failed. Review the results.`,
 				);
 			} else {
 				toast.success(
-					`${result.migrated} organization${result.migrated === 1 ? "" : "s"} moved to ${target?.name}.`,
+					`${result.changed} organization${result.changed === 1 ? "" : "s"} set to ${target?.name}.`,
 				);
 			}
 			onMigrated?.();
@@ -301,14 +298,6 @@ export function LicenseMigrationDialog({
 							<CarriedAdjustments groups={carried} tierName={target.name} />
 						)}
 
-						{unlicensedCount > 0 && (
-							<FormAlert
-								variant="warning"
-								title="Some organizations hold no license"
-								message={`${unlicensedCount} of the ${selection.length} selected will be skipped. A migration moves a customer between tiers; it never puts one on their first.`}
-							/>
-						)}
-
 						<FormAlert message={getApiErrorMessage(migrate.error)} />
 					</div>
 				)}
@@ -323,11 +312,14 @@ export function LicenseMigrationDialog({
 							</Button>
 							<Button
 								onClick={run}
-								disabled={!target || migrate.isPending || movable === 0}
+								disabled={
+									!target || migrate.isPending || selection.length === 0
+								}
 								variant={discardDifferences ? "destructive" : "default"}
 							>
 								{migrate.isPending && <Spinner />}
-								Move {movable} organization{movable === 1 ? "" : "s"}
+								Move {selection.length} organization
+								{selection.length === 1 ? "" : "s"}
 							</Button>
 						</>
 					)}

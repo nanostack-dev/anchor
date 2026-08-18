@@ -2066,12 +2066,12 @@ export type OrganizationLicenseDiffResponse = {
 };
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `MIGRATED` is the organization moved onto another template: `template_id` names the one it moved to, `previous_template_id` the one it came from, and `old_value` and `new_value` carry the whole set of values on either side.
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
  */
 export enum LicenseChangeType {
     INSTANTIATED = 'INSTANTIATED',
     ADJUSTED = 'ADJUSTED',
-    MIGRATED = 'MIGRATED'
+    SET = 'SET'
 }
 
 /**
@@ -2087,11 +2087,11 @@ export type OrganizationLicenseChangeResponse = {
     license_id: Ksuid;
     type: LicenseChangeType;
     /**
-     * The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `MIGRATED`, absent otherwise.
+     * The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `SET`, absent otherwise.
      */
     template_id?: Ksuid;
     /**
-     * The template the organization held before it was moved. Present when `type` is `MIGRATED`, absent otherwise.
+     * The template the organization held before it was moved. Present when `type` is `SET` and the organization held a license before this run, absent otherwise — including a `SET` entry that granted a first license.
      */
     previous_template_id?: Ksuid;
     /**
@@ -2099,15 +2099,15 @@ export type OrganizationLicenseChangeResponse = {
      */
     field?: string;
     /**
-     * The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a migration. Absent when `type` is `INSTANTIATED`, because the organization held no license, and when an adjustment set a license field the license did not carry.
+     * The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
      */
     old_value?: unknown;
     /**
-     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a migration.
+     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a `SET` entry.
      */
     new_value?: unknown;
     /**
-     * When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment. Every organization moved by one migration shares it too, which together with `template_id` is what identifies a migration run.
+     * When the change was recorded. Anchor sets it. Every entry of one adjustment shares it, so an adjustment that touched several license fields reads back as one moment. Every organization set by one migration run shares it too, which together with `template_id` is what identifies a run.
      */
     changed_at: string;
 };
@@ -2122,20 +2122,12 @@ export enum LicenseMigrationDifferencePolicy {
 }
 
 /**
- * What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+ * What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
  */
 export enum LicenseMigrationOutcome {
-    MIGRATED = 'MIGRATED',
+    CHANGED = 'CHANGED',
     UNCHANGED = 'UNCHANGED',
-    SKIPPED = 'SKIPPED',
     FAILED = 'FAILED'
-}
-
-/**
- * Why an organization was left alone. `NOT_LICENSED` means it holds no license at all. A migration moves a customer between tiers and never puts one on their first: instantiation is a separate route with a separate scope.
- */
-export enum LicenseMigrationSkipReason {
-    NOT_LICENSED = 'NOT_LICENSED'
 }
 
 /**
@@ -2166,15 +2158,11 @@ export type OrganizationLicenseMigrationResult = {
     organization_id: Ksuid;
     outcome: LicenseMigrationOutcome;
     /**
-     * Present when `outcome` is `SKIPPED`, absent otherwise.
-     */
-    reason?: LicenseMigrationSkipReason;
-    /**
-     * The template the organization held before this run. Absent when it holds no license.
+     * The template the organization held before this run. Absent when it held no license — this run granted its first, rather than moving it.
      */
     previous_template_id?: Ksuid;
     /**
-     * What the move actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. Empty when nothing changed.
+     * What the run actually did to this organization's license, one field at a time, ordered by name. `license_value` is the value held before, `template_value` the value held after. A field carried forward under `CARRY_FORWARD` does not appear, because it did not move. An organization granted a first license reports every field the target names, since none was held before. Empty when nothing changed.
      */
     changes: Array<LicenseFieldDifference>;
     /**
@@ -2192,11 +2180,11 @@ export type OrganizationLicenseMigrationResult = {
  */
 export type OrganizationLicenseMigrationResponse = {
     /**
-     * The template every migrated organization now holds.
+     * The template every changed organization now holds.
      */
     template_id: Ksuid;
     /**
-     * The single moment stamped on every organization this run moved, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
+     * The single moment stamped on every organization this run set, and recorded as `changed_at` on every history entry it appended. Together with `template_id` it identifies the run.
      */
     migrated_at: string;
     results: Array<OrganizationLicenseMigrationResult>;
@@ -2204,9 +2192,8 @@ export type OrganizationLicenseMigrationResponse = {
      * The number of organizations considered.
      */
     count: number;
-    migrated: number;
+    changed: number;
     unchanged: number;
-    skipped: number;
     failed: number;
 };
 
@@ -6142,7 +6129,7 @@ export type MigrateOrganizationLicensesError = MigrateOrganizationLicensesErrors
 
 export type MigrateOrganizationLicensesResponses = {
     /**
-     * The run completed. Individual organizations may still have been skipped or failed; read `results`.
+     * The run completed. Individual organizations may still have failed; read `results`.
      */
     200: OrganizationLicenseMigrationResponse;
 };

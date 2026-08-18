@@ -1372,12 +1372,12 @@ export const zOrganizationLicenseDiffResponse = z.object({
 });
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `MIGRATED` is the organization moved onto another template: `template_id` names the one it moved to, `previous_template_id` the one it came from, and `old_value` and `new_value` carry the whole set of values on either side.
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
  */
 export const zLicenseChangeType = z.enum([
     'INSTANTIATED',
     'ADJUSTED',
-    'MIGRATED'
+    'SET'
 ]);
 
 /**
@@ -1407,20 +1407,12 @@ export const zLicenseMigrationDifferencePolicy = z.enum([
 ]);
 
 /**
- * What happened to one organization in a migration. `MIGRATED` means its license was rewritten and its provenance restamped onto the target. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `SKIPPED` means it was left alone; `reason` says why. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+ * What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
  */
 export const zLicenseMigrationOutcome = z.enum([
-    'MIGRATED',
+    'CHANGED',
     'UNCHANGED',
-    'SKIPPED',
     'FAILED'
-]);
-
-/**
- * Why an organization was left alone. `NOT_LICENSED` means it holds no license at all. A migration moves a customer between tiers and never puts one on their first: instantiation is a separate route with a separate scope.
- */
-export const zLicenseMigrationSkipReason = z.enum([
-    'NOT_LICENSED'
 ]);
 
 /**
@@ -1441,7 +1433,6 @@ export const zOrganizationLicenseMigrationRequest = z.object({
 export const zOrganizationLicenseMigrationResult = z.object({
     organization_id: zKsuid,
     outcome: zLicenseMigrationOutcome,
-    reason: z.optional(zLicenseMigrationSkipReason),
     previous_template_id: z.optional(zKsuid),
     changes: z.array(zLicenseFieldDifference),
     count: z.int(),
@@ -1456,9 +1447,8 @@ export const zOrganizationLicenseMigrationResponse = z.object({
     migrated_at: z.iso.datetime(),
     results: z.array(zOrganizationLicenseMigrationResult),
     count: z.int(),
-    migrated: z.int(),
+    changed: z.int(),
     unchanged: z.int(),
-    skipped: z.int(),
     failed: z.int()
 });
 
@@ -2936,7 +2926,7 @@ export const zMigrateOrganizationLicensesData = z.object({
 });
 
 /**
- * The run completed. Individual organizations may still have been skipped or failed; read `results`.
+ * The run completed. Individual organizations may still have failed; read `results`.
  */
 export const zMigrateOrganizationLicensesResponse = zOrganizationLicenseMigrationResponse;
 

@@ -4,11 +4,7 @@ import type {
 } from "@/client";
 import { LicenseMigrationOutcome } from "@/client";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import {
-	OUTCOME_LABELS,
-	OUTCOME_TONES,
-	SKIP_REASON_LABELS,
-} from "./license-migration-format";
+import { OUTCOME_LABELS, OUTCOME_TONES } from "./license-migration-format";
 
 interface LicenseMigrationOutcomesProps {
 	migration: OrganizationLicenseMigrationResponse;
@@ -17,8 +13,7 @@ interface LicenseMigrationOutcomesProps {
 
 const OUTCOME_ORDER: LicenseMigrationOutcome[] = [
 	LicenseMigrationOutcome.FAILED,
-	LicenseMigrationOutcome.SKIPPED,
-	LicenseMigrationOutcome.MIGRATED,
+	LicenseMigrationOutcome.CHANGED,
 	LicenseMigrationOutcome.UNCHANGED,
 ];
 
@@ -26,13 +21,14 @@ function resultDetail(result: OrganizationLicenseMigrationResult): string {
 	if (result.outcome === LicenseMigrationOutcome.FAILED) {
 		return result.error?.message ?? "The write was refused.";
 	}
-	if (result.outcome === LicenseMigrationOutcome.SKIPPED) {
-		return result.reason
-			? SKIP_REASON_LABELS[result.reason]
-			: "Left alone by this run.";
-	}
 	if (result.outcome === LicenseMigrationOutcome.UNCHANGED) {
 		return "Already held these values from this tier.";
+	}
+	// No previous_template_id means this run granted the organization its
+	// first license rather than moving it — see
+	// docs/adr/0015-migrate-grants-a-first-license.md.
+	if (!result.previous_template_id) {
+		return "Granted this tier — held no license before this run.";
 	}
 	return result.count === 0
 		? "Every value it held already matched."
@@ -55,12 +51,20 @@ export function LicenseMigrationOutcomes({
 
 	return (
 		<div className="flex flex-col gap-4">
-			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+			<dl className="grid grid-cols-3 gap-3">
 				{[
-					{ label: "Moved", value: migration.migrated },
-					{ label: "Already there", value: migration.unchanged },
-					{ label: "Skipped", value: migration.skipped },
-					{ label: "Failed", value: migration.failed },
+					{
+						label: OUTCOME_LABELS[LicenseMigrationOutcome.CHANGED],
+						value: migration.changed,
+					},
+					{
+						label: OUTCOME_LABELS[LicenseMigrationOutcome.UNCHANGED],
+						value: migration.unchanged,
+					},
+					{
+						label: OUTCOME_LABELS[LicenseMigrationOutcome.FAILED],
+						value: migration.failed,
+					},
 				].map((tally) => (
 					<div key={tally.label} className="rounded-lg bg-muted/50 p-3">
 						<dt className="text-xs text-muted-foreground">{tally.label}</dt>
