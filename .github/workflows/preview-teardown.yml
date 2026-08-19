@@ -1,0 +1,36 @@
+name: Preview Teardown
+
+# Its own workflow, not a job in go.yml, for two reasons.
+#
+# Concurrency: cancel-in-progress is a property of the *incoming* run — it says
+# whether that run cancels others, never whether it can be cancelled. Sharing
+# go.yml's per-PR group meant reopening a PR cancelled the teardown mid-flight
+# and the preview leaked, which is the failure this job exists to prevent. A
+# separate workflow file is a separate concurrency group, so nothing can cancel
+# it and it cancels nothing.
+#
+# No `paths:` filter: a PR whose diff has drifted out of go.yml's paths list
+# still has a preview to destroy.
+
+on:
+  pull_request:
+    # Same branch filter go.yml uses. preview-upsert only ever fires for PRs
+    # targeting main, so a stacked PR closing against its parent branch has no
+    # preview to destroy — dispatching one spends an infra job on Tailscale,
+    # 1Password and a psql drop of a database that was never created.
+    branches: [ main ]
+    types: [closed]
+
+jobs:
+  dispatch-preview-down:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
+    permissions:
+      contents: read
+    with:
+      deploy_repository: nanostack-dev/infra
+      event_type: preview-destroy
+      payload: >-
+        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}"}
+    secrets:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
