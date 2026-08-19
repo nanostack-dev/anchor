@@ -46,6 +46,12 @@ on:
 # them alone despite cancel-in-progress false: GitHub holds at most ONE pending
 # run per group, so a third merge to main cancels the second before it starts,
 # and that merge then builds no image and dispatches no deploy.
+# GITHUB_TOKEN starts with nothing. Every job states what it needs, so a new job
+# cannot quietly inherit repo-wide write access. Recommended by GitHub's secure-use
+# reference, and the blast-radius limiter in the tj-actions/changed-files
+# compromise, where a moved tag dumped runner memory into public build logs.
+permissions: {}
+
 concurrency:
   group: go-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -77,6 +83,8 @@ jobs:
     needs: detect_changes
     if: needs.detect_changes.outputs.frontend_changed == 'true'
     uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
+    permissions:
+      contents: read
     with:
       app_name: Anchor
       working_directory: anchor-ui
@@ -159,6 +167,7 @@ jobs:
     needs: [detect_changes, frontend-verify, go-build-test]
     if: always()
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Verify required jobs
         shell: bash
