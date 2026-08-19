@@ -85,6 +85,6 @@ the table). Use `Empty` for placeholder states, not a title-only `Card`.
 
 ## Verification
 
-`pnpm check` (biome) · `pnpm build` (vite + tsc) · `pnpm test` (vitest) all
-green. Manual desktop/mobile browser inspection of key surfaces is still
+`pnpm check` (biome) · `pnpm typecheck` (tsc) · `pnpm test` (vitest) · `pnpm build`
+(vite) all green. Manual desktop/mobile browser inspection of key surfaces is still
 recommended before release.

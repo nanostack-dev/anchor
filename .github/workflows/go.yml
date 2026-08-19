@@ -4,32 +4,97 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '**/*.go'
+      - '**.go'
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'apps/anchor/migrations/**'
+      - 'apps/anchor/application.yaml'
+      - 'apps/anchor/**/application.yaml'
+      - 'apps/anchor/*codegen*.yaml'
+      - '.golangci.yml'
       - 'anchor-ui/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'apps/anchor/cmd/http/openapi.yaml'
       - '.github/workflows/go.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - '**/*.go'
+      - '**.go'
       - '**/go.mod'
       - '**/go.sum'
       - 'Dockerfile'
+      - 'apps/anchor/migrations/**'
+      - 'apps/anchor/application.yaml'
+      - 'apps/anchor/**/application.yaml'
+      - 'apps/anchor/*codegen*.yaml'
+      - '.golangci.yml'
       - 'anchor-ui/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'apps/anchor/cmd/http/openapi.yaml'
       - '.github/workflows/go.yml'
   workflow_dispatch:
 
+# One run per PR. Superseded runs are cancelled rather than left to finish: 4 of
+# 46 PR runs sampled on 2026-08-18 kept burning a runner after a newer push had
+# already started.
+#
+# Anything that is not a PR groups on run_id, which is unique, so those runs
+# never share a group at all. Grouping pushes on github.ref would not have left
+# them alone despite cancel-in-progress false: GitHub holds at most ONE pending
+# run per group, so a third merge to main cancels the second before it starts,
+# and that merge then builds no image and dispatches no deploy.
+concurrency:
+  group: go-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  detect_changes:
+    uses: nanostack-dev/ci-workflows/.github/workflows/detect-changes.yml@main
+    permissions:
+      contents: read
+    with:
+      # Only the frontend surface is gated. go-build-test stays ungated on
+      # purpose: infra's anchor-deploy.yml runs its wrangler frontend deploy
+      # downstream of backend, so skipping the backend track on a frontend-only
+      # change would also skip the deploy dispatch and the frontend never ships.
+      # Gating it needs a separate frontend deploy event first, the way echopoint
+      # has one.
+      #
+      # Keep this list and the `paths:` filters above in step. They are two
+      # answers to the same question, and the one that disagrees loses silently:
+      # a `paths:` miss starts no run at all, so no check is ever created.
+      frontend_patterns: |
+        anchor-ui/**
+        pnpm-lock.yaml
+        pnpm-workspace.yaml
+        apps/anchor/cmd/http/openapi.yaml
+        .github/workflows/go.yml
+
   frontend-verify:
+    needs: detect_changes
+    if: needs.detect_changes.outputs.frontend_changed == 'true'
     uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
     with:
       app_name: Anchor
       working_directory: anchor-ui
-      cache_dependency_path: anchor-ui/pnpm-lock.yaml
+      # The workspace root lockfile, which is the one pnpm actually reads: the
+      # root pnpm-workspace.yaml makes anchor-ui a package, so `pnpm install` in
+      # anchor-ui resolves upward. anchor-ui/pnpm-lock.yaml was a pre-workspace
+      # leftover that never changed again, which froze this cache key at one
+      # value for the repo's whole life and redownloaded 14-81 packages a run.
+      cache_dependency_path: pnpm-lock.yaml
       pnpm_version: '11.1.0'
+      # anchor-ui/src/client is generated from the backend spec and committed, so
+      # a spec change could merge against a stale client with CI green.
+      # Regenerating and diffing closes that, and running before typecheck means
+      # a spec change that breaks a caller fails on the type error.
+      generate_command: pnpm openapi-ts
+      verify_generated_path: anchor-ui/src/client
       lint_command: pnpm check
+      typecheck_command: pnpm typecheck
       test_command: pnpm test
       build_command: pnpm build
       # Story tests run on every PR — they are the component-level gate for
@@ -78,6 +143,36 @@ jobs:
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
+  # One status summarizing the run. A context that lives under a skipped job
+  # never materializes, so reading "frontend-verify / ..." directly would say
+  # nothing on a backend-only PR. This passes when each verification job either
+  # succeeded or was legitimately skipped, and fails if any failed or was
+  # cancelled.
+  #
+  # Not yet safe as a *required* check: the `paths:` filters above mean a
+  # docs-only PR starts no run, so no ci-ok check run is created and protection
+  # would block that PR forever. Dropping `paths:` and letting detect_changes be
+  # the only gate is the fix, and it needs go-build-test gated on a
+  # backend_changed output first — see the note on that job.
+  ci-ok:
+    name: ci-ok
+    needs: [detect_changes, frontend-verify, go-build-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        env:
+          DETECT_RESULT: ${{ needs.detect_changes.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-verify.result }}
+          GO_RESULT: ${{ needs.go-build-test.result }}
+        run: |
+          set -euo pipefail
+          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT"
+          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT"; do
+            [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
+          done
+
   dispatch-deploy-dev:
     needs: [frontend-verify, go-build-test]
     # always() so a failed or skipped frontend-verify does not skip the backend
@@ -103,9 +198,9 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.go-build-test.result == 'success'
+      needs.go-build-test.result == 'success' &&
+      needs.frontend-verify.result != 'failure'
     uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
     permissions:
       contents: read
@@ -114,21 +209,5 @@ jobs:
       event_type: preview-upsert
       payload: >-
         {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}","git_sha":"${{ github.event.pull_request.head.sha }}"}
-    secrets:
-      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-
-  dispatch-preview-down:
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
-    permissions:
-      contents: read
-    with:
-      deploy_repository: nanostack-dev/infra
-      event_type: preview-destroy
-      payload: >-
-        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}"}
     secrets:
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
