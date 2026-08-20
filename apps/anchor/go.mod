@@ -2,7 +2,7 @@ module anchor
 
 go 1.27
 
-toolchain go1.27rc2
+toolchain go1.27.0
 
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
@@ -18,6 +18,7 @@ require (
 	github.com/moby/moby/api v1.55.0
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
 	github.com/nanostack-dev/nanostack-framework v0.11.1
+	github.com/nanostack-dev/pgkit v0.0.33
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.6.0
@@ -62,6 +63,9 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.3 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect

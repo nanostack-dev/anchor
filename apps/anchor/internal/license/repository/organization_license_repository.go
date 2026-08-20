@@ -102,7 +102,11 @@ func (r *organizationLicenseRepositoryImpl) findByOrganization(
 	if forUpdate {
 		stmt = stmt.FOR(postgres.UPDATE())
 	}
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *organizationLicenseRepositoryImpl) Create(
