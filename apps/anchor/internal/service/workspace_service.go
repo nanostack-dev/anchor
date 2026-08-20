@@ -54,12 +54,16 @@ func (s *workspaceService) Find(
 		return nil, err
 	}
 
-	return s.workspaceRepo.FindByID(
+	found := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
+	if err := found.Err(); err != nil {
+		return nil, err
+	}
+	return found.ToPtr(), nil
 }
 
 func (s *workspaceService) Create(
@@ -89,16 +93,16 @@ func (s *workspaceService) Create(
 
 	var created workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
+		existing := s.workspaceRepo.FindByOrganizationIDAndName(
 			txCtx,
 			input.ProductID,
 			input.OrganizationID,
 			input.Name,
 		)
-		if findErr != nil {
+		if findErr := existing.Err(); findErr != nil {
 			return findErr
 		}
-		if existing != nil {
+		if existing.IsPresent() {
 			return workspace.NewNameExistsError(input.Name, input.OrganizationID)
 		}
 
@@ -128,13 +132,13 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 
-	currentWorkspace, err := s.workspaceRepo.FindByID(
+	foundWorkspace := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
-	if err != nil {
+	if err := foundWorkspace.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -142,24 +146,25 @@ func (s *workspaceService) Update(
 			Msg("failed to find workspace for update")
 		return workspace.Workspace{}, err
 	}
-	if currentWorkspace == nil {
+	if !foundWorkspace.IsPresent() {
 		return workspace.Workspace{}, fault.ErrNotFound
 	}
+	currentWorkspace := foundWorkspace.Value()
 
 	var updated workspace.Workspace
-	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		updatedWorkspace := *currentWorkspace
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		updatedWorkspace := currentWorkspace
 		if input.Name != nil {
-			existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
+			existing := s.workspaceRepo.FindByOrganizationIDAndName(
 				txCtx,
 				input.ProductID,
 				input.OrganizationID,
 				*input.Name,
 			)
-			if findErr != nil {
+			if findErr := existing.Err(); findErr != nil {
 				return findErr
 			}
-			if existing != nil && existing.ID != input.WorkspaceID {
+			if existing.IsPresent() && existing.Value().ID != input.WorkspaceID {
 				return workspace.NewNameExistsError(*input.Name, input.OrganizationID)
 			}
 			updatedWorkspace.Name = *input.Name
@@ -197,13 +202,13 @@ func (s *workspaceService) Delete(
 		return err
 	}
 
-	currentWorkspace, err := s.workspaceRepo.FindByID(
+	foundWorkspace := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
-	if err != nil {
+	if err := foundWorkspace.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -211,7 +216,7 @@ func (s *workspaceService) Delete(
 			Msg("failed to find workspace for deletion")
 		return err
 	}
-	if currentWorkspace == nil {
+	if !foundWorkspace.IsPresent() {
 		return fault.ErrNotFound
 	}
 
@@ -259,11 +264,11 @@ func (s *workspaceService) ensureOrganizationExists(
 	productID string,
 	organizationID string,
 ) error {
-	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
-	if err != nil {
+	found := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err := found.Err(); err != nil {
 		return err
 	}
-	if org == nil {
+	if !found.IsPresent() {
 		return fault.ErrNotFound
 	}
 
@@ -277,16 +282,16 @@ func (s *workspaceService) ensureNameAvailable(
 	name string,
 	currentWorkspaceID string,
 ) error {
-	existing, err := s.workspaceRepo.FindByOrganizationIDAndName(
+	existing := s.workspaceRepo.FindByOrganizationIDAndName(
 		ctx,
 		productID,
 		organizationID,
 		name,
 	)
-	if err != nil {
+	if err := existing.Err(); err != nil {
 		return err
 	}
-	if existing != nil && existing.ID != currentWorkspaceID {
+	if existing.IsPresent() && existing.Value().ID != currentWorkspaceID {
 		return workspace.NewNameExistsError(name, organizationID)
 	}
 

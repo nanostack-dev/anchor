@@ -262,18 +262,18 @@ func (s *integrationService) createInstanceTx(
 	configJSON json.RawMessage,
 ) (integration.Instance, error) {
 	// Check for duplicate (product + provider uniqueness).
-	existing, findErr := s.instanceRepo.FindByProductAndProvider(
+	existing := s.instanceRepo.FindByProductAndProvider(
 		ctx,
 		input.TenantID,
 		input.ProductID,
 		string(input.ProviderType),
 	)
-	if findErr != nil {
+	if findErr := existing.Err(); findErr != nil {
 		logger.Error().Err(findErr).
 			Msg("failed to check for existing instance")
 		return integration.Instance{}, findErr
 	}
-	if existing != nil {
+	if existing.IsPresent() {
 		return integration.Instance{},
 			ErrIntegrationInstanceAlreadyExists
 	}
@@ -340,20 +340,21 @@ func (s *integrationService) GetInstance(
 		return nil, valErr
 	}
 
-	instance, findErr := s.instanceRepo.FindByID(
+	found := s.instanceRepo.FindByID(
 		ctx, input.TenantID, input.ID,
 	)
-	if findErr != nil {
+	if findErr := found.Err(); findErr != nil {
 		logger.Error().Err(findErr).
 			Str("instance_id", input.ID).
 			Msg("failed to find instance")
 		return nil, findErr
 	}
-	if instance == nil {
+	if !found.IsPresent() {
 		return nil, ErrIntegrationInstanceNotFound
 	}
 
-	return instance, nil
+	instance := found.Value()
+	return &instance, nil
 }
 
 func (s *integrationService) UpdateInstance(
@@ -371,18 +372,20 @@ func (s *integrationService) UpdateInstance(
 
 	var updated integration.Instance
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing, findErr := s.instanceRepo.FindByID(
+		found := s.instanceRepo.FindByID(
 			txCtx, input.TenantID, input.ID,
 		)
-		if findErr != nil {
+		if findErr := found.Err(); findErr != nil {
 			logger.Error().Err(findErr).
 				Str("instance_id", input.ID).
 				Msg("failed to find instance for update")
 			return findErr
 		}
-		if existing == nil {
+		if !found.IsPresent() {
 			return ErrIntegrationInstanceNotFound
 		}
+		existingValue := found.Value()
+		existing := &existingValue
 
 		prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
 		if provErr != nil {
@@ -593,18 +596,19 @@ func (s *integrationService) DeleteInstance(
 	}
 
 	// Verify it exists first.
-	existing, findErr := s.instanceRepo.FindByID(
+	found := s.instanceRepo.FindByID(
 		ctx, input.TenantID, input.ID,
 	)
-	if findErr != nil {
+	if findErr := found.Err(); findErr != nil {
 		logger.Error().Err(findErr).
 			Str("instance_id", input.ID).
 			Msg("failed to find instance for deletion")
 		return findErr
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return ErrIntegrationInstanceNotFound
 	}
+	existing := found.Value()
 
 	hadKey := hasClerkAPIKey(existing.ConfigJSON) && existing.ProviderType == integration.ProviderTypeClerk
 
@@ -688,17 +692,17 @@ func (s *integrationService) ListAuditLogs(
 		limit = defaultAuditLogLimit
 	}
 
-	instance, findErr := s.instanceRepo.FindByID(
+	found := s.instanceRepo.FindByID(
 		ctx, input.TenantID, input.IntegrationInstanceID,
 	)
-	if findErr != nil {
+	if findErr := found.Err(); findErr != nil {
 		logger.Error().Err(findErr).
 			Str("integration_instance_id", input.IntegrationInstanceID).
 			Msg("failed to find integration instance for audit logs")
 		return nil, findErr
 	}
 
-	if instance == nil || instance.ProductID != input.ProductID {
+	if !found.IsPresent() || found.Value().ProductID != input.ProductID {
 		return nil, ErrIntegrationInstanceNotFound
 	}
 
@@ -931,15 +935,16 @@ func (s *integrationService) runInstanceReconcile(
 	logger zerolog.Logger,
 	instanceID string,
 ) error {
-	instance, findErr := s.instanceRepo.FindByIDInternal(ctx, instanceID)
-	if findErr != nil {
+	found := s.instanceRepo.FindByIDInternal(ctx, instanceID)
+	if findErr := found.Err(); findErr != nil {
 		return findErr
 	}
-	if instance == nil {
+	if !found.IsPresent() {
 		return queue.NonRetryable(
 			fmt.Errorf("integration instance not found: %s", instanceID),
 		)
 	}
+	instance := found.ToPtr()
 
 	prov, provErr := s.registry.GetProvider(string(instance.ProviderType))
 	if provErr != nil {
@@ -1176,13 +1181,14 @@ func (s *integrationService) processOneEvent(
 		return queue.NonRetryable(errors.New("queue payload missing event_id"))
 	}
 
-	event, findErr := s.eventRepo.FindByIDInternal(ctx, payload.EventID)
-	if findErr != nil {
+	foundEvent := s.eventRepo.FindByIDInternal(ctx, payload.EventID)
+	if findErr := foundEvent.Err(); findErr != nil {
 		return findErr
 	}
-	if event == nil {
+	if !foundEvent.IsPresent() {
 		return queue.NonRetryable(fmt.Errorf("integration event not found: %s", payload.EventID))
 	}
+	event := foundEvent.ToPtr()
 
 	eventLogger := logger.With().
 		Str(fieldEventIDKey, event.ID).
@@ -1231,13 +1237,14 @@ func (s *integrationService) executeEventTransaction(
 	}
 
 	// Resolve the instance (unscoped — worker has no tenant context).
-	instance, instanceErr := s.instanceRepo.FindByIDInternal(ctx, event.IntegrationInstanceID)
-	if instanceErr != nil {
+	foundInstance := s.instanceRepo.FindByIDInternal(ctx, event.IntegrationInstanceID)
+	if instanceErr := foundInstance.Err(); instanceErr != nil {
 		return nil, fmt.Errorf("failed to find integration instance: %w", instanceErr)
 	}
-	if instance == nil {
+	if !foundInstance.IsPresent() {
 		return nil, fmt.Errorf("integration instance not found for event: %s", event.IntegrationInstanceID)
 	}
+	instance := foundInstance.ToPtr()
 
 	// Resolve provider.
 	prov, provErr := s.registry.GetProvider(string(instance.ProviderType))
@@ -1435,19 +1442,20 @@ func (s *integrationService) resolveWebhookTarget(
 
 	// Webhook endpoints are unauthenticated — no tenant context is available.
 	// Use the unscoped lookup which relies on the UNIQUE(product_id, provider_type) constraint.
-	instance, findErr := s.instanceRepo.FindByProductAndProviderInternal(
+	found := s.instanceRepo.FindByProductAndProviderInternal(
 		ctx,
 		input.ProductID,
 		string(input.ProviderType),
 	)
-	if findErr != nil {
+	if findErr := found.Err(); findErr != nil {
 		logger.Error().Err(findErr).
 			Msg("failed to find integration instance")
 		return nil, nil, findErr
 	}
-	if instance == nil {
+	if !found.IsPresent() {
 		return nil, nil, ErrIntegrationInstanceNotFound
 	}
+	instance := found.ToPtr()
 
 	if !instance.CanIngest() {
 		blockReason := instance.IngestionBlockReason()
@@ -1681,8 +1689,8 @@ func (s *integrationService) verifyAndActivate(
 	defer cancel()
 
 	// Re-fetch the live instance so we update current state, not a stale snapshot.
-	live, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
-	if findErr != nil {
+	foundLive := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
+	if findErr := foundLive.Err(); findErr != nil {
 		// Context deadline/cancellation here is a benign timeout, not a fault;
 		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
 		// and everything else stays at Error.
@@ -1690,13 +1698,14 @@ func (s *integrationService) verifyAndActivate(
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
 		return
 	}
-	if live == nil {
+	if !foundLive.IsPresent() {
 		// The instance was removed between the save and this verification run
 		// (e.g. deleted by the tenant). This is an expected race, not an error.
 		logger.Warn().Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
 		return
 	}
+	live := foundLive.ToPtr()
 	if !s.isCurrentVerificationRun(inst.ID, run) {
 		logger.Debug().Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: skipped superseded verification update")
@@ -1836,22 +1845,22 @@ func (s *integrationService) findDuplicateEvent(
 	instance *integration.Instance,
 	event integration.Event,
 ) (*integration.Event, error) {
-	existing, err := s.eventRepo.FindByExternalEventIDInternal(
+	found := s.eventRepo.FindByExternalEventIDInternal(
 		ctx,
 		instance.ID,
 		event.ExternalEventID,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).Msg("failed to check for duplicate event")
 		return nil, err
 	}
-	if existing != nil {
+	if found.IsPresent() {
 		logger.Debug().
 			Str("external_event_id", event.ExternalEventID).
 			Msg("duplicate event, skipping")
 	}
 
-	return existing, nil
+	return found.ToPtr(), nil
 }
 
 func (s *integrationService) writeAuditLog(

@@ -72,8 +72,8 @@ func (s *authService) GetUserByTenantIDAndID(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetUserByTenantIDAndID").Logger()
 
-	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
-	if err != nil {
+	found := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("tenant_id", tenantID).
 			Str("user_id", userID).
@@ -81,7 +81,7 @@ func (s *authService) GetUserByTenantIDAndID(
 			Msg("failed to find user by tenant and user ID")
 		return nil, err
 	}
-	return user, nil
+	return found.ToPtr(), nil
 }
 
 func (s *authService) Register(
@@ -97,8 +97,8 @@ func (s *authService) Register(
 
 	var createdPlatformUser platform.User
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		optUserByEmail, err := s.userRepo.FindByEmail(txCtx, input.Email)
-		if err != nil {
+		foundUserByEmail := s.userRepo.FindByEmail(txCtx, input.Email)
+		if err := foundUserByEmail.Err(); err != nil {
 			logger.Error().
 				Str("email", input.Email).
 				Err(err).
@@ -106,7 +106,7 @@ func (s *authService) Register(
 			return fmt.Errorf("failed during user lookup: %w", err)
 		}
 
-		if optUserByEmail != nil {
+		if foundUserByEmail.IsPresent() {
 			logger.Debug().Str("email", input.Email).Msg("user already exists")
 			return ErrUserAlreadyExists
 		}
@@ -178,17 +178,18 @@ func (s *authService) handleInvitation(
 		logger.Debug().Msg("invitation code is empty")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
-	optInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
-	if err != nil {
+	foundInvitation := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
+	if err := foundInvitation.Err(); err != nil {
 		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
 	}
-	if optInvitation == nil {
+	if !foundInvitation.IsPresent() {
 		logger.Debug().Str("email", email).Msg("invitation not found")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeIsInvalid
 	}
+	optInvitation := foundInvitation.Value()
 	// then delete the invitation because it is used
-	if err = s.invitationRepo.DeleteByTenantIDAndID(
+	if err := s.invitationRepo.DeleteByTenantIDAndID(
 		ctx, optInvitation.PlatformTenantID, optInvitation.ID,
 	); err != nil {
 		logger.Error().
@@ -198,7 +199,7 @@ func (s *authService) handleInvitation(
 			Msg("failed to delete invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to delete invitation: %w", err)
 	}
-	return *optInvitation, nil
+	return optInvitation, nil
 }
 
 func (s *authService) Login(
@@ -210,16 +211,17 @@ func (s *authService) Login(
 		return auth.LoginOutput{}, validationErr
 	}
 
-	user, err := s.userRepo.FindByEmail(ctx, input.Email)
-	if err != nil {
+	foundUser := s.userRepo.FindByEmail(ctx, input.Email)
+	if err := foundUser.Err(); err != nil {
 		logger.Error().Str("email", input.Email).Err(err).Msg("failed to find user by email")
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
 	}
-	if user == nil {
+	if !foundUser.IsPresent() {
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
+	user := foundUser.ToPtr()
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(input.Password))
+	err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(input.Password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return auth.LoginOutput{}, ErrInvalidCredentials
@@ -240,13 +242,13 @@ func (s *authService) Login(
 	}
 
 	// Try to find platform user in the first tenant
-	platformUser, err := s.platformTenantUserRepo.FindByTenantIDAndEmail(
+	foundPlatformUser := s.platformTenantUserRepo.FindByTenantIDAndEmail(
 		ctx, tenants[0].ID, user.Email,
 	)
-	if err != nil {
+	if err = foundPlatformUser.Err(); err != nil {
 		return auth.LoginOutput{}, err
 	}
-	if platformUser == nil {
+	if !foundPlatformUser.IsPresent() {
 		// A valid email/password whose user has no platform-tenant membership is
 		// an authentication failure, not a server error. Return the same modelled
 		// credential error as the sibling branches above so the strict handler
@@ -258,6 +260,7 @@ func (s *authService) Login(
 		logger.Warn().Str("user_id", user.ID).Msg("platform user not found for authenticated user")
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
+	platformUser := foundPlatformUser.Value()
 
 	accessToken, refreshToken, err := s.jwt.GenerateTokens(
 		user.ID, platformUser.PlatformTenantID,
@@ -301,10 +304,10 @@ func (s *authService) RefreshToken(
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
-	user, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
+	foundUser := s.platformTenantUserRepo.FindByTenantIDAndUserID(
 		ctx, claims.TenantID, claims.UserID,
 	)
-	if err != nil {
+	if err = foundUser.Err(); err != nil {
 		logger.Error().
 			Str("user_id", claims.UserID).
 			Err(err).
@@ -313,9 +316,10 @@ func (s *authService) RefreshToken(
 			"failed to retrieve user details during refresh: %w", err,
 		)
 	}
-	if user == nil {
+	if !foundUser.IsPresent() {
 		return auth.LoginOutput{}, ErrUserNotFound
 	}
+	user := foundUser.ToPtr()
 
 	logger.Debug().Str("user_id", claims.UserID).Msg("token refreshed successfully")
 

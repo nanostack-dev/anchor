@@ -236,11 +236,11 @@ func (s *licenseSchemaService) CreateSchema(
 	// runs in here too, so it reads the same snapshot the insert writes to.
 	var created license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing, findErr := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
-		if findErr != nil {
+		existing := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
+		if findErr := existing.Err(); findErr != nil {
 			return findErr
 		}
-		if existing != nil {
+		if existing.IsPresent() {
 			return ErrLicenseSchemaAlreadyExists
 		}
 
@@ -274,13 +274,14 @@ func (s *licenseSchemaService) GetSchema(
 		return nil, err
 	}
 
-	schema, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err != nil {
+	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err := found.Err(); err != nil {
 		return nil, err
 	}
-	if schema == nil {
+	if !found.IsPresent() {
 		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
 	}
+	schema := found.ToPtr()
 
 	fields, err := s.fieldRepo.ListBySchema(ctx, schema.ID)
 	if err != nil {
@@ -307,20 +308,22 @@ func (s *licenseSchemaService) UpdateSchema(
 		fields = declared
 	}
 
-	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err != nil {
+	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err := found.Err(); err != nil {
 		return license.Schema{}, err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return license.Schema{}, ErrLicenseSchemaNotFound
 	}
+	existing := found.Value()
 	if in.Description != nil {
 		existing.Description = *in.Description
 	}
 
 	var updated license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, *existing)
+		var err error
+		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, existing)
 		if err != nil {
 			return err
 		}
@@ -354,11 +357,11 @@ func (s *licenseSchemaService) DeleteSchema(
 		return err
 	}
 
-	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err != nil {
+	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err := found.Err(); err != nil {
 		return err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return ErrLicenseSchemaNotFound
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -52,7 +53,7 @@ func organizationLicenseScope(tenantID, productID string) postgres.BoolExpressio
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
-) (*license.OrganizationLicense, error) {
+) functional.Option[license.OrganizationLicense] {
 	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
 }
 
@@ -86,13 +87,13 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(
 	ctx context.Context, tenantID string, productID string, organizationID string,
-) (*license.OrganizationLicense, error) {
+) functional.Option[license.OrganizationLicense] {
 	return r.findByOrganization(ctx, tenantID, productID, organizationID, true)
 }
 
 func (r *organizationLicenseRepositoryImpl) findByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string, forUpdate bool,
-) (*license.OrganizationLicense, error) {
+) functional.Option[license.OrganizationLicense] {
 	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
 		FROM(table.OrganizationLicenses).
 		WHERE(
@@ -102,11 +103,7 @@ func (r *organizationLicenseRepositoryImpl) findByOrganization(
 	if forUpdate {
 		stmt = stmt.FOR(postgres.UPDATE())
 	}
-	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *organizationLicenseRepositoryImpl) Create(

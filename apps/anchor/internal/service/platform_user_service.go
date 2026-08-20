@@ -71,8 +71,8 @@ func (s *platformUserService) GetPlatformUserByUserID(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	user, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
-	if err != nil {
+	found := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("user_id", input.UserID).
@@ -80,7 +80,7 @@ func (s *platformUserService) GetPlatformUserByUserID(
 			Msg("failed to find platform user by user ID")
 		return nil, err
 	}
-	return user, nil
+	return found.ToPtr(), nil
 }
 
 func (s *platformUserService) GetPlatformUser(
@@ -91,8 +91,8 @@ func (s *platformUserService) GetPlatformUser(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	user, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
-	if err != nil {
+	found := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("platform_user_id", input.PlatformUserID).
@@ -100,7 +100,7 @@ func (s *platformUserService) GetPlatformUser(
 			Msg("failed to find platform user")
 		return nil, err
 	}
-	return user, nil
+	return found.ToPtr(), nil
 }
 
 func (s *platformUserService) DeletePlatformUser(

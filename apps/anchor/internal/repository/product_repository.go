@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -36,14 +37,14 @@ func productsUpdatableColumns() postgres.ColumnList {
 type ProductRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, id string,
-	) (*product.Product, error)
+	) functional.Option[product.Product]
 	FindByTenantIDAndName(
 		ctx context.Context, tenantID string, name string,
-	) (*product.Product, error)
+	) functional.Option[product.Product]
 	// FindByIDInternal returns a product by ID without tenant scoping.
 	// Allowed only for trusted system-internal paths such as auth middleware
 	// resolving tenant context for authenticated product API keys.
-	FindByIDInternal(ctx context.Context, id string) (*product.Product, error)
+	FindByIDInternal(ctx context.Context, id string) functional.Option[product.Product]
 	Create(ctx context.Context, prod product.Product) (
 		product.Product, error,
 	)
@@ -84,7 +85,7 @@ func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logge
 
 func (r *productRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, id string,
-) (*product.Product, error) {
+) functional.Option[product.Product] {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,
@@ -99,21 +100,17 @@ func (r *productRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productRepositoryImpl) FindByIDInternal(
 	ctx context.Context, id string,
-) (*product.Product, error) {
+) functional.Option[product.Product] {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,
@@ -126,21 +123,17 @@ func (r *productRepositoryImpl) FindByIDInternal(
 		table.Products.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productRepositoryImpl) FindByTenantIDAndName(
 	ctx context.Context, tenantID string, name string,
-) (*product.Product, error) {
+) functional.Option[product.Product] {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,
@@ -155,16 +148,12 @@ func (r *productRepositoryImpl) FindByTenantIDAndName(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 // Product names are guarded by two unique constraints, and a racing create can

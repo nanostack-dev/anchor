@@ -207,7 +207,11 @@ func (s *organizationLicenseService) GetLicense(
 
 	base, err := s.licenses.key(in.ProductID, in.OrganizationID).GetOrElse(
 		ctx, func() (*license.OrganizationLicense, error) {
-			return s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
+			found := s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
+			if err := found.Err(); err != nil {
+				return nil, err
+			}
+			return found.ToPtr(), nil
 		},
 	)
 	if err != nil {
@@ -277,15 +281,16 @@ func (s *organizationLicenseService) AdjustValues(
 	var updated license.OrganizationLicense
 	wrote := false
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing, findErr := s.licenseRepo.FindByOrganizationForUpdate(
+		foundExisting := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
 		)
-		if findErr != nil {
+		if findErr := foundExisting.Err(); findErr != nil {
 			return findErr
 		}
-		if existing == nil {
+		if !foundExisting.IsPresent() {
 			return ErrOrganizationLicenseNotFound
 		}
+		existing := foundExisting.ToPtr()
 
 		// Merged, not replaced. The merged set is validated whole, so a license
 		// that has fallen behind a tightened schema is corrected rather than re-saved.
@@ -340,15 +345,16 @@ func (s *organizationLicenseService) DiffAgainstTemplate(
 		return license.OrganizationLicenseDiff{}, err
 	}
 
-	existing, err := s.licenseRepo.FindByOrganization(
+	found := s.licenseRepo.FindByOrganization(
 		ctx, in.TenantID, in.ProductID, in.OrganizationID,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		return license.OrganizationLicenseDiff{}, err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return license.OrganizationLicenseDiff{}, ErrOrganizationLicenseNotFound
 	}
+	existing := found.Value()
 
 	// The template always resolves, archived or not: it is never deleted, and a
 	// foreign key holds the reference. The nil branch below guards a row written

@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -23,7 +24,7 @@ type ProductPermissionRepository interface {
 	// FindByProductIDAndPermissionName finds permission by product_id and name
 	FindByProductIDAndPermissionName(
 		ctx context.Context, productID, name string,
-	) (*permission.ProductPermission, error)
+	) functional.Option[permission.ProductPermission]
 
 	// Create creates a new permission
 	Create(
@@ -85,7 +86,7 @@ func NewProductPermissionRepository(
 
 func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 	ctx context.Context, productID, name string,
-) (*permission.ProductPermission, error) {
+) functional.Option[permission.ProductPermission] {
 	stmt := table.ProductPermissions.SELECT(
 		table.ProductPermissions.AllColumns,
 	).FROM(
@@ -95,14 +96,10 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 			AND(postgres.LOWER(table.ProductPermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productPermissionMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productPermissionRepositoryImpl) Create(

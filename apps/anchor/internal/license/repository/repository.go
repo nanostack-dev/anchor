@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/license"
@@ -15,11 +16,11 @@ import (
 // Every method is tenant-scoped. There is no *Internal variant: nothing in the
 // licensing write path runs without an authenticated tenant.
 type SchemaRepository interface {
-	// FindByProduct returns the Product's schema, or nil when it has never
-	// declared one. Fields are not populated; use SchemaFieldRepository.
+	// FindByProduct returns the Product's schema, or an absent Option when it
+	// has never declared one. Fields are not populated; use SchemaFieldRepository.
 	FindByProduct(
 		ctx context.Context, tenantID string, productID string,
-	) (*license.Schema, error)
+	) functional.Option[license.Schema]
 	Create(
 		ctx context.Context, schema license.Schema,
 	) (license.Schema, error)
@@ -56,19 +57,21 @@ type SchemaFieldRepository interface {
 // variant: nothing in the licensing write path runs without an authenticated
 // tenant.
 type TemplateRepository interface {
-	// FindByID returns the template, or nil when the Product has none with that
-	// identifier. Scoping by product as well as by identifier is what stops a
-	// caller reading another Product's template by guessing its KSUID.
+	// FindByID returns the template, or an absent Option when the Product has
+	// none with that identifier. Scoping by product as well as by identifier is
+	// what stops a caller reading another Product's template by guessing its
+	// KSUID.
 	FindByID(
 		ctx context.Context, tenantID string, productID string, templateID string,
-	) (*license.Template, error)
-	// FindByName returns the Product's active template with that name, or nil.
-	// Names are unique among a Product's active templates, so this is how a
-	// conflicting create is detected before the unique index has to decide it.
-	// Archived templates are skipped, because archiving frees the name.
+	) functional.Option[license.Template]
+	// FindByName returns the Product's active template with that name, or an
+	// absent Option. Names are unique among a Product's active templates, so
+	// this is how a conflicting create is detected before the unique index has
+	// to decide it. Archived templates are skipped, because archiving frees the
+	// name.
 	FindByName(
 		ctx context.Context, tenantID string, productID string, name string,
-	) (*license.Template, error)
+	) functional.Option[license.Template]
 	// ListByProduct returns the Product's templates ordered by name, every status
 	// unless one is named.
 	ListByProduct(
@@ -109,12 +112,12 @@ type TemplateRepository interface {
 // variant: nothing in the licensing write path runs without an authenticated
 // tenant.
 type OrganizationLicenseRepository interface {
-	// FindByOrganization returns the Organization's license, or nil when it has
-	// never been instantiated. Scoping by product as well is what stops a caller
-	// reading another Product's license by guessing a KSUID.
+	// FindByOrganization returns the Organization's license, or an absent Option
+	// when it has never been instantiated. Scoping by product as well is what
+	// stops a caller reading another Product's license by guessing a KSUID.
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
-	) (*license.OrganizationLicense, error)
+	) functional.Option[license.OrganizationLicense]
 	// FindByOrganizations returns the licenses of the named Organizations,
 	// keyed by organization ID, for a caller reading many at once. An
 	// Organization holding no license has no entry.
@@ -125,7 +128,7 @@ type OrganizationLicenseRepository interface {
 	// Call it inside a transaction so two adjustments cannot share one previous set.
 	FindByOrganizationForUpdate(
 		ctx context.Context, tenantID string, productID string, organizationID string,
-	) (*license.OrganizationLicense, error)
+	) functional.Option[license.OrganizationLicense]
 	Create(
 		ctx context.Context, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)

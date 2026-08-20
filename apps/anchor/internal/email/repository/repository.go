@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+
 	"anchor/internal/domain/email"
 )
 
@@ -17,16 +19,16 @@ import (
 type TemplateRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
-	) (*email.Template, error)
+	) functional.Option[email.Template]
 	FindBySlug(
 		ctx context.Context, tenantID string, productID string, slug string,
-	) (*email.Template, error)
+	) functional.Option[email.Template]
 	// FindBySlugInternal is reserved for trusted system-internal paths that
 	// dispatch transactional emails via product API key (no authenticated
 	// tenant context). Must NOT be called from tenant-facing API handlers.
 	FindBySlugInternal(
 		ctx context.Context, productID string, slug string,
-	) (*email.Template, error)
+	) functional.Option[email.Template]
 	List(
 		ctx context.Context, tenantID string, productID string, limit int64, offset int64,
 	) ([]email.Template, error)
@@ -59,18 +61,18 @@ type TemplateRepository interface {
 type TemplateVersionRepository interface {
 	FindByID(
 		ctx context.Context, id string,
-	) (*email.TemplateVersion, error)
-	// FindCurrentDraft returns the template's current DRAFT version, or nil
-	// when no draft exists (e.g. immediately after a publish before a new
-	// draft has been opened).
+	) functional.Option[email.TemplateVersion]
+	// FindCurrentDraft returns the template's current DRAFT version, or an
+	// absent Option when no draft exists (e.g. immediately after a publish
+	// before a new draft has been opened).
 	FindCurrentDraft(
 		ctx context.Context, templateID string,
-	) (*email.TemplateVersion, error)
+	) functional.Option[email.TemplateVersion]
 	// FindCurrentPublished returns the template's currently-published
-	// version, or nil when the template has never been published.
+	// version, or an absent Option when the template has never been published.
 	FindCurrentPublished(
 		ctx context.Context, templateID string,
-	) (*email.TemplateVersion, error)
+	) functional.Option[email.TemplateVersion]
 	List(
 		ctx context.Context, templateID string, limit int64, offset int64,
 	) ([]email.TemplateVersion, error)
@@ -118,15 +120,15 @@ type SendRecordRepository interface {
 	// scoping; used by async dispatchers.
 	FindByDedupeKeyInternal(
 		ctx context.Context, productID string, dedupeKey string,
-	) (*email.SendRecord, error)
+	) functional.Option[email.SendRecord]
 	// FindByDedupeKey returns a send record matching the dedupe key within the
 	// specified tenant and product.
 	FindByDedupeKey(
 		ctx context.Context, tenantID string, productID string, dedupeKey string,
-	) (*email.SendRecord, error)
+	) functional.Option[email.SendRecord]
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
-	) (*email.SendRecord, error)
+	) functional.Option[email.SendRecord]
 	List(
 		ctx context.Context, input email.ListSendsInput,
 	) ([]email.SendRecord, error)

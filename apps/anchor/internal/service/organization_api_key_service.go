@@ -97,24 +97,26 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyExpiresAtInPastError()
 	}
 
-	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
-	if err != nil {
+	foundOrg := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
+	if err := foundOrg.Err(); err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
-	if org == nil {
+	if !foundOrg.IsPresent() {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
-	prod, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
-	if err != nil {
+	org := foundOrg.Value()
+	foundProd := s.productRepo.FindByIDInternal(ctx, org.ProductID)
+	if err := foundProd.Err(); err != nil {
 		logger.Error().
 			Str("product_id", org.ProductID).
 			Err(err).
 			Msg("failed to find product for organization API key config")
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
-	if prod == nil {
+	if !foundProd.IsPresent() {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
+	prod := foundProd.ToPtr()
 
 	if nameValidationErr := s.nameUniqueValidation(
 		ctx,
@@ -208,8 +210,8 @@ func (s *organizationAPIKeyService) GetByID(
 		return nil, err
 	}
 
-	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
-	if err != nil {
+	found := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
@@ -218,11 +220,11 @@ func (s *organizationAPIKeyService) GetByID(
 		return nil, fault.ErrUnexpected
 	}
 
-	if apiKey == nil {
+	if !found.IsPresent() {
 		return nil, fault.ErrNotFound
 	}
 
-	return apiKey, nil
+	return found.ToPtr(), nil
 }
 
 func (s *organizationAPIKeyService) Update(
@@ -238,8 +240,8 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
-	if err != nil {
+	found := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
@@ -248,11 +250,12 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
-	if existingAPIKey == nil {
+	if !found.IsPresent() {
 		return orgapikey.OrganizationAPIKey{}, fault.ErrNotFound
 	}
 
-	updatedAPIKey := *existingAPIKey
+	existingAPIKey := found.Value()
+	updatedAPIKey := existingAPIKey
 	if input.Name != nil && *input.Name != updatedAPIKey.Name {
 		if nameValidationErr := s.nameUniqueValidation(
 			ctx,
@@ -325,8 +328,8 @@ func (s *organizationAPIKeyService) Delete(
 		return err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
-	if err != nil {
+	found := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
@@ -335,9 +338,10 @@ func (s *organizationAPIKeyService) Delete(
 		return fault.ErrUnexpected
 	}
 
-	if existingAPIKey == nil {
+	if !found.IsPresent() {
 		return fault.ErrNotFound
 	}
+	existingAPIKey := found.Value()
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
@@ -492,16 +496,16 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	}
 
 	hashedKey := security.HashSecret(apiKey)
-	foundAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
-	if err != nil {
+	found := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
+	if err := found.Err(); err != nil {
 		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
-	if foundAPIKey == nil {
+	if !found.IsPresent() {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
 	}
 
-	return s.evaluateAPIKey(ctx, foundAPIKey, logger)
+	return s.evaluateAPIKey(ctx, found.ToPtr(), logger)
 }
 
 // resolveAPIKeyByProduct resolves an organization API key across all
@@ -519,18 +523,18 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	}
 
 	hashedKey := security.HashSecret(apiKey)
-	foundAPIKey, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
-	if err != nil {
+	found := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
+	if err := found.Err(); err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to introspect organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
-	if foundAPIKey == nil {
+	if !found.IsPresent() {
 		// The caller (the product) is authenticated; the subject credential simply
 		// does not exist. That is a not-found, not a caller-authentication failure.
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrNotFound
 	}
 
-	return s.evaluateAPIKey(ctx, foundAPIKey, logger)
+	return s.evaluateAPIKey(ctx, found.ToPtr(), logger)
 }
 
 // evaluateAPIKey applies expiry and status handling to a resolved key,
@@ -619,8 +623,8 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 	organizationID, name string,
 	logger zerolog.Logger,
 ) error {
-	existingAPIKey, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
-	if err != nil {
+	found := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("organization_id", organizationID).
 			Str("name", name).
@@ -628,7 +632,7 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 			Msg("failed to search for organization API keys by name")
 		return fault.ErrUnexpected
 	}
-	if existingAPIKey != nil {
+	if found.IsPresent() {
 		return NewOrganizationAPIKeyNameExistsError(name, organizationID)
 	}
 	return nil
@@ -638,11 +642,11 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 	ctx context.Context,
 	productID, organizationID string,
 ) error {
-	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
-	if err != nil {
+	found := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err := found.Err(); err != nil {
 		return fault.ErrUnexpected
 	}
-	if org == nil {
+	if !found.IsPresent() {
 		return fault.ErrNotFound
 	}
 	return nil

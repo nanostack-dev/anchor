@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -42,48 +43,40 @@ func NewTemplateVersionRepository(
 
 func (r *templateVersionRepositoryImpl) FindByID(
 	ctx context.Context, id string,
-) (*email.TemplateVersion, error) {
+) functional.Option[email.TemplateVersion] {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
 		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
 		LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
 	ctx context.Context, templateID string,
-) (*email.TemplateVersion, error) {
+) functional.Option[email.TemplateVersion] {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusDraft)
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentPublished(
 	ctx context.Context, templateID string,
-) (*email.TemplateVersion, error) {
+) functional.Option[email.TemplateVersion] {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusPublished)
 }
 
 func (r *templateVersionRepositoryImpl) findByStatus(
 	ctx context.Context, templateID string, status email.TemplateVersionStatus,
-) (*email.TemplateVersion, error) {
+) functional.Option[email.TemplateVersion] {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
 		WHERE(
 			table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID)).
 				AND(table.EmailTemplateVersions.Status.EQ(postgres.String(string(status)))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *templateVersionRepositoryImpl) List(

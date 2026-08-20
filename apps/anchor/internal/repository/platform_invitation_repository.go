@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -31,10 +32,10 @@ type InvitationRepository interface {
 	) (invitation.PlatformInvitation, error)
 	FindByTenantIDAndEmail(
 		ctx context.Context, tenantID string, email string,
-	) (*invitation.PlatformInvitation, error)
+	) functional.Option[invitation.PlatformInvitation]
 	FindByCodeAndEmail(
 		ctx context.Context, code string, email string,
-	) (*invitation.PlatformInvitation, error)
+	) functional.Option[invitation.PlatformInvitation]
 	DeleteByTenantIDAndID(
 		ctx context.Context, tenantID string, code string,
 	) error
@@ -134,7 +135,7 @@ func (r *invitationRepositoryImpl) Create(
 
 func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 	ctx context.Context, code string, email string,
-) (*invitation.PlatformInvitation, error) {
+) functional.Option[invitation.PlatformInvitation] {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
 	).WHERE(
@@ -142,18 +143,14 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 			AND(table.PlatformInvitations.Email.EQ(postgres.String(email))),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 	ctx context.Context, tenantID string, email string,
-) (*invitation.PlatformInvitation, error) {
+) functional.Option[invitation.PlatformInvitation] {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
 	).WHERE(
@@ -161,13 +158,9 @@ func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 			AND(table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(

@@ -27,24 +27,24 @@ func integrationInstancesUpdatableColumns() postgres.ColumnList {
 type IntegrationInstanceRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, id string,
-	) (*integration.Instance, error)
+	) functional.Option[integration.Instance]
 	// FindByIDInternal looks up an instance by its globally-unique ID without
 	// tenant scoping. Reserved for trusted system-internal paths (e.g. async
 	// queue workers, webhook ingress) where no authenticated tenant context
 	// exists. Must NOT be used from tenant-facing API handlers.
 	FindByIDInternal(
 		ctx context.Context, id string,
-	) (*integration.Instance, error)
+	) functional.Option[integration.Instance]
 	FindByProductAndProvider(
 		ctx context.Context, tenantID string, productID string, providerType string,
-	) (*integration.Instance, error)
+	) functional.Option[integration.Instance]
 	// FindByProductAndProviderInternal looks up an instance by product_id and
 	// provider_type without tenant scoping. Reserved for trusted system-internal
 	// paths (e.g. webhook ingress) where no authenticated tenant context exists.
 	// Must NOT be used from tenant-facing API handlers.
 	FindByProductAndProviderInternal(
 		ctx context.Context, productID string, providerType string,
-	) (*integration.Instance, error)
+	) functional.Option[integration.Instance]
 	ListByProduct(
 		ctx context.Context, tenantID string, productID string,
 	) ([]integration.Instance, error)
@@ -90,7 +90,7 @@ func NewIntegrationInstanceRepository(
 
 func (r *integrationInstanceRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, id string,
-) (*integration.Instance, error) {
+) functional.Option[integration.Instance] {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
 	).FROM(
@@ -101,18 +101,14 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 	ctx context.Context, id string,
-) (*integration.Instance, error) {
+) functional.Option[integration.Instance] {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
 	).FROM(
@@ -121,18 +117,14 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 	ctx context.Context, tenantID string, productID string, providerType string,
-) (*integration.Instance, error) {
+) functional.Option[integration.Instance] {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
 	).FROM(
@@ -145,18 +137,14 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 	ctx context.Context, productID string, providerType string,
-) (*integration.Instance, error) {
+) functional.Option[integration.Instance] {
 	stmt := table.IntegrationInstances.SELECT(
 		table.IntegrationInstances.AllColumns,
 	).FROM(
@@ -167,13 +155,9 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(

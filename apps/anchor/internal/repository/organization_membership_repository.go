@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -59,7 +60,7 @@ type OrganizationMembershipRepository interface {
 		productUserID string,
 		organizationID string,
 		includePermissions bool,
-	) (*user.OrganizationMembership, error)
+	) functional.Option[user.OrganizationMembership]
 
 	// FindByOrgIDAndUserID returns a specific member of an organization.
 	// When includePermissions is true, role permissions are included.
@@ -69,7 +70,7 @@ type OrganizationMembershipRepository interface {
 		orgID string,
 		productUserID string,
 		includePermissions bool,
-	) (*organization.Membership, error)
+	) functional.Option[organization.Membership]
 
 	// FindByOrgID returns all members of an organization.
 	// When includePermissions is true, role permissions are included.
@@ -155,7 +156,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 	productUserID string,
 	organizationID string,
 	includePermissions bool,
-) (*user.OrganizationMembership, error) {
+) functional.Option[user.OrganizationMembership] {
 	stmt := r.buildQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
 			table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)),
@@ -164,16 +165,12 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 		),
 	)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row userOrgMembershipRow) user.OrganizationMembership {
 			return r.toDomain(row)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) Create(
@@ -199,15 +196,15 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		return organization.Membership{}, err
 	}
 
-	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
-	if err != nil {
+	found := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	if err := found.Err(); err != nil {
 		return organization.Membership{}, err
 	}
-	if membership == nil {
+	if !found.IsPresent() {
 		return organization.Membership{}, fault.ErrNotFound
 	}
 
-	return *membership, nil
+	return found.Value(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) Update(
@@ -239,15 +236,15 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 
-	membership, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
-	if err != nil {
+	found := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	if err := found.Err(); err != nil {
 		return organization.Membership{}, err
 	}
-	if membership == nil {
+	if !found.IsPresent() {
 		return organization.Membership{}, fault.ErrNotFound
 	}
 
-	return *membership, nil
+	return found.Value(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) Delete(
@@ -377,7 +374,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 	orgID string,
 	productUserID string,
 	includePermissions bool,
-) (*organization.Membership, error) {
+) functional.Option[organization.Membership] {
 	stmt := r.buildOrgQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
 			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),
@@ -386,16 +383,12 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 		),
 	)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(row orgMembershipRow) organization.Membership {
 			return r.toDomainMembership(row)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByOrgID(

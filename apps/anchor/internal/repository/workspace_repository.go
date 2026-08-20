@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -33,13 +34,13 @@ type WorkspaceRepository interface {
 		productID string,
 		organizationID string,
 		workspaceID string,
-	) (*workspace.Workspace, error)
+	) functional.Option[workspace.Workspace]
 	FindByOrganizationIDAndName(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		name string,
-	) (*workspace.Workspace, error)
+	) functional.Option[workspace.Workspace]
 	Create(
 		ctx context.Context,
 		workspace workspace.Workspace,
@@ -89,7 +90,7 @@ func (r *workspaceRepositoryImpl) FindByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-) (*workspace.Workspace, error) {
+) functional.Option[workspace.Workspace] {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
 	).FROM(
@@ -100,16 +101,12 @@ func (r *workspaceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
@@ -117,7 +114,7 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	productID string,
 	organizationID string,
 	name string,
-) (*workspace.Workspace, error) {
+) functional.Option[workspace.Workspace] {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
 	).FROM(
@@ -128,16 +125,12 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *workspaceRepositoryImpl) Create(
@@ -192,15 +185,15 @@ func (r *workspaceRepositoryImpl) Update(
 		return workspace.Workspace{}, err
 	}
 
-	updated, err := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID)
-	if err != nil {
+	updated := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID)
+	if err := updated.Err(); err != nil {
 		return workspace.Workspace{}, err
 	}
-	if updated == nil {
+	if !updated.IsPresent() {
 		return workspace.Workspace{}, fault.ErrNotFound
 	}
 
-	return *updated, nil
+	return updated.Value(), nil
 }
 
 func (r *workspaceRepositoryImpl) DeleteByID(
@@ -219,11 +212,11 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		return err
 	}
 
-	found, err := r.FindByID(ctx, productID, organizationID, workspaceID)
-	if err != nil {
+	found := r.FindByID(ctx, productID, organizationID, workspaceID)
+	if err := found.Err(); err != nil {
 		return err
 	}
-	if found != nil {
+	if found.IsPresent() {
 		return fault.ErrUnexpected
 	}
 

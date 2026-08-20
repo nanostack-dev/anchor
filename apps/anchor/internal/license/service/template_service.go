@@ -133,11 +133,11 @@ func (s *licenseTemplateService) CreateTemplate(
 		return license.Template{}, err
 	}
 
-	existing, err := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
-	if err != nil {
+	existing := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
+	if err := existing.Err(); err != nil {
 		return license.Template{}, err
 	}
-	if existing != nil {
+	if existing.IsPresent() {
 		return license.Template{}, errLicenseTemplateNameExists(in.Name)
 	}
 
@@ -172,7 +172,11 @@ func (s *licenseTemplateService) GetTemplate(
 		return nil, err
 	}
 
-	return s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err := found.Err(); err != nil {
+		return nil, err
+	}
+	return found.ToPtr(), nil
 }
 
 func (s *licenseTemplateService) ListTemplates(
@@ -192,13 +196,14 @@ func (s *licenseTemplateService) UpdateTemplate(
 		return license.Template{}, err
 	}
 
-	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
+	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err := found.Err(); err != nil {
 		return license.Template{}, err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return license.Template{}, ErrLicenseTemplateNotFound
 	}
+	existing := found.Value()
 	if existing.IsArchived() {
 		return license.Template{}, ErrLicenseTemplateArchived
 	}
@@ -216,24 +221,24 @@ func (s *licenseTemplateService) UpdateTemplate(
 	// write, and a template whose schema has tightened underneath it should be
 	// corrected rather than quietly re-saved while it no longer satisfies the
 	// declaration it is defined against.
-	if err = s.schemas.ValidateValues(
+	if err := s.schemas.ValidateValues(
 		ctx, in.TenantID, in.ProductID, existing.Values,
 	); err != nil {
 		return license.Template{}, err
 	}
 
 	if in.Name != nil && *in.Name != existing.Name {
-		conflict, findErr := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
-		if findErr != nil {
+		conflict := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
+		if findErr := conflict.Err(); findErr != nil {
 			return license.Template{}, findErr
 		}
-		if conflict != nil {
+		if conflict.IsPresent() {
 			return license.Template{}, errLicenseTemplateNameExists(*in.Name)
 		}
 		existing.Name = *in.Name
 	}
 
-	updated, err := s.templateRepo.Update(ctx, in.TenantID, *existing)
+	updated, err := s.templateRepo.Update(ctx, in.TenantID, existing)
 	if err != nil {
 		if pgerr.IsUniqueViolation(err, licenseTemplateNameConstraint) {
 			return license.Template{}, errLicenseTemplateNameExists(existing.Name)
@@ -251,16 +256,17 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return license.Template{}, err
 	}
 
-	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
+	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err := found.Err(); err != nil {
 		return license.Template{}, err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return license.Template{}, ErrLicenseTemplateNotFound
 	}
+	existing := found.Value()
 	// Withdrawing a withdrawn tier is the outcome the caller asked for.
 	if existing.IsArchived() {
-		return *existing, nil
+		return existing, nil
 	}
 
 	// Organizations instantiated from this template keep their own copy of the
@@ -278,11 +284,11 @@ func (s *licenseTemplateService) DeleteTemplate(
 		return err
 	}
 
-	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
+	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err := found.Err(); err != nil {
 		return err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return ErrLicenseTemplateNotFound
 	}
 

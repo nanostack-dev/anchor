@@ -9,6 +9,7 @@ import (
 
 	"anchor/internal/domain/product/role"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -30,14 +31,10 @@ type productRoleWithPermission struct {
 type ProductRoleRepository interface {
 	FindByProductIDAndRoleID(
 		ctx context.Context, productID, id string,
-	) (
-		*role.ProductRole, error,
-	)
+	) functional.Option[role.ProductRole]
 	GetByProductIDAndName(
 		ctx context.Context, productID, name string,
-	) (
-		*role.ProductRole, error,
-	)
+	) functional.Option[role.ProductRole]
 	Create(
 		ctx context.Context, productRole role.ProductRole,
 	) (
@@ -84,7 +81,7 @@ func productRolesUpdatableColumns() postgres.ColumnList {
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 	ctx context.Context, productID, id string,
-) (*role.ProductRole, error) {
+) functional.Option[role.ProductRole] {
 	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 	))
@@ -95,7 +92,7 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 // filter applies.
 func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
-) (*role.ProductRole, error) {
+) functional.Option[role.ProductRole] {
 	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 	))
@@ -365,7 +362,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 // own scope in where; this helper adds none.
 func (r *productRoleRepositoryImpl) findOne(
 	ctx context.Context, where postgres.BoolExpression,
-) (*role.ProductRole, error) {
+) functional.Option[role.ProductRole] {
 	stmt := postgres.SELECT(
 		table.ProductRoles.AllColumns,
 		table.ProductRoleResourcePermissions.AllColumns,
@@ -377,13 +374,9 @@ func (r *productRoleRepositoryImpl) findOne(
 			),
 	).WHERE(where)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }

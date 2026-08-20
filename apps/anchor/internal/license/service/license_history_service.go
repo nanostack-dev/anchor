@@ -46,11 +46,11 @@ func (s *licenseHistoryService) ListChanges(
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
 
-	organization, err := s.organizations.FindByID(ctx, in.ProductID, in.OrganizationID)
-	if err != nil {
+	found := s.organizations.FindByID(ctx, in.ProductID, in.OrganizationID)
+	if err := found.Err(); err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
-	if organization == nil {
+	if !found.IsPresent() {
 		return search.Result[license.OrganizationLicenseChange]{}, ErrLicenseOrganizationNotFound
 	}
 

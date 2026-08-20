@@ -9,6 +9,7 @@ import (
 
 	"anchor/internal/domain/product/user"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -33,13 +34,13 @@ type ProductUserRepository interface {
 		ctx context.Context,
 		productID string,
 		id string,
-	) (*user.ProductUser, error)
+	) functional.Option[user.ProductUser]
 	FindByProductID(
 		ctx context.Context, productID string,
 	) ([]user.ProductUser, error)
 	FindByExternalID(
 		ctx context.Context, productID string, externalID string,
-	) (*user.ProductUser, error)
+	) functional.Option[user.ProductUser]
 	Create(
 		ctx context.Context, user user.ProductUser,
 	) (user.ProductUser, error)
@@ -88,7 +89,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	ctx context.Context,
 	productID string,
 	id string,
-) (*user.ProductUser, error) {
+) functional.Option[user.ProductUser] {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
 	).FROM(
@@ -99,14 +100,10 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
@@ -131,7 +128,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-) (*user.ProductUser, error) {
+) functional.Option[user.ProductUser] {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
 	).FROM(
@@ -142,14 +139,10 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) Create(

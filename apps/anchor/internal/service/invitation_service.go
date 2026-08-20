@@ -59,10 +59,10 @@ func (s *invitationService) CreateInvitation(
 	if err := validateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
-	optPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
+	foundPlatformUser := s.platformUserRepo.FindByTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
-	if err != nil {
+	if err := foundPlatformUser.Err(); err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
@@ -70,7 +70,7 @@ func (s *invitationService) CreateInvitation(
 			Msg("failed to find user by email")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
-	if optPlatformUser != nil {
+	if foundPlatformUser.IsPresent() {
 		logger.Debug().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
@@ -82,10 +82,10 @@ func (s *invitationService) CreateInvitation(
 			http.StatusBadRequest,
 		)
 	}
-	optInvitation, err := s.invitationRepo.FindByTenantIDAndEmail(
+	foundInvitation := s.invitationRepo.FindByTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
-	if err != nil {
+	if err := foundInvitation.Err(); err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
@@ -93,7 +93,7 @@ func (s *invitationService) CreateInvitation(
 			Msg("failed to find invitation by email")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
-	if optInvitation != nil {
+	if foundInvitation.IsPresent() {
 		logger.Debug().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).

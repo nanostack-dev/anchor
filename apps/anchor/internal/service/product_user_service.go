@@ -66,10 +66,10 @@ func (s *productUserService) Find(
 		return nil, err
 	}
 
-	productUser, err := s.productUserRepo.FindByProductIDAndID(
+	found := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -78,7 +78,7 @@ func (s *productUserService) Find(
 		return nil, err
 	}
 
-	return productUser, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productUserService) Create(
@@ -201,10 +201,10 @@ func (s *productUserService) FindByExternalID(
 		return nil, err
 	}
 
-	productUser, err := s.productUserRepo.FindByExternalID(
+	found := s.productUserRepo.FindByExternalID(
 		ctx, input.ProductID, input.ExternalID,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("external_id", input.ExternalID).
@@ -213,7 +213,7 @@ func (s *productUserService) FindByExternalID(
 		return nil, err
 	}
 
-	return productUser, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productUserService) ListUserOrganizations(
@@ -226,10 +226,10 @@ func (s *productUserService) ListUserOrganizations(
 	}
 
 	// Verify the product user exists
-	existingUser, err := s.productUserRepo.FindByProductIDAndID(
+	foundUser := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err != nil {
+	if err := foundUser.Err(); err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -237,7 +237,7 @@ func (s *productUserService) ListUserOrganizations(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if existingUser == nil {
+	if !foundUser.IsPresent() {
 		return nil, fault.ErrNotFound
 	}
 
@@ -266,10 +266,10 @@ func (s *productUserService) GetUserOrganization(
 	}
 
 	// Verify the product user exists
-	existingUser, err := s.productUserRepo.FindByProductIDAndID(
+	foundUser := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err != nil {
+	if err := foundUser.Err(); err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -277,14 +277,14 @@ func (s *productUserService) GetUserOrganization(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if existingUser == nil {
+	if !foundUser.IsPresent() {
 		return nil, fault.ErrNotFound
 	}
 
-	membership, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
+	found := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
 		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -294,5 +294,5 @@ func (s *productUserService) GetUserOrganization(
 		return nil, err
 	}
 
-	return membership, nil
+	return found.ToPtr(), nil
 }

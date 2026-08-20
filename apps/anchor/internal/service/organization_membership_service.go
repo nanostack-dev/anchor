@@ -118,10 +118,10 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	productID, organizationID, productUserID string,
 	logger zerolog.Logger,
 ) error {
-	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, false,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
@@ -129,7 +129,7 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 			Msg("failed to check existing membership")
 		return err
 	}
-	if existing != nil {
+	if found.IsPresent() {
 		return NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
 	}
 
@@ -142,10 +142,10 @@ func (s *organizationMembershipService) checkMembershipPresence(
 	productID, organizationID, productUserID string,
 	logger zerolog.Logger,
 ) error {
-	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, false,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
@@ -153,7 +153,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 			Msg("failed to verify existing membership")
 		return err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return NewOrganizationMembershipNotFoundError(productUserID, organizationID)
 	}
 
@@ -200,10 +200,10 @@ func (s *organizationMembershipService) RemoveMember(
 		return err
 	}
 
-	existing, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -211,11 +211,11 @@ func (s *organizationMembershipService) RemoveMember(
 			Msg("failed to verify membership before removal")
 		return err
 	}
-	if existing == nil {
+	if !found.IsPresent() {
 		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
 	}
 
-	if err = s.orgMembershipRepo.Delete(
+	if err := s.orgMembershipRepo.Delete(
 		ctx, input.OrganizationID, input.ProductUserID,
 	); err != nil {
 		logger.Error().Err(err).
@@ -244,10 +244,10 @@ func (s *organizationMembershipService) GetMember(
 		return nil, err
 	}
 
-	membership, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions,
 	)
-	if err != nil {
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -256,7 +256,7 @@ func (s *organizationMembershipService) GetMember(
 		return nil, err
 	}
 
-	return membership, nil
+	return found.ToPtr(), nil
 }
 
 func (s *organizationMembershipService) ListMembers(
@@ -314,15 +314,15 @@ func (s *organizationMembershipService) validateProductUser(
 	productUserID string,
 	logger zerolog.Logger,
 ) error {
-	user, err := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
-	if err != nil {
+	found := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("product_user_id", productUserID).
 			Msg("failed to verify product user exists")
 		return err
 	}
-	if user == nil {
+	if !found.IsPresent() {
 		return NewProductUserNotFoundError(productUserID)
 	}
 
@@ -335,15 +335,15 @@ func (s *organizationMembershipService) validateRole(
 	roleID string,
 	logger zerolog.Logger,
 ) error {
-	role, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err != nil {
+	found := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
+	if err := found.Err(); err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
 			Msg("failed to verify role exists")
 		return err
 	}
-	if role == nil {
+	if !found.IsPresent() {
 		return NewRoleNotFoundError(roleID)
 	}
 
