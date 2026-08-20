@@ -72,7 +72,7 @@ func (s *permissionService) Create(
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	if exists != nil {
+	if exists.IsPresent() {
 		return permission.ProductPermission{}, permission.NewPermissionNameDuplicateError(
 			input.Name, input.ProductID,
 		)
@@ -126,11 +126,11 @@ func (s *permissionService) Update(
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	if existing == nil {
+	if existing.IsAbsent() {
 		return permission.ProductPermission{}, permission.ErrPermissionNotFound
 	}
 
-	updated := *existing
+	updated := existing.Value()
 	updated.Description = input.Description
 	updated.UpdatedAt = time.Now()
 
@@ -161,7 +161,7 @@ func (s *permissionService) Delete(
 		return err
 	}
 
-	exists, err := s.permissionRepo.FindByProductIDAndPermissionName(
+	found, err := s.permissionRepo.FindByProductIDAndPermissionName(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
@@ -173,9 +173,10 @@ func (s *permissionService) Delete(
 		return fault.ErrUnexpected
 	}
 
-	if exists == nil {
+	if found.IsAbsent() {
 		return nil
 	}
+	exists := found.Value()
 
 	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, exists.Name)
 	if err != nil {
@@ -220,7 +221,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 		return nil, err
 	}
 
-	perm, err := s.permissionRepo.FindByProductIDAndPermissionName(
+	found, err := s.permissionRepo.FindByProductIDAndPermissionName(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
@@ -232,11 +233,11 @@ func (s *permissionService) FindByProductAndPermissionName(
 		return nil, fault.ErrUnexpected
 	}
 
-	if perm == nil {
+	if found.IsAbsent() {
 		return nil, permission.ErrPermissionNotFound
 	}
 
-	return perm, nil
+	return found.ToPtr(), nil
 }
 
 func (s *permissionService) SearchByProductID(

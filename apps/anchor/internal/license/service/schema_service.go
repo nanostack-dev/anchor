@@ -240,7 +240,7 @@ func (s *licenseSchemaService) CreateSchema(
 		if findErr != nil {
 			return findErr
 		}
-		if existing != nil {
+		if existing.IsPresent() {
 			return ErrLicenseSchemaAlreadyExists
 		}
 
@@ -274,13 +274,14 @@ func (s *licenseSchemaService) GetSchema(
 		return nil, err
 	}
 
-	schema, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
 	if err != nil {
 		return nil, err
 	}
-	if schema == nil {
+	if found.IsAbsent() {
 		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
 	}
+	schema := found.ToPtr()
 
 	fields, err := s.fieldRepo.ListBySchema(ctx, schema.ID)
 	if err != nil {
@@ -307,20 +308,21 @@ func (s *licenseSchemaService) UpdateSchema(
 		fields = declared
 	}
 
-	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
 	if err != nil {
 		return license.Schema{}, err
 	}
-	if existing == nil {
+	if found.IsAbsent() {
 		return license.Schema{}, ErrLicenseSchemaNotFound
 	}
+	existing := found.Value()
 	if in.Description != nil {
 		existing.Description = *in.Description
 	}
 
 	var updated license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, *existing)
+		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, existing)
 		if err != nil {
 			return err
 		}
@@ -354,11 +356,11 @@ func (s *licenseSchemaService) DeleteSchema(
 		return err
 	}
 
-	existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
 	if err != nil {
 		return err
 	}
-	if existing == nil {
+	if found.IsAbsent() {
 		return ErrLicenseSchemaNotFound
 	}
 

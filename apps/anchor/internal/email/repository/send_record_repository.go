@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -120,7 +121,7 @@ func (r *sendRecordRepositoryImpl) UpdateStatusInternal(
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 	ctx context.Context, tenantID string, productID string, dedupeKey string,
-) (*email.SendRecord, error) {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(
@@ -128,36 +129,28 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 	ctx context.Context, productID string, dedupeKey string,
-) (*email.SendRecord, error) {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(
 			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, id string,
-) (*email.SendRecord, error) {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(
@@ -165,13 +158,9 @@ func (r *sendRecordRepositoryImpl) FindByID(
 				AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) List(

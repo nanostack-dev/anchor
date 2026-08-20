@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/auth"
@@ -25,7 +26,7 @@ func usersUpdatableColumns() postgres.ColumnList {
 var _ UserRepository = (*userRepositoryImpl)(nil)
 
 type UserRepository interface {
-	FindByEmail(ctx context.Context, email string) (*auth.User, error)
+	FindByEmail(ctx context.Context, email string) (functional.Option[auth.User], error)
 	Count(ctx context.Context) (int64, error)
 	Create(
 		ctx context.Context,
@@ -43,7 +44,7 @@ type userRepositoryImpl struct {
 
 func (u *userRepositoryImpl) FindByEmail(
 	ctx context.Context, email string,
-) (*auth.User, error) {
+) (functional.Option[auth.User], error) {
 	stmt := table.Users.SELECT(
 		table.Users.AllColumns,
 	).FROM(
@@ -52,15 +53,10 @@ func (u *userRepositoryImpl) FindByEmail(
 		table.Users.Email.EQ(postgres.String(email)),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, u.db, stmt,
-
 		u.userMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (u *userRepositoryImpl) Count(ctx context.Context) (

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
@@ -53,23 +54,19 @@ func licenseTemplateScope(tenantID, productID string) postgres.BoolExpression {
 
 func (r *templateRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, templateID string,
-) (*license.Template, error) {
+) (functional.Option[license.Template], error) {
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
 		WHERE(
 			licenseTemplateScope(tenantID, productID).
 				AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *templateRepositoryImpl) FindByName(
 	ctx context.Context, tenantID string, productID string, name string,
-) (*license.Template, error) {
+) (functional.Option[license.Template], error) {
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
 		WHERE(
@@ -77,11 +74,7 @@ func (r *templateRepositoryImpl) FindByName(
 				AND(table.LicenseTemplates.Name.EQ(postgres.String(name))).
 				AND(activeOnly()),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *templateRepositoryImpl) ListByProduct(

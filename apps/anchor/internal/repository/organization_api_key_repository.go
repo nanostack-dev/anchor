@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
@@ -31,19 +32,19 @@ type OrganizationAPIKeyRepository interface {
 	GetByID(
 		ctx context.Context,
 		organizationID, id string,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 	GetByOrganizationIDAndName(
 		ctx context.Context,
 		organizationID, name string,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 	GetByOrganizationIDAndHashedValue(
 		ctx context.Context,
 		organizationID, hashedValue string,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 	GetByProductIDAndHashedValueInternal(
 		ctx context.Context,
 		productID, hashedValue string,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 	SearchByOrganizationID(
 		ctx context.Context,
 		input orgapikey.SearchOrganizationAPIKeysInput,
@@ -68,7 +69,7 @@ type OrganizationAPIKeyRepository interface {
 	GetByIDInternal(
 		ctx context.Context,
 		id string,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 }
 
 var _ OrganizationAPIKeyRepository = (*organizationAPIKeyRepository)(nil)
@@ -156,7 +157,7 @@ func (r *organizationAPIKeyRepository) Create(
 func (r *organizationAPIKeyRepository) GetByID(
 	ctx context.Context,
 	organizationID, id string,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
 		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)),
 	))
@@ -165,14 +166,14 @@ func (r *organizationAPIKeyRepository) GetByID(
 func (r *organizationAPIKeyRepository) GetByIDInternal(
 	ctx context.Context,
 	id string,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)))
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 	ctx context.Context,
 	organizationID, name string,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	return r.findOne(ctx, table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
 		table.OrganizationAPIKeys.Name.EQ(postgres.String(name)),
 	))
@@ -181,7 +182,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 	ctx context.Context,
 	organizationID, hashedValue string,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	return r.findOne(ctx, table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
 		table.OrganizationAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
 	))
@@ -194,7 +195,7 @@ func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 	ctx context.Context,
 	productID, hashedValue string,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
 		table.OrganizationAPIKeyPermissions.AllColumns,
@@ -214,7 +215,7 @@ func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 		),
 	)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
@@ -222,10 +223,6 @@ func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 //nolint:dupl // mirrors product API key update flow with organization-scoped tables
@@ -494,7 +491,7 @@ func (r *organizationAPIKeyRepository) applyFullTextSearch(
 // own scope in where; this helper adds none.
 func (r *organizationAPIKeyRepository) findOne(
 	ctx context.Context, where postgres.BoolExpression,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (functional.Option[orgapikey.OrganizationAPIKey], error) {
 	stmt := postgres.SELECT(
 		table.OrganizationAPIKeys.AllColumns,
 		table.OrganizationAPIKeyPermissions.AllColumns,
@@ -505,7 +502,7 @@ func (r *organizationAPIKeyRepository) findOne(
 		),
 	).WHERE(where)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
@@ -513,8 +510,4 @@ func (r *organizationAPIKeyRepository) findOne(
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }

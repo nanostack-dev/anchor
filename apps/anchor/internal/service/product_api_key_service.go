@@ -160,7 +160,7 @@ func (s *productAPIKeyService) GetByID(
 		return nil, err
 	}
 
-	apiKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	found, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -170,11 +170,11 @@ func (s *productAPIKeyService) GetByID(
 		return nil, fault.ErrUnexpected
 	}
 
-	if apiKey == nil {
+	if found.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 
-	return apiKey, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productAPIKeyService) Update(
@@ -190,7 +190,7 @@ func (s *productAPIKeyService) Update(
 		Str("product_id", input.ProductID).
 		Msg("updating product API key")
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -200,11 +200,12 @@ func (s *productAPIKeyService) Update(
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
-	if existingAPIKey == nil {
+	if foundAPIKey.IsAbsent() {
 		return apikey.ProductAPIKey{}, fault.ErrNotFound
 	}
+	existingAPIKey := foundAPIKey.Value()
 
-	updatedAPIKey := *existingAPIKey
+	updatedAPIKey := existingAPIKey
 	permissionsUpdated := input.Permissions != nil
 
 	if input.Name != nil && *input.Name != updatedAPIKey.Name {
@@ -278,8 +279,8 @@ func (s *productAPIKeyService) Update(
 		if fetchErr != nil {
 			return fetchErr
 		}
-		if refetched != nil {
-			updatedAPIKeyFromDB = *refetched
+		if refetched.IsPresent() {
+			updatedAPIKeyFromDB = refetched.Value()
 			return nil
 		}
 
@@ -321,7 +322,7 @@ func (s *productAPIKeyService) Delete(
 		return err
 	}
 
-	existingAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -331,9 +332,10 @@ func (s *productAPIKeyService) Delete(
 		return fault.ErrUnexpected
 	}
 
-	if existingAPIKey == nil {
+	if foundAPIKey.IsAbsent() {
 		return fault.ErrNotFound
 	}
+	existingAPIKey := foundAPIKey.Value()
 	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -392,7 +394,11 @@ func (s *productAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	foundAPIKey, err := s.apiKeys.Key(productID, hashedKey).GetOrElse(
 		ctx, func() (*apikey.ProductAPIKey, error) {
-			return s.apiKeyRepo.GetByProductIDAndHashedValue(ctx, productID, hashedKey)
+			found, err := s.apiKeyRepo.GetByProductIDAndHashedValue(ctx, productID, hashedKey)
+			if err != nil {
+				return nil, err
+			}
+			return found.ToPtr(), nil
 		},
 	)
 
@@ -468,7 +474,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 func (s *productAPIKeyService) nameUniqueValidation(
 	ctx context.Context, productID, name string, logger zerolog.Logger,
 ) error {
-	existingAPIKey, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
+	found, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -477,7 +483,7 @@ func (s *productAPIKeyService) nameUniqueValidation(
 			Msg("failed to search for API keys by name")
 		return fault.ErrUnexpected
 	}
-	if existingAPIKey != nil {
+	if found.IsPresent() {
 		return NewProductAPIKeyNameExistsError(name, productID)
 	}
 	return nil

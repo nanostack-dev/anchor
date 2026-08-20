@@ -148,7 +148,7 @@ func (s *productRoleService) GetProductRole(
 		return nil, err
 	}
 
-	productRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -158,7 +158,7 @@ func (s *productRoleService) GetProductRole(
 		return nil, fault.ErrUnexpected
 	}
 
-	return productRole, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productRoleService) UpdateProductRole(
@@ -175,7 +175,7 @@ func (s *productRoleService) UpdateProductRole(
 		Str("product_id", input.ProductID).
 		Msg("updating product role")
 
-	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -184,11 +184,11 @@ func (s *productRoleService) UpdateProductRole(
 			Msg("failed to find product role for update")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if existingRole == nil {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, fault.ErrNotFound
 	}
 
-	updatedRole := *existingRole
+	updatedRole := foundRole.Value()
 
 	if input.Name != nil && *input.Name != updatedRole.Name {
 		err = s.nameDuplicationValidation(ctx, input.ProductID, *input.Name, input.ID, logger)
@@ -234,7 +234,7 @@ func (s *productRoleService) DeleteProductRole(
 		return err
 	}
 
-	existingRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -243,7 +243,7 @@ func (s *productRoleService) DeleteProductRole(
 			Msg("failed to find product role for deletion")
 		return fault.ErrUnexpected
 	}
-	if existingRole == nil {
+	if foundRole.IsAbsent() {
 		return fault.ErrNotFound
 	}
 
@@ -292,7 +292,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		Str("product_id", input.ProductID).
 		Msg("assigning permission to product role")
 
-	productRole, err := s.roleRepo.FindByProductIDAndRoleID(
+	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(
 		ctx, input.ProductID, input.ProductRoleID,
 	)
 	if err != nil {
@@ -303,9 +303,10 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			Msg("failed to find role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if productRole == nil {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
 	}
+	productRole := foundRole.ToPtr()
 
 	newPermission := role.ProductRolePermission{
 		ProductRoleID:  input.ProductRoleID,
@@ -364,7 +365,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		Str("product_id", input.ProductID).
 		Msg("unassigning permission from product role")
 
-	productRole, err := s.roleRepo.FindByProductIDAndRoleID(
+	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(
 		ctx, input.ProductID, input.ProductRoleID,
 	)
 	if err != nil {
@@ -375,11 +376,12 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Msg("failed to find role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if productRole == nil {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
 	}
+	productRole := foundRole.ToPtr()
 
-	permissionFound, err := s.productResourcePermissionRepo.FindByName(
+	foundPermission, err := s.productResourcePermissionRepo.FindByName(
 		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
@@ -390,11 +392,12 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Msg("failed to find permission")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if permissionFound == nil {
+	if foundPermission.IsAbsent() {
 		return role.ProductRole{}, NewPermissionsNotFoundError(
 			input.ProductID, []string{input.PermissionName},
 		)
 	}
+	permissionFound := foundPermission.Value()
 
 	found := false
 	var updatedPermissions []role.ProductRolePermission
@@ -439,7 +442,7 @@ func (s *productRoleService) nameDuplicationValidation(
 ) error {
 	// Exact-name lookup. The search filter matches names as substrings, which
 	// would wrongly flag e.g. "role" as a duplicate of "role-admin".
-	existingRole, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
+	found, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -448,7 +451,7 @@ func (s *productRoleService) nameDuplicationValidation(
 			Msg("failed to look up product role by name")
 		return fault.ErrUnexpected
 	}
-	if existingRole != nil && existingRole.ID != currentRoleID {
+	if found.IsPresent() && found.Value().ID != currentRoleID {
 		return NewRoleWithAlreadyExistingNameError(
 			roleName, productID,
 		)

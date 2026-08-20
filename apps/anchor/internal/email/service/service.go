@@ -19,6 +19,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
@@ -190,15 +191,16 @@ func (s *emailService) resolveMailer(
 	ctx context.Context,
 	tenantID, productID string,
 ) (provider.Mailer, *domainintegration.Instance, error) {
-	instance, err := s.instanceRepo.FindByProductAndProvider(
+	found, err := s.instanceRepo.FindByProductAndProvider(
 		ctx, tenantID, productID, string(domainintegration.ProviderTypeSMTP),
 	)
 	if err != nil {
 		return nil, nil, err
 	}
-	if instance == nil {
+	if found.IsAbsent() {
 		return nil, nil, ErrEmailIntegrationNotFound
 	}
+	instance := found.ToPtr()
 	if instance.Status != domainintegration.StatusActive || !instance.IsEnabled {
 		return nil, nil, ErrEmailIntegrationInactive
 	}
@@ -218,24 +220,24 @@ func (s *emailService) resolveTemplate(
 	ctx context.Context, tenantID, productID string, idPtr, slugPtr *string,
 ) (*email.Template, error) {
 	if idPtr != nil && strings.TrimSpace(*idPtr) != "" {
-		t, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
+		found, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
 		if err != nil {
 			return nil, err
 		}
-		if t == nil {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNotFound
 		}
-		return t, nil
+		return found.ToPtr(), nil
 	}
 	if slugPtr != nil && strings.TrimSpace(*slugPtr) != "" {
-		t, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
+		found, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
 		if err != nil {
 			return nil, err
 		}
-		if t == nil {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNotFound
 		}
-		return t, nil
+		return found.ToPtr(), nil
 	}
 	return nil, ErrEmailTemplateSelectorMissing
 }
@@ -245,23 +247,23 @@ func (s *emailService) resolveSendVersion(
 	ctx context.Context, templateID string, useDraft bool,
 ) (*email.TemplateVersion, error) {
 	if useDraft {
-		v, err := s.versionRepo.FindCurrentDraft(ctx, templateID)
+		found, err := s.versionRepo.FindCurrentDraft(ctx, templateID)
 		if err != nil {
 			return nil, err
 		}
-		if v == nil {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNoDraft
 		}
-		return v, nil
+		return found.ToPtr(), nil
 	}
-	v, err := s.versionRepo.FindCurrentPublished(ctx, templateID)
+	found, err := s.versionRepo.FindCurrentPublished(ctx, templateID)
 	if err != nil {
 		return nil, err
 	}
-	if v == nil {
+	if found.IsAbsent() {
 		return nil, ErrEmailTemplateNotPublished
 	}
-	return v, nil
+	return found.ToPtr(), nil
 }
 
 func (s *emailService) CreateTemplate(
@@ -275,7 +277,7 @@ func (s *emailService) CreateTemplate(
 	if err != nil {
 		return email.Template{}, err
 	}
-	if existing != nil {
+	if existing.IsPresent() {
 		return email.Template{}, ErrEmailTemplateSlugTaken
 	}
 
@@ -320,13 +322,14 @@ func (s *emailService) CreateTemplate(
 func (s *emailService) UpdateTemplate(
 	ctx context.Context, in email.UpdateTemplateInput,
 ) (email.Template, error) {
-	existing, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return email.Template{}, err
 	}
-	if existing == nil {
+	if found.IsAbsent() {
 		return email.Template{}, ErrEmailTemplateNotFound
 	}
+	existing := found.Value()
 	if in.Name != nil {
 		existing.Name = *in.Name
 	}
@@ -336,42 +339,43 @@ func (s *emailService) UpdateTemplate(
 	if in.IsActive != nil {
 		existing.IsActive = *in.IsActive
 	}
-	return s.templateRepo.Update(ctx, in.TenantID, *existing)
+	return s.templateRepo.Update(ctx, in.TenantID, existing)
 }
 
 func (s *emailService) UpdateTemplateDraft(
 	ctx context.Context, in email.UpdateTemplateDraftInput,
 ) (email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return email.TemplateVersion{}, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return email.TemplateVersion{}, findErr
 	}
-	if tpl == nil {
+	if foundTpl.IsAbsent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
 	}
+	tpl := foundTpl.ToPtr()
 
 	var draft *email.TemplateVersion
 	if tpl.DraftVersionID != nil {
-		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
+		draft = foundDraft.ToPtr()
 	}
 	//nolint:nestif // template state machine with three branches
 	if draft == nil {
 		if tpl.PublishedVersionID == nil {
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
-		var pub *email.TemplateVersion
-		pub, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+		foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
-		if pub == nil {
+		if foundPub.IsAbsent() {
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
-		var next int32
-		next, err = s.versionRepo.NextVersionNumber(ctx, tpl.ID)
+		pub := foundPub.ToPtr()
+		next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
@@ -420,34 +424,35 @@ func (s *emailService) UpdateTemplateDraft(
 func (s *emailService) GetTemplateDraft(
 	ctx context.Context, in email.GetTemplateDraftInput,
 ) (*email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return nil, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return nil, findErr
 	}
-	if tpl == nil {
+	if foundTpl.IsAbsent() {
 		return nil, ErrEmailTemplateNotFound
 	}
+	tpl := foundTpl.ToPtr()
 
 	if tpl.DraftVersionID != nil {
-		var draft *email.TemplateVersion
-		draft, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 		if err != nil {
 			return nil, err
 		}
-		return draft, nil
+		return foundDraft.ToPtr(), nil
 	}
 
 	if tpl.PublishedVersionID == nil {
 		return nil, nil
 	}
 
-	pub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+	foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 	if err != nil {
 		return nil, err
 	}
-	if pub == nil {
+	if foundPub.IsAbsent() {
 		return nil, nil
 	}
+	pub := foundPub.ToPtr()
 
 	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
@@ -481,13 +486,14 @@ func (s *emailService) GetTemplateDraft(
 func (s *emailService) PublishTemplate(
 	ctx context.Context, in email.PublishTemplateInput,
 ) (email.TemplateVersion, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return email.TemplateVersion{}, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return email.TemplateVersion{}, findErr
 	}
-	if tpl == nil {
+	if foundTpl.IsAbsent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
 	}
+	tpl := foundTpl.ToPtr()
 	if tpl.DraftVersionID == nil {
 		return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 	}
@@ -496,15 +502,15 @@ func (s *emailService) PublishTemplate(
 	publishedAt := time.Now()
 	prevPublishedID := tpl.PublishedVersionID
 
-	if err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	if err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if prevPublishedID != nil {
-			if err = s.versionRepo.UpdateStatus(
+			if err := s.versionRepo.UpdateStatus(
 				txCtx, *prevPublishedID, email.TemplateVersionStatusArchived, nil,
 			); err != nil {
 				return err
 			}
 		}
-		if err = s.versionRepo.UpdateStatus(
+		if err := s.versionRepo.UpdateStatus(
 			txCtx, publishedID, email.TemplateVersionStatusPublished, &publishedAt,
 		); err != nil {
 			return err
@@ -516,10 +522,14 @@ func (s *emailService) PublishTemplate(
 		return email.TemplateVersion{}, err
 	}
 
-	published, err := s.versionRepo.FindByID(ctx, publishedID)
-	if err != nil || published == nil {
+	foundPublished, err := s.versionRepo.FindByID(ctx, publishedID)
+	if err != nil {
 		return email.TemplateVersion{}, err
 	}
+	if foundPublished.IsAbsent() {
+		return email.TemplateVersion{}, nil
+	}
+	published := foundPublished.ToPtr()
 
 	// Open a fresh DRAFT cloned from the just-published row so further edits
 	// do not mutate the live version. Best-effort post-tx; failure here does
@@ -527,7 +537,7 @@ func (s *emailService) PublishTemplate(
 	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
-		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
+		return *published, nil
 	}
 	newDraft := email.TemplateVersion{
 		TemplateID:    tpl.ID,
@@ -542,7 +552,7 @@ func (s *emailService) PublishTemplate(
 	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
-		return *published, nil //nolint:nilerr // best-effort post-tx; does not roll back publish
+		return *published, nil
 	}
 	if err = s.templateRepo.SetVersionPointers(
 		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
@@ -555,7 +565,11 @@ func (s *emailService) PublishTemplate(
 func (s *emailService) GetTemplate(
 	ctx context.Context, in email.GetTemplateInput,
 ) (*email.Template, error) {
-	return s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	return found.ToPtr(), nil
 }
 
 func (s *emailService) ListTemplates(
@@ -567,11 +581,11 @@ func (s *emailService) ListTemplates(
 func (s *emailService) DeleteTemplate(
 	ctx context.Context, in email.DeleteTemplateInput,
 ) error {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return err
 	}
-	if tpl == nil {
+	if found.IsAbsent() {
 		return ErrEmailTemplateNotFound
 	}
 
@@ -581,11 +595,11 @@ func (s *emailService) DeleteTemplate(
 func (s *emailService) SaveTemplateExamples(
 	ctx context.Context, in email.SaveTemplateExamplesInput,
 ) ([]email.TemplateExample, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return nil, err
 	}
-	if tpl == nil {
+	if found.IsAbsent() {
 		return nil, ErrEmailTemplateNotFound
 	}
 	if err = s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples); err != nil {
@@ -597,31 +611,33 @@ func (s *emailService) SaveTemplateExamples(
 func (s *emailService) Preview(
 	ctx context.Context, in email.PreviewInput,
 ) (email.PreviewResult, error) {
-	tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	foundTpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
-	if tpl == nil {
+	if foundTpl.IsAbsent() {
 		return email.PreviewResult{}, ErrEmailTemplateNotFound
 	}
-	var v *email.TemplateVersion
+	tpl := foundTpl.ToPtr()
+	var foundVersion functional.Option[email.TemplateVersion]
 	if in.UsePublished {
 		if tpl.PublishedVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNotPublished
 		}
-		v, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+		foundVersion, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 	} else {
 		if tpl.DraftVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNoDraft
 		}
-		v, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		foundVersion, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 	}
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
-	if v == nil {
+	if foundVersion.IsAbsent() {
 		return email.PreviewResult{}, ErrEmailTemplateNotFound
 	}
+	v := foundVersion.ToPtr()
 	res, err := s.renderer.Render(v, in.Variables)
 	if err != nil {
 		return email.PreviewResult{}, fault.BadRequest(
@@ -651,11 +667,12 @@ func (s *emailService) Send(
 	// status (queued/sending/sent) is a genuine duplicate and short-circuits.
 	var retryRecord *email.SendRecord
 	if in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != "" {
-		existing, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+		found, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
 		if err != nil {
 			return email.SendRecord{}, err
 		}
-		if existing != nil {
+		if found.IsPresent() {
+			existing := found.ToPtr()
 			if existing.Status != email.SendStatusFailed {
 				return *existing, nil
 			}
@@ -811,12 +828,12 @@ func (s *emailService) createSendRecord(
 		return email.SendRecord{}, false, err
 	}
 
-	existing, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+	found, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
 	if findErr != nil {
 		return email.SendRecord{}, false, findErr
 	}
-	if existing != nil {
-		return *existing, false, nil
+	if found.IsPresent() {
+		return found.Value(), false, nil
 	}
 
 	return email.SendRecord{}, false, err

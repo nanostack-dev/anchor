@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/rs/zerolog"
 )
 
@@ -23,7 +24,7 @@ func platformTenantsUpdatableColumns() postgres.ColumnList {
 }
 
 type TenantRepository interface {
-	FindByID(ctx context.Context, id string) (*tenant.PlatformTenant, error)
+	FindByID(ctx context.Context, id string) (functional.Option[tenant.PlatformTenant], error)
 	Create(ctx context.Context, tenant tenant.PlatformTenant) (tenant.PlatformTenant, error)
 	DeleteByID(ctx context.Context, id string) error
 	Count(ctx context.Context) (int64, error)
@@ -50,7 +51,7 @@ func NewTenantRepository(
 
 func (r *tenantRepositoryImpl) FindByID(
 	ctx context.Context, id string,
-) (*tenant.PlatformTenant, error) {
+) (functional.Option[tenant.PlatformTenant], error) {
 	stmt := table.PlatformTenants.SELECT(
 		table.PlatformTenants.AllColumns,
 	).FROM(
@@ -59,13 +60,9 @@ func (r *tenantRepositoryImpl) FindByID(
 		table.PlatformTenants.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *tenantRepositoryImpl) Create(

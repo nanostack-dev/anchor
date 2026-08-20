@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -29,7 +30,7 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 type OrganizationRepository interface {
 	FindByID(
 		ctx context.Context, productID string, id string,
-	) (*organization.Organization, error)
+	) (functional.Option[organization.Organization], error)
 	Create(ctx context.Context, org organization.Organization) (
 		organization.Organization, error,
 	)
@@ -65,7 +66,7 @@ func NewOrganizationRepository(
 
 func (r *organizationRepositoryImpl) FindByID(
 	ctx context.Context, productID string, id string,
-) (*organization.Organization, error) {
+) (functional.Option[organization.Organization], error) {
 	stmt := table.Organizations.SELECT(
 		table.Organizations.AllColumns,
 	).FROM(
@@ -76,14 +77,10 @@ func (r *organizationRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.organizationMapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *organizationRepositoryImpl) Create(

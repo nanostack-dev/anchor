@@ -66,7 +66,7 @@ func (s *productUserService) Find(
 		return nil, err
 	}
 
-	productUser, err := s.productUserRepo.FindByProductIDAndID(
+	found, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *productUserService) Find(
 		return nil, err
 	}
 
-	return productUser, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productUserService) Create(
@@ -201,7 +201,7 @@ func (s *productUserService) FindByExternalID(
 		return nil, err
 	}
 
-	productUser, err := s.productUserRepo.FindByExternalID(
+	found, err := s.productUserRepo.FindByExternalID(
 		ctx, input.ProductID, input.ExternalID,
 	)
 	if err != nil {
@@ -213,7 +213,7 @@ func (s *productUserService) FindByExternalID(
 		return nil, err
 	}
 
-	return productUser, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productUserService) ListUserOrganizations(
@@ -226,7 +226,7 @@ func (s *productUserService) ListUserOrganizations(
 	}
 
 	// Verify the product user exists
-	existingUser, err := s.productUserRepo.FindByProductIDAndID(
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
@@ -237,7 +237,7 @@ func (s *productUserService) ListUserOrganizations(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if existingUser == nil {
+	if foundUser.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 
@@ -266,7 +266,7 @@ func (s *productUserService) GetUserOrganization(
 	}
 
 	// Verify the product user exists
-	existingUser, err := s.productUserRepo.FindByProductIDAndID(
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
@@ -277,11 +277,11 @@ func (s *productUserService) GetUserOrganization(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if existingUser == nil {
+	if foundUser.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 
-	membership, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
+	found, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
 		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
@@ -294,5 +294,5 @@ func (s *productUserService) GetUserOrganization(
 		return nil, err
 	}
 
-	return membership, nil
+	return found.ToPtr(), nil
 }

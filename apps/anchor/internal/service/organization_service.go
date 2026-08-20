@@ -183,7 +183,7 @@ func (s *organizationService) Find(
 		return nil, err
 	}
 
-	org, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
+	foundOrg, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -192,7 +192,7 @@ func (s *organizationService) Find(
 			Msg("failed to find organization")
 		return nil, err
 	}
-	if org == nil {
+	if foundOrg.IsAbsent() {
 		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
 	}
 
@@ -200,7 +200,7 @@ func (s *organizationService) Find(
 		ctx,
 		input.TenantID,
 		input.ProductID,
-		[]organization.Organization{*org},
+		[]organization.Organization{foundOrg.Value()},
 		input.Include,
 	)
 	if err != nil {
@@ -346,23 +346,25 @@ func (s *organizationService) CreateWithMember(
 	if len(existingMemberships) > 0 {
 		existing := existingMemberships[0]
 
-		org, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
+		foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
 		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
-		if org == nil {
+		if foundOrg.IsAbsent() {
 			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
+		org := foundOrg.ToPtr()
 
-		membership, errGetOrg := s.orgMembershipRepo.FindByOrgIDAndUserID(
+		foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
 			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false,
 		)
-		if errGetOrg != nil {
-			return organization.OrganizationWithMemberResult{}, errGetOrg
+		if errGetMembership != nil {
+			return organization.OrganizationWithMemberResult{}, errGetMembership
 		}
-		if membership == nil {
+		if foundMembership.IsAbsent() {
 			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
+		membership := foundMembership.ToPtr()
 
 		logger.Info().
 			Str("product_id", input.ProductID).
@@ -386,7 +388,7 @@ func (s *organizationService) CreateWithMember(
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
 
-		productUserEntity, lookupErr := s.productUserRepo.FindByProductIDAndID(
+		foundProductUser, lookupErr := s.productUserRepo.FindByProductIDAndID(
 			lockCtx,
 			input.ProductID,
 			input.ProductUserID,
@@ -398,11 +400,11 @@ func (s *organizationService) CreateWithMember(
 				Msg("failed to verify product user")
 			return lookupErr
 		}
-		if productUserEntity == nil {
+		if foundProductUser.IsAbsent() {
 			return fault.ErrNotFound
 		}
 
-		role, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
+		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
 			lockCtx,
 			input.ProductID,
 			input.RoleID,
@@ -414,7 +416,7 @@ func (s *organizationService) CreateWithMember(
 				Msg("failed to verify product role")
 			return roleErr
 		}
-		if role == nil {
+		if foundRole.IsAbsent() {
 			return NewRoleNotFoundError(input.RoleID)
 		}
 
@@ -518,7 +520,7 @@ func (s *organizationService) Update(
 			Msg("failed to find organization")
 		return organization.Organization{}, err
 	}
-	if optOrg == nil {
+	if optOrg.IsAbsent() {
 		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
@@ -526,7 +528,7 @@ func (s *organizationService) Update(
 		return organization.Organization{}, fault.ErrNotFound
 	}
 
-	org := *optOrg
+	org := optOrg.Value()
 	if input.Name != nil {
 		org.Name = *input.Name
 	}
@@ -571,7 +573,7 @@ func (s *organizationService) Delete(
 			Msg("failed to find organization")
 		return err
 	}
-	if optOrg == nil {
+	if optOrg.IsAbsent() {
 		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).

@@ -210,8 +210,8 @@ func TestProductPermissionRepositorySearchByProductSortDirections(t *testing.T) 
 		context.Background(), productID, "alpha:read",
 	)
 	require.NoError(t, err)
-	require.NotNil(t, toUpdate)
-	_, err = repoCtx.ProductPermissionRepository.Update(context.Background(), *toUpdate)
+	require.True(t, toUpdate.IsPresent())
+	_, err = repoCtx.ProductPermissionRepository.Update(context.Background(), toUpdate.Value())
 	require.NoError(t, err)
 
 	descUpdated, err := repoCtx.ProductPermissionRepository.SearchByProduct(

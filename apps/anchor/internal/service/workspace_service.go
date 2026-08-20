@@ -54,12 +54,16 @@ func (s *workspaceService) Find(
 		return nil, err
 	}
 
-	return s.workspaceRepo.FindByID(
+	found, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
+	if err != nil {
+		return nil, err
+	}
+	return found.ToPtr(), nil
 }
 
 func (s *workspaceService) Create(
@@ -98,7 +102,7 @@ func (s *workspaceService) Create(
 		if findErr != nil {
 			return findErr
 		}
-		if existing != nil {
+		if existing.IsPresent() {
 			return workspace.NewNameExistsError(input.Name, input.OrganizationID)
 		}
 
@@ -128,7 +132,7 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 
-	currentWorkspace, err := s.workspaceRepo.FindByID(
+	foundWorkspace, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
@@ -142,13 +146,14 @@ func (s *workspaceService) Update(
 			Msg("failed to find workspace for update")
 		return workspace.Workspace{}, err
 	}
-	if currentWorkspace == nil {
+	if foundWorkspace.IsAbsent() {
 		return workspace.Workspace{}, fault.ErrNotFound
 	}
+	currentWorkspace := foundWorkspace.Value()
 
 	var updated workspace.Workspace
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		updatedWorkspace := *currentWorkspace
+		updatedWorkspace := currentWorkspace
 		if input.Name != nil {
 			existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 				txCtx,
@@ -159,7 +164,7 @@ func (s *workspaceService) Update(
 			if findErr != nil {
 				return findErr
 			}
-			if existing != nil && existing.ID != input.WorkspaceID {
+			if existing.IsPresent() && existing.Value().ID != input.WorkspaceID {
 				return workspace.NewNameExistsError(*input.Name, input.OrganizationID)
 			}
 			updatedWorkspace.Name = *input.Name
@@ -197,7 +202,7 @@ func (s *workspaceService) Delete(
 		return err
 	}
 
-	currentWorkspace, err := s.workspaceRepo.FindByID(
+	foundWorkspace, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
@@ -211,7 +216,7 @@ func (s *workspaceService) Delete(
 			Msg("failed to find workspace for deletion")
 		return err
 	}
-	if currentWorkspace == nil {
+	if foundWorkspace.IsAbsent() {
 		return fault.ErrNotFound
 	}
 
@@ -259,11 +264,11 @@ func (s *workspaceService) ensureOrganizationExists(
 	productID string,
 	organizationID string,
 ) error {
-	org, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
 		return err
 	}
-	if org == nil {
+	if found.IsAbsent() {
 		return fault.ErrNotFound
 	}
 
@@ -286,7 +291,7 @@ func (s *workspaceService) ensureNameAvailable(
 	if err != nil {
 		return err
 	}
-	if existing != nil && existing.ID != currentWorkspaceID {
+	if existing.IsPresent() && existing.Value().ID != currentWorkspaceID {
 		return workspace.NewNameExistsError(name, organizationID)
 	}
 

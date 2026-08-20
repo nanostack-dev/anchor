@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -43,7 +44,7 @@ func NewTemplateRepository(
 
 func (r *templateRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, id string,
-) (*email.Template, error) {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(
@@ -51,18 +52,14 @@ func (r *templateRepositoryImpl) FindByID(
 				AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *templateRepositoryImpl) FindBySlug(
 	ctx context.Context, tenantID string, productID string, slug string,
-) (*email.Template, error) {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(
@@ -70,31 +67,23 @@ func (r *templateRepositoryImpl) FindBySlug(
 				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *templateRepositoryImpl) FindBySlugInternal(
 	ctx context.Context, productID string, slug string,
-) (*email.Template, error) {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(
 			table.EmailTemplates.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *templateRepositoryImpl) List(

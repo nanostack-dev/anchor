@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
@@ -40,18 +41,14 @@ func NewSchemaRepository(
 
 func (r *schemaRepositoryImpl) FindByProduct(
 	ctx context.Context, tenantID string, productID string,
-) (*license.Schema, error) {
+) (functional.Option[license.Schema], error) {
 	stmt := table.LicenseSchemas.SELECT(table.LicenseSchemas.AllColumns).
 		FROM(table.LicenseSchemas).
 		WHERE(
 			table.LicenseSchemas.PlatformTenantID.EQ(postgres.String(tenantID)).
 				AND(table.LicenseSchemas.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *schemaRepositoryImpl) Create(

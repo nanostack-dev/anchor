@@ -73,12 +73,12 @@ func (s *productService) Get(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	prod, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
 	if err != nil {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
-	return prod, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productService) GetInternal(
@@ -86,13 +86,13 @@ func (s *productService) GetInternal(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "GetInternal").Logger()
 
-	prod, err := s.productRepo.FindByIDInternal(ctx, productID)
+	found, err := s.productRepo.FindByIDInternal(ctx, productID)
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product internally")
 		return nil, err
 	}
 
-	return prod, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productService) GetWithCache(
@@ -105,7 +105,11 @@ func (s *productService) GetWithCache(
 	}
 	cachedProduct, err := s.products.Key(input.TenantID, input.ProductID).GetOrElse(
 		ctx, func() (*product.Product, error) {
-			return s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+			found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+			if err != nil {
+				return nil, err
+			}
+			return found.ToPtr(), nil
 		},
 	)
 	if err != nil {
@@ -133,7 +137,7 @@ func (s *productService) Create(
 		logger.Error().Str("name", input.Name).Err(err).Msg("failed to look up existing product")
 		return product.Product{}, err
 	}
-	if existingProduct != nil {
+	if existingProduct.IsPresent() {
 		logger.Debug().Str("name", input.Name).Msg("product already exists")
 		return product.Product{}, ErrProductAlreadyExists
 	}
@@ -254,16 +258,16 @@ func (s *productService) updateProductInTransaction(
 func (s *productService) findProductForUpdate(
 	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
 ) (*product.Product, error) {
-	optProduct, err := s.productRepo.FindByID(ctx, tenantID, productID)
+	found, err := s.productRepo.FindByID(ctx, tenantID, productID)
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
-	if optProduct == nil {
+	if found.IsAbsent() {
 		logger.Debug().Str("product_id", productID).Msg("product not found for update")
 		return nil, fault.ErrNotFound
 	}
-	return optProduct, nil
+	return found.ToPtr(), nil
 }
 
 func (s *productService) updateProductFields(
@@ -304,12 +308,12 @@ func (s *productService) normalizeConfig(config product.Config) (product.Config,
 func (s *productService) validateNameUniqueness(
 	ctx context.Context, tenantID, productID, name string, logger zerolog.Logger,
 ) error {
-	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
+	found, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
 	if err != nil {
 		logger.Error().Str("name", name).Err(err).Msg("failed to look up product")
 		return err
 	}
-	if existingProduct != nil && existingProduct.ID != productID {
+	if found.IsPresent() && found.Value().ID != productID {
 		logger.Debug().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
 		return ErrProductAlreadyExists
 	}

@@ -47,14 +47,14 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		)
 		assert.Empty(t, result.MissingPrivileges)
 
-		reloaded, reloadErr := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, reloadErr)
-		require.NotNil(t, reloaded)
-		assert.NotNil(t, reloaded.LastUsedAt)
+		require.NoError(t, err)
+		require.True(t, reloaded.IsPresent())
+		assert.NotNil(t, reloaded.Value().LastUsedAt)
 	})
 
 	t.Run("Missing Privileges", func(t *testing.T) {
@@ -142,14 +142,14 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		assert.Empty(t, result.MissingPrivileges)
 		assert.Nil(t, result.APIKey.LastUsedAt)
 
-		reloaded, reloadErr := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			updatedKey.ID,
 		)
-		require.NoError(t, reloadErr)
-		require.NotNil(t, reloaded)
-		assert.Equal(t, orgapikey.StatusInactive, reloaded.Status)
+		require.NoError(t, err)
+		require.True(t, reloaded.IsPresent())
+		assert.Equal(t, orgapikey.StatusInactive, reloaded.Value().Status)
 	})
 
 	t.Run("Near Future Expiration Uses Second Precision Boundary", func(t *testing.T) {
@@ -297,13 +297,14 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, firstResult.APIKey.LastUsedAt)
 
-		firstReload, reloadErr := OrgAPIKeyRepository.GetByID(
+		firstReloadOpt, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, reloadErr)
-		require.NotNil(t, firstReload)
+		require.NoError(t, err)
+		require.True(t, firstReloadOpt.IsPresent())
+		firstReload := firstReloadOpt.ToPtr()
 		require.NotNil(t, firstReload.LastUsedAt)
 
 		secondResult, secondErr := OrgAPIKeyService.ValidateAPIKeyAndScopes(
@@ -318,13 +319,14 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, secondErr)
 		require.NotNil(t, secondResult.APIKey.LastUsedAt)
 
-		secondReload, secondReloadErr := OrgAPIKeyRepository.GetByID(
+		secondReloadOpt, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, secondReloadErr)
-		require.NotNil(t, secondReload)
+		require.NoError(t, err)
+		require.True(t, secondReloadOpt.IsPresent())
+		secondReload := secondReloadOpt.ToPtr()
 		require.NotNil(t, secondReload.LastUsedAt)
 
 		assert.WithinDuration(t, *firstReload.LastUsedAt, *secondReload.LastUsedAt, time.Second)

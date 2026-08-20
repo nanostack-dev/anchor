@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -27,7 +28,7 @@ type ProductResourcePermissionRepository interface {
 	// FindByName finds resource permission by Name
 	FindByName(
 		ctx context.Context, productID, id string,
-	) (*resourcepermission.ProductResourcePermission, error)
+	) (functional.Option[resourcepermission.ProductResourcePermission], error)
 
 	// Update updates an existing resource permission
 	Update(
@@ -98,7 +99,7 @@ func (r *productResourcePermissionRepository) Create(
 
 func (r *productResourcePermissionRepository) FindByName(
 	ctx context.Context, productID, name string,
-) (*resourcepermission.ProductResourcePermission, error) {
+) (functional.Option[resourcepermission.ProductResourcePermission], error) {
 	stmt := table.ProductResourcePermissions.SELECT(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(
@@ -106,13 +107,9 @@ func (r *productResourcePermissionRepository) FindByName(
 			AND(postgres.LOWER(table.ProductResourcePermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	)
 
-	result := transactor.QueryOptionalMap(
+	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-	if err := result.Err(); err != nil {
-		return nil, err
-	}
-	return result.ToPtr(), nil
 }
 
 func (r *productResourcePermissionRepository) Update(
