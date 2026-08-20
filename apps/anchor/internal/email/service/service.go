@@ -527,9 +527,9 @@ func (s *emailService) PublishTemplate(
 		return email.TemplateVersion{}, err
 	}
 	if foundPublished.IsAbsent() {
-		return email.TemplateVersion{}, nil
+		return email.TemplateVersion{}, ErrEmailTemplateNotFound
 	}
-	published := foundPublished.ToPtr()
+	published := foundPublished.Value()
 
 	// Open a fresh DRAFT cloned from the just-published row so further edits
 	// do not mutate the live version. Best-effort post-tx; failure here does
@@ -537,7 +537,7 @@ func (s *emailService) PublishTemplate(
 	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
-		return *published, nil
+		return published, nil
 	}
 	newDraft := email.TemplateVersion{
 		TemplateID:    tpl.ID,
@@ -552,14 +552,14 @@ func (s *emailService) PublishTemplate(
 	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
-		return *published, nil
+		return published, nil
 	}
 	if err = s.templateRepo.SetVersionPointers(
 		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
 	); err != nil {
 		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
 	}
-	return *published, nil
+	return published, nil
 }
 
 func (s *emailService) GetTemplate(
