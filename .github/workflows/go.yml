@@ -133,12 +133,14 @@ jobs:
       id-token: write
     with:
       app_name: anchor
-      # Stays 1.26.5: apps/anchor/go.mod requires go 1.27 and pins
-      # `toolchain go1.27.0`, so the Go installed here auto-downloads that
-      # toolchain. Go 1.27.0 is GA, but actions/setup-go still cannot install
-      # it directly — its version manifest tops out at 1.26.6. Raise this to
-      # 1.27.x once a 1.27 entry appears in actions/go-versions.
-      go_version: '1.26.5'
+      # 1.27.0 matches the toolchain go.mod pins. It is not in the
+      # actions/go-versions manifest yet, but setup-go falls back to the
+      # official Go distribution site when the manifest misses.
+      #
+      # It cannot stay on 1.26.5 and rely on the toolchain directive: setup-go
+      # exports GOTOOLCHAIN=local, so Go refuses to fetch a newer toolchain and
+      # fails with "go.mod requires go >= 1.27 (running go 1.26.5)".
+      go_version: '1.27.0'
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
       lint_working_directory: ./apps/anchor
