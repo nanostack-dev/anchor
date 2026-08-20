@@ -54,13 +54,13 @@ func (s *workspaceService) Find(
 		return nil, err
 	}
 
-	found := s.workspaceRepo.FindByID(
+	found, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -93,13 +93,13 @@ func (s *workspaceService) Create(
 
 	var created workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing := s.workspaceRepo.FindByOrganizationIDAndName(
+		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 			txCtx,
 			input.ProductID,
 			input.OrganizationID,
 			input.Name,
 		)
-		if findErr := existing.Err(); findErr != nil {
+		if findErr != nil {
 			return findErr
 		}
 		if existing.IsPresent() {
@@ -132,13 +132,13 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 
-	foundWorkspace := s.workspaceRepo.FindByID(
+	foundWorkspace, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
-	if err := foundWorkspace.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -152,16 +152,16 @@ func (s *workspaceService) Update(
 	currentWorkspace := foundWorkspace.Value()
 
 	var updated workspace.Workspace
-	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		updatedWorkspace := currentWorkspace
 		if input.Name != nil {
-			existing := s.workspaceRepo.FindByOrganizationIDAndName(
+			existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 				txCtx,
 				input.ProductID,
 				input.OrganizationID,
 				*input.Name,
 			)
-			if findErr := existing.Err(); findErr != nil {
+			if findErr != nil {
 				return findErr
 			}
 			if existing.IsPresent() && existing.Value().ID != input.WorkspaceID {
@@ -202,13 +202,13 @@ func (s *workspaceService) Delete(
 		return err
 	}
 
-	foundWorkspace := s.workspaceRepo.FindByID(
+	foundWorkspace, err := s.workspaceRepo.FindByID(
 		ctx,
 		input.ProductID,
 		input.OrganizationID,
 		input.WorkspaceID,
 	)
-	if err := foundWorkspace.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -264,8 +264,8 @@ func (s *workspaceService) ensureOrganizationExists(
 	productID string,
 	organizationID string,
 ) error {
-	found := s.organizationRepo.FindByID(ctx, productID, organizationID)
-	if err := found.Err(); err != nil {
+	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err != nil {
 		return err
 	}
 	if !found.IsPresent() {
@@ -282,13 +282,13 @@ func (s *workspaceService) ensureNameAvailable(
 	name string,
 	currentWorkspaceID string,
 ) error {
-	existing := s.workspaceRepo.FindByOrganizationIDAndName(
+	existing, err := s.workspaceRepo.FindByOrganizationIDAndName(
 		ctx,
 		productID,
 		organizationID,
 		name,
 	)
-	if err := existing.Err(); err != nil {
+	if err != nil {
 		return err
 	}
 	if existing.IsPresent() && existing.Value().ID != currentWorkspaceID {

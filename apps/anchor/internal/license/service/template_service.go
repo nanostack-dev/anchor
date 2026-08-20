@@ -133,8 +133,8 @@ func (s *licenseTemplateService) CreateTemplate(
 		return license.Template{}, err
 	}
 
-	existing := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
-	if err := existing.Err(); err != nil {
+	existing, err := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
+	if err != nil {
 		return license.Template{}, err
 	}
 	if existing.IsPresent() {
@@ -172,8 +172,8 @@ func (s *licenseTemplateService) GetTemplate(
 		return nil, err
 	}
 
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -196,8 +196,8 @@ func (s *licenseTemplateService) UpdateTemplate(
 		return license.Template{}, err
 	}
 
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return license.Template{}, err
 	}
 	if !found.IsPresent() {
@@ -221,15 +221,15 @@ func (s *licenseTemplateService) UpdateTemplate(
 	// write, and a template whose schema has tightened underneath it should be
 	// corrected rather than quietly re-saved while it no longer satisfies the
 	// declaration it is defined against.
-	if err := s.schemas.ValidateValues(
+	if err = s.schemas.ValidateValues(
 		ctx, in.TenantID, in.ProductID, existing.Values,
 	); err != nil {
 		return license.Template{}, err
 	}
 
 	if in.Name != nil && *in.Name != existing.Name {
-		conflict := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
-		if findErr := conflict.Err(); findErr != nil {
+		conflict, findErr := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
+		if findErr != nil {
 			return license.Template{}, findErr
 		}
 		if conflict.IsPresent() {
@@ -256,8 +256,8 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return license.Template{}, err
 	}
 
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return license.Template{}, err
 	}
 	if !found.IsPresent() {
@@ -284,8 +284,8 @@ func (s *licenseTemplateService) DeleteTemplate(
 		return err
 	}
 
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return err
 	}
 	if !found.IsPresent() {

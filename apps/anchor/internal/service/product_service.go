@@ -73,8 +73,8 @@ func (s *productService) Get(
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
-	found := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
-	if err := found.Err(); err != nil {
+	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+	if err != nil {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
@@ -86,8 +86,8 @@ func (s *productService) GetInternal(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "GetInternal").Logger()
 
-	found := s.productRepo.FindByIDInternal(ctx, productID)
-	if err := found.Err(); err != nil {
+	found, err := s.productRepo.FindByIDInternal(ctx, productID)
+	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product internally")
 		return nil, err
 	}
@@ -105,8 +105,8 @@ func (s *productService) GetWithCache(
 	}
 	cachedProduct, err := s.products.Key(input.TenantID, input.ProductID).GetOrElse(
 		ctx, func() (*product.Product, error) {
-			found := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
-			if err := found.Err(); err != nil {
+			found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+			if err != nil {
 				return nil, err
 			}
 			return found.ToPtr(), nil
@@ -132,8 +132,8 @@ func (s *productService) Create(
 		return product.Product{}, configErr
 	}
 
-	existingProduct := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
-	if err := existingProduct.Err(); err != nil {
+	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
+	if err != nil {
 		logger.Error().Str("name", input.Name).Err(err).Msg("failed to look up existing product")
 		return product.Product{}, err
 	}
@@ -153,7 +153,7 @@ func (s *productService) Create(
 	prod.GenerateID()
 
 	var productCreated product.Product
-	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		defaultPermissions := GeneratePermissions()
 
 		var createErr error
@@ -258,8 +258,8 @@ func (s *productService) updateProductInTransaction(
 func (s *productService) findProductForUpdate(
 	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
 ) (*product.Product, error) {
-	found := s.productRepo.FindByID(ctx, tenantID, productID)
-	if err := found.Err(); err != nil {
+	found, err := s.productRepo.FindByID(ctx, tenantID, productID)
+	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
@@ -308,8 +308,8 @@ func (s *productService) normalizeConfig(config product.Config) (product.Config,
 func (s *productService) validateNameUniqueness(
 	ctx context.Context, tenantID, productID, name string, logger zerolog.Logger,
 ) error {
-	found := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
-	if err := found.Err(); err != nil {
+	found, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
+	if err != nil {
 		logger.Error().Str("name", name).Err(err).Msg("failed to look up product")
 		return err
 	}

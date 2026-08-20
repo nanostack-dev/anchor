@@ -41,7 +41,7 @@ func NewSchemaRepository(
 
 func (r *schemaRepositoryImpl) FindByProduct(
 	ctx context.Context, tenantID string, productID string,
-) functional.Option[license.Schema] {
+) (functional.Option[license.Schema], error) {
 	stmt := table.LicenseSchemas.SELECT(table.LicenseSchemas.AllColumns).
 		FROM(table.LicenseSchemas).
 		WHERE(

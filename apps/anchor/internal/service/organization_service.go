@@ -183,8 +183,8 @@ func (s *organizationService) Find(
 		return nil, err
 	}
 
-	foundOrg := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
-	if err := foundOrg.Err(); err != nil {
+	foundOrg, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -346,8 +346,8 @@ func (s *organizationService) CreateWithMember(
 	if len(existingMemberships) > 0 {
 		existing := existingMemberships[0]
 
-		foundOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
-		if errGetOrg := foundOrg.Err(); errGetOrg != nil {
+		foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
+		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if !foundOrg.IsPresent() {
@@ -355,10 +355,10 @@ func (s *organizationService) CreateWithMember(
 		}
 		org := foundOrg.ToPtr()
 
-		foundMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
+		foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
 			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false,
 		)
-		if errGetMembership := foundMembership.Err(); errGetMembership != nil {
+		if errGetMembership != nil {
 			return organization.OrganizationWithMemberResult{}, errGetMembership
 		}
 		if !foundMembership.IsPresent() {
@@ -388,12 +388,12 @@ func (s *organizationService) CreateWithMember(
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
 
-		foundProductUser := s.productUserRepo.FindByProductIDAndID(
+		foundProductUser, lookupErr := s.productUserRepo.FindByProductIDAndID(
 			lockCtx,
 			input.ProductID,
 			input.ProductUserID,
 		)
-		if lookupErr := foundProductUser.Err(); lookupErr != nil {
+		if lookupErr != nil {
 			logger.Error().Err(lookupErr).
 				Str("product_id", input.ProductID).
 				Str("product_user_id", input.ProductUserID).
@@ -404,12 +404,12 @@ func (s *organizationService) CreateWithMember(
 			return fault.ErrNotFound
 		}
 
-		foundRole := s.productRoleRepo.FindByProductIDAndRoleID(
+		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
 			lockCtx,
 			input.ProductID,
 			input.RoleID,
 		)
-		if roleErr := foundRole.Err(); roleErr != nil {
+		if roleErr != nil {
 			logger.Error().Err(roleErr).
 				Str("product_id", input.ProductID).
 				Str("role_id", input.RoleID).
@@ -509,10 +509,10 @@ func (s *organizationService) Update(
 		return organization.Organization{}, err
 	}
 
-	optOrg := s.organizationRepo.FindByID(
+	optOrg, err := s.organizationRepo.FindByID(
 		ctx, input.ProductID, input.OrganizationID,
 	)
-	if err = optOrg.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
@@ -562,10 +562,10 @@ func (s *organizationService) Delete(
 		return err
 	}
 
-	optOrg := s.organizationRepo.FindByID(
+	optOrg, err := s.organizationRepo.FindByID(
 		ctx, input.ProductID, input.OrganizationID,
 	)
-	if err := optOrg.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
@@ -581,7 +581,7 @@ func (s *organizationService) Delete(
 		return fault.ErrNotFound
 	}
 
-	err := s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID)
+	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).

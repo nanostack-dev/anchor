@@ -191,10 +191,10 @@ func (s *emailService) resolveMailer(
 	ctx context.Context,
 	tenantID, productID string,
 ) (provider.Mailer, *domainintegration.Instance, error) {
-	found := s.instanceRepo.FindByProductAndProvider(
+	found, err := s.instanceRepo.FindByProductAndProvider(
 		ctx, tenantID, productID, string(domainintegration.ProviderTypeSMTP),
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		return nil, nil, err
 	}
 	if !found.IsPresent() {
@@ -220,8 +220,8 @@ func (s *emailService) resolveTemplate(
 	ctx context.Context, tenantID, productID string, idPtr, slugPtr *string,
 ) (*email.Template, error) {
 	if idPtr != nil && strings.TrimSpace(*idPtr) != "" {
-		found := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
-		if err := found.Err(); err != nil {
+		found, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
+		if err != nil {
 			return nil, err
 		}
 		if !found.IsPresent() {
@@ -230,8 +230,8 @@ func (s *emailService) resolveTemplate(
 		return found.ToPtr(), nil
 	}
 	if slugPtr != nil && strings.TrimSpace(*slugPtr) != "" {
-		found := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
-		if err := found.Err(); err != nil {
+		found, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
+		if err != nil {
 			return nil, err
 		}
 		if !found.IsPresent() {
@@ -247,8 +247,8 @@ func (s *emailService) resolveSendVersion(
 	ctx context.Context, templateID string, useDraft bool,
 ) (*email.TemplateVersion, error) {
 	if useDraft {
-		found := s.versionRepo.FindCurrentDraft(ctx, templateID)
-		if err := found.Err(); err != nil {
+		found, err := s.versionRepo.FindCurrentDraft(ctx, templateID)
+		if err != nil {
 			return nil, err
 		}
 		if !found.IsPresent() {
@@ -256,8 +256,8 @@ func (s *emailService) resolveSendVersion(
 		}
 		return found.ToPtr(), nil
 	}
-	found := s.versionRepo.FindCurrentPublished(ctx, templateID)
-	if err := found.Err(); err != nil {
+	found, err := s.versionRepo.FindCurrentPublished(ctx, templateID)
+	if err != nil {
 		return nil, err
 	}
 	if !found.IsPresent() {
@@ -273,8 +273,8 @@ func (s *emailService) CreateTemplate(
 		return email.Template{}, err
 	}
 
-	existing := s.templateRepo.FindBySlug(ctx, in.TenantID, in.ProductID, in.Slug)
-	if err := existing.Err(); err != nil {
+	existing, err := s.templateRepo.FindBySlug(ctx, in.TenantID, in.ProductID, in.Slug)
+	if err != nil {
 		return email.Template{}, err
 	}
 	if existing.IsPresent() {
@@ -322,8 +322,8 @@ func (s *emailService) CreateTemplate(
 func (s *emailService) UpdateTemplate(
 	ctx context.Context, in email.UpdateTemplateInput,
 ) (email.Template, error) {
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	if err != nil {
 		return email.Template{}, err
 	}
 	if !found.IsPresent() {
@@ -345,9 +345,9 @@ func (s *emailService) UpdateTemplate(
 func (s *emailService) UpdateTemplateDraft(
 	ctx context.Context, in email.UpdateTemplateDraftInput,
 ) (email.TemplateVersion, error) {
-	foundTpl := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := foundTpl.Err(); err != nil {
-		return email.TemplateVersion{}, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return email.TemplateVersion{}, findErr
 	}
 	if !foundTpl.IsPresent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
@@ -356,8 +356,8 @@ func (s *emailService) UpdateTemplateDraft(
 
 	var draft *email.TemplateVersion
 	if tpl.DraftVersionID != nil {
-		foundDraft := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
-		if err := foundDraft.Err(); err != nil {
+		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		if err != nil {
 			return email.TemplateVersion{}, err
 		}
 		draft = foundDraft.ToPtr()
@@ -367,8 +367,8 @@ func (s *emailService) UpdateTemplateDraft(
 		if tpl.PublishedVersionID == nil {
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
-		foundPub := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
-		if err := foundPub.Err(); err != nil {
+		foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+		if err != nil {
 			return email.TemplateVersion{}, err
 		}
 		if !foundPub.IsPresent() {
@@ -424,9 +424,9 @@ func (s *emailService) UpdateTemplateDraft(
 func (s *emailService) GetTemplateDraft(
 	ctx context.Context, in email.GetTemplateDraftInput,
 ) (*email.TemplateVersion, error) {
-	foundTpl := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := foundTpl.Err(); err != nil {
-		return nil, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return nil, findErr
 	}
 	if !foundTpl.IsPresent() {
 		return nil, ErrEmailTemplateNotFound
@@ -434,8 +434,8 @@ func (s *emailService) GetTemplateDraft(
 	tpl := foundTpl.ToPtr()
 
 	if tpl.DraftVersionID != nil {
-		foundDraft := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
-		if err := foundDraft.Err(); err != nil {
+		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		if err != nil {
 			return nil, err
 		}
 		return foundDraft.ToPtr(), nil
@@ -445,8 +445,8 @@ func (s *emailService) GetTemplateDraft(
 		return nil, nil
 	}
 
-	foundPub := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
-	if err := foundPub.Err(); err != nil {
+	foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+	if err != nil {
 		return nil, err
 	}
 	if !foundPub.IsPresent() {
@@ -486,9 +486,9 @@ func (s *emailService) GetTemplateDraft(
 func (s *emailService) PublishTemplate(
 	ctx context.Context, in email.PublishTemplateInput,
 ) (email.TemplateVersion, error) {
-	foundTpl := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := foundTpl.Err(); err != nil {
-		return email.TemplateVersion{}, err
+	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if findErr != nil {
+		return email.TemplateVersion{}, findErr
 	}
 	if !foundTpl.IsPresent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
@@ -522,8 +522,8 @@ func (s *emailService) PublishTemplate(
 		return email.TemplateVersion{}, err
 	}
 
-	foundPublished := s.versionRepo.FindByID(ctx, publishedID)
-	if err := foundPublished.Err(); err != nil {
+	foundPublished, err := s.versionRepo.FindByID(ctx, publishedID)
+	if err != nil {
 		return email.TemplateVersion{}, err
 	}
 	if !foundPublished.IsPresent() {
@@ -565,8 +565,8 @@ func (s *emailService) PublishTemplate(
 func (s *emailService) GetTemplate(
 	ctx context.Context, in email.GetTemplateInput,
 ) (*email.Template, error) {
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	if err != nil {
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -581,8 +581,8 @@ func (s *emailService) ListTemplates(
 func (s *emailService) DeleteTemplate(
 	ctx context.Context, in email.DeleteTemplateInput,
 ) error {
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	if err != nil {
 		return err
 	}
 	if !found.IsPresent() {
@@ -595,14 +595,14 @@ func (s *emailService) DeleteTemplate(
 func (s *emailService) SaveTemplateExamples(
 	ctx context.Context, in email.SaveTemplateExamplesInput,
 ) ([]email.TemplateExample, error) {
-	found := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := found.Err(); err != nil {
+	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return nil, err
 	}
 	if !found.IsPresent() {
 		return nil, ErrEmailTemplateNotFound
 	}
-	if err := s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples); err != nil {
+	if err = s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples); err != nil {
 		return nil, err
 	}
 	return in.Examples, nil
@@ -611,8 +611,8 @@ func (s *emailService) SaveTemplateExamples(
 func (s *emailService) Preview(
 	ctx context.Context, in email.PreviewInput,
 ) (email.PreviewResult, error) {
-	foundTpl := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err := foundTpl.Err(); err != nil {
+	foundTpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	if err != nil {
 		return email.PreviewResult{}, err
 	}
 	if !foundTpl.IsPresent() {
@@ -624,14 +624,14 @@ func (s *emailService) Preview(
 		if tpl.PublishedVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNotPublished
 		}
-		foundVersion = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
+		foundVersion, err = s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
 	} else {
 		if tpl.DraftVersionID == nil {
 			return email.PreviewResult{}, ErrEmailTemplateNoDraft
 		}
-		foundVersion = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		foundVersion, err = s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
 	}
-	if err := foundVersion.Err(); err != nil {
+	if err != nil {
 		return email.PreviewResult{}, err
 	}
 	if !foundVersion.IsPresent() {
@@ -667,8 +667,8 @@ func (s *emailService) Send(
 	// status (queued/sending/sent) is a genuine duplicate and short-circuits.
 	var retryRecord *email.SendRecord
 	if in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != "" {
-		found := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
-		if err := found.Err(); err != nil {
+		found, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+		if err != nil {
 			return email.SendRecord{}, err
 		}
 		if found.IsPresent() {
@@ -828,8 +828,8 @@ func (s *emailService) createSendRecord(
 		return email.SendRecord{}, false, err
 	}
 
-	found := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
-	if findErr := found.Err(); findErr != nil {
+	found, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+	if findErr != nil {
 		return email.SendRecord{}, false, findErr
 	}
 	if found.IsPresent() {

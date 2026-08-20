@@ -24,7 +24,7 @@ type ProductPermissionRepository interface {
 	// FindByProductIDAndPermissionName finds permission by product_id and name
 	FindByProductIDAndPermissionName(
 		ctx context.Context, productID, name string,
-	) functional.Option[permission.ProductPermission]
+	) (functional.Option[permission.ProductPermission], error)
 
 	// Create creates a new permission
 	Create(
@@ -86,7 +86,7 @@ func NewProductPermissionRepository(
 
 func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 	ctx context.Context, productID, name string,
-) functional.Option[permission.ProductPermission] {
+) (functional.Option[permission.ProductPermission], error) {
 	stmt := table.ProductPermissions.SELECT(
 		table.ProductPermissions.AllColumns,
 	).FROM(

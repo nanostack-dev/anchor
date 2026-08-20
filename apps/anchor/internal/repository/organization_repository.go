@@ -30,7 +30,7 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 type OrganizationRepository interface {
 	FindByID(
 		ctx context.Context, productID string, id string,
-	) functional.Option[organization.Organization]
+	) (functional.Option[organization.Organization], error)
 	Create(ctx context.Context, org organization.Organization) (
 		organization.Organization, error,
 	)
@@ -66,7 +66,7 @@ func NewOrganizationRepository(
 
 func (r *organizationRepositoryImpl) FindByID(
 	ctx context.Context, productID string, id string,
-) functional.Option[organization.Organization] {
+) (functional.Option[organization.Organization], error) {
 	stmt := table.Organizations.SELECT(
 		table.Organizations.AllColumns,
 	).FROM(

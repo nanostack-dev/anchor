@@ -159,17 +159,17 @@ func (b *Builder) ProductUserExternalID(opts ProductUserExternalIDOpts) *Builder
 		"product user repository is not available in test setup",
 	)
 
-	foundUserOpt := itshared.ProductUserRepository.FindByProductIDAndID(
+	foundUserOpt, err := itshared.ProductUserRepository.FindByProductIDAndID(
 		context.Background(),
 		productCtx.ProductID,
 		productUser.ID,
 	)
-	require.NoError(b.t, foundUserOpt.Err(), "failed to load product user")
+	require.NoError(b.t, err, "failed to load product user")
 	require.True(b.t, foundUserOpt.IsPresent(), "product user not found")
 	foundUser := foundUserOpt.ToPtr()
 
 	foundUser.ExternalID = &opts.ExternalID
-	_, err := itshared.ProductUserRepository.Update(
+	_, err = itshared.ProductUserRepository.Update(
 		context.Background(),
 		productCtx.ProductID,
 		productUser.ID,

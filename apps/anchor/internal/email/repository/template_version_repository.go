@@ -43,7 +43,7 @@ func NewTemplateVersionRepository(
 
 func (r *templateVersionRepositoryImpl) FindByID(
 	ctx context.Context, id string,
-) functional.Option[email.TemplateVersion] {
+) (functional.Option[email.TemplateVersion], error) {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
 		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
@@ -55,19 +55,19 @@ func (r *templateVersionRepositoryImpl) FindByID(
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
 	ctx context.Context, templateID string,
-) functional.Option[email.TemplateVersion] {
+) (functional.Option[email.TemplateVersion], error) {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusDraft)
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentPublished(
 	ctx context.Context, templateID string,
-) functional.Option[email.TemplateVersion] {
+) (functional.Option[email.TemplateVersion], error) {
 	return r.findByStatus(ctx, templateID, email.TemplateVersionStatusPublished)
 }
 
 func (r *templateVersionRepositoryImpl) findByStatus(
 	ctx context.Context, templateID string, status email.TemplateVersionStatus,
-) functional.Option[email.TemplateVersion] {
+) (functional.Option[email.TemplateVersion], error) {
 	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
 		FROM(table.EmailTemplateVersions).
 		WHERE(

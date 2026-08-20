@@ -83,3 +83,15 @@ All declared in `internal/repository/*.go` (interface lives with its impl) unles
 - `TemplateRepository` (internal/license/repository/repository.go) — FindByID, FindByName
 
 Unexported helpers whose shape also moved (not part of any interface, but shared across a repo's own methods): `findOne` in organization_api_key_repository.go, product_api_key_repository.go, and product_role_repository.go; `findByOrganization` in organization_license_repository.go; `findByStatus` in template_version_repository.go (email).
+
+## v0.12.0 retarget
+
+`nanostack-framework` bumped `v0.11.1` → `v0.12.0`, which changed `functional.Option[T]` in a breaking way: it dropped its `Err()` method entirely (`Option` now carries no error — it is strictly present/absent). To keep that visible to `errcheck` instead of hiding it inside a struct field, `transactor.QueryOptional` and `transactor.QueryOptionalMap` moved the error back into the return position: `functional.Option[T]` became `(functional.Option[T], error)`.
+
+Every method this migration touched above — every `FindBy*`/`GetBy*` repository method, its interface declaration, and the unexported helpers it shares a shape with — now returns `(functional.Option[T], error)` instead of a bare `functional.Option[T]`. Callers switched from `if err := found.Err(); err != nil { ... }` to an ordinary `found, err := repo.FindByID(...)` followed by `if err != nil { ... }`. `Result[T]` and `Validation[T]` still carry `Err()` in v0.12.0 and were left untouched — only `Option[T]` call sites moved.
+
+`functional.Failed[T]`, `(Result[T]).ToOption()`, and `(Validation[T]).ToOption()` were also removed in v0.12.0; anchor had no call sites for any of the three.
+
+One repository method, `IntegrationInstanceRepository.UpdateOptional`, already returned `(functional.Option[T], error)` before this retarget (its own pre-existing documented exception, being a write) and needed no change beyond what came for free from the transactor signature change.
+
+A handful of call sites needed more than a rename because collapsing `found := repo.FindX(...)` / `if err := found.Err(); err != nil` into a single two-value assignment turned what used to be an if-statement-scoped `err` into a function ("or wider block") scoped one, which then shadowed (per `govet`'s shadow check) a later idiomatic `if err := ...; err != nil` in the same scope — `internal/email/service/service.go` (`PublishTemplate`, `UpdateTemplateDraft`, `GetTemplateDraft`), `internal/license/service/schema_service.go`, `internal/license/service/template_service.go`, `internal/service/auth_service.go`, `internal/service/organization_membership_service.go`, and `internal/service/product_role_service.go`. Each was resolved either by reusing the existing `err` via `=` instead of redeclaring it with `:=`, or — where an outer `err` was checked once and never read again — renaming that outer variable (e.g. to `findErr`) so nothing downstream could shadow it.

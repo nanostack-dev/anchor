@@ -80,8 +80,8 @@ func (s *resourcePermissionService) Create(
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	permByName := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
-	if err := permByName.Err(); err != nil {
+	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
@@ -122,10 +122,10 @@ func (s *resourcePermissionService) GetByID(
 		return nil, err
 	}
 
-	found := s.resourcePermissionRepo.FindByName(
+	found, err := s.resourcePermissionRepo.FindByName(
 		ctx, input.ProductID, input.PermissionName,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("permission_name", input.PermissionName).
@@ -147,8 +147,8 @@ func (s *resourcePermissionService) Update(
 	}
 
 	// Get existing resource permission
-	found := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
-	if err := found.Err(); err != nil {
+	found, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
@@ -192,10 +192,10 @@ func (s *resourcePermissionService) Delete(
 		return err
 	}
 
-	found := s.resourcePermissionRepo.FindByName(
+	found, err := s.resourcePermissionRepo.FindByName(
 		ctx, input.ProductID, input.Name,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
@@ -211,7 +211,7 @@ func (s *resourcePermissionService) Delete(
 		return fault.ErrNotFound
 	}
 	name := found.Value()
-	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
 			txCtx, input.ProductID, name.Name,
 		); apiKeyDeleteErr != nil {

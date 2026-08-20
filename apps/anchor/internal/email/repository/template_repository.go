@@ -44,7 +44,7 @@ func NewTemplateRepository(
 
 func (r *templateRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, id string,
-) functional.Option[email.Template] {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(
@@ -59,7 +59,7 @@ func (r *templateRepositoryImpl) FindByID(
 
 func (r *templateRepositoryImpl) FindBySlug(
 	ctx context.Context, tenantID string, productID string, slug string,
-) functional.Option[email.Template] {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(
@@ -74,7 +74,7 @@ func (r *templateRepositoryImpl) FindBySlug(
 
 func (r *templateRepositoryImpl) FindBySlugInternal(
 	ctx context.Context, productID string, slug string,
-) functional.Option[email.Template] {
+) (functional.Option[email.Template], error) {
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
 		FROM(table.EmailTemplates).
 		WHERE(

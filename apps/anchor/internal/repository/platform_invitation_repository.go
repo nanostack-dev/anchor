@@ -32,10 +32,10 @@ type InvitationRepository interface {
 	) (invitation.PlatformInvitation, error)
 	FindByTenantIDAndEmail(
 		ctx context.Context, tenantID string, email string,
-	) functional.Option[invitation.PlatformInvitation]
+	) (functional.Option[invitation.PlatformInvitation], error)
 	FindByCodeAndEmail(
 		ctx context.Context, code string, email string,
-	) functional.Option[invitation.PlatformInvitation]
+	) (functional.Option[invitation.PlatformInvitation], error)
 	DeleteByTenantIDAndID(
 		ctx context.Context, tenantID string, code string,
 	) error
@@ -135,7 +135,7 @@ func (r *invitationRepositoryImpl) Create(
 
 func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 	ctx context.Context, code string, email string,
-) functional.Option[invitation.PlatformInvitation] {
+) (functional.Option[invitation.PlatformInvitation], error) {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
 	).WHERE(
@@ -150,7 +150,7 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 	ctx context.Context, tenantID string, email string,
-) functional.Option[invitation.PlatformInvitation] {
+) (functional.Option[invitation.PlatformInvitation], error) {
 	stmt := table.PlatformInvitations.SELECT(
 		table.PlatformInvitations.AllColumns,
 	).WHERE(

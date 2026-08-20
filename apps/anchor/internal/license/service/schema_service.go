@@ -236,8 +236,8 @@ func (s *licenseSchemaService) CreateSchema(
 	// runs in here too, so it reads the same snapshot the insert writes to.
 	var created license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
-		if findErr := existing.Err(); findErr != nil {
+		existing, findErr := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
+		if findErr != nil {
 			return findErr
 		}
 		if existing.IsPresent() {
@@ -274,8 +274,8 @@ func (s *licenseSchemaService) GetSchema(
 		return nil, err
 	}
 
-	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err := found.Err(); err != nil {
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
 		return nil, err
 	}
 	if !found.IsPresent() {
@@ -308,8 +308,8 @@ func (s *licenseSchemaService) UpdateSchema(
 		fields = declared
 	}
 
-	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err := found.Err(); err != nil {
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
 		return license.Schema{}, err
 	}
 	if !found.IsPresent() {
@@ -322,7 +322,6 @@ func (s *licenseSchemaService) UpdateSchema(
 
 	var updated license.Schema
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var err error
 		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, existing)
 		if err != nil {
 			return err
@@ -357,8 +356,8 @@ func (s *licenseSchemaService) DeleteSchema(
 		return err
 	}
 
-	found := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err := found.Err(); err != nil {
+	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	if err != nil {
 		return err
 	}
 	if !found.IsPresent() {

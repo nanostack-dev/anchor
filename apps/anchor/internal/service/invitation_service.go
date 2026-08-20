@@ -59,10 +59,10 @@ func (s *invitationService) CreateInvitation(
 	if err := validateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
-	foundPlatformUser := s.platformUserRepo.FindByTenantIDAndEmail(
+	foundPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
-	if err := foundPlatformUser.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
@@ -82,10 +82,10 @@ func (s *invitationService) CreateInvitation(
 			http.StatusBadRequest,
 		)
 	}
-	foundInvitation := s.invitationRepo.FindByTenantIDAndEmail(
+	foundInvitation, err := s.invitationRepo.FindByTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
-	if err := foundInvitation.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).

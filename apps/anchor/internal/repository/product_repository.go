@@ -37,14 +37,14 @@ func productsUpdatableColumns() postgres.ColumnList {
 type ProductRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, id string,
-	) functional.Option[product.Product]
+	) (functional.Option[product.Product], error)
 	FindByTenantIDAndName(
 		ctx context.Context, tenantID string, name string,
-	) functional.Option[product.Product]
+	) (functional.Option[product.Product], error)
 	// FindByIDInternal returns a product by ID without tenant scoping.
 	// Allowed only for trusted system-internal paths such as auth middleware
 	// resolving tenant context for authenticated product API keys.
-	FindByIDInternal(ctx context.Context, id string) functional.Option[product.Product]
+	FindByIDInternal(ctx context.Context, id string) (functional.Option[product.Product], error)
 	Create(ctx context.Context, prod product.Product) (
 		product.Product, error,
 	)
@@ -85,7 +85,7 @@ func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logge
 
 func (r *productRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, id string,
-) functional.Option[product.Product] {
+) (functional.Option[product.Product], error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,
@@ -110,7 +110,7 @@ func (r *productRepositoryImpl) FindByID(
 
 func (r *productRepositoryImpl) FindByIDInternal(
 	ctx context.Context, id string,
-) functional.Option[product.Product] {
+) (functional.Option[product.Product], error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,
@@ -133,7 +133,7 @@ func (r *productRepositoryImpl) FindByIDInternal(
 
 func (r *productRepositoryImpl) FindByTenantIDAndName(
 	ctx context.Context, tenantID string, name string,
-) functional.Option[product.Product] {
+) (functional.Option[product.Product], error) {
 	stmt := postgres.SELECT(
 		table.Products.AllColumns,
 		table.ProductOrganizationAPIKeyConfigs.AllColumns,

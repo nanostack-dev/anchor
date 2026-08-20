@@ -19,16 +19,16 @@ import (
 type TemplateRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
-	) functional.Option[email.Template]
+	) (functional.Option[email.Template], error)
 	FindBySlug(
 		ctx context.Context, tenantID string, productID string, slug string,
-	) functional.Option[email.Template]
+	) (functional.Option[email.Template], error)
 	// FindBySlugInternal is reserved for trusted system-internal paths that
 	// dispatch transactional emails via product API key (no authenticated
 	// tenant context). Must NOT be called from tenant-facing API handlers.
 	FindBySlugInternal(
 		ctx context.Context, productID string, slug string,
-	) functional.Option[email.Template]
+	) (functional.Option[email.Template], error)
 	List(
 		ctx context.Context, tenantID string, productID string, limit int64, offset int64,
 	) ([]email.Template, error)
@@ -61,18 +61,18 @@ type TemplateRepository interface {
 type TemplateVersionRepository interface {
 	FindByID(
 		ctx context.Context, id string,
-	) functional.Option[email.TemplateVersion]
+	) (functional.Option[email.TemplateVersion], error)
 	// FindCurrentDraft returns the template's current DRAFT version, or an
 	// absent Option when no draft exists (e.g. immediately after a publish
 	// before a new draft has been opened).
 	FindCurrentDraft(
 		ctx context.Context, templateID string,
-	) functional.Option[email.TemplateVersion]
+	) (functional.Option[email.TemplateVersion], error)
 	// FindCurrentPublished returns the template's currently-published
 	// version, or an absent Option when the template has never been published.
 	FindCurrentPublished(
 		ctx context.Context, templateID string,
-	) functional.Option[email.TemplateVersion]
+	) (functional.Option[email.TemplateVersion], error)
 	List(
 		ctx context.Context, templateID string, limit int64, offset int64,
 	) ([]email.TemplateVersion, error)
@@ -120,15 +120,15 @@ type SendRecordRepository interface {
 	// scoping; used by async dispatchers.
 	FindByDedupeKeyInternal(
 		ctx context.Context, productID string, dedupeKey string,
-	) functional.Option[email.SendRecord]
+	) (functional.Option[email.SendRecord], error)
 	// FindByDedupeKey returns a send record matching the dedupe key within the
 	// specified tenant and product.
 	FindByDedupeKey(
 		ctx context.Context, tenantID string, productID string, dedupeKey string,
-	) functional.Option[email.SendRecord]
+	) (functional.Option[email.SendRecord], error)
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
-	) functional.Option[email.SendRecord]
+	) (functional.Option[email.SendRecord], error)
 	List(
 		ctx context.Context, input email.ListSendsInput,
 	) ([]email.SendRecord, error)

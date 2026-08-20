@@ -232,10 +232,10 @@ func (s *licenseMigrationService) migrateOne(
 	wrote := false
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		foundExisting := s.licenseRepo.FindByOrganizationForUpdate(
+		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, run.input.TenantID, run.input.ProductID, organizationID,
 		)
-		if findErr := foundExisting.Err(); findErr != nil {
+		if findErr != nil {
 			return findErr
 		}
 		existing := foundExisting.ToPtr()
@@ -312,8 +312,8 @@ func (s *licenseMigrationService) decide(
 	result := license.OrganizationMigrationResult{OrganizationID: organizationID}
 
 	if existing == nil {
-		found := s.organizations.FindByID(ctx, run.input.ProductID, organizationID)
-		if err := found.Err(); err != nil {
+		found, err := s.organizations.FindByID(ctx, run.input.ProductID, organizationID)
+		if err != nil {
 			return result, license.OrganizationLicense{}, err
 		}
 		if !found.IsPresent() {

@@ -33,8 +33,8 @@ func (s *organizationAPIKeyEventService) processOrganizationAPIKeyExpiration(
 	ctx context.Context,
 	payload organizationAPIKeyEventPayload,
 ) error {
-	found := s.organizationAPIKeyRepo.GetByIDInternal(ctx, payload.APIKeyID)
-	if err := found.Err(); err != nil {
+	found, err := s.organizationAPIKeyRepo.GetByIDInternal(ctx, payload.APIKeyID)
+	if err != nil {
 		return err
 	}
 	if !found.IsPresent() {

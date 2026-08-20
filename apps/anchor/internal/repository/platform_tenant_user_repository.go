@@ -33,13 +33,13 @@ type PlatformTenantUserRepository interface {
 	) (platform.User, error)
 	FindByTenantIDAndUserID(
 		ctx context.Context, tenantID string, userID string,
-	) functional.Option[platform.User]
+	) (functional.Option[platform.User], error)
 	FindByTenantIDAndID(
 		ctx context.Context, tenantID string, userID string,
-	) functional.Option[platform.User]
+	) (functional.Option[platform.User], error)
 	FindByTenantIDAndEmail(
 		ctx context.Context, tenantID string, email string,
-	) functional.Option[platform.User]
+	) (functional.Option[platform.User], error)
 	DeleteByID(
 		ctx context.Context, tenantID string, userID string,
 	) error
@@ -84,7 +84,7 @@ func (r *platformTenantUserRepositoryImpl) Create(
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 	ctx context.Context, tenantID string, userID string,
-) functional.Option[platform.User] {
+) (functional.Option[platform.User], error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
 	).WHERE(
@@ -103,7 +103,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 	ctx context.Context, tenantID string, userID string,
-) functional.Option[platform.User] {
+) (functional.Option[platform.User], error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
 	).WHERE(
@@ -122,7 +122,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
 	ctx context.Context, tenantID string, email string,
-) functional.Option[platform.User] {
+) (functional.Option[platform.User], error) {
 	stmt := table.PlatformUsers.SELECT(
 		table.PlatformUsers.AllColumns,
 	).WHERE(

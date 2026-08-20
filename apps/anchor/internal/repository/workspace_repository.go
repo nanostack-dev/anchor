@@ -34,13 +34,13 @@ type WorkspaceRepository interface {
 		productID string,
 		organizationID string,
 		workspaceID string,
-	) functional.Option[workspace.Workspace]
+	) (functional.Option[workspace.Workspace], error)
 	FindByOrganizationIDAndName(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		name string,
-	) functional.Option[workspace.Workspace]
+	) (functional.Option[workspace.Workspace], error)
 	Create(
 		ctx context.Context,
 		workspace workspace.Workspace,
@@ -90,7 +90,7 @@ func (r *workspaceRepositoryImpl) FindByID(
 	productID string,
 	organizationID string,
 	workspaceID string,
-) functional.Option[workspace.Workspace] {
+) (functional.Option[workspace.Workspace], error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
 	).FROM(
@@ -114,7 +114,7 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	productID string,
 	organizationID string,
 	name string,
-) functional.Option[workspace.Workspace] {
+) (functional.Option[workspace.Workspace], error) {
 	stmt := table.Workspaces.SELECT(
 		table.Workspaces.AllColumns,
 	).FROM(
@@ -185,8 +185,8 @@ func (r *workspaceRepositoryImpl) Update(
 		return workspace.Workspace{}, err
 	}
 
-	updated := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID)
-	if err := updated.Err(); err != nil {
+	updated, err := r.FindByID(ctx, productID, organizationID, currentWorkspace.ID)
+	if err != nil {
 		return workspace.Workspace{}, err
 	}
 	if !updated.IsPresent() {
@@ -212,8 +212,8 @@ func (r *workspaceRepositoryImpl) DeleteByID(
 		return err
 	}
 
-	found := r.FindByID(ctx, productID, organizationID, workspaceID)
-	if err := found.Err(); err != nil {
+	found, err := r.FindByID(ctx, productID, organizationID, workspaceID)
+	if err != nil {
 		return err
 	}
 	if found.IsPresent() {

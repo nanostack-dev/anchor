@@ -121,7 +121,7 @@ func (r *sendRecordRepositoryImpl) UpdateStatusInternal(
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 	ctx context.Context, tenantID string, productID string, dedupeKey string,
-) functional.Option[email.SendRecord] {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(
@@ -136,7 +136,7 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 	ctx context.Context, productID string, dedupeKey string,
-) functional.Option[email.SendRecord] {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(
@@ -150,7 +150,7 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 
 func (r *sendRecordRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, id string,
-) functional.Option[email.SendRecord] {
+) (functional.Option[email.SendRecord], error) {
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
 		FROM(table.EmailSendRecords).
 		WHERE(

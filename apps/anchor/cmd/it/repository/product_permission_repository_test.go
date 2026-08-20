@@ -206,10 +206,10 @@ func TestProductPermissionRepositorySearchByProductSortDirections(t *testing.T) 
 		[]string{descCreated.Items[0].Name, descCreated.Items[1].Name, descCreated.Items[2].Name})
 
 	// Sort by updated_at: update "alpha:read" so it becomes the most recently updated.
-	toUpdate := repoCtx.ProductPermissionRepository.FindByProductIDAndPermissionName(
+	toUpdate, err := repoCtx.ProductPermissionRepository.FindByProductIDAndPermissionName(
 		context.Background(), productID, "alpha:read",
 	)
-	require.NoError(t, toUpdate.Err())
+	require.NoError(t, err)
 	require.True(t, toUpdate.IsPresent())
 	_, err = repoCtx.ProductPermissionRepository.Update(context.Background(), toUpdate.Value())
 	require.NoError(t, err)

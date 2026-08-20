@@ -60,7 +60,7 @@ type OrganizationMembershipRepository interface {
 		productUserID string,
 		organizationID string,
 		includePermissions bool,
-	) functional.Option[user.OrganizationMembership]
+	) (functional.Option[user.OrganizationMembership], error)
 
 	// FindByOrgIDAndUserID returns a specific member of an organization.
 	// When includePermissions is true, role permissions are included.
@@ -70,7 +70,7 @@ type OrganizationMembershipRepository interface {
 		orgID string,
 		productUserID string,
 		includePermissions bool,
-	) functional.Option[organization.Membership]
+	) (functional.Option[organization.Membership], error)
 
 	// FindByOrgID returns all members of an organization.
 	// When includePermissions is true, role permissions are included.
@@ -156,7 +156,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 	productUserID string,
 	organizationID string,
 	includePermissions bool,
-) functional.Option[user.OrganizationMembership] {
+) (functional.Option[user.OrganizationMembership], error) {
 	stmt := r.buildQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
 			table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)),
@@ -196,8 +196,8 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		return organization.Membership{}, err
 	}
 
-	found := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
-	if err := found.Err(); err != nil {
+	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	if err != nil {
 		return organization.Membership{}, err
 	}
 	if !found.IsPresent() {
@@ -236,8 +236,8 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 
-	found := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
-	if err := found.Err(); err != nil {
+	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	if err != nil {
 		return organization.Membership{}, err
 	}
 	if !found.IsPresent() {
@@ -374,7 +374,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 	orgID string,
 	productUserID string,
 	includePermissions bool,
-) functional.Option[organization.Membership] {
+) (functional.Option[organization.Membership], error) {
 	stmt := r.buildOrgQuery(includePermissions).WHERE(
 		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
 			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),

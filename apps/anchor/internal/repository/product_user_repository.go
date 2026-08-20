@@ -34,13 +34,13 @@ type ProductUserRepository interface {
 		ctx context.Context,
 		productID string,
 		id string,
-	) functional.Option[user.ProductUser]
+	) (functional.Option[user.ProductUser], error)
 	FindByProductID(
 		ctx context.Context, productID string,
 	) ([]user.ProductUser, error)
 	FindByExternalID(
 		ctx context.Context, productID string, externalID string,
-	) functional.Option[user.ProductUser]
+	) (functional.Option[user.ProductUser], error)
 	Create(
 		ctx context.Context, user user.ProductUser,
 	) (user.ProductUser, error)
@@ -89,7 +89,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	ctx context.Context,
 	productID string,
 	id string,
-) functional.Option[user.ProductUser] {
+) (functional.Option[user.ProductUser], error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
 	).FROM(
@@ -128,7 +128,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	ctx context.Context,
 	productID string,
 	externalID string,
-) functional.Option[user.ProductUser] {
+) (functional.Option[user.ProductUser], error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
 	).FROM(

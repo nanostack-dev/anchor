@@ -53,7 +53,7 @@ func organizationLicenseScope(tenantID, productID string) postgres.BoolExpressio
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
-) functional.Option[license.OrganizationLicense] {
+) (functional.Option[license.OrganizationLicense], error) {
 	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
 }
 
@@ -87,13 +87,13 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(
 	ctx context.Context, tenantID string, productID string, organizationID string,
-) functional.Option[license.OrganizationLicense] {
+) (functional.Option[license.OrganizationLicense], error) {
 	return r.findByOrganization(ctx, tenantID, productID, organizationID, true)
 }
 
 func (r *organizationLicenseRepositoryImpl) findByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string, forUpdate bool,
-) functional.Option[license.OrganizationLicense] {
+) (functional.Option[license.OrganizationLicense], error) {
 	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
 		FROM(table.OrganizationLicenses).
 		WHERE(

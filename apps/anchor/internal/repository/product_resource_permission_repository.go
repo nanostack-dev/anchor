@@ -28,7 +28,7 @@ type ProductResourcePermissionRepository interface {
 	// FindByName finds resource permission by Name
 	FindByName(
 		ctx context.Context, productID, id string,
-	) functional.Option[resourcepermission.ProductResourcePermission]
+	) (functional.Option[resourcepermission.ProductResourcePermission], error)
 
 	// Update updates an existing resource permission
 	Update(
@@ -99,7 +99,7 @@ func (r *productResourcePermissionRepository) Create(
 
 func (r *productResourcePermissionRepository) FindByName(
 	ctx context.Context, productID, name string,
-) functional.Option[resourcepermission.ProductResourcePermission] {
+) (functional.Option[resourcepermission.ProductResourcePermission], error) {
 	stmt := table.ProductResourcePermissions.SELECT(
 		table.ProductResourcePermissions.AllColumns,
 	).WHERE(

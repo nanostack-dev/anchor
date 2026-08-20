@@ -54,7 +54,7 @@ func licenseTemplateScope(tenantID, productID string) postgres.BoolExpression {
 
 func (r *templateRepositoryImpl) FindByID(
 	ctx context.Context, tenantID string, productID string, templateID string,
-) functional.Option[license.Template] {
+) (functional.Option[license.Template], error) {
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
 		WHERE(
@@ -66,7 +66,7 @@ func (r *templateRepositoryImpl) FindByID(
 
 func (r *templateRepositoryImpl) FindByName(
 	ctx context.Context, tenantID string, productID string, name string,
-) functional.Option[license.Template] {
+) (functional.Option[license.Template], error) {
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
 		WHERE(

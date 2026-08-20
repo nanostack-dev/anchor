@@ -26,7 +26,7 @@ func usersUpdatableColumns() postgres.ColumnList {
 var _ UserRepository = (*userRepositoryImpl)(nil)
 
 type UserRepository interface {
-	FindByEmail(ctx context.Context, email string) functional.Option[auth.User]
+	FindByEmail(ctx context.Context, email string) (functional.Option[auth.User], error)
 	Count(ctx context.Context) (int64, error)
 	Create(
 		ctx context.Context,
@@ -44,7 +44,7 @@ type userRepositoryImpl struct {
 
 func (u *userRepositoryImpl) FindByEmail(
 	ctx context.Context, email string,
-) functional.Option[auth.User] {
+) (functional.Option[auth.User], error) {
 	stmt := table.Users.SELECT(
 		table.Users.AllColumns,
 	).FROM(

@@ -47,12 +47,12 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		)
 		assert.Empty(t, result.MissingPrivileges)
 
-		reloaded := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, reloaded.Err())
+		require.NoError(t, err)
 		require.True(t, reloaded.IsPresent())
 		assert.NotNil(t, reloaded.Value().LastUsedAt)
 	})
@@ -142,12 +142,12 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		assert.Empty(t, result.MissingPrivileges)
 		assert.Nil(t, result.APIKey.LastUsedAt)
 
-		reloaded := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			updatedKey.ID,
 		)
-		require.NoError(t, reloaded.Err())
+		require.NoError(t, err)
 		require.True(t, reloaded.IsPresent())
 		assert.Equal(t, orgapikey.StatusInactive, reloaded.Value().Status)
 	})
@@ -297,12 +297,12 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, firstResult.APIKey.LastUsedAt)
 
-		firstReloadOpt := OrgAPIKeyRepository.GetByID(
+		firstReloadOpt, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, firstReloadOpt.Err())
+		require.NoError(t, err)
 		require.True(t, firstReloadOpt.IsPresent())
 		firstReload := firstReloadOpt.ToPtr()
 		require.NotNil(t, firstReload.LastUsedAt)
@@ -319,12 +319,12 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, secondErr)
 		require.NotNil(t, secondResult.APIKey.LastUsedAt)
 
-		secondReloadOpt := OrgAPIKeyRepository.GetByID(
+		secondReloadOpt, err := OrgAPIKeyRepository.GetByID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
 		)
-		require.NoError(t, secondReloadOpt.Err())
+		require.NoError(t, err)
 		require.True(t, secondReloadOpt.IsPresent())
 		secondReload := secondReloadOpt.ToPtr()
 		require.NotNil(t, secondReload.LastUsedAt)

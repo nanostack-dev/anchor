@@ -54,8 +54,8 @@ func TestOrganizationAPIKeyExpirationEvents(t *testing.T) {
 		processErr := APIKeyEventSvc.ProcessQueueJob(context.Background(), *job)
 		require.NoError(t, processErr)
 
-		reloaded := OrgAPIKeyRepository.GetByID(t.Context(), ctxData.Organization.ID, updated.ID)
-		require.NoError(t, reloaded.Err())
+		reloaded, err := OrgAPIKeyRepository.GetByID(t.Context(), ctxData.Organization.ID, updated.ID)
+		require.NoError(t, err)
 		require.True(t, reloaded.IsPresent())
 		assert.Equal(t, orgapikey.StatusInactive, reloaded.Value().Status)
 	})
@@ -85,8 +85,8 @@ func TestOrganizationAPIKeyExpirationEvents(t *testing.T) {
 		)
 		require.NoError(t, deleteErr)
 
-		deletedKey := OrgAPIKeyRepository.GetByID(t.Context(), ctxData.Organization.ID, createdKey.ID)
-		require.NoError(t, deletedKey.Err())
+		deletedKey, err := OrgAPIKeyRepository.GetByID(t.Context(), ctxData.Organization.ID, createdKey.ID)
+		require.NoError(t, err)
 		assert.False(t, deletedKey.IsPresent())
 
 		remainingJob := findOrganizationAPIKeyExpirationJob(t, ctxData.Organization.ID, createdKey.ID)

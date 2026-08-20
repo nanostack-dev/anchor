@@ -38,7 +38,7 @@ type IntegrationEventRepository interface {
 	// be called from tenant-facing API handlers.
 	FindByIDInternal(
 		ctx context.Context, id string,
-	) functional.Option[integration.Event]
+	) (functional.Option[integration.Event], error)
 	// FindByExternalEventIDInternal looks up an event by instance ID and
 	// external event ID without tenant scoping. Reserved for trusted
 	// system-internal paths (webhook ingress deduplication) where no
@@ -46,7 +46,7 @@ type IntegrationEventRepository interface {
 	// tenant-facing API handlers.
 	FindByExternalEventIDInternal(
 		ctx context.Context, instanceID string, externalEventID string,
-	) functional.Option[integration.Event]
+	) (functional.Option[integration.Event], error)
 	// UpdateStatusInternal updates event status by ID without tenant scoping.
 	// Reserved for trusted system-internal paths (async queue workers, webhook
 	// ingress) where no authenticated tenant context exists. Must NOT be
@@ -88,7 +88,7 @@ func (r *integrationEventRepositoryImpl) CreateInternal(
 
 func (r *integrationEventRepositoryImpl) FindByIDInternal(
 	ctx context.Context, id string,
-) functional.Option[integration.Event] {
+) (functional.Option[integration.Event], error) {
 	stmt := table.IntegrationEvents.SELECT(
 		table.IntegrationEvents.AllColumns,
 	).FROM(
@@ -104,7 +104,7 @@ func (r *integrationEventRepositoryImpl) FindByIDInternal(
 
 func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
 	ctx context.Context, instanceID string, externalEventID string,
-) functional.Option[integration.Event] {
+) (functional.Option[integration.Event], error) {
 	stmt := table.IntegrationEvents.SELECT(
 		table.IntegrationEvents.AllColumns,
 	).FROM(

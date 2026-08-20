@@ -20,7 +20,7 @@ type SchemaRepository interface {
 	// has never declared one. Fields are not populated; use SchemaFieldRepository.
 	FindByProduct(
 		ctx context.Context, tenantID string, productID string,
-	) functional.Option[license.Schema]
+	) (functional.Option[license.Schema], error)
 	Create(
 		ctx context.Context, schema license.Schema,
 	) (license.Schema, error)
@@ -63,7 +63,7 @@ type TemplateRepository interface {
 	// KSUID.
 	FindByID(
 		ctx context.Context, tenantID string, productID string, templateID string,
-	) functional.Option[license.Template]
+	) (functional.Option[license.Template], error)
 	// FindByName returns the Product's active template with that name, or an
 	// absent Option. Names are unique among a Product's active templates, so
 	// this is how a conflicting create is detected before the unique index has
@@ -71,7 +71,7 @@ type TemplateRepository interface {
 	// name.
 	FindByName(
 		ctx context.Context, tenantID string, productID string, name string,
-	) functional.Option[license.Template]
+	) (functional.Option[license.Template], error)
 	// ListByProduct returns the Product's templates ordered by name, every status
 	// unless one is named.
 	ListByProduct(
@@ -117,7 +117,7 @@ type OrganizationLicenseRepository interface {
 	// stops a caller reading another Product's license by guessing a KSUID.
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
-	) functional.Option[license.OrganizationLicense]
+	) (functional.Option[license.OrganizationLicense], error)
 	// FindByOrganizations returns the licenses of the named Organizations,
 	// keyed by organization ID, for a caller reading many at once. An
 	// Organization holding no license has no entry.
@@ -128,7 +128,7 @@ type OrganizationLicenseRepository interface {
 	// Call it inside a transaction so two adjustments cannot share one previous set.
 	FindByOrganizationForUpdate(
 		ctx context.Context, tenantID string, productID string, organizationID string,
-	) functional.Option[license.OrganizationLicense]
+	) (functional.Option[license.OrganizationLicense], error)
 	Create(
 		ctx context.Context, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)

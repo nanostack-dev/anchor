@@ -207,8 +207,8 @@ func (s *organizationLicenseService) GetLicense(
 
 	base, err := s.licenses.key(in.ProductID, in.OrganizationID).GetOrElse(
 		ctx, func() (*license.OrganizationLicense, error) {
-			found := s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
-			if err := found.Err(); err != nil {
+			found, err := s.licenseRepo.FindByOrganization(ctx, in.TenantID, in.ProductID, in.OrganizationID)
+			if err != nil {
 				return nil, err
 			}
 			return found.ToPtr(), nil
@@ -281,10 +281,10 @@ func (s *organizationLicenseService) AdjustValues(
 	var updated license.OrganizationLicense
 	wrote := false
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		foundExisting := s.licenseRepo.FindByOrganizationForUpdate(
+		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
 		)
-		if findErr := foundExisting.Err(); findErr != nil {
+		if findErr != nil {
 			return findErr
 		}
 		if !foundExisting.IsPresent() {
@@ -345,10 +345,10 @@ func (s *organizationLicenseService) DiffAgainstTemplate(
 		return license.OrganizationLicenseDiff{}, err
 	}
 
-	found := s.licenseRepo.FindByOrganization(
+	found, err := s.licenseRepo.FindByOrganization(
 		ctx, in.TenantID, in.ProductID, in.OrganizationID,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		return license.OrganizationLicenseDiff{}, err
 	}
 	if !found.IsPresent() {

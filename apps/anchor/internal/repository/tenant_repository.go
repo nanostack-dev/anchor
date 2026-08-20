@@ -24,7 +24,7 @@ func platformTenantsUpdatableColumns() postgres.ColumnList {
 }
 
 type TenantRepository interface {
-	FindByID(ctx context.Context, id string) functional.Option[tenant.PlatformTenant]
+	FindByID(ctx context.Context, id string) (functional.Option[tenant.PlatformTenant], error)
 	Create(ctx context.Context, tenant tenant.PlatformTenant) (tenant.PlatformTenant, error)
 	DeleteByID(ctx context.Context, id string) error
 	Count(ctx context.Context) (int64, error)
@@ -51,7 +51,7 @@ func NewTenantRepository(
 
 func (r *tenantRepositoryImpl) FindByID(
 	ctx context.Context, id string,
-) functional.Option[tenant.PlatformTenant] {
+) (functional.Option[tenant.PlatformTenant], error) {
 	stmt := table.PlatformTenants.SELECT(
 		table.PlatformTenants.AllColumns,
 	).FROM(

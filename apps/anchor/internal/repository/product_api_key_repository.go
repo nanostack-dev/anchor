@@ -46,12 +46,12 @@ type ProductAPIKeyRepository interface {
 	) error
 
 	// GetByID retrieves a product API key by Name
-	GetByID(ctx context.Context, productID, id string) functional.Option[apikey.ProductAPIKey]
+	GetByID(ctx context.Context, productID, id string) (functional.Option[apikey.ProductAPIKey], error)
 
 	// GetByProductIDAndName retrieves a product API key by product Name and name
 	GetByProductIDAndName(
 		ctx context.Context, productID, name string,
-	) functional.Option[apikey.ProductAPIKey]
+	) (functional.Option[apikey.ProductAPIKey], error)
 
 	// Delete deletes a product API key by Name
 	Delete(ctx context.Context, productID, id string) error
@@ -67,7 +67,7 @@ type ProductAPIKeyRepository interface {
 	// GetByHashedValue retrieves a product API key by its hashed value
 	GetByProductIDAndHashedValue(
 		ctx context.Context, productID, hashedValue string,
-	) functional.Option[apikey.ProductAPIKey]
+	) (functional.Option[apikey.ProductAPIKey], error)
 }
 
 var _ ProductAPIKeyRepository = (*productAPIKeyRepository)(nil)
@@ -152,7 +152,7 @@ func (r *productAPIKeyRepository) Create(
 
 func (r *productAPIKeyRepository) GetByID(
 	ctx context.Context, productID, id string,
-) functional.Option[apikey.ProductAPIKey] {
+) (functional.Option[apikey.ProductAPIKey], error) {
 	return r.findOne(ctx, table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
 		table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)),
 	))
@@ -160,7 +160,7 @@ func (r *productAPIKeyRepository) GetByID(
 
 func (r *productAPIKeyRepository) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
-) functional.Option[apikey.ProductAPIKey] {
+) (functional.Option[apikey.ProductAPIKey], error) {
 	return r.findOne(ctx, table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).
 		AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))))
 }
@@ -352,7 +352,7 @@ func (r *productAPIKeyRepository) UpdateLastUsedAt(
 
 func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
 	ctx context.Context, productID, hashedValue string,
-) functional.Option[apikey.ProductAPIKey] {
+) (functional.Option[apikey.ProductAPIKey], error) {
 	return r.findOne(ctx, table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).AND(
 		table.ProductAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
 	))
@@ -454,7 +454,7 @@ func (r *productAPIKeyRepository) applyFullTextSearch(
 // own scope in where; this helper adds none.
 func (r *productAPIKeyRepository) findOne(
 	ctx context.Context, where postgres.BoolExpression,
-) functional.Option[apikey.ProductAPIKey] {
+) (functional.Option[apikey.ProductAPIKey], error) {
 	stmt := postgres.SELECT(
 		table.ProductAPIKeys.AllColumns,
 		table.ProductAPIKeyPermissions.AllColumns,

@@ -118,10 +118,10 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	productID, organizationID, productUserID string,
 	logger zerolog.Logger,
 ) error {
-	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, false,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
@@ -142,10 +142,10 @@ func (s *organizationMembershipService) checkMembershipPresence(
 	productID, organizationID, productUserID string,
 	logger zerolog.Logger,
 ) error {
-	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, false,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
@@ -200,10 +200,10 @@ func (s *organizationMembershipService) RemoveMember(
 		return err
 	}
 
-	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -215,7 +215,7 @@ func (s *organizationMembershipService) RemoveMember(
 		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
 	}
 
-	if err := s.orgMembershipRepo.Delete(
+	if err = s.orgMembershipRepo.Delete(
 		ctx, input.OrganizationID, input.ProductUserID,
 	); err != nil {
 		logger.Error().Err(err).
@@ -244,10 +244,10 @@ func (s *organizationMembershipService) GetMember(
 		return nil, err
 	}
 
-	found := s.orgMembershipRepo.FindByOrgIDAndUserID(
+	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
@@ -314,8 +314,8 @@ func (s *organizationMembershipService) validateProductUser(
 	productUserID string,
 	logger zerolog.Logger,
 ) error {
-	found := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
-	if err := found.Err(); err != nil {
+	found, err := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("product_user_id", productUserID).
@@ -335,8 +335,8 @@ func (s *organizationMembershipService) validateRole(
 	roleID string,
 	logger zerolog.Logger,
 ) error {
-	found := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err := found.Err(); err != nil {
+	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
+	if err != nil {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("role_id", roleID).

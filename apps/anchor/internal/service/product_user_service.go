@@ -66,10 +66,10 @@ func (s *productUserService) Find(
 		return nil, err
 	}
 
-	found := s.productUserRepo.FindByProductIDAndID(
+	found, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -201,10 +201,10 @@ func (s *productUserService) FindByExternalID(
 		return nil, err
 	}
 
-	found := s.productUserRepo.FindByExternalID(
+	found, err := s.productUserRepo.FindByExternalID(
 		ctx, input.ProductID, input.ExternalID,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("external_id", input.ExternalID).
@@ -226,10 +226,10 @@ func (s *productUserService) ListUserOrganizations(
 	}
 
 	// Verify the product user exists
-	foundUser := s.productUserRepo.FindByProductIDAndID(
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err := foundUser.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -266,10 +266,10 @@ func (s *productUserService) GetUserOrganization(
 	}
 
 	// Verify the product user exists
-	foundUser := s.productUserRepo.FindByProductIDAndID(
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(
 		ctx, input.ProductID, input.ProductUserID,
 	)
-	if err := foundUser.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
@@ -281,10 +281,10 @@ func (s *productUserService) GetUserOrganization(
 		return nil, fault.ErrNotFound
 	}
 
-	found := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
+	found, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
 		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
-	if err := found.Err(); err != nil {
+	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).

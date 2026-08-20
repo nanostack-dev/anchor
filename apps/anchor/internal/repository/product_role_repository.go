@@ -31,10 +31,10 @@ type productRoleWithPermission struct {
 type ProductRoleRepository interface {
 	FindByProductIDAndRoleID(
 		ctx context.Context, productID, id string,
-	) functional.Option[role.ProductRole]
+	) (functional.Option[role.ProductRole], error)
 	GetByProductIDAndName(
 		ctx context.Context, productID, name string,
-	) functional.Option[role.ProductRole]
+	) (functional.Option[role.ProductRole], error)
 	Create(
 		ctx context.Context, productRole role.ProductRole,
 	) (
@@ -81,7 +81,7 @@ func productRolesUpdatableColumns() postgres.ColumnList {
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 	ctx context.Context, productID, id string,
-) functional.Option[role.ProductRole] {
+) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 	))
@@ -92,7 +92,7 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 // filter applies.
 func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
-) functional.Option[role.ProductRole] {
+) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 	))
@@ -362,7 +362,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 // own scope in where; this helper adds none.
 func (r *productRoleRepositoryImpl) findOne(
 	ctx context.Context, where postgres.BoolExpression,
-) functional.Option[role.ProductRole] {
+) (functional.Option[role.ProductRole], error) {
 	stmt := postgres.SELECT(
 		table.ProductRoles.AllColumns,
 		table.ProductRoleResourcePermissions.AllColumns,
