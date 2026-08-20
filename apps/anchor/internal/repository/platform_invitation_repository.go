@@ -148,11 +148,7 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
@@ -171,11 +167,7 @@ func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(

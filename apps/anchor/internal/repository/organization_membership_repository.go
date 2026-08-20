@@ -173,11 +173,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) Create(
@@ -399,11 +395,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByOrgID(

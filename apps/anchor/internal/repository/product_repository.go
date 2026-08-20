@@ -108,11 +108,7 @@ func (r *productRepositoryImpl) FindByID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *productRepositoryImpl) FindByIDInternal(
@@ -139,11 +135,7 @@ func (r *productRepositoryImpl) FindByIDInternal(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *productRepositoryImpl) FindByTenantIDAndName(
@@ -172,11 +164,7 @@ func (r *productRepositoryImpl) FindByTenantIDAndName(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 // Product names are guarded by two unique constraints, and a racing create can

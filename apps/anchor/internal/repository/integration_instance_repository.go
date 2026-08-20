@@ -107,11 +107,7 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
@@ -131,11 +127,7 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
@@ -159,11 +151,7 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
@@ -185,11 +173,7 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(

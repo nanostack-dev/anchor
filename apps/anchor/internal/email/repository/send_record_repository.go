@@ -134,11 +134,7 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
@@ -156,11 +152,7 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByID(
@@ -179,11 +171,7 @@ func (r *sendRecordRepositoryImpl) FindByID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) List(

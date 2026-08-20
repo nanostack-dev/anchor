@@ -47,15 +47,13 @@ func (h *jwtHelper) GenerateTokens(userID string, tenantID string) (string, stri
 
 	accessExpireTime := time.Now().Add(time.Second * time.Duration(h.authCfg.AccessTokenLifetime))
 	accessClaims := AuthClaims{
-		UserID: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(accessExpireTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   userID,
-			Issuer:    "anchor",
-			Audience:  jwt.ClaimStrings{"anchor_access"},
-		},
-		TenantID: tenantID,
+		UserID:    userID,
+		ExpiresAt: jwt.NewNumericDate(accessExpireTime),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Subject:   userID,
+		Issuer:    "anchor",
+		Audience:  jwt.ClaimStrings{"anchor_access"},
+		TenantID:  tenantID,
 	}
 	accessTokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessToken, err = accessTokenJWT.SignedString(h.authCfg.GetAdminJWTSecretAsBytes())
@@ -66,15 +64,13 @@ func (h *jwtHelper) GenerateTokens(userID string, tenantID string) (string, stri
 	refreshExpireTime := time.Now().Add(time.Second * time.Duration(h.authCfg.RefreshTokenLifetime))
 	refreshClaims := AuthClaims{
 
-		UserID: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(refreshExpireTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   userID,
-			Issuer:    "anchor",
-			Audience:  jwt.ClaimStrings{"anchor_refresh"},
-		},
-		TenantID: tenantID,
+		UserID:    userID,
+		ExpiresAt: jwt.NewNumericDate(refreshExpireTime),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Subject:   userID,
+		Issuer:    "anchor",
+		Audience:  jwt.ClaimStrings{"anchor_refresh"},
+		TenantID:  tenantID,
 	}
 	refreshTokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshToken, err = refreshTokenJWT.SignedString(h.authCfg.GetAdminJWTSecretAsBytes())

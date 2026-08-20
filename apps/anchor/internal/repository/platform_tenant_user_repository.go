@@ -101,11 +101,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
@@ -128,11 +124,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
@@ -155,11 +147,7 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) DeleteByID(

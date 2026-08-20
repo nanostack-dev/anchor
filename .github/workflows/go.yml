@@ -141,23 +141,6 @@ jobs:
       go_version: '1.26.5'
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
-      # TEMPORARY: golangci-lint cannot analyse anything that imports
-      # nanostack-framework's pkg/functional. x/tools' gcimporter fails on
-      # go1.27 export data that carries generic methods. That poisons
-      # typecheck for every dependent package, and the run still exits 1 with
-      # a single misleading "could not import" line, so it does not fail
-      # loudly.
-      #
-      # This is a stale dependency, not an unfixable defect. golangci-lint
-      # v2.12.2 pins x/tools at a pseudo-version dated 2026-04-20. The Go team
-      # repaired the defect after that date (golang/go#80055). A golangci-lint
-      # built against x/tools v0.49.0 and honnef.co/go/tools v0.8.0-rc.1
-      # analyses this module in 125 seconds and reports 20 real findings.
-      # Both bumps are needed; either one alone still fails.
-      #
-      # Drop this (and restore the lint deploy gate) once the CI linter ships
-      # those versions. See nanostack-dev/ci-workflows#14.
-      skip_lint: true
       lint_working_directory: ./apps/anchor
       lint_args: --timeout 5m --path-mode=abs
       lint_skip_cache: true

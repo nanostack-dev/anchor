@@ -106,11 +106,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
@@ -153,11 +149,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) Create(

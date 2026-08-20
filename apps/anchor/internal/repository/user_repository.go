@@ -60,11 +60,7 @@ func (u *userRepositoryImpl) FindByEmail(
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
-	if !result.IsPresent() {
-		return nil, nil
-	}
-	value := result.Value()
-	return &value, nil
+	return result.ToPtr(), nil
 }
 
 func (u *userRepositoryImpl) Count(ctx context.Context) (
