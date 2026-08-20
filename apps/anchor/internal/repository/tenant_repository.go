@@ -59,9 +59,13 @@ func (r *tenantRepositoryImpl) FindByID(
 		table.PlatformTenants.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *tenantRepositoryImpl) Create(

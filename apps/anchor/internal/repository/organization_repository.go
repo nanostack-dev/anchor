@@ -76,10 +76,14 @@ func (r *organizationRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.organizationMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *organizationRepositoryImpl) Create(

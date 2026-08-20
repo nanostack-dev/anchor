@@ -96,9 +96,13 @@ func (r *integrationEventRepositoryImpl) FindByIDInternal(
 		table.IntegrationEvents.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
@@ -114,9 +118,13 @@ func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationEventRepositoryImpl) UpdateStatusInternal(

@@ -100,12 +100,16 @@ func (r *workspaceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
@@ -124,12 +128,16 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *workspaceRepositoryImpl) Create(

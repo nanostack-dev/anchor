@@ -128,9 +128,13 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKey(
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
@@ -142,9 +146,13 @@ func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
 			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) FindByID(
@@ -157,9 +165,13 @@ func (r *sendRecordRepositoryImpl) FindByID(
 				AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))).
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *sendRecordRepositoryImpl) List(

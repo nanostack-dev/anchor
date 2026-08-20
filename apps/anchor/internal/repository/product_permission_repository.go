@@ -95,10 +95,14 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 			AND(postgres.LOWER(table.ProductPermissions.Name).EQ(postgres.LOWER(postgres.String(name)))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productPermissionMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *productPermissionRepositoryImpl) Create(

@@ -92,12 +92,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
@@ -111,12 +115,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
@@ -130,12 +138,16 @@ func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		func(entity model.PlatformUsers) platform.User {
 			return r.platformUserMapper.ToDomain(entity)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *platformTenantUserRepositoryImpl) DeleteByID(

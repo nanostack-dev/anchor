@@ -53,11 +53,9 @@ func (p *Provider) Reconcile(
 
 func (p *Provider) fetchAllUsers(ctx context.Context, apiKey string) ([]*clerkapi.User, error) {
 	usersListClient := user.NewClient(&clerkapi.ClientConfig{
-		BackendConfig: clerkapi.BackendConfig{
-			Key:        &apiKey,
-			HTTPClient: p.httpClient,
-			URL:        &p.baseURL,
-		},
+		Key:        &apiKey,
+		HTTPClient: p.httpClient,
+		URL:        &p.baseURL,
 	})
 
 	users := make([]*clerkapi.User, 0)
@@ -66,10 +64,8 @@ func (p *Provider) fetchAllUsers(ctx context.Context, apiKey string) ([]*clerkap
 
 	for {
 		page, err := usersListClient.List(ctx, &user.ListParams{
-			ListParams: clerkapi.ListParams{
-				Limit:  &limit,
-				Offset: &offset,
-			},
+			Limit:  &limit,
+			Offset: &offset,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list clerk users: %w", err)

@@ -142,9 +142,13 @@ func (r *invitationRepositoryImpl) FindByCodeAndEmail(
 			AND(table.PlatformInvitations.Email.EQ(postgres.String(email))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
@@ -157,9 +161,13 @@ func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
 			AND(table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(

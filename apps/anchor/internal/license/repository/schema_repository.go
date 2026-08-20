@@ -47,9 +47,11 @@ func (r *schemaRepositoryImpl) FindByProduct(
 			table.LicenseSchemas.PlatformTenantID.EQ(postgres.String(tenantID)).
 				AND(table.LicenseSchemas.ProductID.EQ(postgres.String(productID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *schemaRepositoryImpl) Create(

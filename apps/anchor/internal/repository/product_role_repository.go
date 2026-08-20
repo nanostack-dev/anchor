@@ -85,26 +85,9 @@ func productRolesUpdatableColumns() postgres.ColumnList {
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 	ctx context.Context, productID, id string,
 ) (*role.ProductRole, error) {
-	stmt := postgres.SELECT(
-		table.ProductRoles.AllColumns,
-		table.ProductRoleResourcePermissions.AllColumns,
-	).FROM(
-		table.ProductRoles.
-			LEFT_JOIN(
-				table.ProductRoleResourcePermissions,
-				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
-			),
-	).WHERE(
-		table.ProductRoles.ID.EQ(postgres.String(id)).AND(
-			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
-			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+	))
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
@@ -113,26 +96,9 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
 ) (*role.ProductRole, error) {
-	stmt := postgres.SELECT(
-		table.ProductRoles.AllColumns,
-		table.ProductRoleResourcePermissions.AllColumns,
-	).FROM(
-		table.ProductRoles.
-			LEFT_JOIN(
-				table.ProductRoleResourcePermissions,
-				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
-			),
-	).WHERE(
-		postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
-			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
-			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+	))
 }
 
 func (r *productRoleRepositoryImpl) Create(
@@ -393,4 +359,31 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		Total: pageResult.Total,
 		Count: len(items),
 	}, nil
+}
+
+// findOne runs the shared row-and-permissions query. Each caller passes its
+// own scope in where; this helper adds none.
+func (r *productRoleRepositoryImpl) findOne(
+	ctx context.Context, where postgres.BoolExpression,
+) (*role.ProductRole, error) {
+	stmt := postgres.SELECT(
+		table.ProductRoles.AllColumns,
+		table.ProductRoleResourcePermissions.AllColumns,
+	).FROM(
+		table.ProductRoles.
+			LEFT_JOIN(
+				table.ProductRoleResourcePermissions,
+				table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+			),
+	).WHERE(where)
+
+	result := transactor.QueryOptionalMap(
+		ctx, r.db, stmt, func(permission productRoleWithPermission) role.ProductRole {
+			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
+		},
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }

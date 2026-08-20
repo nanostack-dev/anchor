@@ -99,10 +99,14 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
@@ -138,10 +142,14 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
 		r.productUserMapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *productUserRepositoryImpl) Create(

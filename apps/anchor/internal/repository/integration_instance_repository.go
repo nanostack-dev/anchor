@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
@@ -61,11 +62,11 @@ type IntegrationInstanceRepository interface {
 	// UpdateOptional is Update for a caller that already expects the row might
 	// be gone by the time the write lands (e.g. a concurrent tenant delete
 	// racing a background verification pass). A zero-row UPDATE ... RETURNING
-	// comes back as an absent Optional rather than an error to catch — ask
+	// comes back as an absent Option rather than an error to catch — ask
 	// result.IsPresent() instead of matching a driver sentinel.
 	UpdateOptional(
 		ctx context.Context, tenantID string, instance integration.Instance,
-	) transactor.Optional[integration.Instance]
+	) functional.Option[integration.Instance]
 	DeleteByID(
 		ctx context.Context, tenantID string, id string,
 	) error
@@ -100,9 +101,13 @@ func (r *integrationInstanceRepositoryImpl) FindByID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
@@ -116,9 +121,13 @@ func (r *integrationInstanceRepositoryImpl) FindByIDInternal(
 		table.IntegrationInstances.ID.EQ(postgres.String(id)),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
@@ -136,9 +145,13 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProvider(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
@@ -154,9 +167,13 @@ func (r *integrationInstanceRepositoryImpl) FindByProductAndProviderInternal(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *integrationInstanceRepositoryImpl) ListByProduct(
@@ -234,7 +251,7 @@ func (r *integrationInstanceRepositoryImpl) Update(
 
 func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 	ctx context.Context, tenantID string, instance integration.Instance,
-) transactor.Optional[integration.Instance] {
+) functional.Option[integration.Instance] {
 	instance.UpdatedAt = time.Now()
 	entity := r.mapper.ToEntity(instance)
 
@@ -251,7 +268,7 @@ func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
-	return transactor.QueryOptionalResultMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *integrationInstanceRepositoryImpl) DeleteByID(

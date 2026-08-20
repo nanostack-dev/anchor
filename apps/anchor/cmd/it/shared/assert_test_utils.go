@@ -88,7 +88,7 @@ func getJSON403(response any) *anchorClient.ApiErrorResponse {
 	if value.Kind() == reflect.Struct {
 		json403Field := value.FieldByName("JSON403")
 		if json403Field.IsValid() && !json403Field.IsNil() {
-			if apiErrorResp, ok := json403Field.Interface().(*anchorClient.ApiErrorResponse); ok {
+			if apiErrorResp, ok := reflect.TypeAssert[*anchorClient.ApiErrorResponse](json403Field); ok {
 				return apiErrorResp
 			}
 		}
@@ -110,7 +110,7 @@ func getJSON400(response any) *anchorClient.ApiErrorResponse {
 	if value.Kind() == reflect.Struct {
 		json400Field := value.FieldByName("JSON400")
 		if json400Field.IsValid() && !json400Field.IsNil() {
-			if apiErrorResp, ok := json400Field.Interface().(*anchorClient.ApiErrorResponse); ok {
+			if apiErrorResp, ok := reflect.TypeAssert[*anchorClient.ApiErrorResponse](json400Field); ok {
 				return apiErrorResp
 			}
 		}

@@ -154,50 +154,16 @@ func (r *productAPIKeyRepository) Create(
 func (r *productAPIKeyRepository) GetByID(
 	ctx context.Context, productID, id string,
 ) (*apikey.ProductAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.ProductAPIKeys.AllColumns,
-		table.ProductAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.ProductAPIKeys.
-			LEFT_JOIN(
-				table.ProductAPIKeyPermissions,
-				table.ProductAPIKeys.ID.EQ(table.ProductAPIKeyPermissions.APIKeyID),
-			),
-	).WHERE(
-		table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
-			table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
+		table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)),
+	))
 }
 
 func (r *productAPIKeyRepository) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
 ) (*apikey.ProductAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.ProductAPIKeys.AllColumns,
-		table.ProductAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.ProductAPIKeys.
-			LEFT_JOIN(
-				table.ProductAPIKeyPermissions,
-				table.ProductAPIKeys.ID.EQ(table.ProductAPIKeyPermissions.APIKeyID),
-			),
-	).WHERE(
-		table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).
+		AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))))
 }
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
@@ -388,26 +354,9 @@ func (r *productAPIKeyRepository) UpdateLastUsedAt(
 func (r *productAPIKeyRepository) GetByProductIDAndHashedValue(
 	ctx context.Context, productID, hashedValue string,
 ) (*apikey.ProductAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.ProductAPIKeys.AllColumns,
-		table.ProductAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.ProductAPIKeys.
-			LEFT_JOIN(
-				table.ProductAPIKeyPermissions,
-				table.ProductAPIKeys.ID.EQ(table.ProductAPIKeyPermissions.APIKeyID),
-			),
-	).WHERE(
-		table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).AND(
-			table.ProductAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).AND(
+		table.ProductAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
+	))
 }
 func (r *productAPIKeyRepository) getPermissionEntities(
 	ctx context.Context, productID, apiKeyID string,
@@ -500,4 +449,31 @@ func (r *productAPIKeyRepository) applyFullTextSearch(
 		table.ProductAPIKeys.Name.LIKE(postgres.String(searchTerm)).
 			OR(table.ProductAPIKeys.Description.LIKE(postgres.String(searchTerm))),
 	)
+}
+
+// findOne runs the shared row-and-permissions query. Each caller passes its
+// own scope in where; this helper adds none.
+func (r *productAPIKeyRepository) findOne(
+	ctx context.Context, where postgres.BoolExpression,
+) (*apikey.ProductAPIKey, error) {
+	stmt := postgres.SELECT(
+		table.ProductAPIKeys.AllColumns,
+		table.ProductAPIKeyPermissions.AllColumns,
+	).FROM(
+		table.ProductAPIKeys.
+			LEFT_JOIN(
+				table.ProductAPIKeyPermissions,
+				table.ProductAPIKeys.ID.EQ(table.ProductAPIKeyPermissions.APIKeyID),
+			),
+	).WHERE(where)
+
+	result := transactor.QueryOptionalMap(
+		ctx, r.db, stmt, func(row productAPIKeyWithPermissions) apikey.ProductAPIKey {
+			return r.mapper.ToDomainWithPermissions(row.ProductAPIKeys, row.Permissions)
+		},
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }

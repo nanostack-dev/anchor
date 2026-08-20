@@ -157,110 +157,34 @@ func (r *organizationAPIKeyRepository) GetByID(
 	ctx context.Context,
 	organizationID, id string,
 ) (*orgapikey.OrganizationAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.OrganizationAPIKeys.AllColumns,
-		table.OrganizationAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.OrganizationAPIKeys.LEFT_JOIN(
-			table.OrganizationAPIKeyPermissions,
-			table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
-		),
-	).WHERE(
-		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
-			table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx,
-		r.db,
-		stmt,
-		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
+		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)),
+	))
 }
 
 func (r *organizationAPIKeyRepository) GetByIDInternal(
 	ctx context.Context,
 	id string,
 ) (*orgapikey.OrganizationAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.OrganizationAPIKeys.AllColumns,
-		table.OrganizationAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.OrganizationAPIKeys.LEFT_JOIN(
-			table.OrganizationAPIKeyPermissions,
-			table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
-		),
-	).WHERE(
-		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx,
-		r.db,
-		stmt,
-		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)))
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
 	ctx context.Context,
 	organizationID, name string,
 ) (*orgapikey.OrganizationAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.OrganizationAPIKeys.AllColumns,
-		table.OrganizationAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.OrganizationAPIKeys.LEFT_JOIN(
-			table.OrganizationAPIKeyPermissions,
-			table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
-		),
-	).WHERE(
-		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
-			table.OrganizationAPIKeys.Name.EQ(postgres.String(name)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx,
-		r.db,
-		stmt,
-		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
+		table.OrganizationAPIKeys.Name.EQ(postgres.String(name)),
+	))
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(
 	ctx context.Context,
 	organizationID, hashedValue string,
 ) (*orgapikey.OrganizationAPIKey, error) {
-	stmt := postgres.SELECT(
-		table.OrganizationAPIKeys.AllColumns,
-		table.OrganizationAPIKeyPermissions.AllColumns,
-	).FROM(
-		table.OrganizationAPIKeys.LEFT_JOIN(
-			table.OrganizationAPIKeyPermissions,
-			table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
-		),
-	).WHERE(
-		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
-			table.OrganizationAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
-		),
-	)
-
-	return transactor.QueryOptionalMap(
-		ctx,
-		r.db,
-		stmt,
-		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
-			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
-		},
-	).Value()
+	return r.findOne(ctx, table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
+		table.OrganizationAPIKeys.HashedValue.EQ(postgres.String(hashedValue)),
+	))
 }
 
 // GetByProductIDAndHashedValueInternal resolves an organization API key by its hashed
@@ -290,14 +214,18 @@ func (r *organizationAPIKeyRepository) GetByProductIDAndHashedValueInternal(
 		),
 	)
 
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx,
 		r.db,
 		stmt,
 		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
 			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
 		},
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 //nolint:dupl // mirrors product API key update flow with organization-scoped tables
@@ -560,4 +488,33 @@ func (r *organizationAPIKeyRepository) applyFullTextSearch(
 			table.OrganizationAPIKeys.Description.LIKE(postgres.String(searchTerm)),
 		),
 	)
+}
+
+// findOne runs the shared row-and-permissions query. Each caller passes its
+// own scope in where; this helper adds none.
+func (r *organizationAPIKeyRepository) findOne(
+	ctx context.Context, where postgres.BoolExpression,
+) (*orgapikey.OrganizationAPIKey, error) {
+	stmt := postgres.SELECT(
+		table.OrganizationAPIKeys.AllColumns,
+		table.OrganizationAPIKeyPermissions.AllColumns,
+	).FROM(
+		table.OrganizationAPIKeys.LEFT_JOIN(
+			table.OrganizationAPIKeyPermissions,
+			table.OrganizationAPIKeys.ID.EQ(table.OrganizationAPIKeyPermissions.APIKeyID),
+		),
+	).WHERE(where)
+
+	result := transactor.QueryOptionalMap(
+		ctx,
+		r.db,
+		stmt,
+		func(row organizationAPIKeyWithPermissions) orgapikey.OrganizationAPIKey {
+			return r.mapper.ToDomainWithPermissions(row.OrganizationAPIKeys, row.Permissions)
+		},
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }

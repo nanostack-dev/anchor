@@ -47,9 +47,13 @@ func (r *templateVersionRepositoryImpl) FindByID(
 		FROM(table.EmailTemplateVersions).
 		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
 		LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
@@ -73,9 +77,13 @@ func (r *templateVersionRepositoryImpl) findByStatus(
 			table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID)).
 				AND(table.EmailTemplateVersions.Status.EQ(postgres.String(string(status)))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(
+	result := transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *templateVersionRepositoryImpl) List(

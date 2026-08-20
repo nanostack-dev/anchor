@@ -60,7 +60,11 @@ func (r *templateRepositoryImpl) FindByID(
 			licenseTemplateScope(tenantID, productID).
 				AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *templateRepositoryImpl) FindByName(
@@ -73,7 +77,11 @@ func (r *templateRepositoryImpl) FindByName(
 				AND(table.LicenseTemplates.Name.EQ(postgres.String(name))).
 				AND(activeOnly()),
 		).LIMIT(1)
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	result := transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+	return result.ToPtr(), nil
 }
 
 func (r *templateRepositoryImpl) ListByProduct(
