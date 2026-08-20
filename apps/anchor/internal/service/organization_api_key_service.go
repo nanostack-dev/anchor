@@ -101,7 +101,7 @@ func (s *organizationAPIKeyService) Create(
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
-	if !foundOrg.IsPresent() {
+	if foundOrg.IsAbsent() {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
 	org := foundOrg.Value()
@@ -113,7 +113,7 @@ func (s *organizationAPIKeyService) Create(
 			Msg("failed to find product for organization API key config")
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
-	if !foundProd.IsPresent() {
+	if foundProd.IsAbsent() {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
 	}
 	prod := foundProd.ToPtr()
@@ -220,7 +220,7 @@ func (s *organizationAPIKeyService) GetByID(
 		return nil, fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 
@@ -250,7 +250,7 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return orgapikey.OrganizationAPIKey{}, fault.ErrNotFound
 	}
 
@@ -338,7 +338,7 @@ func (s *organizationAPIKeyService) Delete(
 		return fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return fault.ErrNotFound
 	}
 	existingAPIKey := found.Value()
@@ -501,7 +501,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
 	}
 
@@ -528,7 +528,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to introspect organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		// The caller (the product) is authenticated; the subject credential simply
 		// does not exist. That is a not-found, not a caller-authentication failure.
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrNotFound
@@ -646,7 +646,7 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 	if err != nil {
 		return fault.ErrUnexpected
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return fault.ErrNotFound
 	}
 	return nil

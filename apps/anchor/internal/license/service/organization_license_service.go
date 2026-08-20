@@ -287,7 +287,7 @@ func (s *organizationLicenseService) AdjustValues(
 		if findErr != nil {
 			return findErr
 		}
-		if !foundExisting.IsPresent() {
+		if foundExisting.IsAbsent() {
 			return ErrOrganizationLicenseNotFound
 		}
 		existing := foundExisting.ToPtr()
@@ -351,7 +351,7 @@ func (s *organizationLicenseService) DiffAgainstTemplate(
 	if err != nil {
 		return license.OrganizationLicenseDiff{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return license.OrganizationLicenseDiff{}, ErrOrganizationLicenseNotFound
 	}
 	existing := found.Value()

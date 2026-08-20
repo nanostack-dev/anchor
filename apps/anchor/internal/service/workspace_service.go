@@ -146,7 +146,7 @@ func (s *workspaceService) Update(
 			Msg("failed to find workspace for update")
 		return workspace.Workspace{}, err
 	}
-	if !foundWorkspace.IsPresent() {
+	if foundWorkspace.IsAbsent() {
 		return workspace.Workspace{}, fault.ErrNotFound
 	}
 	currentWorkspace := foundWorkspace.Value()
@@ -216,7 +216,7 @@ func (s *workspaceService) Delete(
 			Msg("failed to find workspace for deletion")
 		return err
 	}
-	if !foundWorkspace.IsPresent() {
+	if foundWorkspace.IsAbsent() {
 		return fault.ErrNotFound
 	}
 
@@ -268,7 +268,7 @@ func (s *workspaceService) ensureOrganizationExists(
 	if err != nil {
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return fault.ErrNotFound
 	}
 

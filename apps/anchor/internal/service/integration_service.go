@@ -349,7 +349,7 @@ func (s *integrationService) GetInstance(
 			Msg("failed to find instance")
 		return nil, findErr
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, ErrIntegrationInstanceNotFound
 	}
 
@@ -381,7 +381,7 @@ func (s *integrationService) UpdateInstance(
 				Msg("failed to find instance for update")
 			return findErr
 		}
-		if !found.IsPresent() {
+		if found.IsAbsent() {
 			return ErrIntegrationInstanceNotFound
 		}
 		existingValue := found.Value()
@@ -605,7 +605,7 @@ func (s *integrationService) DeleteInstance(
 			Msg("failed to find instance for deletion")
 		return findErr
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return ErrIntegrationInstanceNotFound
 	}
 	existing := found.Value()
@@ -702,7 +702,7 @@ func (s *integrationService) ListAuditLogs(
 		return nil, findErr
 	}
 
-	if !found.IsPresent() || found.Value().ProductID != input.ProductID {
+	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 		return nil, ErrIntegrationInstanceNotFound
 	}
 
@@ -939,7 +939,7 @@ func (s *integrationService) runInstanceReconcile(
 	if findErr != nil {
 		return findErr
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return queue.NonRetryable(
 			fmt.Errorf("integration instance not found: %s", instanceID),
 		)
@@ -1185,7 +1185,7 @@ func (s *integrationService) processOneEvent(
 	if findErr != nil {
 		return findErr
 	}
-	if !foundEvent.IsPresent() {
+	if foundEvent.IsAbsent() {
 		return queue.NonRetryable(fmt.Errorf("integration event not found: %s", payload.EventID))
 	}
 	event := foundEvent.ToPtr()
@@ -1241,7 +1241,7 @@ func (s *integrationService) executeEventTransaction(
 	if instanceErr != nil {
 		return nil, fmt.Errorf("failed to find integration instance: %w", instanceErr)
 	}
-	if !foundInstance.IsPresent() {
+	if foundInstance.IsAbsent() {
 		return nil, fmt.Errorf("integration instance not found for event: %s", event.IntegrationInstanceID)
 	}
 	instance := foundInstance.ToPtr()
@@ -1452,7 +1452,7 @@ func (s *integrationService) resolveWebhookTarget(
 			Msg("failed to find integration instance")
 		return nil, nil, findErr
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, nil, ErrIntegrationInstanceNotFound
 	}
 	instance := found.ToPtr()
@@ -1698,7 +1698,7 @@ func (s *integrationService) verifyAndActivate(
 			Msg("verifyAndActivate: failed to re-fetch instance after verification")
 		return
 	}
-	if !foundLive.IsPresent() {
+	if foundLive.IsAbsent() {
 		// The instance was removed between the save and this verification run
 		// (e.g. deleted by the tenant). This is an expected race, not an error.
 		logger.Warn().Str("instance_id", inst.ID).
@@ -1728,7 +1728,7 @@ func (s *integrationService) verifyAndActivate(
 			Msg("verifyAndActivate: failed to persist verification result")
 		return
 	}
-	if !result.IsPresent() {
+	if result.IsAbsent() {
 		// The instance was deleted between the re-fetch above and this
 		// update — the same expected tenant-delete race as the live == nil
 		// branch. The UPDATE ... RETURNING matched no rows, so there is

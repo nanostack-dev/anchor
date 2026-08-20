@@ -197,7 +197,7 @@ func (s *emailService) resolveMailer(
 	if err != nil {
 		return nil, nil, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, nil, ErrEmailIntegrationNotFound
 	}
 	instance := found.ToPtr()
@@ -224,7 +224,7 @@ func (s *emailService) resolveTemplate(
 		if err != nil {
 			return nil, err
 		}
-		if !found.IsPresent() {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNotFound
 		}
 		return found.ToPtr(), nil
@@ -234,7 +234,7 @@ func (s *emailService) resolveTemplate(
 		if err != nil {
 			return nil, err
 		}
-		if !found.IsPresent() {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNotFound
 		}
 		return found.ToPtr(), nil
@@ -251,7 +251,7 @@ func (s *emailService) resolveSendVersion(
 		if err != nil {
 			return nil, err
 		}
-		if !found.IsPresent() {
+		if found.IsAbsent() {
 			return nil, ErrEmailTemplateNoDraft
 		}
 		return found.ToPtr(), nil
@@ -260,7 +260,7 @@ func (s *emailService) resolveSendVersion(
 	if err != nil {
 		return nil, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, ErrEmailTemplateNotPublished
 	}
 	return found.ToPtr(), nil
@@ -326,7 +326,7 @@ func (s *emailService) UpdateTemplate(
 	if err != nil {
 		return email.Template{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return email.Template{}, ErrEmailTemplateNotFound
 	}
 	existing := found.Value()
@@ -349,7 +349,7 @@ func (s *emailService) UpdateTemplateDraft(
 	if findErr != nil {
 		return email.TemplateVersion{}, findErr
 	}
-	if !foundTpl.IsPresent() {
+	if foundTpl.IsAbsent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
 	}
 	tpl := foundTpl.ToPtr()
@@ -371,7 +371,7 @@ func (s *emailService) UpdateTemplateDraft(
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
-		if !foundPub.IsPresent() {
+		if foundPub.IsAbsent() {
 			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
 		}
 		pub := foundPub.ToPtr()
@@ -428,7 +428,7 @@ func (s *emailService) GetTemplateDraft(
 	if findErr != nil {
 		return nil, findErr
 	}
-	if !foundTpl.IsPresent() {
+	if foundTpl.IsAbsent() {
 		return nil, ErrEmailTemplateNotFound
 	}
 	tpl := foundTpl.ToPtr()
@@ -449,7 +449,7 @@ func (s *emailService) GetTemplateDraft(
 	if err != nil {
 		return nil, err
 	}
-	if !foundPub.IsPresent() {
+	if foundPub.IsAbsent() {
 		return nil, nil
 	}
 	pub := foundPub.ToPtr()
@@ -490,7 +490,7 @@ func (s *emailService) PublishTemplate(
 	if findErr != nil {
 		return email.TemplateVersion{}, findErr
 	}
-	if !foundTpl.IsPresent() {
+	if foundTpl.IsAbsent() {
 		return email.TemplateVersion{}, ErrEmailTemplateNotFound
 	}
 	tpl := foundTpl.ToPtr()
@@ -526,7 +526,7 @@ func (s *emailService) PublishTemplate(
 	if err != nil {
 		return email.TemplateVersion{}, err
 	}
-	if !foundPublished.IsPresent() {
+	if foundPublished.IsAbsent() {
 		return email.TemplateVersion{}, nil
 	}
 	published := foundPublished.ToPtr()
@@ -585,7 +585,7 @@ func (s *emailService) DeleteTemplate(
 	if err != nil {
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return ErrEmailTemplateNotFound
 	}
 
@@ -599,7 +599,7 @@ func (s *emailService) SaveTemplateExamples(
 	if err != nil {
 		return nil, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, ErrEmailTemplateNotFound
 	}
 	if err = s.templateRepo.SaveExamples(ctx, in.TenantID, in.ProductID, in.TemplateID, in.Examples); err != nil {
@@ -615,7 +615,7 @@ func (s *emailService) Preview(
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
-	if !foundTpl.IsPresent() {
+	if foundTpl.IsAbsent() {
 		return email.PreviewResult{}, ErrEmailTemplateNotFound
 	}
 	tpl := foundTpl.ToPtr()
@@ -634,7 +634,7 @@ func (s *emailService) Preview(
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
-	if !foundVersion.IsPresent() {
+	if foundVersion.IsAbsent() {
 		return email.PreviewResult{}, ErrEmailTemplateNotFound
 	}
 	v := foundVersion.ToPtr()

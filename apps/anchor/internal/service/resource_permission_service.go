@@ -157,7 +157,7 @@ func (s *resourcePermissionService) Update(
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return resourcepermission.ProductResourcePermission{}, fault.ErrNotFound
 	}
 
@@ -203,7 +203,7 @@ func (s *resourcePermissionService) Delete(
 			Msg("failed to find resource permission by name")
 		return fault.ErrUnexpected
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		logger.Debug().
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).

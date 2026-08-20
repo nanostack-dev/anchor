@@ -200,7 +200,7 @@ func (s *licenseTemplateService) UpdateTemplate(
 	if err != nil {
 		return license.Template{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return license.Template{}, ErrLicenseTemplateNotFound
 	}
 	existing := found.Value()
@@ -260,7 +260,7 @@ func (s *licenseTemplateService) ArchiveTemplate(
 	if err != nil {
 		return license.Template{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return license.Template{}, ErrLicenseTemplateNotFound
 	}
 	existing := found.Value()
@@ -288,7 +288,7 @@ func (s *licenseTemplateService) DeleteTemplate(
 	if err != nil {
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return ErrLicenseTemplateNotFound
 	}
 

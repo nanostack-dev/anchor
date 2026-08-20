@@ -200,7 +200,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 	if err != nil {
 		return organization.Membership{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return organization.Membership{}, fault.ErrNotFound
 	}
 
@@ -240,7 +240,7 @@ func (r *organizationMembershipRepositoryImpl) Update(
 	if err != nil {
 		return organization.Membership{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return organization.Membership{}, fault.ErrNotFound
 	}
 

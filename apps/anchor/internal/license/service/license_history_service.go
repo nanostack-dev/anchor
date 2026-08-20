@@ -50,7 +50,7 @@ func (s *licenseHistoryService) ListChanges(
 	if err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return search.Result[license.OrganizationLicenseChange]{}, ErrLicenseOrganizationNotFound
 	}
 

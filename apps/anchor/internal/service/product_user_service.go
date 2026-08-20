@@ -237,7 +237,7 @@ func (s *productUserService) ListUserOrganizations(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if !foundUser.IsPresent() {
+	if foundUser.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 
@@ -277,7 +277,7 @@ func (s *productUserService) GetUserOrganization(
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
-	if !foundUser.IsPresent() {
+	if foundUser.IsAbsent() {
 		return nil, fault.ErrNotFound
 	}
 

@@ -183,7 +183,7 @@ func (s *authService) handleInvitation(
 		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
 	}
-	if !foundInvitation.IsPresent() {
+	if foundInvitation.IsAbsent() {
 		logger.Debug().Str("email", email).Msg("invitation not found")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeIsInvalid
 	}
@@ -216,7 +216,7 @@ func (s *authService) Login(
 		logger.Error().Str("email", input.Email).Err(err).Msg("failed to find user by email")
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
 	}
-	if !foundUser.IsPresent() {
+	if foundUser.IsAbsent() {
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
 	user := foundUser.ToPtr()
@@ -248,7 +248,7 @@ func (s *authService) Login(
 	if err != nil {
 		return auth.LoginOutput{}, err
 	}
-	if !foundPlatformUser.IsPresent() {
+	if foundPlatformUser.IsAbsent() {
 		// A valid email/password whose user has no platform-tenant membership is
 		// an authentication failure, not a server error. Return the same modelled
 		// credential error as the sibling branches above so the strict handler
@@ -316,7 +316,7 @@ func (s *authService) RefreshToken(
 			"failed to retrieve user details during refresh: %w", err,
 		)
 	}
-	if !foundUser.IsPresent() {
+	if foundUser.IsAbsent() {
 		return auth.LoginOutput{}, ErrUserNotFound
 	}
 	user := foundUser.ToPtr()

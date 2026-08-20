@@ -37,7 +37,7 @@ func (s *organizationAPIKeyEventService) processOrganizationAPIKeyExpiration(
 	if err != nil {
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil
 	}
 	apiKey := found.ToPtr()

@@ -316,7 +316,7 @@ func (s *licenseMigrationService) decide(
 		if err != nil {
 			return result, license.OrganizationLicense{}, err
 		}
-		if !found.IsPresent() {
+		if found.IsAbsent() {
 			return result, license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
 		}
 

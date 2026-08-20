@@ -153,7 +153,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 			Msg("failed to verify existing membership")
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return NewOrganizationMembershipNotFoundError(productUserID, organizationID)
 	}
 
@@ -211,7 +211,7 @@ func (s *organizationMembershipService) RemoveMember(
 			Msg("failed to verify membership before removal")
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
 	}
 
@@ -322,7 +322,7 @@ func (s *organizationMembershipService) validateProductUser(
 			Msg("failed to verify product user exists")
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return NewProductUserNotFoundError(productUserID)
 	}
 
@@ -343,7 +343,7 @@ func (s *organizationMembershipService) validateRole(
 			Msg("failed to verify role exists")
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return NewRoleNotFoundError(roleID)
 	}
 

@@ -184,7 +184,7 @@ func (s *productRoleService) UpdateProductRole(
 			Msg("failed to find product role for update")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if !foundRole.IsPresent() {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, fault.ErrNotFound
 	}
 
@@ -243,7 +243,7 @@ func (s *productRoleService) DeleteProductRole(
 			Msg("failed to find product role for deletion")
 		return fault.ErrUnexpected
 	}
-	if !foundRole.IsPresent() {
+	if foundRole.IsAbsent() {
 		return fault.ErrNotFound
 	}
 
@@ -303,7 +303,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			Msg("failed to find role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if !foundRole.IsPresent() {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
 	}
 	productRole := foundRole.ToPtr()
@@ -376,7 +376,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Msg("failed to find role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if !foundRole.IsPresent() {
+	if foundRole.IsAbsent() {
 		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
 	}
 	productRole := foundRole.ToPtr()
@@ -392,7 +392,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Msg("failed to find permission")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-	if !foundPermission.IsPresent() {
+	if foundPermission.IsAbsent() {
 		return role.ProductRole{}, NewPermissionsNotFoundError(
 			input.ProductID, []string{input.PermissionName},
 		)

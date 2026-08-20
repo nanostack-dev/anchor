@@ -278,7 +278,7 @@ func (s *licenseSchemaService) GetSchema(
 	if err != nil {
 		return nil, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
 	}
 	schema := found.ToPtr()
@@ -312,7 +312,7 @@ func (s *licenseSchemaService) UpdateSchema(
 	if err != nil {
 		return license.Schema{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return license.Schema{}, ErrLicenseSchemaNotFound
 	}
 	existing := found.Value()
@@ -360,7 +360,7 @@ func (s *licenseSchemaService) DeleteSchema(
 	if err != nil {
 		return err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return ErrLicenseSchemaNotFound
 	}
 

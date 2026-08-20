@@ -126,7 +126,7 @@ func (s *permissionService) Update(
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	if !existing.IsPresent() {
+	if existing.IsAbsent() {
 		return permission.ProductPermission{}, permission.ErrPermissionNotFound
 	}
 
@@ -173,7 +173,7 @@ func (s *permissionService) Delete(
 		return fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil
 	}
 	exists := found.Value()
@@ -233,7 +233,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 		return nil, fault.ErrUnexpected
 	}
 
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return nil, permission.ErrPermissionNotFound
 	}
 

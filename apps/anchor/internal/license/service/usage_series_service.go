@@ -62,7 +62,7 @@ func (s *usageSeriesService) GetSeries(
 	if err != nil {
 		return search.Result[license.UsageSeriesPoint]{}, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		return search.Result[license.UsageSeriesPoint]{}, ErrLicenseOrganizationNotFound
 	}
 

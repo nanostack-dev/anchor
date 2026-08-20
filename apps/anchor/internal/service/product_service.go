@@ -263,7 +263,7 @@ func (s *productService) findProductForUpdate(
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
-	if !found.IsPresent() {
+	if found.IsAbsent() {
 		logger.Debug().Str("product_id", productID).Msg("product not found for update")
 		return nil, fault.ErrNotFound
 	}

@@ -192,7 +192,7 @@ func (s *organizationService) Find(
 			Msg("failed to find organization")
 		return nil, err
 	}
-	if !foundOrg.IsPresent() {
+	if foundOrg.IsAbsent() {
 		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
 	}
 
@@ -350,7 +350,7 @@ func (s *organizationService) CreateWithMember(
 		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
-		if !foundOrg.IsPresent() {
+		if foundOrg.IsAbsent() {
 			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
 		org := foundOrg.ToPtr()
@@ -361,7 +361,7 @@ func (s *organizationService) CreateWithMember(
 		if errGetMembership != nil {
 			return organization.OrganizationWithMemberResult{}, errGetMembership
 		}
-		if !foundMembership.IsPresent() {
+		if foundMembership.IsAbsent() {
 			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
 		}
 		membership := foundMembership.ToPtr()
@@ -400,7 +400,7 @@ func (s *organizationService) CreateWithMember(
 				Msg("failed to verify product user")
 			return lookupErr
 		}
-		if !foundProductUser.IsPresent() {
+		if foundProductUser.IsAbsent() {
 			return fault.ErrNotFound
 		}
 
@@ -416,7 +416,7 @@ func (s *organizationService) CreateWithMember(
 				Msg("failed to verify product role")
 			return roleErr
 		}
-		if !foundRole.IsPresent() {
+		if foundRole.IsAbsent() {
 			return NewRoleNotFoundError(input.RoleID)
 		}
 
@@ -520,7 +520,7 @@ func (s *organizationService) Update(
 			Msg("failed to find organization")
 		return organization.Organization{}, err
 	}
-	if !optOrg.IsPresent() {
+	if optOrg.IsAbsent() {
 		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
@@ -573,7 +573,7 @@ func (s *organizationService) Delete(
 			Msg("failed to find organization")
 		return err
 	}
-	if !optOrg.IsPresent() {
+	if optOrg.IsAbsent() {
 		logger.Debug().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
