@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -75,11 +74,13 @@ func (s *invitationService) CreateInvitation(
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("user already exists")
-		return invitation.PlatformInvitation{}, fault.NewWithStatus(
+		// A uniqueness collision: this address already has a user account.
+		// Inviting a different address succeeds, so this is a conflict, not a
+		// bad request.
+		return invitation.PlatformInvitation{}, fault.Conflict(
 			"INVITATION_USER_ALREADY_EXISTS",
-			"This email address is already associated with an existing user account. "+
-				"Please check if they are already a member, or try inviting a different email.",
-			http.StatusBadRequest,
+			"This email address already has a user account. "+
+				"Check if the person is already a member, or invite a different email address.",
 		)
 	}
 	foundInvitation, err := s.invitationRepo.FindByTenantIDAndEmail(

@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -67,9 +68,14 @@ func TestLicenseTemplateDelete(t *testing.T) {
 			context.Background(), w.productID(), w.TemplateID(),
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_IN_USE")
+		// LICENSE_TEMPLATE_IN_USE is a 409: blocking a delete because
+		// something still references the row is a conflict, not a bad
+		// request. The generated client has no typed 409 getter for this
+		// route yet, so the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "LICENSE_TEMPLATE_IN_USE")
 
 		// The refused write left the row untouched, and the organization's
 		// license — which names this template as the statement of what it was

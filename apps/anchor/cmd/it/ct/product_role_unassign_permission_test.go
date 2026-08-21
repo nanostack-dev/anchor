@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -135,10 +136,15 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 				ctx, productID, roleID, nonexistentPermission,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, 400, unassignResp.StatusCode())
-			assert.Contains(t, unassignResp.JSON400.Errors[0].Code, "PERMISSIONS_NOT_FOUND")
+			// permission_id is a path segment on this route, so an unknown
+			// value answers 404, not the 400 a body-supplied list would get.
+			assert.Equal(t, http.StatusNotFound, unassignResp.StatusCode())
+			var errResp ct.ApiErrorResponse
+			require.NoError(t, json.Unmarshal(unassignResp.Body, &errResp))
+			require.NotEmpty(t, errResp.Errors)
+			assert.Contains(t, errResp.Errors[0].Code, "RESOURCE_PERMISSION_NOT_FOUND")
 			assert.Contains(
-				t, unassignResp.JSON400.Errors[0].Message, "Product permission does not exist",
+				t, errResp.Errors[0].Message, "Resource permission does not exist",
 			)
 		},
 	)

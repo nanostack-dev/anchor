@@ -19,7 +19,7 @@ import (
 func TestClassifyDispatchError(t *testing.T) {
 	t.Parallel()
 
-	t.Run("permanent relay rejection maps to 422 EMAIL_DELIVERY_REJECTED", func(t *testing.T) {
+	t.Run("permanent relay rejection maps to 400 EMAIL_DELIVERY_REJECTED", func(t *testing.T) {
 		t.Parallel()
 		// Shape mirrors what the SMTP transport returns for a 553 sender / 550
 		// recipient rejection: the cause wrapped with provider.ErrMessageRejected.
@@ -31,7 +31,7 @@ func TestClassifyDispatchError(t *testing.T) {
 
 		apiErr, ok := fault.As(got)
 		require.True(t, ok, "result must be a modelled fault")
-		assert.Equal(t, http.StatusUnprocessableEntity, apiErr.HTTPStatus())
+		assert.Equal(t, http.StatusBadRequest, apiErr.HTTPStatus())
 		assert.Equal(t, "EMAIL_DELIVERY_REJECTED", apiErr.Details[0].Code)
 		// The transport cause stays reachable for server-side logs.
 		require.ErrorIs(t, got, provider.ErrMessageRejected)

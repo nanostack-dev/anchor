@@ -22,35 +22,60 @@ import (
 const licenseTemplateNameConstraint = "uq_license_templates_product_name_active"
 
 var (
-	ErrLicenseTemplateNotFound = fault.NewWithStatus(
+	// ErrLicenseTemplateNotFound answers a template_id the path itself names:
+	// GetTemplate, UpdateTemplate, ArchiveTemplate, DeleteTemplate. For a
+	// template_id read from a request body instead, use
+	// ErrLicenseTemplateNotFoundInRequest.
+	ErrLicenseTemplateNotFound = fault.NotFound(
 		"LICENSE_TEMPLATE_NOT_FOUND",
 		"This product has no license template with that identifier",
-		http.StatusNotFound,
 	)
-	// ErrLicenseTemplateArchived refuses to act on a withdrawn tier. It reads
-	// rather than writes: the template is still there, and still resolves for
-	// every license that names it.
-	ErrLicenseTemplateArchived = fault.BadRequest(
+	// ErrLicenseTemplateArchived refuses to act on a withdrawn tier. The
+	// template still resolves — this is state refusing the request, not an
+	// absent or malformed identifier — and un-archiving it is the later,
+	// different request that lets the same call succeed, which is a 409, not
+	// a 400.
+	ErrLicenseTemplateArchived = fault.Conflict(
 		"LICENSE_TEMPLATE_ARCHIVED",
 		"This license template is archived; the tier is no longer offered",
 	)
 )
 
+// ErrLicenseTemplateNotFoundInRequest answers a template_id read from a
+// request body: OrganizationLicenseInstantiateRequest.template_id and
+// OrganizationLicenseMigrationRequest.template_id. Not the 404
+// ErrLicenseTemplateNotFound answers, because the path these calls address —
+// the organization's license, or the migration run — exists; only the
+// supplied template_id fails to resolve. Mirrors
+// NewOrganizationLicenseTemplateNotFoundError in internal/service/errors.go,
+// the same rule applied to organization creation's embedded template_id.
+func ErrLicenseTemplateNotFoundInRequest(templateID string) *fault.Error {
+	return fault.BadRequest(
+		"LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST",
+		"This product has no license template with that identifier",
+	).Metadata(map[string]any{
+		"template_id": templateID,
+	})
+}
+
 // errLicenseTemplateInUse refuses to delete a template an Organization license
-// still names. Archive is the withdrawal that stays available once this fires.
-// See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+// still names. Current state refuses the delete, and archiving the license
+// away (or the template) is the later request that lets it succeed, so this
+// is a 409, not a 400. Archive is the withdrawal that stays available once
+// this fires. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
 func errLicenseTemplateInUse(licenseCount int) *fault.Error {
-	return fault.NewWithStatus(
+	return fault.Conflict(
 		"LICENSE_TEMPLATE_IN_USE",
 		fmt.Sprintf(
 			"This license template cannot be deleted because %d organization license(s) name it; archive it instead",
 			licenseCount,
 		),
-		http.StatusBadRequest,
 	)
 }
 
-// errLicenseTemplateNameExists reports a name already taken within the Product.
+// errLicenseTemplateNameExists reports a name already taken within the
+// Product. A 409: archiving or renaming the template holding the name is the
+// later request that frees it, the same shape as a uniqueness rule.
 //
 // Field names the request member a form has to highlight, which here is the
 // template's own "name" input. The schema validation errors put a license field
@@ -61,7 +86,7 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 		Code:    "LICENSE_TEMPLATE_NAME_EXISTS",
 		Message: "This product already has a license template named " + name,
 		Field:   "name",
-	}}, http.StatusBadRequest)
+	}}, http.StatusConflict)
 }
 
 // LicenseTemplateService owns a Product's license templates: named sets of

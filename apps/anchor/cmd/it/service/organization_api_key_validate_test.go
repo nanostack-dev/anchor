@@ -247,7 +247,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			},
 		)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Product API key is invalid")
+		assert.Contains(t, err.Error(), "The product API key is invalid.")
 	})
 
 	t.Run("Organization Does Not Belong To Product", func(t *testing.T) {

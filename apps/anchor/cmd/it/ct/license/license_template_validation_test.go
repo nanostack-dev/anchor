@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -130,9 +131,14 @@ func TestLicenseTemplateValidation(t *testing.T) {
 
 		resp, err := createTemplateRaw(t, tc, "Pro", validTemplateValues())
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertFieldError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
+		// Archiving or renaming the template holding the name is the later
+		// request that frees it, the same shape as a uniqueness rule — a 409,
+		// not a 400. The generated client has no typed 409 getter for this
+		// route yet, so the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertFieldError(t, errResp.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
 	t.Run("refuses a template for a product with no license schema", func(t *testing.T) {
@@ -142,7 +148,11 @@ func TestLicenseTemplateValidation(t *testing.T) {
 
 		resp, err := createTemplateRaw(t, tc, uniqueTemplateName(), ct.LicenseTemplateValues{})
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		// This call never names the schema itself, on the path or in the
+		// body, so a missing schema is not the 404 the schema route answers.
+		// It is a 409: declaring a schema is the later request that lets this
+		// exact call succeed.
+		assert.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("accepts a template setting nothing when the schema declares nothing", func(t *testing.T) {
@@ -223,9 +233,12 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 			ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Pro")},
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertFieldError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
+		// Same as create: a 409, not a 400. The generated client has no typed
+		// 409 getter for this route yet, so the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertFieldError(t, errResp.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
 	t.Run("accepts renaming a template to the name it already has", func(t *testing.T) {

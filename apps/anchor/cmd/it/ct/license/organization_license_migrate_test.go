@@ -1,6 +1,7 @@
 package license_ct_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"testing"
@@ -418,24 +419,33 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assert.Equal(t, 1, migration.Changed)
 	})
 
-	t.Run("400 when the target template is archived", func(t *testing.T) {
+	t.Run("409 when the target template is archived", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		w.ArchiveTemplateByID(pro.Id)
 
 		resp := w.Migration().RunRaw(migrateTo(pro.Id, w.OrganizationID()))
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		// The template exists and its state refuses the run; un-archiving it
+		// would let the same request succeed, which is a 409, not a 400. The
+		// generated client has no typed 409 getter for this route yet, so the
+		// body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
-	t.Run("404 when the target template does not exist", func(t *testing.T) {
+	t.Run("400 when the target template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.Migration().RunRaw(migrateTo(missingTemplateID(), w.OrganizationID()))
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		// template_id is a body field of OrganizationLicenseMigrationRequest,
+		// not the path — a 400, not the 404 the template route answers.
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST")
 	})
 
-	t.Run("404 when the source template does not exist", func(t *testing.T) {
+	t.Run("400 when the source template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -445,7 +455,9 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 			TemplateId:     pro.Id,
 			FromTemplateId: new(missingTemplateID()),
 		})
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON404.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
+		// from_template_id is a body field too, so this is also a 400, not
+		// the 404 it used to answer.
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
 	})
 }

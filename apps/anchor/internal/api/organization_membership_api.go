@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -73,10 +72,9 @@ func (s *AnchorAPI) GetOrganizationMember(
 	}
 
 	if membership == nil {
-		return nil, fault.NewWithStatus(
+		return nil, fault.NotFound(
 			"MEMBER_NOT_FOUND",
 			"Organization member not found",
-			http.StatusNotFound,
 		)
 	}
 

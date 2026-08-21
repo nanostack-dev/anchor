@@ -2,6 +2,7 @@ package email_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -53,11 +54,14 @@ func TestEmailTemplateCreate(t *testing.T) {
 		body.Name = "Second"
 		second, err := client.CreateEmailTemplateWithResponse(context.Background(), tc.product.ProductID, body)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, second.StatusCode())
-		require.NotNil(t, second.JSON400)
+		// A uniqueness collision on the product's slugs is a 409: a different
+		// slug (or deleting the first template) lets a later request succeed.
+		require.Equal(t, http.StatusConflict, second.StatusCode())
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(second.Body, &errResp))
 		assertAPIError(
 			t,
-			second.JSON400.Errors,
+			errResp.Errors,
 			"EMAIL_TEMPLATE_SLUG_TAKEN",
 			"An email template with this slug already exists for the product",
 		)

@@ -57,7 +57,9 @@ func (s *AnchorAPI) GetProductPermission(
 		return nil, nanostackErr
 	}
 	if perm == nil {
-		return GetProductPermission404Response{}, nil
+		return GetProductPermission404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PRODUCT_PERMISSION_NOT_FOUND", "Product Permission does not exist."),
+		)}, nil
 	}
 	response := mapProductPermissionToResponse(*perm)
 	return GetProductPermission200JSONResponse(response), nil

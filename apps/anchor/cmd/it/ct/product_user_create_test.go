@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -222,12 +223,14 @@ func TestCreateProductUser(t *testing.T) {
 
 			require.NoError(t, err, "create duplicate product user should not error")
 			assert.Equal(
-				t, 400, resp2.StatusCode(),
+				t, http.StatusConflict, resp2.StatusCode(),
 			)
-			assert.NotNil(t, resp2.JSON400)
-			assert.Contains(t, resp2.JSON400.Errors[0].Code, "PRODUCT_USER_EMAIL_ALREADY_EXISTS")
+			var errResp ct.ApiErrorResponse
+			require.NoError(t, json.Unmarshal(resp2.Body, &errResp))
+			require.NotEmpty(t, errResp.Errors)
+			assert.Contains(t, errResp.Errors[0].Code, "PRODUCT_USER_EMAIL_ALREADY_EXISTS")
 			assert.Contains(
-				t, resp2.JSON400.Errors[0].Message,
+				t, errResp.Errors[0].Message,
 				"A product user with this email already exists in this product",
 			)
 		},

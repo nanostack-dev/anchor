@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -28,38 +27,51 @@ import (
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 
 var (
-	ErrEmailIntegrationNotFound = fault.NewWithStatus(
-		"EMAIL_INTEGRATION_NOT_FOUND",
+	// ErrEmailIntegrationNotConfigured is a state, not a missing resource: the
+	// product's SMTP integration can be configured by an admin, after which a
+	// later send succeeds. That "later request can succeed" shape is a 409, not
+	// the 404/424 this sentinel used to carry.
+	ErrEmailIntegrationNotConfigured = fault.Conflict(
+		"EMAIL_INTEGRATION_NOT_CONFIGURED",
 		"No email integration is configured for this product",
-		http.StatusFailedDependency,
 	)
-	ErrEmailIntegrationInactive = fault.BadRequest(
+	// ErrEmailIntegrationInactive is the same state-refusal shape as
+	// ErrEmailIntegrationNotConfigured: an admin can reactivate the integration,
+	// after which a later send succeeds.
+	ErrEmailIntegrationInactive = fault.Conflict(
 		"EMAIL_INTEGRATION_INACTIVE",
 		"The email integration is not in an ACTIVE state",
 	)
-	ErrEmailTemplateNotFound = fault.NewWithStatus(
+	ErrEmailTemplateNotFound = fault.NotFound(
 		"EMAIL_TEMPLATE_NOT_FOUND",
 		"Email template not found",
-		http.StatusNotFound,
 	)
-	ErrEmailTemplateNotPublished = fault.BadRequest(
+	// ErrEmailTemplateNotPublished and ErrEmailTemplateNoDraft are state
+	// refusals: the template exists, and publishing (or drafting) a version
+	// later lets the same request succeed.
+	ErrEmailTemplateNotPublished = fault.Conflict(
 		"EMAIL_TEMPLATE_NOT_PUBLISHED",
-		"This template has no published version; publish it before sending",
+		"This template has no published version. Publish the template before you send with it.",
 	)
-	ErrEmailTemplateNoDraft = fault.BadRequest(
+	ErrEmailTemplateNoDraft = fault.Conflict(
 		"EMAIL_TEMPLATE_NO_DRAFT",
 		"This template has no draft version available",
 	)
-	ErrEmailTemplateSlugTaken = fault.BadRequest(
+	// ErrEmailTemplateSlugTaken is a uniqueness collision on the product's
+	// template slugs, the same shape as Anchor's PERMISSION_NAME_DUPLICATE.
+	ErrEmailTemplateSlugTaken = fault.Conflict(
 		"EMAIL_TEMPLATE_SLUG_TAKEN",
 		"An email template with this slug already exists for the product",
 	)
-	ErrEmailRateLimitExceeded = fault.NewWithStatus(
+	ErrEmailRateLimitExceeded = fault.TooManyRequests(
 		"EMAIL_RATE_LIMIT_EXCEEDED",
 		"Sends for this product exceeded the configured rate limit",
-		http.StatusTooManyRequests,
 	)
-	ErrEmailMailerCapabilityMissing = fault.BadRequest(
+	// ErrEmailMailerCapabilityMissing is the same state-refusal shape as
+	// ErrEmailIntegrationNotConfigured: the caller named nothing wrong, and an
+	// admin reconfiguring the product with a mailer-capable integration lets a
+	// later send succeed.
+	ErrEmailMailerCapabilityMissing = fault.Conflict(
 		"EMAIL_MAILER_CAPABILITY_MISSING",
 		"The configured integration does not support outbound email",
 	)
@@ -82,14 +94,14 @@ var (
 	// ErrEmailDeliveryRejected models a permanent rejection of the message by the
 	// configured relay (unauthorized sender identity, undeliverable recipient, or
 	// rejected content). Unlike ErrEmailDeliveryFailed this is a caller-input
-	// problem, not a server fault: retrying the same request will not help, so it
-	// is a 422 the client can act on rather than a 500. The transport cause is
-	// wrapped for server-side logs but never serialized to the client.
-	ErrEmailDeliveryRejected = fault.NewWithStatus(
+	// problem, not a server fault: retrying the same request will not help. The
+	// engineering standard forbids 422, so this is a 400 the client can act on.
+	// The transport cause is wrapped for server-side logs but never serialized
+	// to the client.
+	ErrEmailDeliveryRejected = fault.BadRequest(
 		"EMAIL_DELIVERY_REJECTED",
-		"The email integration rejected the message; verify the sender identity is "+
-			"authorized and the recipient address is valid",
-		http.StatusUnprocessableEntity,
+		"The email integration rejected the message. Check that the sender "+
+			"identity is authorized and the recipient address is valid.",
 	)
 )
 
@@ -198,7 +210,7 @@ func (s *emailService) resolveMailer(
 		return nil, nil, err
 	}
 	if found.IsAbsent() {
-		return nil, nil, ErrEmailIntegrationNotFound
+		return nil, nil, ErrEmailIntegrationNotConfigured
 	}
 	instance := found.ToPtr()
 	if instance.Status != domainintegration.StatusActive || !instance.IsEnabled {
@@ -360,6 +372,15 @@ func (s *emailService) UpdateTemplateDraft(
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
+		// The template envelope points at a draft version id the caller never
+		// named. If that row is not there, the envelope and the version table
+		// disagree — a server invariant, not a "no draft" state the caller
+		// could reach by never publishing one.
+		if foundDraft.IsAbsent() {
+			return email.TemplateVersion{}, fmt.Errorf(
+				"update draft: draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
+			)
+		}
 		draft = foundDraft.ToPtr()
 	}
 	//nolint:nestif // template state machine with three branches
@@ -371,8 +392,13 @@ func (s *emailService) UpdateTemplateDraft(
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
+		// Same invariant as above: the envelope names a published version id
+		// the caller never supplied, so its absence is a broken pointer, not
+		// "no draft".
 		if foundPub.IsAbsent() {
-			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
+			return email.TemplateVersion{}, fmt.Errorf(
+				"update draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
+			)
 		}
 		pub := foundPub.ToPtr()
 		next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
@@ -438,6 +464,14 @@ func (s *emailService) GetTemplateDraft(
 		if err != nil {
 			return nil, err
 		}
+		// The envelope names a draft version id the caller never supplied. Its
+		// absence is a broken pointer, not "no draft" — returning nil here
+		// would read as 404 at the boundary and hide the invariant break.
+		if foundDraft.IsAbsent() {
+			return nil, fmt.Errorf(
+				"get draft: draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
+			)
+		}
 		return foundDraft.ToPtr(), nil
 	}
 
@@ -449,8 +483,12 @@ func (s *emailService) GetTemplateDraft(
 	if err != nil {
 		return nil, err
 	}
+	// Same invariant as above: the envelope names a published version id the
+	// caller never supplied.
 	if foundPub.IsAbsent() {
-		return nil, nil
+		return nil, fmt.Errorf(
+			"get draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
+		)
 	}
 	pub := foundPub.ToPtr()
 
@@ -526,8 +564,15 @@ func (s *emailService) PublishTemplate(
 	if err != nil {
 		return email.TemplateVersion{}, err
 	}
+	// The transaction above just committed this row. The caller never named
+	// publishedID, so its absence here is a server invariant break, not a
+	// 404 the caller could act on — a bare wrapped error becomes the
+	// generic 500 the boundary handler logs, instead of a misleading
+	// EMAIL_TEMPLATE_NOT_FOUND on data that was just written successfully.
 	if foundPublished.IsAbsent() {
-		return email.TemplateVersion{}, ErrEmailTemplateNotFound
+		return email.TemplateVersion{}, fmt.Errorf(
+			"publish: version %s missing after commit", publishedID,
+		)
 	}
 	published := foundPublished.Value()
 
@@ -634,8 +679,13 @@ func (s *emailService) Preview(
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
+	// The envelope names a draft/published version id the caller never
+	// supplied (they named the template, not the version). Its absence is a
+	// broken pointer, not the template being missing.
 	if foundVersion.IsAbsent() {
-		return email.PreviewResult{}, ErrEmailTemplateNotFound
+		return email.PreviewResult{}, fmt.Errorf(
+			"preview: template %s version missing", tpl.ID,
+		)
 	}
 	v := foundVersion.ToPtr()
 	res, err := s.renderer.Render(v, in.Variables)

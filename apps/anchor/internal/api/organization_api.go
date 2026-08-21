@@ -187,7 +187,9 @@ func (s *AnchorAPI) GetProductOrganization(
 		return nil, err
 	}
 	if org == nil {
-		return GetProductOrganization404Response{}, nil
+		return GetProductOrganization404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PRODUCT_ORGANIZATION_NOT_FOUND", "Product Organization does not exist."),
+		)}, nil
 	}
 
 	return GetProductOrganization200JSONResponse(mapOrganizationToResponse(*org)), nil

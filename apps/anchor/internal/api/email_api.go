@@ -105,7 +105,9 @@ func (s *AnchorAPI) GetEmailTemplate(
 		return nil, err
 	}
 	if tpl == nil {
-		return GetEmailTemplate404Response{}, nil
+		return GetEmailTemplate404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("EMAIL_TEMPLATE_NOT_FOUND", "Email Template does not exist."),
+		)}, nil
 	}
 	return GetEmailTemplate200JSONResponse(mapTemplateToResponse(*tpl)), nil
 }
@@ -180,7 +182,9 @@ func (s *AnchorAPI) GetEmailTemplateDraft(
 		return nil, err
 	}
 	if version == nil {
-		return GetEmailTemplateDraft404Response{}, nil
+		return GetEmailTemplateDraft404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("EMAIL_TEMPLATE_DRAFT_NOT_FOUND", "Email Template Draft does not exist."),
+		)}, nil
 	}
 	return GetEmailTemplateDraft200JSONResponse(mapTemplateVersionToResponse(*version)), nil
 }
@@ -299,7 +303,9 @@ func (s *AnchorAPI) GetEmailTemplateExamples(
 		return nil, err
 	}
 	if tpl == nil {
-		return GetEmailTemplateExamples404Response{}, nil
+		return GetEmailTemplateExamples404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("EMAIL_TEMPLATE_EXAMPLES_NOT_FOUND", "Email Template Examples does not exist."),
+		)}, nil
 	}
 	return GetEmailTemplateExamples200JSONResponse(mapExamplesToResponse(tpl.Examples)), nil
 }

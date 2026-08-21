@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -117,9 +118,12 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: workspaceName},
 		)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, duplicateResp.StatusCode())
-		require.NotNil(t, duplicateResp.JSON400)
-		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateResp.JSON400.Errors[0].Code)
+		assert.Equal(t, http.StatusConflict, duplicateResp.StatusCode())
+
+		var duplicateErr ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(duplicateResp.Body, &duplicateErr))
+		require.NotEmpty(t, duplicateErr.Errors)
+		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateErr.Errors[0].Code)
 
 		otherOrganization := productCtx.CreateOrganization(
 			t,
@@ -161,9 +165,12 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 			ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: second.Name},
 		)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
-		require.NotNil(t, updateResp.JSON400)
-		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", updateResp.JSON400.Errors[0].Code)
+		assert.Equal(t, http.StatusConflict, updateResp.StatusCode())
+
+		var updateErr ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(updateResp.Body, &updateErr))
+		require.NotEmpty(t, updateErr.Errors)
+		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", updateErr.Errors[0].Code)
 	})
 
 	t.Run("WorkspaceIsolationByOrganizationAndProduct", func(t *testing.T) {

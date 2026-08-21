@@ -73,7 +73,7 @@ The status follows the **addressing** of the thing that is wrong: where the call
 | More requests than the window allows | Nowhere | 429 | `fault.TooManyRequests` |
 | A server invariant the caller could not have influenced | Nowhere | 500 | A bare wrapped error |
 
-These nine rows are the whole set. Every status in it has a semantic constructor, so `fault.NewWithStatus` has no use in new code.
+These nine rows are the whole set. Every status in it has a semantic constructor, so `fault.NewWithStatus` has one remaining use, and only one: **499**, for a long-poll the client abandoned before the server answered. Nothing is written to that client, and the status exists so the request boundary logs the outcome at info instead of firing the 5xx alerts. Echopoint's `errClientClosedRequest` in `internal/feature/runners/handler.go` is the only instance. Do not add a second one without the same two properties: no response reaches anyone, and a real status would misreport the service's health.
 
 Five statuses stay out. 402 is reserved for future use by RFC 9110 §15.5.3, so a licensed limit is a 409 and never a 402. 410 is covered under 404, below. 422 is covered under validation, below. 424 is covered under 409: Anchor's `EMAIL_INTEGRATION_NOT_FOUND` is a product that configured no integration, which someone can configure, so a later request succeeds. 405 and 501 come from `chi` and from the generated server; service code never builds them.
 

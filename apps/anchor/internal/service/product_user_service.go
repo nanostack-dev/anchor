@@ -31,7 +31,10 @@ type ProductUserService interface {
 	) (*user.OrganizationMembership, error)
 }
 
-var ErrProductUserEmailAlreadyExists = fault.BadRequest(
+// ErrProductUserEmailAlreadyExists guards a uniqueness rule on email within a
+// product. A later request with a different email can succeed, so this is a
+// 409, not a 400.
+var ErrProductUserEmailAlreadyExists = fault.Conflict(
 	"PRODUCT_USER_EMAIL_ALREADY_EXISTS",
 	"A product user with this email already exists in this product",
 )

@@ -213,10 +213,10 @@ func TestProductUpdate(t *testing.T) {
 			)
 			require.NoError(t, err, "update product with duplicate name should not error")
 			assert.Equal(
-				t, 400, updateResp.StatusCode(),
-				"update product with duplicate name should return 400 Bad Request",
+				t, 409, updateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409",
 			)
-			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
+			assert.Contains(t, updateResp.JSON409.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
 		},
 	)
 
@@ -252,8 +252,8 @@ func TestProductUpdate(t *testing.T) {
 				},
 			)
 			require.NoError(t, err, "update product with duplicate name should not error")
-			assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
-			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
+			assert.Equal(t, http.StatusConflict, updateResp.StatusCode())
+			assert.Contains(t, updateResp.JSON409.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
 		},
 	)
 }

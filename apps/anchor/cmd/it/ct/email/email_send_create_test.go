@@ -2,6 +2,7 @@ package email_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"sync"
 	"testing"
@@ -180,13 +181,17 @@ func TestEmailSendCreate(t *testing.T) {
 			},
 		)
 		require.NoError(t, sendErr)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
-		require.NotNil(t, resp.JSON400)
+		// EMAIL_TEMPLATE_NOT_PUBLISHED is a 409: the template exists, and state
+		// (no published version yet) refuses the send, but publishing a version
+		// later lets the same request succeed.
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
 		assertAPIError(
 			t,
-			resp.JSON400.Errors,
+			errResp.Errors,
 			"EMAIL_TEMPLATE_NOT_PUBLISHED",
-			"This template has no published version; publish it before sending",
+			"This template has no published version. Publish the template before you send with it.",
 		)
 	})
 }

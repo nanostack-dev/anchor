@@ -110,7 +110,7 @@ func TestRegister(t *testing.T) {
 					assert.NotNil(t, resp.JSON400)
 					assert.Equal(t, "INVITATION_CODE_NOT_PROVIDED", resp.JSON400.Errors[0].Code)
 					assert.Equal(
-						t, "Invitation code is required",
+						t, "The invitation code is required.",
 						resp.JSON400.Errors[0].Message,
 					)
 				},
@@ -136,7 +136,7 @@ func TestRegister(t *testing.T) {
 					assert.NotNil(t, resp.JSON400)
 					assert.Equal(t, "INVITATION_CODE_IS_INVALID", resp.JSON400.Errors[0].Code)
 					assert.Equal(
-						t, "Invitation code is invalid",
+						t, "The invitation code is invalid.",
 						resp.JSON400.Errors[0].Message,
 					)
 				},

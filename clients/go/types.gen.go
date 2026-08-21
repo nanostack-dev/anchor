@@ -3413,8 +3413,20 @@ type WorkspaceIdParameter = Ksuid
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorResponse
+
 // Forbidden defines model for Forbidden.
 type Forbidden = ApiErrorResponse
+
+// InternalServerError defines model for InternalServerError.
+type InternalServerError = ApiErrorResponse
+
+// NotFound defines model for NotFound.
+type NotFound = ApiErrorResponse
+
+// TooManyRequests defines model for TooManyRequests.
+type TooManyRequests = ApiErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ApiErrorResponse

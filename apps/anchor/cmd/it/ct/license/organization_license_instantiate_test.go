@@ -1,10 +1,12 @@
 package license_ct_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
+	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,16 +46,26 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().InstantiateRaw(w.TemplateID())
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_EXISTS")
+		// Current state (already licensed) refuses the request, and adjusting
+		// or removing the existing license is the later request that lets a
+		// retry succeed, so this is a 409, not a 400. The generated client
+		// has no typed 409 getter for this route yet, so the body is decoded
+		// by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "ORGANIZATION_LICENSE_EXISTS")
 	})
 
-	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
+	t.Run("400 when the product has no template with that identifier", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().InstantiateRaw(missingTemplateID())
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		// template_id is a body field of OrganizationLicenseInstantiateRequest,
+		// not the path — a 400, not the 404 the template route answers.
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST")
 	})
 
 	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {

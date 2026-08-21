@@ -156,7 +156,9 @@ func (s *usageService) resolveLimit(ctx context.Context, in license.ReportUsageI
 		return err
 	}
 	if schema == nil {
-		return ErrLicenseSchemaNotFound
+		// The usage route never names the schema itself, so this is not the
+		// 404 the schema route answers — see ErrLicenseSchemaNotDeclared.
+		return ErrLicenseSchemaNotDeclared
 	}
 
 	field := schema.FieldByName(in.Key)

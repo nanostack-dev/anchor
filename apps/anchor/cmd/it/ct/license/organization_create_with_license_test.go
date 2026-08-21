@@ -1,6 +1,7 @@
 package license_ct_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -188,9 +189,14 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 
 		resp := w.Organizations().CreateRaw(organizationBody(name, new(w.TemplateID())))
 
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		// The template exists and its state refuses the request; un-archiving
+		// it would let the same request succeed, which is a 409, not a 400.
+		// The generated client has no typed 409 getter for this route yet, so
+		// the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 		assert.Zero(t, w.Organizations().CountNamed(name), "the organization was not rolled back")
 	})
 

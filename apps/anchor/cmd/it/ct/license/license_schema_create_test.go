@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -117,9 +118,14 @@ func TestLicenseSchemaCreate(t *testing.T) {
 
 		second, err := client.CreateLicenseSchemaWithResponse(context.Background(), tc.product.ProductID, body)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, second.StatusCode(), string(second.Body))
-		require.NotNil(t, second.JSON400)
-		assertAPIError(t, second.JSON400.Errors, "LICENSE_SCHEMA_EXISTS")
+		// Current state (a schema already declared) refuses the request, and
+		// deleting it is the later request that lets a retry succeed, so this
+		// is a 409, not a 400. The generated client has no typed 409 getter
+		// for this route yet, so the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, second.StatusCode(), string(second.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(second.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "LICENSE_SCHEMA_EXISTS")
 	})
 
 	t.Run("schemas are scoped to their own product", func(t *testing.T) {

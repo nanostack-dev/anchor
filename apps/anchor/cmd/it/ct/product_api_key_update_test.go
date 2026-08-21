@@ -187,7 +187,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 				AssertAPIError(
 					t, permissionUpdateResp.JSON400.Errors, ct.ApiError{
 						Code:    "PRODUCT_API_KEY_PERMISSIONS_IMMUTABLE",
-						Message: "Product API key permissions are immutable",
+						Message: "You cannot change product API key permissions after creation.",
 					},
 				)
 			}
@@ -284,8 +284,9 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, 400, updateResp.StatusCode())
-			assert.NotNil(t, updateResp.JSON400)
+			assert.Equal(t, 409, updateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
+			assert.NotNil(t, updateResp.JSON409)
 		},
 	)
 

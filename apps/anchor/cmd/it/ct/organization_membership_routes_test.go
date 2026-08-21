@@ -73,13 +73,34 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			},
 		)
 		require.NoError(t, addErr)
-		// Previously this hit a FK violation and returned 500.
-		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
+		// product_user_id is a body field on this route, not a path segment:
+		// an unresolved value there is a 400, not a 404. (It previously hit a
+		// FK violation and returned 500.)
+		assert.Equal(t, http.StatusBadRequest, addResp.StatusCode())
 
 		var errResp ct.ApiErrorResponse
 		require.NoError(t, json.Unmarshal(addResp.Body, &errResp))
 		require.NotEmpty(t, errResp.Errors)
-		assert.Equal(t, "PRODUCT_USER_NOT_FOUND", errResp.Errors[0].Code)
+		assert.Equal(t, "PRODUCT_USER_NOT_FOUND_IN_REQUEST", errResp.Errors[0].Code)
+	})
+
+	t.Run("AddMemberWithNonExistentOrganizationReturnsNotFound", func(t *testing.T) {
+		productUser := createDSLProductUser(t, productCtx)
+
+		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
+			ctx,
+			productCtx.ProductID,
+			ids.MustNew("org"),
+			ct.AddOrganizationMemberJSONRequestBody{
+				ProductUserId: productUser.ID,
+				RoleId:        role.ID,
+			},
+		)
+		require.NoError(t, addErr)
+		// organization_id is a path segment: an unresolved value there is a
+		// 404. Before the guard, this fell through to the membership insert
+		// and failed on the organization_id foreign key instead.
+		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
 	})
 
 	t.Run("SearchMembersByExternalID", func(t *testing.T) {

@@ -88,7 +88,9 @@ func (s *AnchorAPI) GetProductRole(
 		return nil, err
 	}
 	if productRole == nil {
-		return GetProductRole404Response{}, nil
+		return GetProductRole404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PRODUCT_ROLE_NOT_FOUND", "Product Role does not exist."),
+		)}, nil
 	}
 
 	response := mapProductRoleToResponse(*productRole)

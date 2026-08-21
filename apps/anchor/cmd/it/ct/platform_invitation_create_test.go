@@ -47,7 +47,9 @@ func TestCreatePlatformInvitation(t *testing.T) {
 				context.Background(), inviteReq,
 			)
 			require.NoError(t, err, "second invitation should not error")
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+			// INVITATION_ALREADY_EXISTS is a uniqueness collision: a different
+			// email in a later request succeeds, so this is a 409, not a 400.
+			assert.Equal(t, http.StatusConflict, resp.StatusCode())
 		},
 	)
 }

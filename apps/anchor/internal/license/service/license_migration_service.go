@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"net/http"
 	"slices"
 	"time"
 
@@ -30,13 +29,14 @@ var (
 		"Supply exactly one of organization_ids or from_template_id",
 	)
 	// ErrLicenseMigrationSourceTemplateNotFound reports a from_template_id that
-	// names nothing. Distinct from the target's own 404, because a caller who
-	// mistyped it would otherwise read an empty run as "nobody was on that
-	// tier".
-	ErrLicenseMigrationSourceTemplateNotFound = fault.NewWithStatus(
+	// names nothing. from_template_id is a body field of
+	// OrganizationLicenseMigrationRequest, so this is a 400, not the 404 the
+	// template route answers. Distinct from the target's own not-found code,
+	// because a caller who mistyped it would otherwise read an empty run as
+	// "nobody was on that tier".
+	ErrLicenseMigrationSourceTemplateNotFound = fault.BadRequest(
 		"LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND",
 		"This product has no license template with that identifier to migrate from",
-		http.StatusNotFound,
 	)
 )
 
@@ -44,13 +44,12 @@ var (
 // covering part of it. See
 // docs/adr/0014-organization-licenses-are-migrated-in-bulk.md.
 func errLicenseMigrationTooLarge(matched int) *fault.Error {
-	return fault.NewWithStatus(
+	return fault.BadRequest(
 		"LICENSE_MIGRATION_TOO_LARGE",
 		fmt.Sprintf(
 			"This selection matches %d organizations; at most %d can be migrated in one run",
 			matched, license.MaxMigrationOrganizations,
 		),
-		http.StatusBadRequest,
 	)
 }
 
@@ -137,7 +136,10 @@ func (s *licenseMigrationService) Migrate(
 		return license.Migration{}, err
 	}
 	if target == nil {
-		return license.Migration{}, ErrLicenseTemplateNotFound
+		// in.TemplateID is a body field (template_id on
+		// OrganizationLicenseMigrationRequest), not the path — a 400, not the
+		// 404 the template route answers.
+		return license.Migration{}, ErrLicenseTemplateNotFoundInRequest(in.TemplateID)
 	}
 	if target.IsArchived() {
 		return license.Migration{}, ErrLicenseTemplateArchived
@@ -373,7 +375,13 @@ func (s *licenseMigrationService) templateByID(
 		return nil, err
 	}
 	if found == nil {
-		return nil, ErrLicenseTemplateNotFound
+		// A server invariant, not a fault: templateID is existing.TemplateID
+		// (see decide, below), never a value this call named, and the foreign
+		// key guarantees the row. A miss here is a bug, not a client error, so
+		// it is a bare 500.
+		return nil, fmt.Errorf(
+			"license migration: template %s missing though referenced by an existing license", templateID,
+		)
 	}
 
 	run.templates[templateID] = found

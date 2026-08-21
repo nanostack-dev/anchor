@@ -65,7 +65,9 @@ func (s *AnchorAPI) GetLicenseTemplate(
 		return nil, err
 	}
 	if template == nil {
-		return GetLicenseTemplate404Response{}, nil
+		return GetLicenseTemplate404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("LICENSE_TEMPLATE_NOT_FOUND", "License Template does not exist."),
+		)}, nil
 	}
 	return GetLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(*template)), nil
 }

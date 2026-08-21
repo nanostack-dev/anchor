@@ -2,6 +2,7 @@ package license_ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -126,9 +127,14 @@ func TestLicenseTemplateArchive(t *testing.T) {
 			ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Enterprise")},
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		// LICENSE_TEMPLATE_ARCHIVED is a 409: the template exists and its
+		// state refuses the edit, and un-archiving it would let the same
+		// request succeed. The generated client has no typed 409 getter for
+		// this route yet, so the body is decoded by hand.
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		var errResp ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
+		assertAPIError(t, errResp.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {

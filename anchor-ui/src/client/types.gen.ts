@@ -2433,6 +2433,15 @@ export type LogoutData = {
     url: '/v1/auth/logout';
 };
 
+export type LogoutErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+};
+
+export type LogoutError = LogoutErrors[keyof LogoutErrors];
+
 export type LogoutResponses = {
     /**
      * Successfully logged out.
@@ -2453,9 +2462,13 @@ export type LoginData = {
 
 export type LoginErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
 };
 
 export type LoginError = LoginErrors[keyof LoginErrors];
@@ -2478,7 +2491,7 @@ export type RefreshTokenData = {
 
 export type RefreshTokenErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
@@ -2507,9 +2520,13 @@ export type RegisterData = {
 
 export type RegisterErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type RegisterError = RegisterErrors[keyof RegisterErrors];
@@ -2532,11 +2549,11 @@ export type GetCurrentUserData = {
 
 export type GetCurrentUserErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
 };
@@ -2564,17 +2581,21 @@ export type CreateProductData = {
 
 export type CreateProductErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductError = CreateProductErrors[keyof CreateProductErrors];
@@ -2600,15 +2621,15 @@ export type SearchProductsData = {
 
 export type SearchProductsErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
 };
@@ -2638,17 +2659,17 @@ export type DeleteProductData = {
 
 export type DeleteProductErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type DeleteProductError = DeleteProductErrors[keyof DeleteProductErrors];
@@ -2676,17 +2697,17 @@ export type GetProductData = {
 
 export type GetProductErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductError = GetProductErrors[keyof GetProductErrors];
@@ -2717,21 +2738,25 @@ export type UpdateProductData = {
 
 export type UpdateProductErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateProductError = UpdateProductErrors[keyof UpdateProductErrors];
@@ -2759,11 +2784,11 @@ export type ListIntegrationInstancesData = {
 
 export type ListIntegrationInstancesErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
 };
@@ -2796,17 +2821,21 @@ export type CreateIntegrationInstanceData = {
 
 export type CreateIntegrationInstanceErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateIntegrationInstanceError = CreateIntegrationInstanceErrors[keyof CreateIntegrationInstanceErrors];
@@ -2838,17 +2867,21 @@ export type DeleteIntegrationInstanceData = {
 
 export type DeleteIntegrationInstanceErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteIntegrationInstanceError = DeleteIntegrationInstanceErrors[keyof DeleteIntegrationInstanceErrors];
@@ -2880,17 +2913,17 @@ export type GetIntegrationInstanceData = {
 
 export type GetIntegrationInstanceErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetIntegrationInstanceError = GetIntegrationInstanceErrors[keyof GetIntegrationInstanceErrors];
@@ -2925,21 +2958,25 @@ export type UpdateIntegrationInstanceData = {
 
 export type UpdateIntegrationInstanceErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateIntegrationInstanceError = UpdateIntegrationInstanceErrors[keyof UpdateIntegrationInstanceErrors];
@@ -2971,17 +3008,17 @@ export type ListIntegrationAuditLogsData = {
 
 export type ListIntegrationAuditLogsErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type ListIntegrationAuditLogsError = ListIntegrationAuditLogsErrors[keyof ListIntegrationAuditLogsErrors];
@@ -3018,7 +3055,7 @@ export type IngestWebhookData = {
 
 export type IngestWebhookErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
@@ -3026,9 +3063,13 @@ export type IngestWebhookErrors = {
      */
     401: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type IngestWebhookError = IngestWebhookErrors[keyof IngestWebhookErrors];
@@ -3059,17 +3100,21 @@ export type CreateProductResourcePermissionData = {
 
 export type CreateProductResourcePermissionErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductResourcePermissionError = CreateProductResourcePermissionErrors[keyof CreateProductResourcePermissionErrors];
@@ -3100,17 +3145,21 @@ export type SearchProductResourcePermissionsData = {
 
 export type SearchProductResourcePermissionsErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductResourcePermissionsError = SearchProductResourcePermissionsErrors[keyof SearchProductResourcePermissionsErrors];
@@ -3142,21 +3191,25 @@ export type DeleteProductResourcePermissionData = {
 
 export type DeleteProductResourcePermissionErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteProductResourcePermissionError = DeleteProductResourcePermissionErrors[keyof DeleteProductResourcePermissionErrors];
@@ -3188,17 +3241,17 @@ export type GetProductResourcePermissionData = {
 
 export type GetProductResourcePermissionErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductResourcePermissionError = GetProductResourcePermissionErrors[keyof GetProductResourcePermissionErrors];
@@ -3233,21 +3286,25 @@ export type UpdateProductResourcePermissionData = {
 
 export type UpdateProductResourcePermissionErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateProductResourcePermissionError = UpdateProductResourcePermissionErrors[keyof UpdateProductResourcePermissionErrors];
@@ -3273,17 +3330,21 @@ export type CreatePlatformInvitationData = {
 
 export type CreatePlatformInvitationErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreatePlatformInvitationError = CreatePlatformInvitationErrors[keyof CreatePlatformInvitationErrors];
@@ -3309,17 +3370,21 @@ export type SearchPlatformInvitationsData = {
 
 export type SearchPlatformInvitationsErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchPlatformInvitationsError = SearchPlatformInvitationsErrors[keyof SearchPlatformInvitationsErrors];
@@ -3347,21 +3412,25 @@ export type DeletePlatformInvitationData = {
 
 export type DeletePlatformInvitationErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeletePlatformInvitationError = DeletePlatformInvitationErrors[keyof DeletePlatformInvitationErrors];
@@ -3389,17 +3458,17 @@ export type GetPlatformInvitationData = {
 
 export type GetPlatformInvitationErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetPlatformInvitationError = GetPlatformInvitationErrors[keyof GetPlatformInvitationErrors];
@@ -3425,15 +3494,15 @@ export type SearchPlatformUsersData = {
 
 export type SearchPlatformUsersErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
 };
@@ -3463,21 +3532,21 @@ export type DeletePlatformUserData = {
 
 export type DeletePlatformUserErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type DeletePlatformUserError = DeletePlatformUserErrors[keyof DeletePlatformUserErrors];
@@ -3505,17 +3574,17 @@ export type GetPlatformUserData = {
 
 export type GetPlatformUserErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetPlatformUserError = GetPlatformUserErrors[keyof GetPlatformUserErrors];
@@ -3546,17 +3615,21 @@ export type SearchProductPermissionsData = {
 
 export type SearchProductPermissionsErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductPermissionsError = SearchProductPermissionsErrors[keyof SearchProductPermissionsErrors];
@@ -3588,17 +3661,17 @@ export type GetProductPermissionData = {
 
 export type GetProductPermissionErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductPermissionError = GetProductPermissionErrors[keyof GetProductPermissionErrors];
@@ -3629,17 +3702,21 @@ export type SearchProductRolesData = {
 
 export type SearchProductRolesErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductRolesError = SearchProductRolesErrors[keyof SearchProductRolesErrors];
@@ -3670,21 +3747,25 @@ export type CreateProductRoleData = {
 
 export type CreateProductRoleErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductRoleError = CreateProductRoleErrors[keyof CreateProductRoleErrors];
@@ -3720,17 +3801,21 @@ export type DeleteProductRoleErrors = {
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteProductRoleError = DeleteProductRoleErrors[keyof DeleteProductRoleErrors];
@@ -3762,17 +3847,17 @@ export type GetProductRoleData = {
 
 export type GetProductRoleErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductRoleError = GetProductRoleErrors[keyof GetProductRoleErrors];
@@ -3807,21 +3892,25 @@ export type UpdateProductRoleData = {
 
 export type UpdateProductRoleErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateProductRoleError = UpdateProductRoleErrors[keyof UpdateProductRoleErrors];
@@ -3856,21 +3945,25 @@ export type AssignPermissionToProductRoleData = {
 
 export type AssignPermissionToProductRoleErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
      * Not Found (Product, Role, or ProductResourcePermission not found)
      */
     404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type AssignPermissionToProductRoleError = AssignPermissionToProductRoleErrors[keyof AssignPermissionToProductRoleErrors];
@@ -3910,17 +4003,21 @@ export type UnassignPermissionFromProductRoleErrors = {
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UnassignPermissionFromProductRoleError = UnassignPermissionFromProductRoleErrors[keyof UnassignPermissionFromProductRoleErrors];
@@ -3951,17 +4048,21 @@ export type SearchProductApiKeysData = {
 
 export type SearchProductApiKeysErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductApiKeysError = SearchProductApiKeysErrors[keyof SearchProductApiKeysErrors];
@@ -3992,21 +4093,25 @@ export type CreateProductApiKeyData = {
 
 export type CreateProductApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductApiKeyError = CreateProductApiKeyErrors[keyof CreateProductApiKeyErrors];
@@ -4038,17 +4143,21 @@ export type DeleteProductApiKeyData = {
 
 export type DeleteProductApiKeyErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteProductApiKeyError = DeleteProductApiKeyErrors[keyof DeleteProductApiKeyErrors];
@@ -4080,17 +4189,17 @@ export type GetProductApiKeyData = {
 
 export type GetProductApiKeyErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductApiKeyError = GetProductApiKeyErrors[keyof GetProductApiKeyErrors];
@@ -4125,21 +4234,25 @@ export type UpdateProductApiKeyData = {
 
 export type UpdateProductApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateProductApiKeyError = UpdateProductApiKeyErrors[keyof UpdateProductApiKeyErrors];
@@ -4183,17 +4296,21 @@ export type CreateProductUserData = {
 
 export type CreateProductUserErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductUserError = CreateProductUserErrors[keyof CreateProductUserErrors];
@@ -4224,17 +4341,21 @@ export type SearchProductUsersData = {
 
 export type SearchProductUsersErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductUsersError = SearchProductUsersErrors[keyof SearchProductUsersErrors];
@@ -4266,17 +4387,17 @@ export type DeleteProductUserData = {
 
 export type DeleteProductUserErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type DeleteProductUserError = DeleteProductUserErrors[keyof DeleteProductUserErrors];
@@ -4308,17 +4429,17 @@ export type GetProductUserData = {
 
 export type GetProductUserErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductUserError = GetProductUserErrors[keyof GetProductUserErrors];
@@ -4355,17 +4476,17 @@ export type ListUserOrganizationsData = {
 
 export type ListUserOrganizationsErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type ListUserOrganizationsError = ListUserOrganizationsErrors[keyof ListUserOrganizationsErrors];
@@ -4406,17 +4527,17 @@ export type GetUserOrganizationData = {
 
 export type GetUserOrganizationErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetUserOrganizationError = GetUserOrganizationErrors[keyof GetUserOrganizationErrors];
@@ -4451,21 +4572,25 @@ export type SearchOrganizationApiKeysData = {
 
 export type SearchOrganizationApiKeysErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchOrganizationApiKeysError = SearchOrganizationApiKeysErrors[keyof SearchOrganizationApiKeysErrors];
@@ -4500,21 +4625,25 @@ export type CreateOrganizationApiKeyData = {
 
 export type CreateOrganizationApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateOrganizationApiKeyError = CreateOrganizationApiKeyErrors[keyof CreateOrganizationApiKeyErrors];
@@ -4550,17 +4679,21 @@ export type DeleteOrganizationApiKeyData = {
 
 export type DeleteOrganizationApiKeyErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteOrganizationApiKeyError = DeleteOrganizationApiKeyErrors[keyof DeleteOrganizationApiKeyErrors];
@@ -4596,17 +4729,17 @@ export type GetOrganizationApiKeyData = {
 
 export type GetOrganizationApiKeyErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetOrganizationApiKeyError = GetOrganizationApiKeyErrors[keyof GetOrganizationApiKeyErrors];
@@ -4645,21 +4778,25 @@ export type UpdateOrganizationApiKeyData = {
 
 export type UpdateOrganizationApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateOrganizationApiKeyError = UpdateOrganizationApiKeyErrors[keyof UpdateOrganizationApiKeyErrors];
@@ -4691,11 +4828,11 @@ export type ValidateOrganizationApiKeyData = {
 
 export type ValidateOrganizationApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
@@ -4703,9 +4840,13 @@ export type ValidateOrganizationApiKeyErrors = {
      */
     403: OrganizationApiKeyValidateForbiddenResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type ValidateOrganizationApiKeyError = ValidateOrganizationApiKeyErrors[keyof ValidateOrganizationApiKeyErrors];
@@ -4733,11 +4874,11 @@ export type IntrospectOrganizationApiKeyData = {
 
 export type IntrospectOrganizationApiKeyErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
@@ -4745,9 +4886,9 @@ export type IntrospectOrganizationApiKeyErrors = {
      */
     403: OrganizationApiKeyValidateForbiddenResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type IntrospectOrganizationApiKeyError = IntrospectOrganizationApiKeyErrors[keyof IntrospectOrganizationApiKeyErrors];
@@ -4778,17 +4919,21 @@ export type CreateProductOrganizationData = {
 
 export type CreateProductOrganizationErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateProductOrganizationError = CreateProductOrganizationErrors[keyof CreateProductOrganizationErrors];
@@ -4824,17 +4969,21 @@ export type SearchProductOrganizationsData = {
 
 export type SearchProductOrganizationsErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchProductOrganizationsError = SearchProductOrganizationsErrors[keyof SearchProductOrganizationsErrors];
@@ -4866,17 +5015,21 @@ export type DeleteProductOrganizationData = {
 
 export type DeleteProductOrganizationErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteProductOrganizationError = DeleteProductOrganizationErrors[keyof DeleteProductOrganizationErrors];
@@ -4913,17 +5066,17 @@ export type GetProductOrganizationData = {
 
 export type GetProductOrganizationErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetProductOrganizationError = GetProductOrganizationErrors[keyof GetProductOrganizationErrors];
@@ -4958,21 +5111,25 @@ export type UpdateProductOrganizationData = {
 
 export type UpdateProductOrganizationErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateProductOrganizationError = UpdateProductOrganizationErrors[keyof UpdateProductOrganizationErrors];
@@ -5007,21 +5164,25 @@ export type CreateOrganizationWorkspaceData = {
 
 export type CreateOrganizationWorkspaceErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateOrganizationWorkspaceError = CreateOrganizationWorkspaceErrors[keyof CreateOrganizationWorkspaceErrors];
@@ -5056,21 +5217,25 @@ export type SearchOrganizationWorkspacesData = {
 
 export type SearchOrganizationWorkspacesErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchOrganizationWorkspacesError = SearchOrganizationWorkspacesErrors[keyof SearchOrganizationWorkspacesErrors];
@@ -5106,17 +5271,21 @@ export type DeleteOrganizationWorkspaceData = {
 
 export type DeleteOrganizationWorkspaceErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteOrganizationWorkspaceError = DeleteOrganizationWorkspaceErrors[keyof DeleteOrganizationWorkspaceErrors];
@@ -5152,17 +5321,17 @@ export type GetOrganizationWorkspaceData = {
 
 export type GetOrganizationWorkspaceErrors = {
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
 };
 
 export type GetOrganizationWorkspaceError = GetOrganizationWorkspaceErrors[keyof GetOrganizationWorkspaceErrors];
@@ -5201,21 +5370,25 @@ export type UpdateOrganizationWorkspaceData = {
 
 export type UpdateOrganizationWorkspaceErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Unauthorized (Authentication required or invalid)
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
     401: ApiErrorResponse;
     /**
-     * Forbidden (Authenticated Product User lacks permission)
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
-    404: unknown;
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateOrganizationWorkspaceError = UpdateOrganizationWorkspaceErrors[keyof UpdateOrganizationWorkspaceErrors];
@@ -5245,6 +5418,31 @@ export type AddOrganizationMemberData = {
     url: '/v1/products/{product_id}/organizations/{organization_id}/members';
 };
 
+export type AddOrganizationMemberErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type AddOrganizationMemberError = AddOrganizationMemberErrors[keyof AddOrganizationMemberErrors];
+
 export type AddOrganizationMemberResponses = {
     /**
      * Member successfully added
@@ -5270,6 +5468,31 @@ export type RemoveOrganizationMemberData = {
     query?: never;
     url: '/v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}';
 };
+
+export type RemoveOrganizationMemberErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type RemoveOrganizationMemberError = RemoveOrganizationMemberErrors[keyof RemoveOrganizationMemberErrors];
 
 export type RemoveOrganizationMemberResponses = {
     /**
@@ -5299,6 +5522,27 @@ export type GetOrganizationMemberData = {
     url: '/v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}';
 };
 
+export type GetOrganizationMemberErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetOrganizationMemberError = GetOrganizationMemberErrors[keyof GetOrganizationMemberErrors];
+
 export type GetOrganizationMemberResponses = {
     /**
      * Success
@@ -5325,6 +5569,31 @@ export type UpdateOrganizationMemberRoleData = {
     url: '/v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}';
 };
 
+export type UpdateOrganizationMemberRoleErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateOrganizationMemberRoleError = UpdateOrganizationMemberRoleErrors[keyof UpdateOrganizationMemberRoleErrors];
+
 export type UpdateOrganizationMemberRoleResponses = {
     /**
      * Success
@@ -5350,6 +5619,31 @@ export type SearchOrganizationMembersData = {
     url: '/v1/products/{product_id}/organizations/{organization_id}/members/search';
 };
 
+export type SearchOrganizationMembersErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type SearchOrganizationMembersError = SearchOrganizationMembersErrors[keyof SearchOrganizationMembersErrors];
+
 export type SearchOrganizationMembersResponses = {
     /**
      * Success
@@ -5374,6 +5668,27 @@ export type ListEmailTemplatesData = {
     url: '/v1/products/{product_id}/email/templates';
 };
 
+export type ListEmailTemplatesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type ListEmailTemplatesError = ListEmailTemplatesErrors[keyof ListEmailTemplatesErrors];
+
 export type ListEmailTemplatesResponses = {
     /**
      * Success
@@ -5397,9 +5712,25 @@ export type CreateEmailTemplateData = {
 
 export type CreateEmailTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateEmailTemplateError = CreateEmailTemplateErrors[keyof CreateEmailTemplateErrors];
@@ -5431,10 +5762,28 @@ export type DeleteEmailTemplateData = {
 
 export type DeleteEmailTemplateErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type DeleteEmailTemplateError = DeleteEmailTemplateErrors[keyof DeleteEmailTemplateErrors];
 
 export type DeleteEmailTemplateResponses = {
     /**
@@ -5463,10 +5812,24 @@ export type GetEmailTemplateData = {
 
 export type GetEmailTemplateErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
 };
+
+export type GetEmailTemplateError = GetEmailTemplateErrors[keyof GetEmailTemplateErrors];
 
 export type GetEmailTemplateResponses = {
     /**
@@ -5495,13 +5858,25 @@ export type UpdateEmailTemplateData = {
 
 export type UpdateEmailTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateEmailTemplateError = UpdateEmailTemplateErrors[keyof UpdateEmailTemplateErrors];
@@ -5533,10 +5908,24 @@ export type GetEmailTemplateDraftData = {
 
 export type GetEmailTemplateDraftErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
 };
+
+export type GetEmailTemplateDraftError = GetEmailTemplateDraftErrors[keyof GetEmailTemplateDraftErrors];
 
 export type GetEmailTemplateDraftResponses = {
     /**
@@ -5565,13 +5954,25 @@ export type UpdateEmailTemplateDraftData = {
 
 export type UpdateEmailTemplateDraftErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateEmailTemplateDraftError = UpdateEmailTemplateDraftErrors[keyof UpdateEmailTemplateDraftErrors];
@@ -5603,13 +6004,29 @@ export type PublishEmailTemplateData = {
 
 export type PublishEmailTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type PublishEmailTemplateError = PublishEmailTemplateErrors[keyof PublishEmailTemplateErrors];
@@ -5641,13 +6058,29 @@ export type PreviewEmailTemplateData = {
 
 export type PreviewEmailTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type PreviewEmailTemplateError = PreviewEmailTemplateErrors[keyof PreviewEmailTemplateErrors];
@@ -5679,10 +6112,24 @@ export type GetEmailTemplateExamplesData = {
 
 export type GetEmailTemplateExamplesErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
 };
+
+export type GetEmailTemplateExamplesError = GetEmailTemplateExamplesErrors[keyof GetEmailTemplateExamplesErrors];
 
 export type GetEmailTemplateExamplesResponses = {
     /**
@@ -5711,10 +6158,28 @@ export type SaveEmailTemplateExamplesData = {
 
 export type SaveEmailTemplateExamplesErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type SaveEmailTemplateExamplesError = SaveEmailTemplateExamplesErrors[keyof SaveEmailTemplateExamplesErrors];
 
 export type SaveEmailTemplateExamplesResponses = {
     /**
@@ -5742,6 +6207,39 @@ export type ListEmailSendsData = {
     url: '/v1/products/{product_id}/email/sends';
 };
 
+export type ListEmailSendsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+    /**
+     * The caller sent more requests than the window allows. Retrying later succeeds.
+     */
+    429: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
+};
+
+export type ListEmailSendsError = ListEmailSendsErrors[keyof ListEmailSendsErrors];
+
 export type ListEmailSendsResponses = {
     /**
      * Success
@@ -5765,9 +6263,33 @@ export type SendEmailData = {
 
 export type SendEmailErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+    /**
+     * The caller sent more requests than the window allows. Retrying later succeeds.
+     */
+    429: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type SendEmailError = SendEmailErrors[keyof SendEmailErrors];
@@ -5795,10 +6317,28 @@ export type DeleteLicenseSchemaData = {
 
 export type DeleteLicenseSchemaErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type DeleteLicenseSchemaError = DeleteLicenseSchemaErrors[keyof DeleteLicenseSchemaErrors];
 
 export type DeleteLicenseSchemaResponses = {
     /**
@@ -5823,10 +6363,24 @@ export type GetLicenseSchemaData = {
 
 export type GetLicenseSchemaErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
 };
+
+export type GetLicenseSchemaError = GetLicenseSchemaErrors[keyof GetLicenseSchemaErrors];
 
 export type GetLicenseSchemaResponses = {
     /**
@@ -5851,9 +6405,25 @@ export type CreateLicenseSchemaData = {
 
 export type CreateLicenseSchemaErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateLicenseSchemaError = CreateLicenseSchemaErrors[keyof CreateLicenseSchemaErrors];
@@ -5881,13 +6451,25 @@ export type UpdateLicenseSchemaData = {
 
 export type UpdateLicenseSchemaErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateLicenseSchemaError = UpdateLicenseSchemaErrors[keyof UpdateLicenseSchemaErrors];
@@ -5918,6 +6500,27 @@ export type ListLicenseTemplatesData = {
     url: '/v1/products/{product_id}/licensing/templates';
 };
 
+export type ListLicenseTemplatesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type ListLicenseTemplatesError = ListLicenseTemplatesErrors[keyof ListLicenseTemplatesErrors];
+
 export type ListLicenseTemplatesResponses = {
     /**
      * Success
@@ -5941,13 +6544,25 @@ export type CreateLicenseTemplateData = {
 
 export type CreateLicenseTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type CreateLicenseTemplateError = CreateLicenseTemplateErrors[keyof CreateLicenseTemplateErrors];
@@ -5979,13 +6594,25 @@ export type DeleteLicenseTemplateData = {
 
 export type DeleteLicenseTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type DeleteLicenseTemplateError = DeleteLicenseTemplateErrors[keyof DeleteLicenseTemplateErrors];
@@ -6017,10 +6644,24 @@ export type GetLicenseTemplateData = {
 
 export type GetLicenseTemplateErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
 };
+
+export type GetLicenseTemplateError = GetLicenseTemplateErrors[keyof GetLicenseTemplateErrors];
 
 export type GetLicenseTemplateResponses = {
     /**
@@ -6049,13 +6690,25 @@ export type UpdateLicenseTemplateData = {
 
 export type UpdateLicenseTemplateErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type UpdateLicenseTemplateError = UpdateLicenseTemplateErrors[keyof UpdateLicenseTemplateErrors];
@@ -6087,10 +6740,28 @@ export type ArchiveLicenseTemplateData = {
 
 export type ArchiveLicenseTemplateErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type ArchiveLicenseTemplateError = ArchiveLicenseTemplateErrors[keyof ArchiveLicenseTemplateErrors];
 
 export type ArchiveLicenseTemplateResponses = {
     /**
@@ -6115,13 +6786,25 @@ export type SearchOrganizationLicensesData = {
 
 export type SearchOrganizationLicensesErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type SearchOrganizationLicensesError = SearchOrganizationLicensesErrors[keyof SearchOrganizationLicensesErrors];
@@ -6149,13 +6832,25 @@ export type MigrateOrganizationLicensesData = {
 
 export type MigrateOrganizationLicensesErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
     /**
      * No license template with that identifier. `LICENSE_TEMPLATE_NOT_FOUND` names the target, `LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND` the one selected from.
      */
     404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type MigrateOrganizationLicensesError = MigrateOrganizationLicensesErrors[keyof MigrateOrganizationLicensesErrors];
@@ -6187,10 +6882,28 @@ export type GetOrganizationLicenseData = {
 
 export type GetOrganizationLicenseErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type GetOrganizationLicenseError = GetOrganizationLicenseErrors[keyof GetOrganizationLicenseErrors];
 
 export type GetOrganizationLicenseResponses = {
     /**
@@ -6219,13 +6932,25 @@ export type AdjustOrganizationLicenseData = {
 
 export type AdjustOrganizationLicenseErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type AdjustOrganizationLicenseError = AdjustOrganizationLicenseErrors[keyof AdjustOrganizationLicenseErrors];
@@ -6257,13 +6982,25 @@ export type InstantiateOrganizationLicenseData = {
 
 export type InstantiateOrganizationLicenseErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type InstantiateOrganizationLicenseError = InstantiateOrganizationLicenseErrors[keyof InstantiateOrganizationLicenseErrors];
@@ -6295,10 +7032,28 @@ export type GetOrganizationLicenseDiffData = {
 
 export type GetOrganizationLicenseDiffErrors = {
     /**
-     * Resource Not Found
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
-    404: unknown;
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
+
+export type GetOrganizationLicenseDiffError = GetOrganizationLicenseDiffErrors[keyof GetOrganizationLicenseDiffErrors];
 
 export type GetOrganizationLicenseDiffResponses = {
     /**
@@ -6330,13 +7085,25 @@ export type GetOrganizationLicenseHistoryData = {
 
 export type GetOrganizationLicenseHistoryErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type GetOrganizationLicenseHistoryError = GetOrganizationLicenseHistoryErrors[keyof GetOrganizationLicenseHistoryErrors];
@@ -6368,13 +7135,25 @@ export type ReportOrganizationUsageData = {
 
 export type ReportOrganizationUsageErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type ReportOrganizationUsageError = ReportOrganizationUsageErrors[keyof ReportOrganizationUsageErrors];
@@ -6422,13 +7201,25 @@ export type GetOrganizationUsageSeriesData = {
 
 export type GetOrganizationUsageSeriesErrors = {
     /**
-     * Bad Request (e.g., validation error)
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
     400: ApiErrorResponse;
     /**
-     * Resource Not Found
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
      */
-    404: unknown;
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type GetOrganizationUsageSeriesError = GetOrganizationUsageSeriesErrors[keyof GetOrganizationUsageSeriesErrors];

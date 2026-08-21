@@ -238,12 +238,13 @@ func TestProductRole_Update(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, 400, updateResp.StatusCode())
-			assert.NotNil(t, updateResp.JSON400)
-			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+			assert.Equal(t, 409, updateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
+			assert.NotNil(t, updateResp.JSON409)
+			assert.Contains(t, updateResp.JSON409.Errors[0].Code, "ROLE_NAME_DUPLICATE")
 			assert.Contains(
-				t, updateResp.JSON400.Errors[0].Message,
-				"Product role with this name already exists in the product",
+				t, updateResp.JSON409.Errors[0].Message,
+				"A product role with this name already exists in the product.",
 			)
 		},
 	)
@@ -271,9 +272,10 @@ func TestProductRole_Update(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode())
-			assert.NotNil(t, updateResp.JSON400)
-			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+			assert.Equal(t, http.StatusConflict, updateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
+			assert.NotNil(t, updateResp.JSON409)
+			assert.Contains(t, updateResp.JSON409.Errors[0].Code, "ROLE_NAME_DUPLICATE")
 		},
 	)
 

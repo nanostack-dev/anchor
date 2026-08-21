@@ -3836,33 +3836,70 @@ components:
 
   responses:
     BadRequest:
-      description: Bad Request (e.g., validation error)
+      description: >-
+        The request is well-formed HTTP but the server will not process it. An
+        entity named in the request body or the query string does not resolve, a
+        field failed validation, or a non-credential header is absent or
+        malformed. The `code` field says which.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
     Unauthorized:
-      description: Unauthorized (Authentication required or invalid)
+      description: >-
+        The request carried no credential, or one that failed to authenticate:
+        absent, malformed, expired, revoked, or wrong. Authentication is the
+        subject. Permissions are not consulted.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
     Forbidden:
-      description: Forbidden (Authenticated Product User lacks permission)
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiErrorResponse"
-          example:
-            errors: [{"code": "FORBIDDEN", "message": "Insufficient permissions."}]
-    Conflict:
-      description: Conflict (e.g., resource already exists)
+      description: >-
+        The request authenticated, and the principal is not permitted to perform
+        it. A resource outside the caller's tenant answers 404 rather than 403,
+        so this status never confirms that an identifier names a real
+        resource.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
     NotFound:
-      description: Resource Not Found
+      description: >-
+        A resource named in the URI path does not resolve. Every path segment
+        counts: on a nested path, either identifier being absent answers this.
+        The method does not enter the decision, so a custom action answers it
+        exactly as the read does.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Conflict:
+      description: >-
+        The request is well-formed and the target exists, and current state
+        refuses it. A later or different request can succeed — after a refresh,
+        after capacity is freed, or after a licensed limit is raised.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    TooManyRequests:
+      description: >-
+        The caller sent more requests than the window allows. Retrying later
+        succeeds.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    InternalServerError:
+      description: >-
+        The server failed for a reason the caller could not have influenced.
+        The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled
+        operational outcome that carries its own stable code.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
 
 paths:
   # --- Auth API for platform ---
@@ -3888,6 +3925,8 @@ paths:
               description: |
                 Header used to remove the refresh token cookie
                 by setting an expired value for the cookie.
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /v1/auth/login:
     post:
       security: []
@@ -3916,6 +3955,8 @@ paths:
                 $ref: "#/components/schemas/AuthTokenResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /v1/auth/refresh:
     post:
       security: []
@@ -3977,6 +4018,8 @@ paths:
                 $ref: "#/components/schemas/AuthTokenResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/me:
     get:
       security:
@@ -3997,7 +4040,6 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-
   # PLATFORM RELATED API
   # --- Product Management (Platform Admin Auth) ---
   /v1/products:
@@ -4029,6 +4071,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/search:
     post:
       summary: Search Products
@@ -4083,7 +4127,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
     put:
       summary: Update Product
       description: Updates a product with a full representation. Requires
@@ -4114,7 +4157,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Product
       description: Deletes a product. This is a destructive operation. Requires 
@@ -4126,13 +4170,12 @@ paths:
       responses:
         "204":
           description: Product deleted successfully.
-        "404":
-          $ref: "#/components/responses/NotFound"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
+        "404":
+          $ref: "#/components/responses/NotFound"
   # --- Integration Instance Management (Platform Admin Auth) ---
   /v1/products/{product_id}/integrations:
     parameters:
@@ -4169,7 +4212,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: List Integration Instances
       description: |-
@@ -4190,7 +4234,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
   /v1/products/{product_id}/integrations/{integration_instance_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4218,7 +4261,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
     put:
       summary: Update Integration Instance
       description: |-
@@ -4250,7 +4292,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Integration Instance
       description: |-
@@ -4270,7 +4313,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4299,7 +4343,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # --- Webhook Ingress (Public, No Auth) ---
   /v1/products/{product_id}/integrations/webhooks/{provider_type}:
     parameters:
@@ -4341,7 +4384,8 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   # --- Product Resource Permission Management ---
   # ProductResourcePermissions are domain-specific permissions defined by the
   # product owner for their own application resources. For example, if you are
@@ -4386,7 +4430,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/resource-permissions/search:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4419,7 +4464,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/resource-permissions/{permission_name}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4446,7 +4492,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
     put:
       summary: Update Product Resource Permission
       description: Updates a resource permission's details. Requires Platform 
@@ -4478,7 +4523,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Product Resource Permission
       description: Deletes a resource permission. Cannot delete if assigned to 
@@ -4500,6 +4546,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   # Platform Invitation Management (Authenticated via Platform Bearer Token)
   /v1/platform-invitations:
     post:
@@ -4532,7 +4580,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/platform-invitations/search:
     post:
       summary: Search Platform Invitations
@@ -4563,6 +4612,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/platform-invitations/{invitation_id}:
     parameters:
     - $ref: "#/components/parameters/PlatformInvitationIdParameter"
@@ -4580,14 +4631,16 @@ paths:
         "204":
           description: Platform Invitation deleted successfully, or invitation 
             did not exist (idempotent operation).
-        "404":
-          $ref: "#/components/responses/NotFound"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: Get Platform Invitation
       description: |-
@@ -4610,7 +4663,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # Platform User Management (Authenticated via Platform Bearer Token)
   /v1/platform-users/search:
     post:
@@ -4689,7 +4741,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # PRODUCT RELATED API
 
   # --- ProductPermission Management (Platform Admin Auth) ---
@@ -4733,6 +4784,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/permissions/{permission_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4762,7 +4815,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # --- ProductRole Management ---
   /v1/products/{product_id}/roles/search:
     parameters:
@@ -4798,6 +4850,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/roles:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4834,6 +4888,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/roles/{role_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4860,7 +4916,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound" # Product or Role not found
-
     put:
       summary: Update ProductRole
       description: Updates a product role's details (name, description, 
@@ -4893,7 +4948,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete ProductRole
       description: Deletes an application role. Fails if the role is currently 
@@ -4922,6 +4978,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/roles/{role_id}/permissions:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4962,6 +5020,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -4984,19 +5044,20 @@ paths:
       responses:
         "204":
           description: Permission unassigned successfully.
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "400":
           description: Bad Request (e.g., Permission not assigned to this role)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   # --- ProductAPIKey Management  ---
   /v1/products/{product_id}/api-keys/search:
     parameters:
@@ -5030,6 +5091,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/api-keys:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5064,6 +5127,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/api-keys/{api_key_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5119,6 +5184,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Product API Key
       description: Permanently deletes a product API key. This action cannot be 
@@ -5136,8 +5203,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   # --- ProductUser Management ---
   /v1/products/{product_id}/product-users:
     parameters:
@@ -5194,6 +5261,8 @@ paths:
           $ref: "#/components/responses/Unauthorized" # Invalid/missing API Key
         "403":
           $ref: "#/components/responses/Forbidden" # API Key lacks permission
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/product-users/search:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5228,6 +5297,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/product-users/{product_user_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5272,7 +5343,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # --- Product User Organization Memberships (User Perspective) ---
   /v1/products/{product_id}/product-users/{product_user_id}/organizations:
     parameters:
@@ -5351,7 +5421,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # --- OrganizationAPIKey Management ---
   /v1/products/{product_id}/organizations/{organization_id}/api-keys/search:
     parameters:
@@ -5388,6 +5457,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/api-keys:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5422,6 +5493,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5478,6 +5551,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Organization API Key
       description: Permanently deletes an organization API key. This action cannot be undone. Requires Product API Key with `organization_api_key:delete` scope.
@@ -5494,7 +5569,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/api-keys/validate:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5532,7 +5608,8 @@ paths:
                 $ref: "#/components/schemas/OrganizationAPIKeyValidateForbiddenResponse"
         "404":
           $ref: "#/components/responses/NotFound"
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/auth/introspect:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5569,7 +5646,6 @@ paths:
                 $ref: "#/components/schemas/OrganizationAPIKeyValidateForbiddenResponse"
         "404":
           $ref: "#/components/responses/NotFound"
-
   # --- Product Organization Management ---
   /v1/products/{product_id}/organizations:
     parameters:
@@ -5611,6 +5687,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/search:
     post:
       parameters:
@@ -5647,6 +5725,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5697,6 +5777,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       summary: Update Product Organization
       description: |-
@@ -5729,6 +5811,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/workspaces:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5762,6 +5846,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/workspaces/search:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5796,6 +5882,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -5851,6 +5939,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Organization Workspace
       description: Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
@@ -5867,6 +5957,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/members:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -5894,6 +5986,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -5926,6 +6028,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     put:
       summary: Update Member Role
       description: Update the role of an organization member.
@@ -5949,6 +6059,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Remove Organization Member
       description: Removes a user from an organization.
@@ -5962,6 +6082,16 @@ paths:
       responses:
         '204':
           description: Successfully removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/members/search:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -5989,7 +6119,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationMemberListResponse'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   # ---------------------------------------------------------------------------
   # Email
   # ---------------------------------------------------------------------------
@@ -6020,6 +6159,14 @@ paths:
                 $ref: '#/components/schemas/EmailTemplateResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: List Email Templates
       operationId: listEmailTemplates
@@ -6049,7 +6196,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailTemplateListResponse'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/products/{product_id}/email/templates/{email_template_id}:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6070,6 +6224,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -6097,8 +6257,14 @@ paths:
                 $ref: '#/components/schemas/EmailTemplateResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Email Template
       operationId: deleteEmailTemplate
@@ -6111,9 +6277,16 @@ paths:
       responses:
         '204':
           description: Deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/email/templates/{email_template_id}/draft:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6135,6 +6308,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailTemplateVersionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -6162,9 +6341,14 @@ paths:
                 $ref: '#/components/schemas/EmailTemplateVersionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/email/templates/{email_template_id}/publish:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6188,9 +6372,16 @@ paths:
                 $ref: '#/components/schemas/EmailTemplateVersionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/products/{product_id}/email/templates/{email_template_id}/preview:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6220,9 +6411,16 @@ paths:
                 $ref: '#/components/schemas/EmailTemplatePreviewResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/products/{product_id}/email/templates/{email_template_id}/examples:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6242,6 +6440,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TemplateExampleListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -6265,9 +6469,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TemplateExampleListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/email/sends:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6296,6 +6507,18 @@ paths:
                 $ref: '#/components/schemas/EmailSendRecordResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     get:
       summary: List Send Records
       operationId: listEmailSends
@@ -6331,7 +6554,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailSendRecordListResponse'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   # ---------------------------------------------------------------------------
   # Licensing
   # ---------------------------------------------------------------------------
@@ -6367,6 +6603,14 @@ paths:
                 $ref: '#/components/schemas/LicenseSchemaResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: Get License Schema
       operationId: getLicenseSchema
@@ -6383,6 +6627,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LicenseSchemaResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -6412,8 +6662,14 @@ paths:
                 $ref: '#/components/schemas/LicenseSchemaResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete License Schema
       operationId: deleteLicenseSchema
@@ -6426,9 +6682,16 @@ paths:
       responses:
         '204':
           description: Deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/licensing/templates:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6462,8 +6725,14 @@ paths:
                 $ref: '#/components/schemas/LicenseTemplateResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: List License Templates
       description: >-
@@ -6494,7 +6763,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LicenseTemplateListResponse'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/products/{product_id}/licensing/templates/{license_template_id}:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6515,6 +6791,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LicenseTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -6548,8 +6830,14 @@ paths:
                 $ref: '#/components/schemas/LicenseTemplateResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete License Template
       description: >-
@@ -6574,9 +6862,14 @@ paths:
           description: Deleted
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/licensing/templates/{license_template_id}/archive:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6609,9 +6902,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LicenseTemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/licensing/organization-licenses/search:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6652,9 +6952,14 @@ paths:
                 $ref: '#/components/schemas/OrganizationLicenseSearchResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/licensing/organization-licenses/migrate:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6714,6 +7019,10 @@ paths:
                 $ref: '#/components/schemas/OrganizationLicenseMigrationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           # Declared with a body rather than sharing the empty NotFound
           # response: two identifiers in one request can be missing, and a
@@ -6726,7 +7035,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/license:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6762,8 +7072,14 @@ paths:
                 $ref: '#/components/schemas/OrganizationLicenseResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     get:
       summary: Get Organization License
       description: >-
@@ -6790,8 +7106,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationLicenseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     patch:
       summary: Adjust Organization License
       description: >-
@@ -6822,9 +7146,14 @@ paths:
                 $ref: '#/components/schemas/OrganizationLicenseResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/license/diff:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6850,9 +7179,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationLicenseDiffResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/license/history:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6905,9 +7241,14 @@ paths:
                 $ref: '#/components/schemas/OrganizationLicenseHistoryResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/license/usage:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6950,9 +7291,14 @@ paths:
                 $ref: '#/components/schemas/UsageObservationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/organizations/{organization_id}/license/usage/series:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -7032,5 +7378,11 @@ paths:
                 $ref: '#/components/schemas/UsageSeriesResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
