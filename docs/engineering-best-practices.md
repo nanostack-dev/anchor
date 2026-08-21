@@ -70,11 +70,12 @@ The status follows the **addressing** of the thing that is wrong: where the call
 | A permission the authenticated principal does not hold | Nowhere | 403 | `fault.Forbidden` |
 | Current state refuses the request, and a later or different request can succeed | Nowhere | 409 | `fault.Conflict` |
 | A licensed limit the caller can free, by deleting something or by changing plan | Nowhere | 409 | `fault.Conflict` |
-| A resource the server deliberately destroyed and still records as destroyed | Path | 410 | `fault.NewWithStatus` |
 | More requests than the window allows | Nowhere | 429 | `fault.TooManyRequests` |
 | A server invariant the caller could not have influenced | Nowhere | 500 | A bare wrapped error |
 
-These ten rows are the whole set. Four statuses stay out of it. 402 is reserved for future use by RFC 9110 §15.5.3, so a licensed limit is a 409 and never a 402. 422 is covered under validation below. 424 is covered under 409: Anchor's `EMAIL_INTEGRATION_NOT_FOUND` is a product that configured no integration, which someone can configure, so a later request succeeds. 405 and 501 come from `chi` and from the generated server; service code never builds them.
+These nine rows are the whole set. Every status in it has a semantic constructor, so `fault.NewWithStatus` has no use in new code.
+
+Five statuses stay out. 402 is reserved for future use by RFC 9110 §15.5.3, so a licensed limit is a 409 and never a 402. 410 is covered under 404, below. 422 is covered under validation, below. 424 is covered under 409: Anchor's `EMAIL_INTEGRATION_NOT_FOUND` is a product that configured no integration, which someone can configure, so a later request succeeds. 405 and 501 come from `chi` and from the generated server; service code never builds them.
 
 **A path with two identifiers answers 404 on whichever one is absent.** `/organizations/{organization_id}/resource/{resource_id}` addresses one target through two segments. Either segment failing to resolve means the target does not exist, so both answer 404. Depth does not change the rule, and neither does which segment failed.
 
@@ -124,7 +125,9 @@ Return a bare wrapped error, not a `fault`. `StrictErrorHandler` in the framewor
 
 **409 is a state you can retry past.** Use it when the request is well-formed, the target exists, and current state refuses it, and when a later or different request can succeed. Echopoint has four of this shape: `FLOW_VERSION_CONFLICT` (optimistic concurrency), `FLOW_TREE_CONFLICT` (another folder operation holds the lock), `IDEMPOTENCY_KEY_CONFLICT` (the key was reused with different parameters), and `RUNNER_JOB_EVENT_SEQUENCE_GAP` (events arrived out of order). Anchor's `PERMISSION_NAME_DUPLICATE` is the same shape on a uniqueness rule.
 
-**410 needs a tombstone.** RFC 9110 §15.5.11 makes 410 a statement that the removal is permanent and intentional. The server can only make that statement if it kept a record of the removal. Neither repo keeps tombstones for deleted rows, so a deleted resource reads as absent and answers 404. Introduce 410 for an aggregate only together with the tombstone that backs it, and only when clients need the permanence — a cache that must stop retrying, or a link that must stop being followed. Absent that record, 404 is the honest answer.
+**A deleted resource answers 404, not 410.** RFC 9110 §15.5.11 makes 410 a statement that the removal is permanent and intentional. A server can only make that statement if it kept a record of the removal, and neither repo keeps tombstones for deleted rows. 410 would therefore have to be guessed from the absence of a row, which is the one thing it must not be.
+
+Do not add 410, and do not add tombstones to reach it. It buys one thing — a client that stops retrying a URL — and every consumer of these APIs already treats 404 as terminal. Anchor's Go SDK does it in code: `Permanent()` in `clients/go/anchorsdk/errors.go` reports every 4xx apart from 429 as terminal, so a 410 would change nothing a caller does. Deleted reads as absent, and absent is 404.
 
 **Validation is 400.** `validate.ValidateStruct` returns 400, neither OpenAPI contract declares a 422, and no call site uses `fault.Unprocessable` or `fault.Invalid`. Keep it that way. 422 is the more precise word for content that parses but breaks a semantic rule, and the price of that precision is a second status on every write route, a regenerated client for every consumer, and a rewrite of every component test that reads `resp.JSON400`. The `code` field already carries the distinction that 422 would carry. Do not add 422 to either contract.
 
@@ -138,7 +141,7 @@ RFC 9110 §15.5.2 requires a `WWW-Authenticate` header on every 401. Neither rep
 
 **A resource in another tenant answers 404.** Repository and service reads are tenant-scoped, so a row outside the caller's tenant returns nil and falls into the 404 row of the table. Keep it there. A 403 would confirm that the identifier names a real resource, which is exactly what the tenant boundary exists to hide.
 
-**Use the semantic constructor.** `fault.NewWithStatus` is for a status with no constructor — 410 and 424 today. For every other status, call `fault.NotFound`, `fault.BadRequest`, `fault.Unauthorized`, `fault.Forbidden`, `fault.Conflict`, `fault.TooManyRequests`, or `fault.Internal`. The constructor puts the decision in the call, where a reader and a reviewer see it, instead of in a `http.Status...` argument three lines below the code string. `fault.New`, `fault.NewBadRequest`, and `fault.NewBadRequestWithMetadata` are deprecated; new code does not call them.
+**Use the semantic constructor.** Every status in the table has one, so new code never calls `fault.NewWithStatus`. Call `fault.NotFound`, `fault.BadRequest`, `fault.Unauthorized`, `fault.Forbidden`, `fault.Conflict`, `fault.TooManyRequests`, or `fault.Internal`. The constructor puts the decision in the call, where a reader and a reviewer see it, instead of in a `http.Status...` argument three lines below the code string. `fault.New`, `fault.NewBadRequest`, and `fault.NewBadRequestWithMetadata` are deprecated; new code does not call them.
 
 Both repos carry `fault.NewWithStatus` call sites that predate this rule — 41 in Anchor, 68 in Echopoint. Leave them alone until you touch the surrounding code. When a change touches a sentinel, move it to the semantic constructor in the same change.
 
