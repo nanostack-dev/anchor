@@ -11,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -295,7 +294,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		}, nil
 	}
 
-	apiKeyIDs := slicex.Map(itemEntities, func(entity model.ProductAPIKeys) string {
+	apiKeyIDs := functional.Slice(itemEntities).Map(func(entity model.ProductAPIKeys) string {
 		return entity.ID
 	})
 
@@ -317,7 +316,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		)
 	}
 
-	items := slicex.Map(itemEntities, func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
+	items := functional.Slice(itemEntities).Map(func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
 		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])
 	})
 

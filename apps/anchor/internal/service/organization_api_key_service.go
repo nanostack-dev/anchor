@@ -9,8 +9,8 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/nanostack-dev/pgkit/queue"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
@@ -158,8 +158,9 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", permissionValidationErr
 	}
 
-	organizationAPIKey.Permissions = slicex.Map(
-		canonicalPermissions,
+	organizationAPIKey.Permissions = functional.Slice(
+		canonicalPermissions).Map(
+
 		func(perm string) orgapikey.OrganizationAPIKeyPermission {
 			return orgapikey.OrganizationAPIKeyPermission{
 				APIKeyID:       organizationAPIKey.ID,
@@ -168,8 +169,7 @@ func (s *organizationAPIKeyService) Create(
 				PermissionName: perm,
 				CreatedAt:      time.Now(),
 			}
-		},
-	)
+		})
 
 	var created orgapikey.OrganizationAPIKey
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -679,7 +679,7 @@ func (s *organizationAPIKeyService) permissionsValidation(
 }
 
 func resourcePermissionsToNames(input []resourcepermission.ProductResourcePermission) []string {
-	return slicex.Map(input, func(permission resourcepermission.ProductResourcePermission) string {
+	return functional.Slice(input).Map(func(permission resourcepermission.ProductResourcePermission) string {
 		return permission.Name
 	})
 }

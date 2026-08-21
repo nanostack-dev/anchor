@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,11 +82,11 @@ func TestProductPermissions_Search(t *testing.T) {
 					orgMemberUpdate,
 					orgMemberDelete,
 				},
-				slicex.Map(
-					searchResp.JSON200.Items, func(item ct.ProductPermissionResponse) string {
+				functional.Slice(
+					searchResp.JSON200.Items).Map(
+					func(item ct.ProductPermissionResponse) string {
 						return item.Name
-					},
-				),
+					}),
 			)
 		},
 	)

@@ -9,7 +9,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -290,7 +289,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		return result, nil
 	}
 
-	apiKeyIDs := slicex.Map(result.Items, func(item orgapikey.OrganizationAPIKey) string {
+	apiKeyIDs := functional.Slice(result.Items).Map(func(item orgapikey.OrganizationAPIKey) string {
 		return item.ID
 	})
 
@@ -317,13 +316,15 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		)
 	}
 
-	result.Items = slicex.Map(result.Items, func(item orgapikey.OrganizationAPIKey) orgapikey.OrganizationAPIKey {
-		item.Permissions = slicex.Map(
-			permissionsByAPIKeyID[item.ID],
-			r.mapper.PermissionToDomain,
-		)
-		return item
-	})
+	result.Items = functional.Slice(result.Items).
+		Map(func(item orgapikey.OrganizationAPIKey) orgapikey.OrganizationAPIKey {
+			item.Permissions = functional.Slice(
+				permissionsByAPIKeyID[item.ID]).Map(
+
+				r.mapper.PermissionToDomain)
+
+			return item
+		})
 
 	return result, nil
 }

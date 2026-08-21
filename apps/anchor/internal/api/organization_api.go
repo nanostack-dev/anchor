@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/security"
@@ -159,7 +159,7 @@ func (s *AnchorAPI) SearchProductOrganizations(
 	}
 
 	return SearchProductOrganizations200JSONResponse{
-		Items: slicex.Map(result.Items, mapOrganizationToResponse),
+		Items: functional.Slice(result.Items).Map(mapOrganizationToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil

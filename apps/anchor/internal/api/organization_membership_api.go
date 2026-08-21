@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organization"
@@ -197,12 +197,13 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 	}
 
 	resp := OrganizationMemberListResponse{
-		Items: slicex.Map(
-			res.Items,
+		Items: functional.Slice(
+			res.Items).Map(
+
 			func(m organization.Membership) OrganizationMemberResponse {
 				return mapOrgMemberToResponse(m, false)
-			},
-		),
+			}),
+
 		Total: res.Total,
 		Count: len(res.Items),
 	}

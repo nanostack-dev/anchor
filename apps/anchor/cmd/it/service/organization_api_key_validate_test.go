@@ -8,7 +8,7 @@ import (
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -206,8 +206,9 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 			Status:          orgapikey.StatusActive,
 		}
 		createdKey.GenerateID()
-		createdKey.Permissions = slicex.Map(
-			permissions,
+		createdKey.Permissions = functional.Slice(
+			permissions).Map(
+
 			func(perm string) orgapikey.OrganizationAPIKeyPermission {
 				return orgapikey.OrganizationAPIKeyPermission{
 					APIKeyID:       createdKey.ID,
@@ -215,8 +216,8 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 					ProductID:      ctxData.Product.Product.ID,
 					PermissionName: perm,
 				}
-			},
-		)
+			})
+
 		persistedKey, createErr := OrgAPIKeyRepository.Create(t.Context(), createdKey)
 		require.NoError(t, createErr)
 

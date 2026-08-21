@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/domain/license"
 )
@@ -46,7 +46,7 @@ func mapLicenseSchemaToResponse(s license.Schema) LicenseSchemaResponse {
 	resp := LicenseSchemaResponse{
 		Id:        s.ID,
 		ProductId: s.ProductID,
-		Fields:    slicex.Map(s.Fields, mapLicenseFieldToResponse),
+		Fields:    functional.Slice(s.Fields).Map(mapLicenseFieldToResponse),
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
 	}
@@ -203,9 +203,9 @@ func mapLicenseMigrationFailureToResponse(err error) *ApiError {
 func mapLicenseMigrationResultToResponse(
 	r license.OrganizationMigrationResult,
 ) OrganizationLicenseMigrationResult {
-	// DiffValues returns nil for "nothing differs"; slicex.Map preserves that,
+	// DiffValues returns nil for "nothing differs"; Seq.Map preserves that,
 	// but changes is a required, non-nullable array in the contract.
-	changes := slicex.Map(r.Changes, mapLicenseFieldDifferenceToResponse)
+	changes := functional.Slice(r.Changes).Map(mapLicenseFieldDifferenceToResponse)
 	if changes == nil {
 		changes = []LicenseFieldDifference{}
 	}
@@ -224,7 +224,7 @@ func mapLicenseMigrationToResponse(m license.Migration) OrganizationLicenseMigra
 	return OrganizationLicenseMigrationResponse{
 		TemplateId: m.TemplateID,
 		MigratedAt: m.MigratedAt,
-		Results:    slicex.Map(m.Results, mapLicenseMigrationResultToResponse),
+		Results:    functional.Slice(m.Results).Map(mapLicenseMigrationResultToResponse),
 		Count:      len(m.Results),
 		Changed:    tally.Changed,
 		Unchanged:  tally.Unchanged,
@@ -233,9 +233,9 @@ func mapLicenseMigrationToResponse(m license.Migration) OrganizationLicenseMigra
 }
 
 func mapLicenseDiffToResponse(d license.OrganizationLicenseDiff) OrganizationLicenseDiffResponse {
-	// DiffValues returns nil for "nothing differs"; slicex.Map preserves that,
+	// DiffValues returns nil for "nothing differs"; Seq.Map preserves that,
 	// but differences is a required, non-nullable array in the contract.
-	differences := slicex.Map(d.Differences, mapLicenseFieldDifferenceToResponse)
+	differences := functional.Slice(d.Differences).Map(mapLicenseFieldDifferenceToResponse)
 	if differences == nil {
 		differences = []LicenseFieldDifference{}
 	}

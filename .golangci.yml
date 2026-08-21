@@ -274,10 +274,18 @@ linters:
       default-signifies-exhaustive: false
 
     gocritic:
+      # Checks enabled on top of the default set.
+      enabled-checks:
+        - ruleguard
       # Settings passed to gocritic.
       # The settings key is the name of a supported gocritic checker.
       # The list of supported checkers can be found at https://go-critic.com/overview.
       settings:
+        ruleguard:
+          # Project rules for the functional.Seq chain idioms. The path is
+          # relative to the module the linter runs in.
+          rules: "gorules/functional.go"
+          failOn: all
         captLocal:
           # Whether to restrict checker to params only.
           # Default: true

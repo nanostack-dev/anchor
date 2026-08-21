@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -19,11 +19,12 @@ import (
 )
 
 func TestApiKeyValidation(t *testing.T) {
-	availableScopes := slicex.Map(
-		service.GeneratePermissions(), func(t permission.ProductPermission) string {
+	availableScopes := functional.Slice(
+		service.GeneratePermissions()).Map(
+		func(t permission.ProductPermission) string {
 			return t.Name
-		},
-	)
+		})
+
 	t.Run(
 		"Valid API Key", func(t *testing.T) {
 			tenantAndProduct := GivenATenantAndProduct(t)
@@ -69,16 +70,17 @@ func TestApiKeyValidation(t *testing.T) {
 				Status:          apikey.StatusActive,
 			}
 			apiKey.GenerateID()
-			apiKey.Permissions = slicex.Map(
-				permissions,
+			apiKey.Permissions = functional.Slice(
+				permissions).Map(
+
 				func(perm string) apikey.ProductAPIKeyPermission {
 					return apikey.ProductAPIKeyPermission{
 						APIKeyID:       apiKey.ID,
 						ProductID:      tenantAndProduct.Product.ID,
 						PermissionName: perm,
 					}
-				},
-			)
+				})
+
 			createdAPIKey, createErr := APIKeyRepository.Create(t.Context(), apiKey)
 			require.NoError(t, createErr)
 
@@ -251,7 +253,7 @@ func TestApiKeyValidation(t *testing.T) {
 			_, value := GivenAPIKey(
 				t, tenantAndProduct.Product.ID, permissions,
 			)
-			uppercaseScopes := slicex.Map(permissions, strings.ToUpper)
+			uppercaseScopes := functional.Slice(permissions).Map(strings.ToUpper)
 			_, err := APIKeyService.ValidateAPIKeyAndScopes(
 				t.Context(), apikey.ValidateAPIKeyScopesInput{
 					ProductID:   tenantAndProduct.Product.ID,

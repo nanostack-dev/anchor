@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -84,12 +84,13 @@ func (tp *ProductContext) CreateAPIKeyClientWithAllScopes() (
 	*nanostackClient.ClientWithResponses,
 	string,
 ) {
-	allScopes := slicex.Map(
-		service.GeneratePermissions(),
+	allScopes := functional.Slice(
+		service.GeneratePermissions()).Map(
+
 		func(permission permission.ProductPermission) string {
 			return permission.Name
-		},
-	)
+		})
+
 	return tp.createAPIKeyClientWithScopes(allScopes)
 }
 
