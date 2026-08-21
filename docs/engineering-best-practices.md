@@ -69,9 +69,18 @@ The status follows the **addressing** of the thing that is wrong: where the call
 | A credential that is absent, malformed, expired, or does not authenticate | Header | 401 | `fault.Unauthorized` |
 | A permission the authenticated principal does not hold | Nowhere | 403 | `fault.Forbidden` |
 | Current state refuses the request, and a later or different request can succeed | Nowhere | 409 | `fault.Conflict` |
+| A licensed limit the caller can free, by deleting something or by changing plan | Nowhere | 409 | `fault.Conflict` |
 | A resource the server deliberately destroyed and still records as destroyed | Path | 410 | `fault.NewWithStatus` |
 | More requests than the window allows | Nowhere | 429 | `fault.TooManyRequests` |
 | A server invariant the caller could not have influenced | Nowhere | 500 | A bare wrapped error |
+
+These ten rows are the whole set. Four statuses stay out of it. 402 is reserved for future use by RFC 9110 §15.5.3, so a licensed limit is a 409 and never a 402. 422 is covered under validation below. 424 is covered under 409: Anchor's `EMAIL_INTEGRATION_NOT_FOUND` is a product that configured no integration, which someone can configure, so a later request succeeds. 405 and 501 come from `chi` and from the generated server; service code never builds them.
+
+**A path with two identifiers answers 404 on whichever one is absent.** `/organizations/{organization_id}/resource/{resource_id}` addresses one target through two segments. Either segment failing to resolve means the target does not exist, so both answer 404. Depth does not change the rule, and neither does which segment failed.
+
+Read the parent before the child, or scope the child read by the parent. One of the two, never neither. A child read by its own identifier alone returns a row that belongs to a different parent, and answering 200 with it is a cross-tenant leak wearing a valid URL. Echopoint's `GetExecution` in `internal/feature/executions/handler.go` takes the first route and then guards the second: it reads the flow, answers 404 when the flow is absent, and rejects the execution again with `exec.FlowID != request.FlowId`, because `GetExecutionByID` is scoped by organization and not by flow. Anchor's `GetLicense` takes the second route: `FindByOrganization(tenantID, productID, organizationID)` cannot return another organization's license, so no second guard is needed.
+
+Give the parent its own error code only when the caller acts differently on it. The extra code costs a read of the parent that a parent-scoped child read would have skipped. Anchor pays that cost on the instantiate route, where `ORGANIZATION_NOT_FOUND` and `ORGANIZATION_LICENSE_NOT_FOUND` are distinct, and it pays it without an extra round trip: the parent 404 comes off a foreign-key violation on the insert, not off a lookup. Echopoint's `GetExecution` declines the cost and answers one undistinguished 404. Both are correct.
 
 **A path-named resource answers 404 on every method.** RFC 9110 §15.5.5 attaches 404 to the target resource, and says nothing about the method. Anchor already follows this on an action: `POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive` declares a 404, the same status the `GET` on that template declares. The template is absent, so the target is absent. The router that matched the path did not know the method either.
 
