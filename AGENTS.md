@@ -16,6 +16,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - A read that offers a related resource uses `?include=` — one shared enum parameter per aggregate, absent never means empty, one statement per included resource, and no derived data. See `docs/engineering-best-practices.md`.
 - Product API keys are Anchor *management* credentials and keep the fixed `anchor_prd_apikey_` prefix. Configurable product-level prefixes apply only to organization API keys (`*_org_apikey_`).
 - Contract first: update `openapi.yaml`, then regenerate through the repo command. Generated files are never hand-edited.
+- HTTP error statuses follow `docs/engineering-best-practices.md`. Changing one is a client-visible change with no compile-time check: the anchor API suite is a set of echopoint flows in the database, so a status change passes build, lint, and every Go test and then fails the post-deploy `Echopoint flow suite (anchor)` job. In the same change, update the flow assertions and re-run `echopoint flows run --tag anchor --environment dev` against both the `prod` profile (the CI organization) and `dev`. The flows exist once per organization with different ids.
 - Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
 
 ## Agent skills
