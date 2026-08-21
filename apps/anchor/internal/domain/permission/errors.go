@@ -6,17 +6,11 @@ import (
 
 // Permission-specific business rule errors.
 var (
-	// ErrPermissionNameDuplicate reports a uniqueness collision on permission
-	// name within a product. A later request against a different name can
-	// succeed, so this is a 409, not a 400.
 	ErrPermissionNameDuplicate = fault.Conflict(
 		"PERMISSION_NAME_DUPLICATE",
 		"A permission with this name already exists in the product",
 	)
 
-	// ErrPermissionAssignedToRoles guards a delete against a permission still
-	// assigned to one or more roles. The caller can free the guard by
-	// unassigning the permission first, so this is a 409, not a 400.
 	ErrPermissionAssignedToRoles = fault.Conflict(
 		"PERMISSION_ASSIGNED_TO_ROLES",
 		"Cannot delete permission that is assigned to one or more roles",
@@ -32,11 +26,6 @@ var (
 		"Product does not exist",
 	)
 
-	// ErrPermissionNotFound reports a permission named in the URI path that
-	// does not exist. Its code is singular and distinct from
-	// service.NewPermissionsNotFoundError's PERMISSIONS_NOT_FOUND, which
-	// answers a body-supplied list of permission names as a 400. One code
-	// must not answer two statuses.
 	ErrPermissionNotFound = fault.NotFound(
 		"PERMISSION_NOT_FOUND",
 		"Permission does not exist",

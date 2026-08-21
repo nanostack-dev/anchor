@@ -68,9 +68,6 @@ func AssertAnchorBadRequestError(
 	}
 }
 
-// AssertAnchorConflictError is the 409 twin of AssertAnchorBadRequestError. A
-// uniqueness collision is state that a different value gets past, so the
-// standard puts it at 409 — see docs/engineering-best-practices.md.
 func AssertAnchorConflictError(
 	t *testing.T,
 	response any,

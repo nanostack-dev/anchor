@@ -225,10 +225,6 @@ func TestReportUsage(t *testing.T) {
 			context.Background(), tc.product.ProductID, organizationID, gauge("flows", 37),
 		)
 		require.NoError(t, err)
-		// This call never names the schema itself, on the path or in the
-		// body, so a missing schema is not the 404 the schema route answers.
-		// It is a 409: declaring a schema is the later request that lets this
-		// exact call succeed.
 		assert.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	})
 }

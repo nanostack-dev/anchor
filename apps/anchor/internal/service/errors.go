@@ -15,35 +15,21 @@ const (
 // From auth/errors.go
 
 var (
-	// ErrInvalidCredentials for a login whose email or password does not
-	// authenticate. The password is wrong, the email matches no user, or the
-	// user has no membership in the single tenant Anchor serves today — every
-	// branch is the same credential failure, so the client cannot tell which
-	// one occurred.
 	ErrInvalidCredentials = fault.Unauthorized(
 		"EMAIL_OR_PASSWORD_INCORRECT",
 		"The email or the password is incorrect.",
 	)
 
-	// ErrUserAlreadyExists when trying to register an existing email. A
-	// uniqueness collision on the email field: a different email in a later
-	// request succeeds, so this is a conflict, not a bad request.
 	ErrUserAlreadyExists = fault.Conflict(
 		"USER_ALREADY_EXISTS",
 		"A user with this email already exists.",
 	)
 
-	// ErrInvitationCodeNotProvided when a registration attempt lacks an
-	// invitation code. The code is a body field, not a credential: it names an
-	// invitation record, it does not authenticate the requester.
 	ErrInvitationCodeNotProvided = fault.BadRequest(
 		"INVITATION_CODE_NOT_PROVIDED",
 		"The invitation code is required.",
 	)
 
-	// ErrInvitationCodeIsInvalid when the code names no invitation. Same
-	// addressing as ErrInvitationCodeNotProvided: a body-named entity that
-	// does not resolve.
 	ErrInvitationCodeIsInvalid = fault.BadRequest(
 		"INVITATION_CODE_IS_INVALID",
 		"The invitation code is invalid.",
@@ -64,9 +50,6 @@ var (
 		"The refresh token is invalid or expired.",
 	)
 
-	// ErrProductAlreadyExists is a uniqueness collision on the product name,
-	// the same shape as ErrUserAlreadyExists: a later request with a
-	// different name succeeds.
 	ErrProductAlreadyExists = fault.Conflict(
 		"PRODUCT_ALREADY_EXISTS", "A product with this name already exists in your tenant.",
 	)
@@ -78,8 +61,7 @@ var (
 
 	// ErrInvitationAlreadyExists when the tenant already has an invitation for
 	// the address. Returned both by CreateInvitation's pre-insert check and by
-	// the race loser whose INSERT trips the unique index. A uniqueness
-	// collision: inviting a different address succeeds.
+	// the race loser whose INSERT trips the unique index.
 	ErrInvitationAlreadyExists = fault.Conflict(
 		"INVITATION_ALREADY_EXISTS",
 		"This email address already has an invitation. "+
@@ -108,12 +90,6 @@ func NewResourcePermissionAlreadyExistsError(name string) error {
 
 // From role/errors.go
 
-// NewRoleNotFoundError reports a role the caller named that does not exist.
-//
-// Every call site names the role in the URL path
-// (/v1/products/{product_id}/roles/{role_id}/...), so 404 is correct here.
-// A role_id read from a request body answers 400 with a distinct code through
-// newBodyRoleNotFoundError in organization_membership_service.go.
 func NewRoleNotFoundError(roleID string) *fault.Error {
 	return fault.NotFound(
 		"ROLE_NOT_FOUND",
@@ -121,10 +97,6 @@ func NewRoleNotFoundError(roleID string) *fault.Error {
 	)
 }
 
-// NewProductUserNotFoundError reports a product user named in the URL path
-// that does not exist. A product_user_id read from a request body answers 400
-// with a distinct code through newBodyProductUserNotFoundError in
-// organization_membership_service.go.
 func NewProductUserNotFoundError(productUserID string) *fault.Error {
 	return fault.NotFound(
 		"PRODUCT_USER_NOT_FOUND",
@@ -132,8 +104,6 @@ func NewProductUserNotFoundError(productUserID string) *fault.Error {
 	)
 }
 
-// NewRoleWithAlreadyExistingNameError is a uniqueness collision on the role
-// name: a different name in a later request succeeds.
 func NewRoleWithAlreadyExistingNameError(roleName, productID string) *fault.Error {
 	return fault.Conflict("ROLE_NAME_DUPLICATE", "A product role with this name already exists in the product.").
 		Metadata(map[string]any{
@@ -142,8 +112,6 @@ func NewRoleWithAlreadyExistingNameError(roleName, productID string) *fault.Erro
 		})
 }
 
-// NewPermissionAlreadyAssignedError is a uniqueness collision on the
-// role/permission pair. Not currently returned by any call site.
 func NewPermissionAlreadyAssignedError(roleID, permissionName string) *fault.Error {
 	return fault.Conflict("PERMISSION_ALREADY_ASSIGNED", "The permission is already assigned to the role.").
 		Metadata(map[string]any{
@@ -152,9 +120,6 @@ func NewPermissionAlreadyAssignedError(roleID, permissionName string) *fault.Err
 		})
 }
 
-// NewRoleInUseError blocks a delete because current state (users still hold
-// the role) refuses it. Removing those assignments lets a later delete
-// succeed, so this is a conflict, not a bad request.
 func NewRoleInUseError(roleID string) *fault.Error {
 	return fault.Conflict(
 		"ROLE_IN_USE",
@@ -169,7 +134,6 @@ var ErrInvalidAPIKey = fault.Unauthorized(
 	"The product API key is invalid.",
 )
 
-// NewProductAPIKeyNameExistsError is a uniqueness collision on the key name.
 func NewProductAPIKeyNameExistsError(name, productID string) *fault.Error {
 	return fault.Conflict("PRODUCT_API_KEY_NAME_DUPLICATE", "A product API key with this name already exists in the product.").
 		Metadata(map[string]any{
@@ -178,7 +142,6 @@ func NewProductAPIKeyNameExistsError(name, productID string) *fault.Error {
 		})
 }
 
-// NewOrganizationAPIKeyNameExistsError is a uniqueness collision on the key name.
 func NewOrganizationAPIKeyNameExistsError(
 	name, organizationID string,
 ) *fault.Error {
@@ -189,11 +152,6 @@ func NewOrganizationAPIKeyNameExistsError(
 		})
 }
 
-// NewOrganizationAPIKeyInactiveOrExpiredError blocks setting an expired key
-// back to active. It is not a permission problem: the caller is authorized to
-// update the key, but its current state refuses this particular update.
-// Extending the expiration date first lets a later activation succeed, so
-// this is a conflict.
 func NewOrganizationAPIKeyInactiveOrExpiredError(apiKeyID string) *fault.Error {
 	return fault.Conflict("ORGANIZATION_API_KEY_INACTIVE_OR_EXPIRED",
 		"You cannot activate an expired organization API key. Extend the expiration date first.").
@@ -209,18 +167,12 @@ func NewOrganizationAPIKeyExpiresAtInPastError() *fault.Error {
 	)
 }
 
-// NewProductAPIKeyInactiveError rejects an API key credential that is
-// present, well-formed, and no longer active. An inactive credential does not
-// authenticate, so this is a 401, not a 403.
 func NewProductAPIKeyInactiveError(apiKeyID string) *fault.Error {
 	return fault.Unauthorized("PRODUCT_API_KEY_INACTIVE", "The product API key is inactive.").Metadata(map[string]any{
 		errorDetailAPIKeyID: apiKeyID,
 	})
 }
 
-// NewProductAPIKeyInsufficientPermissionsError reports that the key
-// authenticated, and the principal it identifies does not hold the required
-// scopes.
 func NewProductAPIKeyInsufficientPermissionsError(
 	apiKeyID string, requiredScopes []string, currentScopes []string,
 ) *fault.Error {

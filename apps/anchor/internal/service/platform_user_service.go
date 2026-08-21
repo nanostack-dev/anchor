@@ -126,10 +126,6 @@ func (s *platformUserService) DeletePlatformUser(
 		return err
 	}
 
-	// Prevent self-deletion. No later request makes this one succeed, so it is
-	// not a conflict: the rule is about who the caller is relative to the
-	// target. The caller authenticated and may delete platform users, and is
-	// not permitted to delete this one.
 	if currentPlatformUser != nil && currentPlatformUser.ID == input.PlatformUserID {
 		return fault.Forbidden(
 			"SELF_DELETION_NOT_ALLOWED",

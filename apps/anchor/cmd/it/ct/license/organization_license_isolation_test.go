@@ -2,7 +2,6 @@ package license_ct_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -78,14 +77,9 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 		w.Template().Archive()
 
 		resp := newcomer.InstantiateRaw(w.TemplateID())
-		// The template exists and its state refuses the request; un-archiving
-		// it would let the same request succeed, which is a 409, not a 400.
-		// The generated client has no typed 409 getter for this route yet, so
-		// the body is decoded by hand.
 		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
-		var errResp ct.ApiErrorResponse
-		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
-		assertAPIError(t, errResp.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 
 		// The organization already on it keeps what it holds.
 		assertValues(t, w.License().Get().Values, validTemplateValues())

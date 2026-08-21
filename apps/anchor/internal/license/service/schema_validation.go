@@ -72,14 +72,6 @@ func errLicenseValueInvalid(name string, violation *rules.ViolationError) *fault
 // an absent field grants. The cost is that adding a field to a schema
 // invalidates every existing template until each sets it; the schema write is
 // not refused for it, because Anchor validates but never gates.
-//
-// It returns ErrLicenseSchemaNotDeclared when the Product has declared no
-// schema, because there is then nothing for the values to satisfy. This call
-// never names the schema itself, so a 409, not the 404 the schema route
-// answers — see ErrLicenseSchemaNotDeclared.
-//
-// See the file comment: this is the path a value is *set* on, and the only kind
-// of path that may consult a license field's rules.
 func (s *licenseSchemaService) ValidateValues(
 	ctx context.Context, tenantID string, productID string, values license.TemplateValues,
 ) error {

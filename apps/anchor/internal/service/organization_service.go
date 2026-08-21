@@ -412,8 +412,6 @@ func (s *organizationService) CreateWithMember(
 			return lookupErr
 		}
 		if foundProductUser.IsAbsent() {
-			// input.ProductUserID is the founding_member.product_user_id body
-			// field: a 400, not the 404 a path-named lookup would answer.
 			return newBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
@@ -430,9 +428,6 @@ func (s *organizationService) CreateWithMember(
 			return roleErr
 		}
 		if foundRole.IsAbsent() {
-			// input.RoleID is the founding_member.role_id body field: a 400,
-			// not the 404 errors.go's NewRoleNotFoundError answers for the
-			// path-named role lookups in product_role_service.go.
 			return newBodyRoleNotFoundError(input.RoleID)
 		}
 
@@ -494,9 +489,6 @@ func (s *organizationService) CreateWithMember(
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("create-with-member lock was busy; concurrent request in progress")
-		// A concurrent create for the same product user holds the lock. The
-		// request is well-formed and a retry succeeds once that request
-		// finishes, so this is a 409, not a server fault.
 		return organization.OrganizationWithMemberResult{}, fault.Conflict(
 			"ORGANIZATION_CREATE_WITH_MEMBER_BUSY",
 			"Another request is creating an organization for this product user. Try again.",

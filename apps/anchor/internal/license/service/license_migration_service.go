@@ -136,9 +136,6 @@ func (s *licenseMigrationService) Migrate(
 		return license.Migration{}, err
 	}
 	if target == nil {
-		// in.TemplateID is a body field (template_id on
-		// OrganizationLicenseMigrationRequest), not the path — a 400, not the
-		// 404 the template route answers.
 		return license.Migration{}, ErrLicenseTemplateNotFoundInRequest(in.TemplateID)
 	}
 	if target.IsArchived() {
@@ -375,10 +372,6 @@ func (s *licenseMigrationService) templateByID(
 		return nil, err
 	}
 	if found == nil {
-		// A server invariant, not a fault: templateID is existing.TemplateID
-		// (see decide, below), never a value this call named, and the foreign
-		// key guarantees the row. A miss here is a bug, not a client error, so
-		// it is a bare 500.
 		return nil, fmt.Errorf(
 			"license migration: template %s missing though referenced by an existing license", templateID,
 		)

@@ -28,32 +28,18 @@ import (
 const licenseSchemaProductConstraint = "license_schemas_product_id_key"
 
 var (
-	// ErrLicenseSchemaNotFound answers GetSchema, UpdateSchema, and
-	// DeleteSchema, whose path — /v1/products/{product_id}/licensing/schema —
-	// names the schema as its own target resource. A caller that reaches the
-	// missing schema indirectly, through ValidateValues or a usage report,
-	// never named it on that path or in that body; see
-	// ErrLicenseSchemaNotDeclared for that case.
+	// ErrLicenseSchemaNotFound is for the schema's own route, where the path
+	// names it. Reached indirectly, use ErrLicenseSchemaNotDeclared.
 	ErrLicenseSchemaNotFound = fault.NotFound(
 		"LICENSE_SCHEMA_NOT_FOUND",
 		"This product has not declared a license schema",
 	)
-	// ErrLicenseSchemaAlreadyExists refuses a second CreateSchema. Current
-	// state (a schema already declared) refuses the request, and deleting it
-	// is the later request that lets a retry succeed, so this is a 409.
 	ErrLicenseSchemaAlreadyExists = fault.Conflict(
 		"LICENSE_SCHEMA_EXISTS",
 		"This product has already declared a license schema; update it instead",
 	)
-	// ErrLicenseSchemaNotDeclared answers a caller who named a license field
-	// or a limit's key, discovered while checking it against a schema that
-	// does not exist. Nowhere on these calls — template create/update, license
-	// instantiate/adjust, usage report — is the schema itself named, so this
-	// is not the 404 ErrLicenseSchemaNotFound answers on the schema's own
-	// route. It is the same shape as ErrEmailIntegrationNotFound: a product
-	// configuration the caller did not set up, which someone can still set up,
-	// so a later, identical request succeeds. See "409 is a state you can
-	// retry past" in docs/engineering-best-practices.md.
+	// ErrLicenseSchemaNotDeclared is for the calls that never name the schema
+	// — template create/update, instantiate/adjust, usage report.
 	ErrLicenseSchemaNotDeclared = fault.Conflict(
 		"LICENSE_SCHEMA_NOT_DECLARED",
 		"This product has not declared a license schema",

@@ -27,17 +27,10 @@ import (
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 
 var (
-	// ErrEmailIntegrationNotConfigured is a state, not a missing resource: the
-	// product's SMTP integration can be configured by an admin, after which a
-	// later send succeeds. That "later request can succeed" shape is a 409, not
-	// the 404/424 this sentinel used to carry.
 	ErrEmailIntegrationNotConfigured = fault.Conflict(
 		"EMAIL_INTEGRATION_NOT_CONFIGURED",
 		"No email integration is configured for this product",
 	)
-	// ErrEmailIntegrationInactive is the same state-refusal shape as
-	// ErrEmailIntegrationNotConfigured: an admin can reactivate the integration,
-	// after which a later send succeeds.
 	ErrEmailIntegrationInactive = fault.Conflict(
 		"EMAIL_INTEGRATION_INACTIVE",
 		"The email integration is not in an ACTIVE state",
@@ -46,9 +39,6 @@ var (
 		"EMAIL_TEMPLATE_NOT_FOUND",
 		"Email template not found",
 	)
-	// ErrEmailTemplateNotPublished and ErrEmailTemplateNoDraft are state
-	// refusals: the template exists, and publishing (or drafting) a version
-	// later lets the same request succeed.
 	ErrEmailTemplateNotPublished = fault.Conflict(
 		"EMAIL_TEMPLATE_NOT_PUBLISHED",
 		"This template has no published version. Publish the template before you send with it.",
@@ -57,8 +47,6 @@ var (
 		"EMAIL_TEMPLATE_NO_DRAFT",
 		"This template has no draft version available",
 	)
-	// ErrEmailTemplateSlugTaken is a uniqueness collision on the product's
-	// template slugs, the same shape as Anchor's PERMISSION_NAME_DUPLICATE.
 	ErrEmailTemplateSlugTaken = fault.Conflict(
 		"EMAIL_TEMPLATE_SLUG_TAKEN",
 		"An email template with this slug already exists for the product",
@@ -67,10 +55,6 @@ var (
 		"EMAIL_RATE_LIMIT_EXCEEDED",
 		"Sends for this product exceeded the configured rate limit",
 	)
-	// ErrEmailMailerCapabilityMissing is the same state-refusal shape as
-	// ErrEmailIntegrationNotConfigured: the caller named nothing wrong, and an
-	// admin reconfiguring the product with a mailer-capable integration lets a
-	// later send succeed.
 	ErrEmailMailerCapabilityMissing = fault.Conflict(
 		"EMAIL_MAILER_CAPABILITY_MISSING",
 		"The configured integration does not support outbound email",
@@ -94,10 +78,7 @@ var (
 	// ErrEmailDeliveryRejected models a permanent rejection of the message by the
 	// configured relay (unauthorized sender identity, undeliverable recipient, or
 	// rejected content). Unlike ErrEmailDeliveryFailed this is a caller-input
-	// problem, not a server fault: retrying the same request will not help. The
-	// engineering standard forbids 422, so this is a 400 the client can act on.
-	// The transport cause is wrapped for server-side logs but never serialized
-	// to the client.
+	// problem, not a server fault: retrying the same request will not help.
 	ErrEmailDeliveryRejected = fault.BadRequest(
 		"EMAIL_DELIVERY_REJECTED",
 		"The email integration rejected the message. Check that the sender "+
@@ -392,9 +373,6 @@ func (s *emailService) UpdateTemplateDraft(
 		if err != nil {
 			return email.TemplateVersion{}, err
 		}
-		// Same invariant as above: the envelope names a published version id
-		// the caller never supplied, so its absence is a broken pointer, not
-		// "no draft".
 		if foundPub.IsAbsent() {
 			return email.TemplateVersion{}, fmt.Errorf(
 				"update draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
@@ -464,9 +442,6 @@ func (s *emailService) GetTemplateDraft(
 		if err != nil {
 			return nil, err
 		}
-		// The envelope names a draft version id the caller never supplied. Its
-		// absence is a broken pointer, not "no draft" — returning nil here
-		// would read as 404 at the boundary and hide the invariant break.
 		if foundDraft.IsAbsent() {
 			return nil, fmt.Errorf(
 				"get draft: draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
@@ -483,8 +458,6 @@ func (s *emailService) GetTemplateDraft(
 	if err != nil {
 		return nil, err
 	}
-	// Same invariant as above: the envelope names a published version id the
-	// caller never supplied.
 	if foundPub.IsAbsent() {
 		return nil, fmt.Errorf(
 			"get draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
@@ -679,9 +652,6 @@ func (s *emailService) Preview(
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
-	// The envelope names a draft/published version id the caller never
-	// supplied (they named the template, not the version). Its absence is a
-	// broken pointer, not the template being missing.
 	if foundVersion.IsAbsent() {
 		return email.PreviewResult{}, fmt.Errorf(
 			"preview: template %s version missing", tpl.ID,

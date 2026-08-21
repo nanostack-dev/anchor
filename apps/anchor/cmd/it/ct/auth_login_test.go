@@ -12,11 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// decodeAPIError unmarshals a response body into the shared error contract.
-// Login's generated client only types the 200 and 400 bodies today; a 401
-// still arrives as raw bytes on resp.Body, so tests that assert on the
-// EMAIL_OR_PASSWORD_INCORRECT code and message decode it directly instead of
-// through a generated JSON401 field.
 func decodeAPIError(t *testing.T, body []byte) ct.ApiErrorResponse {
 	t.Helper()
 	var errResp ct.ApiErrorResponse
@@ -56,8 +51,6 @@ func TestLogin(t *testing.T) {
 				context.Background(), loginReq,
 			)
 			require.NoError(t, err, "login request should not error")
-			// A password that does not authenticate is a 401: the request
-			// carried a credential, and it was wrong.
 			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
 			errResp := decodeAPIError(t, resp.Body)
 			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", errResp.Errors[0].Code)
@@ -75,9 +68,6 @@ func TestLogin(t *testing.T) {
 				context.Background(), loginReq,
 			)
 			require.NoError(t, err, "login request should not error")
-			// An email that matches no user is the same credential failure as
-			// a wrong password: a 401, not a 404, so a caller cannot probe
-			// which addresses are registered.
 			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
 			errResp := decodeAPIError(t, resp.Body)
 			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", errResp.Errors[0].Code)

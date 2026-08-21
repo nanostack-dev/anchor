@@ -49,9 +49,6 @@ func GetCurrentUserID(ctx context.Context) (string, error) {
 	}
 	userID, ok := value.(string)
 	if !ok {
-		// The auth middleware sets currentUserIDKey to a string. A different
-		// type here is a server bug, not a caller mistake, so this is a bare
-		// wrapped error rather than a fault.
 		return "", errors.New("user context value is not a string")
 	}
 	return userID, nil
@@ -68,9 +65,6 @@ func GetTenantID(ctx context.Context) (string, error) {
 	}
 	tenantID, ok := value.(string)
 	if !ok {
-		// The auth middleware sets tenantIDKey to a string. A different type
-		// here is a server bug, not a caller mistake, so this is a bare
-		// wrapped error rather than a fault.
 		return "", errors.New("tenant context value is not a string")
 	}
 	return tenantID, nil

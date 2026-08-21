@@ -108,16 +108,10 @@ var (
 		"INTEGRATION_INSTANCE_NOT_FOUND",
 		"Integration instance not found",
 	)
-	// ErrIntegrationInstanceAlreadyExists is a uniqueness collision on the
-	// product+provider pair, the same shape as Anchor's PERMISSION_NAME_DUPLICATE.
 	ErrIntegrationInstanceAlreadyExists = fault.Conflict(
 		"INTEGRATION_INSTANCE_ALREADY_EXISTS",
 		"An integration instance for this provider already exists on this product",
 	)
-	// ErrIntegrationProviderNotWebhookIngestor names a provider type in the
-	// webhook route's own path (provider_type). That provider type never
-	// implements webhook ingestion, so the target this path addresses does
-	// not exist, exactly like an absent path-scoped resource.
 	ErrIntegrationProviderNotWebhookIngestor = fault.NotFound(
 		"INTEGRATION_PROVIDER_NOT_WEBHOOK_INGESTOR",
 		"The specified integration provider does not accept inbound webhooks",
@@ -126,11 +120,6 @@ var (
 		"INTEGRATION_WEBHOOK_VALIDATION_FAILED",
 		"Webhook signature validation failed",
 	)
-	// ErrIntegrationInstanceDisabled is one of three lifecycle states that
-	// block webhook ingestion, alongside ErrIntegrationInstanceConfiguring and
-	// ErrIntegrationInstanceUnhealthy. Each can change without a new request
-	// shape — an admin enables the instance, configuration finishes, or the
-	// instance recovers — so a later request can succeed. That is 409, not 400.
 	ErrIntegrationInstanceDisabled = fault.Conflict(
 		"INTEGRATION_INSTANCE_DISABLED",
 		"The integration instance is disabled",
@@ -147,9 +136,6 @@ var (
 		"INTEGRATION_WEBHOOK_SECRET_REQUIRED",
 		"Webhook secret is required when integration instance is active",
 	)
-	// ErrIntegrationWebhookEventIDMissing is an absent non-credential header
-	// (the provider's event-id header). No credential was judged, so this is
-	// a malformed request, not an authentication failure.
 	ErrIntegrationWebhookEventIDMissing = fault.BadRequest(
 		"INTEGRATION_WEBHOOK_EVENT_ID_MISSING",
 		"Webhook event id header is required",
@@ -213,10 +199,6 @@ func (s *integrationService) CreateInstance(
 		return integration.Instance{}, valErr
 	}
 
-	// Verify provider is registered. The contract constrains provider_type to
-	// the enum the registry is wired for, so this failing is a deployment
-	// wiring bug the caller could not have caused, not a bad request — a bare
-	// wrapped error becomes the boundary's generic 500.
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
 		logger.Warn().
@@ -358,11 +340,6 @@ func (s *integrationService) GetInstance(
 			Msg("failed to find instance")
 		return nil, findErr
 	}
-	// FindByID is tenant-scoped only. The route nests the instance under
-	// product_id, so an instance id that resolves under a different product
-	// must answer 404 on that segment too, the same as a cross-tenant read —
-	// otherwise a caller can read another product's integration instance by
-	// id alone.
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 		return nil, ErrIntegrationInstanceNotFound
 	}
@@ -395,18 +372,12 @@ func (s *integrationService) UpdateInstance(
 				Msg("failed to find instance for update")
 			return findErr
 		}
-		// FindByID is tenant-scoped only; scope by the route's product_id too
-		// so an id belonging to a different product answers 404 instead of
-		// letting this product's caller read or mutate it.
 		if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 			return ErrIntegrationInstanceNotFound
 		}
 		existingValue := found.Value()
 		existing := &existingValue
 
-		// existing.ProviderType is the stored value, not anything the caller
-		// named in this request. Its provider missing from the registry is a
-		// deployment wiring bug, not a bad request.
 		prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
 		if provErr != nil {
 			return fmt.Errorf("update instance: %w", provErr)
@@ -625,9 +596,6 @@ func (s *integrationService) DeleteInstance(
 			Msg("failed to find instance for deletion")
 		return findErr
 	}
-	// FindByID is tenant-scoped only; scope by the route's product_id too so
-	// an id belonging to a different product answers 404 instead of letting
-	// this product's caller delete it.
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 		return ErrIntegrationInstanceNotFound
 	}
@@ -1449,10 +1417,6 @@ func (s *integrationService) resolveWebhookTarget(
 	logger zerolog.Logger,
 	input integration.IngestWebhookInput,
 ) (provider.WebhookIngestor, *integration.Instance, error) {
-	// input.ProviderType is validated against the IntegrationProviderType enum
-	// at the transport boundary, so it can only ever be a value the registry
-	// is meant to serve. Missing here is a deployment wiring bug, not
-	// something this specific request's caller could have influenced.
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
 		logger.Warn().Msg("provider not registered")

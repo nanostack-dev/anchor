@@ -407,9 +407,6 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundPermission.IsAbsent() {
-		// input.PermissionName is unassignPermissionFromProductRole's
-		// permission_id path segment, not a body-supplied list, so this
-		// answers 404, unlike the permissionsValidation bulk check below.
 		return role.ProductRole{}, NewProductRoleResourcePermissionNotFoundError(
 			input.ProductID, input.PermissionName,
 		)

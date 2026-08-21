@@ -341,9 +341,6 @@ func (s *organizationMembershipService) SearchMembers(
 	return result, nil
 }
 
-// validateProductUser checks that the product user named in the request body
-// exists within the given product. The product itself is verified by the
-// auth middleware, and the organization is verified by ensureOrganizationExists.
 func (s *organizationMembershipService) validateProductUser(
 	ctx context.Context,
 	productID string,
@@ -386,11 +383,6 @@ func (s *organizationMembershipService) validateRole(
 	return nil
 }
 
-// ensureOrganizationExists verifies organization_id, which AddMember reads
-// from the path, before the insert. organization_memberships.organization_id
-// carries a foreign key to organizations, so without this guard an absent
-// organization surfaces as a raw constraint violation instead of a modelled
-// 404.
 func (s *organizationMembershipService) ensureOrganizationExists(
 	ctx context.Context,
 	productID string,

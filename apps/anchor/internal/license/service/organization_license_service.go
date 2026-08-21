@@ -31,10 +31,6 @@ var (
 		"ORGANIZATION_LICENSE_NOT_FOUND",
 		"This organization has no license",
 	)
-	// ErrOrganizationLicenseAlreadyExists refuses a second Instantiate. Current
-	// state (already licensed) refuses the request, and adjusting or removing
-	// the existing license is the later request that lets a retry succeed, so
-	// this is a 409, not a 400.
 	ErrOrganizationLicenseAlreadyExists = fault.Conflict(
 		"ORGANIZATION_LICENSE_EXISTS",
 		"This organization already has a license; adjust it instead",
@@ -137,9 +133,6 @@ func (s *organizationLicenseService) Instantiate(
 			return templateErr
 		}
 		if template == nil {
-			// in.TemplateID is a body field (template_id on
-			// OrganizationLicenseInstantiateRequest), not the path — a 400, not
-			// the 404 the template route answers.
 			return ErrLicenseTemplateNotFoundInRequest(in.TemplateID)
 		}
 		// A withdrawn tier cannot be sold to anyone else. The organizations

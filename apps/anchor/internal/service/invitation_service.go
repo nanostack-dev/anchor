@@ -74,9 +74,6 @@ func (s *invitationService) CreateInvitation(
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
 			Msg("user already exists")
-		// A uniqueness collision: this address already has a user account.
-		// Inviting a different address succeeds, so this is a conflict, not a
-		// bad request.
 		return invitation.PlatformInvitation{}, fault.Conflict(
 			"INVITATION_USER_ALREADY_EXISTS",
 			"This email address already has a user account. "+

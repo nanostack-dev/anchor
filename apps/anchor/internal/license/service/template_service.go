@@ -22,33 +22,16 @@ import (
 const licenseTemplateNameConstraint = "uq_license_templates_product_name_active"
 
 var (
-	// ErrLicenseTemplateNotFound answers a template_id the path itself names:
-	// GetTemplate, UpdateTemplate, ArchiveTemplate, DeleteTemplate. For a
-	// template_id read from a request body instead, use
-	// ErrLicenseTemplateNotFoundInRequest.
 	ErrLicenseTemplateNotFound = fault.NotFound(
 		"LICENSE_TEMPLATE_NOT_FOUND",
 		"This product has no license template with that identifier",
 	)
-	// ErrLicenseTemplateArchived refuses to act on a withdrawn tier. The
-	// template still resolves — this is state refusing the request, not an
-	// absent or malformed identifier — and un-archiving it is the later,
-	// different request that lets the same call succeed, which is a 409, not
-	// a 400.
 	ErrLicenseTemplateArchived = fault.Conflict(
 		"LICENSE_TEMPLATE_ARCHIVED",
 		"This license template is archived; the tier is no longer offered",
 	)
 )
 
-// ErrLicenseTemplateNotFoundInRequest answers a template_id read from a
-// request body: OrganizationLicenseInstantiateRequest.template_id and
-// OrganizationLicenseMigrationRequest.template_id. Not the 404
-// ErrLicenseTemplateNotFound answers, because the path these calls address —
-// the organization's license, or the migration run — exists; only the
-// supplied template_id fails to resolve. Mirrors
-// NewOrganizationLicenseTemplateNotFoundError in internal/service/errors.go,
-// the same rule applied to organization creation's embedded template_id.
 func ErrLicenseTemplateNotFoundInRequest(templateID string) *fault.Error {
 	return fault.BadRequest(
 		"LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST",
@@ -59,10 +42,7 @@ func ErrLicenseTemplateNotFoundInRequest(templateID string) *fault.Error {
 }
 
 // errLicenseTemplateInUse refuses to delete a template an Organization license
-// still names. Current state refuses the delete, and archiving the license
-// away (or the template) is the later request that lets it succeed, so this
-// is a 409, not a 400. Archive is the withdrawal that stays available once
-// this fires. See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+// still names. Archive is the withdrawal that stays available.
 func errLicenseTemplateInUse(licenseCount int) *fault.Error {
 	return fault.Conflict(
 		"LICENSE_TEMPLATE_IN_USE",
@@ -73,14 +53,6 @@ func errLicenseTemplateInUse(licenseCount int) *fault.Error {
 	)
 }
 
-// errLicenseTemplateNameExists reports a name already taken within the
-// Product. A 409: archiving or renaming the template holding the name is the
-// later request that frees it, the same shape as a uniqueness rule.
-//
-// Field names the request member a form has to highlight, which here is the
-// template's own "name" input. The schema validation errors put a license field
-// name there for the same reason — Field is what the operator edits, never the
-// value they typed.
 func errLicenseTemplateNameExists(name string) *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
 		Code:    "LICENSE_TEMPLATE_NAME_EXISTS",

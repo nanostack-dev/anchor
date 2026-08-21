@@ -2,7 +2,6 @@ package ct_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -23,14 +22,10 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		payload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "John", "Doe")
 
 		resp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
-		// A freshly created instance is still CONFIGURING. That state can
-		// change without a new request shape (configuration finishes), so
-		// this is 409, not 400.
 		assert.Equal(t, http.StatusConflict, resp.StatusCode())
-		var errResp ct.ApiErrorResponse
-		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
-		require.Len(t, errResp.Errors, 1)
-		assert.Equal(t, "INTEGRATION_INSTANCE_CONFIGURING", errResp.Errors[0].Code)
+		require.NotNil(t, resp.JSON409)
+		require.Len(t, resp.JSON409.Errors, 1)
+		assert.Equal(t, "INTEGRATION_INSTANCE_CONFIGURING", resp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("ConfiguredSecretAndActiveStatusProcessWebhook", func(t *testing.T) {
@@ -75,13 +70,10 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		payload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "John", "Doe")
 
 		resp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
-		// Disabling is reversible: enabling the instance again lets a later
-		// request succeed, so this is 409, not 400.
 		assert.Equal(t, http.StatusConflict, resp.StatusCode())
-		var errResp ct.ApiErrorResponse
-		require.NoError(t, json.Unmarshal(resp.Body, &errResp))
-		require.Len(t, errResp.Errors, 1)
-		assert.Equal(t, "INTEGRATION_INSTANCE_DISABLED", errResp.Errors[0].Code)
+		require.NotNil(t, resp.JSON409)
+		require.Len(t, resp.JSON409.Errors, 1)
+		assert.Equal(t, "INTEGRATION_INSTANCE_DISABLED", resp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("EnableFlagPromotesInactiveToActive", func(t *testing.T) {

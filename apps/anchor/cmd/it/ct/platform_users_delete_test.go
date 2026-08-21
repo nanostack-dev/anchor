@@ -109,10 +109,6 @@ func TestDeletePlatformUser(t *testing.T) {
 				ctx, ownerUserID,
 			)
 			require.NoError(t, err, "delete self request should not error")
-			// SELF_DELETION_NOT_ALLOWED is a permission decision, not a
-			// conflict: no later request makes this one succeed. The caller
-			// authenticated and may delete platform users, and is not
-			// permitted to delete this one.
 			assert.Equal(
 				t,
 				http.StatusForbidden, resp.StatusCode(),

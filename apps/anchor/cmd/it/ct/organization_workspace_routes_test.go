@@ -119,11 +119,12 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusConflict, duplicateResp.StatusCode())
+		require.NotNil(t, duplicateResp.JSON409)
 
 		var duplicateErr ct.ApiErrorResponse
 		require.NoError(t, json.Unmarshal(duplicateResp.Body, &duplicateErr))
-		require.NotEmpty(t, duplicateErr.Errors)
-		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateErr.Errors[0].Code)
+		require.NotEmpty(t, duplicateResp.JSON409.Errors)
+		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateResp.JSON409.Errors[0].Code)
 
 		otherOrganization := productCtx.CreateOrganization(
 			t,
@@ -166,11 +167,12 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusConflict, updateResp.StatusCode())
+		require.NotNil(t, updateResp.JSON409)
 
 		var updateErr ct.ApiErrorResponse
 		require.NoError(t, json.Unmarshal(updateResp.Body, &updateErr))
-		require.NotEmpty(t, updateErr.Errors)
-		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", updateErr.Errors[0].Code)
+		require.NotEmpty(t, updateResp.JSON409.Errors)
+		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", updateResp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("WorkspaceIsolationByOrganizationAndProduct", func(t *testing.T) {
