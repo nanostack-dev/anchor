@@ -55,11 +55,12 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		)
 		require.NoError(t, dupErr)
 		require.Equal(t, http.StatusConflict, dupResp.StatusCode())
+		require.NotNil(t, dupResp.JSON409)
 
 		var errResp ct.ApiErrorResponse
 		require.NoError(t, json.Unmarshal(dupResp.Body, &errResp))
-		require.NotEmpty(t, errResp.Errors)
-		assert.Equal(t, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS", errResp.Errors[0].Code)
+		require.NotEmpty(t, dupResp.JSON409.Errors)
+		assert.Equal(t, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS", dupResp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("AddMemberWithNonExistentProductUserReturnsNotFound", func(t *testing.T) {
@@ -73,13 +74,29 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			},
 		)
 		require.NoError(t, addErr)
-		// Previously this hit a FK violation and returned 500.
-		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
+		assert.Equal(t, http.StatusBadRequest, addResp.StatusCode())
+		require.NotNil(t, addResp.JSON400)
 
 		var errResp ct.ApiErrorResponse
 		require.NoError(t, json.Unmarshal(addResp.Body, &errResp))
-		require.NotEmpty(t, errResp.Errors)
-		assert.Equal(t, "PRODUCT_USER_NOT_FOUND", errResp.Errors[0].Code)
+		require.NotEmpty(t, addResp.JSON400.Errors)
+		assert.Equal(t, "PRODUCT_USER_NOT_FOUND_IN_REQUEST", addResp.JSON400.Errors[0].Code)
+	})
+
+	t.Run("AddMemberWithNonExistentOrganizationReturnsNotFound", func(t *testing.T) {
+		productUser := createDSLProductUser(t, productCtx)
+
+		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
+			ctx,
+			productCtx.ProductID,
+			ids.MustNew("org"),
+			ct.AddOrganizationMemberJSONRequestBody{
+				ProductUserId: productUser.ID,
+				RoleId:        role.ID,
+			},
+		)
+		require.NoError(t, addErr)
+		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
 	})
 
 	t.Run("SearchMembersByExternalID", func(t *testing.T) {

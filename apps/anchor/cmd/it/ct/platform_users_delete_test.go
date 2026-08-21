@@ -111,7 +111,7 @@ func TestDeletePlatformUser(t *testing.T) {
 			require.NoError(t, err, "delete self request should not error")
 			assert.Equal(
 				t,
-				http.StatusBadRequest, resp.StatusCode(),
+				http.StatusForbidden, resp.StatusCode(),
 			)
 		},
 	)

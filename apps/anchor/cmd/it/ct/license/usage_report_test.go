@@ -225,7 +225,7 @@ func TestReportUsage(t *testing.T) {
 			context.Background(), tc.product.ProductID, organizationID, gauge("flows", 37),
 		)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	})
 }
 

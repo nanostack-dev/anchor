@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"math/big"
@@ -19,7 +20,6 @@ const (
 	DefaultProductAPIKeyPrefix = "anchor_prd_apikey_"
 	//nolint:gosec //only prefix
 	DefaultOrganizationAPIKeyPrefix = "anchor_org_apikey_"
-	httpStatusForbidden             = 403
 	apiKeyByteLength                = 48
 	minKeyLength                    = 12
 	crc32ChecksumLength             = 8
@@ -42,19 +42,14 @@ const (
 func GetCurrentUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(currentUserIDKey)
 	if value == nil {
-		return "", fault.NewWithStatus(
+		return "", fault.Unauthorized(
 			"UNAUTHORIZED_ACCESS",
-			"User authentication required",
-			httpStatusForbidden,
+			"The request has no authenticated user.",
 		)
 	}
 	userID, ok := value.(string)
 	if !ok {
-		return "", fault.NewWithStatus(
-			"INVALID_USER_CONTEXT",
-			"Invalid user context data",
-			httpStatusForbidden,
-		)
+		return "", errors.New("user context value is not a string")
 	}
 	return userID, nil
 }
@@ -63,19 +58,14 @@ func GetCurrentUserID(ctx context.Context) (string, error) {
 func GetTenantID(ctx context.Context) (string, error) {
 	value := ctx.Value(tenantIDKey)
 	if value == nil {
-		return "", fault.NewWithStatus(
+		return "", fault.Unauthorized(
 			"UNAUTHORIZED_ACCESS",
-			"Tenant authentication required",
-			httpStatusForbidden,
+			"The request has no authenticated tenant.",
 		)
 	}
 	tenantID, ok := value.(string)
 	if !ok {
-		return "", fault.NewWithStatus(
-			"INVALID_TENANT_CONTEXT",
-			"Invalid tenant context data",
-			httpStatusForbidden,
-		)
+		return "", errors.New("tenant context value is not a string")
 	}
 	return tenantID, nil
 }

@@ -130,9 +130,9 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 		ctx, testProduct.ProductID, input,
 	)
 	require.NoError(t, err, "request should not error")
-	itshared.AssertAnchorBadRequestError(
+	itshared.AssertAnchorConflictError(
 		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
-		"Resource permission with name 'file:duplicate' already exists", map[string]any{
+		"A resource permission with the name 'file:duplicate' already exists.", map[string]any{
 			"name": input.Name,
 		},
 	)
@@ -163,9 +163,9 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 		},
 	)
 	require.NoError(t, err, "request should not error")
-	itshared.AssertAnchorBadRequestError(
+	itshared.AssertAnchorConflictError(
 		t, resp2, "RESOURCE_PERMISSION_ALREADY_EXISTS",
-		"Resource permission with name '"+duplicateName+"' already exists", map[string]any{
+		"A resource permission with the name '"+duplicateName+"' already exists.", map[string]any{
 			"name": duplicateName,
 		},
 	)

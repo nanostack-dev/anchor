@@ -346,12 +346,20 @@ func (s *organizationService) CreateWithMember(
 	if len(existingMemberships) > 0 {
 		existing := existingMemberships[0]
 
+		// Below, the organization and membership are re-read by an id this call
+		// never named; both came off existingMemberships a moment ago. Neither
+		// caller input caused an absence here, so a miss is a server invariant,
+		// not a 404: see PublishTemplate's second guard in
+		// docs/engineering-best-practices.md.
 		foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
 		if errGetOrg != nil {
 			return organization.OrganizationWithMemberResult{}, errGetOrg
 		}
 		if foundOrg.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
+				"create-with-member: organization %s missing after membership lookup",
+				existing.OrganizationID,
+			)
 		}
 		org := foundOrg.ToPtr()
 
@@ -362,7 +370,10 @@ func (s *organizationService) CreateWithMember(
 			return organization.OrganizationWithMemberResult{}, errGetMembership
 		}
 		if foundMembership.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fault.ErrNotFound
+			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
+				"create-with-member: membership for product user %s in organization %s missing after lookup",
+				input.ProductUserID, existing.OrganizationID,
+			)
 		}
 		membership := foundMembership.ToPtr()
 
@@ -401,7 +412,7 @@ func (s *organizationService) CreateWithMember(
 			return lookupErr
 		}
 		if foundProductUser.IsAbsent() {
-			return fault.ErrNotFound
+			return newBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
 		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
@@ -417,7 +428,7 @@ func (s *organizationService) CreateWithMember(
 			return roleErr
 		}
 		if foundRole.IsAbsent() {
-			return NewRoleNotFoundError(input.RoleID)
+			return newBodyRoleNotFoundError(input.RoleID)
 		}
 
 		template, templateErr := s.resolveLicenseTemplate(
@@ -478,7 +489,13 @@ func (s *organizationService) CreateWithMember(
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("create-with-member lock was busy; concurrent request in progress")
-		return organization.OrganizationWithMemberResult{}, fault.ErrUnexpected
+		return organization.OrganizationWithMemberResult{}, fault.Conflict(
+			"ORGANIZATION_CREATE_WITH_MEMBER_BUSY",
+			"Another request is creating an organization for this product user. Try again.",
+		).Metadata(map[string]any{
+			"product_id":      input.ProductID,
+			"product_user_id": input.ProductUserID,
+		})
 	}
 
 	logger.Info().

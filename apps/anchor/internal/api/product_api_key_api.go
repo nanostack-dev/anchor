@@ -111,7 +111,9 @@ func (s *AnchorAPI) GetProductAPIKey(
 		return nil, err
 	}
 	if productAPIKey == nil {
-		return GetProductAPIKey404Response{}, nil
+		return GetProductAPIKey404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PRODUCT_A_P_I_KEY_NOT_FOUND", "Product A P I Key does not exist."),
+		)}, nil
 	}
 
 	response := mapProductAPIKeyToResponse(*productAPIKey)

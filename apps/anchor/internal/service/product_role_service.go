@@ -15,6 +15,20 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// NewProductRoleResourcePermissionNotFoundError reports a resource
+// permission named by its path segment (unassignPermissionFromProductRole's
+// permission_id) that does not exist. Distinct from
+// service.NewPermissionsNotFoundError's PERMISSIONS_NOT_FOUND, which answers
+// a body-supplied list of permission names as a 400: this identifier is
+// path-addressed, so it is a 404.
+func NewProductRoleResourcePermissionNotFoundError(productID, permissionName string) *fault.Error {
+	return fault.NotFound("RESOURCE_PERMISSION_NOT_FOUND", "Resource permission does not exist").
+		Metadata(map[string]any{
+			"product_id":      productID,
+			"permission_name": permissionName,
+		})
+}
+
 type ProductRoleService interface {
 	CreateProductRole(
 		ctx context.Context, input role.CreateProductRoleInput,
@@ -393,8 +407,8 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundPermission.IsAbsent() {
-		return role.ProductRole{}, NewPermissionsNotFoundError(
-			input.ProductID, []string{input.PermissionName},
+		return role.ProductRole{}, NewProductRoleResourcePermissionNotFoundError(
+			input.ProductID, input.PermissionName,
 		)
 	}
 	permissionFound := foundPermission.Value()

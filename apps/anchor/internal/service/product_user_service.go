@@ -31,7 +31,7 @@ type ProductUserService interface {
 	) (*user.OrganizationMembership, error)
 }
 
-var ErrProductUserEmailAlreadyExists = fault.BadRequest(
+var ErrProductUserEmailAlreadyExists = fault.Conflict(
 	"PRODUCT_USER_EMAIL_ALREADY_EXISTS",
 	"A product user with this email already exists in this product",
 )

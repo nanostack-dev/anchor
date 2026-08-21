@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -127,12 +126,10 @@ func (s *platformUserService) DeletePlatformUser(
 		return err
 	}
 
-	// Prevent self-deletion
 	if currentPlatformUser != nil && currentPlatformUser.ID == input.PlatformUserID {
-		return fault.NewWithStatus(
+		return fault.Forbidden(
 			"SELF_DELETION_NOT_ALLOWED",
-			"You cannot delete yourself",
-			http.StatusBadRequest,
+			"You cannot delete your own platform user account.",
 		)
 	}
 

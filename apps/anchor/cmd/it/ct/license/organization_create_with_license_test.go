@@ -188,9 +188,9 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 
 		resp := w.Organizations().CreateRaw(organizationBody(name, new(w.TemplateID())))
 
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 		assert.Zero(t, w.Organizations().CountNamed(name), "the organization was not rolled back")
 	})
 

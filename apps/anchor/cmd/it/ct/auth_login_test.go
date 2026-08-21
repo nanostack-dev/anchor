@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -10,6 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func decodeAPIError(t *testing.T, body []byte) ct.ApiErrorResponse {
+	t.Helper()
+	var errResp ct.ApiErrorResponse
+	require.NoError(t, json.Unmarshal(body, &errResp), "error body should decode")
+	require.NotEmpty(t, errResp.Errors, "error body should carry at least one error")
+	return errResp
+}
 
 func TestLogin(t *testing.T) {
 	assert.NotEmpty(t, testOwnerUser(t).Email)
@@ -42,10 +51,10 @@ func TestLogin(t *testing.T) {
 				context.Background(), loginReq,
 			)
 			require.NoError(t, err, "login request should not error")
-			assert.NotNil(t, resp.JSON400)
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
-			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", resp.JSON400.Errors[0].Code)
-			assert.Equal(t, "Email or password is incorrect", resp.JSON400.Errors[0].Message)
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+			errResp := decodeAPIError(t, resp.Body)
+			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", errResp.Errors[0].Code)
+			assert.Equal(t, "The email or the password is incorrect.", errResp.Errors[0].Message)
 		},
 	)
 
@@ -59,10 +68,10 @@ func TestLogin(t *testing.T) {
 				context.Background(), loginReq,
 			)
 			require.NoError(t, err, "login request should not error")
-			assert.NotNil(t, resp.JSON400)
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
-			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", resp.JSON400.Errors[0].Code)
-			assert.Equal(t, "Email or password is incorrect", resp.JSON400.Errors[0].Message)
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+			errResp := decodeAPIError(t, resp.Body)
+			assert.Equal(t, "EMAIL_OR_PASSWORD_INCORRECT", errResp.Errors[0].Code)
+			assert.Equal(t, "The email or the password is incorrect.", errResp.Errors[0].Message)
 		},
 	)
 

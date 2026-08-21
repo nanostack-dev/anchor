@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"net/http"
 	"time"
 
 	"anchor/internal/security"
@@ -295,11 +294,12 @@ func (s *productService) updateProductFields(
 func (s *productService) normalizeConfig(config product.Config) (product.Config, error) {
 	config = config.WithDefaults()
 	if !security.IsValidOrganizationAPIKeyRootPrefix(config.OrganizationAPIKeys.Prefix) {
-		return product.Config{}, fault.NewWithStatus(
+		return product.Config{}, fault.BadRequest(
 			"INVALID_PRODUCT_ORGANIZATION_API_KEY_PREFIX",
 			"Product organization API key prefix must be 2-32 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and underscores without ending in an underscore",
-			http.StatusBadRequest,
-		)
+		).Metadata(map[string]any{
+			"prefix": config.OrganizationAPIKeys.Prefix,
+		})
 	}
 
 	return config, nil

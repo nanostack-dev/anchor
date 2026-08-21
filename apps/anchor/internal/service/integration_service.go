@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -105,37 +104,31 @@ type IntegrationService interface {
 }
 
 var (
-	ErrIntegrationInstanceNotFound = fault.NewWithStatus(
+	ErrIntegrationInstanceNotFound = fault.NotFound(
 		"INTEGRATION_INSTANCE_NOT_FOUND",
 		"Integration instance not found",
-		http.StatusNotFound,
 	)
-	ErrIntegrationInstanceAlreadyExists = fault.BadRequest(
+	ErrIntegrationInstanceAlreadyExists = fault.Conflict(
 		"INTEGRATION_INSTANCE_ALREADY_EXISTS",
 		"An integration instance for this provider already exists on this product",
 	)
-	ErrIntegrationProviderNotRegistered = fault.BadRequest(
-		"INTEGRATION_PROVIDER_NOT_REGISTERED",
-		"The specified integration provider is not registered",
-	)
-	ErrIntegrationProviderNotWebhookIngestor = fault.BadRequest(
+	ErrIntegrationProviderNotWebhookIngestor = fault.NotFound(
 		"INTEGRATION_PROVIDER_NOT_WEBHOOK_INGESTOR",
 		"The specified integration provider does not accept inbound webhooks",
 	)
-	ErrIntegrationWebhookValidationFailed = fault.NewWithStatus(
+	ErrIntegrationWebhookValidationFailed = fault.Unauthorized(
 		"INTEGRATION_WEBHOOK_VALIDATION_FAILED",
 		"Webhook signature validation failed",
-		http.StatusUnauthorized,
 	)
-	ErrIntegrationInstanceDisabled = fault.BadRequest(
+	ErrIntegrationInstanceDisabled = fault.Conflict(
 		"INTEGRATION_INSTANCE_DISABLED",
 		"The integration instance is disabled",
 	)
-	ErrIntegrationInstanceConfiguring = fault.BadRequest(
+	ErrIntegrationInstanceConfiguring = fault.Conflict(
 		"INTEGRATION_INSTANCE_CONFIGURING",
 		"The integration instance is still configuring",
 	)
-	ErrIntegrationInstanceUnhealthy = fault.BadRequest(
+	ErrIntegrationInstanceUnhealthy = fault.Conflict(
 		"INTEGRATION_INSTANCE_UNHEALTHY",
 		"The integration instance is not ready to process webhook events",
 	)
@@ -143,10 +136,9 @@ var (
 		"INTEGRATION_WEBHOOK_SECRET_REQUIRED",
 		"Webhook secret is required when integration instance is active",
 	)
-	ErrIntegrationWebhookEventIDMissing = fault.NewWithStatus(
+	ErrIntegrationWebhookEventIDMissing = fault.BadRequest(
 		"INTEGRATION_WEBHOOK_EVENT_ID_MISSING",
 		"Webhook event id header is required",
-		http.StatusUnauthorized,
 	)
 )
 
@@ -207,13 +199,12 @@ func (s *integrationService) CreateInstance(
 		return integration.Instance{}, valErr
 	}
 
-	// Verify provider is registered.
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
 		logger.Warn().
 			Str(fieldProviderTypeKey, string(input.ProviderType)).
 			Msg("provider not registered")
-		return integration.Instance{}, ErrIntegrationProviderNotRegistered
+		return integration.Instance{}, fmt.Errorf("create instance: %w", provErr)
 	}
 
 	// Validate config if supplied.
@@ -349,7 +340,7 @@ func (s *integrationService) GetInstance(
 			Msg("failed to find instance")
 		return nil, findErr
 	}
-	if found.IsAbsent() {
+	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 		return nil, ErrIntegrationInstanceNotFound
 	}
 
@@ -381,7 +372,7 @@ func (s *integrationService) UpdateInstance(
 				Msg("failed to find instance for update")
 			return findErr
 		}
-		if found.IsAbsent() {
+		if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 			return ErrIntegrationInstanceNotFound
 		}
 		existingValue := found.Value()
@@ -389,7 +380,7 @@ func (s *integrationService) UpdateInstance(
 
 		prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
 		if provErr != nil {
-			return ErrIntegrationProviderNotRegistered
+			return fmt.Errorf("update instance: %w", provErr)
 		}
 
 		hadClerkAPIKey = hasClerkAPIKey(existing.ConfigJSON)
@@ -605,7 +596,7 @@ func (s *integrationService) DeleteInstance(
 			Msg("failed to find instance for deletion")
 		return findErr
 	}
-	if found.IsAbsent() {
+	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
 		return ErrIntegrationInstanceNotFound
 	}
 	existing := found.Value()
@@ -1429,7 +1420,7 @@ func (s *integrationService) resolveWebhookTarget(
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
 		logger.Warn().Msg("provider not registered")
-		return nil, nil, ErrIntegrationProviderNotRegistered
+		return nil, nil, fmt.Errorf("ingest webhook: %w", provErr)
 	}
 
 	webhookProv, ok := prov.(provider.WebhookIngestor)

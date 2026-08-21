@@ -109,7 +109,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for invalid API key")
-			assert.Contains(t, err.Error(), "Product API key is invalid")
+			assert.Contains(t, err.Error(), "The product API key is invalid.")
 		},
 	)
 	t.Run(
@@ -129,7 +129,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for API key with extra scopes")
-			assert.Contains(t, err.Error(), "Product API key does not have sufficient permissions")
+			assert.Contains(t, err.Error(), "The product API key does not have sufficient permissions.")
 			var apiErr *fault.Error
 			require.ErrorAs(t, err, &apiErr)
 			assert.Equal(
@@ -179,7 +179,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for empty API key")
-			assert.Contains(t, err.Error(), "Product API key is invalid")
+			assert.Contains(t, err.Error(), "The product API key is invalid.")
 		},
 	)
 	t.Run(
@@ -200,7 +200,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for wrong product Name")
-			assert.Contains(t, err.Error(), "Product API key is invalid")
+			assert.Contains(t, err.Error(), "The product API key is invalid.")
 		},
 	)
 	t.Run(
@@ -220,7 +220,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for deactivated API key")
-			assert.Contains(t, err.Error(), "Product API key is inactive")
+			assert.Contains(t, err.Error(), "The product API key is inactive.")
 		},
 	)
 	t.Run(
@@ -260,7 +260,7 @@ func TestApiKeyValidation(t *testing.T) {
 				},
 			)
 			require.Error(t, err, "Expected error for case mismatch in scopes")
-			assert.Contains(t, err.Error(), "Product API key does not have sufficient permissions")
+			assert.Contains(t, err.Error(), "The product API key does not have sufficient permissions.")
 		},
 	)
 }

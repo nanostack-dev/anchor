@@ -87,7 +87,9 @@ func (s *AnchorAPI) GetPlatformUser(
 	}
 
 	if user == nil {
-		return GetPlatformUser404Response{}, nil
+		return GetPlatformUser404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PLATFORM_USER_NOT_FOUND", "Platform User does not exist."),
+		)}, nil
 	}
 
 	return GetPlatformUser200JSONResponse(

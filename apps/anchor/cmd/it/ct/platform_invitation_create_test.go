@@ -47,7 +47,7 @@ func TestCreatePlatformInvitation(t *testing.T) {
 				context.Background(), inviteReq,
 			)
 			require.NoError(t, err, "second invitation should not error")
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+			assert.Equal(t, http.StatusConflict, resp.StatusCode())
 		},
 	)
 }

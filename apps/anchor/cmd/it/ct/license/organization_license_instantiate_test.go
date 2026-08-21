@@ -44,16 +44,18 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().InstantiateRaw(w.TemplateID())
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "ORGANIZATION_LICENSE_EXISTS")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "ORGANIZATION_LICENSE_EXISTS")
 	})
 
-	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
+	t.Run("400 when the product has no template with that identifier", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().InstantiateRaw(missingTemplateID())
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST")
 	})
 
 	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {

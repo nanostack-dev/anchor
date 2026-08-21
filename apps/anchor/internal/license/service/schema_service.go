@@ -28,14 +28,21 @@ import (
 const licenseSchemaProductConstraint = "license_schemas_product_id_key"
 
 var (
-	ErrLicenseSchemaNotFound = fault.NewWithStatus(
+	// ErrLicenseSchemaNotFound is for the schema's own route, where the path
+	// names it. Reached indirectly, use ErrLicenseSchemaNotDeclared.
+	ErrLicenseSchemaNotFound = fault.NotFound(
 		"LICENSE_SCHEMA_NOT_FOUND",
 		"This product has not declared a license schema",
-		http.StatusNotFound,
 	)
-	ErrLicenseSchemaAlreadyExists = fault.BadRequest(
+	ErrLicenseSchemaAlreadyExists = fault.Conflict(
 		"LICENSE_SCHEMA_EXISTS",
 		"This product has already declared a license schema; update it instead",
+	)
+	// ErrLicenseSchemaNotDeclared is for the calls that never name the schema
+	// — template create/update, instantiate/adjust, usage report.
+	ErrLicenseSchemaNotDeclared = fault.Conflict(
+		"LICENSE_SCHEMA_NOT_DECLARED",
+		"This product has not declared a license schema",
 	)
 )
 

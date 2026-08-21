@@ -142,12 +142,12 @@ func TestProductCreate(t *testing.T) {
 			assert.NotNil(t, duplicateResp, "response should not be nil")
 			require.NoError(t, err, "create duplicate product request should not error")
 			assert.Equal(
-				t, 400, duplicateResp.StatusCode(),
-				"create duplicate product should return 400 Bad Request",
+				t, 409, duplicateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409",
 			)
-			assert.Contains(t, duplicateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
+			assert.Contains(t, duplicateResp.JSON409.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
 			assert.Contains(
-				t, duplicateResp.JSON400.Errors[0].Message,
+				t, duplicateResp.JSON409.Errors[0].Message,
 				"A product with this name already exists in your tenant",
 			)
 		},
@@ -175,8 +175,9 @@ func TestProductCreate(t *testing.T) {
 				},
 			)
 			require.NoError(t, err, "create duplicate product request should not error")
-			assert.Equal(t, http.StatusBadRequest, duplicateResp.StatusCode())
-			assert.Contains(t, duplicateResp.JSON400.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
+			assert.Equal(t, http.StatusConflict, duplicateResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
+			assert.Contains(t, duplicateResp.JSON409.Errors[0].Code, "PRODUCT_ALREADY_EXISTS")
 		},
 	)
 }

@@ -135,10 +135,12 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 				ctx, productID, roleID, nonexistentPermission,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, 400, unassignResp.StatusCode())
-			assert.Contains(t, unassignResp.JSON400.Errors[0].Code, "PERMISSIONS_NOT_FOUND")
+			assert.Equal(t, http.StatusNotFound, unassignResp.StatusCode())
+			require.NotNil(t, unassignResp.JSON404)
+			require.NotEmpty(t, unassignResp.JSON404.Errors)
+			assert.Contains(t, unassignResp.JSON404.Errors[0].Code, "RESOURCE_PERMISSION_NOT_FOUND")
 			assert.Contains(
-				t, unassignResp.JSON400.Errors[0].Message, "Product permission does not exist",
+				t, unassignResp.JSON404.Errors[0].Message, "Resource permission does not exist",
 			)
 		},
 	)

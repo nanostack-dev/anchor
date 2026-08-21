@@ -57,7 +57,9 @@ func (s *AnchorAPI) GetLicenseSchema(
 		return nil, err
 	}
 	if schema == nil {
-		return GetLicenseSchema404Response{}, nil
+		return GetLicenseSchema404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("LICENSE_SCHEMA_NOT_FOUND", "License Schema does not exist."),
+		)}, nil
 	}
 	return GetLicenseSchema200JSONResponse(mapLicenseSchemaToResponse(*schema)), nil
 }

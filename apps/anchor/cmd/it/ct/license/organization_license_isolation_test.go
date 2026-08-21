@@ -77,9 +77,9 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 		w.Template().Archive()
 
 		resp := newcomer.InstantiateRaw(w.TemplateID())
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 
 		// The organization already on it keeps what it holds.
 		assertValues(t, w.License().Get().Values, validTemplateValues())

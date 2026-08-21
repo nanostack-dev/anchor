@@ -130,9 +130,9 @@ func TestLicenseTemplateValidation(t *testing.T) {
 
 		resp, err := createTemplateRaw(t, tc, "Pro", validTemplateValues())
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertFieldError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertFieldError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
 	t.Run("refuses a template for a product with no license schema", func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 
 		resp, err := createTemplateRaw(t, tc, uniqueTemplateName(), ct.LicenseTemplateValues{})
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("accepts a template setting nothing when the schema declares nothing", func(t *testing.T) {
@@ -223,9 +223,9 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 			ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Pro")},
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertFieldError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertFieldError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
 	t.Run("accepts renaming a template to the name it already has", func(t *testing.T) {

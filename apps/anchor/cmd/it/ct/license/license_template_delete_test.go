@@ -67,9 +67,9 @@ func TestLicenseTemplateDelete(t *testing.T) {
 			context.Background(), w.productID(), w.TemplateID(),
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_IN_USE")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_IN_USE")
 
 		// The refused write left the row untouched, and the organization's
 		// license — which names this template as the statement of what it was

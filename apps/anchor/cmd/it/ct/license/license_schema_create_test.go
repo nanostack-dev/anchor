@@ -117,9 +117,9 @@ func TestLicenseSchemaCreate(t *testing.T) {
 
 		second, err := client.CreateLicenseSchemaWithResponse(context.Background(), tc.product.ProductID, body)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, second.StatusCode(), string(second.Body))
-		require.NotNil(t, second.JSON400)
-		assertAPIError(t, second.JSON400.Errors, "LICENSE_SCHEMA_EXISTS")
+		require.Equal(t, http.StatusConflict, second.StatusCode(), string(second.Body))
+		require.NotNil(t, second.JSON409)
+		assertAPIError(t, second.JSON409.Errors, "LICENSE_SCHEMA_EXISTS")
 	})
 
 	t.Run("schemas are scoped to their own product", func(t *testing.T) {

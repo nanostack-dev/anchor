@@ -162,14 +162,15 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			require.Equal(t, http.StatusBadRequest, dupResp.StatusCode())
-			if assert.NotNil(t, dupResp.JSON400) {
+			require.Equal(t, http.StatusConflict, dupResp.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
+			if assert.NotNil(t, dupResp.JSON409) {
 				AssertAPIError(
 					t,
-					dupResp.JSON400.Errors,
+					dupResp.JSON409.Errors,
 					ct.ApiError{
 						Code:    "ORGANIZATION_API_KEY_NAME_DUPLICATE",
-						Message: "Organization API key with this name already exists in the organization",
+						Message: "An organization API key with this name already exists in the organization.",
 					},
 				)
 			}
@@ -200,7 +201,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 					resp.JSON400.Errors,
 					ct.ApiError{
 						Code:    "ORGANIZATION_API_KEY_EXPIRES_AT_IN_PAST",
-						Message: "Organization API key expiration date must be in the future",
+						Message: "The organization API key expiration date must be in the future.",
 					},
 				)
 			}

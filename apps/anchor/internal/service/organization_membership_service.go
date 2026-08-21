@@ -6,9 +6,38 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/repository"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 )
+
+// newBodyProductUserNotFoundError answers a product_user_id supplied in a
+// request body that does not resolve. Distinct from errors.go's
+// NewProductUserNotFoundError (404), which is correct only where the caller
+// names product_user_id in the path. The code differs too: one code at two
+// statuses breaks a client that switches on code alone.
+func newBodyProductUserNotFoundError(productUserID string) *fault.Error {
+	return fault.BadRequest(
+		"PRODUCT_USER_NOT_FOUND_IN_REQUEST",
+		"This product has no product user with that identifier.",
+	).Metadata(map[string]any{
+		"product_user_id": productUserID,
+	})
+}
+
+// newBodyRoleNotFoundError answers a role_id supplied in a request body that
+// does not resolve. Distinct from errors.go's NewRoleNotFoundError (404),
+// which stays correct for product_role_service.go, where role_id is a path
+// parameter. The code differs too: one code at two statuses breaks a client
+// that switches on code alone.
+func newBodyRoleNotFoundError(roleID string) *fault.Error {
+	return fault.BadRequest(
+		"ROLE_NOT_FOUND_IN_REQUEST",
+		"This product has no role with that identifier.",
+	).Metadata(map[string]any{
+		"role_id": roleID,
+	})
+}
 
 // OrganizationMembershipService manages membership operations from the org perspective.
 type OrganizationMembershipService interface {
@@ -27,6 +56,7 @@ type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
+	organizationRepo  repository.OrganizationRepository
 	logger            zerolog.Logger
 }
 
@@ -34,12 +64,14 @@ func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
+	organizationRepo repository.OrganizationRepository,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
+		organizationRepo:  organizationRepo,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
 	}
 }
@@ -50,6 +82,10 @@ func (s *organizationMembershipService) AddMember(
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
 	if err := validateStruct(input); err != nil {
+		return organization.Membership{}, err
+	}
+
+	if err := s.ensureOrganizationExists(ctx, input.ProductID, input.OrganizationID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -305,9 +341,6 @@ func (s *organizationMembershipService) SearchMembers(
 	return result, nil
 }
 
-// validateRole checks that the role exists within the given product.
-// The product itself is verified by the auth middleware, and the org/user are
-// validated implicitly by the membership repo queries that follow.
 func (s *organizationMembershipService) validateProductUser(
 	ctx context.Context,
 	productID string,
@@ -323,7 +356,7 @@ func (s *organizationMembershipService) validateProductUser(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewProductUserNotFoundError(productUserID)
+		return newBodyProductUserNotFoundError(productUserID)
 	}
 
 	return nil
@@ -344,7 +377,28 @@ func (s *organizationMembershipService) validateRole(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewRoleNotFoundError(roleID)
+		return newBodyRoleNotFoundError(roleID)
+	}
+
+	return nil
+}
+
+func (s *organizationMembershipService) ensureOrganizationExists(
+	ctx context.Context,
+	productID string,
+	organizationID string,
+	logger zerolog.Logger,
+) error {
+	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", productID).
+			Str("organization_id", organizationID).
+			Msg("failed to verify organization exists")
+		return err
+	}
+	if found.IsAbsent() {
+		return fault.ErrNotFound
 	}
 
 	return nil

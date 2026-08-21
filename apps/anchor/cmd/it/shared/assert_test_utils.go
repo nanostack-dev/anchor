@@ -29,7 +29,7 @@ func AssertProductAPIKeyInsufficientPermissions(
 		expectedResponse := &anchorClient.ApiErrorResponse{
 			Errors: []anchorClient.ApiError{{
 				Code:    "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS",
-				Message: "Product API key does not have sufficient permissions",
+				Message: "The product API key does not have sufficient permissions.",
 				Metadata: &map[string]any{
 					"api_key_id":      apiKeyID,
 					"required_scopes": convertToInterfaceSlice(requiredScopes),
@@ -51,7 +51,7 @@ func AssertAnchorBadRequestError(
 	details map[string]any,
 ) {
 	statusCode := getStatusCode(response)
-	json400 := getJSON400(response)
+	json400 := getJSONBody(response, "JSON400")
 	assert.Equal(
 		t, http.StatusBadRequest, statusCode, "should return 400 Bad Request for validation errors",
 	)
@@ -65,6 +65,30 @@ func AssertAnchorBadRequestError(
 			}},
 		}
 		assert.Equal(t, expectedResponse, json400)
+	}
+}
+
+func AssertAnchorConflictError(
+	t *testing.T,
+	response any,
+	code string,
+	message string,
+	details map[string]any,
+) {
+	t.Helper()
+	statusCode := getStatusCode(response)
+	json409 := getJSONBody(response, "JSON409")
+	assert.Equal(t, http.StatusConflict, statusCode, "a uniqueness collision is a 409")
+	if assert.NotNil(t, json409, "409 response should not be nil") {
+		expectedResponse := &anchorClient.ApiErrorResponse{
+			Errors: []anchorClient.ApiError{{
+				Code:     code,
+				Message:  message,
+				Metadata: &details,
+				Field:    nil,
+			}},
+		}
+		assert.Equal(t, expectedResponse, json409)
 	}
 }
 
@@ -97,7 +121,7 @@ func getJSON403(response any) *anchorClient.ApiErrorResponse {
 	return nil
 }
 
-func getJSON400(response any) *anchorClient.ApiErrorResponse {
+func getJSONBody(response any, field string) *anchorClient.ApiErrorResponse {
 	value := reflect.ValueOf(response)
 
 	if value.Kind() == reflect.Pointer {
@@ -108,7 +132,7 @@ func getJSON400(response any) *anchorClient.ApiErrorResponse {
 	}
 
 	if value.Kind() == reflect.Struct {
-		json400Field := value.FieldByName("JSON400")
+		json400Field := value.FieldByName(field)
 		if json400Field.IsValid() && !json400Field.IsNil() {
 			if apiErrorResp, ok := reflect.TypeAssert[*anchorClient.ApiErrorResponse](json400Field); ok {
 				return apiErrorResp

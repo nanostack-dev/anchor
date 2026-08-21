@@ -22,7 +22,10 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		payload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "John", "Doe")
 
 		resp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
+		require.NotNil(t, resp.JSON409)
+		require.Len(t, resp.JSON409.Errors, 1)
+		assert.Equal(t, "INTEGRATION_INSTANCE_CONFIGURING", resp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("ConfiguredSecretAndActiveStatusProcessWebhook", func(t *testing.T) {
@@ -67,7 +70,10 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		payload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "John", "Doe")
 
 		resp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
+		require.NotNil(t, resp.JSON409)
+		require.Len(t, resp.JSON409.Errors, 1)
+		assert.Equal(t, "INTEGRATION_INSTANCE_DISABLED", resp.JSON409.Errors[0].Code)
 	})
 
 	t.Run("EnableFlagPromotesInactiveToActive", func(t *testing.T) {

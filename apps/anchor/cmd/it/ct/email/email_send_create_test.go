@@ -180,13 +180,13 @@ func TestEmailSendCreate(t *testing.T) {
 			},
 		)
 		require.NoError(t, sendErr)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
-		require.NotNil(t, resp.JSON400)
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
+		require.NotNil(t, resp.JSON409)
 		assertAPIError(
 			t,
-			resp.JSON400.Errors,
+			resp.JSON409.Errors,
 			"EMAIL_TEMPLATE_NOT_PUBLISHED",
-			"This template has no published version; publish it before sending",
+			"This template has no published version. Publish the template before you send with it.",
 		)
 	})
 }

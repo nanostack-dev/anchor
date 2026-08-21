@@ -53,11 +53,11 @@ func TestEmailTemplateCreate(t *testing.T) {
 		body.Name = "Second"
 		second, err := client.CreateEmailTemplateWithResponse(context.Background(), tc.product.ProductID, body)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, second.StatusCode())
-		require.NotNil(t, second.JSON400)
+		require.Equal(t, http.StatusConflict, second.StatusCode())
+		require.NotNil(t, second.JSON409)
 		assertAPIError(
 			t,
-			second.JSON400.Errors,
+			second.JSON409.Errors,
 			"EMAIL_TEMPLATE_SLUG_TAKEN",
 			"An email template with this slug already exists for the product",
 		)

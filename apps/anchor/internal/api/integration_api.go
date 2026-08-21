@@ -236,7 +236,9 @@ func (s *AnchorAPI) GetIntegrationInstance(
 	}
 
 	if instance == nil {
-		return GetIntegrationInstance404Response{}, nil
+		return GetIntegrationInstance404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("INTEGRATION_INSTANCE_NOT_FOUND", "Integration Instance does not exist."),
+		)}, nil
 	}
 
 	return GetIntegrationInstance200JSONResponse(mapInstanceToResponse(*instance)), nil

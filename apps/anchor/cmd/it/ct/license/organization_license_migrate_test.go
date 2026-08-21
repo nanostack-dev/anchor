@@ -418,24 +418,26 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assert.Equal(t, 1, migration.Changed)
 	})
 
-	t.Run("400 when the target template is archived", func(t *testing.T) {
+	t.Run("409 when the target template is archived", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		w.ArchiveTemplateByID(pro.Id)
 
 		resp := w.Migration().RunRaw(migrateTo(pro.Id, w.OrganizationID()))
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
-	t.Run("404 when the target template does not exist", func(t *testing.T) {
+	t.Run("400 when the target template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.Migration().RunRaw(migrateTo(missingTemplateID(), w.OrganizationID()))
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST")
 	})
 
-	t.Run("404 when the source template does not exist", func(t *testing.T) {
+	t.Run("400 when the source template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -445,7 +447,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 			TemplateId:     pro.Id,
 			FromTemplateId: new(missingTemplateID()),
 		})
-		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-		assertAPIError(t, resp.JSON404.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assertAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
 	})
 }

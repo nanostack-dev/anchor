@@ -22,46 +22,43 @@ import (
 const licenseTemplateNameConstraint = "uq_license_templates_product_name_active"
 
 var (
-	ErrLicenseTemplateNotFound = fault.NewWithStatus(
+	ErrLicenseTemplateNotFound = fault.NotFound(
 		"LICENSE_TEMPLATE_NOT_FOUND",
 		"This product has no license template with that identifier",
-		http.StatusNotFound,
 	)
-	// ErrLicenseTemplateArchived refuses to act on a withdrawn tier. It reads
-	// rather than writes: the template is still there, and still resolves for
-	// every license that names it.
-	ErrLicenseTemplateArchived = fault.BadRequest(
+	ErrLicenseTemplateArchived = fault.Conflict(
 		"LICENSE_TEMPLATE_ARCHIVED",
 		"This license template is archived; the tier is no longer offered",
 	)
 )
 
+func ErrLicenseTemplateNotFoundInRequest(templateID string) *fault.Error {
+	return fault.BadRequest(
+		"LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST",
+		"This product has no license template with that identifier",
+	).Metadata(map[string]any{
+		"template_id": templateID,
+	})
+}
+
 // errLicenseTemplateInUse refuses to delete a template an Organization license
-// still names. Archive is the withdrawal that stays available once this fires.
-// See docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
+// still names. Archive is the withdrawal that stays available.
 func errLicenseTemplateInUse(licenseCount int) *fault.Error {
-	return fault.NewWithStatus(
+	return fault.Conflict(
 		"LICENSE_TEMPLATE_IN_USE",
 		fmt.Sprintf(
 			"This license template cannot be deleted because %d organization license(s) name it; archive it instead",
 			licenseCount,
 		),
-		http.StatusBadRequest,
 	)
 }
 
-// errLicenseTemplateNameExists reports a name already taken within the Product.
-//
-// Field names the request member a form has to highlight, which here is the
-// template's own "name" input. The schema validation errors put a license field
-// name there for the same reason — Field is what the operator edits, never the
-// value they typed.
 func errLicenseTemplateNameExists(name string) *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
 		Code:    "LICENSE_TEMPLATE_NAME_EXISTS",
 		Message: "This product already has a license template named " + name,
 		Field:   "name",
-	}}, http.StatusBadRequest)
+	}}, http.StatusConflict)
 }
 
 // LicenseTemplateService owns a Product's license templates: named sets of

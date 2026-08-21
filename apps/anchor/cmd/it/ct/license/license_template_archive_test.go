@@ -126,9 +126,9 @@ func TestLicenseTemplateArchive(t *testing.T) {
 			ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Enterprise")},
 		)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		require.NotNil(t, resp.JSON400)
-		assertAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_ARCHIVED")
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON409)
+		assertAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {

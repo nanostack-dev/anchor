@@ -174,7 +174,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 			assert.Equal(t, 400, assignResp.StatusCode())
 			assert.Contains(t, assignResp.JSON400.Errors[0].Code, "PERMISSIONS_NOT_FOUND")
 			assert.Contains(
-				t, assignResp.JSON400.Errors[0].Message, "Product permission does not exist",
+				t, assignResp.JSON400.Errors[0].Message, "The product permission does not exist.",
 			)
 		},
 	)

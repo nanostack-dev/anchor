@@ -62,7 +62,9 @@ func (s *AnchorAPI) GetPlatformInvitation(
 		return nil, err
 	}
 	if result.Count == 0 {
-		return GetPlatformInvitation404Response{}, nil
+		return GetPlatformInvitation404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("PLATFORM_INVITATION_NOT_FOUND", "Platform Invitation does not exist."),
+		)}, nil
 	}
 	return GetPlatformInvitation200JSONResponse(
 		mapPlatformInvitationToResponse(result.Items[0]),

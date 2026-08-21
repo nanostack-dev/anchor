@@ -73,7 +73,9 @@ func (s *AnchorAPI) GetOrganizationLicense(
 		return nil, err
 	}
 	if organizationLicense == nil {
-		return GetOrganizationLicense404Response{}, nil
+		return GetOrganizationLicense404JSONResponse{NotFoundJSONResponse(
+			notFoundBody("ORGANIZATION_LICENSE_NOT_FOUND", "Organization License does not exist."),
+		)}, nil
 	}
 	return GetOrganizationLicense200JSONResponse(
 		mapOrganizationLicenseReadToResponse(*organizationLicense),

@@ -79,6 +79,11 @@ func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {
 	}, 5*time.Second, 200*time.Millisecond)
 }
 
+// TestClerkWebhookSignatureValidationMissingSvixIDReturns401 covers a missing
+// svix-id header. Svix signs over svix-id, svix-timestamp, and the body, so
+// removing the header invalidates the signature and the request never reaches
+// the event-id check. A signature that does not verify is a credential that
+// failed to authenticate, so this is a 401.
 func TestClerkWebhookSignatureValidationMissingSvixIDReturns401(t *testing.T) {
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)

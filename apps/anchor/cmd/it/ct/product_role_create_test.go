@@ -71,8 +71,8 @@ func TestProductRole_Create(t *testing.T) {
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: base},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, http.StatusBadRequest, respDup.StatusCode(),
-				"an exact-name duplicate must still be rejected")
+			assert.Equal(t, http.StatusConflict, respDup.StatusCode(),
+				"a name collision is state that a different name gets past, so 409")
 		},
 	)
 
@@ -151,12 +151,12 @@ func TestProductRole_Create(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, 400, resp2.StatusCode())
-			assert.NotNil(t, resp2.JSON400)
-			assert.Contains(t, resp2.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+			assert.Equal(t, 409, resp2.StatusCode())
+			assert.NotNil(t, resp2.JSON409)
+			assert.Contains(t, resp2.JSON409.Errors[0].Code, "ROLE_NAME_DUPLICATE")
 			assert.Contains(
-				t, resp2.JSON400.Errors[0].Message,
-				"Product role with this name already exists in the product",
+				t, resp2.JSON409.Errors[0].Message,
+				"A product role with this name already exists in the product.",
 			)
 		},
 	)
@@ -175,9 +175,9 @@ func TestProductRole_Create(t *testing.T) {
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: strings.ToLower(roleName)},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, http.StatusBadRequest, resp2.StatusCode())
-			assert.NotNil(t, resp2.JSON400)
-			assert.Contains(t, resp2.JSON400.Errors[0].Code, "ROLE_NAME_DUPLICATE")
+			assert.Equal(t, http.StatusConflict, resp2.StatusCode())
+			assert.NotNil(t, resp2.JSON409)
+			assert.Contains(t, resp2.JSON409.Errors[0].Code, "ROLE_NAME_DUPLICATE")
 		},
 	)
 
@@ -252,7 +252,7 @@ func TestProductRole_Create(t *testing.T) {
 			if assert.NotNil(t, resp.JSON400) {
 				assert.Contains(t, resp.JSON400.Errors[0].Code, "PERMISSIONS_NOT_FOUND")
 				assert.Contains(
-					t, resp.JSON400.Errors[0].Message, "Product permission does not exist",
+					t, resp.JSON400.Errors[0].Message, "The product permission does not exist.",
 				)
 			}
 		},
