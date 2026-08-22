@@ -68,12 +68,13 @@ func (s *AnchorAPI) GetProductPermission(
 func mapToSearchProductPermissionInput(
 	searchReqBody *SearchProductPermissionsJSONRequestBody,
 ) search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission] {
-	var filter *permission.SearchProductPermissionFilter
-	if searchReqBody.Filter != nil {
-		filter = &permission.SearchProductPermissionFilter{
-			Names: lowerPermissionNames(searchReqBody.Filter.Names),
-		}
-	}
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f ProductPermissionFilter) permission.SearchProductPermissionFilter {
+			return permission.SearchProductPermissionFilter{
+				Names: lowerPermissionNames(f.Names),
+			}
+		}).
+		ToPtr()
 	var req search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]
 	return req.WithFilter(filter).
 		WithSort(
@@ -85,9 +86,9 @@ func mapToSearchProductPermissionInput(
 }
 
 func lowerPermissionNames(names []string) []string {
-	lowered := make([]string, len(names))
-	for i, name := range names {
-		lowered[i] = strings.ToLower(name)
+	lowered := functional.Slice(names).Map(strings.ToLower).ToSlice()
+	if lowered == nil {
+		lowered = []string{}
 	}
 	return lowered
 }

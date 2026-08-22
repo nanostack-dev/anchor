@@ -3,13 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
@@ -196,11 +195,7 @@ func (s *licenseMigrationService) selectOrganizations(
 			return nil, errLicenseMigrationTooLarge(len(in.OrganizationIDs))
 		}
 
-		unique := make(map[string]struct{}, len(in.OrganizationIDs))
-		for _, organizationID := range in.OrganizationIDs {
-			unique[organizationID] = struct{}{}
-		}
-		return slices.Sorted(maps.Keys(unique)), nil
+		return functional.Sorted(functional.Distinct(functional.Slice(in.OrganizationIDs))), nil
 	}
 
 	source, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{

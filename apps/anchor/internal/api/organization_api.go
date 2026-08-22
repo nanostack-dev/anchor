@@ -30,10 +30,7 @@ func mapMetadataToResponse(metadataJSON json.RawMessage) *Metadata {
 // mapMetadataToInput converts a request-body metadata object into the plain map
 // the service layer validates.
 func mapMetadataToInput(metadata *Metadata) map[string]any {
-	if metadata == nil {
-		return nil
-	}
-	return *metadata
+	return functional.FromPtr(metadata).OrElse(nil)
 }
 
 func mapOrganizationToResponse(org organization.Organization) ProductOrganizationResponse {
@@ -46,10 +43,7 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 		CreatedAt:   org.CreatedAt,
 		UpdatedAt:   org.UpdatedAt,
 	}
-	if org.License != nil {
-		organizationLicense := mapOrganizationLicenseToResponse(*org.License)
-		response.License = &organizationLicense
-	}
+	response.License = functional.FromPtr(org.License).Map(mapOrganizationLicenseToResponse).ToPtr()
 	return response
 }
 
@@ -236,13 +230,14 @@ func (s *AnchorAPI) UpdateProductOrganization(
 func mapToSearchProductOrganizationInput(
 	searchReqBody *SearchProductOrganizationsJSONRequestBody,
 ) search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization] {
-	var filter *organization.SearchProductOrganizationFilter
-	if searchReqBody.Filter != nil {
-		filter = &organization.SearchProductOrganizationFilter{
-			IDs:   searchReqBody.Filter.Ids,
-			Names: searchReqBody.Filter.Names,
-		}
-	}
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f OrganizationFilter) organization.SearchProductOrganizationFilter {
+			return organization.SearchProductOrganizationFilter{
+				IDs:   f.Ids,
+				Names: f.Names,
+			}
+		}).
+		ToPtr()
 
 	var req search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization]
 	return req.WithFilter(filter).

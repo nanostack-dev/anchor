@@ -241,11 +241,9 @@ func (r *productRoleRepositoryImpl) diffRolePermissions(
 	current []model.ProductRoleResourcePermissions, newPerms []model.ProductRoleResourcePermissions,
 ) ([]model.ProductRoleResourcePermissions, []model.ProductRoleResourcePermissions) {
 	var toAdd, toRemove []model.ProductRoleResourcePermissions
-	currentMap := make(map[string]model.ProductRoleResourcePermissions)
-	for _, perm := range current {
-		key := perm.PermissionName
-		currentMap[key] = perm
-	}
+	currentMap := functional.Slice(current).ToMap(
+		func(perm model.ProductRoleResourcePermissions) string { return perm.PermissionName },
+	)
 
 	for _, perm := range newPerms {
 		key := perm.PermissionName
@@ -275,10 +273,11 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 			whereStmt = whereStmt.AND(table.ProductRoles.ID.IN(expressions...))
 		}
 		if len(input.Filter.Names) > 0 {
-			nameConditions := make([]postgres.BoolExpression, len(input.Filter.Names))
-			for i, name := range input.Filter.Names {
-				nameConditions[i] = table.ProductRoles.Name.LIKE(postgres.String("%" + name + "%"))
-			}
+			nameConditions := functional.Slice(input.Filter.Names).Map(
+				func(name string) postgres.BoolExpression {
+					return table.ProductRoles.Name.LIKE(postgres.String("%" + name + "%"))
+				},
+			)
 			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
 		}
 	}
@@ -321,10 +320,9 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		}, nil
 	}
 
-	pagedIDs := make([]string, len(pageResult.Items))
-	for i, entity := range pageResult.Items {
-		pagedIDs[i] = entity.ID
-	}
+	pagedIDs := functional.Slice(pageResult.Items).Map(
+		func(entity model.ProductRoles) string { return entity.ID },
+	)
 
 	permissionEntities, err := transactor.Query[[]model.ProductRoleResourcePermissions](
 		ctx, r.db,
@@ -339,17 +337,15 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		return search.Result[role.ProductRole]{}, err
 	}
 
-	permissionsByRoleID := make(map[string][]model.ProductRoleResourcePermissions, len(pageResult.Items))
-	for _, permission := range permissionEntities {
-		permissionsByRoleID[permission.ProductRoleID] = append(
-			permissionsByRoleID[permission.ProductRoleID], permission,
-		)
-	}
+	permissionsByRoleID := functional.Slice(permissionEntities).GroupBy(
+		func(permission model.ProductRoleResourcePermissions) string { return permission.ProductRoleID },
+	)
 
-	items := make([]role.ProductRole, len(pageResult.Items))
-	for i, entity := range pageResult.Items {
-		items[i] = r.productRoleMapper.ToDomain(entity, permissionsByRoleID[entity.ID])
-	}
+	items := functional.Slice(pageResult.Items).Map(
+		func(entity model.ProductRoles) role.ProductRole {
+			return r.productRoleMapper.ToDomain(entity, permissionsByRoleID[entity.ID])
+		},
+	)
 
 	return search.Result[role.ProductRole]{
 		Items: items,

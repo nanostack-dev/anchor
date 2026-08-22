@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/integration"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type IntegrationAuditLogMapper struct{}
@@ -14,25 +16,16 @@ func NewIntegrationAuditLogMapper() *IntegrationAuditLogMapper {
 }
 
 func (m *IntegrationAuditLogMapper) ToDomain(entity model.IntegrationAuditLogs) integration.AuditLog {
-	var externalID, internalID *string
-	if entity.ExternalID != nil {
-		e := *entity.ExternalID
-		externalID = &e
-	}
-	if entity.InternalID != nil {
-		i := *entity.InternalID
-		internalID = &i
-	}
+	externalID := functional.FromPtr(entity.ExternalID).ToPtr()
+	internalID := functional.FromPtr(entity.InternalID).ToPtr()
 
-	var diffJSON json.RawMessage
-	if entity.DiffJSON != nil {
-		diffJSON = json.RawMessage(*entity.DiffJSON)
-	}
+	diffJSON := functional.FromPtr(entity.DiffJSON).Map(func(s string) json.RawMessage {
+		return json.RawMessage(s)
+	}).OrElse(nil)
 
-	var metadataJSON json.RawMessage
-	if entity.MetadataJSON != nil {
-		metadataJSON = json.RawMessage(*entity.MetadataJSON)
-	}
+	metadataJSON := functional.FromPtr(entity.MetadataJSON).Map(func(s string) json.RawMessage {
+		return json.RawMessage(s)
+	}).OrElse(nil)
 
 	return integration.AuditLog{
 		ID:                    entity.ID,
@@ -50,27 +43,16 @@ func (m *IntegrationAuditLogMapper) ToDomain(entity model.IntegrationAuditLogs) 
 }
 
 func (m *IntegrationAuditLogMapper) ToEntity(domain integration.AuditLog) model.IntegrationAuditLogs {
-	var externalID, internalID *string
-	if domain.ExternalID != nil {
-		e := *domain.ExternalID
-		externalID = &e
-	}
-	if domain.InternalID != nil {
-		i := *domain.InternalID
-		internalID = &i
-	}
+	externalID := functional.FromPtr(domain.ExternalID).ToPtr()
+	internalID := functional.FromPtr(domain.InternalID).ToPtr()
 
-	var diffStr *string
-	if domain.DiffJSON != nil {
-		s := string(domain.DiffJSON)
-		diffStr = &s
-	}
+	diffStr := functional.OptionOf(domain.DiffJSON, domain.DiffJSON != nil).
+		Map(func(b json.RawMessage) string { return string(b) }).
+		ToPtr()
 
-	var metadataStr *string
-	if domain.MetadataJSON != nil {
-		s := string(domain.MetadataJSON)
-		metadataStr = &s
-	}
+	metadataStr := functional.OptionOf(domain.MetadataJSON, domain.MetadataJSON != nil).
+		Map(func(b json.RawMessage) string { return string(b) }).
+		ToPtr()
 
 	return model.IntegrationAuditLogs{
 		ID:                    domain.ID,

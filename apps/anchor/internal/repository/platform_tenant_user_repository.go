@@ -169,10 +169,9 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 		}
 
 		if len(input.Filter.Roles) > 0 {
-			roles := make([]string, len(input.Filter.Roles))
-			for i, role := range input.Filter.Roles {
-				roles[i] = strings.ToLower(string(role))
-			}
+			roles := functional.Slice(input.Filter.Roles).Map(func(role platform.TenantRole) string {
+				return strings.ToLower(string(role))
+			})
 			expressions := jetx.ToStringExpressions(roles)
 			whereStmt = whereStmt.AND(postgres.LOWER(table.PlatformUsers.Role).IN(expressions...))
 		}

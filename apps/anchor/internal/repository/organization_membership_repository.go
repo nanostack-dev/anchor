@@ -293,10 +293,9 @@ func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions boo
 }
 
 func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow) user.OrganizationMembership {
-	var permissions []string
-	for _, p := range row.Permissions {
-		permissions = append(permissions, p.PermissionName)
-	}
+	permissions := functional.Slice(row.Permissions).Map(
+		func(p model.ProductRoleResourcePermissions) string { return p.PermissionName },
+	)
 
 	return user.OrganizationMembership{
 		OrganizationID:           row.Organization.ID,
@@ -312,15 +311,11 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 
 // toDomainMembership maps an orgMembershipRow (org-perspective join) to organization.Membership.
 func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembershipRow) organization.Membership {
-	var permissions []string
-	for _, p := range row.Permissions {
-		permissions = append(permissions, p.PermissionName)
-	}
+	permissions := functional.Slice(row.Permissions).Map(
+		func(p model.ProductRoleResourcePermissions) string { return p.PermissionName },
+	)
 
-	var userName string
-	if row.ProductUser.Name != nil {
-		userName = *row.ProductUser.Name
-	}
+	userName := functional.FromPtr(row.ProductUser.Name).OrElse("")
 
 	return organization.Membership{
 		OrganizationID:  row.OrganizationMemberships.OrganizationID,

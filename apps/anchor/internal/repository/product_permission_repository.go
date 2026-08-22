@@ -159,10 +159,7 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {
-			lowerNames := make([]string, len(input.Filter.Names))
-			for i, name := range input.Filter.Names {
-				lowerNames[i] = strings.ToLower(name)
-			}
+			lowerNames := functional.Slice(input.Filter.Names).Map(strings.ToLower)
 			expressions := jetx.ToStringExpressions(lowerNames)
 			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductPermissions.Name).IN(expressions...))
 		}
@@ -229,9 +226,5 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionNames(
 }
 
 func lowerStrings(values []string) []string {
-	lowered := make([]string, len(values))
-	for i, value := range values {
-		lowered[i] = strings.ToLower(value)
-	}
-	return lowered
+	return functional.Slice(values).Map(strings.ToLower)
 }

@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/organization"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type OrganizationMapper struct{}
@@ -39,18 +41,15 @@ func (m *OrganizationMapper) ToEntity(domain organization.Organization) model.Or
 
 // MetadataJSONToDomain converts a nullable JSONB column value into raw JSON.
 func MetadataJSONToDomain(column *string) json.RawMessage {
-	if column == nil {
-		return nil
-	}
-	return json.RawMessage(*column)
+	return functional.FromPtr(column).Map(func(s string) json.RawMessage {
+		return json.RawMessage(s)
+	}).OrElse(nil)
 }
 
 // MetadataJSONToEntity converts raw JSON into a nullable JSONB column value.
 // Empty metadata is stored as SQL NULL rather than an empty JSON document.
 func MetadataJSONToEntity(metadata json.RawMessage) *string {
-	if len(metadata) == 0 {
-		return nil
-	}
-	s := string(metadata)
-	return &s
+	return functional.OptionOf(metadata, len(metadata) != 0).
+		Map(func(b json.RawMessage) string { return string(b) }).
+		ToPtr()
 }

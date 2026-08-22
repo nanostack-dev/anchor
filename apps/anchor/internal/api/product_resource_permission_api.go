@@ -46,12 +46,13 @@ func mapToUpdateProductResourcePermissionInput(
 func mapToSearchProductResourcePermissionInput(
 	req *ProductResourcePermissionSearchRequest,
 ) search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission] {
-	var filter *resourcepermission.SearchProductResourcePermissionFilter
-	if req.Filter != nil {
-		filter = &resourcepermission.SearchProductResourcePermissionFilter{
-			Names: req.Filter.Names,
-		}
-	}
+	filter := functional.FromPtr(req.Filter).
+		Map(func(f ProductResourcePermissionFilter) resourcepermission.SearchProductResourcePermissionFilter {
+			return resourcepermission.SearchProductResourcePermissionFilter{
+				Names: f.Names,
+			}
+		}).
+		ToPtr()
 	var searchReq search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]
 	return searchReq.
 		WithFilter(filter).

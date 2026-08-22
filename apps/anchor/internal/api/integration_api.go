@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
@@ -63,12 +64,8 @@ func buildPublicConfig(inst integration.Instance) *IntegrationProviderPublicConf
 			Username:    &cfg.Username,
 			FromAddress: &cfg.FromAddress,
 		}
-		if cfg.FromName != "" {
-			pub.FromName = &cfg.FromName
-		}
-		if cfg.ReplyTo != "" {
-			pub.ReplyTo = &cfg.ReplyTo
-		}
+		pub.FromName = functional.OptionOf(cfg.FromName, cfg.FromName != "").ToPtr()
+		pub.ReplyTo = functional.OptionOf(cfg.ReplyTo, cfg.ReplyTo != "").ToPtr()
 		wrapper := IntegrationProviderPublicConfig{}
 		if err := wrapper.FromSmtpIntegrationPublicConfig(pub); err != nil {
 			return nil
@@ -80,12 +77,10 @@ func buildPublicConfig(inst integration.Instance) *IntegrationProviderPublicConf
 }
 
 func obfuscateSecret(secret *string) *string {
-	if secret == nil || *secret == "" {
-		return nil
-	}
-
-	masked := secrets.Obfuscate(*secret)
-	return &masked
+	return functional.FromPtr(secret).
+		Filter(func(s string) bool { return s != "" }).
+		Map(secrets.Obfuscate).
+		ToPtr()
 }
 
 func mapAuditLogToResponse(log integration.AuditLog) IntegrationAuditLogEntryResponse {
@@ -201,9 +196,9 @@ func (s *AnchorAPI) ListIntegrationInstances(
 		return nil, err
 	}
 
-	items := make([]IntegrationInstanceResponse, 0, len(instances))
-	for _, inst := range instances {
-		items = append(items, mapInstanceToResponse(inst))
+	items := functional.Slice(instances).Map(mapInstanceToResponse).ToSlice()
+	if items == nil {
+		items = []IntegrationInstanceResponse{}
 	}
 
 	return ListIntegrationInstances200JSONResponse(IntegrationInstanceListResponse{
@@ -259,10 +254,7 @@ func (s *AnchorAPI) UpdateIntegrationInstance(
 		WebhookSecret: request.Body.WebhookSecret,
 	}
 
-	if request.Body.IsEnabled != nil {
-		isEnabled := *request.Body.IsEnabled
-		input.IsEnabled = &isEnabled
-	}
+	input.IsEnabled = functional.FromPtr(request.Body.IsEnabled).ToPtr()
 
 	if request.Body.Config != nil {
 		configJSON, marshalErr := json.Marshal(request.Body.Config)
@@ -333,9 +325,9 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 		return nil, err
 	}
 
-	items := make([]IntegrationAuditLogEntryResponse, 0, len(logs))
-	for _, log := range logs {
-		items = append(items, mapAuditLogToResponse(log))
+	items := functional.Slice(logs).Map(mapAuditLogToResponse).ToSlice()
+	if items == nil {
+		items = []IntegrationAuditLogEntryResponse{}
 	}
 
 	return ListIntegrationAuditLogs200JSONResponse(IntegrationAuditLogListResponse{

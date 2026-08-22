@@ -9,6 +9,7 @@ package license
 import (
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
@@ -34,12 +35,9 @@ func (s *Schema) GenerateID() {
 // path uses it to answer "is this reported key declared, and is it a limit"
 // without loading the whole schema into a map at every call site.
 func (s *Schema) FieldByName(name string) *Field {
-	for i := range s.Fields {
-		if s.Fields[i].Name == name {
-			return &s.Fields[i]
-		}
-	}
-	return nil
+	return functional.Slice(s.Fields).
+		FindFirst(func(f Field) bool { return f.Name == name }).
+		ToPtr()
 }
 
 // Field is one declared license field: its name, its type, and the rules a

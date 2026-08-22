@@ -43,12 +43,8 @@ func (s *AnchorAPI) CreateEmailTemplate(
 		Subject:   b.Subject,
 		BodyHTML:  b.BodyHtml,
 	}
-	if b.Description != nil {
-		in.Description = *b.Description
-	}
-	if b.BodyText != nil {
-		in.BodyText = *b.BodyText
-	}
+	in.Description = functional.FromPtr(b.Description).OrElse("")
+	in.BodyText = functional.FromPtr(b.BodyText).OrElse("")
 	in.Variables = mapVariableSchemasFromAPI(b.Variables)
 
 	tpl, err := s.EmailService.CreateTemplate(ctx, in)
@@ -259,12 +255,8 @@ func (s *AnchorAPI) PreviewEmailTemplate(
 		ProductID:  request.ProductId,
 		TemplateID: request.EmailTemplateId,
 	}
-	if b.UsePublished != nil {
-		in.UsePublished = *b.UsePublished
-	}
-	if b.Variables != nil {
-		in.Variables = *b.Variables
-	}
+	in.UsePublished = functional.FromPtr(b.UsePublished).OrElse(false)
+	in.Variables = functional.FromPtr(b.Variables).OrElse(nil)
 
 	result, err := s.EmailService.Preview(ctx, in)
 	if err != nil {
@@ -356,15 +348,9 @@ func (s *AnchorAPI) SendEmail(
 		ToAddress:    string(b.ToAddress),
 		DedupeKey:    b.DedupeKey,
 	}
-	if b.ToName != nil {
-		in.ToName = *b.ToName
-	}
-	if b.UseDraft != nil {
-		in.UseDraft = *b.UseDraft
-	}
-	if b.Variables != nil {
-		in.Variables = *b.Variables
-	}
+	in.ToName = functional.FromPtr(b.ToName).OrElse("")
+	in.UseDraft = functional.FromPtr(b.UseDraft).OrElse(false)
+	in.Variables = functional.FromPtr(b.Variables).OrElse(nil)
 
 	record, err := s.EmailService.Send(ctx, in)
 	if err != nil {

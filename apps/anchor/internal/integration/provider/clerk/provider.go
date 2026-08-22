@@ -15,6 +15,7 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/security/encryption"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	svix "github.com/svix/svix-webhooks/go"
@@ -370,10 +371,11 @@ func (p *Provider) handleUserDeletedEvent(event *clerkWebhookEvent) (
 
 func (p *Provider) extractPrimaryEmail(user clerkUserData) string {
 	if user.PrimaryEmailID != nil {
-		for _, ea := range user.EmailAddresses {
-			if ea.ID == *user.PrimaryEmailID {
-				return ea.EmailAddress
-			}
+		primary := functional.Slice(user.EmailAddresses).FindFirst(func(ea clerkEmailAddress) bool {
+			return ea.ID == *user.PrimaryEmailID
+		})
+		if primary.IsPresent() {
+			return primary.Value().EmailAddress
 		}
 	}
 	if len(user.EmailAddresses) > 0 {

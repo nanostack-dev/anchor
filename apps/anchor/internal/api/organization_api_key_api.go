@@ -25,9 +25,7 @@ func mapOrganizationAPIKeyToResponse(
 		Status:          organizationAPIKey.Status,
 		CreatedAt:       organizationAPIKey.CreatedAt,
 		UpdatedAt:       organizationAPIKey.UpdatedAt,
-		Permissions: functional.Slice(
-			organizationAPIKey.Permissions).Map(
-
+		Permissions: functional.Slice(organizationAPIKey.Permissions).Map(
 			func(perm orgapikey.OrganizationAPIKeyPermission) OrganizationAPIKeyPermissionResponse {
 				return OrganizationAPIKeyPermissionResponse{
 					OrganizationApiKeyId: perm.APIKeyID,
@@ -182,9 +180,7 @@ func (s *AnchorAPI) ValidateOrganizationAPIKey(
 	if err != nil {
 		return nil, err
 	}
-	permissions := functional.Slice(
-		result.APIKey.Permissions).Map(
-
+	permissions := functional.Slice(result.APIKey.Permissions).Map(
 		func(permission orgapikey.OrganizationAPIKeyPermission) string {
 			return permission.PermissionName
 		})
@@ -227,10 +223,7 @@ func (s *AnchorAPI) IntrospectOrganizationAPIKey(
 	ctx context.Context,
 	request IntrospectOrganizationAPIKeyRequestObject,
 ) (IntrospectOrganizationAPIKeyResponseObject, error) {
-	var scopes []string
-	if request.Body.RequiredScopes != nil {
-		scopes = *request.Body.RequiredScopes
-	}
+	scopes := functional.FromPtr(request.Body.RequiredScopes).OrElse(nil)
 
 	input := orgapikey.IntrospectOrganizationAPIKeyInput{
 		ProductID:   request.ProductId,
@@ -243,9 +236,7 @@ func (s *AnchorAPI) IntrospectOrganizationAPIKey(
 		return nil, err
 	}
 
-	permissions := functional.Slice(
-		result.APIKey.Permissions).Map(
-
+	permissions := functional.Slice(result.APIKey.Permissions).Map(
 		func(permission orgapikey.OrganizationAPIKeyPermission) string {
 			return permission.PermissionName
 		})
@@ -271,23 +262,22 @@ func mapToSearchOrganizationAPIKeyInput(
 	orgapikey.SearchOrganizationAPIKeyFilter,
 	orgapikey.SortFieldOrganizationAPIKey,
 ] {
-	var filter *orgapikey.SearchOrganizationAPIKeyFilter
-	if searchReqBody.Filter != nil {
-		filter = &orgapikey.SearchOrganizationAPIKeyFilter{
-			OrganizationAPIKeyIDs: searchReqBody.Filter.Ids,
-			Names:                 searchReqBody.Filter.Names,
-			LastUsedBefore:        searchReqBody.Filter.LastUsedBefore,
-			LastUsedAfter:         searchReqBody.Filter.LastUsedAfter,
-		}
-		if searchReqBody.Filter.Status != nil {
-			filter.Status = functional.Slice(
-				*searchReqBody.Filter.Status).Map(
-
-				func(s OrganizationAPIKeyStatus) string {
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f OrganizationAPIKeyFilter) orgapikey.SearchOrganizationAPIKeyFilter {
+			result := orgapikey.SearchOrganizationAPIKeyFilter{
+				OrganizationAPIKeyIDs: f.Ids,
+				Names:                 f.Names,
+				LastUsedBefore:        f.LastUsedBefore,
+				LastUsedAfter:         f.LastUsedAfter,
+			}
+			if f.Status != nil {
+				result.Status = functional.Slice(*f.Status).Map(func(s OrganizationAPIKeyStatus) string {
 					return string(s)
 				})
-		}
-	}
+			}
+			return result
+		}).
+		ToPtr()
 
 	var req search.Request[
 		orgapikey.SearchOrganizationAPIKeyFilter,

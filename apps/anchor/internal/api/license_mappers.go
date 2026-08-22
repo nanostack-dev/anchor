@@ -8,20 +8,17 @@ import (
 )
 
 func mapFieldDeclarationsFromAPI(declarations []LicenseFieldDeclaration) []license.FieldDeclaration {
-	out := make([]license.FieldDeclaration, 0, len(declarations))
-	for _, d := range declarations {
-		fd := license.FieldDeclaration{
-			Name:       d.Name,
-			Type:       d.Type,
-			UsageShape: d.UsageShape,
+	out := functional.Slice(declarations).Map(func(d LicenseFieldDeclaration) license.FieldDeclaration {
+		return license.FieldDeclaration{
+			Name:        d.Name,
+			Type:        d.Type,
+			UsageShape:  d.UsageShape,
+			Description: functional.FromPtr(d.Description).OrElse(""),
+			Rules:       functional.FromPtr(d.Rules).OrElse(license.FieldRules{}),
 		}
-		if d.Description != nil {
-			fd.Description = *d.Description
-		}
-		if d.Rules != nil {
-			fd.Rules = *d.Rules
-		}
-		out = append(out, fd)
+	}).ToSlice()
+	if out == nil {
+		out = []license.FieldDeclaration{}
 	}
 	return out
 }

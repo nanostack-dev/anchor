@@ -10,6 +10,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/rs/zerolog"
@@ -102,10 +103,11 @@ func (s *productUserService) Create(
 			return err
 		}
 
-		for _, existingUser := range existingUsers {
-			if existingUser.Email == input.Email {
-				return ErrProductUserEmailAlreadyExists
-			}
+		emailExists := functional.Slice(existingUsers).AnyMatch(func(existingUser user.ProductUser) bool {
+			return existingUser.Email == input.Email
+		})
+		if emailExists {
+			return ErrProductUserEmailAlreadyExists
 		}
 
 		productUser := user.ProductUser{

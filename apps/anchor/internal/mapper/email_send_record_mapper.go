@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/email"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type EmailSendRecordMapper struct{}
@@ -12,10 +14,7 @@ type EmailSendRecordMapper struct{}
 func NewEmailSendRecordMapper() *EmailSendRecordMapper { return &EmailSendRecordMapper{} }
 
 func (m *EmailSendRecordMapper) ToDomain(entity model.EmailSendRecords) email.SendRecord {
-	integrationID := ""
-	if entity.IntegrationInstanceID != nil {
-		integrationID = *entity.IntegrationInstanceID
-	}
+	integrationID := functional.FromPtr(entity.IntegrationInstanceID).OrElse("")
 	return email.SendRecord{
 		ID:                    entity.ID,
 		PlatformTenantID:      entity.PlatformTenantID,
@@ -42,11 +41,7 @@ func (m *EmailSendRecordMapper) ToDomain(entity model.EmailSendRecords) email.Se
 }
 
 func (m *EmailSendRecordMapper) ToEntity(domain email.SendRecord) model.EmailSendRecords {
-	var integrationID *string
-	if domain.IntegrationInstanceID != "" {
-		v := domain.IntegrationInstanceID
-		integrationID = &v
-	}
+	integrationID := functional.OptionOf(domain.IntegrationInstanceID, domain.IntegrationInstanceID != "").ToPtr()
 	varsJSON := "{}"
 	if len(domain.VariablesJSON) > 0 {
 		varsJSON = string(domain.VariablesJSON)

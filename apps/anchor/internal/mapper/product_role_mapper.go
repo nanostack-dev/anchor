@@ -3,6 +3,8 @@ package mapper
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/role"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type ProductRoleMapper struct{}
@@ -14,10 +16,7 @@ func NewProductRoleMapper() *ProductRoleMapper {
 func (m *ProductRoleMapper) ToDomain(
 	entity model.ProductRoles, permissions []model.ProductRoleResourcePermissions,
 ) role.ProductRole {
-	var description string
-	if entity.Description != nil {
-		description = *entity.Description
-	}
+	description := functional.FromPtr(entity.Description).OrElse("")
 
 	return role.ProductRole{
 		ID:          entity.ID,
@@ -31,11 +30,7 @@ func (m *ProductRoleMapper) ToDomain(
 }
 
 func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles {
-	var description *string
-	if domain.Description != "" {
-		desc := domain.Description
-		description = &desc
-	}
+	description := functional.OptionOf(domain.Description, domain.Description != "").ToPtr()
 
 	return model.ProductRoles{
 		ID:          domain.ID,
@@ -50,37 +45,27 @@ func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles
 func (m *ProductRoleMapper) permissionsToDomain(
 	permissions []model.ProductRoleResourcePermissions,
 ) []role.ProductRolePermission {
-	if permissions == nil {
-		return nil
-	}
-
-	domainPermissions := make([]role.ProductRolePermission, len(permissions))
-	for i, perm := range permissions {
-		domainPermissions[i] = role.ProductRolePermission{
-			ID:             perm.ID,
-			ProductRoleID:  perm.ProductRoleID,
-			ProductID:      perm.ProductID,
-			PermissionName: perm.PermissionName,
-		}
-	}
-	return domainPermissions
+	return functional.Slice(permissions).
+		Map(func(perm model.ProductRoleResourcePermissions) role.ProductRolePermission {
+			return role.ProductRolePermission{
+				ID:             perm.ID,
+				ProductRoleID:  perm.ProductRoleID,
+				ProductID:      perm.ProductID,
+				PermissionName: perm.PermissionName,
+			}
+		})
 }
 
 func (m *ProductRoleMapper) PermissionsToEntities(
 	permissions []role.ProductRolePermission,
 ) []model.ProductRoleResourcePermissions {
-	if permissions == nil {
-		return nil
-	}
-
-	entities := make([]model.ProductRoleResourcePermissions, len(permissions))
-	for i, perm := range permissions {
-		entities[i] = model.ProductRoleResourcePermissions{
-			ID:             perm.ID,
-			ProductRoleID:  perm.ProductRoleID,
-			ProductID:      perm.ProductID,
-			PermissionName: perm.PermissionName,
-		}
-	}
-	return entities
+	return functional.Slice(permissions).
+		Map(func(perm role.ProductRolePermission) model.ProductRoleResourcePermissions {
+			return model.ProductRoleResourcePermissions{
+				ID:             perm.ID,
+				ProductRoleID:  perm.ProductRoleID,
+				ProductID:      perm.ProductID,
+				PermissionName: perm.PermissionName,
+			}
+		})
 }

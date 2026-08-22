@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -66,8 +67,7 @@ func (r *schemaFieldRepositoryImpl) ReplaceAll(
 	}
 
 	now := time.Now()
-	entities := make([]model.LicenseSchemaFields, 0, len(fields))
-	for _, field := range fields {
+	entities := functional.Slice(fields).Map(func(field license.Field) model.LicenseSchemaFields {
 		field.SchemaID = schemaID
 		if field.CreatedAt.IsZero() {
 			field.CreatedAt = now
@@ -75,8 +75,8 @@ func (r *schemaFieldRepositoryImpl) ReplaceAll(
 		if field.UpdatedAt.IsZero() {
 			field.UpdatedAt = field.CreatedAt
 		}
-		entities = append(entities, r.mapper.ToEntity(field))
-	}
+		return r.mapper.ToEntity(field)
+	})
 
 	insertStmt := table.LicenseSchemaFields.INSERT(licenseSchemaFieldsUpdatableColumns()).
 		MODELS(entities).

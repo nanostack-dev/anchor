@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/integration"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type IntegrationInstanceMapper struct{}
@@ -14,17 +16,8 @@ func NewIntegrationInstanceMapper() *IntegrationInstanceMapper {
 }
 
 func (m *IntegrationInstanceMapper) ToDomain(entity model.IntegrationInstances) integration.Instance {
-	var webhookSecret *string
-	if entity.WebhookSecret != nil {
-		ws := *entity.WebhookSecret
-		webhookSecret = &ws
-	}
-
-	var lastError *string
-	if entity.LastError != nil {
-		le := *entity.LastError
-		lastError = &le
-	}
+	webhookSecret := functional.FromPtr(entity.WebhookSecret).ToPtr()
+	lastError := functional.FromPtr(entity.LastError).ToPtr()
 
 	return integration.Instance{
 		ID:               entity.ID,
@@ -43,17 +36,8 @@ func (m *IntegrationInstanceMapper) ToDomain(entity model.IntegrationInstances) 
 }
 
 func (m *IntegrationInstanceMapper) ToEntity(domain integration.Instance) model.IntegrationInstances {
-	var webhookSecret *string
-	if domain.WebhookSecret != nil {
-		ws := *domain.WebhookSecret
-		webhookSecret = &ws
-	}
-
-	var lastError *string
-	if domain.LastError != nil {
-		le := *domain.LastError
-		lastError = &le
-	}
+	webhookSecret := functional.FromPtr(domain.WebhookSecret).ToPtr()
+	lastError := functional.FromPtr(domain.LastError).ToPtr()
 
 	configStr := "{}"
 	if domain.ConfigJSON != nil {

@@ -133,14 +133,15 @@ func (s *AnchorAPI) GetCurrentUser(
 func mapToSearchPlatformUserInput(
 	searchReqBody *SearchPlatformUsersJSONRequestBody,
 ) search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser] {
-	var filter *platform.SearchPlatformUserFilter
-	if searchReqBody.Filter != nil {
-		filter = &platform.SearchPlatformUserFilter{
-			Emails: searchReqBody.Filter.Emails,
-			IDs:    searchReqBody.Filter.Ids,
-			Roles:  searchReqBody.Filter.Roles,
-		}
-	}
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f PlatformUserFilter) platform.SearchPlatformUserFilter {
+			return platform.SearchPlatformUserFilter{
+				Emails: f.Emails,
+				IDs:    f.Ids,
+				Roles:  f.Roles,
+			}
+		}).
+		ToPtr()
 	var req search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser]
 	return req.WithFilter(filter).
 		WithSort(

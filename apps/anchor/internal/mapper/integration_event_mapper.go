@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/integration"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type IntegrationEventMapper struct{}
@@ -14,11 +16,7 @@ func NewIntegrationEventMapper() *IntegrationEventMapper {
 }
 
 func (m *IntegrationEventMapper) ToDomain(entity model.IntegrationEvents) integration.Event {
-	var errStr *string
-	if entity.Error != nil {
-		e := *entity.Error
-		errStr = &e
-	}
+	errStr := functional.FromPtr(entity.Error).ToPtr()
 
 	return integration.Event{
 		ID:                    entity.ID,
@@ -36,11 +34,7 @@ func (m *IntegrationEventMapper) ToDomain(entity model.IntegrationEvents) integr
 }
 
 func (m *IntegrationEventMapper) ToEntity(domain integration.Event) model.IntegrationEvents {
-	var errStr *string
-	if domain.Error != nil {
-		e := *domain.Error
-		errStr = &e
-	}
+	errStr := functional.FromPtr(domain.Error).ToPtr()
 
 	payloadStr := "{}"
 	if domain.PayloadJSON != nil {

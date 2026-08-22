@@ -32,9 +32,7 @@ func (s *AnchorAPI) CreateLicenseTemplate(
 		Name:      b.Name,
 		Values:    b.Values,
 	}
-	if b.Description != nil {
-		in.Description = *b.Description
-	}
+	in.Description = functional.FromPtr(b.Description).OrElse("")
 
 	template, err := s.LicenseTemplateService.CreateTemplate(ctx, in)
 	if err != nil {

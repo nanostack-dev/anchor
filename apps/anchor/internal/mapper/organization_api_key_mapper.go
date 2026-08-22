@@ -34,9 +34,7 @@ func (m *OrganizationAPIKeyMapper) ToDomainWithPermissions(
 	permissionEntities []model.OrganizationAPIKeyPermissions,
 ) orgapikey.OrganizationAPIKey {
 	domain := m.ToDomain(entity)
-	domain.Permissions = functional.Slice(
-		permissionEntities).Map(
-
+	domain.Permissions = functional.Slice(permissionEntities).Map(
 		func(perm model.OrganizationAPIKeyPermissions) orgapikey.OrganizationAPIKeyPermission {
 			return m.PermissionToDomain(perm)
 		})
@@ -89,9 +87,7 @@ func (m *OrganizationAPIKeyMapper) PermissionToDomain(
 func (m *OrganizationAPIKeyMapper) PermissionsToEntity(
 	domain []orgapikey.OrganizationAPIKeyPermission,
 ) []model.OrganizationAPIKeyPermissions {
-	return functional.Slice(
-		domain).Map(
-
+	return functional.Slice(domain).Map(
 		func(perm orgapikey.OrganizationAPIKeyPermission) model.OrganizationAPIKeyPermissions {
 			return m.PermissionToEntity(perm)
 		})
