@@ -1448,6 +1448,12 @@ export const removeOrganizationMember = <ThrowOnError extends boolean = false>(o
  */
 export const getOrganizationMember = <ThrowOnError extends boolean = false>(options: Options<GetOrganizationMemberData, ThrowOnError>) => {
     return (options.client ?? client).get<GetOrganizationMemberResponses, GetOrganizationMemberErrors, ThrowOnError>({
+        querySerializer: {
+            array: {
+                explode: false,
+                style: 'form'
+            }
+        },
         security: [
             {
                 scheme: 'bearer',

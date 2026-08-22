@@ -47,9 +47,10 @@ func (m Members) GetWithRolePermissions(
 	ctx context.Context,
 	productUserID string,
 ) (*nanoclient.OrganizationMemberResponse, error) {
-	params := &nanoclient.GetOrganizationMemberParams{
-		Include: new(nanoclient.OrganizationMemberIncludeRolePermissions),
+	include := nanoclient.OrganizationMemberIncludeParameter{
+		nanoclient.OrganizationMemberIncludeRolePermissions,
 	}
+	params := &nanoclient.GetOrganizationMemberParams{Include: &include}
 	return m.get(ctx, "Members.GetWithRolePermissions", productUserID, params)
 }
 

@@ -1312,7 +1312,7 @@ export type OrganizationMemberResponse = {
          */
         name: string;
         /**
-         * Product resource permission names assigned to this role (e.g. "document:read", "file:delete"). Only populated when include=role_permissions.
+         * Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
          */
         permissions?: Array<string>;
     };
@@ -2365,6 +2365,11 @@ export type ProductIdParameter = Ksuid;
  * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export type OrganizationIncludeParameter = Array<OrganizationInclude>;
+
+/**
+ * Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
+ */
+export type OrganizationMemberIncludeParameter = Array<OrganizationMemberInclude>;
 
 /**
  * The KSUID of the organization.
@@ -5517,7 +5522,10 @@ export type GetOrganizationMemberData = {
         product_user_id: Ksuid;
     };
     query?: {
-        include?: OrganizationMemberInclude;
+        /**
+         * Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
+         */
+        include?: Array<OrganizationMemberInclude>;
     };
     url: '/v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}';
 };

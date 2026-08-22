@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -46,12 +47,9 @@ func (s *AnchorAPI) GetOrganizationMember(
 ) (GetOrganizationMemberResponseObject, error) {
 	includePermissions := false
 	if request.Params.Include != nil {
-		for _, inc := range *request.Params.Include {
-			if string(inc) == string(OrganizationMemberIncludeRolePermissions) {
-				includePermissions = true
-				break
-			}
-		}
+		includePermissions = slices.Contains(
+			*request.Params.Include, OrganizationMemberIncludeRolePermissions,
+		)
 	}
 
 	input := organization.GetMemberInput{
