@@ -19,6 +19,14 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - HTTP error statuses follow `docs/engineering-best-practices.md`. Changing one is a client-visible change with no compile-time check: the anchor API suite is a set of echopoint flows in the database, so a status change passes build, lint, and every Go test and then fails the post-deploy `Echopoint flow suite (anchor)` job. In the same change, update the flow assertions and re-run `echopoint flows run --tag anchor --environment dev` against both the `prod` profile (the CI organization) and `dev`. The flows exist once per organization with different ids.
 - Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
 
+## Pull requests
+
+- Follow `.github/pull_request_template.md`. `gh pr create` starts from it. Keep every section, and fill each one in.
+- The preview checkbox controls the preview environment. Select it to deploy a preview for the pull request. Clear it to destroy the preview.
+- Never delete the `<!-- preview-deploy -->` marker on that line. CI finds the checkbox with the marker, not with the label text.
+- CI reads the checkbox live on each build, so select it before you push. A checkbox selected later makes `preview-toggle.yml` re-run the full build, because the preview image is tagged from the merge commit of the build.
+- A cleared checkbox starts the cleanup as soon as you save the description. A closed pull request always destroys the preview.
+
 ## Agent skills
 
 ### Issue tracker

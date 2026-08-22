@@ -1,0 +1,136 @@
+name: Preview Toggle
+
+# The preview checkbox in .github/pull_request_template.md decides whether a
+# pull request gets a preview environment. go.yml reads the LIVE checkbox state
+# through the API before it dispatches a preview, so a push needs nothing from
+# this workflow.
+#
+# This workflow covers the one case a push cannot: the author edits only the
+# description. GitHub sends `edited` and no other event, so without this file a
+# cleared checkbox would leave the preview running until the pull request
+# closes — the leak preview-teardown.yml exists to prevent, one event earlier.
+#
+# It acts on a transition only. `github.event.changes.body.from` holds the
+# previous description, so a title-only edit, or a body edit that leaves the
+# checkbox as it was, does nothing.
+
+on:
+  pull_request:
+    # Same branch filter go.yml and preview-teardown.yml use. A preview only
+    # ever exists for a pull request that targets main.
+    branches: [ main ]
+    types: [edited]
+
+# GITHUB_TOKEN starts with nothing. Every job states what it needs.
+permissions: {}
+
+# Never cancel. A cancelled destroy leaks the preview, which is the failure this
+# workflow prevents. The group serializes two fast edits on the same pull
+# request, so an up and a down cannot race.
+concurrency:
+  group: preview-toggle-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      action: ${{ steps.decide.outputs.action }}
+    steps:
+      - name: Compare the checkbox before and after the edit
+        id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Read the payload from the file. The description is author-controlled
+          # text, so it never goes through a workflow expression.
+          before="$(jq -r '.changes.body.from // ""' "$GITHUB_EVENT_PATH")"
+          after="$(jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH")"
+          body_changed="$(jq -r 'if .changes.body then "true" else "false" end' "$GITHUB_EVENT_PATH")"
+
+          # The HTML comment is the anchor, not the label. The author can
+          # rewrite the wording of the line and the match still holds.
+          marker='-[[:space:]]*\[[xX]\].*<!--[[:space:]]*preview-deploy[[:space:]]*-->'
+
+          is_checked() {
+            printf '%s\n' "$1" | grep -qE "$marker"
+          }
+
+          action=none
+          if [[ "$body_changed" == 'true' ]]; then
+            if is_checked "$after" && ! is_checked "$before"; then
+              action=up
+            elif ! is_checked "$after" && is_checked "$before"; then
+              action=down
+            fi
+          fi
+
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+          {
+            echo '## Preview toggle'
+            echo
+            echo "- Decision: $action"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # The preview image is tagged from the merge commit the build ran on, and no
+  # API exposes that commit after the fact. Re-running the build is therefore
+  # the only way to raise a preview without a new push. The re-run replays the
+  # stored event payload, which still holds the old description, but go.yml
+  # reads the checkbox live and so dispatches the preview anyway.
+  relaunch:
+    needs: decide
+    if: needs.decide.outputs.action == 'up'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      pull-requests: write
+    steps:
+      - name: Re-run the build so it dispatches the preview
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          run_json="$(gh run list --repo "$REPO" --workflow go.yml --limit 30 \
+            --json databaseId,headSha,event,status \
+            --jq "[.[] | select(.event == \"pull_request\" and .headSha == \"${HEAD_SHA}\")] | first")"
+
+          if [[ -z "$run_json" || "$run_json" == 'null' ]]; then
+            # go.yml has a paths filter, so a pull request that touches no
+            # matching file starts no run and has no image to deploy.
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
+              'No build run was found for this commit, so there is no image to deploy. Push a commit to build one, then the preview starts.'
+            exit 0
+          fi
+
+          run_id="$(printf '%s' "$run_json" | jq -r '.databaseId')"
+          status="$(printf '%s' "$run_json" | jq -r '.status')"
+
+          if [[ "$status" != 'completed' ]]; then
+            echo "Run $run_id is $status. It reads the checkbox itself and deploys the preview."
+            exit 0
+          fi
+
+          gh run rerun "$run_id" --repo "$REPO"
+          echo "Re-ran run $run_id."
+
+  destroy:
+    needs: decide
+    if: needs.decide.outputs.action == 'down'
+    uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
+    permissions:
+      contents: read
+    with:
+      deploy_repository: nanostack-dev/infra
+      event_type: preview-destroy
+      payload: >-
+        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}"}
+    secrets:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
