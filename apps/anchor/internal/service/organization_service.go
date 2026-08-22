@@ -10,6 +10,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
@@ -222,10 +223,9 @@ func (s *organizationService) attachIncludes(
 		return organizations, nil
 	}
 
-	organizationIDs := make([]string, 0, len(organizations))
-	for _, org := range organizations {
-		organizationIDs = append(organizationIDs, org.ID)
-	}
+	organizationIDs := functional.Slice(organizations).Map(func(org organization.Organization) string {
+		return org.ID
+	}).ToSlice()
 
 	licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
 		TenantID:        tenantID,

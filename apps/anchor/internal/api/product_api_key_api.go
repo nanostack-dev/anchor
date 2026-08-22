@@ -159,20 +159,20 @@ func (s *AnchorAPI) DeleteProductAPIKey(
 func mapToSearchProductAPIKeyInput(
 	searchReqBody *SearchProductAPIKeysJSONRequestBody,
 ) search.Request[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey] {
-	var filter *apikey.SearchProductAPIKeyFilter
-	if searchReqBody.Filter != nil {
-		filter = &apikey.SearchProductAPIKeyFilter{
-			ProductAPIKeyIDs: searchReqBody.Filter.Ids,
-			Names:            searchReqBody.Filter.Names,
-		}
-		if searchReqBody.Filter.Status != nil {
-			filter.Status = functional.Slice(
-				*searchReqBody.Filter.Status).Map(
-				func(s ProductAPIKeyStatus) string {
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f ProductAPIKeyFilter) apikey.SearchProductAPIKeyFilter {
+			result := apikey.SearchProductAPIKeyFilter{
+				ProductAPIKeyIDs: f.Ids,
+				Names:            f.Names,
+			}
+			if f.Status != nil {
+				result.Status = functional.Slice(*f.Status).Map(func(s ProductAPIKeyStatus) string {
 					return string(s)
 				})
-		}
-	}
+			}
+			return result
+		}).
+		ToPtr()
 	var req search.Request[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey]
 	return req.WithFilter(filter).
 		WithSort(

@@ -138,13 +138,12 @@ func (s *AnchorAPI) DeleteOrganizationWorkspace(
 func mapToSearchWorkspaceInput(
 	searchReqBody *SearchOrganizationWorkspacesJSONRequestBody,
 ) search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace] {
-	var filter *workspace.SearchWorkspaceFilter
-	if searchReqBody.Filter != nil {
-		filter = &workspace.SearchWorkspaceFilter{
-			IDs:   searchReqBody.Filter.Ids,
-			Names: searchReqBody.Filter.Names,
+	filter := functional.FromPtr(searchReqBody.Filter).Map(func(f WorkspaceFilter) workspace.SearchWorkspaceFilter {
+		return workspace.SearchWorkspaceFilter{
+			IDs:   f.Ids,
+			Names: f.Names,
 		}
-	}
+	}).ToPtr()
 
 	var req search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace]
 	return req.WithFilter(filter).

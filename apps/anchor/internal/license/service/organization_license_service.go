@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -255,10 +256,7 @@ func (s *organizationLicenseService) withUsage(
 	if err != nil {
 		return license.OrganizationLicenseRead{}, err
 	}
-	latestByKey := make(map[string]license.UsageObservation, len(latest))
-	for _, observation := range latest {
-		latestByKey[observation.Key] = observation
-	}
+	latestByKey := functional.Slice(latest).ToMap(func(o license.UsageObservation) string { return o.Key })
 
 	read.Usage = license.DeriveUsage(schema.Fields, base.Values, latestByKey)
 	return read, nil

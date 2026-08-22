@@ -78,11 +78,9 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
 		return nil, err
 	}
 
-	byOrganization := make(map[string]license.OrganizationLicense, len(rows))
-	for _, row := range rows {
-		byOrganization[row.OrganizationID] = row
-	}
-	return byOrganization, nil
+	return functional.Slice(rows).ToMap(func(row license.OrganizationLicense) string {
+		return row.OrganizationID
+	}), nil
 }
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(

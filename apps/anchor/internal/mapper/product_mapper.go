@@ -3,6 +3,8 @@ package mapper
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type ProductMapper struct{}
@@ -15,10 +17,7 @@ func (m *ProductMapper) ToDomain(
 	entity model.Products,
 	organizationAPIKeyConfig model.ProductOrganizationAPIKeyConfigs,
 ) product.Product {
-	var description string
-	if entity.Description != nil {
-		description = *entity.Description
-	}
+	description := functional.FromPtr(entity.Description).OrElse("")
 
 	config := product.Config{
 		OrganizationAPIKeys: product.OrganizationAPIKeysConfig{Prefix: organizationAPIKeyConfig.Prefix},
@@ -36,11 +35,7 @@ func (m *ProductMapper) ToDomain(
 }
 
 func (m *ProductMapper) ToEntity(domain product.Product) model.Products {
-	var description *string
-	if domain.Description != "" {
-		desc := domain.Description
-		description = &desc
-	}
+	description := functional.OptionOf(domain.Description, domain.Description != "").ToPtr()
 
 	return model.Products{
 		ID:               domain.ID,

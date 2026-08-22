@@ -23,6 +23,8 @@ import (
 	texttemplate "text/template"
 
 	"anchor/internal/domain/email"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 var (
@@ -110,10 +112,7 @@ func (r *Renderer) Render(version *email.TemplateVersion, vars map[string]any) (
 func softValidate(schema []email.VariableSchema, vars map[string]any, templates ...string) ([]string, map[string]any) {
 	var warnings []string
 
-	schemaByName := make(map[string]email.VariableSchema, len(schema))
-	for _, s := range schema {
-		schemaByName[s.Name] = s
-	}
+	schemaByName := functional.Slice(schema).ToMap(func(s email.VariableSchema) string { return s.Name })
 
 	// Warn on vars submitted but not declared in schema.
 	for name := range vars {

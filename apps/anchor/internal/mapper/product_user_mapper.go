@@ -3,6 +3,8 @@ package mapper
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/user"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type ProductUserMapper struct{}
@@ -14,10 +16,7 @@ func NewProductUserMapper() *ProductUserMapper { // Return concrete type
 }
 
 func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) user.ProductUser {
-	var name string
-	if entity.Name != nil {
-		name = *entity.Name
-	}
+	name := functional.FromPtr(entity.Name).OrElse("")
 
 	return user.ProductUser{
 		ID:         entity.ID,
@@ -32,11 +31,7 @@ func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) user.ProductUser
 }
 
 func (m *ProductUserMapper) ToEntity(domain user.ProductUser) model.ProductUsers {
-	var name *string
-	if domain.Name != "" {
-		n := domain.Name
-		name = &n
-	}
+	name := functional.OptionOf(domain.Name, domain.Name != "").ToPtr()
 
 	return model.ProductUsers{
 		ID:         domain.ID,

@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
 )
@@ -28,9 +30,7 @@ func (s *AnchorAPI) CreateLicenseSchema(
 		ProductID: request.ProductId,
 		Fields:    mapFieldDeclarationsFromAPI(b.Fields),
 	}
-	if b.Description != nil {
-		in.Description = *b.Description
-	}
+	in.Description = functional.FromPtr(b.Description).OrElse("")
 
 	schema, err := s.LicenseSchemaService.CreateSchema(ctx, in)
 	if err != nil {
@@ -79,10 +79,7 @@ func (s *AnchorAPI) UpdateLicenseSchema(
 	}
 	// A nil Fields leaves the declaration alone; a supplied one replaces it,
 	// so an omitted field is a removal rather than a no-op.
-	if request.Body.Fields != nil {
-		declared := mapFieldDeclarationsFromAPI(*request.Body.Fields)
-		in.Fields = &declared
-	}
+	in.Fields = functional.FromPtr(request.Body.Fields).Map(mapFieldDeclarationsFromAPI).ToPtr()
 
 	schema, err := s.LicenseSchemaService.UpdateSchema(ctx, in)
 	if err != nil {

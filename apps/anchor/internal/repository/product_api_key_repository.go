@@ -308,13 +308,9 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
 
-	permissionsByAPIKeyID := make(map[string][]model.ProductAPIKeyPermissions, len(itemEntities))
-	for _, permissionEntity := range permissionEntities {
-		permissionsByAPIKeyID[permissionEntity.APIKeyID] = append(
-			permissionsByAPIKeyID[permissionEntity.APIKeyID],
-			permissionEntity,
-		)
-	}
+	permissionsByAPIKeyID := functional.Slice(permissionEntities).GroupBy(
+		func(p model.ProductAPIKeyPermissions) string { return p.APIKeyID },
+	)
 
 	items := functional.Slice(itemEntities).Map(func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
 		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])

@@ -5,6 +5,8 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/license"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type LicenseSchemaMapper struct{}
@@ -50,11 +52,9 @@ func (m *LicenseSchemaFieldMapper) ToDomain(entity model.LicenseSchemaFields) li
 		// the next write re-validates it.
 		_ = json.Unmarshal([]byte(entity.RulesJSON), &set)
 	}
-	var usageShape *license.UsageShape
-	if entity.UsageShape != nil {
-		shape := license.UsageShape(*entity.UsageShape)
-		usageShape = &shape
-	}
+	usageShape := functional.FromPtr(entity.UsageShape).Map(func(s string) license.UsageShape {
+		return license.UsageShape(s)
+	}).ToPtr()
 	return license.Field{
 		ID:          entity.ID,
 		SchemaID:    entity.LicenseSchemaID,
@@ -73,11 +73,9 @@ func (m *LicenseSchemaFieldMapper) ToEntity(domain license.Field) model.LicenseS
 	if b, err := json.Marshal(domain.Rules); err == nil {
 		rulesJSON = string(b)
 	}
-	var usageShape *string
-	if domain.UsageShape != nil {
-		shape := string(*domain.UsageShape)
-		usageShape = &shape
-	}
+	usageShape := functional.FromPtr(domain.UsageShape).Map(func(s license.UsageShape) string {
+		return string(s)
+	}).ToPtr()
 	return model.LicenseSchemaFields{
 		ID:              domain.ID,
 		LicenseSchemaID: domain.SchemaID,

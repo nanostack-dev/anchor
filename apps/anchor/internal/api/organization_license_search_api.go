@@ -45,14 +45,15 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 func mapToSearchOrganizationLicensesRequest(
 	body *SearchOrganizationLicensesJSONRequestBody,
 ) search.Request[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense] {
-	var filter *license.SearchOrganizationLicenseFilter
-	if body.Filter != nil {
-		filter = &license.SearchOrganizationLicenseFilter{
-			OrganizationIDs:    body.Filter.OrganizationIds,
-			LicenseTemplateIDs: body.Filter.LicenseTemplateIds,
-			Licensed:           body.Filter.Licensed,
-		}
-	}
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f OrganizationLicenseFilter) license.SearchOrganizationLicenseFilter {
+			return license.SearchOrganizationLicenseFilter{
+				OrganizationIDs:    f.OrganizationIds,
+				LicenseTemplateIDs: f.LicenseTemplateIds,
+				Licensed:           f.Licensed,
+			}
+		}).
+		ToPtr()
 
 	var request search.Request[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense]
 	return request.WithFilter(filter).

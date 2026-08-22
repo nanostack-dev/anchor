@@ -336,14 +336,15 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	}
 	newPermission = permissions[0]
 
-	for _, perm := range productRole.Permissions {
-		if strings.EqualFold(perm.PermissionName, newPermission.PermissionName) {
-			logger.Debug().
-				Str("permission_name", newPermission.PermissionName).
-				Str("product_role_id", input.ProductRoleID).
-				Msg("permission already assigned to role")
-			return *productRole, nil
-		}
+	alreadyAssigned := functional.Slice(productRole.Permissions).AnyMatch(func(perm role.ProductRolePermission) bool {
+		return strings.EqualFold(perm.PermissionName, newPermission.PermissionName)
+	})
+	if alreadyAssigned {
+		logger.Debug().
+			Str("permission_name", newPermission.PermissionName).
+			Str("product_role_id", input.ProductRoleID).
+			Msg("permission already assigned to role")
+		return *productRole, nil
 	}
 
 	productRole.Permissions = append(productRole.Permissions, newPermission)
@@ -514,10 +515,10 @@ func (s *productRoleService) permissionsValidation(
 		return fault.ErrUnexpected
 	}
 
-	foundMap := make(map[string]string)
-	for _, p := range result.Items {
-		foundMap[strings.ToLower(p.Name)] = p.Name
-	}
+	foundNames := functional.Slice(result.Items).Map(func(p resourcepermission.ProductResourcePermission) string {
+		return p.Name
+	})
+	foundMap := functional.Slice(foundNames).ToMap(strings.ToLower)
 
 	var notFoundPermissions []string
 	for i := range input {

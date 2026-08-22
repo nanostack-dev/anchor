@@ -16,6 +16,7 @@ import (
 
 	"anchor/internal/integration/provider"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
@@ -322,11 +323,7 @@ func formatAddress(a provider.Address) string {
 }
 
 func formatAddressList(addrs []provider.Address) string {
-	parts := make([]string, 0, len(addrs))
-	for _, a := range addrs {
-		parts = append(parts, formatAddress(a))
-	}
-	return strings.Join(parts, ", ")
+	return functional.Slice(addrs).JoinString(", ", formatAddress)
 }
 
 // encodeHeader encodes non-ASCII header values via RFC 2047 Q-encoding.
@@ -359,12 +356,9 @@ func generateMessageID(fromEmail string) string {
 }
 
 func firstNonEmpty(values ...string) string {
-	for _, v := range values {
-		if strings.TrimSpace(v) != "" {
-			return v
-		}
-	}
-	return ""
+	return functional.Slice(values).FindFirst(func(v string) bool {
+		return strings.TrimSpace(v) != ""
+	}).OrElse("")
 }
 
 // stripHTMLToText is a deliberately tiny HTML→text fallback for the case

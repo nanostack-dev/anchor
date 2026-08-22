@@ -14,13 +14,12 @@ import (
 
 func mapToSearchProductInput(request *SearchProductsRequestObject) search.
 	Request[product.SearchProductFilter, product.SortFieldProduct] {
-	var filter *product.SearchProductFilter
-	if request.Body.Filter != nil {
-		filter = &product.SearchProductFilter{
-			IDs:   request.Body.Filter.Ids,
-			Names: request.Body.Filter.Names,
+	filter := functional.FromPtr(request.Body.Filter).Map(func(f ProductFilter) product.SearchProductFilter {
+		return product.SearchProductFilter{
+			IDs:   f.Ids,
+			Names: f.Names,
 		}
-	}
+	}).ToPtr()
 
 	var req search.Request[product.SearchProductFilter, product.SortFieldProduct]
 	return req.WithFilter(filter).
@@ -99,10 +98,7 @@ func (s *AnchorAPI) CreateProduct(
 		return nil, err
 	}
 
-	var description string
-	if request.Body.Description != nil {
-		description = *request.Body.Description
-	}
+	description := functional.FromPtr(request.Body.Description).OrElse("")
 
 	input := product.CreateProductInput{
 		TenantID:    tenantID,
@@ -209,7 +205,6 @@ func mapToSearchProductUserInput(
 	request *SearchProductUsersRequestObject,
 ) search.Request[user.SearchProductUserFilter,
 	user.SortFieldProductUser] {
-	var filter *user.SearchProductUserFilter
 	var req search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]
 
 	if request.Body == nil {
@@ -217,30 +212,28 @@ func mapToSearchProductUserInput(
 	}
 
 	// Map filter fields based on the consistent OpenAPI spec structure
-	if request.Body.Filter != nil { //nolint:nestif // standard filter mapping pattern
-		filter = &user.SearchProductUserFilter{}
+	filter := functional.FromPtr(request.Body.Filter).Map(func(f ProductUserFilter) user.SearchProductUserFilter {
+		result := user.SearchProductUserFilter{}
 
-		if request.Body.Filter.Ids != nil {
-			filter.IDs = functional.Slice(
-				*request.Body.Filter.Ids).Map(
-				func(id Ksuid) string { return id })
+		if f.Ids != nil {
+			result.IDs = functional.Slice(*f.Ids).Map(func(id Ksuid) string { return id })
 		}
-		if request.Body.Filter.Emails != nil {
-			filter.Emails = request.Body.Filter.Emails
+		if f.Emails != nil {
+			result.Emails = f.Emails
 		}
-		if request.Body.Filter.Names != nil {
-			filter.Names = *request.Body.Filter.Names
+		if f.Names != nil {
+			result.Names = *f.Names
 		}
-		if request.Body.Filter.Statuses != nil {
-			filter.Statuses = functional.Slice(
-				*request.Body.Filter.Statuses).Map(
-
+		if f.Statuses != nil {
+			result.Statuses = functional.Slice(*f.Statuses).Map(
 				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) })
 		}
-		if request.Body.Filter.ExternalIds != nil {
-			filter.ExternalIDs = request.Body.Filter.ExternalIds
+		if f.ExternalIds != nil {
+			result.ExternalIDs = f.ExternalIds
 		}
-	}
+
+		return result
+	}).ToPtr()
 
 	return req.WithFilter(filter).
 		WithSort(
@@ -252,10 +245,7 @@ func mapToSearchProductUserInput(
 }
 
 func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
-	var name *string
-	if user.Name != "" {
-		name = &user.Name
-	}
+	name := functional.OptionOf(user.Name, user.Name != "").ToPtr()
 
 	return ProductUserResponse{
 		Id:         user.ID,
@@ -272,15 +262,11 @@ func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
 func (s *AnchorAPI) CreateProductUser(
 	ctx context.Context, request CreateProductUserRequestObject,
 ) (CreateProductUserResponseObject, error) {
-	var status = user.ProductUserStatusActive
-	if request.Body.Status != nil {
-		status = user.ProductUserStatus(*request.Body.Status)
-	}
+	status := functional.FromPtr(request.Body.Status).Map(func(s ProductUserStatus) user.ProductUserStatus {
+		return user.ProductUserStatus(s)
+	}).OrElse(user.ProductUserStatusActive)
 
-	var name string
-	if request.Body.Name != nil {
-		name = *request.Body.Name
-	}
+	name := functional.FromPtr(request.Body.Name).OrElse("")
 
 	input := user.CreateProductUserInput{
 		ProductID: request.ProductId,
@@ -379,12 +365,10 @@ func (s *AnchorAPI) DeleteProductUser(
 func (s *AnchorAPI) ListUserOrganizations(
 	ctx context.Context, request ListUserOrganizationsRequestObject,
 ) (ListUserOrganizationsResponseObject, error) {
-	includePermissions := false
-	if request.Params.Include != nil {
-		if slices.Contains(*request.Params.Include, UserOrganizationIncludeRolePermissions) {
-			includePermissions = true
-		}
-	}
+	includePermissions := functional.FromPtr(request.Params.Include).
+		Exists(func(include []UserOrganizationInclude) bool {
+			return slices.Contains(include, UserOrganizationIncludeRolePermissions)
+		})
 
 	input := user.ListUserOrganizationsInput{
 		ProductID:          request.ProductId,
@@ -402,9 +386,7 @@ func (s *AnchorAPI) ListUserOrganizations(
 	}
 
 	return ListUserOrganizations200JSONResponse{
-		Items: functional.Slice(
-			memberships).Map(
-
+		Items: functional.Slice(memberships).Map(
 			func(m user.OrganizationMembership) UserOrganizationResponse {
 				return mapUserOrgMembershipToResponse(m, includePermissions)
 			}),
@@ -414,12 +396,10 @@ func (s *AnchorAPI) ListUserOrganizations(
 func (s *AnchorAPI) GetUserOrganization(
 	ctx context.Context, request GetUserOrganizationRequestObject,
 ) (GetUserOrganizationResponseObject, error) {
-	includePermissions := false
-	if request.Params.Include != nil {
-		if slices.Contains(*request.Params.Include, UserOrganizationIncludeRolePermissions) {
-			includePermissions = true
-		}
-	}
+	includePermissions := functional.FromPtr(request.Params.Include).
+		Exists(func(include []UserOrganizationInclude) bool {
+			return slices.Contains(include, UserOrganizationIncludeRolePermissions)
+		})
 
 	input := user.GetUserOrganizationInput{
 		ProductID:          request.ProductId,

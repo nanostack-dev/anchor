@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/rs/zerolog"
@@ -73,21 +74,21 @@ func syncProductPermissions(
 	permRepo repository.ProductPermissionRepository,
 	logger zerolog.Logger,
 ) error {
-	desired := make(map[string]permission.ProductPermission)
-	for _, perm := range GeneratePermissions() {
-		perm.ProductID = prod.ID
-		desired[perm.Name] = perm
-	}
+	desired := functional.Slice(GeneratePermissions()).
+		Map(func(perm permission.ProductPermission) permission.ProductPermission {
+			perm.ProductID = prod.ID
+			return perm
+		}).
+		ToMap(func(perm permission.ProductPermission) string { return perm.Name })
 
 	existing, err := listAllProductPermissions(ctx, permRepo, prod.ID)
 	if err != nil {
 		return err
 	}
 
-	existingByName := make(map[string]permission.ProductPermission)
-	for _, perm := range existing {
-		existingByName[perm.Name] = perm
-	}
+	existingByName := functional.Slice(existing).ToMap(func(perm permission.ProductPermission) string {
+		return perm.Name
+	})
 
 	for name, perm := range desired {
 		if _, ok := existingByName[name]; ok {

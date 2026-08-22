@@ -1,22 +1,21 @@
 package api
 
-import "anchor/internal/domain/email"
+import (
+	"anchor/internal/domain/email"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
 
 func mapVariableSchemasFromAPI(schemas *[]EmailVariableSchema) []email.VariableSchema {
 	if schemas == nil {
 		return nil
 	}
-	out := make([]email.VariableSchema, 0, len(*schemas))
-	for _, s := range *schemas {
+	out := functional.Slice(*schemas).Map(func(s EmailVariableSchema) email.VariableSchema {
 		vs := email.VariableSchema{
-			Name: s.Name,
-			Type: s.Type,
-		}
-		if s.Required != nil {
-			vs.Required = *s.Required
-		}
-		if s.Help != nil {
-			vs.Help = *s.Help
+			Name:     s.Name,
+			Type:     s.Type,
+			Required: functional.FromPtr(s.Required).OrElse(false),
+			Help:     functional.FromPtr(s.Help).OrElse(""),
 		}
 		if s.Items != nil {
 			vs.Items = mapSchemaItemsFromAPI(s.Items)
@@ -24,7 +23,10 @@ func mapVariableSchemasFromAPI(schemas *[]EmailVariableSchema) []email.VariableS
 		if s.Properties != nil {
 			vs.Properties = mapSchemaPropsFromAPI(*s.Properties)
 		}
-		out = append(out, vs)
+		return vs
+	}).ToSlice()
+	if out == nil {
+		out = []email.VariableSchema{}
 	}
 	return out
 }
@@ -33,19 +35,12 @@ func mapVariableSchemasToAPI(schemas []email.VariableSchema) *[]EmailVariableSch
 	if len(schemas) == 0 {
 		return nil
 	}
-	out := make([]EmailVariableSchema, 0, len(schemas))
-	for _, s := range schemas {
+	out := functional.Slice(schemas).Map(func(s email.VariableSchema) EmailVariableSchema {
 		vs := EmailVariableSchema{
-			Name: s.Name,
-			Type: s.Type,
-		}
-		if s.Required {
-			b := true
-			vs.Required = &b
-		}
-		if s.Help != "" {
-			h := s.Help
-			vs.Help = &h
+			Name:     s.Name,
+			Type:     s.Type,
+			Required: functional.OptionOf(s.Required, s.Required).ToPtr(),
+			Help:     functional.OptionOf(s.Help, s.Help != "").ToPtr(),
 		}
 		if s.Items != nil {
 			vs.Items = mapSchemaItemsToAPI(s.Items)
@@ -54,23 +49,27 @@ func mapVariableSchemasToAPI(schemas []email.VariableSchema) *[]EmailVariableSch
 			props := mapSchemaPropsToAPI(s.Properties)
 			vs.Properties = &props
 		}
-		out = append(out, vs)
-	}
+		return vs
+	}).ToSlice()
 	return &out
 }
 
 func mapSchemaPropsFromAPI(props []EmailVariableSchemaProperty) []email.VariableSchemaProperty {
-	out := make([]email.VariableSchemaProperty, 0, len(props))
-	for _, p := range props {
-		out = append(out, email.VariableSchemaProperty{Name: p.Name, Type: p.Type})
+	out := functional.Slice(props).Map(func(p EmailVariableSchemaProperty) email.VariableSchemaProperty {
+		return email.VariableSchemaProperty{Name: p.Name, Type: p.Type}
+	}).ToSlice()
+	if out == nil {
+		out = []email.VariableSchemaProperty{}
 	}
 	return out
 }
 
 func mapSchemaPropsToAPI(props []email.VariableSchemaProperty) []EmailVariableSchemaProperty {
-	out := make([]EmailVariableSchemaProperty, 0, len(props))
-	for _, p := range props {
-		out = append(out, EmailVariableSchemaProperty{Name: p.Name, Type: p.Type})
+	out := functional.Slice(props).Map(func(p email.VariableSchemaProperty) EmailVariableSchemaProperty {
+		return EmailVariableSchemaProperty{Name: p.Name, Type: p.Type}
+	}).ToSlice()
+	if out == nil {
+		out = []EmailVariableSchemaProperty{}
 	}
 	return out
 }
@@ -99,35 +98,35 @@ func mapSchemaItemsToAPI(items *email.VariableSchemaItems) *EmailVariableSchemaI
 }
 
 func mapExamplesFromAPI(items []TemplateExample) []email.TemplateExample {
-	out := make([]email.TemplateExample, 0, len(items))
-	for _, e := range items {
-		out = append(out, email.TemplateExample{
+	out := functional.Slice(items).Map(func(e TemplateExample) email.TemplateExample {
+		return email.TemplateExample{
 			ID:        e.Id,
 			Name:      e.Name,
 			Variables: e.Variables,
-		})
+		}
+	}).ToSlice()
+	if out == nil {
+		out = []email.TemplateExample{}
 	}
 	return out
 }
 
 func mapExamplesToResponse(examples []email.TemplateExample) TemplateExampleListResponse {
-	items := make([]TemplateExample, 0, len(examples))
-	for _, e := range examples {
-		items = append(items, TemplateExample{
+	items := functional.Slice(examples).Map(func(e email.TemplateExample) TemplateExample {
+		return TemplateExample{
 			Id:        e.ID,
 			Name:      e.Name,
 			Variables: e.Variables,
-		})
+		}
+	}).ToSlice()
+	if items == nil {
+		items = []TemplateExample{}
 	}
 	return TemplateExampleListResponse{Examples: items}
 }
 
 func mapTemplateToResponse(t email.Template) EmailTemplateResponse {
-	var desc *string
-	if t.Description != "" {
-		d := t.Description
-		desc = &d
-	}
+	desc := functional.OptionOf(t.Description, t.Description != "").ToPtr()
 	return EmailTemplateResponse{
 		Id:                 t.ID,
 		ProductId:          t.ProductID,
@@ -143,11 +142,7 @@ func mapTemplateToResponse(t email.Template) EmailTemplateResponse {
 }
 
 func mapTemplateVersionToResponse(v email.TemplateVersion) EmailTemplateVersionResponse {
-	var bodyText *string
-	if v.BodyText != "" {
-		bt := v.BodyText
-		bodyText = &bt
-	}
+	bodyText := functional.OptionOf(v.BodyText, v.BodyText != "").ToPtr()
 	return EmailTemplateVersionResponse{
 		Id:            v.ID,
 		TemplateId:    v.TemplateID,
@@ -164,20 +159,9 @@ func mapTemplateVersionToResponse(v email.TemplateVersion) EmailTemplateVersionR
 }
 
 func mapSendRecordToResponse(r email.SendRecord) EmailSendRecordResponse {
-	var toName, fromName *string
-	if r.ToName != "" {
-		n := r.ToName
-		toName = &n
-	}
-	if r.FromName != "" {
-		n := r.FromName
-		fromName = &n
-	}
-	var iid *string
-	if r.IntegrationInstanceID != "" {
-		id := r.IntegrationInstanceID
-		iid = &id
-	}
+	toName := functional.OptionOf(r.ToName, r.ToName != "").ToPtr()
+	fromName := functional.OptionOf(r.FromName, r.FromName != "").ToPtr()
+	iid := functional.OptionOf(r.IntegrationInstanceID, r.IntegrationInstanceID != "").ToPtr()
 	return EmailSendRecordResponse{
 		Id:                    r.ID,
 		ProductId:             r.ProductID,

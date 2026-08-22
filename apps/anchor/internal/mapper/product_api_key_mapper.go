@@ -33,9 +33,7 @@ func (m *ProductAPIKeyMapper) ToDomainWithPermissions(
 	entity model.ProductAPIKeys, permissionEntities []model.ProductAPIKeyPermissions,
 ) apikey.ProductAPIKey {
 	domain := m.ToDomain(entity)
-	domain.Permissions = functional.Slice(
-		permissionEntities).Map(
-
+	domain.Permissions = functional.Slice(permissionEntities).Map(
 		func(perm model.ProductAPIKeyPermissions) apikey.ProductAPIKeyPermission {
 			return m.PermissionToDomain(perm)
 		})
@@ -82,9 +80,7 @@ func (m *ProductAPIKeyMapper) PermissionToDomain(entity model.ProductAPIKeyPermi
 func (m *ProductAPIKeyMapper) PermissionsToDomain(
 	entities []model.ProductAPIKeyPermissions,
 ) []apikey.ProductAPIKeyPermission {
-	return functional.Slice(
-		entities).Map(
-
+	return functional.Slice(entities).Map(
 		func(perm model.ProductAPIKeyPermissions) apikey.ProductAPIKeyPermission {
 			return m.PermissionToDomain(perm)
 		})
@@ -93,9 +89,7 @@ func (m *ProductAPIKeyMapper) PermissionsToDomain(
 func (m *ProductAPIKeyMapper) PermissionsToEntity(
 	domain []apikey.ProductAPIKeyPermission,
 ) []model.ProductAPIKeyPermissions {
-	return functional.Slice(
-		domain).Map(
-
+	return functional.Slice(domain).Map(
 		func(perm apikey.ProductAPIKeyPermission) model.ProductAPIKeyPermissions {
 			return m.PermissionToEntity(perm)
 		})

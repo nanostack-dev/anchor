@@ -123,15 +123,14 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 func mapToSearchPlatformInvitationRequest(
 	searchReqBody *SearchPlatformInvitationsJSONRequestBody,
 ) search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation] {
-	var filter *invitation.SearchPlatformInvitationFilter
-	if searchReqBody.Filter != nil {
-		filter = &invitation.SearchPlatformInvitationFilter{
-			Emails: searchReqBody.Filter.Emails,
-		}
-		if searchReqBody.Filter.Ids != nil {
-			filter.IDs = searchReqBody.Filter.Ids
-		}
-	}
+	filter := functional.FromPtr(searchReqBody.Filter).
+		Map(func(f PlatformInvitationFilter) invitation.SearchPlatformInvitationFilter {
+			return invitation.SearchPlatformInvitationFilter{
+				Emails: f.Emails,
+				IDs:    f.Ids,
+			}
+		}).
+		ToPtr()
 
 	var req search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]
 	return req.WithFilter(filter).

@@ -11,6 +11,7 @@ import (
 	"anchor/internal/repository"
 	serviceconfig "anchor/internal/service/config"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -226,13 +227,9 @@ func seedReconcileScheduler(
 			return listErr
 		}
 
-		hasKey := false
-		for _, inst := range instances {
-			if hasClerkAPIKey(inst.ConfigJSON) {
-				hasKey = true
-				break
-			}
-		}
+		hasKey := functional.Slice(instances).AnyMatch(func(inst domainintegration.Instance) bool {
+			return hasClerkAPIKey(inst.ConfigJSON)
+		})
 
 		if !hasKey {
 			logger.Debug().Msg("no Clerk instances with API key found; skipping reconcile scheduler seed")

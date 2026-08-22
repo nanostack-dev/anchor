@@ -9,6 +9,8 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2/user"
 
 	"anchor/internal/integration/provider"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 // Reconcile fetches all users from Clerk and emits UPSERT_USER commands.
@@ -32,21 +34,19 @@ func (p *Provider) Reconcile(
 		return nil, err
 	}
 
-	commands := make([]provider.Command, 0, len(users))
-	for _, u := range users {
-		if strings.TrimSpace(u.ID) == "" {
-			continue
-		}
-
-		commands = append(commands, provider.Command{
-			Type: CommandUpsertUser,
-			Data: UpsertUserData{
-				ExternalID: u.ID,
-				Email:      extractPrimaryEmailFromSDKUser(u),
-				Name:       buildFullName(u.FirstName, u.LastName),
-			},
-		})
-	}
+	commands := functional.Slice(users).FilterMap(
+		func(u *clerkapi.User) bool { return strings.TrimSpace(u.ID) != "" },
+		func(u *clerkapi.User) provider.Command {
+			return provider.Command{
+				Type: CommandUpsertUser,
+				Data: UpsertUserData{
+					ExternalID: u.ID,
+					Email:      extractPrimaryEmailFromSDKUser(u),
+					Name:       buildFullName(u.FirstName, u.LastName),
+				},
+			}
+		},
+	)
 
 	return commands, nil
 }
@@ -88,10 +88,11 @@ func extractPrimaryEmailFromSDKUser(u *clerkapi.User) string {
 	}
 
 	if u.PrimaryEmailAddressID != nil {
-		for _, ea := range u.EmailAddresses {
-			if ea != nil && ea.ID == *u.PrimaryEmailAddressID {
-				return ea.EmailAddress
-			}
+		primary := functional.Slice(u.EmailAddresses).FindFirst(func(ea *clerkapi.EmailAddress) bool {
+			return ea != nil && ea.ID == *u.PrimaryEmailAddressID
+		})
+		if primary.IsPresent() {
+			return primary.Value().EmailAddress
 		}
 	}
 

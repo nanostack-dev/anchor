@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
@@ -51,10 +51,7 @@ func (r *organizationLicenseChangeRepositoryImpl) Append(
 		return nil
 	}
 
-	entities := make([]model.OrganizationLicenseChanges, 0, len(changes))
-	for _, change := range changes {
-		entities = append(entities, r.mapper.ToEntity(change))
-	}
+	entities := functional.Slice(changes).Map(r.mapper.ToEntity)
 
 	stmt := table.OrganizationLicenseChanges.
 		INSERT(table.OrganizationLicenseChanges.AllColumns).

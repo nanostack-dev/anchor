@@ -305,23 +305,13 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
 
-	permissionsByAPIKeyID := make(
-		map[string][]model.OrganizationAPIKeyPermissions,
-		len(result.Items),
+	permissionsByAPIKeyID := functional.Slice(permissionEntities).GroupBy(
+		func(p model.OrganizationAPIKeyPermissions) string { return p.APIKeyID },
 	)
-	for _, permissionEntity := range permissionEntities {
-		permissionsByAPIKeyID[permissionEntity.APIKeyID] = append(
-			permissionsByAPIKeyID[permissionEntity.APIKeyID],
-			permissionEntity,
-		)
-	}
 
 	result.Items = functional.Slice(result.Items).
 		Map(func(item orgapikey.OrganizationAPIKey) orgapikey.OrganizationAPIKey {
-			item.Permissions = functional.Slice(
-				permissionsByAPIKeyID[item.ID]).Map(
-
-				r.mapper.PermissionToDomain)
+			item.Permissions = permissionsByAPIKeyID[item.ID].Map(r.mapper.PermissionToDomain)
 
 			return item
 		})

@@ -155,9 +155,11 @@ func mapSearchOrganizationMembersRequestToInput(
 			filter.ExternalIDs = *request.Body.Filter.ExternalIds
 		}
 		if request.Body.Filter.Emails != nil {
-			for _, e := range *request.Body.Filter.Emails {
-				filter.Emails = append(filter.Emails, string(e))
-			}
+			filter.Emails = append(
+				filter.Emails,
+				functional.Slice(*request.Body.Filter.Emails).Map(func(e openapi_types.Email) string {
+					return string(e)
+				})...)
 		}
 		if request.Body.Filter.RoleIds != nil {
 			filter.RoleIDs = append(filter.RoleIDs, *request.Body.Filter.RoleIds...)

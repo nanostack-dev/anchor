@@ -15,6 +15,7 @@ import (
 	"anchor/internal/buildinfo"
 	"anchor/internal/middleware"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
 	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/nanostack-dev/pgkit/adminui"
@@ -230,13 +231,10 @@ func parseAllowedOrigins(value string) []string {
 		return []string{}
 	}
 	parts := strings.Split(value, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if s := strings.TrimSpace(p); s != "" {
-			out = append(out, s)
-		}
-	}
-	return out
+	return functional.Slice(parts).FilterMap(
+		func(p string) bool { return strings.TrimSpace(p) != "" },
+		strings.TrimSpace,
+	)
 }
 
 func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {

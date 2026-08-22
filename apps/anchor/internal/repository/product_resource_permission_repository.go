@@ -236,9 +236,5 @@ func (r *productResourcePermissionRepository) FindByProductIDAndPermissionNames(
 }
 
 func lowerResourcePermissionStrings(values []string) []string {
-	lowered := make([]string, len(values))
-	for i, value := range values {
-		lowered[i] = strings.ToLower(value)
-	}
-	return lowered
+	return functional.Slice(values).Map(strings.ToLower)
 }

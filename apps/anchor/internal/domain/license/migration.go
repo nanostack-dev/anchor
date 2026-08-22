@@ -3,6 +3,8 @@ package license
 import (
 	"maps"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 // DifferencePolicy decides what a migration does with a license field whose
@@ -102,18 +104,12 @@ type MigrationTally struct {
 
 // Tally counts the run's results by outcome.
 func (m Migration) Tally() MigrationTally {
-	var tally MigrationTally
-	for _, result := range m.Results {
-		switch result.Outcome {
-		case OutcomeChanged:
-			tally.Changed++
-		case OutcomeUnchanged:
-			tally.Unchanged++
-		case OutcomeFailed:
-			tally.Failed++
-		}
+	results := functional.Slice(m.Results)
+	return MigrationTally{
+		Changed:   results.CountBy(func(r OrganizationMigrationResult) bool { return r.Outcome == OutcomeChanged }),
+		Unchanged: results.CountBy(func(r OrganizationMigrationResult) bool { return r.Outcome == OutcomeUnchanged }),
+		Failed:    results.CountBy(func(r OrganizationMigrationResult) bool { return r.Outcome == OutcomeFailed }),
 	}
-	return tally
 }
 
 // MigratedTo returns the Organization's license as the target template stamps

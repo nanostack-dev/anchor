@@ -22,6 +22,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/rs/zerolog"
 )
@@ -1013,12 +1014,9 @@ func (s *integrationService) countClerkInstancesWithKey(ctx context.Context) (in
 		return 0, err
 	}
 
-	count := 0
-	for _, inst := range instances {
-		if hasClerkAPIKey(inst.ConfigJSON) {
-			count++
-		}
-	}
+	count := functional.Slice(instances).CountBy(func(inst integration.Instance) bool {
+		return hasClerkAPIKey(inst.ConfigJSON)
+	})
 
 	return count, nil
 }

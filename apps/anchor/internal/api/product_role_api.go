@@ -17,9 +17,7 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description: &productRole.Description,
 		CreatedAt:   productRole.CreatedAt,
 		UpdatedAt:   productRole.UpdatedAt,
-		Permissions: functional.Slice(
-			productRole.Permissions).Map(
-
+		Permissions: functional.Slice(productRole.Permissions).Map(
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
 					PermissionName: perm.PermissionName,
@@ -125,18 +123,16 @@ func (s *AnchorAPI) UpdateProductRole(
 func (s *AnchorAPI) mapToProductRolePermissionSlice(
 	productID, roleID string, permissionsStrings []string,
 ) []role.ProductRolePermission {
-	var permissions []role.ProductRolePermission
-	if len(permissionsStrings) > 0 {
-		permissions = make([]role.ProductRolePermission, len(permissionsStrings))
-		for i, perm := range permissionsStrings {
-			permissions[i] = role.ProductRolePermission{
-				ProductRoleID:  roleID,
-				ProductID:      productID,
-				PermissionName: perm,
-			}
-		}
+	if len(permissionsStrings) == 0 {
+		return nil
 	}
-	return permissions
+	return functional.Slice(permissionsStrings).Map(func(perm string) role.ProductRolePermission {
+		return role.ProductRolePermission{
+			ProductRoleID:  roleID,
+			ProductID:      productID,
+			PermissionName: perm,
+		}
+	})
 }
 
 func (s *AnchorAPI) DeleteProductRole(
@@ -192,13 +188,12 @@ func (s *AnchorAPI) UnassignPermissionFromProductRole(
 func mapToSearchProductRoleInput(
 	searchReqBody *SearchProductRolesJSONRequestBody,
 ) search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole] {
-	var filter *role.SearchProductRoleFilter
-	if searchReqBody.Filter != nil {
-		filter = &role.SearchProductRoleFilter{
-			ProductRoleIDs: searchReqBody.Filter.Ids,
-			Names:          searchReqBody.Filter.Names,
+	filter := functional.FromPtr(searchReqBody.Filter).Map(func(f ProductRoleFilter) role.SearchProductRoleFilter {
+		return role.SearchProductRoleFilter{
+			ProductRoleIDs: f.Ids,
+			Names:          f.Names,
 		}
-	}
+	}).ToPtr()
 	var req search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]
 	return req.WithFilter(filter).
 		WithSort(

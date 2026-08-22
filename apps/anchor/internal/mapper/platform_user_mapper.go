@@ -3,6 +3,8 @@ package mapper
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/platform"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 type PlatformUserMapper struct{}
@@ -12,10 +14,7 @@ func NewPlatformUserMapper() *PlatformUserMapper {
 }
 
 func (m *PlatformUserMapper) ToDomain(entity model.PlatformUsers) platform.User {
-	name := ""
-	if entity.Name != nil {
-		name = *entity.Name
-	}
+	name := functional.FromPtr(entity.Name).OrElse("")
 
 	return platform.User{
 		ID:               entity.ID,
@@ -32,10 +31,7 @@ func (m *PlatformUserMapper) ToDomain(entity model.PlatformUsers) platform.User 
 }
 
 func (m *PlatformUserMapper) ToEntity(domain platform.User) model.PlatformUsers {
-	var name *string
-	if domain.Name != "" {
-		name = &domain.Name
-	}
+	name := functional.OptionOf(domain.Name, domain.Name != "").ToPtr()
 
 	return model.PlatformUsers{
 		ID:               domain.ID,

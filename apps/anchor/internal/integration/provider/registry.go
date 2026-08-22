@@ -3,6 +3,7 @@ package provider
 import (
 	"fmt"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"go.uber.org/fx"
 )
 
@@ -19,11 +20,11 @@ type RegistryParams struct {
 
 // NewRegistry creates a provider registry from all FX-injected providers.
 func NewRegistry(p RegistryParams) *Registry {
-	reg := &Registry{providers: make(map[string]Provider, len(p.Providers))}
-	for _, prov := range p.Providers {
-		reg.providers[prov.Type()] = prov
+	return &Registry{
+		providers: functional.Slice(p.Providers).ToMap(func(prov Provider) string {
+			return prov.Type()
+		}),
 	}
-	return reg
 }
 
 // GetProvider returns the provider for the given type, or an error if not registered.
