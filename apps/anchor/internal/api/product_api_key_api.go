@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/product/apikey"
 )
@@ -21,16 +21,16 @@ func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKe
 		Status:          productAPIKey.Status,
 		CreatedAt:       productAPIKey.CreatedAt,
 		UpdatedAt:       productAPIKey.UpdatedAt,
-		Permissions: slicex.Map(
-			productAPIKey.Permissions,
+		Permissions: functional.Slice(
+			productAPIKey.Permissions).Map(
+
 			func(perm apikey.ProductAPIKeyPermission) ProductAPIKeyPermissionResponse {
 				return ProductAPIKeyPermissionResponse{
 					ProductId:       perm.ProductID,
 					ProductApiKeyId: perm.APIKeyID,
 					PermissionName:  perm.PermissionName,
 				}
-			},
-		),
+			}),
 	}
 }
 
@@ -91,7 +91,7 @@ func (s *AnchorAPI) SearchProductAPIKeys(
 
 	response := ProductAPIKeyListResponse{
 		Count: result.Count,
-		Items: slicex.Map(result.Items, mapProductAPIKeyToResponse),
+		Items: functional.Slice(result.Items).Map(mapProductAPIKeyToResponse),
 		Total: result.Total,
 	}
 
@@ -166,11 +166,11 @@ func mapToSearchProductAPIKeyInput(
 			Names:            searchReqBody.Filter.Names,
 		}
 		if searchReqBody.Filter.Status != nil {
-			filter.Status = slicex.Map(
-				*searchReqBody.Filter.Status, func(s ProductAPIKeyStatus) string {
+			filter.Status = functional.Slice(
+				*searchReqBody.Filter.Status).Map(
+				func(s ProductAPIKeyStatus) string {
 					return string(s)
-				},
-			)
+				})
 		}
 	}
 	var req search.Request[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey]

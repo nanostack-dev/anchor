@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
@@ -159,7 +159,7 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 	}
 
 	return GetOrganizationLicenseHistory200JSONResponse(OrganizationLicenseHistoryResponse{
-		Items: slicex.Map(result.Items, mapOrganizationLicenseChangeToResponse),
+		Items: functional.Slice(result.Items).Map(mapOrganizationLicenseChangeToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}), nil

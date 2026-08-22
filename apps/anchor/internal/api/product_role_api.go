@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/product/role"
 )
@@ -17,16 +17,16 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description: &productRole.Description,
 		CreatedAt:   productRole.CreatedAt,
 		UpdatedAt:   productRole.UpdatedAt,
-		Permissions: slicex.Map(
-			productRole.Permissions,
+		Permissions: functional.Slice(
+			productRole.Permissions).Map(
+
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
 					PermissionName: perm.PermissionName,
 					ProductId:      perm.ProductID,
 					ProductRoleId:  perm.ProductRoleID,
 				}
-			},
-		),
+			}),
 	}
 }
 
@@ -68,7 +68,7 @@ func (s *AnchorAPI) SearchProductRoles(
 
 	response := ProductRoleListResponse{
 		Count: result.Count,
-		Items: slicex.Map(result.Items, mapProductRoleToResponse),
+		Items: functional.Slice(result.Items).Map(mapProductRoleToResponse),
 		Total: result.Total,
 	}
 

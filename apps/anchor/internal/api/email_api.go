@@ -6,8 +6,8 @@ import (
 	"anchor/internal/domain/email"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, int64, int64, error) {
@@ -80,7 +80,7 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
-	items := slicex.Map(templates, mapTemplateToResponse)
+	items := functional.Slice(templates).Map(mapTemplateToResponse)
 	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: len(items)}), nil
 }
 
@@ -395,6 +395,6 @@ func (s *AnchorAPI) ListEmailSends(
 		return nil, err
 	}
 
-	items := slicex.Map(records, mapSendRecordToResponse)
+	items := functional.Slice(records).Map(mapSendRecordToResponse)
 	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: len(items)}), nil
 }

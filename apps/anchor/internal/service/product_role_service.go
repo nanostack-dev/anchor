@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
@@ -96,8 +96,9 @@ func (s *productRoleService) CreateProductRole(
 		Str("name", input.Name).
 		Msg("creating product role")
 
-	productRolePermission := slicex.Map(
-		input.Permissions, func(perm string) role.ProductRolePermission {
+	productRolePermission := functional.Slice(
+		input.Permissions).Map(
+		func(perm string) role.ProductRolePermission {
 			p := role.ProductRolePermission{
 				ProductRoleID:  productRole.ID,
 				ProductID:      input.ProductID,
@@ -105,8 +106,8 @@ func (s *productRoleService) CreateProductRole(
 			}
 			p.GenerateID()
 			return p
-		},
-	)
+		})
+
 	if err := s.permissionsValidation(ctx, input.ProductID, productRolePermission, logger); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -480,7 +481,7 @@ func (s *productRoleService) permissionsValidation(
 		return nil
 	}
 
-	permissionNames := slicex.Map(input, func(p role.ProductRolePermission) string {
+	permissionNames := functional.Slice(input).Map(func(p role.ProductRolePermission) string {
 		return p.PermissionName
 	})
 

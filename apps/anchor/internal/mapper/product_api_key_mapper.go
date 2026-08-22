@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/apikey"
@@ -33,12 +33,13 @@ func (m *ProductAPIKeyMapper) ToDomainWithPermissions(
 	entity model.ProductAPIKeys, permissionEntities []model.ProductAPIKeyPermissions,
 ) apikey.ProductAPIKey {
 	domain := m.ToDomain(entity)
-	domain.Permissions = slicex.Map(
-		permissionEntities,
+	domain.Permissions = functional.Slice(
+		permissionEntities).Map(
+
 		func(perm model.ProductAPIKeyPermissions) apikey.ProductAPIKeyPermission {
 			return m.PermissionToDomain(perm)
-		},
-	)
+		})
+
 	return domain
 }
 
@@ -81,21 +82,21 @@ func (m *ProductAPIKeyMapper) PermissionToDomain(entity model.ProductAPIKeyPermi
 func (m *ProductAPIKeyMapper) PermissionsToDomain(
 	entities []model.ProductAPIKeyPermissions,
 ) []apikey.ProductAPIKeyPermission {
-	return slicex.Map(
-		entities,
+	return functional.Slice(
+		entities).Map(
+
 		func(perm model.ProductAPIKeyPermissions) apikey.ProductAPIKeyPermission {
 			return m.PermissionToDomain(perm)
-		},
-	)
+		})
 }
 
 func (m *ProductAPIKeyMapper) PermissionsToEntity(
 	domain []apikey.ProductAPIKeyPermission,
 ) []model.ProductAPIKeyPermissions {
-	return slicex.Map(
-		domain,
+	return functional.Slice(
+		domain).Map(
+
 		func(perm apikey.ProductAPIKeyPermission) model.ProductAPIKeyPermissions {
 			return m.PermissionToEntity(perm)
-		},
-	)
+		})
 }

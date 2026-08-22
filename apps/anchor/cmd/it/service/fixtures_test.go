@@ -3,8 +3,8 @@ package service_test
 import (
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/domain/permission"
@@ -82,11 +82,12 @@ func GivenATenantAndProduct(t *testing.T) TenantAndProduct {
 }
 
 func GivenBasicAnchorPermissions(t *testing.T, productID string) []string {
-	permissions := slicex.Map(
-		service.GeneratePermissions(), func(t permission.ProductPermission) string {
+	permissions := functional.Slice(
+		service.GeneratePermissions()).Map(
+		func(t permission.ProductPermission) string {
 			return t.Name
-		},
-	)
+		})
+
 	for _, perm := range permissions {
 		_, err := PermissionRepository.Create(
 			t.Context(), permission.ProductPermission{

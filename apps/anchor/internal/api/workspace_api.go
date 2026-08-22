@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/workspace"
 )
@@ -65,7 +65,7 @@ func (s *AnchorAPI) SearchOrganizationWorkspaces(
 	}
 
 	return SearchOrganizationWorkspaces200JSONResponse{
-		Items: slicex.Map(result.Items, mapWorkspaceToResponse),
+		Items: functional.Slice(result.Items).Map(mapWorkspaceToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil

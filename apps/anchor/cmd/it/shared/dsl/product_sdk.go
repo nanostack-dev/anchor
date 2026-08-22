@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/anchor/clients/go/anchorsdk"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
@@ -30,12 +30,12 @@ func (tp *ProductContext) SDKClient() *anchorsdk.Client {
 		"api key service is not available in test setup",
 	)
 
-	allScopes := slicex.Map(
-		service.GeneratePermissions(),
+	allScopes := functional.Slice(
+		service.GeneratePermissions()).Map(
+
 		func(productPermission permission.ProductPermission) string {
 			return productPermission.Name
-		},
-	)
+		})
 
 	_, clearAPIKey, err := itshared.APIKeyService.Create(
 		context.Background(),

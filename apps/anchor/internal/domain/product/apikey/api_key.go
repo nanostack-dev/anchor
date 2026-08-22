@@ -3,8 +3,8 @@ package apikey
 import (
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 // Status represents the state of a product API key.
@@ -46,9 +46,9 @@ func (s *ProductAPIKey) GenerateID() {
 }
 
 func (s *ProductAPIKey) ToStringsPermissions() []string {
-	return slicex.Map(
-		s.Permissions, func(perm ProductAPIKeyPermission) string {
+	return functional.Slice(
+		s.Permissions).Map(
+		func(perm ProductAPIKeyPermission) string {
 			return perm.PermissionName
-		},
-	)
+		})
 }

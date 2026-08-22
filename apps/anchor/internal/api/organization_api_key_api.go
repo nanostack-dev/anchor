@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 )
@@ -25,8 +25,9 @@ func mapOrganizationAPIKeyToResponse(
 		Status:          organizationAPIKey.Status,
 		CreatedAt:       organizationAPIKey.CreatedAt,
 		UpdatedAt:       organizationAPIKey.UpdatedAt,
-		Permissions: slicex.Map(
-			organizationAPIKey.Permissions,
+		Permissions: functional.Slice(
+			organizationAPIKey.Permissions).Map(
+
 			func(perm orgapikey.OrganizationAPIKeyPermission) OrganizationAPIKeyPermissionResponse {
 				return OrganizationAPIKeyPermissionResponse{
 					OrganizationApiKeyId: perm.APIKeyID,
@@ -34,8 +35,7 @@ func mapOrganizationAPIKeyToResponse(
 					ProductId:            perm.ProductID,
 					PermissionName:       perm.PermissionName,
 				}
-			},
-		),
+			}),
 	}
 }
 
@@ -101,7 +101,7 @@ func (s *AnchorAPI) SearchOrganizationAPIKeys(
 
 	response := OrganizationAPIKeyListResponse{
 		Count: result.Count,
-		Items: slicex.Map(result.Items, mapOrganizationAPIKeyToResponse),
+		Items: functional.Slice(result.Items).Map(mapOrganizationAPIKeyToResponse),
 		Total: result.Total,
 	}
 
@@ -182,12 +182,13 @@ func (s *AnchorAPI) ValidateOrganizationAPIKey(
 	if err != nil {
 		return nil, err
 	}
-	permissions := slicex.Map(
-		result.APIKey.Permissions,
+	permissions := functional.Slice(
+		result.APIKey.Permissions).Map(
+
 		func(permission orgapikey.OrganizationAPIKeyPermission) string {
 			return permission.PermissionName
-		},
-	)
+		})
+
 	if result.Inactive || len(result.MissingPrivileges) > 0 {
 		response := OrganizationAPIKeyValidateResponse{
 			ApiKey:            mapOrganizationAPIKeyToResponse(result.APIKey),
@@ -242,12 +243,12 @@ func (s *AnchorAPI) IntrospectOrganizationAPIKey(
 		return nil, err
 	}
 
-	permissions := slicex.Map(
-		result.APIKey.Permissions,
+	permissions := functional.Slice(
+		result.APIKey.Permissions).Map(
+
 		func(permission orgapikey.OrganizationAPIKeyPermission) string {
 			return permission.PermissionName
-		},
-	)
+		})
 
 	if result.Inactive || len(result.MissingPrivileges) > 0 {
 		return IntrospectOrganizationAPIKey403JSONResponse{
@@ -279,12 +280,12 @@ func mapToSearchOrganizationAPIKeyInput(
 			LastUsedAfter:         searchReqBody.Filter.LastUsedAfter,
 		}
 		if searchReqBody.Filter.Status != nil {
-			filter.Status = slicex.Map(
-				*searchReqBody.Filter.Status,
+			filter.Status = functional.Slice(
+				*searchReqBody.Filter.Status).Map(
+
 				func(s OrganizationAPIKeyStatus) string {
 					return string(s)
-				},
-			)
+				})
 		}
 	}
 

@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
@@ -36,7 +36,7 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 	}
 
 	return SearchOrganizationLicenses200JSONResponse{
-		Items: slicex.Map(result.Items, mapOrganizationLicenseSummaryToResponse),
+		Items: functional.Slice(result.Items).Map(mapOrganizationLicenseSummaryToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil

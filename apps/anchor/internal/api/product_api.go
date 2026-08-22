@@ -8,8 +8,8 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 )
 
 func mapToSearchProductInput(request *SearchProductsRequestObject) search.
@@ -85,7 +85,7 @@ func (s *AnchorAPI) SearchProducts(
 	}
 
 	return SearchProducts200JSONResponse{
-		Items: slicex.Map(result.Items, mapProductToResponse),
+		Items: functional.Slice(result.Items).Map(mapProductToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
@@ -221,9 +221,9 @@ func mapToSearchProductUserInput(
 		filter = &user.SearchProductUserFilter{}
 
 		if request.Body.Filter.Ids != nil {
-			filter.IDs = slicex.Map(
-				*request.Body.Filter.Ids, func(id Ksuid) string { return id },
-			)
+			filter.IDs = functional.Slice(
+				*request.Body.Filter.Ids).Map(
+				func(id Ksuid) string { return id })
 		}
 		if request.Body.Filter.Emails != nil {
 			filter.Emails = request.Body.Filter.Emails
@@ -232,10 +232,10 @@ func mapToSearchProductUserInput(
 			filter.Names = *request.Body.Filter.Names
 		}
 		if request.Body.Filter.Statuses != nil {
-			filter.Statuses = slicex.Map(
-				*request.Body.Filter.Statuses,
-				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) },
-			)
+			filter.Statuses = functional.Slice(
+				*request.Body.Filter.Statuses).Map(
+
+				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) })
 		}
 		if request.Body.Filter.ExternalIds != nil {
 			filter.ExternalIDs = request.Body.Filter.ExternalIds
@@ -320,7 +320,7 @@ func (s *AnchorAPI) SearchProductUsers(
 
 	// Using consistent structure with other list responses (items field)
 	return SearchProductUsers200JSONResponse{
-		Items: slicex.Map(result.Items, mapProductUserToResponse),
+		Items: functional.Slice(result.Items).Map(mapProductUserToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
@@ -402,12 +402,12 @@ func (s *AnchorAPI) ListUserOrganizations(
 	}
 
 	return ListUserOrganizations200JSONResponse{
-		Items: slicex.Map(
-			memberships,
+		Items: functional.Slice(
+			memberships).Map(
+
 			func(m user.OrganizationMembership) UserOrganizationResponse {
 				return mapUserOrgMembershipToResponse(m, includePermissions)
-			},
-		),
+			}),
 	}, nil
 }
 

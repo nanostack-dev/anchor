@@ -9,8 +9,8 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -118,16 +118,16 @@ func (s *productAPIKeyService) Create(
 			return apikey.ProductAPIKey{}, "", permErr
 		}
 
-		apiKeyPermissions = slicex.Map(
-			canonicalPermissions, func(perm string) apikey.ProductAPIKeyPermission {
+		apiKeyPermissions = functional.Slice(
+			canonicalPermissions).Map(
+			func(perm string) apikey.ProductAPIKeyPermission {
 				return apikey.ProductAPIKeyPermission{
 					APIKeyID:       productAPIKey.ID,
 					ProductID:      input.ProductID,
 					PermissionName: perm,
 					CreatedAt:      time.Now(),
 				}
-			},
-		)
+			})
 	}
 
 	productAPIKey.Permissions = apiKeyPermissions
@@ -237,8 +237,9 @@ func (s *productAPIKeyService) Update(
 			permissions = canonicalPermissions
 		}
 
-		updatedAPIKey.Permissions = slicex.Map(
-			permissions,
+		updatedAPIKey.Permissions = functional.Slice(
+			permissions).Map(
+
 			func(perm string) apikey.ProductAPIKeyPermission {
 				return apikey.ProductAPIKeyPermission{
 					APIKeyID:       input.ID,
@@ -246,8 +247,7 @@ func (s *productAPIKeyService) Update(
 					PermissionName: perm,
 					CreatedAt:      time.Now(),
 				}
-			},
-		)
+			})
 	}
 
 	var updatedAPIKeyFromDB apikey.ProductAPIKey
@@ -513,7 +513,7 @@ func (s *productAPIKeyService) permissionsValidation(
 }
 
 func (s *productAPIKeyService) permissionsToNames(input []permission.ProductPermission) []string {
-	return slicex.Map(input, func(permission permission.ProductPermission) string {
+	return functional.Slice(input).Map(func(permission permission.ProductPermission) string {
 		return permission.Name
 	})
 }

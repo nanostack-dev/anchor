@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/slicex"
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/security"
@@ -37,7 +37,7 @@ func (s *AnchorAPI) SearchPlatformUsers(
 	}
 
 	return SearchPlatformUsers200JSONResponse{
-		Items: slicex.Map(result.Items, mapPlatformUserToResponse),
+		Items: functional.Slice(result.Items).Map(mapPlatformUserToResponse),
 		Total: result.Total,
 		Count: result.Count,
 	}, nil
