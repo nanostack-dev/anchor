@@ -1568,6 +1568,11 @@ export const zProductIdParameter = zKsuid;
 export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 
 /**
+ * Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
+ */
+export const zOrganizationMemberIncludeParameter = z.array(zOrganizationMemberInclude);
+
+/**
  * The KSUID of the organization.
  */
 export const zOrganizationIdParameter = zKsuid;
@@ -2562,7 +2567,7 @@ export const zGetOrganizationMemberData = z.object({
         product_user_id: zKsuid
     }),
     query: z.optional(z.object({
-        include: z.optional(zOrganizationMemberInclude)
+        include: z.optional(z.array(zOrganizationMemberInclude))
     }))
 });
 

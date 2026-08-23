@@ -99,6 +99,23 @@ components:
       style: form
       explode: false
       example: ["license"]
+    OrganizationMemberIncludeParameter:
+      name: include
+      in: query
+      required: false
+      description: >-
+        Related resources to read alongside each organization member, comma
+        separated — `?include=role_permissions`. A resource not named is left
+        out of the response entirely, which says nothing about whether the
+        member has it. Each named resource is read for the whole response at
+        once, so including one costs one more statement, not one per member.
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/OrganizationMemberInclude"
+      style: form
+      explode: false
+      example: ["role_permissions"]
     OrganizationIdParameter:
       name: organization_id
       in: path
@@ -2199,8 +2216,10 @@ components:
                 type: string
               description: >-
                 Product resource permission names assigned to this role
-                (e.g. "document:read", "file:delete"). Only populated when
-                include=role_permissions.
+                (for example "document:read", "file:delete"). Present only when
+                the caller sends `include=role_permissions`. Absent means the
+                caller did not ask for the permissions. Absent never means the
+                role has no permissions.
               examples: [["org:read", "org:write"]]
           required:
           - id
@@ -6016,11 +6035,7 @@ paths:
       - productApiKeyAuth:
         - organization_member:read
       parameters:
-      - name: include
-        in: query
-        required: false
-        schema:
-          $ref: '#/components/schemas/OrganizationMemberInclude'
+      - $ref: '#/components/parameters/OrganizationMemberIncludeParameter'
       responses:
         '200':
           description: Success

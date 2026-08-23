@@ -1342,7 +1342,7 @@ type OrganizationMemberResponse struct {
 		// Examples: Admin
 		Name string `json:"name"`
 
-		// Permissions Product resource permission names assigned to this role (e.g. "document:read", "file:delete"). Only populated when include=role_permissions.
+		// Permissions Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
 		//
 		// Examples: ["org:read","org:write"]
 		Permissions *[]string `json:"permissions,omitempty"`
@@ -2577,6 +2577,9 @@ type OrganizationIdParameter = Ksuid
 // OrganizationIncludeParameter defines model for OrganizationIncludeParameter.
 type OrganizationIncludeParameter = []OrganizationInclude
 
+// OrganizationMemberIncludeParameter defines model for OrganizationMemberIncludeParameter.
+type OrganizationMemberIncludeParameter = []OrganizationMemberInclude
+
 // PlatformInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: pinv_9sTUV...
@@ -2706,7 +2709,8 @@ type GetOrganizationUsageSeriesParams struct {
 
 // GetOrganizationMemberParams defines parameters for GetOrganizationMember.
 type GetOrganizationMemberParams struct {
-	Include *OrganizationMemberInclude `form:"include,omitempty" json:"include,omitempty"`
+	// Include Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
+	Include *OrganizationMemberIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // CreateProductUserJSONBody defines parameters for CreateProductUser.
@@ -6594,7 +6598,7 @@ func (siw *ServerInterfaceWrapper) GetOrganizationMember(w http.ResponseWriter, 
 
 	// ------------- Optional query parameter "include" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {

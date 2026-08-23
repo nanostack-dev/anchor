@@ -8101,7 +8101,7 @@ func NewGetOrganizationMemberRequest(server string, productId ProductIdParameter
 
 		if params.Include != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
