@@ -45,12 +45,10 @@ func (s *AnchorAPI) AddOrganizationMember(
 func (s *AnchorAPI) GetOrganizationMember(
 	ctx context.Context, request GetOrganizationMemberRequestObject,
 ) (GetOrganizationMemberResponseObject, error) {
-	includePermissions := false
-	if request.Params.Include != nil {
-		includePermissions = slices.Contains(
-			*request.Params.Include, OrganizationMemberIncludeRolePermissions,
-		)
-	}
+	includePermissions := functional.FromPtr(request.Params.Include).
+		Exists(func(include []OrganizationMemberInclude) bool {
+			return slices.Contains(include, OrganizationMemberIncludeRolePermissions)
+		})
 
 	input := organization.GetMemberInput{
 		ProductID:          request.ProductId,
