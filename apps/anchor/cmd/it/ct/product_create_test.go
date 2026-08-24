@@ -94,6 +94,69 @@ func TestProductCreate(t *testing.T) {
 	)
 
 	t.Run(
+		"CreateProductWithOneCharacterName", func(t *testing.T) {
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "a",
+					Description: new("This product name is below the minimum length"),
+				},
+			)
+			require.NoError(t, err, "create product with one-character name should not error")
+			require.NotNil(t, response.JSON400)
+			assert.Equal(
+				t, 400, response.StatusCode(),
+				"create product with one-character name should return 400 Bad Request",
+			)
+			assert.Contains(t, response.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+			assert.Contains(
+				t, response.JSON400.Errors[0].Message,
+				"name must be at least 2 characters in length",
+			)
+		},
+	)
+
+	t.Run(
+		"CreateProductWithTwoCharacterName", func(t *testing.T) {
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "ab",
+					Description: new("This product name sits exactly on the minimum length"),
+				},
+			)
+			require.NoError(t, err, "create product with two-character name should not error")
+			assert.Equal(
+				t, http.StatusCreated,
+				response.StatusCode(), "create product with two-character name should return 201 Created",
+			)
+		},
+	)
+
+	t.Run(
+		"CreateProductWithNameOver100Characters", func(t *testing.T) {
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        strings.Repeat("a", 101),
+					Description: new("This product name is above the maximum length"),
+				},
+			)
+			require.NoError(t, err, "create product with over-long name should not error")
+			require.NotNil(t, response.JSON400)
+			assert.Equal(
+				t, 400, response.StatusCode(),
+				"create product with over-long name should return 400 Bad Request",
+			)
+			assert.Contains(t, response.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+			assert.Contains(
+				t, response.JSON400.Errors[0].Message,
+				"name must be a maximum of 100 characters in length",
+			)
+		},
+	)
+
+	t.Run(
 		"CreateProductWithInvalidDescription", func(t *testing.T) {
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
