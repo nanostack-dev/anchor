@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProduct } from "@/hooks/useProduct";
+import { DashboardHero } from "@/pages/DashboardHero";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -252,27 +253,13 @@ export default function DashboardPage() {
 	return (
 		<Page breadCrumbs={false}>
 			<div className="flex flex-col gap-8">
-				<header className="relative isolate overflow-hidden rounded-3xl border border-border bg-card px-6 py-8 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:fill-mode-both motion-safe:duration-500">
-					<div
-						aria-hidden
-						className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl"
-					/>
-					<div
-						aria-hidden
-						className="pointer-events-none absolute -bottom-24 left-10 size-48 rounded-full bg-chart-2/10 blur-3xl"
-					/>
-					<p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-						Anchor · Organization-as-a-Service
-					</p>
-					<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground">
-						Dashboard
-					</h1>
-					<p className="mt-1.5 max-w-prose text-sm text-muted-foreground">
-						{user
+				<DashboardHero
+					subtitle={
+						user
 							? `Welcome back, ${user.email}`
-							: "An overview of your workspace."}
-					</p>
-				</header>
+							: "An overview of your workspace."
+					}
+				/>
 
 				<section className="flex flex-col gap-4">
 					<SectionLabel>Platform</SectionLabel>
