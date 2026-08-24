@@ -209,11 +209,51 @@ jobs:
     secrets:
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
 
+  # The preview checkbox in .github/pull_request_template.md is read here, from
+  # the API, never from github.event.pull_request.body. The event payload is a
+  # snapshot: a re-run replays the description the run started with, so a
+  # checkbox selected after the build would stay invisible. The API answers with
+  # the description as it is now, which is also what lets preview-toggle.yml
+  # raise a preview with a plain re-run.
+  preview-flag:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      enabled: ${{ steps.flag.outputs.enabled }}
+    steps:
+      - name: Read the preview checkbox
+        id: flag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          body="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.body // ""')"
+          # The HTML comment is the anchor, not the label. The author can
+          # rewrite the wording of the line and the match still holds.
+          marker='-[[:space:]]*\[[xX]\].*<!--[[:space:]]*preview-deploy[[:space:]]*-->'
+          if printf '%s\n' "$body" | grep -qE -e "$marker"; then
+            enabled=true
+          else
+            enabled=false
+          fi
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          {
+            echo '## Preview environment'
+            echo
+            echo "- Checkbox selected: $enabled"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   dispatch-preview-upsert:
-    needs: [frontend-verify, go-build-test]
+    needs: [frontend-verify, go-build-test, preview-flag]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      needs.preview-flag.outputs.enabled == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.go-build-test.result == 'success' &&
       needs.frontend-verify.result != 'failure'
