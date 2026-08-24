@@ -113,6 +113,68 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
+		"UpdateProductWithOneCharacterName", func(t *testing.T) {
+			createResp, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "Test Product One Character Update",
+					Description: new("This is a test product"),
+				},
+			)
+			require.NoError(t, err, "create product request should not error")
+			require.NotNil(t, createResp.JSON201)
+
+			updateResp, err := testOwnerClient(t).UpdateProductWithResponse(
+				ctx,
+				createResp.JSON201.Id,
+				ct.UpdateProductJSONRequestBody{Name: "a"},
+			)
+			require.NoError(t, err, "update product with one-character name should not error")
+			require.NotNil(t, updateResp.JSON400)
+			assert.Equal(
+				t, 400, updateResp.StatusCode(),
+				"update product with one-character name should return 400 Bad Request",
+			)
+			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+			assert.Contains(
+				t, updateResp.JSON400.Errors[0].Message,
+				"name must be at least 2 characters in length",
+			)
+		},
+	)
+
+	t.Run(
+		"UpdateProductWithNameOver100Characters", func(t *testing.T) {
+			createResp, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name:        "Test Product Over Long Update",
+					Description: new("This is a test product"),
+				},
+			)
+			require.NoError(t, err, "create product request should not error")
+			require.NotNil(t, createResp.JSON201)
+
+			updateResp, err := testOwnerClient(t).UpdateProductWithResponse(
+				ctx,
+				createResp.JSON201.Id,
+				ct.UpdateProductJSONRequestBody{Name: strings.Repeat("a", 101)},
+			)
+			require.NoError(t, err, "update product with over-long name should not error")
+			require.NotNil(t, updateResp.JSON400)
+			assert.Equal(
+				t, 400, updateResp.StatusCode(),
+				"update product with over-long name should return 400 Bad Request",
+			)
+			assert.Contains(t, updateResp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+			assert.Contains(
+				t, updateResp.JSON400.Errors[0].Message,
+				"name must be a maximum of 100 characters in length",
+			)
+		},
+	)
+
+	t.Run(
 		"UpdateProductWithInvalidDescription", func(t *testing.T) {
 			productName := "Test Product Invalid Description"
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(

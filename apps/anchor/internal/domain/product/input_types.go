@@ -4,7 +4,7 @@ import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 type CreateProductInput struct {
 	TenantID    string `json:"tenant_id"   validate:"required,notblank"`
-	Name        string `json:"name"        validate:"required,notblank"`
+	Name        string `json:"name"        validate:"required,notblank,min=2,max=100"`
 	Description string `json:"description" validate:"omitempty,max=1000"`
 	Config      Config `json:"config"`
 }
@@ -12,7 +12,7 @@ type CreateProductInput struct {
 type UpdateProductInput struct {
 	TenantID    string  `json:"tenant_id"             validate:"required,notblank"`
 	ProductID   string  `json:"product_id"            validate:"required,notblank"`
-	Name        *string `json:"name,omitempty"        validate:"omitempty,notblank"`
+	Name        *string `json:"name,omitempty"        validate:"omitempty,notblank,min=2,max=100"`
 	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
 	Config      *Config `json:"config,omitempty"`
 }
