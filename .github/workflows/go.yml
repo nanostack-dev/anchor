@@ -236,7 +236,7 @@ jobs:
           # The HTML comment is the anchor, not the label. The author can
           # rewrite the wording of the line and the match still holds.
           marker='-[[:space:]]*\[[xX]\].*<!--[[:space:]]*preview-deploy[[:space:]]*-->'
-          if printf '%s\n' "$body" | grep -qE "$marker"; then
+          if printf '%s\n' "$body" | grep -qE -e "$marker"; then
             enabled=true
           else
             enabled=false

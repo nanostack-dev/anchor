@@ -56,7 +56,7 @@ jobs:
           marker='-[[:space:]]*\[[xX]\].*<!--[[:space:]]*preview-deploy[[:space:]]*-->'
 
           is_checked() {
-            printf '%s\n' "$1" | grep -qE "$marker"
+            printf '%s\n' "$1" | grep -qE -e "$marker"
           }
 
           action=none
