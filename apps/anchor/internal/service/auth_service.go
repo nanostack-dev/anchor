@@ -97,6 +97,21 @@ func (s *authService) Register(
 
 	var createdPlatformUser platform.User
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// Resolve the tenant and validate the invitation code before reading the
+		// user table. On this unauthenticated endpoint, checking email existence
+		// first leaked whether an address already had an account: an invalid or
+		// missing invitation code returned 400 for an unknown email but the email
+		// check returned 409 for a known one, giving a pre-auth enumeration oracle.
+		// Validating the invitation first makes both cases return the same
+		// INVITATION_CODE_* response, so a caller without a valid code cannot tell
+		// the two apart.
+		currentTenantID, role, err := s.setupTenantForRegistration(
+			txCtx, input.InvitationCode, input.Email, input.TenantName, logger,
+		)
+		if err != nil {
+			return err
+		}
+
 		foundUserByEmail, err := s.userRepo.FindByEmail(txCtx, input.Email)
 		if err != nil {
 			logger.Error().
@@ -109,12 +124,6 @@ func (s *authService) Register(
 		if foundUserByEmail.IsPresent() {
 			logger.Debug().Str("email", input.Email).Msg("user already exists")
 			return ErrUserAlreadyExists
-		}
-		currentTenantID, role, err := s.setupTenantForRegistration(
-			txCtx, input.InvitationCode, input.Email, input.TenantName, logger,
-		)
-		if err != nil {
-			return err
 		}
 
 		hashedPassword, err := bcrypt.GenerateFromPassword(
