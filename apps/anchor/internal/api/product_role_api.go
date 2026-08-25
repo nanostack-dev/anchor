@@ -194,8 +194,8 @@ func mapToSearchProductRoleInput(
 			Names:          f.Names,
 		}
 	}).ToPtr()
-	var req search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]
-	return req.WithFilter(filter).
+	return search.NewRequest[role.SearchProductRoleFilter, role.SortFieldProductRole]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

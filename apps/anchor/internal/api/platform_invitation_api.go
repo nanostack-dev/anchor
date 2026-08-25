@@ -132,8 +132,8 @@ func mapToSearchPlatformInvitationRequest(
 		}).
 		ToPtr()
 
-	var req search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]
-	return req.WithFilter(filter).
+	return search.NewRequest[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

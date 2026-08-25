@@ -21,8 +21,8 @@ func mapToSearchProductInput(request *SearchProductsRequestObject) search.
 		}
 	}).ToPtr()
 
-	var req search.Request[product.SearchProductFilter, product.SortFieldProduct]
-	return req.WithFilter(filter).
+	return search.NewRequest[product.SearchProductFilter, product.SortFieldProduct]().
+		WithFilter(filter).
 		WithSort(
 			request.Body.SortBy,
 			request.Body.SortDirection,
