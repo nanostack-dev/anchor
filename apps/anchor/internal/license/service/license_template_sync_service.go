@@ -159,7 +159,6 @@ func (s *licenseTemplateSyncService) ProcessQueueJob(
 		// template means there is nothing left to propagate onto.
 		return nil
 	}
-	template := found.Value()
 
 	organizationIDs, err := s.licenseRepo.ListOrganizationIDsForTemplateAfter(
 		ctx,
@@ -175,7 +174,7 @@ func (s *licenseTemplateSyncService) ProcessQueueJob(
 
 	synced, refused := 0, 0
 	for _, organizationID := range organizationIDs {
-		outcome, syncErr := s.syncOne(ctx, payload, template, organizationID)
+		outcome, syncErr := s.syncOne(ctx, payload, organizationID)
 		if syncErr != nil {
 			return syncErr
 		}
@@ -223,10 +222,17 @@ const (
 // adjusted value no longer satisfies a tightened schema is refused whole and
 // reported, never partially applied and never silently stripped of its
 // adjustment; it keeps the values it holds until an operator resolves it.
+//
+// The template is read again inside this transaction, not carried from the
+// job's first read. Two jobs for the same template can run concurrently on
+// two replicas after rapid edits; a job holding the older values could
+// otherwise overwrite the newer job's writes with no later job to repair
+// them. Read fresh under the row lock, the stale window shrinks to a commit
+// racing this transaction — and that commit enqueued its own job, which runs
+// after this lock releases and repairs it.
 func (s *licenseTemplateSyncService) syncOne(
 	ctx context.Context,
 	payload licenseTemplateSyncPayload,
-	template license.Template,
 	organizationID string,
 ) (syncOutcome, error) {
 	changedAt := time.Now()
@@ -243,11 +249,22 @@ func (s *licenseTemplateSyncService) syncOne(
 			return nil
 		}
 		existing := foundExisting.Value()
-		if existing.TemplateID != template.ID {
+		if existing.TemplateID != payload.TemplateID {
 			// Migrated onto another template between the listing and this
 			// transaction; it follows that template now, not this one.
 			return nil
 		}
+
+		foundTemplate, templateErr := s.templateRepo.FindByID(
+			txCtx, payload.TenantID, payload.ProductID, payload.TemplateID,
+		)
+		if templateErr != nil {
+			return templateErr
+		}
+		if foundTemplate.IsAbsent() {
+			return nil
+		}
+		template := foundTemplate.Value()
 
 		previous := existing.Values
 		existing.Values = existing.SyncedValues(template.Values)

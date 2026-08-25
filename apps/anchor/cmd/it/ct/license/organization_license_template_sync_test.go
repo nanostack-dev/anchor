@@ -124,6 +124,29 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 		assert.Equal(t, 0, countTemplateSyncChanges(t, neighbour))
 	})
 
+	t.Run("restating the stored values repairs a drifted license", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		// A license written before the follow rule could drift from its
+		// template. Every API path now syncs, so the drift is planted
+		// directly in the database — the shape the echopoint organization
+		// was actually found in.
+		_, err := testDB.Exec(
+			`UPDATE organization_licenses SET values_json = values_json - 'region'
+			 WHERE organization_id = $1`,
+			w.OrganizationID(),
+		)
+		require.NoError(t, err)
+
+		// The same values the template already holds: the write changes no
+		// template row, and still enqueues the propagation that repairs the
+		// stray license.
+		w.Template().ReplaceValues(validTemplateValues())
+
+		synced := waitForLicenseValues(t, w.License(), validTemplateValues())
+		assert.Empty(t, synced.AdjustedFields)
+		assert.Equal(t, 1, countTemplateSyncChanges(t, w.License()))
+	})
+
 	t.Run("a rename alone propagates nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

@@ -214,7 +214,6 @@ func (s *licenseTemplateService) UpdateTemplate(
 	if existing.IsArchived() {
 		return license.Template{}, ErrLicenseTemplateArchived
 	}
-	previousValues := existing.Values
 
 	if in.Description != nil {
 		existing.Description = *in.Description
@@ -246,11 +245,14 @@ func (s *licenseTemplateService) UpdateTemplate(
 		existing.Name = *in.Name
 	}
 
-	valuesChanged := in.Values != nil && len(license.DiffValues(previousValues, existing.Values)) > 0
-
 	// The write and the propagation job land in one transaction, so an edit
 	// that commits is an edit every license naming this template will follow,
-	// restart or not. See docs/adr/0017-license-follows-its-template.md.
+	// restart or not. Every values-carrying write enqueues, even one that
+	// restates the stored values: the job itself skips each license already
+	// in step, and a restatement is how an operator — or a Terraform apply —
+	// repairs a license that drifted before this rule existed. A write that
+	// carries no values moves nothing and enqueues nothing. See
+	// docs/adr/0017-license-follows-its-template.md.
 	var updated license.Template
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var updateErr error
@@ -261,7 +263,7 @@ func (s *licenseTemplateService) UpdateTemplate(
 			}
 			return updateErr
 		}
-		if !valuesChanged {
+		if in.Values == nil {
 			return nil
 		}
 		return s.sync.EnqueueTemplateSync(txCtx, in.TenantID, in.ProductID, updated.ID)
