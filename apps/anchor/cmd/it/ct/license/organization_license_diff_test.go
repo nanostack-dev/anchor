@@ -42,9 +42,6 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	t.Run("a template edited after instantiation stops differing once followed", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
-		// The organization is untouched here — the tier moved underneath it.
-		// The license follows the edit, so once the propagation lands the
-		// diff is clean again; only an adjusted field differs durably.
 		w.Template().ReplaceValues(templateValuesWith("flows", 2000))
 
 		waitForLicenseValues(t, w.License(), templateValuesWith("flows", 2000))
@@ -57,9 +54,6 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		w := newLicensedWorld(t)
 		widenSchema(t, w)
 
-		// The organization was licensed before `seats` was declared. The
-		// template edit that sets it is propagated, so the gained field lands
-		// rather than reading only_in_template forever.
 		waitForLicenseValues(t, w.License(), templateValuesWith("seats", 25))
 		assert.Empty(t, w.License().Diff().Differences)
 	})
@@ -118,8 +112,6 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 }
 
 // widenSchema declares one more license field and sets it on the template.
-// The template edit is propagated, so already-instantiated organizations gain
-// the field once the sync lands.
 func widenSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	w.RedeclareSchema(append(templateSchemaFields(), ct.LicenseFieldDeclaration{
@@ -131,11 +123,7 @@ func widenSchema(t *testing.T, w *licenseWorld) {
 	w.Template().ReplaceValues(templateValuesWith("seats", 25))
 }
 
-// narrowSchema drops one license field from the declaration. The removal
-// cascades: the schema edit prunes the template, and the pruned template is
-// propagated onto already-instantiated organizations. The explicit
-// ReplaceValues restates what the cascade already wrote, so the template read
-// is deterministic whichever runs first.
+// narrowSchema drops one license field from the declaration.
 func narrowSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	fields := make([]ct.LicenseFieldDeclaration, 0, len(templateSchemaFields()))

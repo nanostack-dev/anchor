@@ -150,8 +150,6 @@ type OrganizationLicenseRepository interface {
 	ListOrganizationIDsForTemplate(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) ([]string, error)
-	// ListOrganizationIDsForTemplateAfter is ListOrganizationIDsForTemplate
-	// bounded to one page: past the cursor (all when empty), at most limit.
 	ListOrganizationIDsForTemplateAfter(
 		ctx context.Context,
 		tenantID string,

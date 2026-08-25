@@ -116,9 +116,6 @@ func (m Migration) Tally() MigrationTally {
 // it: the target's identifier as provenance, migratedAt as the moment the copy
 // was taken, and the values MigratedValues resolves. Identity, Product and
 // Organization are kept.
-//
-// AdjustedFields follows the policy: DiscardDifferences clears it,
-// CarryForwardDifferences keeps the fields the target declares.
 func (l *OrganizationLicense) MigratedTo(
 	target Template, current TemplateValues, policy DifferencePolicy, migratedAt time.Time,
 ) OrganizationLicense {

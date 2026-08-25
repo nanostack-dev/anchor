@@ -103,11 +103,6 @@ func TestMigratedValuesLeavesTheHeldSetAlone(t *testing.T) {
 	assert.Equal(t, license.TemplateValues{"flows": 800}, held)
 }
 
-// TestMigratedToAdjustedFields pins what a migration does to the record of
-// adjusted fields. Discard clears it — the operator asked for the target
-// whole, so nothing stays pinned against later template updates. Carry
-// forward keeps it, minus the fields the target does not declare, matching
-// what MigratedValues carries.
 func TestMigratedToAdjustedFields(t *testing.T) {
 	migratedAt := time.Now()
 	target := license.Template{

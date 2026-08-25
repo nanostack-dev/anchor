@@ -77,8 +77,7 @@ func mapLicenseTemplateToResponse(t license.Template) LicenseTemplateResponse {
 
 func mapOrganizationLicenseToResponse(l license.OrganizationLicense) OrganizationLicenseResponse {
 	// A license that sets nothing reads back as an empty object, never as a
-	// null, so a client can index into it without a nil check. The same for
-	// adjusted_fields, a required non-nullable array in the contract.
+	// null, so a client can index into it without a nil check.
 	values := l.Values
 	if values == nil {
 		values = license.TemplateValues{}

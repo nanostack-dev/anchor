@@ -9,9 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The propagation is a durable queue job, so every assertion on its effect
-// polls until the worker has caught up; templateSyncSettleTime is the wait
-// before asserting that nothing happened.
 const (
 	templateSyncWaitTimeout = 30 * time.Second
 	templateSyncWaitTick    = 250 * time.Millisecond
@@ -79,7 +76,6 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 			"flows": 800, "sso": false, "support_tier": "basic", "region": "eu-west",
 		})
 
-		// Every field adjusted: the sync resolves to what is already held.
 		w.Template().ReplaceValues(ct.LicenseTemplateValues{
 			"flows": 50, "sso": true, "support_tier": "priority", "region": "us-east",
 		})
@@ -109,7 +105,6 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 
 	t.Run("restating the stored values repairs a drifted license", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		// Drift predating the follow rule can only be planted in the database.
 		_, err := testDB.Exec(
 			`UPDATE organization_licenses SET values_json = values_json - 'region'
 			 WHERE organization_id = $1`,
@@ -180,7 +175,6 @@ func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
 	bystander.Instantiate(w.TemplateID())
 	w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
-	// Tighten the limit underneath the adjusted 800.
 	tightened := templateSchemaFields()
 	for i := range tightened {
 		if tightened[i].Name == "flows" {
@@ -197,7 +191,6 @@ func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
 		"flows": 400, "sso": false, "support_tier": "basic", "region": "eu-west",
 	})
 
-	// Refused whole: not half-applied, adjustment not dropped.
 	refused := w.License().Get()
 	assertValues(t, refused.Values, ct.LicenseTemplateValues{
 		"flows": 800, "sso": true, "support_tier": "priority", "region": "ca-central",

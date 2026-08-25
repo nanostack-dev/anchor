@@ -366,9 +366,6 @@ func (s *licenseSchemaService) UpdateSchema(
 	return updated, nil
 }
 
-// cascadeRemovedFields prunes removed fields from every template in the same
-// transaction and enqueues a sync per changed template. Added fields and rule
-// changes move no value and cascade nothing.
 func (s *licenseSchemaService) cascadeRemovedFields(
 	ctx context.Context,
 	tenantID string,

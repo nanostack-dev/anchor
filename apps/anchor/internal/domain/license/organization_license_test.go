@@ -9,9 +9,6 @@ import (
 	"anchor/internal/domain/license"
 )
 
-// TestSyncedValues pins what a license holds after following its template:
-// the template whole, except that an adjusted field the template still
-// declares keeps the value held.
 func TestSyncedValues(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -35,10 +32,8 @@ func TestSyncedValues(t *testing.T) {
 			want:     license.TemplateValues{"flows": 800, "seats": 50},
 		},
 		{
-			name: "an adjusted field the template dropped is not resurrected",
-			held: license.TemplateValues{"flows": 800, "legacy": "on"},
-			// `legacy` is adjusted, so this says the template's declaration
-			// decides what a license carries, not the customer's own value.
+			name:     "an adjusted field the template dropped is not resurrected",
+			held:     license.TemplateValues{"flows": 800, "legacy": "on"},
 			adjusted: []string{"legacy"},
 			template: license.TemplateValues{"flows": 5000},
 			want:     license.TemplateValues{"flows": 5000},
@@ -51,10 +46,8 @@ func TestSyncedValues(t *testing.T) {
 			want:     license.TemplateValues{"flows": 5000, "seats": 50},
 		},
 		{
-			name: "an adjusted field named but never held follows the template",
-			held: license.TemplateValues{"flows": 500},
-			// A record for a field the values no longer carry — a schema drop
-			// followed by a redeclaration — must not inject a nil value.
+			name:     "an adjusted field named but never held follows the template",
+			held:     license.TemplateValues{"flows": 500},
 			adjusted: []string{"seats"},
 			template: license.TemplateValues{"flows": 5000, "seats": 50},
 			want:     license.TemplateValues{"flows": 5000, "seats": 50},
@@ -77,8 +70,6 @@ func TestRecordAdjustedFields(t *testing.T) {
 
 	organizationLicense.RecordAdjustedFields([]string{"flows", "region"})
 
-	// Deduplicated and ordered, so the recorded set reads the same however
-	// many adjustments produced it.
 	assert.Equal(t, []string{"flows", "region", "sso"}, organizationLicense.AdjustedFields)
 }
 

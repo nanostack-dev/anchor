@@ -10,8 +10,7 @@ import (
 
 // OrganizationLicense is one Organization's own copy of a [Template]'s values.
 // An Organization has at most one. The copy follows its template except on
-// AdjustedFields. See docs/adr/0017-license-follows-its-template.md, which
-// supersedes docs/adr/0004-license-schema-template-and-copy.md.
+// AdjustedFields (docs/adr/0017-license-follows-its-template.md).
 type OrganizationLicense struct {
 	ID               string
 	PlatformTenantID string
@@ -63,8 +62,6 @@ func unionSorted(a, b []string) []string {
 	return slices.Sorted(maps.Keys(set))
 }
 
-// SyncedValues is the template whole, except each adjusted field the
-// template still declares keeps the held value.
 func (l *OrganizationLicense) SyncedValues(template TemplateValues) TemplateValues {
 	synced := make(TemplateValues, len(template))
 	maps.Copy(synced, template)

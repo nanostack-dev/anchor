@@ -227,10 +227,6 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 
 	t.Run("a propagated template edit is not carried forward", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		// Nobody adjusted this organization, so the template edit is
-		// propagated onto it. Once it has followed, nothing differs from its
-		// own tier and the migration carries nothing — the stale-copy cost
-		// ADR-0014 named is paid only while a propagation is still in flight.
 		w.Template().ReplaceValues(templateValuesWith("flows", 900))
 		waitForLicenseValues(t, w.License(), templateValuesWith("flows", 900))
 		pro := w.NewTemplate(proValues())

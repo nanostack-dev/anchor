@@ -72,8 +72,7 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 // that a write is refused unless the schema accepts its values.
 //
 // Templates carry no version and no publish step. Their values are copied at
-// instantiation and followed thereafter
-// (docs/adr/0017-license-follows-its-template.md).
+// instantiation and followed thereafter (ADR-0017).
 // The one lifecycle step every template can reach is withdrawal: archiving,
 // which never deletes the row, so the licenses that name it keep resolving.
 // See docs/adr/0010-license-templates-are-archived.md. A template no
@@ -243,8 +242,7 @@ func (s *licenseTemplateService) UpdateTemplate(
 		existing.Name = *in.Name
 	}
 
-	// A restated, unchanged set still enqueues: the job skips licenses in
-	// step, and a restatement repairs one that drifted before the rule.
+	// An unchanged set still enqueues: a restatement repairs drift.
 	var updated license.Template
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var updateErr error
@@ -286,7 +284,6 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return existing, nil
 	}
 
-	// Archiving changes no value, so there is nothing to propagate.
 	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
 }
 

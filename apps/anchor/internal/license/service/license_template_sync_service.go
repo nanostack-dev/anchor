@@ -16,8 +16,7 @@ import (
 	licenserepo "anchor/internal/license/repository"
 )
 
-// Propagates a template value update onto the licenses naming it, except on
-// adjusted fields. See docs/adr/0017-license-follows-its-template.md.
+// See docs/adr/0017-license-follows-its-template.md.
 const (
 	licenseTemplateSyncQueueName   = "license_template_sync"
 	licenseTemplateSyncBatchSize   = 100
@@ -31,8 +30,6 @@ type licenseTemplateSyncPayload struct {
 	AfterOrganizationID string `json:"after_organization_id,omitempty"`
 }
 
-// LicenseTemplateSyncEnqueuer joins the caller's transaction, so the
-// template write and the propagation job land together or not at all.
 type LicenseTemplateSyncEnqueuer interface {
 	EnqueueTemplateSync(ctx context.Context, tenantID, productID, templateID string) error
 }
@@ -185,9 +182,8 @@ const (
 	syncOutcomeRefused
 )
 
-// syncOne re-reads the template under the row lock: a job carrying a stale
-// copy could otherwise overwrite a newer concurrent job's writes for good.
-// An invalid merge is refused whole; an already-synced license is a no-op.
+// Re-reads the template under the row lock: a stale copy could otherwise
+// overwrite a newer concurrent job's writes for good.
 func (s *licenseTemplateSyncService) syncOne(
 	ctx context.Context,
 	payload licenseTemplateSyncPayload,

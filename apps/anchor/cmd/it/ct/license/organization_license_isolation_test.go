@@ -10,13 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOrganizationLicenseIsolation pins what stays isolated now that a
-// license follows its template: the license-to-template direction. An
-// adjustment never reaches the template, one organization's adjustment never
-// reaches another, and withdrawing or deleting the offer never rewrites what
-// a customer holds. The template-to-license direction is deliberately no
-// longer isolated — see organization_license_template_sync_test.go and
-// docs/adr/0017-license-follows-its-template.md.
+// The license-to-template direction stays isolated. The other direction is
+// deliberately not — see organization_license_template_sync_test.go.
 func TestOrganizationLicenseIsolation(t *testing.T) {
 	t.Run("adjusting a license leaves the template unchanged", func(t *testing.T) {
 		w := newLicensedWorld(t)
