@@ -225,17 +225,19 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assert.Len(t, result.Changes, len(templateSchemaFields())-1)
 	})
 
-	t.Run("a template edited after the copy is carried forward too", func(t *testing.T) {
+	t.Run("a propagated template edit is not carried forward", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		// Nobody adjusted this organization. Anchor cannot tell that apart from
-		// a bespoke deal, so the stale value rides along — the cost the default
-		// buys, and the reason to compare the two tiers first.
+		// Nobody adjusted this organization, so the template edit is
+		// propagated onto it. Once it has followed, nothing differs from its
+		// own tier and the migration carries nothing — the stale-copy cost
+		// ADR-0014 named is paid only while a propagation is still in flight.
 		w.Template().ReplaceValues(templateValuesWith("flows", 900))
+		waitForLicenseValues(t, w.License(), templateValuesWith("flows", 900))
 		pro := w.NewTemplate(proValues())
 
 		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
 
-		assert.InDelta(t, 500, w.License().Get().Values["flows"], 0)
+		assertValues(t, w.License().Get().Values, proValues())
 	})
 
 	t.Run("discard takes the target template whole", func(t *testing.T) {

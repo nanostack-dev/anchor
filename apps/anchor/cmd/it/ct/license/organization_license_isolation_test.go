@@ -10,22 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOrganizationLicenseIsolation pins the property the whole copy design
-// exists for: a template and the licenses stamped from it stop affecting each
-// other the moment the copy is taken. It is the reason templates need no
-// versioning and per-organization deviation needs no override layer.
+// TestOrganizationLicenseIsolation pins what stays isolated now that a
+// license follows its template: the license-to-template direction. An
+// adjustment never reaches the template, one organization's adjustment never
+// reaches another, and withdrawing or deleting the offer never rewrites what
+// a customer holds. The template-to-license direction is deliberately no
+// longer isolated — see organization_license_template_sync_test.go and
+// docs/adr/0017-license-follows-its-template.md.
 func TestOrganizationLicenseIsolation(t *testing.T) {
-	t.Run("editing the template leaves an instantiated license unchanged", func(t *testing.T) {
-		w := newLicensedWorld(t)
-
-		w.Template().ReplaceValues(ct.LicenseTemplateValues{
-			"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",
-		})
-
-		// A live customer cannot be silently downgraded by a pricing edit.
-		assertValues(t, w.License().Get().Values, validTemplateValues())
-	})
-
 	t.Run("adjusting a license leaves the template unchanged", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

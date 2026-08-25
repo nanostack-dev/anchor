@@ -39,6 +39,8 @@ export function changeTypeLabel(
 			return entry.previous_template_id
 				? "Moved to another tier"
 				: "Licensed for the first time";
+		case LicenseChangeType.TEMPLATE_SYNCED:
+			return "Followed a template update";
 	}
 }
 

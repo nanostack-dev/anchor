@@ -192,6 +192,39 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
 	).Value()
 }
 
+// ListOrganizationIDsForTemplateAfter is ListOrganizationIDsForTemplate
+// bounded to one page: only Organizations past the cursor, at most limit of
+// them. The template sync worker pages a whole Product through this, one
+// bounded job at a time, so no single execution has to hold every customer.
+func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplateAfter(
+	ctx context.Context,
+	tenantID string,
+	productID string,
+	templateID string,
+	afterOrganizationID string,
+	limit int,
+) ([]string, error) {
+	where := organizationLicenseScope(tenantID, productID).
+		AND(table.OrganizationLicenses.TemplateID.EQ(postgres.String(templateID)))
+	if afterOrganizationID != "" {
+		where = where.AND(
+			table.OrganizationLicenses.OrganizationID.GT(postgres.String(afterOrganizationID)),
+		)
+	}
+
+	stmt := table.OrganizationLicenses.
+		SELECT(table.OrganizationLicenses.OrganizationID).
+		FROM(table.OrganizationLicenses).
+		WHERE(where).
+		ORDER_BY(table.OrganizationLicenses.OrganizationID.ASC()).
+		LIMIT(int64(limit))
+
+	return transactor.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(entity model.OrganizationLicenses) string { return entity.OrganizationID },
+	).Value()
+}
+
 // organizationLicenseJoin left-joins each Organization onto the license it
 // holds. Left, not inner: an Organization that was never licensed is a result
 // with no license, and dropping it would hide exactly the customers an operator

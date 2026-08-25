@@ -1,8 +1,10 @@
 # ADR-0014: Moving organizations onto a license template is one Anchor operation
 
-**Status:** Accepted, partially superseded by [ADR-0015](0015-migrate-grants-a-first-license.md)
+**Status:** Accepted, partially superseded by [ADR-0015](0015-migrate-grants-a-first-license.md), amended by [ADR-0017](0017-license-follows-its-template.md)
 
 [ADR-0015](0015-migrate-grants-a-first-license.md) reverses the "an organization holding no license is `SKIPPED` with reason `NOT_LICENSED`" clause in this ADR's Decision, and the corresponding `MIGRATED`/`SKIPPED` naming in Consequences. Everything else below — restamping provenance, `CARRY_FORWARD`/`DISCARD`, the 500 cap, one transaction per organization, the search route — is unchanged and still governs.
+
+[ADR-0017](0017-license-follows-its-template.md) adds what a migration does to the license's adjusted-field record (`DISCARD` clears it, `CARRY_FORWARD` keeps the fields the target declares), and shrinks the "carries stale values it cannot tell from bespoke ones" cost below: a license now follows its template, so outside a propagation still in flight, an un-adjusted license does not differ from its own tier.
 
 Extends [ADR-0004](0004-license-schema-template-and-copy.md), which says an organization's license is a copy taken at instantiation. It stays a copy. This adds the operation that takes a *second* copy, from a different template, and says so in the record.
 

@@ -302,6 +302,14 @@ func (s *organizationLicenseService) AdjustValues(
 			return nil
 		}
 
+		// Every field the adjustment moved is pinned: a propagated template
+		// update leaves it alone from here on. A field written back at its
+		// current value moved nothing, records no history entry, and pins
+		// nothing. See docs/adr/0017-license-follows-its-template.md.
+		existing.RecordAdjustedFields(functional.Slice(changes).Map(
+			func(c license.OrganizationLicenseChange) string { return *c.Field },
+		))
+
 		var updateErr error
 		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)
 		if updateErr != nil {

@@ -150,6 +150,19 @@ type OrganizationLicenseRepository interface {
 	ListOrganizationIDsForTemplate(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) ([]string, error)
+	// ListOrganizationIDsForTemplateAfter is ListOrganizationIDsForTemplate
+	// bounded to one page: only Organizations whose identifier is greater
+	// than afterOrganizationID (all of them when it is empty), at most limit.
+	// The template sync worker pages through this so one job execution stays
+	// bounded whatever the Product's size.
+	ListOrganizationIDsForTemplateAfter(
+		ctx context.Context,
+		tenantID string,
+		productID string,
+		templateID string,
+		afterOrganizationID string,
+		limit int,
+	) ([]string, error)
 	// Search reads a page of the Product's customer book: each Organization and
 	// the license it holds. An Organization holding none is a result with a nil
 	// license, not an absent row.

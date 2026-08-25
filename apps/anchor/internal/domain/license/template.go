@@ -10,10 +10,12 @@ import (
 // "Pro" as reusable objects rather than values retyped for every customer.
 //
 // A template is mutable and unversioned. There is no draft or published state
-// and no version number, because a template is consulted once — at
-// instantiation, when its values are copied onto an Organization's license. An
-// email template resolves at send time and is therefore a live dependency; this
-// one is a stamp. See docs/adr/0004-license-schema-template-and-copy.md.
+// and no version number. Its values are copied onto an Organization's license
+// at instantiation and followed thereafter: a value update is propagated onto
+// every license instantiated from it, except on each license's adjusted
+// fields. See docs/adr/0017-license-follows-its-template.md, which supersedes
+// the consulted-once rule of
+// docs/adr/0004-license-schema-template-and-copy.md.
 //
 // It does carry one lifecycle step, [TemplateStatus]: withdrawing a tier
 // archives it and never deletes the row, because a license names the template

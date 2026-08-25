@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -70,8 +71,11 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 // What it owns is the template itself: its name, its identity, and the rule
 // that a write is refused unless the schema accepts its values.
 //
-// Templates carry no version and no publish step, because a template is
-// consulted once — when its values are copied onto an Organization's license.
+// Templates carry no version and no publish step. Their values are copied
+// onto an Organization's license at instantiation and followed thereafter: a
+// value update enqueues a propagation onto every license naming the template,
+// in the update's own transaction. See
+// docs/adr/0017-license-follows-its-template.md.
 // The one lifecycle step every template can reach is withdrawal: archiving,
 // which never deletes the row, so the licenses that name it keep resolving.
 // See docs/adr/0010-license-templates-are-archived.md. A template no
@@ -102,6 +106,8 @@ type licenseTemplateService struct {
 	templateRepo   licenserepo.TemplateRepository
 	orgLicenseRepo licenserepo.OrganizationLicenseRepository
 	schemas        LicenseSchemaService
+	sync           LicenseTemplateSyncEnqueuer
+	transactor     transactor.Transactor
 	logger         zerolog.Logger
 }
 
@@ -109,12 +115,16 @@ func NewLicenseTemplateService(
 	templateRepo licenserepo.TemplateRepository,
 	orgLicenseRepo licenserepo.OrganizationLicenseRepository,
 	schemas LicenseSchemaService,
+	sync LicenseTemplateSyncEnqueuer,
+	tx transactor.Transactor,
 	logger zerolog.Logger,
 ) LicenseTemplateService {
 	return &licenseTemplateService{
 		templateRepo:   templateRepo,
 		orgLicenseRepo: orgLicenseRepo,
 		schemas:        schemas,
+		sync:           sync,
+		transactor:     tx,
 		logger:         logger.With().Str("component", "license_template_service").Logger(),
 	}
 }
@@ -204,6 +214,7 @@ func (s *licenseTemplateService) UpdateTemplate(
 	if existing.IsArchived() {
 		return license.Template{}, ErrLicenseTemplateArchived
 	}
+	previousValues := existing.Values
 
 	if in.Description != nil {
 		existing.Description = *in.Description
@@ -235,12 +246,27 @@ func (s *licenseTemplateService) UpdateTemplate(
 		existing.Name = *in.Name
 	}
 
-	updated, err := s.templateRepo.Update(ctx, in.TenantID, existing)
-	if err != nil {
-		if pgerr.IsUniqueViolation(err, licenseTemplateNameConstraint) {
-			return license.Template{}, errLicenseTemplateNameExists(existing.Name)
+	valuesChanged := in.Values != nil && len(license.DiffValues(previousValues, existing.Values)) > 0
+
+	// The write and the propagation job land in one transaction, so an edit
+	// that commits is an edit every license naming this template will follow,
+	// restart or not. See docs/adr/0017-license-follows-its-template.md.
+	var updated license.Template
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.templateRepo.Update(txCtx, in.TenantID, existing)
+		if updateErr != nil {
+			if pgerr.IsUniqueViolation(updateErr, licenseTemplateNameConstraint) {
+				return errLicenseTemplateNameExists(existing.Name)
+			}
+			return updateErr
 		}
-		return license.Template{}, err
+		if !valuesChanged {
+			return nil
+		}
+		return s.sync.EnqueueTemplateSync(txCtx, in.TenantID, in.ProductID, updated.ID)
+	}); txErr != nil {
+		return license.Template{}, txErr
 	}
 
 	return updated, nil
@@ -266,9 +292,10 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return existing, nil
 	}
 
-	// Organizations instantiated from this template keep their own copy of the
-	// values, so there is nothing here to cascade. What the row is kept for is
-	// the provenance those licenses name.
+	// Archiving changes no value, so there is nothing here to propagate: the
+	// Organizations on this tier keep what they hold, and the row is kept for
+	// the provenance those licenses name. An archived template can no longer
+	// be edited, so nothing moves them again short of a migration.
 	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
 }
 

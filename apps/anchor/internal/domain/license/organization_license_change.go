@@ -31,6 +31,13 @@ const (
 	// OldValue and NewValue carry the whole set of values on either side
 	// (OldValue absent to match).
 	ChangeSet ChangeType = "SET"
+	// ChangeTemplateSynced is the license following its own template after
+	// that template's values were updated — an automatic propagation, not an
+	// operator's migrate. [OrganizationLicenseChange.TemplateID] names the
+	// template followed, OldValue and NewValue carry the whole set of values
+	// on either side. Adjusted fields keep their values through it. See
+	// docs/adr/0017-license-follows-its-template.md.
+	ChangeTemplateSynced ChangeType = "TEMPLATE_SYNCED"
 )
 
 // OrganizationLicenseChange is one entry in an Organization's license history.
@@ -110,6 +117,29 @@ func NewAdjustmentChanges(
 		changes = append(changes, change)
 	}
 	return changes
+}
+
+// NewTemplateSyncChange records one license following its template, as a
+// single entry carrying the whole set on either side. One entry rather than
+// one per field, for the reason NewMigrationChange gives: the set was
+// replaced, and splitting it per field would describe one template update as
+// a coincidence of unrelated edits.
+func NewTemplateSyncChange(
+	synced OrganizationLicense, previousValues TemplateValues, changedAt time.Time,
+) OrganizationLicenseChange {
+	change := OrganizationLicenseChange{
+		PlatformTenantID: synced.PlatformTenantID,
+		ProductID:        synced.ProductID,
+		OrganizationID:   synced.OrganizationID,
+		LicenseID:        synced.ID,
+		Type:             ChangeTemplateSynced,
+		TemplateID:       new(synced.TemplateID),
+		OldValue:         map[string]any(previousValues),
+		NewValue:         map[string]any(synced.Values),
+		ChangedAt:        changedAt,
+	}
+	change.GenerateID()
+	return change
 }
 
 // GenerateID sets the entry's ID to a new prefixed KSUID.

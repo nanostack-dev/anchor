@@ -39,43 +39,37 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, 1, diff.Count)
 	})
 
-	t.Run("a template edited after instantiation shows as a difference", func(t *testing.T) {
+	t.Run("a template edited after instantiation stops differing once followed", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
-		// The organization is untouched here — the tier moved underneath it, which
-		// the diff reports the same way it reports a deviation.
+		// The organization is untouched here — the tier moved underneath it.
+		// The license follows the edit, so once the propagation lands the
+		// diff is clean again; only an adjusted field differs durably.
 		w.Template().ReplaceValues(templateValuesWith("flows", 2000))
 
+		waitForLicenseValues(t, w.License(), templateValuesWith("flows", 2000))
 		diff := w.License().Diff()
-		require.Len(t, diff.Differences, 1)
-		assert.Equal(t, "flows", diff.Differences[0].Field)
-		assert.Equal(t, ct.Changed, diff.Differences[0].Kind)
-		assert.InDelta(t, 500.0, diff.Differences[0].LicenseValue, 0)
-		assert.InDelta(t, 2000.0, diff.Differences[0].TemplateValue, 0)
+		assert.Empty(t, diff.Differences)
+		assert.Equal(t, 0, diff.Count)
 	})
 
-	t.Run("a license field the template gained after the copy", func(t *testing.T) {
+	t.Run("a license field the template gained lands on the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		widenSchema(t, w)
 
-		difference := differenceByField(t, w.License().Diff().Differences, "seats")
-
-		// The organization was never granted it, which is a different statement
-		// from holding a different value for it.
-		assert.Equal(t, ct.OnlyInTemplate, difference.Kind)
-		assert.Nil(t, difference.LicenseValue)
-		assert.InDelta(t, 25.0, difference.TemplateValue, 0)
+		// The organization was licensed before `seats` was declared. The
+		// template edit that sets it is propagated, so the gained field lands
+		// rather than reading only_in_template forever.
+		waitForLicenseValues(t, w.License(), templateValuesWith("seats", 25))
+		assert.Empty(t, w.License().Diff().Differences)
 	})
 
-	t.Run("a license field the template dropped after the copy", func(t *testing.T) {
+	t.Run("a license field the template dropped leaves the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		narrowSchema(t, w)
 
-		difference := differenceByField(t, w.License().Diff().Differences, "region")
-
-		assert.Equal(t, ct.OnlyInLicense, difference.Kind)
-		assert.Equal(t, "ca-central", difference.LicenseValue)
-		assert.Nil(t, difference.TemplateValue)
+		waitForLicenseValues(t, w.License(), templateValuesExcept("region"))
+		assert.Empty(t, w.License().Diff().Differences)
 	})
 
 	t.Run("differences are ordered by license field name", func(t *testing.T) {
@@ -123,8 +117,9 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 }
 
-// widenSchema declares one more license field and sets it on the template,
-// leaving every already-instantiated organization without it.
+// widenSchema declares one more license field and sets it on the template.
+// The template edit is propagated, so already-instantiated organizations gain
+// the field once the sync lands.
 func widenSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	w.RedeclareSchema(append(templateSchemaFields(), ct.LicenseFieldDeclaration{
@@ -136,8 +131,11 @@ func widenSchema(t *testing.T, w *licenseWorld) {
 	w.Template().ReplaceValues(templateValuesWith("seats", 25))
 }
 
-// narrowSchema drops one license field from the declaration and from the
-// template, leaving every already-instantiated organization still holding it.
+// narrowSchema drops one license field from the declaration. The removal
+// cascades: the schema edit prunes the template, and the pruned template is
+// propagated onto already-instantiated organizations. The explicit
+// ReplaceValues restates what the cascade already wrote, so the template read
+// is deterministic whichever runs first.
 func narrowSchema(t *testing.T, w *licenseWorld) {
 	t.Helper()
 	fields := make([]ct.LicenseFieldDeclaration, 0, len(templateSchemaFields()))

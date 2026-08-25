@@ -732,7 +732,7 @@ export const zLicenseFieldUsageResponse = z.object({
 });
 
 /**
- * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+ * An organization's license: its own copy of a template's values, kept in step with that template except on its adjusted fields. Every license field the schema declares carries a value, so a consumer can read it at face value.
  */
 export const zOrganizationLicenseResponse = z.object({
     id: zKsuid,
@@ -741,6 +741,7 @@ export const zOrganizationLicenseResponse = z.object({
     template_id: zKsuid,
     instantiated_at: z.iso.datetime(),
     values: zLicenseTemplateValues,
+    adjusted_fields: z.array(z.string()),
     usage: z.optional(z.record(z.string(), zLicenseFieldUsageResponse)),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -1355,7 +1356,7 @@ export const zOrganizationLicenseAdjustRequest = z.object({
 });
 
 /**
- * Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
+ * Why a license field appears in a diff. `changed` means the two sides hold different values — usually a field adjusted for this organization, since a template edit is otherwise propagated onto the license; a propagation still in flight, or one refused because the merged values no longer satisfy the schema, also reads as `changed`. `only_in_license` and `only_in_template` mean the template changed shape and the license has not (yet) followed.
  */
 export const zLicenseDifferenceKind = z.enum([
     'changed',
@@ -1381,12 +1382,13 @@ export const zOrganizationLicenseDiffResponse = z.object({
 });
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match). `TEMPLATE_SYNCED` is the license following its own template after that template's values were updated — an automatic propagation, not an operator's migrate: `template_id` names the template followed, and `old_value` and `new_value` carry the whole set of values on either side. Adjusted fields keep their values through it.
  */
 export const zLicenseChangeType = z.enum([
     'INSTANTIATED',
     'ADJUSTED',
-    'SET'
+    'SET',
+    'TEMPLATE_SYNCED'
 ]);
 
 /**
