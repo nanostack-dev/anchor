@@ -117,11 +117,8 @@ func (m Migration) Tally() MigrationTally {
 // was taken, and the values MigratedValues resolves. Identity, Product and
 // Organization are kept.
 //
-// AdjustedFields follows the policy. DiscardDifferences clears it — the
-// operator asked for the target whole, so nothing stays pinned against later
-// template updates. CarryForwardDifferences keeps it, minus the fields the
-// target does not declare, matching what MigratedValues carries. See
-// docs/adr/0017-license-follows-its-template.md.
+// AdjustedFields follows the policy: DiscardDifferences clears it,
+// CarryForwardDifferences keeps the fields the target declares.
 func (l *OrganizationLicense) MigratedTo(
 	target Template, current TemplateValues, policy DifferencePolicy, migratedAt time.Time,
 ) OrganizationLicense {

@@ -192,10 +192,6 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
 	).Value()
 }
 
-// ListOrganizationIDsForTemplateAfter is ListOrganizationIDsForTemplate
-// bounded to one page: only Organizations past the cursor, at most limit of
-// them. The template sync worker pages a whole Product through this, one
-// bounded job at a time, so no single execution has to hold every customer.
 func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplateAfter(
 	ctx context.Context,
 	tenantID string,

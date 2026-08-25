@@ -71,11 +71,9 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 // What it owns is the template itself: its name, its identity, and the rule
 // that a write is refused unless the schema accepts its values.
 //
-// Templates carry no version and no publish step. Their values are copied
-// onto an Organization's license at instantiation and followed thereafter: a
-// value update enqueues a propagation onto every license naming the template,
-// in the update's own transaction. See
-// docs/adr/0017-license-follows-its-template.md.
+// Templates carry no version and no publish step. Their values are copied at
+// instantiation and followed thereafter
+// (docs/adr/0017-license-follows-its-template.md).
 // The one lifecycle step every template can reach is withdrawal: archiving,
 // which never deletes the row, so the licenses that name it keep resolving.
 // See docs/adr/0010-license-templates-are-archived.md. A template no
@@ -245,14 +243,8 @@ func (s *licenseTemplateService) UpdateTemplate(
 		existing.Name = *in.Name
 	}
 
-	// The write and the propagation job land in one transaction, so an edit
-	// that commits is an edit every license naming this template will follow,
-	// restart or not. Every values-carrying write enqueues, even one that
-	// restates the stored values: the job itself skips each license already
-	// in step, and a restatement is how an operator — or a Terraform apply —
-	// repairs a license that drifted before this rule existed. A write that
-	// carries no values moves nothing and enqueues nothing. See
-	// docs/adr/0017-license-follows-its-template.md.
+	// A restated, unchanged set still enqueues: the job skips licenses in
+	// step, and a restatement repairs one that drifted before the rule.
 	var updated license.Template
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var updateErr error
@@ -294,10 +286,7 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return existing, nil
 	}
 
-	// Archiving changes no value, so there is nothing here to propagate: the
-	// Organizations on this tier keep what they hold, and the row is kept for
-	// the provenance those licenses name. An archived template can no longer
-	// be edited, so nothing moves them again short of a migration.
+	// Archiving changes no value, so there is nothing to propagate.
 	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
 }
 

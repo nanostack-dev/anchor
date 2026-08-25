@@ -9,23 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A license follows its template: a template value update is propagated onto
-// every license instantiated from it, except on the fields adjusted for that
-// organization. The propagation is a durable queue job, so every assertion on
-// its effect polls until the worker has caught up. See
-// docs/adr/0017-license-follows-its-template.md.
-
+// The propagation is a durable queue job, so every assertion on its effect
+// polls until the worker has caught up; templateSyncSettleTime is the wait
+// before asserting that nothing happened.
 const (
 	templateSyncWaitTimeout = 30 * time.Second
 	templateSyncWaitTick    = 250 * time.Millisecond
-	// templateSyncSettleTime is how long a test waits before asserting that
-	// nothing happened. Long enough for the worker's poll interval plus one
-	// batch, short enough not to dominate the suite.
-	templateSyncSettleTime = 4 * time.Second
+	templateSyncSettleTime  = 4 * time.Second
 )
 
-// waitForLicenseValues polls one organization's license until it holds
-// exactly the expected set.
 func waitForLicenseValues(
 	t *testing.T, handle licenseHandle, expected ct.LicenseTemplateValues,
 ) ct.OrganizationLicenseResponse {
@@ -39,8 +31,6 @@ func waitForLicenseValues(
 	return last
 }
 
-// countTemplateSyncChanges counts one organization's TEMPLATE_SYNCED history
-// entries.
 func countTemplateSyncChanges(t *testing.T, handle licenseHandle) int {
 	t.Helper()
 	history := handle.History()
@@ -65,8 +55,6 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 
 		synced := waitForLicenseValues(t, w.License(), updated)
 		assert.Empty(t, synced.AdjustedFields)
-		// The follow is recorded as its own change type, so a reader can tell
-		// an automatic propagation from an operator's migrate.
 		assert.Equal(t, 1, countTemplateSyncChanges(t, w.License()))
 	})
 
@@ -79,8 +67,6 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 			"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",
 		})
 
-		// The bespoke arrangement outlives the tier edit; everything else
-		// follows it.
 		synced := waitForLicenseValues(t, w.License(), ct.LicenseTemplateValues{
 			"flows": 800, "sso": false, "support_tier": "basic", "region": "eu-west",
 		})
@@ -93,8 +79,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 			"flows": 800, "sso": false, "support_tier": "basic", "region": "eu-west",
 		})
 
-		// Every field is adjusted, so the propagation resolves to exactly
-		// what the license already holds: a no-op, with no history entry.
+		// Every field adjusted: the sync resolves to what is already held.
 		w.Template().ReplaceValues(ct.LicenseTemplateValues{
 			"flows": 50, "sso": true, "support_tier": "priority", "region": "us-east",
 		})
@@ -118,18 +103,13 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 		w.Template().ReplaceValues(updated)
 
 		waitForLicenseValues(t, w.License(), updated)
-		// The world's own license has followed, so the run is over; the
-		// neighbour follows a different template and must not have moved.
 		assertValues(t, neighbour.Get().Values, validTemplateValues())
 		assert.Equal(t, 0, countTemplateSyncChanges(t, neighbour))
 	})
 
 	t.Run("restating the stored values repairs a drifted license", func(t *testing.T) {
 		w := newLicensedWorld(t)
-		// A license written before the follow rule could drift from its
-		// template. Every API path now syncs, so the drift is planted
-		// directly in the database — the shape the echopoint organization
-		// was actually found in.
+		// Drift predating the follow rule can only be planted in the database.
 		_, err := testDB.Exec(
 			`UPDATE organization_licenses SET values_json = values_json - 'region'
 			 WHERE organization_id = $1`,
@@ -137,9 +117,6 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// The same values the template already holds: the write changes no
-		// template row, and still enqueues the propagation that repairs the
-		// stray license.
 		w.Template().ReplaceValues(validTemplateValues())
 
 		synced := waitForLicenseValues(t, w.License(), validTemplateValues())
@@ -177,14 +154,10 @@ func TestSchemaChangeCascadesToLicenses(t *testing.T) {
 		}
 		w.RedeclareSchema(kept)
 
-		// The schema → template leg is synchronous: the declaration no longer
-		// carries the field, so no template value may either.
 		templateValues := w.Template().Read().Values
 		_, held := templateValues["region"]
 		assert.False(t, held, "the template still carries the removed field")
 
-		// The template → license leg is the same propagation a value edit
-		// takes.
 		waitForLicenseValues(t, w.License(), ct.LicenseTemplateValues{
 			"flows": 500, "sso": true, "support_tier": "priority",
 		})
@@ -207,9 +180,7 @@ func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
 	bystander.Instantiate(w.TemplateID())
 	w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
-	// Tighten the limit underneath the adjustment. Rules changed, values did
-	// not, so nothing cascades yet — the adjusted 800 simply no longer
-	// satisfies the declaration.
+	// Tighten the limit underneath the adjusted 800.
 	tightened := templateSchemaFields()
 	for i := range tightened {
 		if tightened[i].Name == "flows" {
@@ -222,14 +193,11 @@ func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
 		"flows": 400, "sso": false, "support_tier": "basic", "region": "eu-west",
 	})
 
-	// The unadjusted organization follows.
 	waitForLicenseValues(t, bystander, ct.LicenseTemplateValues{
 		"flows": 400, "sso": false, "support_tier": "basic", "region": "eu-west",
 	})
 
-	// The adjusted one is refused whole: its merged set would violate the
-	// tightened schema, so it keeps every value it holds — the adjustment is
-	// not silently dropped, and the other fields are not half-applied.
+	// Refused whole: not half-applied, adjustment not dropped.
 	refused := w.License().Get()
 	assertValues(t, refused.Values, ct.LicenseTemplateValues{
 		"flows": 800, "sso": true, "support_tier": "priority", "region": "ca-central",
@@ -256,7 +224,6 @@ func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
 		}
 		w.Template().ReplaceValues(updated)
 
-		// Nothing stays pinned: the operator asked for the template whole.
 		waitForLicenseValues(t, w.License(), updated)
 	})
 
@@ -286,8 +253,6 @@ func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 200, resp.StatusCode(), string(resp.Body))
 
-		// The deal outlived both the tier change and the later edit to the
-		// new tier.
 		synced := waitForLicenseValues(t, w.License(), ct.LicenseTemplateValues{
 			"flows": 800, "sso": false, "support_tier": "basic", "region": "eu-west",
 		})

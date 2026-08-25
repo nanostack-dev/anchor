@@ -366,14 +366,9 @@ func (s *licenseSchemaService) UpdateSchema(
 	return updated, nil
 }
 
-// cascadeRemovedFields is the schema → template leg of the cascade a schema
-// edit starts. A field the declaration no longer carries is removed from
-// every template's values in this same transaction, and each template so
-// changed is propagated onto its licenses — the template → license leg — by
-// the sync job the enqueue schedules. A field that was added, or whose rules
-// changed, changes no template value and cascades nothing; ADR-0009's
-// two-step widening is untouched. See
-// docs/adr/0017-license-follows-its-template.md.
+// cascadeRemovedFields prunes removed fields from every template in the same
+// transaction and enqueues a sync per changed template. Added fields and rule
+// changes move no value and cascade nothing.
 func (s *licenseSchemaService) cascadeRemovedFields(
 	ctx context.Context,
 	tenantID string,

@@ -27,9 +27,6 @@ type LicenseTemplateSyncWorkerParams struct {
 	Logger    zerolog.Logger
 }
 
-// RegisterLicenseTemplateSyncWorker starts the pgkit queue worker that
-// propagates a template value update onto the licenses naming it, mirroring
-// RegisterAPIKeyEventWorker.
 func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 	logger := p.Logger.With().Str("component", "license_template_sync_worker").Logger()
 

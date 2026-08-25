@@ -9,33 +9,20 @@ import (
 )
 
 // OrganizationLicense is one Organization's own copy of a [Template]'s values.
-// An Organization has at most one.
-//
-// A copy that follows: the license holds its own values, and a later edit to
-// the template's values is propagated onto them — except on AdjustedFields,
-// where the Organization's bespoke value survives every template update. See
-// docs/adr/0017-license-follows-its-template.md, which supersedes the
-// copy-not-pointer rule of docs/adr/0004-license-schema-template-and-copy.md.
+// An Organization has at most one. The copy follows its template except on
+// AdjustedFields. See docs/adr/0017-license-follows-its-template.md, which
+// supersedes docs/adr/0004-license-schema-template-and-copy.md.
 type OrganizationLicense struct {
 	ID               string
 	PlatformTenantID string
 	ProductID        string
 	OrganizationID   string
-	// TemplateID names the template this license was stamped from and now
-	// follows. InstantiatedAt is when the copy was taken; a propagated
-	// template update does not move it, only a migration restamps it.
-	TemplateID     string
-	InstantiatedAt time.Time
-	Values         TemplateValues
-	// AdjustedFields is every license field adjusted for this Organization,
-	// ordered by name. A propagated template update leaves these fields
-	// alone. Instantiation sets it empty, an adjustment adds every field it
-	// moved, and a migration keeps it under CarryForwardDifferences (dropping
-	// fields the target does not declare) and clears it under
-	// DiscardDifferences.
-	AdjustedFields []string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	TemplateID       string
+	InstantiatedAt   time.Time
+	Values           TemplateValues
+	AdjustedFields   []string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // GenerateID sets the license's ID to a new prefixed KSUID.
@@ -61,8 +48,6 @@ func (l *OrganizationLicense) AdjustedValues(in TemplateValues) TemplateValues {
 	return adjusted
 }
 
-// RecordAdjustedFields adds the named license fields to AdjustedFields,
-// keeping the set deduplicated and ordered by name.
 func (l *OrganizationLicense) RecordAdjustedFields(fieldNames []string) {
 	l.AdjustedFields = unionSorted(l.AdjustedFields, fieldNames)
 }
@@ -78,11 +63,8 @@ func unionSorted(a, b []string) []string {
 	return slices.Sorted(maps.Keys(set))
 }
 
-// SyncedValues resolves what the license holds after following its template:
-// the template's values whole, except that each adjusted field the template
-// still declares keeps the value held. An adjusted field the template no
-// longer names is dropped with the field itself — carrying it would resurrect
-// a field nothing validates, exactly as MigratedValues refuses to.
+// SyncedValues is the template whole, except each adjusted field the
+// template still declares keeps the held value.
 func (l *OrganizationLicense) SyncedValues(template TemplateValues) TemplateValues {
 	synced := make(TemplateValues, len(template))
 	maps.Copy(synced, template)

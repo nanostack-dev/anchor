@@ -16,44 +16,23 @@ import (
 	licenserepo "anchor/internal/license/repository"
 )
 
-// A template value update is propagated onto every license instantiated from
-// that template, except on each license's adjusted fields. See
-// docs/adr/0017-license-follows-its-template.md.
-//
-// The propagation is a durable pgqueue job, not an inline loop: a product can
-// hold far more licenses than fit one request transaction, and a template
-// edit must survive a restart between the write and the last license synced.
-// One job covers one template and one page of its organizations; a job that
-// finds more re-enqueues a continuation carrying a cursor.
+// Propagates a template value update onto the licenses naming it, except on
+// adjusted fields. See docs/adr/0017-license-follows-its-template.md.
 const (
-	licenseTemplateSyncQueueName = "license_template_sync"
-	// licenseTemplateSyncBatchSize bounds one job execution. Each
-	// organization is written in its own transaction, so the bound is about
-	// keeping one execution inside the worker's visibility timeout, not about
-	// atomicity.
+	licenseTemplateSyncQueueName   = "license_template_sync"
 	licenseTemplateSyncBatchSize   = 100
 	licenseTemplateSyncMaxAttempts = 6
 )
 
 type licenseTemplateSyncPayload struct {
-	TenantID  string `json:"tenant_id"`
-	ProductID string `json:"product_id"`
-	// TemplateID names the template whose values are propagated. The values
-	// themselves are read at processing time, not carried here, so two rapid
-	// edits coalesce onto the final state and a re-run is a no-op.
-	TemplateID string `json:"template_id"`
-	// AfterOrganizationID is the continuation cursor: only organizations with
-	// a greater identifier are considered. Empty on the first job of a run.
+	TenantID            string `json:"tenant_id"`
+	ProductID           string `json:"product_id"`
+	TemplateID          string `json:"template_id"`
 	AfterOrganizationID string `json:"after_organization_id,omitempty"`
 }
 
-// LicenseTemplateSyncEnqueuer schedules the propagation of one template's
-// values onto the licenses naming it. It joins the caller's transaction, so
-// the template write and the job land together or not at all.
-//
-// Split from LicenseTemplateSyncService so the template and schema services
-// can enqueue without depending on the processor, which itself depends on the
-// schema service for validation.
+// LicenseTemplateSyncEnqueuer joins the caller's transaction, so the
+// template write and the propagation job land together or not at all.
 type LicenseTemplateSyncEnqueuer interface {
 	EnqueueTemplateSync(ctx context.Context, tenantID, productID, templateID string) error
 }
@@ -96,8 +75,6 @@ func enqueueTemplateSync(
 	return err
 }
 
-// LicenseTemplateSyncService processes one propagation job: it re-reads the
-// template and writes its values onto a page of the licenses naming it.
 type LicenseTemplateSyncService interface {
 	ProcessQueueJob(ctx context.Context, job queue.Job) error
 }
@@ -155,8 +132,6 @@ func (s *licenseTemplateSyncService) ProcessQueueJob(
 		return err
 	}
 	if found.IsAbsent() {
-		// Only a template no license names can be deleted, so a vanished
-		// template means there is nothing left to propagate onto.
 		return nil
 	}
 
@@ -210,26 +185,9 @@ const (
 	syncOutcomeRefused
 )
 
-// syncOne writes one Organization's license to follow the template, in its
-// own transaction, keeping the values of every adjusted field the template
-// still declares.
-//
-// A license already holding the resolved values is left untouched — no write
-// and no history entry — which is what makes a re-delivered or re-run job a
-// no-op, matching what license.OutcomeUnchanged means for a migration.
-//
-// The merged set is validated exactly as an adjustment is. A license whose
-// adjusted value no longer satisfies a tightened schema is refused whole and
-// reported, never partially applied and never silently stripped of its
-// adjustment; it keeps the values it holds until an operator resolves it.
-//
-// The template is read again inside this transaction, not carried from the
-// job's first read. Two jobs for the same template can run concurrently on
-// two replicas after rapid edits; a job holding the older values could
-// otherwise overwrite the newer job's writes with no later job to repair
-// them. Read fresh under the row lock, the stale window shrinks to a commit
-// racing this transaction — and that commit enqueued its own job, which runs
-// after this lock releases and repairs it.
+// syncOne re-reads the template under the row lock: a job carrying a stale
+// copy could otherwise overwrite a newer concurrent job's writes for good.
+// An invalid merge is refused whole; an already-synced license is a no-op.
 func (s *licenseTemplateSyncService) syncOne(
 	ctx context.Context,
 	payload licenseTemplateSyncPayload,
@@ -250,8 +208,6 @@ func (s *licenseTemplateSyncService) syncOne(
 		}
 		existing := foundExisting.Value()
 		if existing.TemplateID != payload.TemplateID {
-			// Migrated onto another template between the listing and this
-			// transaction; it follows that template now, not this one.
 			return nil
 		}
 
