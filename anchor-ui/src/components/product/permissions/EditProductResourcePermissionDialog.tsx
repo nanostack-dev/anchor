@@ -24,6 +24,7 @@ import {
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 
 interface EditProductPermissionDialogProps {
 	productId: string;
@@ -92,7 +93,12 @@ export function EditProductResourcePermissionDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger || defaultTrigger} />
+			<Tooltip>
+				<TooltipTrigger
+					render={<DialogTrigger render={trigger || defaultTrigger} />}
+				/>
+				<TooltipContent>Edit permission</TooltipContent>
+			</Tooltip>
 			<DialogContent className="sm:max-w-[450px]">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
