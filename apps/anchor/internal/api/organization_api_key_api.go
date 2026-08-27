@@ -279,11 +279,10 @@ func mapToSearchOrganizationAPIKeyInput(
 		}).
 		ToPtr()
 
-	var req search.Request[
+	return search.NewRequest[
 		orgapikey.SearchOrganizationAPIKeyFilter,
 		orgapikey.SortFieldOrganizationAPIKey,
-	]
-	return req.WithFilter(filter).
+	]().WithFilter(filter).
 		WithSort(searchReqBody.SortBy, searchReqBody.SortDirection).
 		WithFullTextSearch(searchReqBody.FullTextSearch).
 		WithPagination(searchReqBody.Pagination)

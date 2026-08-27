@@ -145,8 +145,8 @@ func mapToSearchWorkspaceInput(
 		}
 	}).ToPtr()
 
-	var req search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace]
-	return req.WithFilter(filter).
+	return search.NewRequest[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
