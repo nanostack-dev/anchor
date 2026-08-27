@@ -19,7 +19,6 @@ import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 import { Button } from "../../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 
 const columnHelper = createColumnHelper<ProductPermissionResponse>();
 
@@ -137,17 +136,10 @@ export function ProductResourcePermissionDatatable({
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
-						<Tooltip>
-							<TooltipTrigger
-								render={
-									<EditProductResourcePermissionDialog
-										productId={productId}
-										permission={row.original}
-									/>
-								}
-							/>
-							<TooltipContent>Edit permission</TooltipContent>
-						</Tooltip>
+						<EditProductResourcePermissionDialog
+							productId={productId}
+							permission={row.original}
+						/>
 						<DeleteProductResourcePermissionDialog
 							productId={productId}
 							permission={row.original}
