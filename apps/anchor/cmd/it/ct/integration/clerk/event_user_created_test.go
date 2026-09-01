@@ -14,6 +14,7 @@ import (
 
 func TestClerkWebhookUserCreatedEvent(t *testing.T) {
 	productContext := createTestProductContext(t)
+	sink := productContext.CaptureEvents()
 	createActiveClerkIntegrationInstance(t, productContext)
 
 	externalID := "user_clerk_" + itshared.Faker.UUID().V4()
@@ -39,4 +40,7 @@ func TestClerkWebhookUserCreatedEvent(t *testing.T) {
 		return user.Email == email &&
 			user.Name != nil && *user.Name == firstName+" "+lastName
 	}, 10*time.Second, 200*time.Millisecond)
+
+	createdUser := searchProductUsers(t, productContext).JSON200.Items[0]
+	sink.WaitFor("product_user.created", map[string]string{"product_user_id": createdUser.Id})
 }

@@ -162,4 +162,57 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 
 		assert.Equal(t, firstResp.JSON201.Id, secondResp.JSON201.Id)
 	})
+
+	t.Run("EmitsWebhookOnAddUpdateRemove", func(t *testing.T) {
+		product := createTestProductContext(t)
+		sink := product.CaptureEvents()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+		memberRole := createDSLProductRole(t, product, "Webhook Member Role", nil)
+		otherRole := createDSLProductRole(t, product, "Webhook Other Role", nil)
+		org, orgErr := client.CreateProductOrganizationWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Webhook Members Org"},
+		)
+		require.NoError(t, orgErr)
+		require.Equal(t, http.StatusCreated, org.StatusCode())
+		user := createDSLProductUser(t, product)
+
+		added, addErr := client.AddOrganizationMemberWithResponse(
+			ctx,
+			product.ProductID,
+			org.JSON201.Id,
+			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: memberRole.ID},
+		)
+		require.NoError(t, addErr)
+		require.Equal(t, http.StatusCreated, added.StatusCode())
+		sink.WaitFor("organization.membership.created", map[string]string{
+			"organization_id": org.JSON201.Id,
+			"product_user_id": user.ID,
+		})
+
+		updated, updateErr := client.UpdateOrganizationMemberRoleWithResponse(
+			ctx,
+			product.ProductID,
+			org.JSON201.Id,
+			user.ID,
+			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: otherRole.ID},
+		)
+		require.NoError(t, updateErr)
+		require.Equal(t, http.StatusOK, updated.StatusCode())
+		sink.WaitFor("organization.membership.updated", map[string]string{
+			"organization_id": org.JSON201.Id,
+			"product_user_id": user.ID,
+		})
+
+		removed, removeErr := client.RemoveOrganizationMemberWithResponse(
+			ctx, product.ProductID, org.JSON201.Id, user.ID,
+		)
+		require.NoError(t, removeErr)
+		require.Equal(t, http.StatusNoContent, removed.StatusCode())
+		sink.WaitFor("organization.membership.deleted", map[string]string{
+			"organization_id": org.JSON201.Id,
+			"product_user_id": user.ID,
+		})
+	})
 }

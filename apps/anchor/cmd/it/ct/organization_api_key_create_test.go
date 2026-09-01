@@ -296,4 +296,27 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 			}, 15*time.Second, 500*time.Millisecond)
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		webhookProduct := createTestProductContext(t)
+		sink := webhookProduct.CaptureEvents()
+		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
+		webhookPermissions := givenOrganizationAPIKeyResourcePermissions(t, webhookProduct)
+		org := webhookProduct.CreateOrganization(t, "Webhook-APIKey-"+uuid.NewString(), nil)
+		resp, err := webhookClient.CreateOrganizationAPIKeyWithResponse(
+			ctx,
+			webhookProduct.ProductID,
+			org.Id,
+			ct.CreateOrganizationAPIKeyJSONRequestBody{
+				Name:        "WebhookKey-" + uuid.NewString(),
+				Permissions: []string{webhookPermissions.FileRead},
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode())
+		sink.WaitFor("organization.api_key.created", map[string]string{
+			"organization_id": org.Id,
+			"api_key_id":      resp.JSON201.Id,
+		})
+	})
 }

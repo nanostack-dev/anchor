@@ -450,4 +450,14 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 		assertAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		sink := w.product.CaptureEvents()
+		pro := w.NewTemplate(proValues())
+		w.Migration().Run(migrateTo(pro.Id, w.OrganizationID()))
+		sink.WaitFor("organization.license.updated", map[string]string{
+			"organization_id": w.OrganizationID(),
+		})
+	})
 }
