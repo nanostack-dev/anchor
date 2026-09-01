@@ -158,6 +158,9 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	if resp.StatusCode >= successStatusMin && resp.StatusCode < successStatusMax {
 		return nil
 	}
+	// Standard Webhooks: "If a delivery target has been retired, but the HTTP
+	// site still exists, the site SHOULD return a 410 Gone status code and the
+	// sender SHOULD refrain from sending any further notifications."
 	if resp.StatusCode == goneStatus {
 		if delErr := d.repo.DeleteByProductIDInternal(ctx, payload.ProductID); delErr != nil {
 			return fmt.Errorf("events: disable gone endpoint: %w", delErr)
