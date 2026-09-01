@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/events"
 	licenserepo "anchor/internal/license/repository"
 )
 
@@ -91,6 +92,7 @@ type organizationLicenseService struct {
 	changes     licenserepo.OrganizationLicenseChangeRepository
 	transactor  transactor.Transactor
 	licenses    *organizationLicenseCache
+	events      events.Emitter
 	logger      zerolog.Logger
 }
 
@@ -102,6 +104,7 @@ func NewOrganizationLicenseService(
 	changes licenserepo.OrganizationLicenseChangeRepository,
 	tx transactor.Transactor,
 	cacheStore cache.Store,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationLicenseService {
 	return &organizationLicenseService{
@@ -112,8 +115,17 @@ func NewOrganizationLicenseService(
 		changes:     changes,
 		transactor:  tx,
 		licenses:    newOrganizationLicenseCache(cacheStore, logger),
+		events:      eventEmitter,
 		logger:      logger.With().Str("component", "organization_license_service").Logger(),
 	}
+}
+
+func emitLicenseUpdated(ctx context.Context, emitter events.Emitter, productID, organizationID string) error {
+	return emitter.Emit(ctx, events.Event{
+		Type:      events.OrganizationLicenseUpdated,
+		ProductID: productID,
+		Data:      events.Data{events.FieldOrganizationID: organizationID},
+	})
 }
 
 func (s *organizationLicenseService) Instantiate(
@@ -172,9 +184,12 @@ func (s *organizationLicenseService) Instantiate(
 			return createErr
 		}
 
-		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
+		if appendErr := s.changes.Append(txCtx, []license.OrganizationLicenseChange{
 			license.NewInstantiationChange(created, instantiatedAt),
-		})
+		}); appendErr != nil {
+			return appendErr
+		}
+		return emitLicenseUpdated(txCtx, s.events, in.ProductID, in.OrganizationID)
 	}); txErr != nil {
 		return license.OrganizationLicense{}, txErr
 	}
@@ -308,7 +323,10 @@ func (s *organizationLicenseService) AdjustValues(
 			return updateErr
 		}
 		wrote = true
-		return s.changes.Append(txCtx, changes)
+		if appendErr := s.changes.Append(txCtx, changes); appendErr != nil {
+			return appendErr
+		}
+		return emitLicenseUpdated(txCtx, s.events, in.ProductID, in.OrganizationID)
 	}); txErr != nil {
 		return license.OrganizationLicense{}, txErr
 	}
