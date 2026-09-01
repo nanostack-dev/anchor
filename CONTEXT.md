@@ -85,6 +85,8 @@ The catalog is the Product SDK surface: organizations, members, workspaces, orga
 | **delivery** | One HTTP POST of an event to an endpoint. | |
 | **thin payload** | `data` carries identifiers of the subject. The Product fetches current state from the API. | snapshot, full payload |
 
+Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) (Svix): headers `webhook-id`, `webhook-timestamp`, `webhook-signature`; body `{type, timestamp, data}` with a thin `data`. Not CloudEvents. See [ADR-0017](docs/adr/0017-product-events-use-standard-webhooks.md).
+
 Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). There is no Organization-member invitation.
 
 ## Decisions
