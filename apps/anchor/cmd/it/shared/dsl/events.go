@@ -2,8 +2,6 @@ package itdsl
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -18,7 +16,6 @@ import (
 const (
 	eventSinkWaitTimeout  = 20 * time.Second
 	eventSinkPollInterval = 50 * time.Millisecond
-	signingSecretBytes    = 32
 )
 
 // EventSink is an httptest receiver that verifies Standard Webhooks signatures
@@ -42,20 +39,33 @@ func (tp *ProductContext) CaptureEvents() *EventSink {
 
 func newEventSink(t *testing.T) *EventSink {
 	t.Helper()
-	secret := mustSigningSecret(t)
-	sink := &EventSink{t: t, Secret: secret}
-	handler, err := anchorsdk.Events(secret)
-	require.NoError(t, err)
-	handler.OnAny(func(_ context.Context, event anchorsdk.Event) error {
-		sink.mu.Lock()
-		sink.received = append(sink.received, event)
-		sink.mu.Unlock()
-		return nil
-	})
-	server := httptest.NewServer(handler)
+	sink := &EventSink{t: t}
+	server := httptest.NewServer(http.HandlerFunc(sink.serve))
 	t.Cleanup(server.Close)
 	sink.URL = server.URL
 	return sink
+}
+
+func (s *EventSink) serve(writer http.ResponseWriter, request *http.Request) {
+	s.mu.Lock()
+	secret := s.Secret
+	s.mu.Unlock()
+	if secret == "" {
+		http.Error(writer, "signing secret not minted yet", http.StatusInternalServerError)
+		return
+	}
+	handler, err := anchorsdk.Events(secret)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	handler.OnAny(func(_ context.Context, event anchorsdk.Event) error {
+		s.mu.Lock()
+		s.received = append(s.received, event)
+		s.mu.Unlock()
+		return nil
+	})
+	handler.ServeHTTP(writer, request)
 }
 
 func (tp *ProductContext) attachEventSink(sink *EventSink) {
@@ -77,14 +87,19 @@ func (tp *ProductContext) attachEventSink(sink *EventSink) {
 					Prefix: got.JSON200.Config.OrganizationApiKeys.Prefix,
 				},
 				Events: &nanostackClient.ProductEventsConfigRequest{
-					EndpointUrl:   &sink.URL,
-					SigningSecret: &sink.Secret,
+					EndpointUrl: &sink.URL,
 				},
 			},
 		},
 	)
 	require.NoError(tp.testingContext, updateErr)
 	require.Equal(tp.testingContext, http.StatusOK, updated.StatusCode())
+	require.NotNil(tp.testingContext, updated.JSON200)
+	require.NotNil(tp.testingContext, updated.JSON200.Config.Events)
+	require.NotNil(tp.testingContext, updated.JSON200.Config.Events.SigningSecret)
+	sink.mu.Lock()
+	sink.Secret = *updated.JSON200.Config.Events.SigningSecret
+	sink.mu.Unlock()
 }
 
 // WaitFor waits until a recorded event matches type and every supplied field.
@@ -115,12 +130,4 @@ func eventMatches(event anchorsdk.Event, fields map[string]string) bool {
 		}
 	}
 	return true
-}
-
-func mustSigningSecret(t *testing.T) string {
-	t.Helper()
-	key := make([]byte, signingSecretBytes)
-	_, err := rand.Read(key)
-	require.NoError(t, err)
-	return "whsec_" + base64.StdEncoding.EncodeToString(key)
 }

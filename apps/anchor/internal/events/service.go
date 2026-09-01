@@ -57,7 +57,7 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 		return Endpoint{}, err
 	}
 
-	secret, generated, err := s.resolveSigningSecret(ctx, input)
+	secret, generated, err := s.resolveSigningSecret(ctx, input.TenantID, input.ProductID)
 	if err != nil {
 		return Endpoint{}, err
 	}
@@ -109,16 +109,13 @@ func (s *endpointService) Clear(ctx context.Context, tenantID, productID string)
 }
 
 func (s *endpointService) resolveSigningSecret(
-	ctx context.Context, input UpsertEndpointInput,
+	ctx context.Context, tenantID, productID string,
 ) (string, bool, error) {
-	if input.SigningSecret != "" {
-		return input.SigningSecret, false, nil
-	}
-	found, err := s.repo.FindByProductIDInternal(ctx, input.ProductID)
+	found, err := s.repo.FindByProductIDInternal(ctx, productID)
 	if err != nil {
 		return "", false, err
 	}
-	if found.IsPresent() && found.Value().PlatformTenantID == input.TenantID {
+	if found.IsPresent() && found.Value().PlatformTenantID == tenantID {
 		plaintext, decryptErr := s.cipher.DecryptString(found.Value().SigningSecretEncrypted)
 		if decryptErr != nil {
 			return "", false, decryptErr

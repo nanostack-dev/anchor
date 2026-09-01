@@ -152,8 +152,7 @@ export const zProductOrganizationApiKeysConfigRequest = z.object({
 });
 
 export const zProductEventsConfigRequest = z.object({
-    endpoint_url: z.optional(z.string()),
-    signing_secret: z.optional(z.string().min(8))
+    endpoint_url: z.optional(z.string())
 });
 
 export const zProductConfigRequest = z.object({

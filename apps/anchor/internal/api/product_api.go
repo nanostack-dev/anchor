@@ -77,9 +77,6 @@ func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
 		if config.Events.EndpointUrl != nil {
 			eventsConfig.EndpointURL = *config.Events.EndpointUrl
 		}
-		if config.Events.SigningSecret != nil {
-			eventsConfig.SigningSecret = *config.Events.SigningSecret
-		}
 		productConfig.Events = &eventsConfig
 	}
 	return productConfig

@@ -357,10 +357,9 @@ func (s *productService) persistEventsConfig(
 		return s.eventEndpoints.Clear(ctx, tenantID, productID)
 	}
 	stored, err := s.eventEndpoints.Upsert(ctx, events.UpsertEndpointInput{
-		TenantID:      tenantID,
-		ProductID:     productID,
-		URL:           cfg.EndpointURL,
-		SigningSecret: cfg.SigningSecret,
+		TenantID:  tenantID,
+		ProductID: productID,
+		URL:       cfg.EndpointURL,
 	})
 	if err != nil {
 		return err

@@ -16,10 +16,9 @@ type Endpoint struct {
 }
 
 type UpsertEndpointInput struct {
-	TenantID      string `validate:"required,notblank"`
-	ProductID     string `validate:"required,notblank"`
-	URL           string `validate:"required,notblank"`
-	SigningSecret string
+	TenantID  string `validate:"required,notblank"`
+	ProductID string `validate:"required,notblank"`
+	URL       string `validate:"required,notblank"`
 }
 
 func validateEndpointURL(raw string, production bool) error {

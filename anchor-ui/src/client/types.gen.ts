@@ -288,13 +288,9 @@ export type ProductOrganizationApiKeysConfigRequest = {
 
 export type ProductEventsConfigRequest = {
     /**
-     * Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint.
+     * Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
      */
     endpoint_url?: string;
-    /**
-     * Standard Webhooks signing secret (`whsec_...`). Write-only. Omit to have Anchor generate one. Never hashed: delivery must sign with the plaintext secret, so it is encrypted at rest.
-     */
-    signing_secret?: string;
 };
 
 export type ProductEventsConfigResponse = {
@@ -307,7 +303,7 @@ export type ProductEventsConfigResponse = {
      */
     signing_secret_obfuscated: string;
     /**
-     * Plaintext signing secret. Present only on the write that generated it. Store it then; later reads return only the obfuscated marker.
+     * Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
      */
     signing_secret?: string;
 };

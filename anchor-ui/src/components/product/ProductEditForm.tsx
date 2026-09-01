@@ -35,7 +35,6 @@ const productFormSchema = zProductRequest
 		organizationApiKeyPrefix:
 			zProductOrganizationApiKeysConfigRequest.shape.prefix,
 		eventsEndpointUrl: z.string(),
-		eventsSigningSecret: z.string(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.name?.trim()) {
@@ -85,7 +84,6 @@ export function ProductEditForm({
 			organizationApiKeyPrefix:
 				product.config.organization_api_keys.prefix || "anchor",
 			eventsEndpointUrl: product.config.events?.endpoint_url || "",
-			eventsSigningSecret: "",
 		} as ProductFormData,
 		onSubmit: async ({ value }) => {
 			const result = productFormSchema.safeParse(value);
@@ -132,7 +130,6 @@ export function ProductEditForm({
 
 	const onSubmit = async (values: ProductFormData) => {
 		const endpointUrl = values.eventsEndpointUrl.trim();
-		const signingSecret = values.eventsSigningSecret.trim();
 		const updateData: ProductRequest = {
 			name: values.name,
 			description: values.description || "",
@@ -144,7 +141,6 @@ export function ProductEditForm({
 					? {
 							events: {
 								endpoint_url: endpointUrl,
-								...(signingSecret ? { signing_secret: signingSecret } : {}),
 							},
 						}
 					: {}),
@@ -164,7 +160,6 @@ export function ProductEditForm({
 			organizationApiKeyPrefix:
 				product.config.organization_api_keys.prefix || "anchor",
 			eventsEndpointUrl: product.config.events?.endpoint_url || "",
-			eventsSigningSecret: "",
 		});
 	}, [product, form]);
 
@@ -331,37 +326,10 @@ export function ProductEditForm({
 												<FieldDescription>
 													Anchor POSTs signed product events here. Leave empty
 													to clear the endpoint. Production requires HTTPS.
-												</FieldDescription>
-												<FormValidationError field={field} />
-											</Field>
-										)}
-									</form.Field>
-									<form.Field name="eventsSigningSecret">
-										{(field) => (
-											<Field
-												data-disabled={updateMutation.isPending}
-												data-invalid={field.state.meta.errors.length > 0}
-											>
-												<FieldLabel htmlFor="events-signing-secret">
-													Signing secret
-												</FieldLabel>
-												<Input
-													id="events-signing-secret"
-													type="password"
-													placeholder={
-														product.config.events?.signing_secret_obfuscated ||
-														"Leave blank to generate"
-													}
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													disabled={updateMutation.isPending}
-													aria-invalid={field.state.meta.errors.length > 0}
-												/>
-												<FieldDescription>
-													Standard Webhooks secret (`whsec_...`). Leave blank to
-													keep the stored secret, or to generate one on first
-													save.
+													Anchor mints the signing secret on first save.
+													{product.config.events?.signing_secret_obfuscated
+														? ` Stored secret: ${product.config.events.signing_secret_obfuscated}.`
+														: ""}
 												</FieldDescription>
 												<FormValidationError field={field} />
 											</Field>
