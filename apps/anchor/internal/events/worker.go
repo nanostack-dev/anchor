@@ -9,24 +9,27 @@ import (
 	"net/http"
 	"time"
 
+	serviceconfig "anchor/internal/service/config"
+
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
 const (
-	workerID             = "anchor-product-events-worker"
-	workerPollInterval   = 2 * time.Second
-	workerReapInterval   = 30 * time.Second
-	workerVisibility     = 1 * time.Minute
-	workerBatchSize      = 50
-	workerBackoffBase    = 1 * time.Second
-	workerBackoffMax     = 5 * time.Minute
-	deliveryTimeout      = 15 * time.Second
-	maxDeliveryBodyBytes = 1 << 20
-	successStatusMin     = 200
-	successStatusMax     = 300
-	goneStatus           = 410
+	workerID              = "anchor-product-events-worker"
+	workerPollInterval    = 2 * time.Second
+	workerPollIntervalDev = 100 * time.Millisecond
+	workerReapInterval    = 30 * time.Second
+	workerVisibility      = 1 * time.Minute
+	workerBatchSize       = 50
+	workerBackoffBase     = 1 * time.Second
+	workerBackoffMax      = 5 * time.Minute
+	deliveryTimeout       = 15 * time.Second
+	maxDeliveryBodyBytes  = 1 << 20
+	successStatusMin      = 200
+	successStatusMax      = 300
+	goneStatus            = 410
 )
 
 type WorkerParams struct {
@@ -36,6 +39,7 @@ type WorkerParams struct {
 	EndpointService EndpointService
 	Endpoints       EndpointRepository
 	Logger          zerolog.Logger
+	Core            *serviceconfig.CoreConfig
 }
 
 func RegisterWorker(p WorkerParams) {
@@ -59,9 +63,14 @@ func RegisterWorker(p WorkerParams) {
 		return
 	}
 
+	pollInterval := workerPollInterval
+	if p.Core != nil && !p.Core.IsProduction() {
+		pollInterval = workerPollIntervalDev
+	}
+
 	worker, err := queue.NewWorker(p.Queue, registry, queue.WorkerConfig{
 		WorkerID:          workerID,
-		PollInterval:      workerPollInterval,
+		PollInterval:      pollInterval,
 		ReapInterval:      workerReapInterval,
 		VisibilityTimeout: workerVisibility,
 		BatchSizePerQueue: workerBatchSize,

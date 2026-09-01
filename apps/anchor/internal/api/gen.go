@@ -1682,14 +1682,43 @@ type ProductAPIKeyUpdateRequest struct {
 
 // ProductConfigRequest defines model for ProductConfigRequest.
 type ProductConfigRequest struct {
+	// Events Outbound product-event endpoint configuration.
+	Events *ProductEventsConfigRequest `json:"events,omitempty"`
+
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys *ProductOrganizationAPIKeysConfigRequest `json:"organization_api_keys,omitempty"`
 }
 
 // ProductConfigResponse defines model for ProductConfigResponse.
 type ProductConfigResponse struct {
+	// Events Outbound product-event endpoint, absent when none is configured.
+	Events *ProductEventsConfigResponse `json:"events,omitempty"`
+
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
+}
+
+// ProductEventsConfigRequest defines model for ProductEventsConfigRequest.
+type ProductEventsConfigRequest struct {
+	// EndpointUrl Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint.
+	//
+	// Examples: https://echopoint.example/anchor/events
+	EndpointUrl *string `json:"endpoint_url,omitempty"`
+
+	// SigningSecret Standard Webhooks signing secret (`whsec_...`). Write-only. Omit to have Anchor generate one. Never hashed: delivery must sign with the plaintext secret, so it is encrypted at rest.
+	SigningSecret *string `json:"signing_secret,omitempty"`
+}
+
+// ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
+type ProductEventsConfigResponse struct {
+	// EndpointUrl URL Anchor POSTs product events to.
+	EndpointUrl string `json:"endpoint_url"`
+
+	// SigningSecret Plaintext signing secret. Present only on the write that generated it. Store it then; later reads return only the obfuscated marker.
+	SigningSecret *string `json:"signing_secret,omitempty"`
+
+	// SigningSecretObfuscated Obfuscated marker that a signing secret is stored.
+	SigningSecretObfuscated string `json:"signing_secret_obfuscated"`
 }
 
 // ProductFilter defines model for ProductFilter.

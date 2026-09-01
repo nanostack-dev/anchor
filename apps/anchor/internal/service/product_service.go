@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"anchor/internal/security"
@@ -12,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product"
+	"anchor/internal/events"
 
 	"anchor/internal/repository"
 
@@ -45,6 +47,7 @@ type ProductService interface {
 type productService struct {
 	productRepo           repository.ProductRepository
 	productPermissionRepo repository.ProductPermissionRepository
+	eventEndpoints        events.EndpointService
 	products              cache.Cache[product.Product]
 	logger                zerolog.Logger
 	transactor            transactor.Transactor
@@ -53,11 +56,13 @@ type productService struct {
 func NewProductService(
 	productRepo repository.ProductRepository,
 	productPermissionRepo repository.ProductPermissionRepository,
+	eventEndpoints events.EndpointService,
 	cacheStore cache.Store, transactor transactor.Transactor, logger zerolog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
+		eventEndpoints:        eventEndpoints,
 		products:              cache.New[product.Product](cacheStore, productCachePrefix, productCacheTTL, logger),
 		logger:                logger.With().Str("component", "product_service").Logger(),
 		transactor:            transactor,
@@ -77,7 +82,11 @@ func (s *productService) Get(
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
 		return nil, err
 	}
-	return found.ToPtr(), nil
+	prod := found.ToPtr()
+	if prod != nil {
+		s.attachEventsConfig(ctx, input.TenantID, prod)
+	}
+	return prod, nil
 }
 
 func (s *productService) GetInternal(
@@ -180,7 +189,16 @@ func (s *productService) Create(
 				Msg("failed to create product organization API key config")
 			return upsertConfigErr
 		}
+		if eventsErr := s.persistEventsConfig(
+			txCtx,
+			input.TenantID,
+			productCreated.ID,
+			config.Events,
+		); eventsErr != nil {
+			return eventsErr
+		}
 		productCreated.Config = config
+		s.attachEventsConfig(txCtx, input.TenantID, &productCreated)
 		logger.Info().Str("product_id", productCreated.ID).Str("name", prod.Name).Msg("product created")
 		for _, perm := range defaultPermissions {
 			perm.ProductID = productCreated.ID
@@ -247,8 +265,17 @@ func (s *productService) updateProductInTransaction(
 			return product.Product{}, configErr
 		}
 		result.Config = updatedProduct.Config
+		if eventsErr := s.persistEventsConfig(
+			ctx,
+			input.TenantID,
+			input.ProductID,
+			updatedProduct.Config.Events,
+		); eventsErr != nil {
+			return product.Product{}, eventsErr
+		}
 	}
 
+	s.attachEventsConfig(ctx, input.TenantID, &result)
 	s.evictProductFromCache(ctx, input.TenantID, input.ProductID, logger)
 	logger.Info().Str("product_id", input.ProductID).Msg("product updated")
 	return result, nil
@@ -320,6 +347,48 @@ func (s *productService) validateNameUniqueness(
 	return nil
 }
 
+func (s *productService) persistEventsConfig(
+	ctx context.Context, tenantID, productID string, cfg *product.EventsConfig,
+) error {
+	if cfg == nil {
+		return nil
+	}
+	if strings.TrimSpace(cfg.EndpointURL) == "" {
+		return s.eventEndpoints.Clear(ctx, tenantID, productID)
+	}
+	stored, err := s.eventEndpoints.Upsert(ctx, events.UpsertEndpointInput{
+		TenantID:      tenantID,
+		ProductID:     productID,
+		URL:           cfg.EndpointURL,
+		SigningSecret: cfg.SigningSecret,
+	})
+	if err != nil {
+		return err
+	}
+	cfg.SigningSecret = stored.SigningSecretClear
+	cfg.SigningSecretObfuscated = stored.SigningSecretObfuscated
+	return nil
+}
+
+func (s *productService) attachEventsConfig(ctx context.Context, tenantID string, prod *product.Product) {
+	if prod == nil {
+		return
+	}
+	endpoint, ok, err := s.eventEndpoints.Get(ctx, tenantID, prod.ID)
+	if err != nil || !ok {
+		return
+	}
+	if prod.Config.Events != nil && prod.Config.Events.SigningSecret != "" {
+		prod.Config.Events.EndpointURL = endpoint.URL
+		prod.Config.Events.SigningSecretObfuscated = endpoint.SigningSecretObfuscated
+		return
+	}
+	prod.Config.Events = &product.EventsConfig{
+		EndpointURL:             endpoint.URL,
+		SigningSecretObfuscated: endpoint.SigningSecretObfuscated,
+	}
+}
+
 func (s *productService) evictProductFromCache(
 	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
 ) {
@@ -360,6 +429,9 @@ func (s *productService) Search(
 	if err != nil {
 		logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
 		return search.Result[product.Product]{}, err
+	}
+	for i := range result.Items {
+		s.attachEventsConfig(ctx, input.TenantID, &result.Items[i])
 	}
 	return result, nil
 }
