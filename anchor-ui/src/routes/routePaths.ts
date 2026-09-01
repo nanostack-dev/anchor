@@ -25,6 +25,7 @@ export const ROUTE_PATHS = {
 	PRODUCT_PERMISSIONS: "/products/permissions",
 	PRODUCT_RESOURCES_PERMISSIONS: "/products/resources/permissions",
 	PRODUCT_EDIT: "/products/$productId/edit",
+	PRODUCT_EVENTS: "/products/events",
 
 	// Licensing routes
 	PRODUCT_LICENSE_SCHEMA: "/products/licensing/schema",

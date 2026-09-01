@@ -9,7 +9,6 @@ import {
 	updateProductMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -24,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -34,7 +32,6 @@ const productFormSchema = zProductRequest
 	.extend({
 		organizationApiKeyPrefix:
 			zProductOrganizationApiKeysConfigRequest.shape.prefix,
-		eventsEndpointUrl: z.string(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.name?.trim()) {
@@ -71,11 +68,6 @@ export function ProductEditForm({
 	...props
 }: ProductEditFormProps) {
 	const queryClient = useQueryClient();
-	const [revealedSecret, setRevealedSecret] = React.useState<string | null>(
-		null,
-	);
-	const [secretCopied, setSecretCopied] = React.useState(false);
-	const hadEvents = Boolean(product.config.events?.endpoint_url);
 
 	const form = useForm({
 		defaultValues: {
@@ -83,7 +75,6 @@ export function ProductEditForm({
 			description: product.description || "",
 			organizationApiKeyPrefix:
 				product.config.organization_api_keys.prefix || "anchor",
-			eventsEndpointUrl: product.config.events?.endpoint_url || "",
 		} as ProductFormData,
 		onSubmit: async ({ value }) => {
 			const result = productFormSchema.safeParse(value);
@@ -100,20 +91,12 @@ export function ProductEditForm({
 
 	const updateMutation = useMutation({
 		...updateProductMutation(),
-		onSuccess: (updated) => {
+		onSuccess: () => {
 			void queryClient.invalidateQueries({
 				queryKey: getProductQueryKey({
 					path: { product_id: productId },
 				}),
 			});
-			const generatedSecret = updated.config.events?.signing_secret;
-			if (generatedSecret) {
-				setRevealedSecret(generatedSecret);
-				toast.success(
-					"Store the event signing secret now. It is not shown again.",
-				);
-				return;
-			}
 			toast.success("Product updated successfully!");
 			onSuccess?.();
 		},
@@ -129,7 +112,6 @@ export function ProductEditForm({
 	});
 
 	const onSubmit = async (values: ProductFormData) => {
-		const endpointUrl = values.eventsEndpointUrl.trim();
 		const updateData: ProductRequest = {
 			name: values.name,
 			description: values.description || "",
@@ -137,13 +119,6 @@ export function ProductEditForm({
 				organization_api_keys: {
 					prefix: values.organizationApiKeyPrefix,
 				},
-				...(endpointUrl || hadEvents
-					? {
-							events: {
-								endpoint_url: endpointUrl,
-							},
-						}
-					: {}),
 			},
 		};
 
@@ -159,7 +134,6 @@ export function ProductEditForm({
 			description: product.description || "",
 			organizationApiKeyPrefix:
 				product.config.organization_api_keys.prefix || "anchor",
-			eventsEndpointUrl: product.config.events?.endpoint_url || "",
 		});
 	}, [product, form]);
 
@@ -229,115 +203,35 @@ export function ProductEditForm({
 					</TabsContent>
 
 					<TabsContent value="config">
-						<Tabs defaultValue="organization-api-keys" className="gap-6">
-							<TabsList>
-								<TabsTrigger value="organization-api-keys">
-									Organization API keys
-								</TabsTrigger>
-								<TabsTrigger value="events">Events</TabsTrigger>
-							</TabsList>
-							<TabsContent value="organization-api-keys">
-								<FieldGroup>
-									<form.Field name="organizationApiKeyPrefix">
-										{(field) => (
-											<Field
-												data-disabled={updateMutation.isPending}
-												data-invalid={field.state.meta.errors.length > 0}
-											>
-												<FieldLabel htmlFor="organization-api-key-prefix">
-													Organization API key prefix
-												</FieldLabel>
-												<Input
-													id="organization-api-key-prefix"
-													placeholder="anchor"
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													disabled={updateMutation.isPending}
-													aria-invalid={field.state.meta.errors.length > 0}
-												/>
-												<FieldDescription>
-													Changing this prefix only affects newly generated
-													organization API keys. Organization keys created with
-													a previous prefix remain valid.
-												</FieldDescription>
-												<FormValidationError field={field} />
-											</Field>
-										)}
-									</form.Field>
-								</FieldGroup>
-							</TabsContent>
-							<TabsContent value="events">
-								<FieldGroup>
-									{revealedSecret ? (
-										<Alert>
-											<AlertTitle>Signing secret</AlertTitle>
-											<AlertDescription>
-												Store this secret now. Later reads return only the
-												obfuscated marker.
-												<div className="mt-2 flex items-center gap-2">
-													<code className="truncate font-mono text-xs">
-														{revealedSecret}
-													</code>
-													<Button
-														type="button"
-														variant="ghost"
-														size="sm"
-														className="size-6 shrink-0 p-0"
-														onClick={() => {
-															void navigator.clipboard.writeText(
-																revealedSecret,
-															);
-															setSecretCopied(true);
-															window.setTimeout(
-																() => setSecretCopied(false),
-																1500,
-															);
-														}}
-													>
-														{secretCopied ? (
-															<Check className="size-3 text-success" />
-														) : (
-															<Copy className="size-3 text-muted-foreground" />
-														)}
-													</Button>
-												</div>
-											</AlertDescription>
-										</Alert>
-									) : null}
-									<form.Field name="eventsEndpointUrl">
-										{(field) => (
-											<Field
-												data-disabled={updateMutation.isPending}
-												data-invalid={field.state.meta.errors.length > 0}
-											>
-												<FieldLabel htmlFor="events-endpoint-url">
-													Event endpoint URL
-												</FieldLabel>
-												<Input
-													id="events-endpoint-url"
-													placeholder="https://example.com/anchor/events"
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													disabled={updateMutation.isPending}
-													aria-invalid={field.state.meta.errors.length > 0}
-												/>
-												<FieldDescription>
-													Anchor POSTs signed product events here. Leave empty
-													to clear the endpoint. Production requires HTTPS.
-													Anchor mints the signing secret on first save.
-													{product.config.events?.signing_secret_obfuscated
-														? ` Stored secret: ${product.config.events.signing_secret_obfuscated}.`
-														: ""}
-												</FieldDescription>
-												<FormValidationError field={field} />
-											</Field>
-										)}
-									</form.Field>
-								</FieldGroup>
-							</TabsContent>
-						</Tabs>
+						<FieldGroup>
+							<form.Field name="organizationApiKeyPrefix">
+								{(field) => (
+									<Field
+										data-disabled={updateMutation.isPending}
+										data-invalid={field.state.meta.errors.length > 0}
+									>
+										<FieldLabel htmlFor="organization-api-key-prefix">
+											Organization API key prefix
+										</FieldLabel>
+										<Input
+											id="organization-api-key-prefix"
+											placeholder="anchor"
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											disabled={updateMutation.isPending}
+											aria-invalid={field.state.meta.errors.length > 0}
+										/>
+										<FieldDescription>
+											Changing this prefix only affects newly generated
+											organization API keys. Organization keys created with a
+											previous prefix remain valid.
+										</FieldDescription>
+										<FormValidationError field={field} />
+									</Field>
+								)}
+							</form.Field>
+						</FieldGroup>
 					</TabsContent>
 				</Tabs>
 
