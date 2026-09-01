@@ -59,3 +59,44 @@ func TestClerkWebhookUserUpdatedEvent(t *testing.T) {
 	updatedUser := searchProductUsers(t, productContext).JSON200.Items[0]
 	sink.WaitFor("product_user.updated", map[string]string{"product_user_id": updatedUser.Id})
 }
+
+func TestClerkWebhookUnchangedUserDoesNotEmit(t *testing.T) {
+	productContext := createTestProductContext(t)
+	sink := productContext.CaptureEvents()
+	createActiveClerkIntegrationInstance(t, productContext)
+
+	externalID := "user_clerk_" + itshared.Faker.UUID().V4()
+	email := itshared.Faker.Internet().Email()
+	createdPayload := clerkUserCreatedPayload(t, externalID, email, "Stable", "User")
+	createdResp := sendClerkWebhook(
+		t, productContext.ProductID, createdPayload, clerkTestWebhookSecret,
+	)
+	require.Equal(t, http.StatusOK, createdResp.StatusCode())
+
+	require.Eventually(
+		t, func() bool {
+			searchResp := searchProductUsers(t, productContext)
+			return searchResp.JSON200.Total == 1 && len(searchResp.JSON200.Items) == 1
+		}, 10*time.Second, 200*time.Millisecond,
+	)
+
+	createdUser := searchProductUsers(t, productContext).JSON200.Items[0]
+	sink.WaitFor("product_user.created", map[string]string{"product_user_id": createdUser.Id})
+	require.Equal(t, 1, sink.Count("product_user.created"))
+	require.Equal(t, 0, sink.Count("product_user.updated"))
+
+	unchangedPayload := clerkUserUpdatedPayload(t, externalID, email, "Stable", "User")
+	unchangedResp := sendClerkWebhook(
+		t, productContext.ProductID, unchangedPayload, clerkTestWebhookSecret,
+	)
+	require.Equal(t, http.StatusOK, unchangedResp.StatusCode())
+	require.NotNil(t, unchangedResp.JSON200)
+	assert.Equal(t, ct.IntegrationEventStatusPENDING, unchangedResp.JSON200.Status)
+
+	require.Never(
+		t, func() bool {
+			return sink.Count("product_user.updated") > 0
+		}, 6*time.Second, 200*time.Millisecond,
+	)
+	assert.Equal(t, 1, sink.Count("product_user.created"))
+}

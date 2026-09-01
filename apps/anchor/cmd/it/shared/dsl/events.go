@@ -123,6 +123,18 @@ func (s *EventSink) WaitFor(eventType string, fields map[string]string) anchorsd
 	return found
 }
 
+func (s *EventSink) Count(eventType string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	count := 0
+	for _, event := range s.received {
+		if event.Type == eventType {
+			count++
+		}
+	}
+	return count
+}
+
 func eventMatches(event anchorsdk.Event, fields map[string]string) bool {
 	for key, want := range fields {
 		if event.Field(key) != want {
