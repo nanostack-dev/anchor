@@ -187,10 +187,11 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 
 	t.Run("ProductUserCreatedDeleted", func(t *testing.T) {
 		email := itshared.Faker.Internet().Email()
+		name := itshared.Faker.Person().Name()
 		created, err := client.CreateProductUserWithResponse(
 			ctx,
 			product.ProductID,
-			ct.CreateProductUserJSONRequestBody{Email: email},
+			ct.CreateProductUserJSONRequestBody{Email: email, Name: &name},
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, created.StatusCode())
@@ -203,5 +204,3 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": userID})
 	})
 }
-
-

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	eventSinkWaitTimeout  = 8 * time.Second
+	eventSinkWaitTimeout  = 20 * time.Second
 	eventSinkPollInterval = 50 * time.Millisecond
 	signingSecretBytes    = 32
 )

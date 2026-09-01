@@ -96,7 +96,7 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
 		webhookPermissions := givenOrganizationAPIKeyResourcePermissions(t, webhookProduct)
 		webhookOrg := webhookProduct.CreateOrganization(t, "Webhook-APIKey-Update-"+uuid.NewString(), nil)
-		created, err := webhookClient.CreateOrganizationAPIKeyWithResponse(
+		created, createErr := webhookClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,
 			webhookProduct.ProductID,
 			webhookOrg.Id,
@@ -105,7 +105,7 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 				Permissions: []string{webhookPermissions.FileRead},
 			},
 		)
-		require.NoError(t, err)
+		require.NoError(t, createErr)
 		require.Equal(t, http.StatusCreated, created.StatusCode())
 		updated, updateErr := webhookClient.UpdateOrganizationAPIKeyWithResponse(
 			ctx,

@@ -382,6 +382,12 @@ func (s *organizationAPIKeyService) Delete(
 			return fault.ErrUnexpected
 		}
 
+		if emitErr := s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyDeleted, input.ProductID, input.OrganizationID, input.ID,
+		); emitErr != nil {
+			return emitErr
+		}
+
 		if existingAPIKey.ExpiresAt == nil {
 			return nil
 		}
@@ -417,9 +423,7 @@ func (s *organizationAPIKeyService) Delete(
 			}
 		}
 
-		return s.emitAPIKey(
-			txCtx, events.OrganizationAPIKeyDeleted, input.ProductID, input.OrganizationID, input.ID,
-		)
+		return nil
 	})
 }
 

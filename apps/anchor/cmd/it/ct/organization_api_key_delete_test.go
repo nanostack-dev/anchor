@@ -74,7 +74,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
 		webhookPermissions := givenOrganizationAPIKeyResourcePermissions(t, webhookProduct)
 		webhookOrg := webhookProduct.CreateOrganization(t, "Webhook-APIKey-Delete-"+uuid.NewString(), nil)
-		created, err := webhookClient.CreateOrganizationAPIKeyWithResponse(
+		created, createErr := webhookClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,
 			webhookProduct.ProductID,
 			webhookOrg.Id,
@@ -83,7 +83,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 				Permissions: []string{webhookPermissions.FileRead},
 			},
 		)
-		require.NoError(t, err)
+		require.NoError(t, createErr)
 		require.Equal(t, http.StatusCreated, created.StatusCode())
 		deleted, deleteErr := webhookClient.DeleteOrganizationAPIKeyWithResponse(
 			ctx, webhookProduct.ProductID, webhookOrg.Id, created.JSON201.Id,
