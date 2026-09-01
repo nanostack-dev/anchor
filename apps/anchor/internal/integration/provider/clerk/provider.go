@@ -11,10 +11,12 @@ import (
 	"time"
 
 	"anchor/internal/domain/integration"
+	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 	"anchor/internal/repository"
 	"anchor/internal/security/encryption"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
@@ -54,6 +56,8 @@ type Provider struct {
 	configCipherErr error
 	httpClient      *http.Client
 	baseURL         string
+	events          events.Emitter
+	transactor      transactor.Transactor
 	logger          zerolog.Logger
 }
 
@@ -63,6 +67,8 @@ type NewProviderParams struct {
 	ProductUserRepo   repository.ProductUserRepository
 	AuditLogRepo      repository.IntegrationAuditLogRepository
 	EncryptionService *encryption.Service
+	Events            events.Emitter
+	Transactor        transactor.Transactor
 	Logger            zerolog.Logger
 }
 
@@ -87,6 +93,8 @@ func NewProvider(p NewProviderParams) *Provider {
 		auditLogRepo:    p.AuditLogRepo,
 		configCipher:    cipher,
 		configCipherErr: err,
+		events:          p.Events,
+		transactor:      p.Transactor,
 		httpClient: &http.Client{Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{

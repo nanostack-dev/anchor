@@ -7,6 +7,7 @@ import (
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 
 	"github.com/rs/zerolog"
@@ -38,7 +39,24 @@ func (p *Provider) executeUpsertUser(
 	}
 	productUser.GenerateID()
 
-	upserted, created, upsertErr := p.productUserRepo.UpsertByExternalID(ctx, productUser)
+	var upserted user.ProductUser
+	var created bool
+	upsertErr := p.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var err error
+		upserted, created, err = p.productUserRepo.UpsertByExternalID(txCtx, productUser)
+		if err != nil {
+			return err
+		}
+		eventType := events.ProductUserCreated
+		if !created {
+			eventType = events.ProductUserUpdated
+		}
+		return p.events.Emit(txCtx, events.Event{
+			Type:      eventType,
+			ProductID: instance.ProductID,
+			Data:      events.Data{events.FieldProductUserID: upserted.ID},
+		})
+	})
 	if upsertErr != nil {
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
