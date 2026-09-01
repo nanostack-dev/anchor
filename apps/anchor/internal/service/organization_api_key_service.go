@@ -15,6 +15,7 @@ import (
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -58,6 +59,7 @@ type organizationAPIKeyService struct {
 	organizationRepo repository.OrganizationRepository
 	productRepo      repository.ProductRepository
 	permissionRepo   repository.ProductResourcePermissionRepository
+	events           events.Emitter
 	logger           zerolog.Logger
 }
 
@@ -68,6 +70,7 @@ func NewOrganizationAPIKeyService(
 	organizationRepo repository.OrganizationRepository,
 	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductResourcePermissionRepository,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
@@ -77,10 +80,24 @@ func NewOrganizationAPIKeyService(
 		organizationRepo: organizationRepo,
 		productRepo:      productRepo,
 		permissionRepo:   permissionRepo,
+		events:           eventEmitter,
 		logger: logger.With().Str(
 			"component", "organization_api_key_service",
 		).Logger(),
 	}
+}
+
+func (s *organizationAPIKeyService) emitAPIKey(
+	ctx context.Context, eventType events.Type, productID, organizationID, apiKeyID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data: events.Data{
+			events.FieldOrganizationID: organizationID,
+			events.FieldAPIKeyID:       apiKeyID,
+		},
+	})
 }
 
 func (s *organizationAPIKeyService) Create(
@@ -183,7 +200,9 @@ func (s *organizationAPIKeyService) Create(
 			return enqueueErr
 		}
 
-		return nil
+		return s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyCreated, org.ProductID, input.OrganizationID, created.ID,
+		)
 	})
 	if err != nil {
 		logger.Error().
@@ -277,7 +296,17 @@ func (s *organizationAPIKeyService) Update(
 		updatedAPIKey.Status = *input.Status
 	}
 
-	updated, err := s.apiKeyRepo.Update(ctx, updatedAPIKey)
+	var updated orgapikey.OrganizationAPIKey
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.apiKeyRepo.Update(txCtx, updatedAPIKey)
+		if updateErr != nil {
+			return updateErr
+		}
+		return s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyUpdated, input.ProductID, input.OrganizationID, updated.ID,
+		)
+	})
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -388,7 +417,9 @@ func (s *organizationAPIKeyService) Delete(
 			}
 		}
 
-		return nil
+		return s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyDeleted, input.ProductID, input.OrganizationID, input.ID,
+		)
 	})
 }
 
