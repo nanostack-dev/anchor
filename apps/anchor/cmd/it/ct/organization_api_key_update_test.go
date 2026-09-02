@@ -89,4 +89,36 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 		require.NoError(t, updateErr)
 		assert.Equal(t, http.StatusNotFound, updateResp.StatusCode())
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		webhookProduct := createTestProductContext(t)
+		sink := webhookProduct.CaptureEvents()
+		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
+		webhookPermissions := givenOrganizationAPIKeyResourcePermissions(t, webhookProduct)
+		webhookOrg := webhookProduct.CreateOrganization(t, "Webhook-APIKey-Update-"+uuid.NewString(), nil)
+		created, createErr := webhookClient.CreateOrganizationAPIKeyWithResponse(
+			ctx,
+			webhookProduct.ProductID,
+			webhookOrg.Id,
+			ct.CreateOrganizationAPIKeyJSONRequestBody{
+				Name:        "WebhookUpdateKey-" + uuid.NewString(),
+				Permissions: []string{webhookPermissions.FileRead},
+			},
+		)
+		require.NoError(t, createErr)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+		updated, updateErr := webhookClient.UpdateOrganizationAPIKeyWithResponse(
+			ctx,
+			webhookProduct.ProductID,
+			webhookOrg.Id,
+			created.JSON201.Id,
+			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: "WebhookUpdated-" + uuid.NewString()},
+		)
+		require.NoError(t, updateErr)
+		require.Equal(t, http.StatusOK, updated.StatusCode())
+		sink.WaitFor("organization.api_key.updated", map[string]string{
+			"organization_id": webhookOrg.Id,
+			"api_key_id":      created.JSON201.Id,
+		})
+	})
 }

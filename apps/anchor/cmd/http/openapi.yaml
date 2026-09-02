@@ -664,6 +664,9 @@ components:
         organization_api_keys:
           $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigRequest"
           description: Organization API key configuration for this product.
+        events:
+          $ref: "#/components/schemas/ProductEventsConfigRequest"
+          description: Outbound product-event endpoint configuration.
     ProductOrganizationAPIKeysConfigRequest:
       type: object
       properties:
@@ -681,12 +684,45 @@ components:
           examples: ["anchor"]
       required:
       - prefix
+    ProductEventsConfigRequest:
+      type: object
+      properties:
+        endpoint_url:
+          type: string
+          description: >-
+            Absolute URL Anchor POSTs product events to. Use HTTPS in
+            production. Omit or send an empty string to clear the endpoint.
+            Anchor mints the Standard Webhooks signing secret. The caller
+            cannot supply one.
+          examples: ["https://echopoint.example/anchor/events"]
+    ProductEventsConfigResponse:
+      type: object
+      properties:
+        endpoint_url:
+          type: string
+          description: URL Anchor POSTs product events to.
+        signing_secret_obfuscated:
+          type: string
+          description: Obfuscated marker that a signing secret is stored.
+        signing_secret:
+          type: string
+          description: >-
+            Plaintext Standard Webhooks signing secret (`whsec_...`). Present
+            only on the write that minted it. Store it then. Later reads
+            return only the obfuscated marker. Encrypted at rest. Delivery
+            must sign with the plaintext, so it is never hashed.
+      required:
+      - endpoint_url
+      - signing_secret_obfuscated
     ProductConfigResponse:
       type: object
       properties:
         organization_api_keys:
           $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigResponse"
           description: Organization API key configuration for this product.
+        events:
+          $ref: "#/components/schemas/ProductEventsConfigResponse"
+          description: Outbound product-event endpoint, absent when none is configured.
       required:
       - organization_api_keys
     ProductOrganizationAPIKeysConfigResponse:

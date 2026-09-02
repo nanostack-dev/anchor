@@ -84,6 +84,30 @@ org := c.Organization("org_3iXYZ")
 | `org.Workspaces()` | create, get, update, delete, search, list |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
 | `org.License()` | get (cached), instantiate, adjust, diff, report usage |
+| `anchorsdk.Events(secret)` | typed Standard Webhooks ingest (`http.Handler`) |
+
+### Product events
+
+Anchor POSTs signed Standard Webhooks to the product event endpoint. Verify and
+dispatch in a few lines:
+
+```go
+h, err := anchorsdk.Events(os.Getenv("ANCHOR_WEBHOOK_SECRET"))
+if err != nil {
+	slog.Error("webhook handler", "err", err)
+	os.Exit(1)
+}
+http.Handle("/webhooks/anchor", h.OrganizationCreated(
+	func(ctx context.Context, e anchorsdk.OrganizationCreated) error {
+		slog.Info("organization created", "id", e.OrganizationID)
+		return nil
+	},
+).ProductUserDeleted(func(ctx context.Context, e anchorsdk.ProductUserDeleted) error {
+	return removeUser(ctx, e.ProductUserID)
+}))
+```
+
+`EventTypes()` lists the catalog. Unknown types still return 200 after `OnAny`.
 
 ### Email
 

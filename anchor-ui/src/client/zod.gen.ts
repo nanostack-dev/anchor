@@ -151,8 +151,13 @@ export const zProductOrganizationApiKeysConfigRequest = z.object({
     prefix: z.string().min(2).max(32).regex(/^[a-z][a-z0-9_]*[a-z0-9]$/)
 });
 
+export const zProductEventsConfigRequest = z.object({
+    endpoint_url: z.optional(z.string())
+});
+
 export const zProductConfigRequest = z.object({
-    organization_api_keys: z.optional(zProductOrganizationApiKeysConfigRequest)
+    organization_api_keys: z.optional(zProductOrganizationApiKeysConfigRequest),
+    events: z.optional(zProductEventsConfigRequest)
 });
 
 export const zProductRequest = z.object({
@@ -164,12 +169,19 @@ export const zProductRequest = z.object({
     config: z.optional(zProductConfigRequest)
 });
 
+export const zProductEventsConfigResponse = z.object({
+    endpoint_url: z.string(),
+    signing_secret_obfuscated: z.string(),
+    signing_secret: z.optional(z.string())
+});
+
 export const zProductOrganizationApiKeysConfigResponse = z.object({
     prefix: z.string()
 });
 
 export const zProductConfigResponse = z.object({
-    organization_api_keys: zProductOrganizationApiKeysConfigResponse
+    organization_api_keys: zProductOrganizationApiKeysConfigResponse,
+    events: z.optional(zProductEventsConfigResponse)
 });
 
 export const zProductResponse = z.object({

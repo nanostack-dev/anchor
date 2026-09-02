@@ -69,6 +69,26 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **permission** | An RBAC grant naming an action, in `resource:action` form. Belongs to a Product's catalog. Unrelated to licensing. |
 | **role** | A named bundle of permissions, assignable to a member at Organization or Workspace level. |
 
+## Product events
+
+A Product stays current by receiving **events** from Anchor. The subscriber is the Product backend only. An Organization never registers an endpoint here.
+
+Inbound Clerk callbacks stay **integration webhooks**. They are a different path.
+
+The catalog is the Product SDK surface: organizations, members, workspaces, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
+
+| term | means | not |
+| --- | --- | --- |
+| **event** | A record that something happened to a Product-scoped resource. It has a stable id that does not change across retries. | webhook, notification, message, callback |
+| **event type** | Hierarchical name in `resource.action` form (`organization.created`). It names the schema of `data`. | **permission** — those use `resource:action` |
+| **endpoint** | An HTTPS URL a Product registers to receive deliveries. Tracer: one URL in Product config. Later: many endpoints through the Product API, each with an event-type filter. | integration webhook |
+| **delivery** | One HTTP POST of an event to an endpoint. | |
+| **thin payload** | `data` carries identifiers of the subject. The Product fetches current state from the API. | snapshot, full payload |
+
+Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) (Svix): headers `webhook-id`, `webhook-timestamp`, `webhook-signature`; body `{type, timestamp, data}` with a thin `data`. Not CloudEvents. See [ADR-0017](docs/adr/0017-product-events-use-standard-webhooks.md).
+
+Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). There is no Organization-member invitation.
+
 ## Decisions
 
 Hard-to-reverse decisions live in [`docs/adr/`](docs/adr/). Read the ones touching the area before working in it.

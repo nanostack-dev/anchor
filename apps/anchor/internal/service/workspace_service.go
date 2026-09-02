@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/workspace"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 )
 
@@ -27,6 +28,7 @@ type workspaceService struct {
 	workspaceRepo    repository.WorkspaceRepository
 	organizationRepo repository.OrganizationRepository
 	transactor       transactor.Transactor
+	events           events.Emitter
 	logger           zerolog.Logger
 }
 
@@ -34,16 +36,31 @@ func NewWorkspaceService(
 	workspaceRepo repository.WorkspaceRepository,
 	organizationRepo repository.OrganizationRepository,
 	transactor transactor.Transactor,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) WorkspaceService {
 	return &workspaceService{
 		workspaceRepo:    workspaceRepo,
 		organizationRepo: organizationRepo,
 		transactor:       transactor,
+		events:           eventEmitter,
 		logger: logger.With().Str(
 			"component", "workspace_service",
 		).Logger(),
 	}
+}
+
+func (s *workspaceService) emitWorkspace(
+	ctx context.Context, eventType events.Type, productID, organizationID, workspaceID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data: events.Data{
+			events.FieldOrganizationID: organizationID,
+			events.FieldWorkspaceID:    workspaceID,
+		},
+	})
 }
 
 func (s *workspaceService) Find(
@@ -108,7 +125,12 @@ func (s *workspaceService) Create(
 
 		var createErr error
 		created, createErr = s.workspaceRepo.Create(txCtx, newWorkspace)
-		return createErr
+		if createErr != nil {
+			return createErr
+		}
+		return s.emitWorkspace(
+			txCtx, events.WorkspaceCreated, input.ProductID, input.OrganizationID, created.ID,
+		)
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -178,7 +200,12 @@ func (s *workspaceService) Update(
 			input.OrganizationID,
 			updatedWorkspace,
 		)
-		return updateErr
+		if updateErr != nil {
+			return updateErr
+		}
+		return s.emitWorkspace(
+			txCtx, events.WorkspaceUpdated, input.ProductID, input.OrganizationID, updated.ID,
+		)
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -220,12 +247,19 @@ func (s *workspaceService) Delete(
 		return fault.ErrNotFound
 	}
 
-	return s.workspaceRepo.DeleteByID(
-		ctx,
-		input.ProductID,
-		input.OrganizationID,
-		input.WorkspaceID,
-	)
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if delErr := s.workspaceRepo.DeleteByID(
+			txCtx,
+			input.ProductID,
+			input.OrganizationID,
+			input.WorkspaceID,
+		); delErr != nil {
+			return delErr
+		}
+		return s.emitWorkspace(
+			txCtx, events.WorkspaceDeleted, input.ProductID, input.OrganizationID, input.WorkspaceID,
+		)
+	})
 }
 
 func (s *workspaceService) Search(

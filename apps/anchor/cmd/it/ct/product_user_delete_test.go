@@ -92,4 +92,17 @@ func TestDeleteProductUser(t *testing.T) {
 			assert.Equal(t, 204, resp2.StatusCode(), "second delete should return 204 Not Found")
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		testUser := createDSLProductUser(t, productContext)
+		apiKeyDeleteClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:delete"})
+		resp, err := apiKeyDeleteClient.DeleteProductUserWithResponse(
+			ctx, productContext.ProductID, testUser.ID,
+		)
+		require.NoError(t, err)
+		require.Equal(t, 204, resp.StatusCode())
+		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": testUser.ID})
+	})
 }

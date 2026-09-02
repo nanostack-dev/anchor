@@ -392,6 +392,40 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 			[]string{"workspace:read"},
 		)
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		product := createTestProductContext(t)
+		sink := product.CaptureEvents()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+		org := product.CreateOrganization(t, "webhook-ws-org-"+itshared.Faker.UUID().V4(), nil)
+		created := createWorkspace(t, client, product.ProductID, org.Id, "webhook-ws-"+itshared.Faker.UUID().V4())
+		sink.WaitFor("workspace.created", map[string]string{
+			"organization_id": org.Id,
+			"workspace_id":    created.Id,
+		})
+		updated, err := client.UpdateOrganizationWorkspaceWithResponse(
+			ctx,
+			product.ProductID,
+			org.Id,
+			created.Id,
+			ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: created.Name + "-updated"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, updated.StatusCode())
+		sink.WaitFor("workspace.updated", map[string]string{
+			"organization_id": org.Id,
+			"workspace_id":    created.Id,
+		})
+		deleted, deleteErr := client.DeleteOrganizationWorkspaceWithResponse(
+			ctx, product.ProductID, org.Id, created.Id,
+		)
+		require.NoError(t, deleteErr)
+		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
+		sink.WaitFor("workspace.deleted", map[string]string{
+			"organization_id": org.Id,
+			"workspace_id":    created.Id,
+		})
+	})
 }
 
 func createWorkspace(

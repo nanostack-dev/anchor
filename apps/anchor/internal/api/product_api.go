@@ -37,28 +37,48 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 		description = &prod.Description
 	}
 
+	config := ProductConfigResponse{
+		OrganizationApiKeys: ProductOrganizationAPIKeysConfigResponse{
+			Prefix: prod.Config.WithDefaults().OrganizationAPIKeys.Prefix,
+		},
+	}
+	if prod.Config.Events != nil && prod.Config.Events.EndpointURL != "" {
+		eventsResponse := ProductEventsConfigResponse{
+			EndpointUrl:             prod.Config.Events.EndpointURL,
+			SigningSecretObfuscated: prod.Config.Events.SigningSecretObfuscated,
+		}
+		if prod.Config.Events.SigningSecret != "" {
+			eventsResponse.SigningSecret = &prod.Config.Events.SigningSecret
+		}
+		config.Events = &eventsResponse
+	}
+
 	return ProductResponse{
 		Id:          prod.ID,
 		TenantId:    prod.PlatformTenantID,
 		Name:        prod.Name,
 		Description: description,
-		Config: ProductConfigResponse{
-			OrganizationApiKeys: ProductOrganizationAPIKeysConfigResponse{
-				Prefix: prod.Config.WithDefaults().OrganizationAPIKeys.Prefix,
-			},
-		},
-		CreatedAt: prod.CreatedAt,
-		UpdatedAt: prod.UpdatedAt,
+		Config:      config,
+		CreatedAt:   prod.CreatedAt,
+		UpdatedAt:   prod.UpdatedAt,
 	}
 }
 
 func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
 	productConfig := product.DefaultConfig()
-	if config == nil || config.OrganizationApiKeys == nil {
+	if config == nil {
 		return productConfig
 	}
-
-	productConfig.OrganizationAPIKeys.Prefix = config.OrganizationApiKeys.Prefix
+	if config.OrganizationApiKeys != nil {
+		productConfig.OrganizationAPIKeys.Prefix = config.OrganizationApiKeys.Prefix
+	}
+	if config.Events != nil {
+		eventsConfig := product.EventsConfig{}
+		if config.Events.EndpointUrl != nil {
+			eventsConfig.EndpointURL = *config.Events.EndpointUrl
+		}
+		productConfig.Events = &eventsConfig
+	}
 	return productConfig
 }
 

@@ -10,10 +10,17 @@ const DefaultOrganizationAPIKeyRootPrefix = "anchor"
 
 type Config struct {
 	OrganizationAPIKeys OrganizationAPIKeysConfig
+	Events              *EventsConfig
 }
 
 type OrganizationAPIKeysConfig struct {
 	Prefix string
+}
+
+type EventsConfig struct {
+	EndpointURL             string
+	SigningSecret           string
+	SigningSecretObfuscated string
 }
 
 type Product struct {

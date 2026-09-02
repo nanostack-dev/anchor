@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"anchor/internal/domain/integration"
+	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 
 	"github.com/rs/zerolog"
@@ -25,9 +26,27 @@ func (p *Provider) executeDeleteUser(
 		return provider.ErrInvalidCommandData(CommandDeleteUser, "DeleteUserData")
 	}
 
-	delErr := p.productUserRepo.DeleteByExternalID(
-		ctx, instance.ProductID, deleteData.ExternalID,
-	)
+	delErr := p.transactor.InTx(ctx, func(txCtx context.Context) error {
+		found, findErr := p.productUserRepo.FindByExternalID(
+			txCtx, instance.ProductID, deleteData.ExternalID,
+		)
+		if findErr != nil {
+			return findErr
+		}
+		if delErr := p.productUserRepo.DeleteByExternalID(
+			txCtx, instance.ProductID, deleteData.ExternalID,
+		); delErr != nil {
+			return delErr
+		}
+		if found.IsAbsent() {
+			return nil
+		}
+		return p.events.Emit(txCtx, events.Event{
+			Type:      events.ProductUserDeleted,
+			ProductID: instance.ProductID,
+			Data:      events.Data{events.FieldProductUserID: found.Value().ID},
+		})
+	})
 	if delErr != nil {
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,

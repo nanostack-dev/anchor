@@ -273,6 +273,10 @@ export type ProductConfigRequest = {
      * Organization API key configuration for this product.
      */
     organization_api_keys?: ProductOrganizationApiKeysConfigRequest;
+    /**
+     * Outbound product-event endpoint configuration.
+     */
+    events?: ProductEventsConfigRequest;
 };
 
 export type ProductOrganizationApiKeysConfigRequest = {
@@ -282,11 +286,37 @@ export type ProductOrganizationApiKeysConfigRequest = {
     prefix: string;
 };
 
+export type ProductEventsConfigRequest = {
+    /**
+     * Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
+     */
+    endpoint_url?: string;
+};
+
+export type ProductEventsConfigResponse = {
+    /**
+     * URL Anchor POSTs product events to.
+     */
+    endpoint_url: string;
+    /**
+     * Obfuscated marker that a signing secret is stored.
+     */
+    signing_secret_obfuscated: string;
+    /**
+     * Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
+     */
+    signing_secret?: string;
+};
+
 export type ProductConfigResponse = {
     /**
      * Organization API key configuration for this product.
      */
     organization_api_keys: ProductOrganizationApiKeysConfigResponse;
+    /**
+     * Outbound product-event endpoint, absent when none is configured.
+     */
+    events?: ProductEventsConfigResponse;
 };
 
 export type ProductOrganizationApiKeysConfigResponse = {

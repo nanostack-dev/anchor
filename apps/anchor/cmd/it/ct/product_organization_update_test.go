@@ -348,4 +348,26 @@ func TestProductOrganizationUpdate(t *testing.T) {
 			)
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		product := createTestProductContext(t)
+		sink := product.CaptureEvents()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+		created, err := client.CreateProductOrganizationWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Webhook Update Org"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+		updated, updateErr := client.UpdateProductOrganizationWithResponse(
+			ctx,
+			product.ProductID,
+			created.JSON201.Id,
+			ct.UpdateProductOrganizationJSONRequestBody{Name: "Webhook Update Org 2"},
+		)
+		require.NoError(t, updateErr)
+		require.Equal(t, http.StatusOK, updated.StatusCode())
+		sink.WaitFor("organization.updated", map[string]string{"organization_id": created.JSON201.Id})
+	})
 }

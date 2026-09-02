@@ -263,4 +263,30 @@ func TestProductRole_AssignPermission(t *testing.T) {
 			assert.GreaterOrEqual(t, assignResp.StatusCode(), 400)
 		},
 	)
+
+	t.Run(
+		"EmitsWebhook", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+			productContext.CreateDefaultProductResourcePermissions(t)
+			sink := productContext.CaptureEvents()
+			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
+					Name: "EventsRole_" + ids.MustNew("test"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createResp.StatusCode())
+			roleID := createResp.JSON201.Id
+			sink.WaitFor("product.role.created", map[string]string{"role_id": roleID})
+
+			assignResp, err := productContext.OwnerAuthenticatedClient().AssignPermissionToProductRoleWithResponse(
+				ctx, productContext.ProductID, roleID, ct.AssignPermissionToProductRoleJSONRequestBody{
+					PermissionName: productContext.DefaultResourcePermissions[0].Name,
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, assignResp.StatusCode())
+			sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
+		},
+	)
 }

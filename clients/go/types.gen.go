@@ -2450,14 +2450,40 @@ type ProductAPIKeyUpdateRequest struct {
 
 // ProductConfigRequest defines model for ProductConfigRequest.
 type ProductConfigRequest struct {
+	// Events Outbound product-event endpoint configuration.
+	Events *ProductEventsConfigRequest `json:"events,omitempty"`
+
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys *ProductOrganizationAPIKeysConfigRequest `json:"organization_api_keys,omitempty"`
 }
 
 // ProductConfigResponse defines model for ProductConfigResponse.
 type ProductConfigResponse struct {
+	// Events Outbound product-event endpoint, absent when none is configured.
+	Events *ProductEventsConfigResponse `json:"events,omitempty"`
+
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
+}
+
+// ProductEventsConfigRequest defines model for ProductEventsConfigRequest.
+type ProductEventsConfigRequest struct {
+	// EndpointUrl Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
+	//
+	// Examples: https://echopoint.example/anchor/events
+	EndpointUrl *string `json:"endpoint_url,omitempty"`
+}
+
+// ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
+type ProductEventsConfigResponse struct {
+	// EndpointUrl URL Anchor POSTs product events to.
+	EndpointUrl string `json:"endpoint_url"`
+
+	// SigningSecret Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
+	SigningSecret *string `json:"signing_secret,omitempty"`
+
+	// SigningSecretObfuscated Obfuscated marker that a signing secret is stored.
+	SigningSecretObfuscated string `json:"signing_secret_obfuscated"`
 }
 
 // ProductFilter defines model for ProductFilter.
