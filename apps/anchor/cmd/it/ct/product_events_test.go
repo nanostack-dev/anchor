@@ -308,14 +308,18 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 			}
 		}
 
-		assert.True(t, themes["Organizations"], "Organizations theme must be present in catalog")
-		assert.True(t, themes["Workspaces"], "Workspaces theme must be present in catalog")
-		assert.True(t, themes["API Keys"], "API Keys theme must be present in catalog")
-		assert.True(t, themes["Users"], "Users theme must be present in catalog")
-		assert.True(t, themes["Licensing"], "Licensing theme must be present in catalog")
-		assert.True(t, themes["Roles & Permissions"], "Roles & Permissions theme must be present in catalog")
-		assert.True(t, integrations["CLERK"], "CLERK integration must be present in catalog")
-		assert.False(t, integrations["SMTP"], "SMTP must not be present in catalog because it does not provide webhooks")
+		assert.True(t, themes["Organizations"], "Organizations theme must be in catalog")
+		assert.True(t, themes["Workspaces"], "Workspaces theme must be in catalog")
+		assert.True(t, themes["API Keys"], "API Keys theme must be in catalog")
+		assert.True(t, themes["Users"], "Users theme must be in catalog")
+		assert.True(t, themes["Licensing"], "Licensing theme must be in catalog")
+		assert.True(t, themes["Roles & Permissions"], "Roles theme must be in catalog")
+		assert.True(t, integrations["CLERK"], "CLERK integration must be in catalog")
+		assert.False(
+			t,
+			integrations["SMTP"],
+			"SMTP must not be present in catalog because it does not provide webhooks",
+		)
 	})
 
 	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
