@@ -15,7 +15,7 @@ export default function ProductEventsPage() {
 		<Page
 			title="Events"
 			description="Outbound webhook endpoint for this product. Anchor POSTs signed catalog events to the URL you save."
-			variant="default"
+			variant="full"
 		>
 			{currentProduct ? (
 				<ProductEventsForm

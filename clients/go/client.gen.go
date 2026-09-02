@@ -541,6 +541,13 @@ type ClientInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/email/templates/{email_template_id}/publish (the `PublishEmailTemplate` operationId).
 	PublishEmailTemplate(ctx context.Context, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProductEventsCatalog Get Product Events Catalog
+	//
+	// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+	//
+	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
+	GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListIntegrationInstances List Integration Instances
 	//
 	// Lists all integration instances for the specified product.
@@ -2450,6 +2457,23 @@ func (c *Client) PreviewEmailTemplate(ctx context.Context, productId ProductIdPa
 // Corresponds with POST /v1/products/{product_id}/email/templates/{email_template_id}/publish (the `PublishEmailTemplate` operationId).
 func (c *Client) PublishEmailTemplate(ctx context.Context, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPublishEmailTemplateRequest(c.Server, productId, emailTemplateId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetProductEventsCatalog Get Product Events Catalog
+//
+// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+//
+// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
+func (c *Client) GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProductEventsCatalogRequest(c.Server, productId)
 	if err != nil {
 		return nil, err
 	}
@@ -5991,6 +6015,40 @@ func NewPublishEmailTemplateRequest(server string, productId ProductIdParameter,
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetProductEventsCatalogRequest constructs an http.Request for the GetProductEventsCatalog method
+func NewGetProductEventsCatalogRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/events/catalog", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -9951,6 +10009,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/email/templates/{email_template_id}/publish (the `PublishEmailTemplate` operationId).
 	PublishEmailTemplateWithResponse(ctx context.Context, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter, reqEditors ...RequestEditorFn) (*PublishEmailTemplateResponse, error)
 
+	// GetProductEventsCatalogWithResponse Get Product Events Catalog
+	//
+	// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
+	GetProductEventsCatalogWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetProductEventsCatalogResponse, error)
+
 	// ListIntegrationInstancesWithResponse List Integration Instances
 	//
 	// Lists all integration instances for the specified product.
@@ -13414,6 +13481,68 @@ func (r PublishEmailTemplateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PublishEmailTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetProductEventsCatalogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductEventsCatalogResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetProductEventsCatalogResponse) GetJSON200() *ProductEventsCatalogResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetProductEventsCatalogResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetProductEventsCatalogResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetProductEventsCatalogResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetProductEventsCatalogResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProductEventsCatalogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProductEventsCatalogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProductEventsCatalogResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18924,6 +19053,21 @@ func (c *ClientWithResponses) PublishEmailTemplateWithResponse(ctx context.Conte
 	return ParsePublishEmailTemplateResponse(rsp)
 }
 
+// GetProductEventsCatalogWithResponse Get Product Events Catalog
+//
+// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
+func (c *ClientWithResponses) GetProductEventsCatalogWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetProductEventsCatalogResponse, error) {
+	rsp, err := c.GetProductEventsCatalog(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProductEventsCatalogResponse(rsp)
+}
+
 // ListIntegrationInstancesWithResponse List Integration Instances
 //
 // Lists all integration instances for the specified product.
@@ -22506,6 +22650,53 @@ func ParsePublishEmailTemplateResponse(rsp *http.Response) (*PublishEmailTemplat
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProductEventsCatalogResponse parses an HTTP response from a GetProductEventsCatalogWithResponse call
+func ParseGetProductEventsCatalogResponse(rsp *http.Response) (*GetProductEventsCatalogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProductEventsCatalogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductEventsCatalogResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

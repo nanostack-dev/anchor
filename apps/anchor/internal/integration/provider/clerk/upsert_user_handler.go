@@ -55,11 +55,20 @@ func (p *Provider) executeUpsertUser(
 			return err
 		}
 		eventType := events.ProductUserCreated
+		clerkType := events.ClerkUserCreated
 		if !created {
 			eventType = events.ProductUserUpdated
+			clerkType = events.ClerkUserUpdated
+		}
+		if emitErr := p.events.Emit(txCtx, events.Event{
+			Type:      eventType,
+			ProductID: instance.ProductID,
+			Data:      events.Data{events.FieldProductUserID: upserted.ID},
+		}); emitErr != nil {
+			return emitErr
 		}
 		return p.events.Emit(txCtx, events.Event{
-			Type:      eventType,
+			Type:      clerkType,
 			ProductID: instance.ProductID,
 			Data:      events.Data{events.FieldProductUserID: upserted.ID},
 		})

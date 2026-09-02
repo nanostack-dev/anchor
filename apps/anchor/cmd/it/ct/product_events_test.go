@@ -289,4 +289,114 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 			"permission_name": permissionName,
 		})
 	})
+
+	t.Run("GetProductEventsCatalog", func(t *testing.T) {
+		catalogResp, err := owner.GetProductEventsCatalogWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, catalogResp.StatusCode())
+		require.NotNil(t, catalogResp.JSON200)
+		require.NotEmpty(t, catalogResp.JSON200.Items)
+
+		themes := make(map[string]bool)
+		integrations := make(map[string]bool)
+		for _, item := range catalogResp.JSON200.Items {
+			if item.GroupType == ct.Theme && item.Theme != nil {
+				themes[*item.Theme] = true
+			}
+			if item.GroupType == ct.Integration && item.Integration != nil {
+				integrations[*item.Integration] = true
+			}
+		}
+
+		assert.True(t, themes["Organizations"], "Organizations theme must be in catalog")
+		assert.True(t, themes["Workspaces"], "Workspaces theme must be in catalog")
+		assert.True(t, themes["API Keys"], "API Keys theme must be in catalog")
+		assert.True(t, themes["Users"], "Users theme must be in catalog")
+		assert.True(t, themes["Licensing"], "Licensing theme must be in catalog")
+		assert.True(t, themes["Roles & Permissions"], "Roles theme must be in catalog")
+		assert.True(t, integrations["CLERK"], "CLERK integration must be in catalog")
+		assert.False(
+			t,
+			integrations["SMTP"],
+			"SMTP must not be present in catalog because it does not provide webhooks",
+		)
+	})
+
+	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
+		filterProduct := createTestProductContext(t)
+		filterClient, _ := filterProduct.CreateAPIKeyClientWithAllScopes()
+		filterOwner := filterProduct.OwnerAuthenticatedClient()
+
+		// Subscribe only to organization.created
+		filterSink := filterProduct.CaptureFilteredEvents([]string{"organization.created"})
+
+		createdOrg, err := filterClient.CreateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Filter Org " + ids.MustNew("org")},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, createdOrg.StatusCode())
+		orgID := createdOrg.JSON201.Id
+
+		// organization.created must be delivered
+		filterSink.WaitFor("organization.created", map[string]string{"organization_id": orgID})
+
+		// Update org -> organization.updated was emitted, but should NOT be delivered to this sink
+		updatedOrg, updateErr := filterClient.UpdateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.UpdateProductOrganizationJSONRequestBody{Name: "Filter Org Renamed"},
+		)
+		require.NoError(t, updateErr)
+		require.Equal(t, http.StatusOK, updatedOrg.StatusCode())
+
+		// Create workspace -> workspace.created was emitted, but should NOT be delivered
+		createdWs, wsErr := filterClient.CreateOrganizationWorkspaceWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Filter Workspace"},
+		)
+		require.NoError(t, wsErr)
+		require.Equal(t, http.StatusCreated, createdWs.StatusCode())
+
+		// Give queue a moment to process jobs and assert un-subscribed events were never delivered
+		time.Sleep(1 * time.Second)
+		assert.Equal(t, 0, filterSink.Count("organization.updated"))
+		assert.Equal(t, 0, filterSink.Count("workspace.created"))
+
+		// Update product event subscription to now include organization.updated
+		gotProduct, getErr := filterOwner.GetProductWithResponse(ctx, filterProduct.ProductID)
+		require.NoError(t, getErr)
+		_, updateProdErr := filterOwner.UpdateProductWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			ct.UpdateProductJSONRequestBody{
+				Name:        gotProduct.JSON200.Name,
+				Description: gotProduct.JSON200.Description,
+				Config: &ct.ProductConfigRequest{
+					OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+						Prefix: gotProduct.JSON200.Config.OrganizationApiKeys.Prefix,
+					},
+					Events: &ct.ProductEventsConfigRequest{
+						EndpointUrl: &filterSink.URL,
+						Events:      &[]string{"organization.created", "organization.updated"},
+					},
+				},
+			},
+		)
+		require.NoError(t, updateProdErr)
+
+		// Trigger organization.updated again -> now it must be delivered!
+		_, updateAgainErr := filterClient.UpdateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.UpdateProductOrganizationJSONRequestBody{Name: "Filter Org Renamed Again"},
+		)
+		require.NoError(t, updateAgainErr)
+		filterSink.WaitFor("organization.updated", map[string]string{"organization_id": orgID})
+	})
 }

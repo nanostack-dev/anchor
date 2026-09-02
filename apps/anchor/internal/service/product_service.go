@@ -42,6 +42,7 @@ type ProductService interface {
 	Search(ctx context.Context, input product.SearchProductInput) (
 		search.Result[product.Product], error,
 	)
+	EventsCatalog(ctx context.Context) []events.Definition
 }
 
 type productService struct {
@@ -360,12 +361,14 @@ func (s *productService) persistEventsConfig(
 		TenantID:  tenantID,
 		ProductID: productID,
 		URL:       cfg.EndpointURL,
+		Events:    cfg.Events,
 	})
 	if err != nil {
 		return err
 	}
 	cfg.SigningSecret = stored.SigningSecretClear
 	cfg.SigningSecretObfuscated = stored.SigningSecretObfuscated
+	cfg.Events = stored.Events
 	return nil
 }
 
@@ -380,12 +383,21 @@ func (s *productService) attachEventsConfig(ctx context.Context, tenantID string
 	if prod.Config.Events != nil && prod.Config.Events.SigningSecret != "" {
 		prod.Config.Events.EndpointURL = endpoint.URL
 		prod.Config.Events.SigningSecretObfuscated = endpoint.SigningSecretObfuscated
+		prod.Config.Events.Events = endpoint.Events
 		return
 	}
 	prod.Config.Events = &product.EventsConfig{
 		EndpointURL:             endpoint.URL,
 		SigningSecretObfuscated: endpoint.SigningSecretObfuscated,
+		Events:                  endpoint.Events,
 	}
+}
+
+func (s *productService) EventsCatalog(_ context.Context) []events.Definition {
+	if s.eventEndpoints == nil || s.eventEndpoints.Catalog() == nil {
+		return events.DefaultDefinitions()
+	}
+	return s.eventEndpoints.Catalog().All()
 }
 
 func (s *productService) evictProductFromCache(

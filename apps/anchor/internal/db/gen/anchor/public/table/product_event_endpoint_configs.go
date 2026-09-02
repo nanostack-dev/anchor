@@ -23,6 +23,7 @@ type productEventEndpointConfigsTable struct {
 	SigningSecret    postgres.ColumnString
 	CreatedAt        postgres.ColumnTimestampz
 	UpdatedAt        postgres.ColumnTimestampz
+	EventsJSON       postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -70,9 +71,10 @@ func newProductEventEndpointConfigsTableImpl(schemaName, tableName, alias string
 		SigningSecretColumn    = postgres.StringColumn("signing_secret")
 		CreatedAtColumn        = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn        = postgres.TimestampzColumn("updated_at")
-		allColumns             = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns         = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		EventsJSONColumn       = postgres.StringColumn("events_json")
+		allColumns             = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn}
+		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn}
+		defaultColumns         = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn}
 	)
 
 	return productEventEndpointConfigsTable{
@@ -85,6 +87,7 @@ func newProductEventEndpointConfigsTableImpl(schemaName, tableName, alias string
 		SigningSecret:    SigningSecretColumn,
 		CreatedAt:        CreatedAtColumn,
 		UpdatedAt:        UpdatedAtColumn,
+		EventsJSON:       EventsJSONColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

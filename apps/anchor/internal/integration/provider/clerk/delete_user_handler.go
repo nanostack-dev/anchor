@@ -41,8 +41,15 @@ func (p *Provider) executeDeleteUser(
 		if found.IsAbsent() {
 			return nil
 		}
-		return p.events.Emit(txCtx, events.Event{
+		if emitErr := p.events.Emit(txCtx, events.Event{
 			Type:      events.ProductUserDeleted,
+			ProductID: instance.ProductID,
+			Data:      events.Data{events.FieldProductUserID: found.Value().ID},
+		}); emitErr != nil {
+			return emitErr
+		}
+		return p.events.Emit(txCtx, events.Event{
+			Type:      events.ClerkUserDeleted,
 			ProductID: instance.ProductID,
 			Data:      events.Data{events.FieldProductUserID: found.Value().ID},
 		})

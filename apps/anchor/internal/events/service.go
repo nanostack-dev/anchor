@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"slices"
 
 	"anchor/internal/security/encryption"
 
@@ -15,6 +16,14 @@ const cipherContext = "product-event-endpoint"
 type DeliveryTarget struct {
 	URL    string
 	Secret string
+	Events []string
+}
+
+func (t DeliveryTarget) Allows(eventType Type) bool {
+	if t.Events == nil {
+		return true
+	}
+	return slices.Contains(t.Events, string(eventType))
 }
 
 type EndpointService interface {
@@ -22,10 +31,12 @@ type EndpointService interface {
 	Get(ctx context.Context, tenantID, productID string) (Endpoint, bool, error)
 	Clear(ctx context.Context, tenantID, productID string) error
 	DeliveryTarget(ctx context.Context, productID string) (DeliveryTarget, bool, error)
+	Catalog() Catalog
 }
 
 type endpointService struct {
 	repo       EndpointRepository
+	catalog    Catalog
 	cipher     *secrets.VersionedCipher
 	production bool
 	logger     zerolog.Logger
@@ -33,6 +44,7 @@ type endpointService struct {
 
 func NewEndpointService(
 	repo EndpointRepository,
+	catalog Catalog,
 	enc *encryption.Service,
 	production bool,
 	logger zerolog.Logger,
@@ -43,10 +55,15 @@ func NewEndpointService(
 	}
 	return &endpointService{
 		repo:       repo,
+		catalog:    catalog,
 		cipher:     cipher,
 		production: production,
 		logger:     logger.With().Str("component", "event_endpoint_service").Logger(),
 	}, nil
+}
+
+func (s *endpointService) Catalog() Catalog {
+	return s.catalog
 }
 
 func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput) (Endpoint, error) {
@@ -67,12 +84,18 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 		return Endpoint{}, err
 	}
 
+	eventsList := input.Events
+	if eventsList == nil && s.catalog != nil {
+		eventsList = s.catalog.AllEventTypesStrings()
+	}
+
 	endpoint := Endpoint{
 		ProductID:               input.ProductID,
 		PlatformTenantID:        input.TenantID,
 		URL:                     input.URL,
 		SigningSecretEncrypted:  encrypted,
 		SigningSecretObfuscated: secrets.Obfuscate(secret),
+		Events:                  eventsList,
 	}
 	if generated {
 		endpoint.SigningSecretClear = secret
@@ -144,5 +167,5 @@ func (s *endpointService) DeliveryTarget(
 	if err != nil {
 		return DeliveryTarget{}, false, err
 	}
-	return DeliveryTarget{URL: endpoint.URL, Secret: secret}, true, nil
+	return DeliveryTarget{URL: endpoint.URL, Secret: secret, Events: endpoint.Events}, true, nil
 }

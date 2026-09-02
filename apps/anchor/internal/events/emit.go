@@ -20,6 +20,7 @@ const (
 type queuePayload struct {
 	EventID   string          `json:"event_id"`
 	ProductID string          `json:"product_id"`
+	Type      Type            `json:"type"`
 	Body      json.RawMessage `json:"body"`
 }
 
@@ -67,6 +68,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 	payload, err := json.Marshal(queuePayload{
 		EventID:   ids.MustNew(eventIDPrefix),
 		ProductID: event.ProductID,
+		Type:      event.Type,
 		Body:      body,
 	})
 	if err != nil {

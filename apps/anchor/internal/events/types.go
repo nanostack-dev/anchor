@@ -34,6 +34,10 @@ const (
 	ProductResourcePermissionCreated Type = "product.resource_permission.created"
 	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
 	ProductResourcePermissionDeleted Type = "product.resource_permission.deleted"
+
+	ClerkUserCreated Type = "clerk.user.created"
+	ClerkUserUpdated Type = "clerk.user.updated"
+	ClerkUserDeleted Type = "clerk.user.deleted"
 )
 
 const (

@@ -21,6 +21,7 @@ type EventsConfig struct {
 	EndpointURL             string
 	SigningSecret           string
 	SigningSecretObfuscated string
+	Events                  []string
 }
 
 type Product struct {

@@ -107,6 +107,17 @@ type WebhookIngestor interface {
 	) error
 }
 
+type WebhookEvent struct {
+	Type        string
+	Name        string
+	Description string
+}
+
+type WebhookEventProvider interface {
+	Provider
+	WebhookEvents() []WebhookEvent
+}
+
 // Mailer is implemented by providers that can send transactional outbound
 // email. The email domain resolves the product's email integration, asserts
 // this capability, and dispatches a fully rendered OutboundMessage.
