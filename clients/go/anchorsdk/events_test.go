@@ -71,6 +71,39 @@ func TestWebhookHandlerRejectsTamperedBody(t *testing.T) {
 	}
 }
 
+func TestWebhookHandlerProductRoleCreated(t *testing.T) {
+	t.Parallel()
+
+	secret := mustSigningSecret(t)
+	var got anchorsdk.ProductRoleCreated
+	handler, err := anchorsdk.Events(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.ProductRoleCreated(func(_ context.Context, event anchorsdk.ProductRoleCreated) error {
+		got = event
+		return nil
+	})
+
+	body := []byte(
+		`{"type":"product.role.created","timestamp":"2026-09-01T00:00:00.000000000Z","data":{"role_id":"product_role_1"}}`,
+	)
+	now := time.Now()
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/anchor", bytes.NewReader(body))
+	req.Header.Set("Webhook-Id", "pevt_test")
+	req.Header.Set("Webhook-Timestamp", strconv.FormatInt(now.Unix(), 10))
+	req.Header.Set("Webhook-Signature", signForTest(t, secret, "pevt_test", now, body))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status %d", recorder.Code)
+	}
+	if got.RoleID != "product_role_1" {
+		t.Fatalf("role id: %q", got.RoleID)
+	}
+}
+
 func TestEventTypesCatalog(t *testing.T) {
 	t.Parallel()
 	if len(anchorsdk.EventTypes()) == 0 {

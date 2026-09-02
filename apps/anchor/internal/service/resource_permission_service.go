@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -43,23 +44,36 @@ type resourcePermissionService struct {
 	resourcePermissionRepo repository.ProductResourcePermissionRepository
 	apiKeyRepo             repository.ProductAPIKeyRepository
 	transactor             transactor.Transactor
+	events                 events.Emitter
 	logger                 zerolog.Logger
 }
 
 func NewResourcePermissionService(
 	resourcePermissionRepo repository.ProductResourcePermissionRepository,
 	apiKeyRepo repository.ProductAPIKeyRepository,
-	transactor transactor.Transactor,
+	tx transactor.Transactor,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) ResourcePermissionService {
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
 		apiKeyRepo:             apiKeyRepo,
-		transactor:             transactor,
+		transactor:             tx,
+		events:                 eventEmitter,
 		logger: logger.With().Str(
 			"component", "resource_permission_service",
 		).Logger(),
 	}
+}
+
+func (s *resourcePermissionService) emitResourcePermission(
+	ctx context.Context, eventType events.Type, productID, permissionName string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data:      events.Data{events.FieldPermissionName: permissionName},
+	})
 }
 
 func (s *resourcePermissionService) Create(
@@ -95,14 +109,24 @@ func (s *resourcePermissionService) Create(
 		)
 	}
 
-	created, err := s.resourcePermissionRepo.Create(ctx, resourcePermission)
+	var created resourcepermission.ProductResourcePermission
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)
+		if createErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("name", input.Name).
+				Err(createErr).
+				Msg("failed to create resource permission")
+			return fault.ErrUnexpected
+		}
+		return s.emitResourcePermission(
+			txCtx, events.ProductResourcePermissionCreated, input.ProductID, created.Name,
+		)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to create resource permission")
-		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, err
 	}
 
 	logger.Info().
@@ -165,14 +189,24 @@ func (s *resourcePermissionService) Update(
 	updated.UpdatedAt = time.Now()
 	updated.Description = input.Description
 
-	result, err := s.resourcePermissionRepo.Update(ctx, updated)
+	var result resourcepermission.ProductResourcePermission
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		result, updateErr = s.resourcePermissionRepo.Update(txCtx, updated)
+		if updateErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("name", input.Name).
+				Err(updateErr).
+				Msg("failed to update resource permission")
+			return fault.ErrUnexpected
+		}
+		return s.emitResourcePermission(
+			txCtx, events.ProductResourcePermissionUpdated, input.ProductID, result.Name,
+		)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to update resource permission")
-		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, err
 	}
 
 	logger.Info().
@@ -218,10 +252,15 @@ func (s *resourcePermissionService) Delete(
 			return apiKeyDeleteErr
 		}
 
-		return s.resourcePermissionRepo.DeleteByID(
+		if deleteErr := s.resourcePermissionRepo.DeleteByID(
 			txCtx,
 			input.ProductID,
 			name.Name,
+		); deleteErr != nil {
+			return deleteErr
+		}
+		return s.emitResourcePermission(
+			txCtx, events.ProductResourcePermissionDeleted, input.ProductID, name.Name,
 		)
 	})
 	if err != nil {

@@ -26,6 +26,14 @@ const (
 	ProductUserDeleted Type = "product_user.deleted"
 
 	OrganizationLicenseUpdated Type = "organization.license.updated"
+
+	ProductRoleCreated Type = "product.role.created"
+	ProductRoleUpdated Type = "product.role.updated"
+	ProductRoleDeleted Type = "product.role.deleted"
+
+	ProductResourcePermissionCreated Type = "product.resource_permission.created"
+	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
+	ProductResourcePermissionDeleted Type = "product.resource_permission.deleted"
 )
 
 const (
@@ -33,6 +41,8 @@ const (
 	FieldProductUserID  = "product_user_id"
 	FieldWorkspaceID    = "workspace_id"
 	FieldAPIKeyID       = "api_key_id"
+	FieldRoleID         = "role_id"
+	FieldPermissionName = "permission_name"
 )
 
 type Data map[string]string

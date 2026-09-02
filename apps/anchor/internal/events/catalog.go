@@ -18,6 +18,12 @@ func Types() []Type {
 		ProductUserUpdated,
 		ProductUserDeleted,
 		OrganizationLicenseUpdated,
+		ProductRoleCreated,
+		ProductRoleUpdated,
+		ProductRoleDeleted,
+		ProductResourcePermissionCreated,
+		ProductResourcePermissionUpdated,
+		ProductResourcePermissionDeleted,
 	}
 }
 
@@ -38,7 +44,13 @@ func (t Type) Known() bool {
 		ProductUserCreated,
 		ProductUserUpdated,
 		ProductUserDeleted,
-		OrganizationLicenseUpdated:
+		OrganizationLicenseUpdated,
+		ProductRoleCreated,
+		ProductRoleUpdated,
+		ProductRoleDeleted,
+		ProductResourcePermissionCreated,
+		ProductResourcePermissionUpdated,
+		ProductResourcePermissionDeleted:
 		return true
 	default:
 		return false

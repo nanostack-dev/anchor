@@ -332,4 +332,29 @@ func TestProductRole_Update(t *testing.T) {
 			assert.GreaterOrEqual(t, updateResp.StatusCode(), 400)
 		},
 	)
+
+	t.Run(
+		"EmitsWebhook", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+			sink := productContext.CaptureEvents()
+			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
+					Name: "EventsRole_" + ids.MustNew("test"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createResp.StatusCode())
+			roleID := createResp.JSON201.Id
+			sink.WaitFor("product.role.created", map[string]string{"role_id": roleID})
+
+			updateResp, err := productContext.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
+				ctx, productContext.ProductID, roleID, ct.UpdateProductRoleJSONRequestBody{
+					Name: "EventsRoleUpdated_" + ids.MustNew("test"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, updateResp.StatusCode())
+			sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
+		},
+	)
 }

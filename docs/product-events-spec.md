@@ -29,7 +29,7 @@ The first consumer is EchoPoint. The first event types are organization and memb
 15. As a Product backend, I want HTTPS-only endpoints, so that the thin payload and signing secret are not sent in the clear.
 16. As a Product backend, I want a deleted subject's identifiers still present on `*.deleted` events, so that I can remove local rows after the API starts returning 404.
 17. As a Product backend, I want events for writes that originated in Clerk ingest as well as REST, so that I do not care which path mutated Anchor.
-18. As a Product backend, I do not want events for role-catalog or permission-catalog edits, so that admin Terraform noise does not hit my handler.
+18. As a Product backend, I want events when a product role or resource permission is created, updated, or deleted, so that I can refresh local RBAC without polling. Assign and unassign on a role emit `product.role.updated` only when the assignment changes.
 19. As a Product backend, I do not want platform invitation events, so that Platform User onboarding stays out of my Product bus.
 20. As EchoPoint, I want one endpoint URL and one signing secret in Product configuration for the tracer, so that I can ship without a CRUD API.
 21. As EchoPoint, I want to verify deliveries with the same Svix/Standard Webhooks library used for Clerk, so that I do not write a custom verifier.
@@ -57,7 +57,7 @@ The first consumer is EchoPoint. The first event types are organization and memb
 - Glossary: **event**, **event type**, **endpoint**, **delivery**, **thin payload**. Do not name this feature "webhooks". Inbound Clerk remains **integration webhook**.
 - Wire format: Standard Webhooks (ADR-0017). Headers `webhook-id`, `webhook-timestamp`, `webhook-signature`. Body `{ "type", "timestamp", "data" }`. `type` is `resource.action`. `timestamp` is ISO-8601 UTC. `data` is identifiers only. No CloudEvents envelope. No Bearer token. `webhook-id` is a KSUID and is stable across retries of the same event.
 - Tracer event types: `organization.created`, `organization.updated`, `organization.membership.created`, `organization.membership.updated`, `organization.membership.deleted`, `organization.license.updated`. License instantiate, adjust, and migrate all use `organization.license.updated`.
-- Catalog boundary: Product SDK surface (organizations, members, workspaces, organization API keys, product users, licenses). Admin catalog and platform invitations do not emit.
+- Catalog boundary: Product SDK surface (organizations, members, workspaces, organization API keys, product users, licenses, product roles, product resource permissions). Platform invitations do not emit. Built-in Anchor product permissions (`product:settings:read` and similar) do not emit.
 - Emit path: pgkit queue `EnqueueTx` on `transactor.CurrentTx`. Not `workflow.Start` (it opens its own transaction). Proven by the events-outbox prototype:
 
 ```

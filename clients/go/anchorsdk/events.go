@@ -11,22 +11,28 @@ import (
 )
 
 const (
-	eventTypeOrganizationCreated        = "organization.created"
-	eventTypeOrganizationUpdated        = "organization.updated"
-	eventTypeOrganizationDeleted        = "organization.deleted"
-	eventTypeMembershipCreated          = "organization.membership.created"
-	eventTypeMembershipUpdated          = "organization.membership.updated"
-	eventTypeMembershipDeleted          = "organization.membership.deleted"
-	eventTypeWorkspaceCreated           = "workspace.created"
-	eventTypeWorkspaceUpdated           = "workspace.updated"
-	eventTypeWorkspaceDeleted           = "workspace.deleted"
-	eventTypeOrganizationAPIKeyCreated  = "organization.api_key.created"
-	eventTypeOrganizationAPIKeyUpdated  = "organization.api_key.updated"
-	eventTypeOrganizationAPIKeyDeleted  = "organization.api_key.deleted"
-	eventTypeProductUserCreated         = "product_user.created"
-	eventTypeProductUserUpdated         = "product_user.updated"
-	eventTypeProductUserDeleted         = "product_user.deleted"
-	eventTypeOrganizationLicenseUpdated = "organization.license.updated"
+	eventTypeOrganizationCreated              = "organization.created"
+	eventTypeOrganizationUpdated              = "organization.updated"
+	eventTypeOrganizationDeleted              = "organization.deleted"
+	eventTypeMembershipCreated                = "organization.membership.created"
+	eventTypeMembershipUpdated                = "organization.membership.updated"
+	eventTypeMembershipDeleted                = "organization.membership.deleted"
+	eventTypeWorkspaceCreated                 = "workspace.created"
+	eventTypeWorkspaceUpdated                 = "workspace.updated"
+	eventTypeWorkspaceDeleted                 = "workspace.deleted"
+	eventTypeOrganizationAPIKeyCreated        = "organization.api_key.created"
+	eventTypeOrganizationAPIKeyUpdated        = "organization.api_key.updated"
+	eventTypeOrganizationAPIKeyDeleted        = "organization.api_key.deleted"
+	eventTypeProductUserCreated               = "product_user.created"
+	eventTypeProductUserUpdated               = "product_user.updated"
+	eventTypeProductUserDeleted               = "product_user.deleted"
+	eventTypeOrganizationLicenseUpdated       = "organization.license.updated"
+	eventTypeProductRoleCreated               = "product.role.created"
+	eventTypeProductRoleUpdated               = "product.role.updated"
+	eventTypeProductRoleDeleted               = "product.role.deleted"
+	eventTypeProductResourcePermissionCreated = "product.resource_permission.created"
+	eventTypeProductResourcePermissionUpdated = "product.resource_permission.updated"
+	eventTypeProductResourcePermissionDeleted = "product.resource_permission.deleted"
 
 	maxWebhookBodyBytes = 1 << 20
 )
@@ -127,6 +133,30 @@ type OrganizationLicenseUpdated struct {
 	OrganizationID string `json:"organization_id"`
 }
 
+type ProductRoleCreated struct {
+	RoleID string `json:"role_id"`
+}
+
+type ProductRoleUpdated struct {
+	RoleID string `json:"role_id"`
+}
+
+type ProductRoleDeleted struct {
+	RoleID string `json:"role_id"`
+}
+
+type ProductResourcePermissionCreated struct {
+	PermissionName string `json:"permission_name"`
+}
+
+type ProductResourcePermissionUpdated struct {
+	PermissionName string `json:"permission_name"`
+}
+
+type ProductResourcePermissionDeleted struct {
+	PermissionName string `json:"permission_name"`
+}
+
 type eventEnvelope struct {
 	Type      string          `json:"type"`
 	Timestamp string          `json:"timestamp"`
@@ -152,6 +182,12 @@ func EventTypes() []string {
 		eventTypeProductUserUpdated,
 		eventTypeProductUserDeleted,
 		eventTypeOrganizationLicenseUpdated,
+		eventTypeProductRoleCreated,
+		eventTypeProductRoleUpdated,
+		eventTypeProductRoleDeleted,
+		eventTypeProductResourcePermissionCreated,
+		eventTypeProductResourcePermissionUpdated,
+		eventTypeProductResourcePermissionDeleted,
 	}
 }
 
@@ -166,23 +202,29 @@ func EventTypes() []string {
 type WebhookHandler struct {
 	secret []byte
 
-	onAny                        []func(context.Context, Event) error
-	onOrganizationCreated        []func(context.Context, OrganizationCreated) error
-	onOrganizationUpdated        []func(context.Context, OrganizationUpdated) error
-	onOrganizationDeleted        []func(context.Context, OrganizationDeleted) error
-	onMembershipCreated          []func(context.Context, MembershipCreated) error
-	onMembershipUpdated          []func(context.Context, MembershipUpdated) error
-	onMembershipDeleted          []func(context.Context, MembershipDeleted) error
-	onWorkspaceCreated           []func(context.Context, WorkspaceCreated) error
-	onWorkspaceUpdated           []func(context.Context, WorkspaceUpdated) error
-	onWorkspaceDeleted           []func(context.Context, WorkspaceDeleted) error
-	onOrganizationAPIKeyCreated  []func(context.Context, OrganizationAPIKeyCreated) error
-	onOrganizationAPIKeyUpdated  []func(context.Context, OrganizationAPIKeyUpdated) error
-	onOrganizationAPIKeyDeleted  []func(context.Context, OrganizationAPIKeyDeleted) error
-	onProductUserCreated         []func(context.Context, ProductUserCreated) error
-	onProductUserUpdated         []func(context.Context, ProductUserUpdated) error
-	onProductUserDeleted         []func(context.Context, ProductUserDeleted) error
-	onOrganizationLicenseUpdated []func(context.Context, OrganizationLicenseUpdated) error
+	onAny                              []func(context.Context, Event) error
+	onOrganizationCreated              []func(context.Context, OrganizationCreated) error
+	onOrganizationUpdated              []func(context.Context, OrganizationUpdated) error
+	onOrganizationDeleted              []func(context.Context, OrganizationDeleted) error
+	onMembershipCreated                []func(context.Context, MembershipCreated) error
+	onMembershipUpdated                []func(context.Context, MembershipUpdated) error
+	onMembershipDeleted                []func(context.Context, MembershipDeleted) error
+	onWorkspaceCreated                 []func(context.Context, WorkspaceCreated) error
+	onWorkspaceUpdated                 []func(context.Context, WorkspaceUpdated) error
+	onWorkspaceDeleted                 []func(context.Context, WorkspaceDeleted) error
+	onOrganizationAPIKeyCreated        []func(context.Context, OrganizationAPIKeyCreated) error
+	onOrganizationAPIKeyUpdated        []func(context.Context, OrganizationAPIKeyUpdated) error
+	onOrganizationAPIKeyDeleted        []func(context.Context, OrganizationAPIKeyDeleted) error
+	onProductUserCreated               []func(context.Context, ProductUserCreated) error
+	onProductUserUpdated               []func(context.Context, ProductUserUpdated) error
+	onProductUserDeleted               []func(context.Context, ProductUserDeleted) error
+	onOrganizationLicenseUpdated       []func(context.Context, OrganizationLicenseUpdated) error
+	onProductRoleCreated               []func(context.Context, ProductRoleCreated) error
+	onProductRoleUpdated               []func(context.Context, ProductRoleUpdated) error
+	onProductRoleDeleted               []func(context.Context, ProductRoleDeleted) error
+	onProductResourcePermissionCreated []func(context.Context, ProductResourcePermissionCreated) error
+	onProductResourcePermissionUpdated []func(context.Context, ProductResourcePermissionUpdated) error
+	onProductResourcePermissionDeleted []func(context.Context, ProductResourcePermissionDeleted) error
 }
 
 // Events builds a [WebhookHandler] for the product signing secret (`whsec_...`).
@@ -292,6 +334,42 @@ func (h *WebhookHandler) OrganizationLicenseUpdated(
 	return h
 }
 
+func (h *WebhookHandler) ProductRoleCreated(fn func(context.Context, ProductRoleCreated) error) *WebhookHandler {
+	h.onProductRoleCreated = append(h.onProductRoleCreated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductRoleUpdated(fn func(context.Context, ProductRoleUpdated) error) *WebhookHandler {
+	h.onProductRoleUpdated = append(h.onProductRoleUpdated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductRoleDeleted(fn func(context.Context, ProductRoleDeleted) error) *WebhookHandler {
+	h.onProductRoleDeleted = append(h.onProductRoleDeleted, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductResourcePermissionCreated(
+	fn func(context.Context, ProductResourcePermissionCreated) error,
+) *WebhookHandler {
+	h.onProductResourcePermissionCreated = append(h.onProductResourcePermissionCreated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductResourcePermissionUpdated(
+	fn func(context.Context, ProductResourcePermissionUpdated) error,
+) *WebhookHandler {
+	h.onProductResourcePermissionUpdated = append(h.onProductResourcePermissionUpdated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductResourcePermissionDeleted(
+	fn func(context.Context, ProductResourcePermissionDeleted) error,
+) *WebhookHandler {
+	h.onProductResourcePermissionDeleted = append(h.onProductResourcePermissionDeleted, fn)
+	return h
+}
+
 func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -385,6 +463,18 @@ func (h *WebhookHandler) dispatch(ctx context.Context, event Event) error {
 		return dispatchTyped(ctx, event.Data, h.onProductUserDeleted)
 	case eventTypeOrganizationLicenseUpdated:
 		return dispatchTyped(ctx, event.Data, h.onOrganizationLicenseUpdated)
+	case eventTypeProductRoleCreated:
+		return dispatchTyped(ctx, event.Data, h.onProductRoleCreated)
+	case eventTypeProductRoleUpdated:
+		return dispatchTyped(ctx, event.Data, h.onProductRoleUpdated)
+	case eventTypeProductRoleDeleted:
+		return dispatchTyped(ctx, event.Data, h.onProductRoleDeleted)
+	case eventTypeProductResourcePermissionCreated:
+		return dispatchTyped(ctx, event.Data, h.onProductResourcePermissionCreated)
+	case eventTypeProductResourcePermissionUpdated:
+		return dispatchTyped(ctx, event.Data, h.onProductResourcePermissionUpdated)
+	case eventTypeProductResourcePermissionDeleted:
+		return dispatchTyped(ctx, event.Data, h.onProductResourcePermissionDeleted)
 	default:
 		return nil
 	}

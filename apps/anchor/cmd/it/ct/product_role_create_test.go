@@ -259,6 +259,21 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
+		"EmitsWebhook", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+			sink := productContext.CaptureEvents()
+			resp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
+					Name: "EventsRole_" + ids.MustNew("test"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode())
+			sink.WaitFor("product.role.created", map[string]string{"role_id": resp.JSON201.Id})
+		},
+	)
+
+	t.Run(
 		"CreateProductRoleForNonexistentProduct", func(t *testing.T) {
 			nonExistentProductID := ids.MustNew("prd")
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(

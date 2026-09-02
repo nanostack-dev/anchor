@@ -4,12 +4,14 @@ import (
 	"context"
 	"strings"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -56,21 +58,37 @@ type ProductRoleService interface {
 type productRoleService struct {
 	roleRepo                      repository.ProductRoleRepository
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository
+	transactor                    transactor.Transactor
+	events                        events.Emitter
 	logger                        zerolog.Logger
 }
 
 func NewProductRoleService(
 	roleRepo repository.ProductRoleRepository,
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
+	tx transactor.Transactor,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) ProductRoleService {
 	return &productRoleService{
 		roleRepo:                      roleRepo,
 		productResourcePermissionRepo: productResourcePermissionRepo,
+		transactor:                    tx,
+		events:                        eventEmitter,
 		logger: logger.With().Str(
 			"component", "product_role_permission_service",
 		).Logger(),
 	}
+}
+
+func (s *productRoleService) emitRole(
+	ctx context.Context, eventType events.Type, productID, roleID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data:      events.Data{events.FieldRoleID: roleID},
+	})
 }
 
 func (s *productRoleService) CreateProductRole(
@@ -114,14 +132,22 @@ func (s *productRoleService) CreateProductRole(
 
 	productRole.Permissions = productRolePermission
 
-	created, err := s.roleRepo.Create(ctx, productRole)
+	var created role.ProductRole
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var createErr error
+		created, createErr = s.roleRepo.Create(txCtx, productRole)
+		if createErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("name", input.Name).
+				Err(createErr).
+				Msg("failed to create product role")
+			return fault.ErrUnexpected
+		}
+		return s.emitRole(txCtx, events.ProductRoleCreated, input.ProductID, created.ID)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to create product role")
-		return role.ProductRole{}, fault.ErrUnexpected
+		return role.ProductRole{}, err
 	}
 
 	logger.Info().
@@ -222,14 +248,22 @@ func (s *productRoleService) UpdateProductRole(
 		updatedRole.Permissions = input.Permissions
 	}
 
-	updated, err := s.roleRepo.Update(ctx, updatedRole)
+	var updated role.ProductRole
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
+		if updateErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("role_id", input.ID).
+				Err(updateErr).
+				Msg("failed to update product role")
+			return fault.ErrUnexpected
+		}
+		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to update product role")
-		return role.ProductRole{}, fault.ErrUnexpected
+		return role.ProductRole{}, err
 	}
 
 	logger.Info().
@@ -275,14 +309,21 @@ func (s *productRoleService) DeleteProductRole(
 		return NewRoleInUseError(input.ID)
 	}
 
-	err = s.roleRepo.DeleteByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if deleteErr := s.roleRepo.DeleteByProductIDAndRoleID(
+			txCtx, input.ProductID, input.ID,
+		); deleteErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("role_id", input.ID).
+				Err(deleteErr).
+				Msg("failed to delete product role")
+			return fault.ErrUnexpected
+		}
+		return s.emitRole(txCtx, events.ProductRoleDeleted, input.ProductID, input.ID)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to delete product role")
-		return fault.ErrUnexpected
+		return err
 	}
 
 	logger.Info().
@@ -349,14 +390,22 @@ func (s *productRoleService) AssignPermissionToProductRole(
 
 	productRole.Permissions = append(productRole.Permissions, newPermission)
 
-	updated, err := s.roleRepo.Update(ctx, *productRole)
+	var updated role.ProductRole
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.roleRepo.Update(txCtx, *productRole)
+		if updateErr != nil {
+			logger.Error().
+				Str("product_role_id", input.ProductRoleID).
+				Str("permission_name", input.PermissionName).
+				Err(updateErr).
+				Msg("failed to update role with new permission")
+			return fault.ErrUnexpected
+		}
+		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_role_id", input.ProductRoleID).
-			Str("permission_name", input.PermissionName).
-			Err(err).
-			Msg("failed to update role with new permission")
-		return role.ProductRole{}, fault.ErrUnexpected
+		return role.ProductRole{}, err
 	}
 
 	logger.Info().
@@ -435,14 +484,22 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 
 	productRole.Permissions = updatedPermissions
 
-	updated, err := s.roleRepo.Update(ctx, *productRole)
+	var updated role.ProductRole
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.roleRepo.Update(txCtx, *productRole)
+		if updateErr != nil {
+			logger.Error().
+				Str("product_role_id", input.ProductRoleID).
+				Str("permission_name", input.PermissionName).
+				Err(updateErr).
+				Msg("failed to update role after removing permission")
+			return fault.ErrUnexpected
+		}
+		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
+	})
 	if err != nil {
-		logger.Error().
-			Str("product_role_id", input.ProductRoleID).
-			Str("permission_name", input.PermissionName).
-			Err(err).
-			Msg("failed to update role after removing permission")
-		return role.ProductRole{}, fault.ErrUnexpected
+		return role.ProductRole{}, err
 	}
 
 	logger.Info().

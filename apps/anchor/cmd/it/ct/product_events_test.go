@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -202,5 +203,90 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		require.NoError(t, deleteErr)
 		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
 		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": userID})
+	})
+
+	t.Run("RoleAndResourcePermissionCreatedUpdatedDeleted", func(t *testing.T) {
+		createdPerm, err := owner.CreateProductResourcePermissionWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductResourcePermissionRequest{Name: "events:catalog"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, createdPerm.StatusCode())
+		permissionName := createdPerm.JSON201.Name
+		sink.WaitFor("product.resource_permission.created", map[string]string{
+			"permission_name": permissionName,
+		})
+
+		updatedPerm, updatePermErr := owner.UpdateProductResourcePermissionWithResponse(
+			ctx,
+			product.ProductID,
+			permissionName,
+			ct.UpdateProductResourcePermissionRequest{Description: new("catalog write")},
+		)
+		require.NoError(t, updatePermErr)
+		require.Equal(t, http.StatusOK, updatedPerm.StatusCode())
+		sink.WaitFor("product.resource_permission.updated", map[string]string{
+			"permission_name": permissionName,
+		})
+
+		createdRole, roleErr := owner.CreateProductRoleWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductRoleJSONRequestBody{Name: "Events Role " + ids.MustNew("test")},
+		)
+		require.NoError(t, roleErr)
+		require.Equal(t, http.StatusCreated, createdRole.StatusCode())
+		roleID := createdRole.JSON201.Id
+		sink.WaitFor("product.role.created", map[string]string{"role_id": roleID})
+
+		assignResp, assignErr := owner.AssignPermissionToProductRoleWithResponse(
+			ctx,
+			product.ProductID,
+			roleID,
+			ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: permissionName},
+		)
+		require.NoError(t, assignErr)
+		require.Equal(t, http.StatusNoContent, assignResp.StatusCode())
+		require.Eventually(t, func() bool {
+			return sink.Count("product.role.updated") == 1
+		}, 20*time.Second, 200*time.Millisecond)
+
+		unassignResp, unassignErr := owner.UnassignPermissionFromProductRoleWithResponse(
+			ctx, product.ProductID, roleID, permissionName,
+		)
+		require.NoError(t, unassignErr)
+		require.Equal(t, http.StatusNoContent, unassignResp.StatusCode())
+		require.Eventually(t, func() bool {
+			return sink.Count("product.role.updated") == 2
+		}, 20*time.Second, 200*time.Millisecond)
+
+		updatedRole, updateRoleErr := owner.UpdateProductRoleWithResponse(
+			ctx,
+			product.ProductID,
+			roleID,
+			ct.UpdateProductRoleJSONRequestBody{Name: "Events Role Updated " + ids.MustNew("test")},
+		)
+		require.NoError(t, updateRoleErr)
+		require.Equal(t, http.StatusOK, updatedRole.StatusCode())
+		require.Eventually(t, func() bool {
+			return sink.Count("product.role.updated") == 3
+		}, 20*time.Second, 200*time.Millisecond)
+
+		deletedRole, deleteRoleErr := owner.DeleteProductRoleWithResponse(
+			ctx, product.ProductID, roleID,
+		)
+		require.NoError(t, deleteRoleErr)
+		require.Equal(t, http.StatusNoContent, deletedRole.StatusCode())
+		sink.WaitFor("product.role.deleted", map[string]string{"role_id": roleID})
+
+		deletedPerm, deletePermErr := owner.DeleteProductResourcePermissionWithResponse(
+			ctx, product.ProductID, permissionName,
+		)
+		require.NoError(t, deletePermErr)
+		require.Equal(t, http.StatusNoContent, deletedPerm.StatusCode())
+		sink.WaitFor("product.resource_permission.deleted", map[string]string{
+			"permission_name": permissionName,
+		})
 	})
 }
