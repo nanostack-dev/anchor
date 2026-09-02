@@ -13,8 +13,8 @@ func LicenseEventRegistration() events.DomainRegistration {
 			Name:        "Organization license updated",
 			Description: "Emitted when an organization license is instantiated, adjusted, or migrated.",
 			GroupType:   events.GroupTypeTheme,
-			GroupName:   "Licensing",
-			Theme:       "Licensing",
+			GroupName:   events.ThemeLicensing,
+			Theme:       events.ThemeLicensing,
 		},
 	)
 }
