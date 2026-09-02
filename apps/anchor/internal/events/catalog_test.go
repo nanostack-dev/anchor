@@ -29,7 +29,9 @@ func (mockWebhookProvider) ParseEvent(context.Context, string, []byte) (any, err
 func (mockWebhookProvider) ToStandardsCommands(context.Context, string, any) ([]provider.Command, error) {
 	return nil, nil
 }
-func (mockWebhookProvider) ExecuteCommand(context.Context, zerolog.Logger, *integration.Instance, provider.Command) error {
+func (mockWebhookProvider) ExecuteCommand(
+	context.Context, zerolog.Logger, *integration.Instance, provider.Command,
+) error {
 	return nil
 }
 func (mockWebhookProvider) WebhookEvents() []provider.WebhookEvent {

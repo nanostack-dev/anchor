@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 )
 
+//nolint:dupl // domain event registrations share struct definitions
 func OrganizationEventRegistration() events.DomainRegistration {
 	return events.RegisterDomain(
 		events.Definition{
@@ -146,6 +147,7 @@ func ProductUserEventRegistration() events.DomainRegistration {
 	)
 }
 
+//nolint:dupl // domain event registrations share struct definitions
 func ProductRBACEventRegistration() events.DomainRegistration {
 	return events.RegisterDomain(
 		events.Definition{

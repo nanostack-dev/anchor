@@ -6,7 +6,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func LicenseEventRegistration() events.DomainRegistration {
+func EventRegistration() events.DomainRegistration {
 	return events.RegisterDomain(
 		events.Definition{
 			Type:        events.OrganizationLicenseUpdated,

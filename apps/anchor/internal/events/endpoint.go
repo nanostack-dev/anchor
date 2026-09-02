@@ -17,9 +17,9 @@ type Endpoint struct {
 }
 
 type UpsertEndpointInput struct {
-	TenantID  string   `validate:"required,notblank"`
-	ProductID string   `validate:"required,notblank"`
-	URL       string   `validate:"required,notblank"`
+	TenantID  string `validate:"required,notblank"`
+	ProductID string `validate:"required,notblank"`
+	URL       string `validate:"required,notblank"`
 	Events    []string
 }
 
