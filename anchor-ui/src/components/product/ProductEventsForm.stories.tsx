@@ -61,10 +61,14 @@ const CATALOG_DATA = {
 
 function StoryCatalogSeeder({ children }: { children: React.ReactNode }) {
 	const queryClient = useQueryClient();
-	queryClient.setQueryData(
-		getProductEventsCatalogQueryKey({ path: { product_id: PRODUCT.id } }),
-		CATALOG_DATA,
-	);
+	const key = getProductEventsCatalogQueryKey({
+		path: { product_id: PRODUCT.id },
+	});
+	queryClient.setQueryData(key, CATALOG_DATA);
+	queryClient.setQueryDefaults(key, {
+		staleTime: Number.POSITIVE_INFINITY,
+		gcTime: Number.POSITIVE_INFINITY,
+	});
 	return <>{children}</>;
 }
 
@@ -77,13 +81,13 @@ const meta = {
 		productId: PRODUCT.id,
 	},
 	parameters: {
-		layout: "padded",
+		layout: "fullscreen",
 	},
 	decorators: [
 		(Story) => (
 			<StoryQuery>
 				<StoryCatalogSeeder>
-					<div className="w-full max-w-xl">
+					<div className="w-full p-6 lg:p-8">
 						<Story />
 					</div>
 				</StoryCatalogSeeder>
@@ -144,5 +148,15 @@ export const Dirty: Story = {
 		await expect(
 			canvas.getByRole("button", { name: "Save endpoint" }),
 		).toBeEnabled();
+	},
+};
+
+export const WithSearchFilter: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const searchInput = canvas.getByPlaceholderText(/Filter events by name/);
+		await userEvent.type(searchInput, "organization");
+		await expect(await canvas.findByText("Organizations")).toBeInTheDocument();
+		await expect(canvas.queryByText("Workspaces")).not.toBeInTheDocument();
 	},
 };
