@@ -291,6 +291,10 @@ export type ProductEventsConfigRequest = {
      * Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
      */
     endpoint_url?: string;
+    /**
+     * List of event types this endpoint subscribes to. If omitted when configuring an endpoint, all registered events are subscribed by default.
+     */
+    events?: Array<string>;
 };
 
 export type ProductEventsConfigResponse = {
@@ -306,6 +310,48 @@ export type ProductEventsConfigResponse = {
      * Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
      */
     signing_secret?: string;
+    /**
+     * List of event types this endpoint receives.
+     */
+    events: Array<string>;
+};
+
+export type ProductEventsCatalogResponse = {
+    /**
+     * Registered domain and integration events available for subscription.
+     */
+    items: Array<ProductEventDefinitionResponse>;
+};
+
+export type ProductEventDefinitionResponse = {
+    /**
+     * Unique event type identifier.
+     */
+    type: string;
+    /**
+     * Human-readable display name.
+     */
+    name: string;
+    /**
+     * Description of when this event is emitted.
+     */
+    description: string;
+    /**
+     * Classification group type.
+     */
+    group_type: 'theme' | 'integration';
+    /**
+     * Display name of the theme or integration group.
+     */
+    group_name: string;
+    /**
+     * Domain theme name if this event belongs to a domain theme.
+     */
+    theme?: string;
+    /**
+     * Integration provider identifier if this event belongs to an integration.
+     */
+    integration?: string;
 };
 
 export type ProductConfigResponse = {
@@ -2804,6 +2850,44 @@ export type UpdateProductResponses = {
 };
 
 export type UpdateProductResponse = UpdateProductResponses[keyof UpdateProductResponses];
+
+export type GetProductEventsCatalogData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/events/catalog';
+};
+
+export type GetProductEventsCatalogErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetProductEventsCatalogError = GetProductEventsCatalogErrors[keyof GetProductEventsCatalogErrors];
+
+export type GetProductEventsCatalogResponses = {
+    /**
+     * Available events catalog.
+     */
+    200: ProductEventsCatalogResponse;
+};
+
+export type GetProductEventsCatalogResponse = GetProductEventsCatalogResponses[keyof GetProductEventsCatalogResponses];
 
 export type ListIntegrationInstancesData = {
     body?: never;

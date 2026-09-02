@@ -26,6 +26,7 @@ import (
 
 var _ provider.Provider = (*Provider)(nil)
 var _ provider.ConfigStorageProvider = (*Provider)(nil)
+var _ provider.WebhookEventProvider = (*Provider)(nil)
 
 var errMissingEncryptionKey = errors.New("global encryption key is not configured")
 
@@ -414,4 +415,24 @@ func headerGet(headers map[string]string, key string) string {
 		}
 	}
 	return ""
+}
+
+func (p *Provider) WebhookEvents() []provider.WebhookEvent {
+	return []provider.WebhookEvent{
+		{
+			Type:        string(events.ClerkUserCreated),
+			Name:        "Clerk user created",
+			Description: "Emitted when a product user is created from a Clerk webhook.",
+		},
+		{
+			Type:        string(events.ClerkUserUpdated),
+			Name:        "Clerk user updated",
+			Description: "Emitted when a product user is updated from a Clerk webhook.",
+		},
+		{
+			Type:        string(events.ClerkUserDeleted),
+			Name:        "Clerk user deleted",
+			Description: "Emitted when a product user is deleted from a Clerk webhook.",
+		},
+	}
 }

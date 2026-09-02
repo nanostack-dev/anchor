@@ -30,6 +30,7 @@ func NewModule() fx.Option {
 			service.NewLicenseMigrationService,
 			service.NewUsageService,
 			service.NewUsageSeriesService,
+			AsDomainEventRegistration(LicenseEventRegistration),
 		),
 	)
 }

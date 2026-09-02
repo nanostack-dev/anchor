@@ -39,7 +39,14 @@ type EventSink struct {
 func (tp *ProductContext) CaptureEvents() *EventSink {
 	tp.testingContext.Helper()
 	sink := newEventSink(tp.testingContext)
-	tp.attachEventSink(sink)
+	tp.attachEventSink(sink, nil)
+	return sink
+}
+
+func (tp *ProductContext) CaptureFilteredEvents(events []string) *EventSink {
+	tp.testingContext.Helper()
+	sink := newEventSink(tp.testingContext)
+	tp.attachEventSink(sink, &events)
 	return sink
 }
 
@@ -87,7 +94,7 @@ func (s *EventSink) serve(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 }
 
-func (tp *ProductContext) attachEventSink(sink *EventSink) {
+func (tp *ProductContext) attachEventSink(sink *EventSink, events *[]string) {
 	tp.testingContext.Helper()
 	ctx := context.Background()
 	got, err := tp.OwnerAuthenticatedClient().GetProductWithResponse(ctx, tp.ProductID)
@@ -107,6 +114,7 @@ func (tp *ProductContext) attachEventSink(sink *EventSink) {
 				},
 				Events: &nanostackClient.ProductEventsConfigRequest{
 					EndpointUrl: &sink.URL,
+					Events:      events,
 				},
 			},
 		},

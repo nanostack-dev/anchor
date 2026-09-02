@@ -30,3 +30,39 @@ func TestValidateEndpointURL(t *testing.T) {
 		t.Fatal("link-local metadata address must be rejected")
 	}
 }
+
+func TestDeliveryTargetAllows(t *testing.T) {
+	t.Parallel()
+
+	// Nil events means all events are allowed.
+	allAllowed := events.DeliveryTarget{
+		URL:    "https://example.com",
+		Secret: "whsec_test",
+		Events: nil,
+	}
+	if !allAllowed.Allows(events.OrganizationCreated) {
+		t.Fatal("nil events must allow any event")
+	}
+	if !allAllowed.Allows(events.WorkspaceCreated) {
+		t.Fatal("nil events must allow any event")
+	}
+
+	// Filtered events only allows listed event types.
+	filtered := events.DeliveryTarget{
+		URL:    "https://example.com",
+		Secret: "whsec_test",
+		Events: []string{string(events.OrganizationCreated), string(events.OrganizationDeleted)},
+	}
+	if !filtered.Allows(events.OrganizationCreated) {
+		t.Fatal("organization.created must be allowed")
+	}
+	if !filtered.Allows(events.OrganizationDeleted) {
+		t.Fatal("organization.deleted must be allowed")
+	}
+	if filtered.Allows(events.OrganizationUpdated) {
+		t.Fatal("organization.updated must not be allowed")
+	}
+	if filtered.Allows(events.WorkspaceCreated) {
+		t.Fatal("workspace.created must not be allowed")
+	}
+}

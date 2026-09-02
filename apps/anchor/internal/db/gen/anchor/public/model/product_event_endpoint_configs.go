@@ -18,4 +18,5 @@ type ProductEventEndpointConfigs struct {
 	SigningSecret    string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	EventsJSON       string
 }

@@ -695,6 +695,14 @@ components:
             Anchor mints the Standard Webhooks signing secret. The caller
             cannot supply one.
           examples: ["https://echopoint.example/anchor/events"]
+        events:
+          type: array
+          items:
+            type: string
+          description: >-
+            List of event types this endpoint subscribes to. If omitted when
+            configuring an endpoint, all registered events are subscribed by default.
+          examples: [["organization.created", "organization.updated"]]
     ProductEventsConfigResponse:
       type: object
       properties:
@@ -711,9 +719,64 @@ components:
             only on the write that minted it. Store it then. Later reads
             return only the obfuscated marker. Encrypted at rest. Delivery
             must sign with the plaintext, so it is never hashed.
+        events:
+          type: array
+          items:
+            type: string
+          description: List of event types this endpoint receives.
+          examples: [["organization.created", "organization.updated"]]
       required:
       - endpoint_url
       - signing_secret_obfuscated
+      - events
+    ProductEventsCatalogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductEventDefinitionResponse"
+          description: Registered domain and integration events available for subscription.
+      required:
+      - items
+    ProductEventDefinitionResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Unique event type identifier.
+          examples: ["organization.created"]
+        name:
+          type: string
+          description: Human-readable display name.
+          examples: ["Organization created"]
+        description:
+          type: string
+          description: Description of when this event is emitted.
+          examples: ["Emitted when a new organization is created."]
+        group_type:
+          type: string
+          enum: [theme, integration]
+          description: Classification group type.
+          examples: ["theme"]
+        group_name:
+          type: string
+          description: Display name of the theme or integration group.
+          examples: ["Organizations"]
+        theme:
+          type: string
+          description: Domain theme name if this event belongs to a domain theme.
+          examples: ["Organizations"]
+        integration:
+          type: string
+          description: Integration provider identifier if this event belongs to an integration.
+          examples: ["CLERK"]
+      required:
+      - type
+      - name
+      - description
+      - group_type
+      - group_name
     ProductConfigResponse:
       type: object
       properties:
@@ -4225,6 +4288,32 @@ paths:
       responses:
         "204":
           description: Product deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/events/catalog:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      summary: Get Product Events Catalog
+      description: >-
+        Returns all registered domain and integration events available for
+        webhook subscriptions. Events are grouped by domain theme or integration.
+      operationId: getProductEventsCatalog
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: []
+      responses:
+        "200":
+          description: Available events catalog.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEventsCatalogResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

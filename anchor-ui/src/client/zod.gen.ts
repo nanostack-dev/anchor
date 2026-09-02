@@ -152,7 +152,8 @@ export const zProductOrganizationApiKeysConfigRequest = z.object({
 });
 
 export const zProductEventsConfigRequest = z.object({
-    endpoint_url: z.optional(z.string())
+    endpoint_url: z.optional(z.string()),
+    events: z.optional(z.array(z.string()))
 });
 
 export const zProductConfigRequest = z.object({
@@ -172,7 +173,25 @@ export const zProductRequest = z.object({
 export const zProductEventsConfigResponse = z.object({
     endpoint_url: z.string(),
     signing_secret_obfuscated: z.string(),
-    signing_secret: z.optional(z.string())
+    signing_secret: z.optional(z.string()),
+    events: z.array(z.string())
+});
+
+export const zProductEventDefinitionResponse = z.object({
+    type: z.string(),
+    name: z.string(),
+    description: z.string(),
+    group_type: z.enum([
+        'theme',
+        'integration'
+    ]),
+    group_name: z.string(),
+    theme: z.optional(z.string()),
+    integration: z.optional(z.string())
+});
+
+export const zProductEventsCatalogResponse = z.object({
+    items: z.array(zProductEventDefinitionResponse)
 });
 
 export const zProductOrganizationApiKeysConfigResponse = z.object({
@@ -1761,6 +1780,19 @@ export const zUpdateProductData = z.object({
  * Product updated successfully.
  */
 export const zUpdateProductResponse = zProductResponse;
+
+export const zGetProductEventsCatalogData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Available events catalog.
+ */
+export const zGetProductEventsCatalogResponse = zProductEventsCatalogResponse;
 
 export const zListIntegrationInstancesData = z.object({
     body: z.optional(z.never()),

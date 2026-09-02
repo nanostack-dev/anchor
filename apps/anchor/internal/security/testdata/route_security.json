@@ -115,6 +115,10 @@
   "GET /v1/products/{product_id}/email/templates/{email_template_id}/examples": {
     "platformBearerAuth": []
   },
+  "GET /v1/products/{product_id}/events/catalog": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": []
+  },
   "GET /v1/products/{product_id}/integrations": {
     "platformBearerAuth": []
   },

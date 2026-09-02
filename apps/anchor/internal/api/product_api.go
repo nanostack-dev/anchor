@@ -6,6 +6,7 @@ import (
 
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/events"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -46,6 +47,7 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 		eventsResponse := ProductEventsConfigResponse{
 			EndpointUrl:             prod.Config.Events.EndpointURL,
 			SigningSecretObfuscated: prod.Config.Events.SigningSecretObfuscated,
+			Events:                  prod.Config.Events.Events,
 		}
 		if prod.Config.Events.SigningSecret != "" {
 			eventsResponse.SigningSecret = &prod.Config.Events.SigningSecret
@@ -76,6 +78,9 @@ func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
 		eventsConfig := product.EventsConfig{}
 		if config.Events.EndpointUrl != nil {
 			eventsConfig.EndpointURL = *config.Events.EndpointUrl
+		}
+		if config.Events.Events != nil {
+			eventsConfig.Events = *config.Events.Events
 		}
 		productConfig.Events = &eventsConfig
 	}
@@ -218,6 +223,31 @@ func (s *AnchorAPI) UpdateProduct(
 	}
 
 	return UpdateProduct200JSONResponse(mapProductToResponse(updatedProduct)), nil
+}
+
+func (s *AnchorAPI) GetProductEventsCatalog(
+	ctx context.Context, _ GetProductEventsCatalogRequestObject,
+) (GetProductEventsCatalogResponseObject, error) {
+	definitions := s.ProductService.EventsCatalog(ctx)
+	items := functional.Slice(definitions).Map(func(d events.Definition) ProductEventDefinitionResponse {
+		item := ProductEventDefinitionResponse{
+			Type:        string(d.Type),
+			Name:        d.Name,
+			Description: d.Description,
+			GroupType:   ProductEventDefinitionResponseGroupType(d.GroupType),
+			GroupName:   d.GroupName,
+		}
+		if d.Theme != "" {
+			item.Theme = &d.Theme
+		}
+		if d.Integration != "" {
+			item.Integration = &d.Integration
+		}
+		return item
+	})
+	return GetProductEventsCatalog200JSONResponse{
+		Items: items,
+	}, nil
 }
 
 // Product User helper functions.

@@ -34,6 +34,13 @@ func NewModule() fx.Option {
 			NewIntegrationQueue,
 			NewIntegrationLock,
 			NewIntegrationService,
+
+			// Event registrations
+			AsDomainEventRegistration(OrganizationEventRegistration),
+			AsDomainEventRegistration(WorkspaceEventRegistration),
+			AsDomainEventRegistration(OrganizationAPIKeyEventRegistration),
+			AsDomainEventRegistration(ProductUserEventRegistration),
+			AsDomainEventRegistration(ProductRBACEventRegistration),
 		),
 
 		// Background workers

@@ -131,6 +131,17 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		return nil
 	}
 
+	eventType := payload.Type
+	if eventType == "" {
+		var env Envelope
+		if unmarshalErr := json.Unmarshal(payload.Body, &env); unmarshalErr == nil {
+			eventType = env.Type
+		}
+	}
+	if !target.Allows(eventType) {
+		return nil
+	}
+
 	attemptAt := d.now()
 	headers, err := Sign(target.Secret, payload.EventID, attemptAt, payload.Body)
 	if err != nil {

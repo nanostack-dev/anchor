@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -49,17 +50,23 @@ func (r *endpointRepository) FindByProductIDInternal(
 }
 
 func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) error {
+	eventsJSON, err := json.Marshal(endpoint.Events)
+	if err != nil {
+		eventsJSON = []byte("[]")
+	}
 	entity := model.ProductEventEndpointConfigs{
 		ProductID:        endpoint.ProductID,
 		PlatformTenantID: endpoint.PlatformTenantID,
 		EndpointURL:      endpoint.URL,
 		SigningSecret:    endpoint.SigningSecretEncrypted,
+		EventsJSON:       string(eventsJSON),
 	}
 	stmt := table.ProductEventEndpointConfigs.INSERT(
 		table.ProductEventEndpointConfigs.ProductID,
 		table.ProductEventEndpointConfigs.PlatformTenantID,
 		table.ProductEventEndpointConfigs.EndpointURL,
 		table.ProductEventEndpointConfigs.SigningSecret,
+		table.ProductEventEndpointConfigs.EventsJSON,
 	).MODEL(entity).
 		ON_CONFLICT(table.ProductEventEndpointConfigs.ProductID).
 		DO_UPDATE(
@@ -72,6 +79,9 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 				),
 				table.ProductEventEndpointConfigs.PlatformTenantID.SET(
 					table.ProductEventEndpointConfigs.EXCLUDED.PlatformTenantID,
+				),
+				table.ProductEventEndpointConfigs.EventsJSON.SET(
+					table.ProductEventEndpointConfigs.EXCLUDED.EventsJSON,
 				),
 			),
 		)
@@ -95,10 +105,15 @@ func (r *endpointRepository) DeleteByProductIDInternal(ctx context.Context, prod
 }
 
 func endpointFromModel(row model.ProductEventEndpointConfigs) Endpoint {
+	var eventsList []string
+	if row.EventsJSON != "" {
+		_ = json.Unmarshal([]byte(row.EventsJSON), &eventsList)
+	}
 	return Endpoint{
 		ProductID:              row.ProductID,
 		PlatformTenantID:       row.PlatformTenantID,
 		URL:                    row.EndpointURL,
 		SigningSecretEncrypted: row.SigningSecret,
+		Events:                 eventsList,
 	}
 }
