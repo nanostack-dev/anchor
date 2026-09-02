@@ -58,7 +58,7 @@ The first consumer is EchoPoint. The first event types are organization and memb
 - Wire format: Standard Webhooks (ADR-0017). Headers `webhook-id`, `webhook-timestamp`, `webhook-signature`. Body `{ "type", "timestamp", "data" }`. `type` is `resource.action`. `timestamp` is ISO-8601 UTC. `data` is identifiers only. No CloudEvents envelope. No Bearer token. `webhook-id` is a KSUID and is stable across retries of the same event.
 - Tracer event types: `organization.created`, `organization.updated`, `organization.membership.created`, `organization.membership.updated`, `organization.membership.deleted`, `organization.license.updated`. License instantiate, adjust, and migrate all use `organization.license.updated`.
 - Catalog boundary: Product SDK surface (organizations, members, workspaces, organization API keys, product users, licenses, product roles, product resource permissions). Platform invitations do not emit. Built-in Anchor product permissions (`product:settings:read` and similar) do not emit.
-- Emit path: pgkit queue `EnqueueTx` on `transactor.CurrentTx`. Not `workflow.Start` (it opens its own transaction). Proven by the events-outbox prototype:
+- Emit path: pgkit queue `EnqueueTx` on `transactor.CurrentTx`. Not `workflow.Start` (it opens its own transaction).
 
 ```
 transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -101,6 +101,6 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 
 ## Further Notes
 
-Glossary and ADR live on branch `feat/product-events`: `CONTEXT.md` Product events section; ADR-0017. Research dump: `docs/research/outbound-webhooks-2026.md` (CloudEvents recommendation in that file is superseded by ADR-0017). Prototype: `go run ./cmd/prototype/events-outbox` from the Anchor module; it shows queue rollback vs `workflow.Start` dual-transaction.
+Glossary and ADR live on branch `feat/product-events`: `CONTEXT.md` Product events section; ADR-0017. Research dump: `docs/research/outbound-webhooks-2026.md` (CloudEvents recommendation in that file is superseded by ADR-0017).
 
 Next after this spec: `/to-tickets` into tracer-bullet issues with blocking edges, then implement from the unblocked frontier, one ticket per session.
