@@ -145,14 +145,37 @@ export function ProductEventsForm({
 		});
 	};
 
+	const prevProductRef = React.useRef(product);
+	const eventsInitializedRef = React.useRef(false);
+
 	React.useEffect(() => {
-		form.reset({
-			eventsEndpointUrl: product.config.events?.endpoint_url || "",
-			events:
-				product.config.events?.events ??
-				catalogQuery.data?.items?.map((item) => item.type) ??
-				[],
-		});
+		const productChanged = prevProductRef.current !== product;
+		if (productChanged) {
+			prevProductRef.current = product;
+			eventsInitializedRef.current = false;
+			form.reset({
+				eventsEndpointUrl: product.config.events?.endpoint_url || "",
+				events:
+					product.config.events?.events ??
+					catalogQuery.data?.items?.map((item) => item.type) ??
+					[],
+			});
+			return;
+		}
+
+		if (
+			!eventsInitializedRef.current &&
+			catalogQuery.data?.items &&
+			!form.state.isDirty
+		) {
+			eventsInitializedRef.current = true;
+			form.reset({
+				eventsEndpointUrl: product.config.events?.endpoint_url || "",
+				events:
+					product.config.events?.events ??
+					catalogQuery.data.items.map((item) => item.type),
+			});
+		}
 	}, [product, catalogQuery.data?.items, form]);
 
 	const groups = React.useMemo<EventGroup[]>(() => {

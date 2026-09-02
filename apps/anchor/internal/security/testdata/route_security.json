@@ -116,8 +116,7 @@
     "platformBearerAuth": []
   },
   "GET /v1/products/{product_id}/events/catalog": {
-    "platformBearerAuth": [],
-    "productApiKeyAuth": []
+    "platformBearerAuth": []
   },
   "GET /v1/products/{product_id}/integrations": {
     "platformBearerAuth": []

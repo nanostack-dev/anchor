@@ -4306,7 +4306,6 @@ paths:
       tags: [Product]
       security:
       - platformBearerAuth: []
-      - productApiKeyAuth: []
       responses:
         "200":
           description: Available events catalog.

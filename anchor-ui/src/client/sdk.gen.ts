@@ -196,10 +196,6 @@ export const getProductEventsCatalog = <ThrowOnError extends boolean = false>(op
             {
                 scheme: 'bearer',
                 type: 'http'
-            },
-            {
-                name: 'X-Product-API-Key',
-                type: 'apiKey'
             }
         ],
         url: '/v1/products/{product_id}/events/catalog',
