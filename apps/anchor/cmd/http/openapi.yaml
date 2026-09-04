@@ -3167,7 +3167,10 @@ components:
 
     # Values are replaced wholesale rather than patched: a template is a single
     # statement of what a tier grants, and a partial edit has no unambiguous
-    # meaning for a license field the caller dropped.
+    # meaning for a license field the caller dropped. A value update is
+    # propagated onto every license instantiated from this template, except on
+    # each license's adjusted fields. See
+    # docs/adr/0017-license-follows-its-template.md.
     LicenseTemplateUpdateRequest:
       type: object
       properties:
@@ -3179,8 +3182,9 @@ components:
         values:
           $ref: '#/components/schemas/LicenseTemplateValues'
 
-    # A template carries no version and no lifecycle state. It is consulted once,
-    # at instantiation, so there is nothing to publish and nothing to archive.
+    # A template carries no version and no lifecycle state beyond archival.
+    # Its values are copied at instantiation and followed thereafter: an edit
+    # is propagated onto the licenses naming it, except on adjusted fields.
     LicenseTemplateResponse:
       type: object
       required: [id, product_id, name, status, values, created_at, updated_at]
@@ -3226,9 +3230,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/ksuid'
           description: >-
-            The license template to copy. It is read once, here. The organization
-            keeps the copy, so editing this template afterwards does not reach
-            them.
+            The license template to copy. The organization keeps its own copy
+            of the values, and the copy follows the template: a later edit to
+            this template's values is propagated onto the license, except on
+            the fields adjusted for this organization.
 
     OrganizationLicenseAdjustRequest:
       type: object
@@ -3247,12 +3252,15 @@ components:
             authored whole, a license is adjusted one field at a time. No
             license field can be removed this way, because every field the
             schema declares must stay set. The merged result is validated
-            against the schema exactly as a template write is.
+            against the schema exactly as a template write is. Every field an
+            adjustment moves is recorded in `adjusted_fields`, which pins it:
+            a later template update no longer overwrites it.
 
     OrganizationLicenseResponse:
       type: object
       description: >-
-        An organization's license: its own copy of a template's values. Every
+        An organization's license: its own copy of a template's values, kept
+        in step with that template except on its adjusted fields. Every
         license field the schema declares carries a value, so a consumer can
         read it at face value.
       required:
@@ -3262,6 +3270,7 @@ components:
       - template_id
       - instantiated_at
       - values
+      - adjusted_fields
       - created_at
       - updated_at
       properties:
@@ -3275,13 +3284,15 @@ components:
           allOf:
           - $ref: '#/components/schemas/ksuid'
           description: >-
-            Which template this organization was sold. Provenance, not a live
-            dependency: the template can be edited or deleted afterwards without
-            changing `values`, and it may no longer exist.
+            Which template this organization was sold, and the template this
+            license follows: an edit to that template's values is propagated
+            onto `values`, except on the fields in `adjusted_fields`.
         instantiated_at:
           type: string
           format: date-time
-          description: When the copy was taken. An adjustment does not move it.
+          description: >-
+            When the copy was taken. Neither an adjustment nor a propagated
+            template update moves it; only a migration restamps it.
         values:
           allOf:
           - $ref: '#/components/schemas/LicenseTemplateValues'
@@ -3289,6 +3300,18 @@ components:
             What this organization is allowed, keyed by license field name. A
             value that differs from the template is a deviation — read the diff
             route to find them.
+        adjusted_fields:
+          type: array
+          items:
+            type: string
+          description: >-
+            The license fields adjusted for this organization, ordered by
+            name. A propagated template update leaves these fields alone, so
+            a bespoke arrangement survives every later edit to the tier.
+            Empty on a fresh copy: instantiating sets it empty, adjusting adds
+            every field the adjustment moved, and migrating keeps it under
+            `CARRY_FORWARD` (dropping fields the target does not declare) and
+            clears it under `DISCARD`.
         usage:
           type: object
           additionalProperties:
@@ -3349,11 +3372,13 @@ components:
     LicenseDifferenceKind:
       type: string
       description: >-
-        Why a license field appears in a diff. `changed` means the two sides hold
-        different values — either someone adjusted this organization, or the
-        template moved after the copy was taken. The kind alone does not say
-        which. `only_in_license` and `only_in_template` always mean the template
-        changed shape after the copy.
+        Why a license field appears in a diff. `changed` means the two sides
+        hold different values — usually a field adjusted for this
+        organization, since a template edit is otherwise propagated onto the
+        license; a propagation still in flight, or one refused because the
+        merged values no longer satisfy the schema, also reads as `changed`.
+        `only_in_license` and `only_in_template` mean the template changed
+        shape and the license has not (yet) followed.
       enum: [changed, only_in_license, only_in_template]
       x-go-type: license.DifferenceKind
       x-go-type-import:
@@ -3414,7 +3439,12 @@ components:
         template it now holds, `previous_template_id` the one it came from
         (absent for a first license), and `old_value` and `new_value` carry
         the whole set of values on either side (`old_value` absent to match).
-      enum: [INSTANTIATED, ADJUSTED, SET]
+        `TEMPLATE_SYNCED` is the license following its own template after that
+        template's values were updated — an automatic propagation, not an
+        operator's migrate: `template_id` names the template followed, and
+        `old_value` and `new_value` carry the whole set of values on either
+        side. Adjusted fields keep their values through it.
+      enum: [INSTANTIATED, ADJUSTED, SET, TEMPLATE_SYNCED]
       x-go-type: license.ChangeType
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -3451,7 +3481,7 @@ components:
           - $ref: '#/components/schemas/ksuid'
           description: >-
             The template stamped onto the organization. Present when `type` is
-            `INSTANTIATED` or `SET`, absent otherwise.
+            `INSTANTIATED`, `SET` or `TEMPLATE_SYNCED`, absent otherwise.
         previous_template_id:
           allOf:
           - $ref: '#/components/schemas/ksuid'
@@ -3468,15 +3498,16 @@ components:
         old_value:
           description: >-
             The value held before the change: that license field's value for
-            an adjustment, and the whole set held before the move for a `SET`
-            entry that moved an existing license. Absent when `type` is
-            `INSTANTIATED`, when an adjustment set a license field the license
-            did not carry, and when a `SET` entry granted a first license.
+            an adjustment, and the whole set held before for a
+            `TEMPLATE_SYNCED` entry or a `SET` entry that moved an existing
+            license. Absent when `type` is `INSTANTIATED`, when an adjustment
+            set a license field the license did not carry, and when a `SET`
+            entry granted a first license.
         new_value:
           description: >-
             The value held after the change: that license field's value for an
-            adjustment, and the whole set of copied values for an
-            instantiation or a `SET` entry.
+            adjustment, and the whole set of values for an instantiation, a
+            `SET` entry, or a `TEMPLATE_SYNCED` entry.
         changed_at:
           type: string
           format: date-time

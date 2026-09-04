@@ -9,11 +9,9 @@ import (
 // Template is a named set of values satisfying a Product's [Schema]: "Free" and
 // "Pro" as reusable objects rather than values retyped for every customer.
 //
-// A template is mutable and unversioned. There is no draft or published state
-// and no version number, because a template is consulted once — at
-// instantiation, when its values are copied onto an Organization's license. An
-// email template resolves at send time and is therefore a live dependency; this
-// one is a stamp. See docs/adr/0004-license-schema-template-and-copy.md.
+// A template is mutable and unversioned. Its values are copied at
+// instantiation and followed thereafter, except on adjusted fields
+// (docs/adr/0017-license-follows-its-template.md).
 //
 // It does carry one lifecycle step, [TemplateStatus]: withdrawing a tier
 // archives it and never deletes the row, because a license names the template

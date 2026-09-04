@@ -31,6 +31,9 @@ const (
 	// OldValue and NewValue carry the whole set of values on either side
 	// (OldValue absent to match).
 	ChangeSet ChangeType = "SET"
+	// ChangeTemplateSynced is the license following its own template after a
+	// value update — automatic, not an operator's migrate.
+	ChangeTemplateSynced ChangeType = "TEMPLATE_SYNCED"
 )
 
 // OrganizationLicenseChange is one entry in an Organization's license history.
@@ -110,6 +113,24 @@ func NewAdjustmentChanges(
 		changes = append(changes, change)
 	}
 	return changes
+}
+
+func NewTemplateSyncChange(
+	synced OrganizationLicense, previousValues TemplateValues, changedAt time.Time,
+) OrganizationLicenseChange {
+	change := OrganizationLicenseChange{
+		PlatformTenantID: synced.PlatformTenantID,
+		ProductID:        synced.ProductID,
+		OrganizationID:   synced.OrganizationID,
+		LicenseID:        synced.ID,
+		Type:             ChangeTemplateSynced,
+		TemplateID:       new(synced.TemplateID),
+		OldValue:         map[string]any(previousValues),
+		NewValue:         map[string]any(synced.Values),
+		ChangedAt:        changedAt,
+	}
+	change.GenerateID()
+	return change
 }
 
 // GenerateID sets the entry's ID to a new prefixed KSUID.

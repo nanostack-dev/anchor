@@ -150,6 +150,14 @@ type OrganizationLicenseRepository interface {
 	ListOrganizationIDsForTemplate(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) ([]string, error)
+	ListOrganizationIDsForTemplateAfter(
+		ctx context.Context,
+		tenantID string,
+		productID string,
+		templateID string,
+		afterOrganizationID string,
+		limit int,
+	) ([]string, error)
 	// Search reads a page of the Product's customer book: each Organization and
 	// the license it holds. An Organization holding none is a result with a nil
 	// license, not an absent row.

@@ -317,6 +317,10 @@ func (s *organizationLicenseService) AdjustValues(
 			return nil
 		}
 
+		existing.RecordAdjustedFields(functional.Slice(changes).Map(
+			func(c license.OrganizationLicenseChange) string { return *c.Field },
+		))
+
 		var updateErr error
 		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)
 		if updateErr != nil {

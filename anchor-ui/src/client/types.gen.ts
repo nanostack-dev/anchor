@@ -2002,7 +2002,7 @@ export type LicenseTemplateListResponse = {
 
 export type OrganizationLicenseInstantiateRequest = {
     /**
-     * The license template to copy. It is read once, here. The organization keeps the copy, so editing this template afterwards does not reach them.
+     * The license template to copy. The organization keeps its own copy of the values, and the copy follows the template: a later edit to this template's values is propagated onto the license, except on the fields adjusted for this organization.
      */
     template_id: Ksuid;
 };
@@ -2012,30 +2012,34 @@ export type OrganizationLicenseInstantiateRequest = {
  */
 export type OrganizationLicenseAdjustRequest = {
     /**
-     * Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
+     * Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is. Every field an adjustment moves is recorded in `adjusted_fields`, which pins it: a later template update no longer overwrites it.
      */
     values: LicenseTemplateValues;
 };
 
 /**
- * An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+ * An organization's license: its own copy of a template's values, kept in step with that template except on its adjusted fields. Every license field the schema declares carries a value, so a consumer can read it at face value.
  */
 export type OrganizationLicenseResponse = {
     id: Ksuid;
     product_id: Ksuid;
     organization_id: Ksuid;
     /**
-     * Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
+     * Which template this organization was sold, and the template this license follows: an edit to that template's values is propagated onto `values`, except on the fields in `adjusted_fields`.
      */
     template_id: Ksuid;
     /**
-     * When the copy was taken. An adjustment does not move it.
+     * When the copy was taken. Neither an adjustment nor a propagated template update moves it; only a migration restamps it.
      */
     instantiated_at: string;
     /**
      * What this organization is allowed, keyed by license field name. A value that differs from the template is a deviation — read the diff route to find them.
      */
     values: LicenseTemplateValues;
+    /**
+     * The license fields adjusted for this organization, ordered by name. A propagated template update leaves these fields alone, so a bespoke arrangement survives every later edit to the tier. Empty on a fresh copy: instantiating sets it empty, adjusting adds every field the adjustment moved, and migrating keeps it under `CARRY_FORWARD` (dropping fields the target does not declare) and clears it under `DISCARD`.
+     */
+    adjusted_fields: Array<string>;
     /**
      * One entry per limit field the product's license schema declares, keyed by license field name — every declared field that is not a limit never appears here. Present on the license read, where it is computed fresh on every call; absent from the response to instantiating or adjusting a license, which does not compute it.
      */
@@ -2076,7 +2080,7 @@ export type LicenseFieldUsageResponse = {
 };
 
 /**
- * Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
+ * Why a license field appears in a diff. `changed` means the two sides hold different values — usually a field adjusted for this organization, since a template edit is otherwise propagated onto the license; a propagation still in flight, or one refused because the merged values no longer satisfy the schema, also reads as `changed`. `only_in_license` and `only_in_template` mean the template changed shape and the license has not (yet) followed.
  */
 export enum LicenseDifferenceKind {
     CHANGED = 'changed',
@@ -2114,12 +2118,13 @@ export type OrganizationLicenseDiffResponse = {
 };
 
 /**
- * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
+ * What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match). `TEMPLATE_SYNCED` is the license following its own template after that template's values were updated — an automatic propagation, not an operator's migrate: `template_id` names the template followed, and `old_value` and `new_value` carry the whole set of values on either side. Adjusted fields keep their values through it.
  */
 export enum LicenseChangeType {
     INSTANTIATED = 'INSTANTIATED',
     ADJUSTED = 'ADJUSTED',
-    SET = 'SET'
+    SET = 'SET',
+    TEMPLATE_SYNCED = 'TEMPLATE_SYNCED'
 }
 
 /**
@@ -2135,7 +2140,7 @@ export type OrganizationLicenseChangeResponse = {
     license_id: Ksuid;
     type: LicenseChangeType;
     /**
-     * The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `SET`, absent otherwise.
+     * The template stamped onto the organization. Present when `type` is `INSTANTIATED`, `SET` or `TEMPLATE_SYNCED`, absent otherwise.
      */
     template_id?: Ksuid;
     /**
@@ -2147,11 +2152,11 @@ export type OrganizationLicenseChangeResponse = {
      */
     field?: string;
     /**
-     * The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
+     * The value held before the change: that license field's value for an adjustment, and the whole set held before for a `TEMPLATE_SYNCED` entry or a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
      */
     old_value?: unknown;
     /**
-     * The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a `SET` entry.
+     * The value held after the change: that license field's value for an adjustment, and the whole set of values for an instantiation, a `SET` entry, or a `TEMPLATE_SYNCED` entry.
      */
     new_value?: unknown;
     /**

@@ -23,6 +23,10 @@ func (m *OrganizationLicenseMapper) ToDomain(
 		// readable; the next write re-validates.
 		_ = json.Unmarshal([]byte(entity.ValuesJSON), &values)
 	}
+	var adjustedFields []string
+	if entity.AdjustedFields != "" {
+		_ = json.Unmarshal([]byte(entity.AdjustedFields), &adjustedFields)
+	}
 	return license.OrganizationLicense{
 		ID:               entity.ID,
 		PlatformTenantID: entity.PlatformTenantID,
@@ -31,6 +35,7 @@ func (m *OrganizationLicenseMapper) ToDomain(
 		TemplateID:       entity.TemplateID,
 		InstantiatedAt:   entity.InstantiatedAt,
 		Values:           values,
+		AdjustedFields:   adjustedFields,
 		CreatedAt:        entity.CreatedAt,
 		UpdatedAt:        entity.UpdatedAt,
 	}
@@ -70,6 +75,12 @@ func (m *OrganizationLicenseMapper) ToEntity(
 			valuesJSON = string(b)
 		}
 	}
+	adjustedFields := "[]"
+	if domain.AdjustedFields != nil {
+		if b, err := json.Marshal(domain.AdjustedFields); err == nil {
+			adjustedFields = string(b)
+		}
+	}
 	return model.OrganizationLicenses{
 		ID:               domain.ID,
 		PlatformTenantID: domain.PlatformTenantID,
@@ -78,6 +89,7 @@ func (m *OrganizationLicenseMapper) ToEntity(
 		TemplateID:       domain.TemplateID,
 		InstantiatedAt:   domain.InstantiatedAt,
 		ValuesJSON:       valuesJSON,
+		AdjustedFields:   adjustedFields,
 		CreatedAt:        domain.CreatedAt,
 		UpdatedAt:        domain.UpdatedAt,
 	}

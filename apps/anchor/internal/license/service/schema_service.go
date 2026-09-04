@@ -136,23 +136,29 @@ type LicenseSchemaService interface {
 }
 
 type licenseSchemaService struct {
-	transactor transactor.Transactor
-	schemaRepo licenserepo.SchemaRepository
-	fieldRepo  licenserepo.SchemaFieldRepository
-	logger     zerolog.Logger
+	transactor   transactor.Transactor
+	schemaRepo   licenserepo.SchemaRepository
+	fieldRepo    licenserepo.SchemaFieldRepository
+	templateRepo licenserepo.TemplateRepository
+	sync         LicenseTemplateSyncEnqueuer
+	logger       zerolog.Logger
 }
 
 func NewLicenseSchemaService(
 	tx transactor.Transactor,
 	schemaRepo licenserepo.SchemaRepository,
 	fieldRepo licenserepo.SchemaFieldRepository,
+	templateRepo licenserepo.TemplateRepository,
+	sync LicenseTemplateSyncEnqueuer,
 	logger zerolog.Logger,
 ) LicenseSchemaService {
 	return &licenseSchemaService{
-		transactor: tx,
-		schemaRepo: schemaRepo,
-		fieldRepo:  fieldRepo,
-		logger:     logger.With().Str("component", "license_schema_service").Logger(),
+		transactor:   tx,
+		schemaRepo:   schemaRepo,
+		fieldRepo:    fieldRepo,
+		templateRepo: templateRepo,
+		sync:         sync,
+		logger:       logger.With().Str("component", "license_schema_service").Logger(),
 	}
 }
 
@@ -343,17 +349,67 @@ func (s *licenseSchemaService) UpdateSchema(
 			updated.Fields = current
 			return nil
 		}
+		previous, listErr := s.fieldRepo.ListBySchema(txCtx, updated.ID)
+		if listErr != nil {
+			return listErr
+		}
 		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, updated.ID, fields)
 		if writeErr != nil {
 			return writeErr
 		}
 		updated.Fields = written
-		return nil
+		return s.cascadeRemovedFields(txCtx, in.TenantID, in.ProductID, previous, written)
 	}); txErr != nil {
 		return license.Schema{}, txErr
 	}
 
 	return updated, nil
+}
+
+func (s *licenseSchemaService) cascadeRemovedFields(
+	ctx context.Context,
+	tenantID string,
+	productID string,
+	previousFields []license.Field,
+	currentFields []license.Field,
+) error {
+	declared := make(map[string]struct{}, len(currentFields))
+	for _, field := range currentFields {
+		declared[field.Name] = struct{}{}
+	}
+	var removed []string
+	for _, field := range previousFields {
+		if _, kept := declared[field.Name]; !kept {
+			removed = append(removed, field.Name)
+		}
+	}
+	if len(removed) == 0 {
+		return nil
+	}
+
+	templates, err := s.templateRepo.ListByProduct(ctx, tenantID, productID, nil)
+	if err != nil {
+		return err
+	}
+	for _, template := range templates {
+		pruned := false
+		for _, name := range removed {
+			if _, held := template.Values[name]; held {
+				delete(template.Values, name)
+				pruned = true
+			}
+		}
+		if !pruned {
+			continue
+		}
+		if _, err = s.templateRepo.Update(ctx, tenantID, template); err != nil {
+			return err
+		}
+		if err = s.sync.EnqueueTemplateSync(ctx, tenantID, productID, template.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *licenseSchemaService) DeleteSchema(
