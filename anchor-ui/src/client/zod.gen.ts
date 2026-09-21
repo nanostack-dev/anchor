@@ -1421,7 +1421,7 @@ export const zOrganizationLicenseChangeResponse = z.object({
 });
 
 /**
- * What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and the value is gone.
+ * What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and clears all recorded adjustments, including fields already equal to the template.
  * A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
  */
 export const zLicenseMigrationDifferencePolicy = z.enum([
@@ -1430,7 +1430,7 @@ export const zLicenseMigrationDifferencePolicy = z.enum([
 ]);
 
 /**
- * What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+ * What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. Clearing recorded adjustments also counts as `CHANGED` even when no value moves. `UNCHANGED` means it already held exactly those values and adjustment records from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
  */
 export const zLicenseMigrationOutcome = z.enum([
     'CHANGED',

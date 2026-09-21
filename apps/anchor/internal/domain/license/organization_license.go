@@ -2,9 +2,9 @@ package license
 
 import (
 	"maps"
-	"slices"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
@@ -48,18 +48,7 @@ func (l *OrganizationLicense) AdjustedValues(in TemplateValues) TemplateValues {
 }
 
 func (l *OrganizationLicense) RecordAdjustedFields(fieldNames []string) {
-	l.AdjustedFields = unionSorted(l.AdjustedFields, fieldNames)
-}
-
-func unionSorted(a, b []string) []string {
-	set := make(map[string]struct{}, len(a)+len(b))
-	for _, name := range a {
-		set[name] = struct{}{}
-	}
-	for _, name := range b {
-		set[name] = struct{}{}
-	}
-	return slices.Sorted(maps.Keys(set))
+	l.AdjustedFields = functional.Sorted(functional.Distinct(functional.Slice(l.AdjustedFields).Concat(fieldNames)))
 }
 
 func (l *OrganizationLicense) SyncedValues(template TemplateValues) TemplateValues {

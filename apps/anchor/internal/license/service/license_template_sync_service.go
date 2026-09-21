@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
 
@@ -25,9 +30,9 @@ const (
 )
 
 type licenseTemplateSyncPayload struct {
-	TenantID            string `json:"tenant_id"`
-	ProductID           string `json:"product_id"`
-	TemplateID          string `json:"template_id"`
+	TenantID            string `json:"tenant_id"                       validate:"required,notblank"`
+	ProductID           string `json:"product_id"                      validate:"required,notblank"`
+	TemplateID          string `json:"template_id"                     validate:"required,notblank"`
 	AfterOrganizationID string `json:"after_organization_id,omitempty"`
 }
 
@@ -120,10 +125,8 @@ func (s *licenseTemplateSyncService) ProcessQueueJob(
 	if err := json.Unmarshal(job.Payload, &payload); err != nil {
 		return queue.NonRetryable(fmt.Errorf("invalid license template sync payload: %w", err))
 	}
-	if payload.TenantID == "" || payload.ProductID == "" || payload.TemplateID == "" {
-		return queue.NonRetryable(errors.New(
-			"license template sync payload missing tenant_id, product_id or template_id",
-		))
+	if err := validate.ValidateStruct(payload); err != nil {
+		return queue.NonRetryable(err)
 	}
 
 	found, err := s.templateRepo.FindByID(
@@ -223,14 +226,26 @@ func (s *licenseTemplateSyncService) syncOne(
 		template := foundTemplate.Value()
 
 		previous := existing.Values
+		previousAdjustments := existing.AdjustedFields
+		existing.AdjustedFields = functional.Slice(existing.AdjustedFields).Filter(func(name string) bool {
+			_, declared := template.Values[name]
+			_, held := previous[name]
+			return declared && held
+		})
 		existing.Values = existing.SyncedValues(template.Values)
-		if len(license.DiffValues(previous, existing.Values)) == 0 {
+		if len(license.DiffValues(previous, existing.Values)) == 0 &&
+			slices.Equal(previousAdjustments, existing.AdjustedFields) {
 			return nil
 		}
 
 		if validateErr := s.schemas.ValidateValues(
 			txCtx, payload.TenantID, payload.ProductID, existing.Values,
 		); validateErr != nil {
+			validationFault, isFault := fault.As(validateErr)
+			if (!isFault || validationFault.HTTPStatus() != http.StatusBadRequest) &&
+				!errors.Is(validateErr, ErrLicenseSchemaNotDeclared) {
+				return validateErr
+			}
 			outcome = syncOutcomeRefused
 			s.logger.Warn().
 				Str("product_id", payload.ProductID).

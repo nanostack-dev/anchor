@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
@@ -345,7 +346,8 @@ func (s *licenseMigrationService) decide(
 	result.PreviousTemplateID = new(existing.TemplateID)
 	result.Changes = license.DiffValues(existing.Values, migrated.Values)
 
-	if existing.TemplateID == run.target.ID && len(result.Changes) == 0 {
+	if existing.TemplateID == run.target.ID && len(result.Changes) == 0 &&
+		slices.Equal(existing.AdjustedFields, migrated.AdjustedFields) {
 		result.Outcome = license.OutcomeUnchanged
 		return result, license.OrganizationLicense{}, nil
 	}

@@ -184,6 +184,7 @@ func TestTemplateSyncContinuesPastOnePage(t *testing.T) {
 func TestSchemaChangeCascadesToLicenses(t *testing.T) {
 	t.Run("a removed field cascades through the template onto the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
+		w.License().Adjust(ct.LicenseTemplateValues{"region": "us-east"})
 
 		fields := templateSchemaFields()
 		var kept []ct.LicenseFieldDeclaration
@@ -198,9 +199,18 @@ func TestSchemaChangeCascadesToLicenses(t *testing.T) {
 		_, held := templateValues["region"]
 		assert.False(t, held, "the template still carries the removed field")
 
-		waitForLicenseValues(t, w.License(), ct.LicenseTemplateValues{
+		synced := waitForLicenseValues(t, w.License(), ct.LicenseTemplateValues{
 			"flows": 500, "sso": true, "support_tier": "priority",
 		})
+		assert.Empty(t, synced.AdjustedFields)
+
+		w.RedeclareSchema(fields)
+		w.Template().ReplaceValues(validTemplateValues())
+		waitForLicenseValues(t, w.License(), validTemplateValues())
+		updated := validTemplateValues()
+		updated["region"] = "eu-west"
+		w.Template().ReplaceValues(updated)
+		waitForLicenseValues(t, w.License(), updated)
 	})
 
 	t.Run("a redeclaration that removes nothing cascades nothing", func(t *testing.T) {
@@ -248,6 +258,8 @@ func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
 	t.Run("discard clears the adjusted record, so the license follows again", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
+		w.License().Adjust(ct.LicenseTemplateValues{"flows": 500})
+		require.Equal(t, []string{"flows"}, w.License().Get().AdjustedFields)
 
 		migration := w.Migration().Run(ct.OrganizationLicenseMigrationRequest{
 			TemplateId:      w.TemplateID(),
@@ -256,6 +268,12 @@ func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
 		})
 		require.Equal(t, 1, migration.Changed)
 		assert.Empty(t, w.License().Get().AdjustedFields)
+		repeated := w.Migration().Run(ct.OrganizationLicenseMigrationRequest{
+			TemplateId:      w.TemplateID(),
+			OrganizationIds: &[]string{w.OrganizationID()},
+			OnDifference:    new(ct.DISCARD),
+		})
+		assert.Equal(t, 1, repeated.Unchanged)
 
 		updated := ct.LicenseTemplateValues{
 			"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",

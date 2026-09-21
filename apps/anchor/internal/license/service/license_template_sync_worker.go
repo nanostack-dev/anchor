@@ -31,11 +31,7 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 	logger := p.Logger.With().Str("component", "license_template_sync_worker").Logger()
 
 	registry := queue.NewHandlerRegistry()
-	if err := registry.Register(
-		licenseTemplateSyncQueueName, func(ctx context.Context, job queue.Job) error {
-			return p.Sync.ProcessQueueJob(ctx, job)
-		},
-	); err != nil {
+	if err := registry.Register(licenseTemplateSyncQueueName, p.Sync.ProcessQueueJob); err != nil {
 		logger.Error().Err(err).Msg("failed to register license template sync queue handler")
 		return
 	}
@@ -75,10 +71,11 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 	p.Lifecycle.Append(
 		fx.Hook{
 			OnStart: func(_ context.Context) error {
-				workerCtx, workerCancel := newLicenseTemplateSyncWorkerContext()
+				workerCtx, workerCancel := context.WithCancel(context.Background())
 				cancel = workerCancel
 
 				go func() {
+					defer workerCancel()
 					if runErr := worker.Run(workerCtx); runErr != nil {
 						logger.Error().Err(runErr).Msg("license template sync worker stopped with error")
 					}
@@ -99,8 +96,4 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 			},
 		},
 	)
-}
-
-func newLicenseTemplateSyncWorkerContext() (context.Context, context.CancelFunc) {
-	return context.WithCancel(context.Background())
 }
