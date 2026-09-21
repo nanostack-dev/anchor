@@ -93,7 +93,8 @@ export const OneFieldMoved: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await expect(canvas.getByText("Adjusted")).toBeVisible();
+		await expect(canvas.queryByText("Adjusted")).not.toBeInTheDocument();
+		await expect(canvas.getByText("1 field customized")).toBeVisible();
 		await expect(canvas.getAllByText("flows").length).toBeGreaterThan(0);
 		await expect(canvas.getByText("800")).toBeVisible();
 	},
@@ -134,7 +135,8 @@ export const SeveralFieldsOneMoment: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await expect(canvas.getAllByText("Adjusted")).toHaveLength(1);
+		await expect(canvas.queryByText("Adjusted")).not.toBeInTheDocument();
+		await expect(canvas.getByText("2 fields customized")).toBeVisible();
 		await expect(canvas.getAllByText("flows").length).toBeGreaterThan(0);
 		await expect(canvas.getAllByText("sso").length).toBeGreaterThan(0);
 		await expect(canvas.getByText("No")).toBeVisible();

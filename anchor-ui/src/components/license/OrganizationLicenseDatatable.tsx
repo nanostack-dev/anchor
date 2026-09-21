@@ -29,7 +29,12 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { ArrowRightLeft, Eye, ScrollText } from "lucide-react";
+import {
+	ArrowRightLeft,
+	Eye,
+	ScrollText,
+	SlidersHorizontal,
+} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LicenseMigrationDialog } from "./LicenseMigrationDialog";
@@ -233,10 +238,25 @@ export function OrganizationLicenseDatatable({
 			}),
 			columnHelper.display({
 				id: "differs",
-				header: () => <span>Matches tier</span>,
+				header: () => <span>Template values</span>,
 				cell: ({ row }) => {
 					if (!row.original.license)
 						return <span className="text-muted-foreground">—</span>;
+					const customCount = row.original.license.adjusted_fields?.length ?? 0;
+					if (customCount > 0) {
+						const label = `${customCount} custom ${customCount === 1 ? "field" : "fields"}`;
+						return (
+							<Link
+								to={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL}
+								params={{ organizationId: row.original.organization_id }}
+								aria-label={`${row.original.organization_name}: ${label}. Open license details`}
+								className="inline-flex min-h-8 items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							>
+								<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
+								<span>{label}</span>
+							</Link>
+						);
+					}
 					const template = templatesById.get(row.original.license.template_id);
 					const differs = differsFromItsTemplate(
 						row.original,
@@ -246,7 +266,9 @@ export function OrganizationLicenseDatatable({
 						return <span className="text-muted-foreground">—</span>;
 					}
 					return differs ? (
-						<StatusBadge tone="info">Adjusted</StatusBadge>
+						<span className="text-sm text-muted-foreground">
+							Differs from template
+						</span>
 					) : (
 						<span className="text-sm text-muted-foreground">Matches</span>
 					);
