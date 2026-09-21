@@ -54,6 +54,7 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `workspaces.go` | done — create, get, update, delete, search, list |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
 | `users.go` | done — create, get, delete, search, list, a user's organizations |
+| `events.go` | done — Standard Webhooks ingest, typed handlers, `Events(secret)` |
 | `license.go` | partial — read (cached, fail-open), instantiate, adjust, diff, report usage, `LimitUsage` decision value; usage series not wrapped |
 | `README.md` | done — consumer-facing quickstart |
 | `anchorsdk_test.go` | done — table-driven against an `httptest.Server` |

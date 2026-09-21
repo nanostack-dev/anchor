@@ -19,18 +19,21 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
+	licenseservice "anchor/internal/license/service"
 )
 
 // testDB backs the assertions no API response can show, such as the usage table
 // being a hypertable.
 var testDB *sql.DB
 
+var adjustmentBackfill *licenseservice.LicenseAdjustmentBackfill
+
 func TestMain(m *testing.M) {
 	if err := os.Chdir(".."); err != nil {
 		panic(err)
 	}
 	itshared.RunTestMain(m, itshared.TestConfig{
-		ExtraPopulateTargets:    []any{&testDB},
+		ExtraPopulateTargets:    []any{&testDB, &adjustmentBackfill},
 		EnableRedis:             true,
 		PopulateRepositories:    true,
 		APIKeyService:           &itshared.APIKeyService,

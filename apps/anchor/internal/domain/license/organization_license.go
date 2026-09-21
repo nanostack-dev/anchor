@@ -10,7 +10,7 @@ import (
 
 // OrganizationLicense is one Organization's own copy of a [Template]'s values.
 // An Organization has at most one. The copy follows its template except on
-// AdjustedFields (docs/adr/0017-license-follows-its-template.md).
+// AdjustedFields (docs/adr/0018-license-follows-its-template.md).
 type OrganizationLicense struct {
 	ID               string
 	PlatformTenantID string

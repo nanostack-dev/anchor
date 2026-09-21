@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -32,6 +33,40 @@ func TestProductCreate(t *testing.T) {
 			)
 			require.NotNil(t, response.JSON201)
 			assert.Equal(t, "anchor", response.JSON201.Config.OrganizationApiKeys.Prefix)
+		},
+	)
+
+	t.Run(
+		"CreateProductWithEventsConfigGeneratesSigningSecret", func(t *testing.T) {
+			receiver := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(http.StatusOK)
+			}))
+			t.Cleanup(receiver.Close)
+
+			response, err := testOwnerClient(t).CreateProductWithResponse(
+				ctx,
+				ct.CreateProductJSONRequestBody{
+					Name: "Events Config Product " + ids.MustNew("prd"),
+					Config: &ct.ProductConfigRequest{
+						Events: &ct.ProductEventsConfigRequest{
+							EndpointUrl: &receiver.URL,
+						},
+					},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, response.StatusCode())
+			require.NotNil(t, response.JSON201.Config.Events)
+			assert.Equal(t, receiver.URL, response.JSON201.Config.Events.EndpointUrl)
+			require.NotNil(t, response.JSON201.Config.Events.SigningSecret)
+			assert.NotEmpty(t, *response.JSON201.Config.Events.SigningSecret)
+			assert.NotEmpty(t, response.JSON201.Config.Events.SigningSecretObfuscated)
+
+			got, getErr := testOwnerClient(t).GetProductWithResponse(ctx, response.JSON201.Id)
+			require.NoError(t, getErr)
+			require.Equal(t, http.StatusOK, got.StatusCode())
+			require.NotNil(t, got.JSON200.Config.Events)
+			assert.Nil(t, got.JSON200.Config.Events.SigningSecret)
 		},
 	)
 

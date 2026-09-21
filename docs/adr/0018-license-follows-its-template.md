@@ -1,4 +1,4 @@
-# ADR-0017: A license follows its template, except on adjusted fields
+# ADR-0018: A license follows its template, except on adjusted fields
 
 **Status:** Accepted
 
@@ -16,7 +16,7 @@ The only propagation path was the bulk migrate route (ADR-0014) — an operation
 
 ### Adjusted fields are recorded on the license row
 
-`organization_licenses.adjusted_fields` (JSONB array of license field names, migration 000035) records which fields are bespoke, explicitly, rather than replaying history at propagation time.
+`organization_licenses.adjusted_fields` (JSONB array of license field names, migration 000036) records which fields are bespoke, explicitly, rather than replaying history at propagation time.
 
 - **Instantiate** sets it empty: a fresh copy follows its template on every field.
 - **Adjust** adds every field the adjustment actually moved — the same fields that get `ADJUSTED` history entries. A field written back at its current value moves nothing and pins nothing.
@@ -35,6 +35,7 @@ The worker pages through the organizations naming the template (100 per job exec
 - skips the write entirely when nothing changes — no update, no history entry — which is what makes a re-delivered or re-run job a no-op, matching `OutcomeUnchanged`;
 - validates the merged set via `ValidateValues`, exactly as an adjustment is validated. **A license whose merged values no longer satisfy the schema is refused whole and reported** (warn log naming the organization); it is never partially applied and its adjustment is never silently dropped. It keeps what it holds until an operator resolves it — the diff route shows the gap;
 - appends a `TEMPLATE_SYNCED` history entry (new `LicenseChangeType`) carrying the whole set on both sides, so a reader can tell an automatic follow from an operator's `SET`;
+- enqueues `organization.license.updated` in that same transaction, so downstream consumers invalidate their cached entitlement; a failed enqueue rolls back both the license and its history, and a no-op emits nothing;
 - evicts that organization's license cache entry after the write commits.
 
 Status and usage need nothing: ADR-0012 derives them on read, so a propagated limit recomputes on the next read for free.
@@ -55,4 +56,10 @@ A schema update that **removes** a field prunes that key from every template of 
 
 **Cost.** Propagation is eventually consistent. A read between the template write and the worker's pass returns the old values; the component tests poll for convergence, and consumers must not assume a template edit is visible synchronously.
 
-**Cost.** `ADJUSTED` history entries written before migration 000035 did not populate `adjusted_fields`; a license adjusted before this ships follows its template on those fields unless re-adjusted. The one known production deviation of this kind was audited (the echopoint organization holds no bespoke values), so no backfill is run.
+### First-deployment backfill
+
+Migration 000036 marks existing rows with JSON `null`; new rows default to `[]`. A Go startup hook, after migrations and before the HTTP server and template-sync worker, initializes legacy rows in bounded batches and per-license transactions. It preserves held values that differ from the current template, plus fields explicitly adjusted since the current copy was instantiated or migrated, even if those values happen to equal the template today. Missing fields are not pinned. No entitlement value changes, history entries, or external events occur during this metadata backfill. Completed rows are skipped on restart and under concurrent replica startup.
+
+**Rollout requirement:** drain old-version writers before the first new replica starts. Old replicas do not maintain adjustment provenance and must not write after the backfill. A startup timeout or failure leaves the replica unavailable, not partially serving with uninitialized provenance; restarting resumes completed work. A preview database that already applied this PR's former migration 000035 must be recreated, not pointed at the renumbered migration chain.
+
+**Cost.** Legacy history cannot always distinguish stale template values from bespoke deals. The backfill conservatively pins existing differences rather than risking an entitlement overwrite. Review such differences and use an explicit `DISCARD` migration to release them. Missing-field drift still repairs on a template restatement.

@@ -54,6 +54,32 @@ func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, getAfterDeleteResp.StatusCode())
 }
 
+func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
+	ctx := context.Background()
+	productContext := createTestProductContext(t)
+	sink := productContext.CaptureEvents()
+	createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
+		ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
+			Name: "events:delete",
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, createResp.StatusCode())
+	permissionName := createResp.JSON201.Name
+	sink.WaitFor("product.resource_permission.created", map[string]string{
+		"permission_name": permissionName,
+	})
+
+	deleteResp, err := productContext.OwnerAuthenticatedClient().DeleteProductResourcePermissionWithResponse(
+		ctx, productContext.ProductID, permissionName,
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
+	sink.WaitFor("product.resource_permission.deleted", map[string]string{
+		"permission_name": permissionName,
+	})
+}
+
 func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
 	ctx := context.Background()
 

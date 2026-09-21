@@ -13,10 +13,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/events"
 	licenserepo "anchor/internal/license/repository"
 )
 
-// See docs/adr/0017-license-follows-its-template.md.
+// See docs/adr/0018-license-follows-its-template.md.
 const (
 	licenseTemplateSyncQueueName   = "license_template_sync"
 	licenseTemplateSyncBatchSize   = 100
@@ -84,6 +85,7 @@ type licenseTemplateSyncService struct {
 	transactor   transactor.Transactor
 	queue        *queue.Client
 	licenses     *organizationLicenseCache
+	events       events.Emitter
 	logger       zerolog.Logger
 }
 
@@ -95,6 +97,7 @@ func NewLicenseTemplateSyncService(
 	tx transactor.Transactor,
 	queueClient *queue.Client,
 	cacheStore cache.Store,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) LicenseTemplateSyncService {
 	return &licenseTemplateSyncService{
@@ -105,6 +108,7 @@ func NewLicenseTemplateSyncService(
 		transactor:   tx,
 		queue:        queueClient,
 		licenses:     newOrganizationLicenseCache(cacheStore, logger),
+		events:       eventEmitter,
 		logger:       logger.With().Str("component", "license_template_sync_service").Logger(),
 	}
 }
@@ -242,9 +246,12 @@ func (s *licenseTemplateSyncService) syncOne(
 			return updateErr
 		}
 		outcome = syncOutcomeSynced
-		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
+		if appendErr := s.changes.Append(txCtx, []license.OrganizationLicenseChange{
 			license.NewTemplateSyncChange(updated, previous, changedAt),
-		})
+		}); appendErr != nil {
+			return appendErr
+		}
+		return emitLicenseUpdated(txCtx, s.events, payload.ProductID, organizationID)
 	}); txErr != nil {
 		return outcome, txErr
 	}

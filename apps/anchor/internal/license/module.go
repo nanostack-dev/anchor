@@ -28,12 +28,13 @@ func NewModule() fx.Option {
 			service.NewLicenseTemplateService,
 			service.NewLicenseTemplateSyncEnqueuer,
 			service.NewLicenseTemplateSyncService,
+			service.NewLicenseAdjustmentBackfill,
 			service.NewOrganizationLicenseService,
 			service.NewLicenseHistoryService,
 			service.NewLicenseMigrationService,
 			service.NewUsageService,
 			service.NewUsageSeriesService,
 		),
-		fx.Invoke(service.RegisterLicenseTemplateSyncWorker),
+		fx.Invoke(service.RegisterLicenseAdjustmentBackfill, service.RegisterLicenseTemplateSyncWorker),
 	)
 }

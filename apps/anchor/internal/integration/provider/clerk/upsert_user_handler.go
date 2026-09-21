@@ -7,15 +7,12 @@ import (
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 
 	"github.com/rs/zerolog"
 )
 
-// executeUpsertUser handles CommandUpsertUser commands by upserting a product
-// user via the product user repository. It only logs and emits an audit event
-// when the user is newly created; updates to existing users are intentionally
-// silent to avoid log/audit noise on every Clerk sync event.
 func (p *Provider) executeUpsertUser(
 	ctx context.Context,
 	logger zerolog.Logger,
@@ -38,7 +35,35 @@ func (p *Provider) executeUpsertUser(
 	}
 	productUser.GenerateID()
 
-	upserted, created, upsertErr := p.productUserRepo.UpsertByExternalID(ctx, productUser)
+	var upserted user.ProductUser
+	var created bool
+	var unchanged bool
+	upsertErr := p.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := p.productUserRepo.FindByExternalID(
+			txCtx, instance.ProductID, upsertData.ExternalID,
+		)
+		if findErr != nil {
+			return findErr
+		}
+		if existing.IsPresent() && !clerkUpsertWouldChange(existing.Value(), upsertData) {
+			unchanged = true
+			return nil
+		}
+		var err error
+		upserted, created, err = p.productUserRepo.UpsertByExternalID(txCtx, productUser)
+		if err != nil {
+			return err
+		}
+		eventType := events.ProductUserCreated
+		if !created {
+			eventType = events.ProductUserUpdated
+		}
+		return p.events.Emit(txCtx, events.Event{
+			Type:      eventType,
+			ProductID: instance.ProductID,
+			Data:      events.Data{events.FieldProductUserID: upserted.ID},
+		})
+	})
 	if upsertErr != nil {
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
@@ -55,6 +80,14 @@ func (p *Provider) executeUpsertUser(
 			Str("product_id", instance.ProductID).
 			Msg("failed to upsert product user")
 		return fmt.Errorf("failed to upsert product user: %w", upsertErr)
+	}
+
+	if unchanged {
+		logger.Debug().
+			Str(clerkExternalIDKey, upsertData.ExternalID).
+			Str("product_id", instance.ProductID).
+			Msg("product user unchanged, skipping event")
+		return nil
 	}
 
 	if created {
@@ -83,4 +116,10 @@ func (p *Provider) executeUpsertUser(
 	}
 
 	return nil
+}
+
+func clerkUpsertWouldChange(existing user.ProductUser, data UpsertUserData) bool {
+	return existing.Email != data.Email ||
+		existing.Name != data.Name ||
+		existing.Status != user.ProductUserStatusActive
 }

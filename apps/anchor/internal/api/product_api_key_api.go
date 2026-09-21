@@ -173,8 +173,8 @@ func mapToSearchProductAPIKeyInput(
 			return result
 		}).
 		ToPtr()
-	var req search.Request[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey]
-	return req.WithFilter(filter).
+	return search.NewRequest[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

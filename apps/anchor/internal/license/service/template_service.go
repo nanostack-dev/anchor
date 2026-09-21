@@ -72,7 +72,7 @@ func errLicenseTemplateNameExists(name string) *fault.Error {
 // that a write is refused unless the schema accepts its values.
 //
 // Templates carry no version and no publish step. Their values are copied at
-// instantiation and followed thereafter (ADR-0017).
+// instantiation and followed thereafter (ADR-0018).
 // The one lifecycle step every template can reach is withdrawal: archiving,
 // which never deletes the row, so the licenses that name it keep resolving.
 // See docs/adr/0010-license-templates-are-archived.md. A template no

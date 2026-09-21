@@ -88,4 +88,13 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 		assert.Equal(t, first.TemplateId, second.TemplateId)
 		assertValues(t, second.Values, first.Values)
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		sink := w.product.CaptureEvents()
+		w.License().Instantiate(w.TemplateID())
+		sink.WaitFor("organization.license.updated", map[string]string{
+			"organization_id": w.OrganizationID(),
+		})
+	})
 }

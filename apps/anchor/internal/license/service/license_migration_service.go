@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/events"
 	licenserepo "anchor/internal/license/repository"
 	intrepo "anchor/internal/repository"
 )
@@ -74,6 +75,7 @@ type licenseMigrationService struct {
 	organizations intrepo.OrganizationRepository
 	transactor    transactor.Transactor
 	licenses      *organizationLicenseCache
+	events        events.Emitter
 	logger        zerolog.Logger
 }
 
@@ -84,6 +86,7 @@ func NewLicenseMigrationService(
 	organizations intrepo.OrganizationRepository,
 	tx transactor.Transactor,
 	cacheStore cache.Store,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) LicenseMigrationService {
 	return &licenseMigrationService{
@@ -93,6 +96,7 @@ func NewLicenseMigrationService(
 		organizations: organizations,
 		transactor:    tx,
 		licenses:      newOrganizationLicenseCache(cacheStore, logger),
+		events:        eventEmitter,
 		logger:        logger.With().Str("component", "license_migration_service").Logger(),
 	}
 }
@@ -258,11 +262,14 @@ func (s *licenseMigrationService) migrateOne(
 		}
 		wrote = true
 
-		return s.changes.Append(txCtx, []license.OrganizationLicenseChange{
+		if appendErr := s.changes.Append(txCtx, []license.OrganizationLicenseChange{
 			license.NewMigrationChange(
 				written, decided.PreviousTemplateID, previousValues, run.migratedAt,
 			),
-		})
+		}); appendErr != nil {
+			return appendErr
+		}
+		return emitLicenseUpdated(txCtx, s.events, run.input.ProductID, organizationID)
 	}); txErr != nil {
 		s.logger.Warn().
 			Str("product_id", run.input.ProductID).

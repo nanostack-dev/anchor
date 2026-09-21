@@ -239,8 +239,8 @@ func mapToSearchProductOrganizationInput(
 		}).
 		ToPtr()
 
-	var req search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization]
-	return req.WithFilter(filter).
+	return search.NewRequest[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

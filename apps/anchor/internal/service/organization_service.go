@@ -16,6 +16,7 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
 
@@ -106,6 +107,7 @@ type organizationService struct {
 	licenseTemplates  licensesvc.LicenseTemplateService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
+	events            events.Emitter
 	logger            zerolog.Logger
 }
 
@@ -118,6 +120,7 @@ func NewOrganizationService(
 	licenseTemplates licensesvc.LicenseTemplateService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationService {
 	return &organizationService{
@@ -129,8 +132,19 @@ func NewOrganizationService(
 		licenseTemplates:  licenseTemplates,
 		transactor:        tx,
 		lock:              lock,
+		events:            eventEmitter,
 		logger:            logger.With().Str("component", "organization_service").Logger(),
 	}
+}
+
+func (s *organizationService) emitOrganization(
+	ctx context.Context, eventType events.Type, productID, organizationID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data:      events.Data{events.FieldOrganizationID: organizationID},
+	})
 }
 
 func (s *organizationService) resolveLicenseTemplate(
@@ -304,7 +318,7 @@ func (s *organizationService) Create(
 		}
 		created.License = instantiated
 
-		return nil
+		return s.emitOrganization(txCtx, events.OrganizationCreated, created.ProductID, created.ID)
 	}); txErr != nil {
 		return organization.Organization{}, txErr
 	}
@@ -479,7 +493,22 @@ func (s *organizationService) CreateWithMember(
 		}
 		createdOrg.License = createdLicense
 
-		return nil
+		if emitErr := s.emitOrganization(
+			lockCtx,
+			events.OrganizationCreated,
+			createdOrg.ProductID,
+			createdOrg.ID,
+		); emitErr != nil {
+			return emitErr
+		}
+		return s.events.Emit(lockCtx, events.Event{
+			Type:      events.MembershipCreated,
+			ProductID: input.ProductID,
+			Data: events.Data{
+				events.FieldOrganizationID: createdOrg.ID,
+				events.FieldProductUserID:  input.ProductUserID,
+			},
+		})
 	})
 	if err != nil {
 		return organization.OrganizationWithMemberResult{}, err
@@ -552,14 +581,21 @@ func (s *organizationService) Update(
 	org.Description = input.Description
 	org.MetadataJSON = metadataJSON
 
-	updated, err := s.organizationRepo.Update(ctx, input.ProductID, org)
-	if err != nil {
+	var updated organization.Organization
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.organizationRepo.Update(txCtx, input.ProductID, org)
+		if updateErr != nil {
+			return updateErr
+		}
+		return s.emitOrganization(txCtx, events.OrganizationUpdated, input.ProductID, updated.ID)
+	}); txErr != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(err).
+			Err(txErr).
 			Msg("failed to update organization")
-		return organization.Organization{}, err
+		return organization.Organization{}, txErr
 	}
 
 	logger.Info().
@@ -598,14 +634,18 @@ func (s *organizationService) Delete(
 		return fault.ErrNotFound
 	}
 
-	err = s.organizationRepo.DeleteByID(ctx, input.ProductID, input.OrganizationID)
-	if err != nil {
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if delErr := s.organizationRepo.DeleteByID(txCtx, input.ProductID, input.OrganizationID); delErr != nil {
+			return delErr
+		}
+		return s.emitOrganization(txCtx, events.OrganizationDeleted, input.ProductID, input.OrganizationID)
+	}); txErr != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(err).
+			Err(txErr).
 			Msg("failed to delete organization")
-		return err
+		return txErr
 	}
 
 	logger.Info().

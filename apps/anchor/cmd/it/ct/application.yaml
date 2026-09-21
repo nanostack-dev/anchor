@@ -34,7 +34,7 @@ core:
     global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
   integration:
     reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
-  environment: "${ENVIRONMENT:production}"
+  environment: "${ENVIRONMENT:test}"
 
 
 # Redis cache configuration

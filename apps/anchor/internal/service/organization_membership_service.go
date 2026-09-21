@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
@@ -57,6 +59,8 @@ type organizationMembershipService struct {
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
 	organizationRepo  repository.OrganizationRepository
+	transactor        transactor.Transactor
+	events            events.Emitter
 	logger            zerolog.Logger
 }
 
@@ -65,6 +69,8 @@ func NewOrganizationMembershipService(
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
 	organizationRepo repository.OrganizationRepository,
+	tx transactor.Transactor,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
@@ -72,8 +78,23 @@ func NewOrganizationMembershipService(
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
 		organizationRepo:  organizationRepo,
+		transactor:        tx,
+		events:            eventEmitter,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
 	}
+}
+
+func (s *organizationMembershipService) emitMembership(
+	ctx context.Context, eventType events.Type, productID, organizationID, productUserID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data: events.Data{
+			events.FieldOrganizationID: organizationID,
+			events.FieldProductUserID:  productUserID,
+		},
+	})
 }
 
 func (s *organizationMembershipService) AddMember(
@@ -110,6 +131,7 @@ func (s *organizationMembershipService) AddMember(
 	return s.applyMembership(
 		ctx,
 		input.ProductID, input.OrganizationID, input.ProductUserID, input.RoleID,
+		events.MembershipCreated,
 		"failed to create membership", "member added to organization",
 		s.orgMembershipRepo.Create,
 		logger,
@@ -142,6 +164,7 @@ func (s *organizationMembershipService) UpdateMemberRole(
 	return s.applyMembership(
 		ctx,
 		input.ProductID, input.OrganizationID, input.ProductUserID, input.RoleID,
+		events.MembershipUpdated,
 		"failed to update membership role", "member role updated",
 		s.orgMembershipRepo.Update,
 		logger,
@@ -202,19 +225,27 @@ func (s *organizationMembershipService) checkMembershipPresence(
 func (s *organizationMembershipService) applyMembership(
 	ctx context.Context,
 	productID, organizationID, productUserID, roleID string,
+	eventType events.Type,
 	failMsg, successMsg string,
 	repoFn func(context.Context, string, string, string, string) (organization.Membership, error),
 	logger zerolog.Logger,
 ) (organization.Membership, error) {
-	membership, err := repoFn(ctx, productID, organizationID, productUserID, roleID)
-	if err != nil {
-		logger.Error().Err(err).
+	var membership organization.Membership
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var err error
+		membership, err = repoFn(txCtx, productID, organizationID, productUserID, roleID)
+		if err != nil {
+			return err
+		}
+		return s.emitMembership(txCtx, eventType, productID, organizationID, productUserID)
+	}); txErr != nil {
+		logger.Error().Err(txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
 			Str("role_id", roleID).
 			Msg(failMsg)
-		return organization.Membership{}, err
+		return organization.Membership{}, txErr
 	}
 
 	logger.Info().
@@ -251,15 +282,20 @@ func (s *organizationMembershipService) RemoveMember(
 		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
 	}
 
-	if err = s.orgMembershipRepo.Delete(
-		ctx, input.OrganizationID, input.ProductUserID,
-	); err != nil {
-		logger.Error().Err(err).
+	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if delErr := s.orgMembershipRepo.Delete(txCtx, input.OrganizationID, input.ProductUserID); delErr != nil {
+			return delErr
+		}
+		return s.emitMembership(
+			txCtx, events.MembershipDeleted, input.ProductID, input.OrganizationID, input.ProductUserID,
+		)
+	}); txErr != nil {
+		logger.Error().Err(txErr).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("failed to remove member from organization")
-		return err
+		return txErr
 	}
 
 	logger.Info().

@@ -142,8 +142,8 @@ func mapToSearchPlatformUserInput(
 			}
 		}).
 		ToPtr()
-	var req search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser]
-	return req.WithFilter(filter).
+	return search.NewRequest[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

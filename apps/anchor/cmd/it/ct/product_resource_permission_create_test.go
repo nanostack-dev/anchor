@@ -42,6 +42,22 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 	}
 }
 
+func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
+	ctx := context.Background()
+	productContext := createTestProductContext(t)
+	sink := productContext.CaptureEvents()
+	resp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
+		ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
+			Name: "events:read",
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode())
+	sink.WaitFor("product.resource_permission.created", map[string]string{
+		"permission_name": resp.JSON201.Name,
+	})
+}
+
 func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 	ctx := context.Background()
 

@@ -38,11 +38,11 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **limit** | A license field of numeric type. Limits are the only fields that carry usage and a status. | Not "quota". |
 | **license template** | A named, validated set of values for every field its schema declares, instantiated into organization licenses. | Not "plan" — see below. |
 | **archive** | Withdraw a template. It stops being offered, its row is kept so the licenses naming it keep resolving, and its name is freed ([ADR-0010](docs/adr/0010-license-templates-are-archived.md)). | Not "delete" — a template row is never removed. |
-| **license** | One Organization's own copy of a template's values, kept in step with that template except on its adjusted fields ([ADR-0017](docs/adr/0017-license-follows-its-template.md)). Every Organization has exactly one. | Not "subscription". |
+| **license** | One Organization's own copy of a template's values, kept in step with that template except on its adjusted fields ([ADR-0018](docs/adr/0018-license-follows-its-template.md)). Every Organization has exactly one. | Not "subscription". |
 | **instantiate** | Copy a template's values onto an Organization, creating its license. It happens on the license route, or in the same transaction as the Organization itself ([ADR-0016](docs/adr/0016-an-organization-can-be-created-licensed.md)). | Not "assign" — nothing is pointed at, even though the copy follows the template afterwards. |
 | **adjust** | Edit one Organization's license without touching its template. Every field an adjustment moves becomes an *adjusted field*. | Not "override" — there is no override layer ([ADR-0004](docs/adr/0004-license-schema-template-and-copy.md)). |
-| **adjusted field** | A license field recorded on the license row as bespoke to that Organization. A template sync leaves it alone; a `DISCARD` migrate clears the record ([ADR-0017](docs/adr/0017-license-follows-its-template.md)). | Not "pinned field" — the record is the field name, not a frozen value. |
-| **template sync** | The automatic propagation of a template value update onto every license instantiated from it, except on adjusted fields. Durable, asynchronous, recorded as `TEMPLATE_SYNCED` ([ADR-0017](docs/adr/0017-license-follows-its-template.md)). | Not "re-sync" — that names the operator's `DISCARD` migrate onto the same tier, which also clears adjusted fields. Not "migration" — provenance does not move. |
+| **adjusted field** | A license field recorded on the license row as bespoke to that Organization. A template sync leaves it alone; a `DISCARD` migrate clears the record ([ADR-0018](docs/adr/0018-license-follows-its-template.md)). | Not "pinned field" — the record is the field name, not a frozen value. |
+| **template sync** | The automatic propagation of a template value update onto every license instantiated from it, except on adjusted fields. Durable, asynchronous, recorded as `TEMPLATE_SYNCED` ([ADR-0018](docs/adr/0018-license-follows-its-template.md)). | Not "re-sync" — that names the operator's `DISCARD` migrate onto the same tier, which also clears adjusted fields. Not "migration" — provenance does not move. |
 | **migrate** | Move a set of Organizations onto a license template: take a fresh copy of its values and restamp the provenance. A tier change, recorded as one entry per Organization ([ADR-0014](docs/adr/0014-organization-licenses-are-migrated-in-bulk.md)). | Not "re-sync" — that names recomputing a license from the template it already holds, and it is not what this is for. Not "upgrade" — a migration moves in either direction, and price is not Anchor's word. |
 | **deviation** | A value on a license that differs from its template because someone adjusted it for that customer. The state *adjust* produces. | Not "override", for the same reason. |
 | **diff** | How an Organization's license differs from its template today, license field by license field. Usually a deviation, since a template edit is otherwise propagated; a template sync still in flight, or one refused by validation, also shows here. | Not "drift" — that word names Terraform's own comparison. |
@@ -70,6 +70,26 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **Organization API key** | A credential scoped to one Organization, issued by a Product to its customer. Configurable per-Product prefix, `*_org_apikey_`. |
 | **permission** | An RBAC grant naming an action, in `resource:action` form. Belongs to a Product's catalog. Unrelated to licensing. |
 | **role** | A named bundle of permissions, assignable to a member at Organization or Workspace level. |
+
+## Product events
+
+A Product stays current by receiving **events** from Anchor. The subscriber is the Product backend only. An Organization never registers an endpoint here.
+
+Inbound Clerk callbacks stay **integration webhooks**. They are a different path.
+
+The catalog is the Product SDK surface: organizations, members, workspaces, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
+
+| term | means | not |
+| --- | --- | --- |
+| **event** | A record that something happened to a Product-scoped resource. It has a stable id that does not change across retries. | webhook, notification, message, callback |
+| **event type** | Hierarchical name in `resource.action` form (`organization.created`). It names the schema of `data`. | **permission** — those use `resource:action` |
+| **endpoint** | An HTTPS URL a Product registers to receive deliveries. Tracer: one URL in Product config. Later: many endpoints through the Product API, each with an event-type filter. | integration webhook |
+| **delivery** | One HTTP POST of an event to an endpoint. | |
+| **thin payload** | `data` carries identifiers of the subject. The Product fetches current state from the API. | snapshot, full payload |
+
+Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) (Svix): headers `webhook-id`, `webhook-timestamp`, `webhook-signature`; body `{type, timestamp, data}` with a thin `data`. Not CloudEvents. See [ADR-0017](docs/adr/0017-product-events-use-standard-webhooks.md).
+
+Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). There is no Organization-member invitation.
 
 ## Decisions
 

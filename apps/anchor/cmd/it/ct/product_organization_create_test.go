@@ -209,6 +209,20 @@ func TestProductOrganizationCreate(t *testing.T) {
 			)
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		product := createTestProductContext(t)
+		sink := product.CaptureEvents()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+		response, err := client.CreateProductOrganizationWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Webhook Org"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, 201, response.StatusCode())
+		sink.WaitFor("organization.created", map[string]string{"organization_id": response.JSON201.Id})
+	})
 }
 
 func generateString(length int) string {

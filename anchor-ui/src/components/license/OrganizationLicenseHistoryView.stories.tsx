@@ -99,6 +99,33 @@ export const OneFieldMoved: Story = {
 	},
 };
 
+export const ATemplateUpdateKeepsAdjustments: Story = {
+	args: {
+		total: 1,
+		templateName: (id: string) => ({ ltpl_pro: "Pro" })[id] ?? id,
+		items: [
+			{
+				...base,
+				id: "lchg_synced",
+				type: LicenseChangeType.TEMPLATE_SYNCED,
+				template_id: "ltpl_pro",
+				old_value: { flows: 800, sso: false, support_tier: "basic" },
+				new_value: { flows: 800, sso: true, support_tier: "priority" },
+				changed_at: "2026-08-16T10:30:00Z",
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("Followed a template update")).toBeVisible();
+		await expect(canvas.getByText("Pro")).toBeVisible();
+		await expect(canvas.getByText("flows")).toBeVisible();
+		await expect(canvas.getByText("800")).toBeVisible();
+		await expect(canvas.getByText("Yes")).toBeVisible();
+		await expect(canvas.getByText("priority")).toBeVisible();
+	},
+};
+
 export const SeveralFieldsOneMoment: Story = {
 	args: {
 		items: [sameMomentFlows, sameMomentSso, instantiated],

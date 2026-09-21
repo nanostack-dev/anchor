@@ -58,6 +58,32 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 	}
 }
 
+func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
+	ctx := context.Background()
+	productContext := createTestProductContext(t)
+	sink := productContext.CaptureEvents()
+	createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
+		ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
+			Name: "events:write",
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, createResp.StatusCode())
+	sink.WaitFor("product.resource_permission.created", map[string]string{
+		"permission_name": createResp.JSON201.Name,
+	})
+
+	updateResp, err := productContext.OwnerAuthenticatedClient().UpdateProductResourcePermissionWithResponse(
+		ctx, productContext.ProductID, createResp.JSON201.Name,
+		ct.UpdateProductResourcePermissionRequest{Description: new("updated")},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, updateResp.StatusCode())
+	sink.WaitFor("product.resource_permission.updated", map[string]string{
+		"permission_name": createResp.JSON201.Name,
+	})
+}
+
 func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
 	ctx := context.Background()
 

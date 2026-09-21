@@ -4,7 +4,10 @@ import {
 	zProductOrganizationApiKeysConfigRequest,
 	zProductRequest,
 } from "@/client";
-import { updateProductMutation } from "@/client/@tanstack/react-query.gen";
+import {
+	getProductQueryKey,
+	updateProductMutation,
+} from "@/client/@tanstack/react-query.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -64,6 +67,8 @@ export function ProductEditForm({
 	onCancel,
 	...props
 }: ProductEditFormProps) {
+	const queryClient = useQueryClient();
+
 	const form = useForm({
 		defaultValues: {
 			name: product.name || "",
@@ -87,6 +92,11 @@ export function ProductEditForm({
 	const updateMutation = useMutation({
 		...updateProductMutation(),
 		onSuccess: () => {
+			void queryClient.invalidateQueries({
+				queryKey: getProductQueryKey({
+					path: { product_id: productId },
+				}),
+			});
 			toast.success("Product updated successfully!");
 			onSuccess?.();
 		},
@@ -193,44 +203,35 @@ export function ProductEditForm({
 					</TabsContent>
 
 					<TabsContent value="config">
-						<Tabs defaultValue="organization-api-keys" className="gap-6">
-							<TabsList>
-								<TabsTrigger value="organization-api-keys">
-									Organization API keys
-								</TabsTrigger>
-							</TabsList>
-							<TabsContent value="organization-api-keys">
-								<FieldGroup>
-									<form.Field name="organizationApiKeyPrefix">
-										{(field) => (
-											<Field
-												data-disabled={updateMutation.isPending}
-												data-invalid={field.state.meta.errors.length > 0}
-											>
-												<FieldLabel htmlFor="organization-api-key-prefix">
-													Organization API key prefix
-												</FieldLabel>
-												<Input
-													id="organization-api-key-prefix"
-													placeholder="anchor"
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													disabled={updateMutation.isPending}
-													aria-invalid={field.state.meta.errors.length > 0}
-												/>
-												<FieldDescription>
-													Changing this prefix only affects newly generated
-													organization API keys. Organization keys created with
-													a previous prefix remain valid.
-												</FieldDescription>
-												<FormValidationError field={field} />
-											</Field>
-										)}
-									</form.Field>
-								</FieldGroup>
-							</TabsContent>
-						</Tabs>
+						<FieldGroup>
+							<form.Field name="organizationApiKeyPrefix">
+								{(field) => (
+									<Field
+										data-disabled={updateMutation.isPending}
+										data-invalid={field.state.meta.errors.length > 0}
+									>
+										<FieldLabel htmlFor="organization-api-key-prefix">
+											Organization API key prefix
+										</FieldLabel>
+										<Input
+											id="organization-api-key-prefix"
+											placeholder="anchor"
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											disabled={updateMutation.isPending}
+											aria-invalid={field.state.meta.errors.length > 0}
+										/>
+										<FieldDescription>
+											Changing this prefix only affects newly generated
+											organization API keys. Organization keys created with a
+											previous prefix remain valid.
+										</FieldDescription>
+										<FormValidationError field={field} />
+									</Field>
+								)}
+							</form.Field>
+						</FieldGroup>
 					</TabsContent>
 				</Tabs>
 

@@ -30,6 +30,7 @@ func UseSchema(schema string) {
 	PlatformUsers = PlatformUsers.FromSchema(schema)
 	ProductAPIKeyPermissions = ProductAPIKeyPermissions.FromSchema(schema)
 	ProductAPIKeys = ProductAPIKeys.FromSchema(schema)
+	ProductEventEndpointConfigs = ProductEventEndpointConfigs.FromSchema(schema)
 	ProductOrganizationAPIKeyConfigs = ProductOrganizationAPIKeyConfigs.FromSchema(schema)
 	ProductPermissions = ProductPermissions.FromSchema(schema)
 	ProductResourcePermissions = ProductResourcePermissions.FromSchema(schema)

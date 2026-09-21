@@ -1,8 +1,8 @@
 # ADR-0004: License schema, template, and per-organization copy
 
-**Status:** Accepted, partially superseded by [ADR-0017](0017-license-follows-its-template.md)
+**Status:** Accepted, partially superseded by [ADR-0018](0018-license-follows-its-template.md)
 
-[ADR-0017](0017-license-follows-its-template.md) reverses the copy-not-pointer decision below: a license is still stored as its own copy, but the copy now follows its template — a template value update is propagated onto every license instantiated from it, except on the fields adjusted for that organization. The three-layer shape (schema → template → license), the structured validation rules, and rules-constrain-decisions all still govern.
+[ADR-0018](0018-license-follows-its-template.md) reverses the copy-not-pointer decision below: a license is still stored as its own copy, but the copy now follows its template — a template value update is propagated onto every license instantiated from it, except on the fields adjusted for that organization. The three-layer shape (schema → template → license), the structured validation rules, and rules-constrain-decisions all still govern.
 
 ## Context
 

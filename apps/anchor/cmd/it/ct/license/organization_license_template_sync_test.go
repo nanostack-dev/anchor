@@ -41,6 +41,24 @@ func countTemplateSyncChanges(t *testing.T, handle licenseHandle) int {
 }
 
 func TestLicenseFollowsItsTemplate(t *testing.T) {
+	t.Run("a sync emits one event and a repeated job emits none", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		sink := w.product.CaptureEvents()
+		w.License().Instantiate(w.TemplateID())
+		sink.WaitFor("organization.license.updated", map[string]string{"organization_id": w.OrganizationID()})
+		updated := ct.LicenseTemplateValues{
+			"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",
+		}
+		w.Template().ReplaceValues(updated)
+		waitForLicenseValues(t, w.License(), updated)
+		require.Eventually(t, func() bool { return sink.Count("organization.license.updated") == 2 },
+			templateSyncWaitTimeout, templateSyncWaitTick)
+		w.Template().ReplaceValues(updated)
+		time.Sleep(templateSyncSettleTime)
+		assert.Equal(t, 2, sink.Count("organization.license.updated"))
+		assert.Equal(t, 1, countTemplateSyncChanges(t, w.License()))
+	})
+
 	t.Run("a template value update reaches an unadjusted license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		require.Empty(t, w.License().Get().AdjustedFields)
@@ -134,6 +152,33 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 		time.Sleep(templateSyncSettleTime)
 		assert.Equal(t, 0, countTemplateSyncChanges(t, w.License()))
 	})
+}
+
+func TestTemplateSyncContinuesPastOnePage(t *testing.T) {
+	w := newLicensedWorld(t)
+	licenses := []licenseHandle{w.License()}
+	for range 100 {
+		handle := w.License().For(w.NewOrganization())
+		handle.Instantiate(w.TemplateID())
+		licenses = append(licenses, handle)
+	}
+	_, err := testDB.ExecContext(t.Context(),
+		`UPDATE organization_licenses SET adjusted_fields = 'null'::jsonb WHERE product_id = $1`, w.productID())
+	require.NoError(t, err)
+	require.NoError(t, adjustmentBackfill.Run(t.Context()))
+	var uninitialized int
+	require.NoError(t, testDB.QueryRowContext(t.Context(),
+		`SELECT count(*) FROM organization_licenses WHERE product_id = $1 AND adjusted_fields = 'null'::jsonb`,
+		w.productID()).Scan(&uninitialized))
+	require.Zero(t, uninitialized)
+	updated := ct.LicenseTemplateValues{
+		"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",
+	}
+	w.Template().ReplaceValues(updated)
+	for _, handle := range licenses {
+		waitForLicenseValues(t, handle, updated)
+		assert.Equal(t, 1, countTemplateSyncChanges(t, handle))
+	}
 }
 
 func TestSchemaChangeCascadesToLicenses(t *testing.T) {

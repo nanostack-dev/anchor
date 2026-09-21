@@ -67,4 +67,32 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 		require.NoError(t, deleteErr)
 		assert.Equal(t, http.StatusNotFound, deleteResp.StatusCode())
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		webhookProduct := createTestProductContext(t)
+		sink := webhookProduct.CaptureEvents()
+		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
+		webhookPermissions := givenOrganizationAPIKeyResourcePermissions(t, webhookProduct)
+		webhookOrg := webhookProduct.CreateOrganization(t, "Webhook-APIKey-Delete-"+uuid.NewString(), nil)
+		created, createErr := webhookClient.CreateOrganizationAPIKeyWithResponse(
+			ctx,
+			webhookProduct.ProductID,
+			webhookOrg.Id,
+			ct.CreateOrganizationAPIKeyJSONRequestBody{
+				Name:        "WebhookDeleteKey-" + uuid.NewString(),
+				Permissions: []string{webhookPermissions.FileRead},
+			},
+		)
+		require.NoError(t, createErr)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+		deleted, deleteErr := webhookClient.DeleteOrganizationAPIKeyWithResponse(
+			ctx, webhookProduct.ProductID, webhookOrg.Id, created.JSON201.Id,
+		)
+		require.NoError(t, deleteErr)
+		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
+		sink.WaitFor("organization.api_key.deleted", map[string]string{
+			"organization_id": webhookOrg.Id,
+			"api_key_id":      created.JSON201.Id,
+		})
+	})
 }

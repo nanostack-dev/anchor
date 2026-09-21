@@ -15,6 +15,7 @@ import (
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/events"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -58,6 +59,7 @@ type organizationAPIKeyService struct {
 	organizationRepo repository.OrganizationRepository
 	productRepo      repository.ProductRepository
 	permissionRepo   repository.ProductResourcePermissionRepository
+	events           events.Emitter
 	logger           zerolog.Logger
 }
 
@@ -68,6 +70,7 @@ func NewOrganizationAPIKeyService(
 	organizationRepo repository.OrganizationRepository,
 	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductResourcePermissionRepository,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
@@ -77,10 +80,24 @@ func NewOrganizationAPIKeyService(
 		organizationRepo: organizationRepo,
 		productRepo:      productRepo,
 		permissionRepo:   permissionRepo,
+		events:           eventEmitter,
 		logger: logger.With().Str(
 			"component", "organization_api_key_service",
 		).Logger(),
 	}
+}
+
+func (s *organizationAPIKeyService) emitAPIKey(
+	ctx context.Context, eventType events.Type, productID, organizationID, apiKeyID string,
+) error {
+	return s.events.Emit(ctx, events.Event{
+		Type:      eventType,
+		ProductID: productID,
+		Data: events.Data{
+			events.FieldOrganizationID: organizationID,
+			events.FieldAPIKeyID:       apiKeyID,
+		},
+	})
 }
 
 func (s *organizationAPIKeyService) Create(
@@ -183,7 +200,9 @@ func (s *organizationAPIKeyService) Create(
 			return enqueueErr
 		}
 
-		return nil
+		return s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyCreated, org.ProductID, input.OrganizationID, created.ID,
+		)
 	})
 	if err != nil {
 		logger.Error().
@@ -277,7 +296,17 @@ func (s *organizationAPIKeyService) Update(
 		updatedAPIKey.Status = *input.Status
 	}
 
-	updated, err := s.apiKeyRepo.Update(ctx, updatedAPIKey)
+	var updated orgapikey.OrganizationAPIKey
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		var updateErr error
+		updated, updateErr = s.apiKeyRepo.Update(txCtx, updatedAPIKey)
+		if updateErr != nil {
+			return updateErr
+		}
+		return s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyUpdated, input.ProductID, input.OrganizationID, updated.ID,
+		)
+	})
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -351,6 +380,12 @@ func (s *organizationAPIKeyService) Delete(
 				Err(deleteErr).
 				Msg("failed to delete organization API key")
 			return fault.ErrUnexpected
+		}
+
+		if emitErr := s.emitAPIKey(
+			txCtx, events.OrganizationAPIKeyDeleted, input.ProductID, input.OrganizationID, input.ID,
+		); emitErr != nil {
+			return emitErr
 		}
 
 		if existingAPIKey.ExpiresAt == nil {
@@ -545,25 +580,10 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 	foundAPIKey *orgapikey.OrganizationAPIKey,
 	logger zerolog.Logger,
 ) (orgapikey.OrganizationAPIKey, bool, error) {
-	organizationID := foundAPIKey.OrganizationID
-
 	now := nowUTC()
 	if foundAPIKey.IsExpiredAt(now) {
 		if foundAPIKey.Status == orgapikey.StatusActive {
-			if updateErr := s.apiKeyRepo.UpdateStatus(
-				ctx,
-				foundAPIKey.OrganizationID,
-				foundAPIKey.ID,
-				orgapikey.StatusInactive,
-			); updateErr != nil {
-				logger.Error().
-					Str("organization_id", organizationID).
-					Str("api_key_id", foundAPIKey.ID).
-					Err(updateErr).
-					Msg("failed to update expired organization API key status")
-			} else {
-				foundAPIKey.Status = orgapikey.StatusInactive
-			}
+			s.expireAPIKey(ctx, foundAPIKey, logger)
 		}
 		return *foundAPIKey, true, nil
 	}
@@ -571,24 +591,61 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 		return *foundAPIKey, true, nil
 	}
 
-	shouldUpdate := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
-	if shouldUpdate {
-		if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
-			ctx,
-			foundAPIKey.OrganizationID,
-			foundAPIKey.ID,
-		); updateErr != nil {
-			logger.Error().
-				Str("organization_id", organizationID).
-				Str("api_key_id", foundAPIKey.ID).
-				Err(updateErr).
-				Msg("failed to update organization API key last used timestamp")
-		} else {
-			foundAPIKey.LastUsedAt = &now
-		}
+	shouldTouch := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
+	if shouldTouch {
+		s.touchAPIKeyLastUsed(ctx, foundAPIKey, now, logger)
 	}
 
 	return *foundAPIKey, false, nil
+}
+
+// expireAPIKey flips an expired, still-active key to inactive. A failed
+// update is only logged, never returned: the caller already has the answer
+// it needs (the key is inactive for this request), and the next evaluation
+// of this same key will simply retry the flip.
+func (s *organizationAPIKeyService) expireAPIKey(
+	ctx context.Context,
+	foundAPIKey *orgapikey.OrganizationAPIKey,
+	logger zerolog.Logger,
+) {
+	if updateErr := s.apiKeyRepo.UpdateStatus(
+		ctx,
+		foundAPIKey.OrganizationID,
+		foundAPIKey.ID,
+		orgapikey.StatusInactive,
+	); updateErr != nil {
+		logger.Error().
+			Str("organization_id", foundAPIKey.OrganizationID).
+			Str("api_key_id", foundAPIKey.ID).
+			Err(updateErr).
+			Msg("failed to update expired organization API key status")
+		return
+	}
+	foundAPIKey.Status = orgapikey.StatusInactive
+}
+
+// touchAPIKeyLastUsed records now as the key's last-used time. A failed
+// update is only logged, for the same reason as expireAPIKey: the caller
+// already has the answer it needs, and the next request retries the write.
+func (s *organizationAPIKeyService) touchAPIKeyLastUsed(
+	ctx context.Context,
+	foundAPIKey *orgapikey.OrganizationAPIKey,
+	now time.Time,
+	logger zerolog.Logger,
+) {
+	if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
+		ctx,
+		foundAPIKey.OrganizationID,
+		foundAPIKey.ID,
+	); updateErr != nil {
+		logger.Error().
+			Str("organization_id", foundAPIKey.OrganizationID).
+			Str("api_key_id", foundAPIKey.ID).
+			Err(updateErr).
+			Msg("failed to update organization API key last used timestamp")
+		return
+	}
+	foundAPIKey.LastUsedAt = &now
 }
 
 func (s *organizationAPIKeyService) enqueueExpirationEvent(

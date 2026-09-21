@@ -106,4 +106,13 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 			AdjustRaw(ct.LicenseTemplateValues{"flows": 800})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		sink := w.product.CaptureEvents()
+		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
+		sink.WaitFor("organization.license.updated", map[string]string{
+			"organization_id": w.OrganizationID(),
+		})
+	})
 }

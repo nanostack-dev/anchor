@@ -108,4 +108,23 @@ func TestProductOrganizationDelete(t *testing.T) {
 			)
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		product := createTestProductContext(t)
+		sink := product.CaptureEvents()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+		created, err := client.CreateProductOrganizationWithResponse(
+			ctx,
+			product.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Webhook Delete Org"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+		deleted, deleteErr := client.DeleteProductOrganizationWithResponse(
+			ctx, product.ProductID, created.JSON201.Id,
+		)
+		require.NoError(t, deleteErr)
+		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
+		sink.WaitFor("organization.deleted", map[string]string{"organization_id": created.JSON201.Id})
+	})
 }

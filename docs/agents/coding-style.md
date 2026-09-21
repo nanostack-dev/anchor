@@ -34,3 +34,5 @@ Turn repeated raw setup into a named fixture — a method on a `*World`/handle t
 The same logic decides which package owns a fixture. The cross-package test DSL (`cmd/it/shared/dsl`) is deliberately API-only: every builder step arranges state through the generated HTTP client, never raw SQL. A fixture that needs direct DB access — to place `observed_at` in the past, say — belongs local to the CT package that needs it, not bolted onto the shared DSL.
 
 The HTTP plumbing around an act belongs in the DSL too — the credential, the request build, and the `require.NoError` / status / `NotNil` triplet, plus a `*Raw` twin for the tests whose subject is a refusal. `itdsl.OrganizationClient` is the shape to copy. See `docs/engineering-best-practices.md`.
+
+Product-event CUD tests configure an endpoint with `ProductContext.CaptureEvents` and wait with `EventSink.WaitFor`. Do not invent a one-off httptest receiver: the sink uses `anchorsdk.Events`, so a CT that asserts delivery also asserts the SDK ingest path.

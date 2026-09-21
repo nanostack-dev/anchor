@@ -235,4 +235,21 @@ func TestCreateProductUser(t *testing.T) {
 			)
 		},
 	)
+
+	t.Run("EmitsWebhook", func(t *testing.T) {
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
+		name := itshared.Faker.Person().Name()
+		resp, err := apiKeyClient.CreateProductUserWithResponse(
+			ctx, productContext.ProductID,
+			ct.CreateProductUserJSONRequestBody{
+				Email: itshared.Faker.Internet().Email(),
+				Name:  &name,
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode())
+		sink.WaitFor("product_user.created", map[string]string{"product_user_id": resp.JSON201.Id})
+	})
 }

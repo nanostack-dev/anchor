@@ -75,8 +75,8 @@ func mapToSearchProductPermissionInput(
 			}
 		}).
 		ToPtr()
-	var req search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]
-	return req.WithFilter(filter).
+	return search.NewRequest[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]().
+		WithFilter(filter).
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,

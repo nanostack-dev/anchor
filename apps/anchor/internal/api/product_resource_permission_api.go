@@ -53,8 +53,7 @@ func mapToSearchProductResourcePermissionInput(
 			}
 		}).
 		ToPtr()
-	var searchReq search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]
-	return searchReq.
+	return search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
 		WithFilter(filter).
 		WithSort(req.SortBy, req.SortDirection).
 		WithPagination(req.Pagination)

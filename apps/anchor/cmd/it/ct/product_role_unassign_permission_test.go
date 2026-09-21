@@ -250,4 +250,31 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 			assert.Len(t, getResp.JSON200.Permissions, 1)
 		},
 	)
+
+	t.Run(
+		"EmitsWebhook", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+			productContext.CreateDefaultProductResourcePermissions(t)
+			sink := productContext.CaptureEvents()
+			permissionName := productContext.DefaultResourcePermissions[0].Name
+			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
+					Name:        "EventsRole_" + ids.MustNew("test"),
+					Permissions: []string{permissionName},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createResp.StatusCode())
+			roleID := createResp.JSON201.Id
+			sink.WaitFor("product.role.created", map[string]string{"role_id": roleID})
+
+			unassignResp, err := productContext.OwnerAuthenticatedClient().
+				UnassignPermissionFromProductRoleWithResponse(
+					ctx, productContext.ProductID, roleID, permissionName,
+				)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, unassignResp.StatusCode())
+			sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
+		},
+	)
 }

@@ -135,11 +135,10 @@ function HistoryMoment({
 }) {
 	const first = entries[0];
 	const when = dayjs(first.changed_at).format("D MMMM YYYY H:mm");
-	// A SET entry replaces the whole set exactly as an instantiation does, so it
-	// reads as one stamped moment rather than as a list of field adjustments.
 	const stampsWholeSet =
 		first.type === LicenseChangeType.INSTANTIATED ||
-		first.type === LicenseChangeType.SET;
+		first.type === LicenseChangeType.SET ||
+		first.type === LicenseChangeType.TEMPLATE_SYNCED;
 
 	return (
 		<li className="flex flex-col gap-3 p-3">

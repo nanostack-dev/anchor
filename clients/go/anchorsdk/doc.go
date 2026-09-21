@@ -33,6 +33,13 @@
 //
 //	members, err := c.Organization(org.Id).Members().List(ctx)
 //
+//	h, err := Events(os.Getenv("ANCHOR_WEBHOOK_SECRET"))
+//	http.Handle("/webhooks/anchor", h.OrganizationCreated(
+//	    func(ctx context.Context, e OrganizationCreated) error {
+//	        return syncOrg(ctx, e.OrganizationID)
+//	    },
+//	))
+//
 // The product ID is bound once at construction, so it never appears at a call
 // site. Every operation that Anchor scopes to a product is reached without
 // repeating it.

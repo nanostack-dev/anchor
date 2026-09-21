@@ -55,8 +55,8 @@ func mapToSearchOrganizationLicensesRequest(
 		}).
 		ToPtr()
 
-	var request search.Request[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense]
-	return request.WithFilter(filter).
+	return search.NewRequest[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense]().
+		WithFilter(filter).
 		WithSort(body.SortBy, body.SortDirection).
 		WithFullTextSearch(body.FullTextSearch).
 		WithPagination(body.Pagination)

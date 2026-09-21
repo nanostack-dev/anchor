@@ -11,7 +11,7 @@ import (
 //
 // A template is mutable and unversioned. Its values are copied at
 // instantiation and followed thereafter, except on adjusted fields
-// (docs/adr/0017-license-follows-its-template.md).
+// (docs/adr/0018-license-follows-its-template.md).
 //
 // It does carry one lifecycle step, [TemplateStatus]: withdrawing a tier
 // archives it and never deletes the row, because a license names the template

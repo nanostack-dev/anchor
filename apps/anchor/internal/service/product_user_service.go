@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"anchor/internal/domain/product/user"
+	"anchor/internal/events"
 
 	"anchor/internal/repository"
 
@@ -41,6 +42,7 @@ type productUserService struct {
 	productUserRepo   repository.ProductUserRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	transactor        transactor.Transactor
+	events            events.Emitter
 	logger            zerolog.Logger
 }
 
@@ -48,12 +50,14 @@ func NewProductUserService(
 	productUserRepo repository.ProductUserRepository,
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	transactor transactor.Transactor,
+	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) ProductUserService {
 	return &productUserService{
 		productUserRepo:   productUserRepo,
 		orgMembershipRepo: orgMembershipRepo,
 		transactor:        transactor,
+		events:            eventEmitter,
 		logger:            logger.With().Str("component", "product_user_service").Logger(),
 	}
 }
@@ -136,7 +140,11 @@ func (s *productUserService) Create(
 			Str("email", input.Email).
 			Msg("product user created successfully")
 
-		return nil
+		return s.events.Emit(txCtx, events.Event{
+			Type:      events.ProductUserCreated,
+			ProductID: input.ProductID,
+			Data:      events.Data{events.FieldProductUserID: createdUser.ID},
+		})
 	})
 	return createdUser, err
 }
@@ -150,7 +158,16 @@ func (s *productUserService) Delete(
 		return err
 	}
 
-	err := s.productUserRepo.DeleteByID(ctx, input.ProductID, input.ProductUserID)
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if delErr := s.productUserRepo.DeleteByID(txCtx, input.ProductID, input.ProductUserID); delErr != nil {
+			return delErr
+		}
+		return s.events.Emit(txCtx, events.Event{
+			Type:      events.ProductUserDeleted,
+			ProductID: input.ProductID,
+			Data:      events.Data{events.FieldProductUserID: input.ProductUserID},
+		})
+	})
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
