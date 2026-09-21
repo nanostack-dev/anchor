@@ -1,4 +1,9 @@
-import { type LicenseFieldRules, LicenseFieldType } from "@/client";
+import {
+	type LicenseFieldRules,
+	LicenseFieldType,
+	UsageShape,
+	zUsageShape,
+} from "@/client";
 
 import { type FieldRow, newFieldRow } from "./license-schema-draft";
 
@@ -7,7 +12,7 @@ import { type FieldRow, newFieldRow } from "./license-schema-draft";
  *
  *   name: type [constraints] [# description]
  *
- *   max_flows:   limit 0..100                    # Concurrent flows allowed
+ *   max_flows:   limit gauge 0..100              # Concurrent flows allowed
  *   seats:       number 1..
  *   sso:         boolean
  *   tier:        enum free | pro | enterprise
@@ -278,10 +283,26 @@ export function parseSchemaDsl(source: string): DslParseResult {
 			return;
 		}
 
+		let usageShape: UsageShape | undefined;
+		if (type === LicenseFieldType.LIMIT) {
+			const shape = zUsageShape.safeParse(tokens[0]?.toUpperCase());
+			if (!shape.success) {
+				errors.push({
+					line,
+					message:
+						"A limit needs `gauge` or `windowed_counter` after its type.",
+				});
+				return;
+			}
+			usageShape = UsageShape[shape.data];
+			tokens.shift();
+		}
+
 		rows.push(
 			newFieldRow({
 				name,
 				type,
+				usageShape,
 				description: description ?? "",
 				rules: parseConstraints(type, tokens, line, errors),
 			}),
@@ -329,8 +350,11 @@ export function serializeSchemaDsl(allRows: FieldRow[]): string {
 		.map((row) => {
 			const name = `${row.name.trim()}:`.padEnd(nameWidth + 2);
 			const constraints = constraintsToDsl(row);
-			const declaration =
-				`${name}${TYPE_KEYWORD_BY_TYPE[row.type]} ${constraints}`.trimEnd();
+			const shape =
+				row.type === LicenseFieldType.LIMIT
+					? row.usageShape?.toLowerCase()
+					: undefined;
+			const declaration = `${name}${[TYPE_KEYWORD_BY_TYPE[row.type], shape, constraints].filter(Boolean).join(" ")}`;
 			const description = row.description?.trim();
 			return description ? `${declaration}  # ${description}` : declaration;
 		})

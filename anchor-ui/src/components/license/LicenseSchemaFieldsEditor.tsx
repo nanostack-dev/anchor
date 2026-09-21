@@ -1,11 +1,18 @@
-import { LicenseFieldType } from "@/client";
+import { LicenseFieldType, UsageShape } from "@/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Field,
+	FieldDescription,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
+	SelectGroup,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
@@ -28,6 +35,11 @@ import { type FieldRow, newFieldRow } from "./license-schema-draft";
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 const OPEN_DURATION = 0.2;
 const CLOSE_DURATION = 0.15;
+
+const USAGE_SHAPES = [
+	{ value: UsageShape.GAUGE, label: "Gauge" },
+	{ value: UsageShape.WINDOWED_COUNTER, label: "Windowed counter" },
+];
 
 interface LicenseSchemaFieldsEditorProps {
 	fields: FieldRow[];
@@ -85,7 +97,9 @@ export function LicenseSchemaFieldsEditor({
 	const changeType = (uiKey: string, type: LicenseFieldType) =>
 		onChange(
 			fields.map((field) =>
-				field.uiKey === uiKey ? { ...field, type, rules: {} } : field,
+				field.uiKey === uiKey
+					? { ...field, type, rules: {}, usageShape: undefined }
+					: field,
 			),
 		);
 
@@ -276,6 +290,52 @@ export function LicenseSchemaFieldsEditor({
 													disabled={disabled}
 												/>
 											</div>
+
+											{field.type === LicenseFieldType.LIMIT && (
+												<FieldGroup>
+													<Field
+														data-invalid={!!error && !field.usageShape}
+														data-disabled={disabled}
+													>
+														<FieldLabel htmlFor={`${field.uiKey}-usage-shape`}>
+															Usage shape
+														</FieldLabel>
+														<Select
+															items={USAGE_SHAPES}
+															value={field.usageShape ?? null}
+															onValueChange={(value) =>
+																patchRow(field.uiKey, {
+																	usageShape: value ?? undefined,
+																})
+															}
+															disabled={disabled}
+														>
+															<SelectTrigger
+																id={`${field.uiKey}-usage-shape`}
+																aria-invalid={!!error && !field.usageShape}
+																aria-describedby={`${field.uiKey}-usage-help`}
+																className="w-full"
+															>
+																<SelectValue placeholder="Choose usage shape" />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectGroup>
+																	{USAGE_SHAPES.map(({ value, label }) => (
+																		<SelectItem key={value} value={value}>
+																			{label}
+																		</SelectItem>
+																	))}
+																</SelectGroup>
+															</SelectContent>
+														</Select>
+														<FieldDescription id={`${field.uiKey}-usage-help`}>
+															Gauge tracks a current quantity, like active
+															flows. Windowed counter tracks usage over a
+															period, like monthly runs.
+														</FieldDescription>
+													</Field>
+												</FieldGroup>
+											)}
 
 											{field.type !== LicenseFieldType.BOOLEAN && (
 												<LicenseFieldRulesEditor
