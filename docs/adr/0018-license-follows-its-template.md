@@ -40,6 +40,19 @@ The worker pages through the organizations naming the template (100 per job exec
 
 Status and usage need nothing: ADR-0012 derives them on read, so a propagated limit recomputes on the next read for free.
 
+### Concurrent writes
+
+Licensing writes take a non-blocking pgkit advisory lock scoped to tenant and
+product before reading dependent state. Schema and template writes, license
+instantiation and adjustments hold a transaction lock through commit. Bulk
+migration holds the same key with a session lock for its entire run, retaining
+per-organization transactions. Template sync takes the transaction lock for each
+organization and retries through the queue on contention. API callers receive
+409 `LICENSING_WRITE_IN_PROGRESS` and can retry; reads, usage reports and other
+products are unaffected. This prevents stale snapshots from overwriting a
+completed sync or escaping its scan. The lock is deliberately product-wide
+because schema removal touches every template.
+
 ### The schema cascade
 
 A schema update that **removes** a field prunes that key from every template of the product, in the schema update's own transaction, and enqueues a sync for each template actually changed. That is the schema → template leg; the template → license leg is the same job as above. A schema update that adds a field or changes rules changes no template value and cascades nothing — ADR-0009's two-step widening (declare the field, then set it on each template) is unchanged, and the template edit that sets the new value is what propagates it.

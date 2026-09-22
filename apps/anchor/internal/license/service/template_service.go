@@ -133,40 +133,45 @@ func (s *licenseTemplateService) CreateTemplate(
 		return license.Template{}, err
 	}
 
-	if err := s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, in.Values); err != nil {
-		return license.Template{}, err
-	}
+	return withLicenseWrite(
+		ctx,
+		s.transactor,
+		in.TenantID,
+		in.ProductID,
+		func(ctx context.Context) (license.Template, error) {
+			if err := s.schemas.ValidateValues(ctx, in.TenantID, in.ProductID, in.Values); err != nil {
+				return license.Template{}, err
+			}
 
-	existing, err := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
-	if err != nil {
-		return license.Template{}, err
-	}
-	if existing.IsPresent() {
-		return license.Template{}, errLicenseTemplateNameExists(in.Name)
-	}
+			existing, err := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, in.Name)
+			if err != nil {
+				return license.Template{}, err
+			}
+			if existing.IsPresent() {
+				return license.Template{}, errLicenseTemplateNameExists(in.Name)
+			}
 
-	template := license.Template{
-		PlatformTenantID: in.TenantID,
-		ProductID:        in.ProductID,
-		Name:             in.Name,
-		Description:      in.Description,
-		Status:           license.TemplateActive,
-		Values:           in.Values,
-	}
-	template.GenerateID()
+			template := license.Template{
+				PlatformTenantID: in.TenantID,
+				ProductID:        in.ProductID,
+				Name:             in.Name,
+				Description:      in.Description,
+				Status:           license.TemplateActive,
+				Values:           in.Values,
+			}
+			template.GenerateID()
 
-	created, err := s.templateRepo.Create(ctx, template)
-	if err != nil {
-		// Two creates racing both pass the check above at READ COMMITTED, so the
-		// unique index is what actually decides. Last one in loses, and loses the
-		// same way it would have lost the check.
-		if pgerr.IsUniqueViolation(err, licenseTemplateNameConstraint) {
-			return license.Template{}, errLicenseTemplateNameExists(in.Name)
-		}
-		return license.Template{}, err
-	}
+			created, err := s.templateRepo.Create(ctx, template)
+			if err != nil {
+				if pgerr.IsUniqueViolation(err, licenseTemplateNameConstraint) {
+					return license.Template{}, errLicenseTemplateNameExists(in.Name)
+				}
+				return license.Template{}, err
+			}
 
-	return created, nil
+			return created, nil
+		},
+	)
 }
 
 func (s *licenseTemplateService) GetTemplate(
@@ -200,68 +205,68 @@ func (s *licenseTemplateService) UpdateTemplate(
 		return license.Template{}, err
 	}
 
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return license.Template{}, err
-	}
-	if found.IsAbsent() {
-		return license.Template{}, ErrLicenseTemplateNotFound
-	}
-	existing := found.Value()
-	if existing.IsArchived() {
-		return license.Template{}, ErrLicenseTemplateArchived
-	}
-
-	if in.Description != nil {
-		existing.Description = *in.Description
-	}
-	// A nil Values leaves the set alone; a supplied one replaces it wholesale, so
-	// a license field the caller omitted is an unset rather than a no-op.
-	if in.Values != nil {
-		existing.Values = *in.Values
-	}
-
-	// Validated on every write, not only when Values changed. A rename is still a
-	// write, and a template whose schema has tightened underneath it should be
-	// corrected rather than quietly re-saved while it no longer satisfies the
-	// declaration it is defined against.
-	if err = s.schemas.ValidateValues(
-		ctx, in.TenantID, in.ProductID, existing.Values,
-	); err != nil {
-		return license.Template{}, err
-	}
-
-	if in.Name != nil && *in.Name != existing.Name {
-		conflict, findErr := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
-		if findErr != nil {
-			return license.Template{}, findErr
-		}
-		if conflict.IsPresent() {
-			return license.Template{}, errLicenseTemplateNameExists(*in.Name)
-		}
-		existing.Name = *in.Name
-	}
-
-	// An unchanged set still enqueues: a restatement repairs drift.
-	var updated license.Template
-	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var updateErr error
-		updated, updateErr = s.templateRepo.Update(txCtx, in.TenantID, existing)
-		if updateErr != nil {
-			if pgerr.IsUniqueViolation(updateErr, licenseTemplateNameConstraint) {
-				return errLicenseTemplateNameExists(existing.Name)
+	return withLicenseWrite(
+		ctx,
+		s.transactor,
+		in.TenantID,
+		in.ProductID,
+		func(ctx context.Context) (license.Template, error) {
+			found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+			if err != nil {
+				return license.Template{}, err
 			}
-			return updateErr
-		}
-		if in.Values == nil {
-			return nil
-		}
-		return s.sync.EnqueueTemplateSync(txCtx, in.TenantID, in.ProductID, updated.ID)
-	}); txErr != nil {
-		return license.Template{}, txErr
-	}
+			if found.IsAbsent() {
+				return license.Template{}, ErrLicenseTemplateNotFound
+			}
+			existing := found.Value()
+			if existing.IsArchived() {
+				return license.Template{}, ErrLicenseTemplateArchived
+			}
 
-	return updated, nil
+			if in.Description != nil {
+				existing.Description = *in.Description
+			}
+			// A nil Values leaves the set alone; a supplied one replaces it wholesale, so
+			// a license field the caller omitted is an unset rather than a no-op.
+			if in.Values != nil {
+				existing.Values = *in.Values
+			}
+
+			// Validated on every write, not only when Values changed. A rename is still a
+			// write, and a template whose schema has tightened underneath it should be
+			// corrected rather than quietly re-saved while it no longer satisfies the
+			// declaration it is defined against.
+			if err = s.schemas.ValidateValues(
+				ctx, in.TenantID, in.ProductID, existing.Values,
+			); err != nil {
+				return license.Template{}, err
+			}
+
+			if in.Name != nil && *in.Name != existing.Name {
+				conflict, findErr := s.templateRepo.FindByName(ctx, in.TenantID, in.ProductID, *in.Name)
+				if findErr != nil {
+					return license.Template{}, findErr
+				}
+				if conflict.IsPresent() {
+					return license.Template{}, errLicenseTemplateNameExists(*in.Name)
+				}
+				existing.Name = *in.Name
+			}
+
+			updated, err := s.templateRepo.Update(ctx, in.TenantID, existing)
+			if err != nil {
+				if pgerr.IsUniqueViolation(err, licenseTemplateNameConstraint) {
+					return license.Template{}, errLicenseTemplateNameExists(existing.Name)
+				}
+				return license.Template{}, err
+			}
+			if in.Values == nil {
+				return updated, nil
+			}
+			// An unchanged set still enqueues: a restatement repairs drift.
+			return updated, s.sync.EnqueueTemplateSync(ctx, in.TenantID, in.ProductID, updated.ID)
+		},
+	)
 }
 
 func (s *licenseTemplateService) ArchiveTemplate(
@@ -271,20 +276,28 @@ func (s *licenseTemplateService) ArchiveTemplate(
 		return license.Template{}, err
 	}
 
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return license.Template{}, err
-	}
-	if found.IsAbsent() {
-		return license.Template{}, ErrLicenseTemplateNotFound
-	}
-	existing := found.Value()
-	// Withdrawing a withdrawn tier is the outcome the caller asked for.
-	if existing.IsArchived() {
-		return existing, nil
-	}
+	return withLicenseWrite(
+		ctx,
+		s.transactor,
+		in.TenantID,
+		in.ProductID,
+		func(ctx context.Context) (license.Template, error) {
+			found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+			if err != nil {
+				return license.Template{}, err
+			}
+			if found.IsAbsent() {
+				return license.Template{}, ErrLicenseTemplateNotFound
+			}
+			existing := found.Value()
+			// Withdrawing a withdrawn tier is the outcome the caller asked for.
+			if existing.IsArchived() {
+				return existing, nil
+			}
 
-	return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
+			return s.templateRepo.Archive(ctx, in.TenantID, in.ProductID, in.TemplateID)
+		},
+	)
 }
 
 // DeleteTemplate removes a template no Organization license names. See
@@ -296,35 +309,35 @@ func (s *licenseTemplateService) DeleteTemplate(
 		return err
 	}
 
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if err != nil {
-		return err
-	}
-	if found.IsAbsent() {
-		return ErrLicenseTemplateNotFound
-	}
-
-	// Checked before the write so the common case answers with the field-level
-	// count rather than the foreign key's own error. This is not atomic against
-	// a concurrent instantiation; fk_organization_licenses_template is the real
-	// guarantee, and the race is handled below the same way it is for a
-	// colliding name.
-	licenseCount, err := s.orgLicenseRepo.CountLicensesForTemplate(
-		ctx, in.TenantID, in.ProductID, in.TemplateID,
-	)
-	if err != nil {
-		return err
-	}
-	if licenseCount > 0 {
-		return errLicenseTemplateInUse(licenseCount)
-	}
-
-	if err = s.templateRepo.Delete(ctx, in.TenantID, in.ProductID, in.TemplateID); err != nil {
-		if pgerr.IsForeignKeyViolation(err, "fk_organization_licenses_template") {
-			return errLicenseTemplateInUse(1)
+	return s.transactor.InTx(ctx, func(ctx context.Context) error {
+		if err := acquireLicenseWriteLock(ctx, in.TenantID, in.ProductID); err != nil {
+			return err
 		}
-		return err
-	}
+		found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+		if err != nil {
+			return err
+		}
+		if found.IsAbsent() {
+			return ErrLicenseTemplateNotFound
+		}
 
-	return nil
+		licenseCount, err := s.orgLicenseRepo.CountLicensesForTemplate(
+			ctx, in.TenantID, in.ProductID, in.TemplateID,
+		)
+		if err != nil {
+			return err
+		}
+		if licenseCount > 0 {
+			return errLicenseTemplateInUse(licenseCount)
+		}
+
+		if err = s.templateRepo.Delete(ctx, in.TenantID, in.ProductID, in.TemplateID); err != nil {
+			if pgerr.IsForeignKeyViolation(err, "fk_organization_licenses_template") {
+				return errLicenseTemplateInUse(1)
+			}
+			return err
+		}
+
+		return nil
+	})
 }

@@ -3456,6 +3456,9 @@ type Forbidden = ApiErrorResponse
 // InternalServerError defines model for InternalServerError.
 type InternalServerError = ApiErrorResponse
 
+// LicensingWriteConflict defines model for LicensingWriteConflict.
+type LicensingWriteConflict = ApiErrorResponse
+
 // NotFound defines model for NotFound.
 type NotFound = ApiErrorResponse
 

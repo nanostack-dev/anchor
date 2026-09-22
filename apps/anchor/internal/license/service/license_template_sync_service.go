@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -200,6 +199,9 @@ func (s *licenseTemplateSyncService) syncOne(
 	outcome := syncOutcomeUnchanged
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := acquireLicenseWriteLock(txCtx, payload.TenantID, payload.ProductID); err != nil {
+			return err
+		}
 		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, payload.TenantID, payload.ProductID, organizationID,
 		)
@@ -241,9 +243,7 @@ func (s *licenseTemplateSyncService) syncOne(
 		if validateErr := s.schemas.ValidateValues(
 			txCtx, payload.TenantID, payload.ProductID, existing.Values,
 		); validateErr != nil {
-			validationFault, isFault := fault.As(validateErr)
-			if (!isFault || validationFault.HTTPStatus() != http.StatusBadRequest) &&
-				!errors.Is(validateErr, ErrLicenseSchemaNotDeclared) {
+			if !isTemplateSyncRefusal(validateErr) {
 				return validateErr
 			}
 			outcome = syncOutcomeRefused
@@ -275,4 +275,10 @@ func (s *licenseTemplateSyncService) syncOne(
 		s.licenses.evict(ctx, payload.ProductID, organizationID)
 	}
 	return outcome, nil
+}
+
+func isTemplateSyncRefusal(err error) bool {
+	validationFault, isFault := fault.As(err)
+	return isFault && (validationFault.HTTPStatus() == http.StatusBadRequest ||
+		(len(validationFault.Details) == 1 && validationFault.Details[0].Code == "LICENSE_SCHEMA_NOT_DECLARED"))
 }

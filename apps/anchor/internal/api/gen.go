@@ -2664,6 +2664,9 @@ type Forbidden = ApiErrorResponse
 // InternalServerError defines model for InternalServerError.
 type InternalServerError = ApiErrorResponse
 
+// LicensingWriteConflict defines model for LicensingWriteConflict.
+type LicensingWriteConflict = ApiErrorResponse
+
 // NotFound defines model for NotFound.
 type NotFound = ApiErrorResponse
 
@@ -8015,6 +8018,8 @@ type ForbiddenJSONResponse ApiErrorResponse
 
 type InternalServerErrorJSONResponse ApiErrorResponse
 
+type LicensingWriteConflictJSONResponse ApiErrorResponse
+
 type NotFoundJSONResponse ApiErrorResponse
 
 type TooManyRequestsJSONResponse ApiErrorResponse
@@ -11463,7 +11468,9 @@ func (response MigrateOrganizationLicenses404JSONResponse) VisitMigrateOrganizat
 	return err
 }
 
-type MigrateOrganizationLicenses409JSONResponse struct{ ConflictJSONResponse }
+type MigrateOrganizationLicenses409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response MigrateOrganizationLicenses409JSONResponse) VisitMigrateOrganizationLicensesResponse(w http.ResponseWriter) error {
 
@@ -11642,7 +11649,9 @@ func (response DeleteLicenseSchema404JSONResponse) VisitDeleteLicenseSchemaRespo
 	return err
 }
 
-type DeleteLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type DeleteLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response DeleteLicenseSchema409JSONResponse) VisitDeleteLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -11813,7 +11822,9 @@ func (response CreateLicenseSchema404JSONResponse) VisitCreateLicenseSchemaRespo
 	return err
 }
 
-type CreateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type CreateLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateLicenseSchema409JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -11906,7 +11917,9 @@ func (response UpdateLicenseSchema404JSONResponse) VisitUpdateLicenseSchemaRespo
 	return err
 }
 
-type UpdateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type UpdateLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response UpdateLicenseSchema409JSONResponse) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -12078,7 +12091,9 @@ func (response CreateLicenseTemplate404JSONResponse) VisitCreateLicenseTemplateR
 	return err
 }
 
-type CreateLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type CreateLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateLicenseTemplate409JSONResponse) VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12165,7 +12180,9 @@ func (response DeleteLicenseTemplate404JSONResponse) VisitDeleteLicenseTemplateR
 	return err
 }
 
-type DeleteLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type DeleteLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response DeleteLicenseTemplate409JSONResponse) VisitDeleteLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12338,7 +12355,9 @@ func (response UpdateLicenseTemplate404JSONResponse) VisitUpdateLicenseTemplateR
 	return err
 }
 
-type UpdateLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type UpdateLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response UpdateLicenseTemplate409JSONResponse) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12431,7 +12450,9 @@ func (response ArchiveLicenseTemplate404JSONResponse) VisitArchiveLicenseTemplat
 	return err
 }
 
-type ArchiveLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type ArchiveLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response ArchiveLicenseTemplate409JSONResponse) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12510,7 +12531,9 @@ func (response CreateProductOrganization403JSONResponse) VisitCreateProductOrgan
 	return err
 }
 
-type CreateProductOrganization409JSONResponse struct{ ConflictJSONResponse }
+type CreateProductOrganization409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateProductOrganization409JSONResponse) VisitCreateProductOrganizationResponse(w http.ResponseWriter) error {
 
@@ -13527,7 +13550,9 @@ func (response AdjustOrganizationLicense404JSONResponse) VisitAdjustOrganization
 	return err
 }
 
-type AdjustOrganizationLicense409JSONResponse struct{ ConflictJSONResponse }
+type AdjustOrganizationLicense409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response AdjustOrganizationLicense409JSONResponse) VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error {
 
@@ -13621,7 +13646,9 @@ func (response InstantiateOrganizationLicense404JSONResponse) VisitInstantiateOr
 	return err
 }
 
-type InstantiateOrganizationLicense409JSONResponse struct{ ConflictJSONResponse }
+type InstantiateOrganizationLicense409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response InstantiateOrganizationLicense409JSONResponse) VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error {
 

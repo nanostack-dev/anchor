@@ -137,6 +137,9 @@ func (s *organizationLicenseService) Instantiate(
 
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
+			return err
+		}
 		template, templateErr := s.templates.GetTemplate(txCtx, license.GetTemplateInput{
 			TenantID:   in.TenantID,
 			ProductID:  in.ProductID,
@@ -291,6 +294,9 @@ func (s *organizationLicenseService) AdjustValues(
 	var updated license.OrganizationLicense
 	wrote := false
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
+			return err
+		}
 		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
 		)

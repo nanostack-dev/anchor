@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
+	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
@@ -75,6 +76,7 @@ type licenseMigrationService struct {
 	changes       licenserepo.OrganizationLicenseChangeRepository
 	organizations intrepo.OrganizationRepository
 	transactor    transactor.Transactor
+	lock          *pglock.Client
 	licenses      *organizationLicenseCache
 	events        events.Emitter
 	logger        zerolog.Logger
@@ -86,6 +88,7 @@ func NewLicenseMigrationService(
 	changes licenserepo.OrganizationLicenseChangeRepository,
 	organizations intrepo.OrganizationRepository,
 	tx transactor.Transactor,
+	lock *pglock.Client,
 	cacheStore cache.Store,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -96,6 +99,7 @@ func NewLicenseMigrationService(
 		changes:       changes,
 		organizations: organizations,
 		transactor:    tx,
+		lock:          lock,
 		licenses:      newOrganizationLicenseCache(cacheStore, logger),
 		events:        eventEmitter,
 		logger:        logger.With().Str("component", "license_migration_service").Logger(),
@@ -131,6 +135,29 @@ func (s *licenseMigrationService) Migrate(
 		return license.Migration{}, ErrLicenseMigrationSelectionInvalid
 	}
 
+	var result license.Migration
+	acquired, err := s.lock.TryWithSessionLock(
+		ctx,
+		licenseWriteLockKey(in.TenantID, in.ProductID),
+		func(lockCtx context.Context) error {
+			var migrateErr error
+			result, migrateErr = s.migrate(lockCtx, in)
+			return migrateErr
+		},
+	)
+	if err != nil {
+		return license.Migration{}, err
+	}
+	if !acquired {
+		return license.Migration{}, ErrLicensingWriteInProgress
+	}
+	return result, nil
+}
+
+func (s *licenseMigrationService) migrate(
+	ctx context.Context,
+	in license.MigrateLicensesInput,
+) (license.Migration, error) {
 	target, err := s.templates.GetTemplate(ctx, license.GetTemplateInput{
 		TenantID:   in.TenantID,
 		ProductID:  in.ProductID,

@@ -27,13 +27,14 @@ import (
 var testDB *sql.DB
 
 var adjustmentBackfill *licenseservice.LicenseAdjustmentBackfill
+var templateSync licenseservice.LicenseTemplateSyncService
 
 func TestMain(m *testing.M) {
 	if err := os.Chdir(".."); err != nil {
 		panic(err)
 	}
 	itshared.RunTestMain(m, itshared.TestConfig{
-		ExtraPopulateTargets:    []any{&testDB, &adjustmentBackfill},
+		ExtraPopulateTargets:    []any{&testDB, &adjustmentBackfill, &templateSync},
 		EnableRedis:             true,
 		PopulateRepositories:    true,
 		APIKeyService:           &itshared.APIKeyService,
