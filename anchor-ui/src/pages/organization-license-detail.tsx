@@ -5,7 +5,6 @@ import {
 import { Page } from "@/components/common/Page";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { OrganizationLicenseTabs } from "@/components/license/OrganizationLicenseTabs";
-import { differsFromItsTemplate } from "@/components/license/license-migration-format";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,10 +159,6 @@ export default function OrganizationLicenseDetailPage() {
 		);
 	}
 
-	const differs =
-		!!summary.license &&
-		differsFromItsTemplate(summary, template?.values) === true;
-
 	// This route documents exactly one 404 case — the organization has no
 	// license yet — so any 404 here is treated as that, whether or not its body
 	// happened to parse into the specific ORGANIZATION_LICENSE_NOT_FOUND shape.
@@ -259,18 +254,16 @@ export default function OrganizationLicenseDetailPage() {
 			actions={backLink}
 		>
 			<div className="flex flex-col gap-6">
-				<div className="flex flex-wrap items-center gap-2">
-					{/* Only the exceptional states. The tier itself is named in the
-						provenance below, next to the date it was stamped, and saying it
-						twice within a hundred pixels is noise rather than emphasis. */}
-					{!summary.license && (
-						<StatusBadge tone="neutral">No license</StatusBadge>
-					)}
-					{template?.status === "ARCHIVED" && (
-						<StatusBadge tone="warning">Tier withdrawn</StatusBadge>
-					)}
-					{differs && <StatusBadge tone="info">Adjusted</StatusBadge>}
-				</div>
+				{(!summary.license || template?.status === "ARCHIVED") && (
+					<div className="flex flex-wrap items-center gap-2">
+						{!summary.license && (
+							<StatusBadge tone="neutral">No license</StatusBadge>
+						)}
+						{template?.status === "ARCHIVED" && (
+							<StatusBadge tone="warning">Tier withdrawn</StatusBadge>
+						)}
+					</div>
+				)}
 				{licenseBody()}
 			</div>
 		</Page>

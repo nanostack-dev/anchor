@@ -28,6 +28,10 @@ import { emailSendsRoute } from "@/routes/products/email-sends";
 import { emailTemplateBuilderRoute } from "@/routes/products/email-template-builder";
 import { emailTemplatesRoute } from "@/routes/products/email-templates";
 import { licenseSchemaRoute } from "@/routes/products/license-schema";
+import {
+	licenseTemplateDetailRoute,
+	licenseTemplateNewRoute,
+} from "@/routes/products/license-template";
 import { licenseTemplatesRoute } from "@/routes/products/license-templates";
 import { productPermissionsRoute } from "@/routes/products/permissions";
 import { productApiKeyEditRoute } from "@/routes/products/product-api-key-edit";
@@ -83,6 +87,8 @@ const routeTree = rootRoute.addChildren([
 	emailSendsRoute,
 	licenseSchemaRoute,
 	licenseTemplatesRoute,
+	licenseTemplateDetailRoute,
+	licenseTemplateNewRoute,
 ]);
 
 const routerContext = {

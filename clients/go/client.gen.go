@@ -1014,7 +1014,7 @@ type ClientInterface interface {
 
 	// InstantiateOrganizationLicenseWithBody Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+	// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1023,7 +1023,7 @@ type ClientInterface interface {
 
 	// InstantiateOrganizationLicense Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+	// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -3440,7 +3440,7 @@ func (c *Client) AdjustOrganizationLicense(ctx context.Context, productId Produc
 
 // InstantiateOrganizationLicenseWithBody Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3459,7 +3459,7 @@ func (c *Client) InstantiateOrganizationLicenseWithBody(ctx context.Context, pro
 
 // InstantiateOrganizationLicense Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -10514,7 +10514,7 @@ type ClientWithResponsesInterface interface {
 
 	// InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+	// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10523,7 +10523,7 @@ type ClientWithResponsesInterface interface {
 
 	// InstantiateOrganizationLicenseWithResponse Instantiate Organization License
 	//
-	// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+	// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14018,7 +14018,7 @@ type MigrateOrganizationLicensesResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *ApiErrorResponse
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14047,7 +14047,7 @@ func (r MigrateOrganizationLicensesResponse) GetJSON404() *ApiErrorResponse {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r MigrateOrganizationLicensesResponse) GetJSON409() *Conflict {
+func (r MigrateOrganizationLicensesResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14168,7 +14168,7 @@ type DeleteLicenseSchemaResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -14192,7 +14192,7 @@ func (r DeleteLicenseSchemaResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r DeleteLicenseSchemaResponse) GetJSON409() *Conflict {
+func (r DeleteLicenseSchemaResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14308,7 +14308,7 @@ type CreateLicenseSchemaResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -14337,7 +14337,7 @@ func (r CreateLicenseSchemaResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateLicenseSchemaResponse) GetJSON409() *Conflict {
+func (r CreateLicenseSchemaResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14384,7 +14384,7 @@ type UpdateLicenseSchemaResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14413,7 +14413,7 @@ func (r UpdateLicenseSchemaResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r UpdateLicenseSchemaResponse) GetJSON409() *Conflict {
+func (r UpdateLicenseSchemaResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14529,7 +14529,7 @@ type CreateLicenseTemplateResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -14558,7 +14558,7 @@ func (r CreateLicenseTemplateResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateLicenseTemplateResponse) GetJSON409() *Conflict {
+func (r CreateLicenseTemplateResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14603,7 +14603,7 @@ type DeleteLicenseTemplateResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -14627,7 +14627,7 @@ func (r DeleteLicenseTemplateResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r DeleteLicenseTemplateResponse) GetJSON409() *Conflict {
+func (r DeleteLicenseTemplateResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14743,7 +14743,7 @@ type UpdateLicenseTemplateResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14772,7 +14772,7 @@ func (r UpdateLicenseTemplateResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r UpdateLicenseTemplateResponse) GetJSON409() *Conflict {
+func (r UpdateLicenseTemplateResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14819,7 +14819,7 @@ type ArchiveLicenseTemplateResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14848,7 +14848,7 @@ func (r ArchiveLicenseTemplateResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r ArchiveLicenseTemplateResponse) GetJSON409() *Conflict {
+func (r ArchiveLicenseTemplateResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -14893,7 +14893,7 @@ type CreateProductOrganizationResponse struct {
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *Forbidden
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -14917,7 +14917,7 @@ func (r CreateProductOrganizationResponse) GetJSON403() *Forbidden {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateProductOrganizationResponse) GetJSON409() *Conflict {
+func (r CreateProductOrganizationResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -15737,7 +15737,7 @@ type AdjustOrganizationLicenseResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -15766,7 +15766,7 @@ func (r AdjustOrganizationLicenseResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r AdjustOrganizationLicenseResponse) GetJSON409() *Conflict {
+func (r AdjustOrganizationLicenseResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -15813,7 +15813,7 @@ type InstantiateOrganizationLicenseResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *LicensingWriteConflict
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -15842,7 +15842,7 @@ func (r InstantiateOrganizationLicenseResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r InstantiateOrganizationLicenseResponse) GetJSON409() *Conflict {
+func (r InstantiateOrganizationLicenseResponse) GetJSON409() *LicensingWriteConflict {
 	return r.JSON409
 }
 
@@ -19858,7 +19858,7 @@ func (c *ClientWithResponses) AdjustOrganizationLicenseWithResponse(ctx context.
 
 // InstantiateOrganizationLicenseWithBodyWithResponse Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19873,7 +19873,7 @@ func (c *ClientWithResponses) InstantiateOrganizationLicenseWithBodyWithResponse
 
 // InstantiateOrganizationLicenseWithResponse Instantiate Organization License
 //
-// Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+// Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23106,7 +23106,7 @@ func ParseMigrateOrganizationLicensesResponse(rsp *http.Response) (*MigrateOrgan
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23224,7 +23224,7 @@ func ParseDeleteLicenseSchemaResponse(rsp *http.Response) (*DeleteLicenseSchemaR
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23339,7 +23339,7 @@ func ParseCreateLicenseSchemaResponse(rsp *http.Response) (*CreateLicenseSchemaR
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23400,7 +23400,7 @@ func ParseUpdateLicenseSchemaResponse(rsp *http.Response) (*UpdateLicenseSchemaR
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23515,7 +23515,7 @@ func ParseCreateLicenseTemplateResponse(rsp *http.Response) (*CreateLicenseTempl
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23572,7 +23572,7 @@ func ParseDeleteLicenseTemplateResponse(rsp *http.Response) (*DeleteLicenseTempl
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23687,7 +23687,7 @@ func ParseUpdateLicenseTemplateResponse(rsp *http.Response) (*UpdateLicenseTempl
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23748,7 +23748,7 @@ func ParseArchiveLicenseTemplateResponse(rsp *http.Response) (*ArchiveLicenseTem
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -23802,7 +23802,7 @@ func ParseCreateProductOrganizationResponse(rsp *http.Response) (*CreateProductO
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -24477,7 +24477,7 @@ func ParseAdjustOrganizationLicenseResponse(rsp *http.Response) (*AdjustOrganiza
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -24538,7 +24538,7 @@ func ParseInstantiateOrganizationLicenseResponse(rsp *http.Response) (*Instantia
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest LicensingWriteConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

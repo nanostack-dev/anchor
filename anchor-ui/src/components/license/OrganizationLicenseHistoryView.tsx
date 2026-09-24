@@ -12,8 +12,14 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
-import { ArrowRight, History, TriangleAlert } from "lucide-react";
+import {
+	ArrowRight,
+	History,
+	SlidersHorizontal,
+	TriangleAlert,
+} from "lucide-react";
 import {
 	asValueSet,
 	changeTypeLabel,
@@ -134,19 +140,32 @@ function HistoryMoment({
 	templateName: (templateId: string) => string;
 }) {
 	const first = entries[0];
+	const isAdjustment = first.type === LicenseChangeType.ADJUSTED;
 	const when = dayjs(first.changed_at).format("D MMMM YYYY H:mm");
-	// A SET entry replaces the whole set exactly as an instantiation does, so it
-	// reads as one stamped moment rather than as a list of field adjustments.
 	const stampsWholeSet =
 		first.type === LicenseChangeType.INSTANTIATED ||
-		first.type === LicenseChangeType.SET;
+		first.type === LicenseChangeType.SET ||
+		first.type === LicenseChangeType.TEMPLATE_SYNCED;
 
 	return (
-		<li className="flex flex-col gap-3 p-3">
+		<li
+			className={cn(
+				"flex flex-col gap-3 p-3 first:rounded-t-lg last:rounded-b-lg",
+				isAdjustment && "bg-accent/50",
+			)}
+		>
 			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-				<StatusBadge tone={stampsWholeSet ? "info" : "neutral"}>
-					{changeTypeLabel(first)}
-				</StatusBadge>
+				{isAdjustment ? (
+					<span className="inline-flex items-center gap-2 text-sm font-medium text-accent-foreground">
+						<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
+						{entries.length} {entries.length === 1 ? "field" : "fields"}{" "}
+						customized
+					</span>
+				) : (
+					<StatusBadge tone={stampsWholeSet ? "info" : "neutral"}>
+						{changeTypeLabel(first)}
+					</StatusBadge>
+				)}
 				<time
 					dateTime={first.changed_at}
 					className="text-xs text-muted-foreground tabular-nums"

@@ -21,4 +21,5 @@ type OrganizationLicenses struct {
 	InstantiatedAt   time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	AdjustedFields   string
 }

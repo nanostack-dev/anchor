@@ -2143,7 +2143,7 @@ export const adjustOrganizationLicense = <ThrowOnError extends boolean = false>(
 
 /**
  * Instantiate Organization License
- * Stamps a license template onto an organization, copying its values. The copy is what the organization holds from then on: editing the template afterwards leaves this organization unchanged, and adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
+ * Stamps a license template onto an organization, copying its values. The copy follows subsequent template updates except on explicitly adjusted fields. Adjusting this organization leaves the template unchanged. An organization has at most one license, so this is refused once one exists, and an archived template is refused because the tier is no longer offered.
  */
 export const instantiateOrganizationLicense = <ThrowOnError extends boolean = false>(options: Options<InstantiateOrganizationLicenseData, ThrowOnError>) => {
     return (options.client ?? client).post<InstantiateOrganizationLicenseResponses, InstantiateOrganizationLicenseErrors, ThrowOnError>({

@@ -583,7 +583,13 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 	now := nowUTC()
 	if foundAPIKey.IsExpiredAt(now) {
 		if foundAPIKey.Status == orgapikey.StatusActive {
-			s.expireAPIKey(ctx, foundAPIKey, logger)
+			if updateErr := s.expireAPIKey(ctx, foundAPIKey); updateErr != nil {
+				logger.Error().
+					Str("organization_id", foundAPIKey.OrganizationID).
+					Str("api_key_id", foundAPIKey.ID).
+					Err(updateErr).
+					Msg("failed to update expired organization API key status")
+			}
 		}
 		return *foundAPIKey, true, nil
 	}
@@ -593,59 +599,48 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 
 	shouldTouch := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
 	if shouldTouch {
-		s.touchAPIKeyLastUsed(ctx, foundAPIKey, now, logger)
+		if updateErr := s.touchAPIKeyLastUsed(ctx, foundAPIKey, now); updateErr != nil {
+			logger.Error().
+				Str("organization_id", foundAPIKey.OrganizationID).
+				Str("api_key_id", foundAPIKey.ID).
+				Err(updateErr).
+				Msg("failed to update organization API key last used timestamp")
+		}
 	}
 
 	return *foundAPIKey, false, nil
 }
 
-// expireAPIKey flips an expired, still-active key to inactive. A failed
-// update is only logged, never returned: the caller already has the answer
-// it needs (the key is inactive for this request), and the next evaluation
-// of this same key will simply retry the flip.
 func (s *organizationAPIKeyService) expireAPIKey(
 	ctx context.Context,
 	foundAPIKey *orgapikey.OrganizationAPIKey,
-	logger zerolog.Logger,
-) {
+) error {
 	if updateErr := s.apiKeyRepo.UpdateStatus(
 		ctx,
 		foundAPIKey.OrganizationID,
 		foundAPIKey.ID,
 		orgapikey.StatusInactive,
 	); updateErr != nil {
-		logger.Error().
-			Str("organization_id", foundAPIKey.OrganizationID).
-			Str("api_key_id", foundAPIKey.ID).
-			Err(updateErr).
-			Msg("failed to update expired organization API key status")
-		return
+		return updateErr
 	}
 	foundAPIKey.Status = orgapikey.StatusInactive
+	return nil
 }
 
-// touchAPIKeyLastUsed records now as the key's last-used time. A failed
-// update is only logged, for the same reason as expireAPIKey: the caller
-// already has the answer it needs, and the next request retries the write.
 func (s *organizationAPIKeyService) touchAPIKeyLastUsed(
 	ctx context.Context,
 	foundAPIKey *orgapikey.OrganizationAPIKey,
 	now time.Time,
-	logger zerolog.Logger,
-) {
+) error {
 	if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
 		ctx,
 		foundAPIKey.OrganizationID,
 		foundAPIKey.ID,
 	); updateErr != nil {
-		logger.Error().
-			Str("organization_id", foundAPIKey.OrganizationID).
-			Str("api_key_id", foundAPIKey.ID).
-			Err(updateErr).
-			Msg("failed to update organization API key last used timestamp")
-		return
+		return updateErr
 	}
 	foundAPIKey.LastUsedAt = &now
+	return nil
 }
 
 func (s *organizationAPIKeyService) enqueueExpirationEvent(

@@ -79,6 +79,7 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@tanstack/react-query",
 	"@tanstack/react-router",
 	"@tanstack/react-table",
+	"@uidotdev/usehooks",
 
 	// UI primitives and utilities reached from owned components
 	"class-variance-authority",

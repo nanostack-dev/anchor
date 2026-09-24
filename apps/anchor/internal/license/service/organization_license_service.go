@@ -137,6 +137,9 @@ func (s *organizationLicenseService) Instantiate(
 
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
+			return err
+		}
 		template, templateErr := s.templates.GetTemplate(txCtx, license.GetTemplateInput{
 			TenantID:   in.TenantID,
 			ProductID:  in.ProductID,
@@ -291,6 +294,9 @@ func (s *organizationLicenseService) AdjustValues(
 	var updated license.OrganizationLicense
 	wrote := false
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
+			return err
+		}
 		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
 			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
 		)
@@ -316,6 +322,10 @@ func (s *organizationLicenseService) AdjustValues(
 			updated = *existing
 			return nil
 		}
+
+		existing.RecordAdjustedFields(functional.Slice(changes).Map(
+			func(c license.OrganizationLicenseChange) string { return *c.Field },
+		))
 
 		var updateErr error
 		updated, updateErr = s.licenseRepo.Update(txCtx, in.TenantID, *existing)

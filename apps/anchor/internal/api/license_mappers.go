@@ -82,6 +82,10 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 	if values == nil {
 		values = license.TemplateValues{}
 	}
+	adjustedFields := l.AdjustedFields
+	if adjustedFields == nil {
+		adjustedFields = []string{}
+	}
 	return OrganizationLicenseResponse{
 		Id:             l.ID,
 		ProductId:      l.ProductID,
@@ -89,6 +93,7 @@ func mapOrganizationLicenseToResponse(l license.OrganizationLicense) Organizatio
 		TemplateId:     l.TemplateID,
 		InstantiatedAt: l.InstantiatedAt,
 		Values:         values,
+		AdjustedFields: adjustedFields,
 		CreatedAt:      l.CreatedAt,
 		UpdatedAt:      l.UpdatedAt,
 	}

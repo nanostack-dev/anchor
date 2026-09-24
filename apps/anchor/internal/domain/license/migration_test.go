@@ -2,6 +2,7 @@ package license_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -100,4 +101,28 @@ func TestMigratedValuesLeavesTheHeldSetAlone(t *testing.T) {
 	license.MigratedValues(held, current, target, license.CarryForwardDifferences)
 
 	assert.Equal(t, license.TemplateValues{"flows": 800}, held)
+}
+
+func TestMigratedToAdjustedFields(t *testing.T) {
+	migratedAt := time.Now()
+	target := license.Template{
+		ID:     "ltpl_target",
+		Values: license.TemplateValues{"flows": 5000, "seats": 50},
+	}
+	held := license.OrganizationLicense{
+		TemplateID:     "ltpl_source",
+		Values:         license.TemplateValues{"flows": 800, "legacy": "on"},
+		AdjustedFields: []string{"flows", "legacy"},
+	}
+	current := license.TemplateValues{"flows": 500, "legacy": "off"}
+
+	t.Run("carry forward keeps the fields the target declares", func(t *testing.T) {
+		migrated := held.MigratedTo(target, current, license.CarryForwardDifferences, migratedAt)
+		assert.Equal(t, []string{"flows"}, migrated.AdjustedFields)
+	})
+
+	t.Run("discard clears the record", func(t *testing.T) {
+		migrated := held.MigratedTo(target, current, license.DiscardDifferences, migratedAt)
+		assert.Empty(t, migrated.AdjustedFields)
+	})
 }

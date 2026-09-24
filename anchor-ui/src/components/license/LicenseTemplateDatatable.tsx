@@ -5,7 +5,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	Empty,
 	EmptyDescription,
@@ -22,8 +22,6 @@ import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
 import { Eye, LayoutTemplate, PenLine, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { LicenseTemplateFormDialog } from "./LicenseTemplateFormDialog";
-import { LicenseTemplateViewDialog } from "./LicenseTemplateViewDialog";
 
 const columnHelper = createColumnHelper<LicenseTemplateResponse>();
 
@@ -100,7 +98,16 @@ export function LicenseTemplateDatatable({
 		() => [
 			columnHelper.accessor("name", {
 				header: () => <span>Name</span>,
-				cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+				cell: (info) => (
+					<Link
+						to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
+						params={{ templateId: info.row.original.id }}
+						search={{}}
+						className="font-medium hover:underline"
+					>
+						{info.getValue()}
+					</Link>
+				),
 				enableSorting: true,
 			}),
 			columnHelper.accessor("status", {
@@ -147,37 +154,31 @@ export function LicenseTemplateDatatable({
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
 					<div className="flex gap-2">
-						{schema && (
-							<LicenseTemplateViewDialog
-								template={row.original}
-								fields={schema.fields}
-								trigger={
-									<Button variant="outline" size="icon">
-										<span className="sr-only">View template</span>
-										<Eye className="h-4 w-4" />
-									</Button>
-								}
-							/>
-						)}
-						{schema && row.original.status === LicenseTemplateStatus.ACTIVE && (
-							<LicenseTemplateFormDialog
-								productId={productId}
-								schema={schema}
-								mode="edit"
-								existingTemplate={row.original}
-								trigger={
-									<Button variant="outline" size="icon">
-										<span className="sr-only">Edit template</span>
-										<PenLine className="h-4 w-4" />
-									</Button>
-								}
-							/>
+						<Link
+							to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
+							params={{ templateId: row.original.id }}
+							search={{}}
+							className={buttonVariants({ variant: "outline", size: "icon" })}
+							aria-label={`View ${row.original.name}`}
+						>
+							<Eye />
+						</Link>
+						{row.original.status === LicenseTemplateStatus.ACTIVE && (
+							<Link
+								to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
+								params={{ templateId: row.original.id }}
+								search={{ edit: true }}
+								className={buttonVariants({ variant: "outline", size: "icon" })}
+								aria-label={`Edit ${row.original.name}`}
+							>
+								<PenLine />
+							</Link>
 						)}
 					</div>
 				),
 			}),
 		],
-		[productId, schema],
+		[],
 	);
 
 	if (!schemaQuery.isLoading && !schema) {
@@ -208,17 +209,13 @@ export function LicenseTemplateDatatable({
 			<div className="mb-4 flex items-center justify-between">
 				<div />
 				{schema && (
-					<LicenseTemplateFormDialog
-						productId={productId}
-						schema={schema}
-						mode="create"
-						trigger={
-							<Button>
-								<Plus />
-								Create Template
-							</Button>
-						}
-					/>
+					<Link
+						to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_NEW}
+						className={buttonVariants()}
+					>
+						<Plus data-icon="inline-start" />
+						Create Template
+					</Link>
 				)}
 			</div>
 			<AnchorDataTable
