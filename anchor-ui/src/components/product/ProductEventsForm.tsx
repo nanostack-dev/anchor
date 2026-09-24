@@ -649,12 +649,6 @@ export function ProductEventsForm({
 																				<code className="rounded-md border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
 																					{event.type}
 																				</code>
-																				{isSelected ? (
-																					<span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-																						<span className="size-1.5 rounded-full bg-success" />
-																						Subscribed
-																					</span>
-																				) : null}
 																			</div>
 																			<p className="mt-1 text-xs leading-normal text-muted-foreground">
 																				{event.description}
