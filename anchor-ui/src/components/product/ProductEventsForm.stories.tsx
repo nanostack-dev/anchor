@@ -268,9 +268,7 @@ export const CatalogLoadsAfterUrlEdit: Story = {
 			"https://example.com/anchor/events",
 		);
 		await userEvent.click(canvas.getByRole("button", { name: "Load catalog" }));
-		await expect(
-			await canvas.findByText("4 selected"),
-		).toBeInTheDocument();
+		await expect(await canvas.findByText("4 selected")).toBeInTheDocument();
 		await expect(
 			canvas.getByRole("button", { name: "Save endpoint" }),
 		).toBeEnabled();
