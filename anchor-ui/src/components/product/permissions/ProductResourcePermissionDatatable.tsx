@@ -8,15 +8,17 @@ import { SortDirection } from "@/client";
 import { searchProductResourcePermissionsOptions } from "@/client/@tanstack/react-query.gen";
 import { CreateProductResourcePermissionDialog } from "@/components/product/permissions/CreateProductResourcePermissionDialog";
 import { DeleteProductResourcePermissionDialog } from "@/components/product/permissions/DeleteProductResourcePermissionDialog";
-import { EditProductResourcePermissionDialog } from "@/components/product/permissions/EditProductResourcePermissionDialog";
+import { buttonVariants } from "@/components/ui/button";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { Plus } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Eye, PenLine, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 import { Button } from "../../ui/button";
 
@@ -29,12 +31,8 @@ interface ProductPermissionDatatableProps {
 export function ProductResourcePermissionDatatable({
 	productId,
 }: ProductPermissionDatatableProps) {
+	const navigate = useNavigate();
 	const [total, setTotal] = useState(0);
-	const [editingPermissionName, setEditingPermissionName] = useState<
-		string | null
-	>(null);
-	const editingPermissionNameRef = useRef(editingPermissionName);
-	editingPermissionNameRef.current = editingPermissionName;
 
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -141,14 +139,24 @@ export function ProductResourcePermissionDatatable({
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
 					<div className={"flex gap-2"}>
-						<EditProductResourcePermissionDialog
-							productId={productId}
-							permission={row.original}
-							open={editingPermissionNameRef.current === row.original.name}
-							onOpenChange={(open) =>
-								setEditingPermissionName(open ? row.original.name : null)
-							}
-						/>
+						<Link
+							to={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL}
+							params={{ permissionName: row.original.name }}
+							search={{}}
+							className={buttonVariants({ variant: "outline", size: "icon" })}
+							aria-label={`View ${row.original.name}`}
+						>
+							<Eye />
+						</Link>
+						<Link
+							to={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL}
+							params={{ permissionName: row.original.name }}
+							search={{ edit: true }}
+							className={buttonVariants({ variant: "outline", size: "icon" })}
+							aria-label={`Edit ${row.original.name}`}
+						>
+							<PenLine />
+						</Link>
 						<DeleteProductResourcePermissionDialog
 							productId={productId}
 							permission={row.original}
@@ -189,7 +197,13 @@ export function ProductResourcePermissionDatatable({
 			<AnchorDataTable
 				columns={columns}
 				data={items}
-				onRowClick={(permission) => setEditingPermissionName(permission.name)}
+				onRowClick={(permission) => {
+					void navigate({
+						to: ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL,
+						params: { permissionName: permission.name },
+						search: { edit: true },
+					});
+				}}
 				loading={isLoading}
 				resourceName="resource permissions"
 				error={error}

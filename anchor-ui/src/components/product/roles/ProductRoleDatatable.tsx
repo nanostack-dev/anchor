@@ -6,14 +6,17 @@ import {
 	SortDirection,
 } from "@/client";
 import { searchProductRolesOptions } from "@/client/@tanstack/react-query.gen";
+import { buttonVariants } from "@/components/ui/button";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { Copy, PenLine, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Copy, Eye, PenLine, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 import { Button } from "../../ui/button";
@@ -27,10 +30,8 @@ interface ProductRoleDatatableProps {
 }
 
 export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
+	const navigate = useNavigate();
 	const [total, setTotal] = useState(0);
-	const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
-	const editingRoleIdRef = useRef(editingRoleId);
-	editingRoleIdRef.current = editingRoleId;
 
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -148,21 +149,24 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 							<span className="sr-only">Copy ID</span>
 							<Copy className="h-4 w-4" />
 						</Button>
-						<ProductRoleDialog
-							productId={productId}
-							mode="edit"
-							existingRole={row.original}
-							open={editingRoleIdRef.current === row.original.id}
-							onOpenChange={(open) =>
-								setEditingRoleId(open ? row.original.id : null)
-							}
-							trigger={
-								<Button variant="outline" size="icon">
-									<span className="sr-only">Edit product</span>
-									<PenLine className="h-4 w-4" />
-								</Button>
-							}
-						/>
+						<Link
+							to={ROUTE_PATHS.PRODUCT_ROLE_DETAIL}
+							params={{ roleId: row.original.id }}
+							search={{}}
+							className={buttonVariants({ variant: "outline", size: "icon" })}
+							aria-label={`View ${row.original.name}`}
+						>
+							<Eye />
+						</Link>
+						<Link
+							to={ROUTE_PATHS.PRODUCT_ROLE_DETAIL}
+							params={{ roleId: row.original.id }}
+							search={{ edit: true }}
+							className={buttonVariants({ variant: "outline", size: "icon" })}
+							aria-label={`Edit ${row.original.name}`}
+						>
+							<PenLine />
+						</Link>
 						<DeleteProductRoleDialog
 							productId={productId}
 							role={row.original}
@@ -208,7 +212,13 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 			<AnchorDataTable
 				columns={columns}
 				data={items}
-				onRowClick={(role) => setEditingRoleId(role.id)}
+				onRowClick={(role) => {
+					void navigate({
+						to: ROUTE_PATHS.PRODUCT_ROLE_DETAIL,
+						params: { roleId: role.id },
+						search: { edit: true },
+					});
+				}}
 				loading={isLoading}
 				resourceName="roles"
 				error={error}

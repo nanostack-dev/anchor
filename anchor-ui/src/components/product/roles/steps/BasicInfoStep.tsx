@@ -2,12 +2,6 @@ import type { ProductRoleResponse } from "@/client";
 import { FormValidationError } from "@/components/common/FormValidationError";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,8 +47,8 @@ export function BasicInfoStep({
 			<div className="flex flex-col h-full">
 				{/* Header */}
 				<div className="px-7 pt-7 pb-5">
-					<DialogHeader className="gap-2">
-						<DialogTitle className="flex items-center gap-3">
+					<div className="flex flex-col gap-2">
+						<h2 className="flex items-center gap-3">
 							<div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
 								<Lock className="size-4" />
 							</div>
@@ -69,13 +63,13 @@ export function BasicInfoStep({
 									Editing: {existingRole?.name}
 								</Badge>
 							)}
-						</DialogTitle>
-						<DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+						</h2>
+						<p className="text-sm text-muted-foreground leading-relaxed">
 							{isEditMode
 								? "Update the basic information for this role."
 								: "Give your new role a clear name and description."}
-						</DialogDescription>
-					</DialogHeader>
+						</p>
+					</div>
 				</div>
 
 				<ScrollArea className="flex-1 px-7">
@@ -151,7 +145,7 @@ export function BasicInfoStep({
 
 				{/* Footer */}
 				<div className="px-7 py-5 border-t border-border mt-auto">
-					<DialogFooter className="p-0">
+					<div className="p-0">
 						<div className="flex justify-end w-full">
 							<form.Subscribe
 								selector={(state) => [
@@ -178,7 +172,7 @@ export function BasicInfoStep({
 								)}
 							</form.Subscribe>
 						</div>
-					</DialogFooter>
+					</div>
 				</div>
 			</div>
 		</VerticalStepperStep>

@@ -38,6 +38,10 @@ import { productApiKeyEditRoute } from "@/routes/products/product-api-key-edit";
 import { productApiKeyNewRoute } from "@/routes/products/product-api-key-new";
 import { productApiKeysRoute } from "@/routes/products/product-api-keys";
 import { productEventsRoute } from "@/routes/products/product-events";
+import {
+	productResourcePermissionDetailRoute,
+	productRoleDetailRoute,
+} from "@/routes/products/product-resource-details";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
 import { productRolesRoute } from "@/routes/products/product-roles-route";
 import { productUsersRoute } from "@/routes/products/product-users";
@@ -59,7 +63,9 @@ const routeTree = rootRoute.addChildren([
 	productApiKeyEditRoute,
 	productUsersRoute,
 	productRolesRoute,
+	productRoleDetailRoute,
 	productResourcePermissionsRoute,
+	productResourcePermissionDetailRoute,
 	productPermissionsRoute,
 	organizationsRoute,
 	organizationApiKeysRoute,
