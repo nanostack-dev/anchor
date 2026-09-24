@@ -26,6 +26,7 @@ type organizationLicensesTable struct {
 	InstantiatedAt   postgres.ColumnTimestampz
 	CreatedAt        postgres.ColumnTimestampz
 	UpdatedAt        postgres.ColumnTimestampz
+	AdjustedFields   postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -76,9 +77,10 @@ func newOrganizationLicensesTableImpl(schemaName, tableName, alias string) organ
 		InstantiatedAtColumn   = postgres.TimestampzColumn("instantiated_at")
 		CreatedAtColumn        = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn        = postgres.TimestampzColumn("updated_at")
-		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, TemplateIDColumn, ValuesJSONColumn, InstantiatedAtColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, TemplateIDColumn, ValuesJSONColumn, InstantiatedAtColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns         = postgres.ColumnList{ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn}
+		AdjustedFieldsColumn   = postgres.StringColumn("adjusted_fields")
+		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, TemplateIDColumn, ValuesJSONColumn, InstantiatedAtColumn, CreatedAtColumn, UpdatedAtColumn, AdjustedFieldsColumn}
+		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, ProductIDColumn, OrganizationIDColumn, TemplateIDColumn, ValuesJSONColumn, InstantiatedAtColumn, CreatedAtColumn, UpdatedAtColumn, AdjustedFieldsColumn}
+		defaultColumns         = postgres.ColumnList{ValuesJSONColumn, CreatedAtColumn, UpdatedAtColumn, AdjustedFieldsColumn}
 	)
 
 	return organizationLicensesTable{
@@ -94,6 +96,7 @@ func newOrganizationLicensesTableImpl(schemaName, tableName, alias string) organ
 		InstantiatedAt:   InstantiatedAtColumn,
 		CreatedAt:        CreatedAtColumn,
 		UpdatedAt:        UpdatedAtColumn,
+		AdjustedFields:   AdjustedFieldsColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

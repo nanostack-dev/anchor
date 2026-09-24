@@ -8,7 +8,8 @@ import { parseSchemaDsl } from "./license-schema-dsl";
 
 const MIN_ROWS = 8;
 
-export const SCHEMA_DSL_PLACEHOLDER = `max_flows:   limit 0..100                    # Concurrent flows allowed
+export const SCHEMA_DSL_PLACEHOLDER = `max_flows:   limit gauge 0..100              # Concurrent flows allowed
+monthly_runs: limit windowed_counter 0..5000
 seats:       number 1..
 sso:         boolean
 tier:        enum free | pro | enterprise

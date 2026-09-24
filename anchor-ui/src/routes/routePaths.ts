@@ -30,6 +30,8 @@ export const ROUTE_PATHS = {
 	// Licensing routes
 	PRODUCT_LICENSE_SCHEMA: "/products/licensing/schema",
 	PRODUCT_LICENSE_TEMPLATES: "/products/licensing/templates",
+	PRODUCT_LICENSE_TEMPLATE_NEW: "/products/licensing/templates/new",
+	PRODUCT_LICENSE_TEMPLATE_DETAIL: "/products/licensing/templates/$templateId",
 	ORGANIZATION_LICENSE: "/organizations/license",
 	ORGANIZATION_LICENSE_DETAIL: "/organizations/license/$organizationId",
 

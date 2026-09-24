@@ -1,4 +1,4 @@
-import { LicenseFieldType } from "@/client";
+import { LicenseFieldType, UsageShape } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
@@ -19,12 +19,14 @@ function seedFields(): FieldRow[] {
 		newFieldRow({
 			name: "max_flows",
 			type: LicenseFieldType.LIMIT,
+			usageShape: UsageShape.GAUGE,
 			description: "Concurrent flows an organization may run",
 			rules: { min: 0, max: 500 },
 		}),
 		newFieldRow({
 			name: "max_collections",
 			type: LicenseFieldType.LIMIT,
+			usageShape: UsageShape.GAUGE,
 			rules: { min: 0 },
 		}),
 		newFieldRow({
@@ -184,7 +186,11 @@ export const OnlyOneFieldIsOpenAtATime: Story = {
 export const ValidationReopensTheOffendingField: Story = {
 	args: {
 		initialFields: [
-			newFieldRow({ name: "max_flows", type: LicenseFieldType.LIMIT }),
+			newFieldRow({
+				name: "max_flows",
+				type: LicenseFieldType.LIMIT,
+				usageShape: UsageShape.GAUGE,
+			}),
 			newFieldRow({ name: "", type: LicenseFieldType.STRING }),
 		],
 	},
@@ -213,7 +219,9 @@ export const TextModeReportsErrorsByLine: Story = {
 
 		const editor = canvas.getByLabelText("Fields");
 		await userEvent.click(editor);
-		await userEvent.paste("max_flows: limit 0..100\nseats: integer 1..10");
+		await userEvent.paste(
+			"max_flows: limit gauge 0..100\nseats: integer 1..10",
+		);
 
 		await expect(
 			canvas.getByText(/`integer` is not a field type/),
@@ -237,7 +245,7 @@ export const DraftSurvivesAModeSwitch: Story = {
 
 		const editor = canvas.getByLabelText<HTMLTextAreaElement>("Fields");
 		await expect(editor.value).toMatch(
-			/^max_flows: +limit 0\.\.500 +# Concurrent/m,
+			/^max_flows: +limit gauge 0\.\.500 +# Concurrent/m,
 		);
 		await expect(editor.value).toMatch(
 			/^tier: +enum free \| pro \| enterprise$/m,

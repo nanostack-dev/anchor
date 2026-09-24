@@ -671,10 +671,10 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
-// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
+// LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match). `TEMPLATE_SYNCED` is the license following its own template after that template's values were updated — an automatic propagation, not an operator's migrate: `template_id` names the template followed, and `old_value` and `new_value` carry the whole set of values on either side. Adjusted fields keep their values through it.
 type LicenseChangeType = license.ChangeType
 
-// LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
+// LicenseDifferenceKind Why a license field appears in a diff. `changed` means the two sides hold different values — usually a field adjusted for this organization, since a template edit is otherwise propagated onto the license; a propagation still in flight, or one refused because the merged values no longer satisfy the schema, also reads as `changed`. `only_in_license` and `only_in_template` mean the template changed shape and the license has not (yet) followed.
 type LicenseDifferenceKind = license.DifferenceKind
 
 // LicenseFieldDeclaration defines model for LicenseFieldDeclaration.
@@ -695,7 +695,7 @@ type LicenseFieldDifference struct {
 	// Field The license field the two sides disagree on.
 	Field string `json:"field"`
 
-	// Kind Why a license field appears in a diff. `changed` means the two sides hold different values — either someone adjusted this organization, or the template moved after the copy was taken. The kind alone does not say which. `only_in_license` and `only_in_template` always mean the template changed shape after the copy.
+	// Kind Why a license field appears in a diff. `changed` means the two sides hold different values — usually a field adjusted for this organization, since a template edit is otherwise propagated onto the license; a propagation still in flight, or one refused because the merged values no longer satisfy the schema, also reads as `changed`. `only_in_license` and `only_in_template` mean the template changed shape and the license has not (yet) followed.
 	Kind LicenseDifferenceKind `json:"kind"`
 
 	// LicenseValue The value the organization's license holds. Null when the kind is `only_in_template`, because the template gained this license field after the copy was taken.
@@ -742,11 +742,11 @@ type LicenseFieldUsageResponse struct {
 	Usage *float64 `json:"usage,omitempty"`
 }
 
-// LicenseMigrationDifferencePolicy What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and the value is gone.
+// LicenseMigrationDifferencePolicy What to do with a license field whose value differs from the template the organization currently holds. `CARRY_FORWARD`, the default, keeps that value on the migrated license, so a bespoke arrangement survives a tier change. `DISCARD` takes the target template whole and clears all recorded adjustments, including fields already equal to the template.
 // A difference is either someone adjusting that customer or the template moving after the copy was taken, and the difference alone does not say which. `CARRY_FORWARD` therefore preserves a stale copy as readily as a bespoke deal. Read the diff between the two templates before choosing.
 type LicenseMigrationDifferencePolicy = license.DifferencePolicy
 
-// LicenseMigrationOutcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+// LicenseMigrationOutcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. Clearing recorded adjustments also counts as `CHANGED` even when no value moves. `UNCHANGED` means it already held exactly those values and adjustment records from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 type LicenseMigrationOutcome = license.MigrationOutcome
 
 // LicenseSchemaCreateRequest defines model for LicenseSchemaCreateRequest.
@@ -1043,7 +1043,7 @@ type OrganizationInclude = organization.Include
 
 // OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
 type OrganizationLicenseAdjustRequest struct {
-	// Values Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is.
+	// Values Merged into the license, not substituted for it. A license field present replaces the value held. A license field absent keeps its value, which is the opposite of a template write — a template is authored whole, a license is adjusted one field at a time. No license field can be removed this way, because every field the schema declares must stay set. The merged result is validated against the schema exactly as a template write is. Every field an adjustment moves is recorded in `adjusted_fields`, which pins it: a later template update no longer overwrites it.
 	Values LicenseTemplateValues `json:"values"`
 }
 
@@ -1063,10 +1063,10 @@ type OrganizationLicenseChangeResponse struct {
 	// LicenseId Which license record was changed. Provenance, not a live dependency: the entry stays true whatever becomes of that record.
 	LicenseId Ksuid `json:"license_id"`
 
-	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of copied values for an instantiation or a `SET` entry.
+	// NewValue The value held after the change: that license field's value for an adjustment, and the whole set of values for an instantiation, a `SET` entry, or a `TEMPLATE_SYNCED` entry.
 	NewValue interface{} `json:"new_value,omitempty"`
 
-	// OldValue The value held before the change: that license field's value for an adjustment, and the whole set held before the move for a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
+	// OldValue The value held before the change: that license field's value for an adjustment, and the whole set held before for a `TEMPLATE_SYNCED` entry or a `SET` entry that moved an existing license. Absent when `type` is `INSTANTIATED`, when an adjustment set a license field the license did not carry, and when a `SET` entry granted a first license.
 	OldValue interface{} `json:"old_value,omitempty"`
 
 	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1082,10 +1082,10 @@ type OrganizationLicenseChangeResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid `json:"product_id"`
 
-	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED` or `SET`, absent otherwise.
+	// TemplateId The template stamped onto the organization. Present when `type` is `INSTANTIATED`, `SET` or `TEMPLATE_SYNCED`, absent otherwise.
 	TemplateId *Ksuid `json:"template_id,omitempty"`
 
-	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match).
+	// Type What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match). `TEMPLATE_SYNCED` is the license following its own template after that template's values were updated — an automatic propagation, not an operator's migrate: `template_id` names the template followed, and `old_value` and `new_value` carry the whole set of values on either side. Adjusted fields keep their values through it.
 	Type LicenseChangeType `json:"type"`
 }
 
@@ -1131,7 +1131,7 @@ type OrganizationLicenseHistoryResponse struct {
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
 type OrganizationLicenseInstantiateRequest struct {
-	// TemplateId The license template to copy. It is read once, here. The organization keeps the copy, so editing this template afterwards does not reach them.
+	// TemplateId The license template to copy. The organization keeps its own copy of the values, and the copy follows the template: a later edit to this template's values is propagated onto the license, except on the fields adjusted for this organization.
 	TemplateId Ksuid `json:"template_id"`
 }
 
@@ -1183,23 +1183,25 @@ type OrganizationLicenseMigrationResult struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	OrganizationId Ksuid `json:"organization_id"`
 
-	// Outcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. `UNCHANGED` means it already held exactly those values from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
+	// Outcome What happened to one organization in a migration run. `CHANGED` means its license was written and its provenance stamped onto the target — moved from another tier, or granted its first, whichever it held before the run; `previous_template_id` on the history entry says which. Clearing recorded adjustments also counts as `CHANGED` even when no value moves. `UNCHANGED` means it already held exactly those values and adjustment records from that same template, so nothing was written. `FAILED` means the write was attempted and refused; `error` says why, and the rest of the batch was unaffected.
 	Outcome LicenseMigrationOutcome `json:"outcome"`
 
 	// PreviousTemplateId The template the organization held before this run. Absent when it held no license — this run granted its first, rather than moving it.
 	PreviousTemplateId *Ksuid `json:"previous_template_id,omitempty"`
 }
 
-// OrganizationLicenseResponse An organization's license: its own copy of a template's values. Every license field the schema declares carries a value, so a consumer can read it at face value.
+// OrganizationLicenseResponse An organization's license: its own copy of a template's values, kept in step with that template except on its adjusted fields. Every license field the schema declares carries a value, so a consumer can read it at face value.
 type OrganizationLicenseResponse struct {
-	CreatedAt time.Time `json:"created_at"`
+	// AdjustedFields The license fields adjusted for this organization, ordered by name. A propagated template update leaves these fields alone, so a bespoke arrangement survives every later edit to the tier. Empty on a fresh copy: instantiating sets it empty, adjusting adds every field the adjustment moved, and migrating keeps it under `CARRY_FORWARD` (dropping fields the target does not declare) and clears it under `DISCARD`.
+	AdjustedFields []string  `json:"adjusted_fields"`
+	CreatedAt      time.Time `json:"created_at"`
 
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	Id Ksuid `json:"id"`
 
-	// InstantiatedAt When the copy was taken. An adjustment does not move it.
+	// InstantiatedAt When the copy was taken. Neither an adjustment nor a propagated template update moves it; only a migration restamps it.
 	InstantiatedAt time.Time `json:"instantiated_at"`
 
 	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
@@ -1212,7 +1214,7 @@ type OrganizationLicenseResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid `json:"product_id"`
 
-	// TemplateId Which template this organization was sold. Provenance, not a live dependency: the template can be edited or deleted afterwards without changing `values`, and it may no longer exist.
+	// TemplateId Which template this organization was sold, and the template this license follows: an edit to that template's values is propagated onto `values`, except on the fields in `adjusted_fields`.
 	TemplateId Ksuid     `json:"template_id"`
 	UpdatedAt  time.Time `json:"updated_at"`
 
@@ -2661,6 +2663,9 @@ type Forbidden = ApiErrorResponse
 
 // InternalServerError defines model for InternalServerError.
 type InternalServerError = ApiErrorResponse
+
+// LicensingWriteConflict defines model for LicensingWriteConflict.
+type LicensingWriteConflict = ApiErrorResponse
 
 // NotFound defines model for NotFound.
 type NotFound = ApiErrorResponse
@@ -8013,6 +8018,8 @@ type ForbiddenJSONResponse ApiErrorResponse
 
 type InternalServerErrorJSONResponse ApiErrorResponse
 
+type LicensingWriteConflictJSONResponse ApiErrorResponse
+
 type NotFoundJSONResponse ApiErrorResponse
 
 type TooManyRequestsJSONResponse ApiErrorResponse
@@ -11461,7 +11468,9 @@ func (response MigrateOrganizationLicenses404JSONResponse) VisitMigrateOrganizat
 	return err
 }
 
-type MigrateOrganizationLicenses409JSONResponse struct{ ConflictJSONResponse }
+type MigrateOrganizationLicenses409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response MigrateOrganizationLicenses409JSONResponse) VisitMigrateOrganizationLicensesResponse(w http.ResponseWriter) error {
 
@@ -11640,7 +11649,9 @@ func (response DeleteLicenseSchema404JSONResponse) VisitDeleteLicenseSchemaRespo
 	return err
 }
 
-type DeleteLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type DeleteLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response DeleteLicenseSchema409JSONResponse) VisitDeleteLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -11811,7 +11822,9 @@ func (response CreateLicenseSchema404JSONResponse) VisitCreateLicenseSchemaRespo
 	return err
 }
 
-type CreateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type CreateLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateLicenseSchema409JSONResponse) VisitCreateLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -11904,7 +11917,9 @@ func (response UpdateLicenseSchema404JSONResponse) VisitUpdateLicenseSchemaRespo
 	return err
 }
 
-type UpdateLicenseSchema409JSONResponse struct{ ConflictJSONResponse }
+type UpdateLicenseSchema409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response UpdateLicenseSchema409JSONResponse) VisitUpdateLicenseSchemaResponse(w http.ResponseWriter) error {
 
@@ -12076,7 +12091,9 @@ func (response CreateLicenseTemplate404JSONResponse) VisitCreateLicenseTemplateR
 	return err
 }
 
-type CreateLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type CreateLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateLicenseTemplate409JSONResponse) VisitCreateLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12163,7 +12180,9 @@ func (response DeleteLicenseTemplate404JSONResponse) VisitDeleteLicenseTemplateR
 	return err
 }
 
-type DeleteLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type DeleteLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response DeleteLicenseTemplate409JSONResponse) VisitDeleteLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12336,7 +12355,9 @@ func (response UpdateLicenseTemplate404JSONResponse) VisitUpdateLicenseTemplateR
 	return err
 }
 
-type UpdateLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type UpdateLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response UpdateLicenseTemplate409JSONResponse) VisitUpdateLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12429,7 +12450,9 @@ func (response ArchiveLicenseTemplate404JSONResponse) VisitArchiveLicenseTemplat
 	return err
 }
 
-type ArchiveLicenseTemplate409JSONResponse struct{ ConflictJSONResponse }
+type ArchiveLicenseTemplate409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response ArchiveLicenseTemplate409JSONResponse) VisitArchiveLicenseTemplateResponse(w http.ResponseWriter) error {
 
@@ -12508,7 +12531,9 @@ func (response CreateProductOrganization403JSONResponse) VisitCreateProductOrgan
 	return err
 }
 
-type CreateProductOrganization409JSONResponse struct{ ConflictJSONResponse }
+type CreateProductOrganization409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response CreateProductOrganization409JSONResponse) VisitCreateProductOrganizationResponse(w http.ResponseWriter) error {
 
@@ -13525,7 +13550,9 @@ func (response AdjustOrganizationLicense404JSONResponse) VisitAdjustOrganization
 	return err
 }
 
-type AdjustOrganizationLicense409JSONResponse struct{ ConflictJSONResponse }
+type AdjustOrganizationLicense409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response AdjustOrganizationLicense409JSONResponse) VisitAdjustOrganizationLicenseResponse(w http.ResponseWriter) error {
 
@@ -13619,7 +13646,9 @@ func (response InstantiateOrganizationLicense404JSONResponse) VisitInstantiateOr
 	return err
 }
 
-type InstantiateOrganizationLicense409JSONResponse struct{ ConflictJSONResponse }
+type InstantiateOrganizationLicense409JSONResponse struct {
+	LicensingWriteConflictJSONResponse
+}
 
 func (response InstantiateOrganizationLicense409JSONResponse) VisitInstantiateOrganizationLicenseResponse(w http.ResponseWriter) error {
 

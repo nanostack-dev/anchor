@@ -45,6 +45,7 @@ type Story = StoryObj<typeof meta>;
 export const EveryStatusIsDistinguishable: Story = {
 	args: {
 		usage: EVERY_STATUS,
+		adjustedFields: ["api_calls", "max_flows", "webhooks"],
 		selectedField: "api_calls",
 		onSelectField: () => {},
 	},
@@ -55,6 +56,13 @@ export const EveryStatusIsDistinguishable: Story = {
 		await expect(canvas.getByText("At limit")).toBeVisible();
 		await expect(canvas.getByText("Within limit")).toBeVisible();
 		await expect(canvas.getByText("Never reported")).toBeVisible();
+		await expect(canvas.getAllByText("Custom limit")).toHaveLength(3);
+		await expect(canvas.queryByText("Adjusted")).not.toBeInTheDocument();
+		await expect(
+			within(canvas.getByRole("button", { name: /seats/ })).queryByText(
+				"Custom limit",
+			),
+		).not.toBeInTheDocument();
 	},
 };
 
@@ -95,13 +103,16 @@ export const NoLimitFieldsDeclared: Story = {
 	},
 };
 
-function SelectionHarness() {
+function SelectionHarness({
+	adjustedFields = [],
+}: { adjustedFields?: string[] }) {
 	const [selectedField, setSelectedField] = useState<string | null>(
 		"max_flows",
 	);
 	return (
 		<OrganizationLicenseLimits
 			usage={EVERY_STATUS}
+			adjustedFields={adjustedFields}
 			selectedField={selectedField}
 			onSelectField={setSelectedField}
 		/>
@@ -124,5 +135,42 @@ export const SelectingALimitMarksItPressed: Story = {
 		await userEvent.click(seats);
 
 		await expect(seats).toHaveAttribute("aria-pressed", "true");
+	},
+};
+
+export const CustomizationSurvivesSelectionChanges: Story = {
+	args: { usage: EVERY_STATUS, selectedField: null, onSelectField: () => {} },
+	render: () => <SelectionHarness adjustedFields={["max_flows"]} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const custom = canvas.getByRole("button", {
+			name: /max_flows.*Custom limit/,
+		});
+		const standard = canvas.getByRole("button", { name: /seats/ });
+		await expect(custom).toHaveAttribute("aria-pressed", "true");
+		await userEvent.click(standard);
+		await expect(custom).toHaveAttribute("aria-pressed", "false");
+		await expect(within(custom).getByText("Custom limit")).toBeVisible();
+		await expect(
+			within(standard).queryByText("Custom limit"),
+		).not.toBeInTheDocument();
+		custom.focus();
+		await userEvent.keyboard("{Enter}");
+		await expect(custom).toHaveAttribute("aria-pressed", "true");
+		await expect(standard).toHaveAttribute("aria-pressed", "false");
+	},
+};
+
+export const UnrelatedAdjustmentsDoNotHighlightUsage: Story = {
+	args: {
+		usage: EVERY_STATUS,
+		adjustedFields: ["sso", "support_tier"],
+		selectedField: "max_flows",
+		onSelectField: () => {},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Custom limit")).not.toBeInTheDocument();
+		await expect(canvas.getByText("Within limit")).toBeVisible();
 	},
 };

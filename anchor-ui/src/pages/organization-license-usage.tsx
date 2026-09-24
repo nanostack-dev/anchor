@@ -36,6 +36,7 @@ export default function OrganizationLicenseUsagePage() {
 				</p>
 				<OrganizationLicenseLimits
 					usage={usage}
+					adjustedFields={license.adjusted_fields}
 					selectedField={chartedField ?? null}
 					onSelectField={(next) =>
 						navigate({

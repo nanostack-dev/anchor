@@ -72,12 +72,15 @@ export function LicenseValueFields({
 
 				return (
 					<div key={field.id} className="flex flex-col gap-1.5 p-3">
-						<div className="flex items-baseline justify-between gap-2">
-							<Label htmlFor={inputId} className="min-w-0 font-mono text-sm">
+						<div className="flex min-w-0 flex-col gap-1">
+							<Label
+								htmlFor={inputId}
+								className="min-w-0 break-all font-mono text-sm"
+							>
 								{field.name}
 							</Label>
 							{field.description && (
-								<span className="truncate text-xs text-muted-foreground">
+								<span className="text-xs text-muted-foreground">
 									{field.description}
 								</span>
 							)}

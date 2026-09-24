@@ -136,23 +136,29 @@ type LicenseSchemaService interface {
 }
 
 type licenseSchemaService struct {
-	transactor transactor.Transactor
-	schemaRepo licenserepo.SchemaRepository
-	fieldRepo  licenserepo.SchemaFieldRepository
-	logger     zerolog.Logger
+	transactor   transactor.Transactor
+	schemaRepo   licenserepo.SchemaRepository
+	fieldRepo    licenserepo.SchemaFieldRepository
+	templateRepo licenserepo.TemplateRepository
+	sync         LicenseTemplateSyncEnqueuer
+	logger       zerolog.Logger
 }
 
 func NewLicenseSchemaService(
 	tx transactor.Transactor,
 	schemaRepo licenserepo.SchemaRepository,
 	fieldRepo licenserepo.SchemaFieldRepository,
+	templateRepo licenserepo.TemplateRepository,
+	sync LicenseTemplateSyncEnqueuer,
 	logger zerolog.Logger,
 ) LicenseSchemaService {
 	return &licenseSchemaService{
-		transactor: tx,
-		schemaRepo: schemaRepo,
-		fieldRepo:  fieldRepo,
-		logger:     logger.With().Str("component", "license_schema_service").Logger(),
+		transactor:   tx,
+		schemaRepo:   schemaRepo,
+		fieldRepo:    fieldRepo,
+		templateRepo: templateRepo,
+		sync:         sync,
+		logger:       logger.With().Str("component", "license_schema_service").Logger(),
 	}
 }
 
@@ -225,53 +231,43 @@ func (s *licenseSchemaService) CreateSchema(
 		return license.Schema{}, err
 	}
 
-	fields, err := declareFields(in.Fields)
-	if err != nil {
-		return license.Schema{}, err
-	}
-
-	schema := license.Schema{
-		PlatformTenantID: in.TenantID,
-		ProductID:        in.ProductID,
-		Description:      in.Description,
-	}
-	schema.GenerateID()
-
-	// The envelope and its fields are one declaration, so they land together or
-	// not at all: a schema row without its fields would read as an empty
-	// declaration rather than as a failed write. The "already declared" check
-	// runs in here too, so it reads the same snapshot the insert writes to.
-	var created license.Schema
-	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existing, findErr := s.schemaRepo.FindByProduct(txCtx, in.TenantID, in.ProductID)
-		if findErr != nil {
-			return findErr
-		}
-		if existing.IsPresent() {
-			return ErrLicenseSchemaAlreadyExists
-		}
-
-		created, err = s.schemaRepo.Create(txCtx, schema)
-		if err != nil {
-			// Two creates racing both pass the check above at READ COMMITTED, so
-			// the unique index is what actually decides. Last one in loses, and
-			// loses the same way it would have lost the check.
-			if pgerr.IsUniqueViolation(err, licenseSchemaProductConstraint) {
-				return ErrLicenseSchemaAlreadyExists
+	return withLicenseWrite(
+		ctx,
+		s.transactor,
+		in.TenantID,
+		in.ProductID,
+		func(ctx context.Context) (license.Schema, error) {
+			fields, err := declareFields(in.Fields)
+			if err != nil {
+				return license.Schema{}, err
 			}
-			return err
-		}
-		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, created.ID, fields)
-		if writeErr != nil {
-			return writeErr
-		}
-		created.Fields = written
-		return nil
-	}); txErr != nil {
-		return license.Schema{}, txErr
-	}
 
-	return created, nil
+			schema := license.Schema{
+				PlatformTenantID: in.TenantID,
+				ProductID:        in.ProductID,
+				Description:      in.Description,
+			}
+			schema.GenerateID()
+
+			existing, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+			if err != nil {
+				return license.Schema{}, err
+			}
+			if existing.IsPresent() {
+				return license.Schema{}, ErrLicenseSchemaAlreadyExists
+			}
+
+			created, err := s.schemaRepo.Create(ctx, schema)
+			if err != nil {
+				if pgerr.IsUniqueViolation(err, licenseSchemaProductConstraint) {
+					return license.Schema{}, ErrLicenseSchemaAlreadyExists
+				}
+				return license.Schema{}, err
+			}
+			created.Fields, err = s.fieldRepo.ReplaceAll(ctx, created.ID, fields)
+			return created, err
+		},
+	)
 }
 
 func (s *licenseSchemaService) GetSchema(
@@ -306,54 +302,99 @@ func (s *licenseSchemaService) UpdateSchema(
 		return license.Schema{}, err
 	}
 
-	var fields []license.Field
-	if in.Fields != nil {
-		declared, err := declareFields(*in.Fields)
-		if err != nil {
-			return license.Schema{}, err
+	return withLicenseWrite(
+		ctx,
+		s.transactor,
+		in.TenantID,
+		in.ProductID,
+		func(ctx context.Context) (license.Schema, error) {
+			var fields []license.Field
+			if in.Fields != nil {
+				declared, err := declareFields(*in.Fields)
+				if err != nil {
+					return license.Schema{}, err
+				}
+				fields = declared
+			}
+
+			found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+			if err != nil {
+				return license.Schema{}, err
+			}
+			if found.IsAbsent() {
+				return license.Schema{}, ErrLicenseSchemaNotFound
+			}
+			existing := found.Value()
+			if in.Description != nil {
+				existing.Description = *in.Description
+			}
+
+			updated, err := s.schemaRepo.Update(ctx, in.TenantID, existing)
+			if err != nil {
+				return license.Schema{}, err
+			}
+			if in.Fields == nil {
+				updated.Fields, err = s.fieldRepo.ListBySchema(ctx, updated.ID)
+				return updated, err
+			}
+			previous, err := s.fieldRepo.ListBySchema(ctx, updated.ID)
+			if err != nil {
+				return license.Schema{}, err
+			}
+			updated.Fields, err = s.fieldRepo.ReplaceAll(ctx, updated.ID, fields)
+			if err != nil {
+				return license.Schema{}, err
+			}
+
+			return updated, s.cascadeRemovedFields(ctx, in.TenantID, in.ProductID, previous, updated.Fields)
+		},
+	)
+}
+
+func (s *licenseSchemaService) cascadeRemovedFields(
+	ctx context.Context,
+	tenantID string,
+	productID string,
+	previousFields []license.Field,
+	currentFields []license.Field,
+) error {
+	declared := make(map[string]struct{}, len(currentFields))
+	for _, field := range currentFields {
+		declared[field.Name] = struct{}{}
+	}
+	var removed []string
+	for _, field := range previousFields {
+		if _, kept := declared[field.Name]; !kept {
+			removed = append(removed, field.Name)
 		}
-		fields = declared
+	}
+	if len(removed) == 0 {
+		return nil
 	}
 
-	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+	templates, err := s.templateRepo.ListByProduct(ctx, tenantID, productID, nil)
 	if err != nil {
-		return license.Schema{}, err
+		return err
 	}
-	if found.IsAbsent() {
-		return license.Schema{}, ErrLicenseSchemaNotFound
-	}
-	existing := found.Value()
-	if in.Description != nil {
-		existing.Description = *in.Description
-	}
-
-	var updated license.Schema
-	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		updated, err = s.schemaRepo.Update(txCtx, in.TenantID, existing)
-		if err != nil {
+	for _, template := range templates {
+		pruned := false
+		for _, name := range removed {
+			if _, held := template.Values[name]; held {
+				delete(template.Values, name)
+				pruned = true
+			}
+		}
+		if !pruned {
+			continue
+		}
+		if _, err = s.templateRepo.Update(ctx, tenantID, template); err != nil {
 			return err
 		}
-		// A nil Fields leaves the declaration alone; a non-nil one replaces it
-		// wholesale, so a field the caller omitted is a removal.
-		if in.Fields == nil {
-			current, listErr := s.fieldRepo.ListBySchema(txCtx, updated.ID)
-			if listErr != nil {
-				return listErr
-			}
-			updated.Fields = current
-			return nil
+		if err = s.sync.EnqueueTemplateSync(ctx, tenantID, productID, template.ID); err != nil {
+			return err
 		}
-		written, writeErr := s.fieldRepo.ReplaceAll(txCtx, updated.ID, fields)
-		if writeErr != nil {
-			return writeErr
-		}
-		updated.Fields = written
-		return nil
-	}); txErr != nil {
-		return license.Schema{}, txErr
 	}
-
-	return updated, nil
+	return nil
 }
 
 func (s *licenseSchemaService) DeleteSchema(
@@ -363,14 +404,19 @@ func (s *licenseSchemaService) DeleteSchema(
 		return err
 	}
 
-	found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
-	if err != nil {
-		return err
-	}
-	if found.IsAbsent() {
-		return ErrLicenseSchemaNotFound
-	}
+	return s.transactor.InTx(ctx, func(ctx context.Context) error {
+		if err := acquireLicenseWriteLock(ctx, in.TenantID, in.ProductID); err != nil {
+			return err
+		}
+		found, err := s.schemaRepo.FindByProduct(ctx, in.TenantID, in.ProductID)
+		if err != nil {
+			return err
+		}
+		if found.IsAbsent() {
+			return ErrLicenseSchemaNotFound
+		}
 
-	// Fields cascade with the envelope; the migration owns that, not this layer.
-	return s.schemaRepo.DeleteByProduct(ctx, in.TenantID, in.ProductID)
+		// Fields cascade with the envelope; the migration owns that, not this layer.
+		return s.schemaRepo.DeleteByProduct(ctx, in.TenantID, in.ProductID)
+	})
 }

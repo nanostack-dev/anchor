@@ -43,12 +43,23 @@ func NewOrganizationLicenseRepository(
 	}
 }
 
-// organizationLicenseScope is the tenant and product predicate every statement
-// in this file carries. Written once so a new query cannot be added with half
-// the scope.
+// organizationLicenseScope is the tenant and product predicate every
+// tenant-facing statement carries.
 func organizationLicenseScope(tenantID, productID string) postgres.BoolExpression {
 	return table.OrganizationLicenses.PlatformTenantID.EQ(postgres.String(tenantID)).
 		AND(table.OrganizationLicenses.ProductID.EQ(postgres.String(productID)))
+}
+
+// ListUninitializedAdjustmentsInternal is only used by the startup backfill;
+// tenant-facing services must never use this cross-tenant query.
+func (r *organizationLicenseRepositoryImpl) ListUninitializedAdjustmentsInternal(
+	ctx context.Context, limit int,
+) ([]license.OrganizationLicense, error) {
+	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
+		FROM(table.OrganizationLicenses).
+		WHERE(table.OrganizationLicenses.AdjustedFields.EQ(postgres.RawString("'null'::jsonb"))).
+		ORDER_BY(table.OrganizationLicenses.ID.ASC()).LIMIT(int64(limit))
+	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
@@ -185,6 +196,35 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplate(
 				AND(table.OrganizationLicenses.TemplateID.EQ(postgres.String(templateID))),
 		).
 		ORDER_BY(table.OrganizationLicenses.OrganizationID.ASC())
+
+	return transactor.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(entity model.OrganizationLicenses) string { return entity.OrganizationID },
+	).Value()
+}
+
+func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplateAfter(
+	ctx context.Context,
+	tenantID string,
+	productID string,
+	templateID string,
+	afterOrganizationID string,
+	limit int,
+) ([]string, error) {
+	where := organizationLicenseScope(tenantID, productID).
+		AND(table.OrganizationLicenses.TemplateID.EQ(postgres.String(templateID)))
+	if afterOrganizationID != "" {
+		where = where.AND(
+			table.OrganizationLicenses.OrganizationID.GT(postgres.String(afterOrganizationID)),
+		)
+	}
+
+	stmt := table.OrganizationLicenses.
+		SELECT(table.OrganizationLicenses.OrganizationID).
+		FROM(table.OrganizationLicenses).
+		WHERE(where).
+		ORDER_BY(table.OrganizationLicenses.OrganizationID.ASC()).
+		LIMIT(int64(limit))
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,

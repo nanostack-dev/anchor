@@ -3,6 +3,8 @@ import {
 	type LicenseFieldRules,
 	LicenseFieldType,
 	type LicenseSchemaResponse,
+	type UsageShape,
+	zUsageShape,
 } from "@/client";
 
 import { sanitizeRules } from "./license-field-format";
@@ -14,9 +16,13 @@ import { sanitizeRules } from "./license-field-format";
  * server id until the schema is saved, and the name is editable, so neither can
  * key a React list.
  */
-export type FieldRow = Omit<LicenseFieldDeclaration, "rules"> & {
+export type FieldRow = Omit<
+	LicenseFieldDeclaration,
+	"rules" | "usage_shape"
+> & {
 	uiKey: string;
 	rules: LicenseFieldRules;
+	usageShape?: UsageShape;
 };
 
 export function newFieldRow(
@@ -37,6 +43,7 @@ export function fieldRowsFromSchema(schema: LicenseSchemaResponse): FieldRow[] {
 		newFieldRow({
 			name: field.name,
 			type: field.type,
+			usageShape: field.usage_shape,
 			description: field.description ?? "",
 			rules: field.rules ?? {},
 		}),
@@ -49,6 +56,8 @@ export function fieldRowsToDeclarations(
 	return rows.map((row) => ({
 		name: row.name.trim(),
 		type: row.type,
+		usage_shape:
+			row.type === LicenseFieldType.LIMIT ? row.usageShape : undefined,
 		description: row.description?.trim() || undefined,
 		rules: sanitizeRules(row.type, row.rules),
 	}));
@@ -71,6 +80,14 @@ export function validateFieldRows(rows: FieldRow[]): Record<string, string> {
 			continue;
 		}
 		namesSeen.set(name, [...(namesSeen.get(name) ?? []), row.uiKey]);
+
+		if (
+			row.type === LicenseFieldType.LIMIT &&
+			!zUsageShape.safeParse(row.usageShape).success
+		) {
+			errors[row.uiKey] = "Choose a usage shape for this limit.";
+			continue;
+		}
 
 		if (
 			row.type === LicenseFieldType.ENUM &&

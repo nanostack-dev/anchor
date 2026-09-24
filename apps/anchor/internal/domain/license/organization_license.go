@@ -4,27 +4,24 @@ import (
 	"maps"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
 // OrganizationLicense is one Organization's own copy of a [Template]'s values.
-// An Organization has at most one.
-//
-// Copy, not pointer: editing a template afterwards cannot change a live
-// customer, and per-organization deviation therefore needs no override layer.
-// See docs/adr/0004-license-schema-template-and-copy.md.
+// An Organization has at most one. The copy follows its template except on
+// AdjustedFields (docs/adr/0018-license-follows-its-template.md).
 type OrganizationLicense struct {
 	ID               string
 	PlatformTenantID string
 	ProductID        string
 	OrganizationID   string
-	// TemplateID and InstantiatedAt are provenance, not a live dependency. The
-	// template they name can be edited or deleted without touching Values.
-	TemplateID     string
-	InstantiatedAt time.Time
-	Values         TemplateValues
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	TemplateID       string
+	InstantiatedAt   time.Time
+	Values           TemplateValues
+	AdjustedFields   []string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // GenerateID sets the license's ID to a new prefixed KSUID.
@@ -48,4 +45,23 @@ func (l *OrganizationLicense) AdjustedValues(in TemplateValues) TemplateValues {
 	maps.Copy(adjusted, l.Values)
 	maps.Copy(adjusted, in)
 	return adjusted
+}
+
+func (l *OrganizationLicense) RecordAdjustedFields(fieldNames []string) {
+	l.AdjustedFields = functional.Sorted(functional.Distinct(functional.Slice(l.AdjustedFields).Concat(fieldNames)))
+}
+
+func (l *OrganizationLicense) SyncedValues(template TemplateValues) TemplateValues {
+	synced := make(TemplateValues, len(template))
+	maps.Copy(synced, template)
+	for _, name := range l.AdjustedFields {
+		heldValue, isHeld := l.Values[name]
+		if !isHeld {
+			continue
+		}
+		if _, declared := template[name]; declared {
+			synced[name] = heldValue
+		}
+	}
+	return synced
 }

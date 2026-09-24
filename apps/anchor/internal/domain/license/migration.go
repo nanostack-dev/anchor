@@ -123,7 +123,23 @@ func (l *OrganizationLicense) MigratedTo(
 	migrated.TemplateID = target.ID
 	migrated.InstantiatedAt = migratedAt
 	migrated.Values = MigratedValues(l.Values, current, target.Values, policy)
+	migrated.AdjustedFields = migratedAdjustedFields(l.AdjustedFields, target.Values, policy)
 	return migrated
+}
+
+func migratedAdjustedFields(
+	adjusted []string, target TemplateValues, policy DifferencePolicy,
+) []string {
+	if policy == DiscardDifferences {
+		return nil
+	}
+	var kept []string
+	for _, name := range adjusted {
+		if _, declared := target[name]; declared {
+			kept = append(kept, name)
+		}
+	}
+	return kept
 }
 
 // MigratedValues resolves what an Organization holds after a move onto target.
