@@ -349,14 +349,6 @@ export type ProductEventDefinitionResponse = {
      * Display name of the theme or integration group.
      */
     group_name: string;
-    /**
-     * Domain theme name if this event belongs to a domain theme.
-     */
-    theme?: string;
-    /**
-     * Integration provider identifier if this event belongs to an integration.
-     */
-    integration?: string;
 };
 
 export type ProductConfigResponse = {

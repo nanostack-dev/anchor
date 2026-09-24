@@ -768,14 +768,6 @@ components:
           type: string
           description: Display name of the theme or integration group.
           examples: ["Organizations"]
-        theme:
-          type: string
-          description: Domain theme name if this event belongs to a domain theme.
-          examples: ["Organizations"]
-        integration:
-          type: string
-          description: Integration provider identifier if this event belongs to an integration.
-          examples: ["CLERK"]
       required:
       - type
       - name

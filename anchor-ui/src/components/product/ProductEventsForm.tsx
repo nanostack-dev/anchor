@@ -10,7 +10,6 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { zProductEventsConfigRequest } from "@/client/zod.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { StatusBadge } from "@/components/common/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,8 +70,17 @@ interface EventGroup {
 
 interface ProductEventsFormProps {
 	product: ProductResponse;
-	productId: string;
 	onSaved?: () => void;
+}
+
+function formValues(
+	product: ProductResponse,
+	items: ProductEventDefinitionResponse[] = [],
+): EventsFormData {
+	return {
+		eventsEndpointUrl: product.config.events?.endpoint_url ?? "",
+		events: product.config.events?.events ?? items.map((item) => item.type),
+	};
 }
 
 function getGroupIcon(name: string, type: "theme" | "integration") {
@@ -103,7 +111,6 @@ function getGroupIcon(name: string, type: "theme" | "integration") {
 
 export function ProductEventsForm({
 	product,
-	productId,
 	onSaved,
 }: ProductEventsFormProps) {
 	const queryClient = useQueryClient();
@@ -117,24 +124,17 @@ export function ProductEventsForm({
 	>("all");
 	const prevProductRef = React.useRef(product);
 	const eventsInitializedRef = React.useRef(false);
-	const eventsSelectionTouchedRef = React.useRef(false);
 
 	const hadEvents = Boolean(product.config.events?.endpoint_url);
 
 	const catalogQuery = useQuery({
 		...getProductEventsCatalogOptions({
-			path: { product_id: productId },
+			path: { product_id: product.id },
 		}),
 	});
 
 	const form = useForm({
-		defaultValues: {
-			eventsEndpointUrl: product.config.events?.endpoint_url || "",
-			events:
-				product.config.events?.events ??
-				catalogQuery.data?.items?.map((item) => item.type) ??
-				[],
-		} as EventsFormData,
+		defaultValues: formValues(product, catalogQuery.data?.items),
 		onSubmit: async ({ value }) => {
 			const result = eventsFormSchema.safeParse(value);
 			if (!result.success) {
@@ -151,17 +151,10 @@ export function ProductEventsForm({
 	const updateMutation = useMutation({
 		...updateProductMutation(),
 		onSuccess: (updated) => {
-			form.reset({
-				eventsEndpointUrl: updated.config.events?.endpoint_url ?? "",
-				events:
-					updated.config.events?.events ??
-					catalogQuery.data?.items?.map((item) => item.type) ??
-					[],
-			});
-			eventsSelectionTouchedRef.current = false;
+			form.reset(formValues(updated, catalogQuery.data?.items));
 			void queryClient.invalidateQueries({
 				queryKey: getProductQueryKey({
-					path: { product_id: productId },
+					path: { product_id: product.id },
 				}),
 			});
 			onSaved?.();
@@ -212,7 +205,7 @@ export function ProductEventsForm({
 		};
 
 		await updateMutation.mutateAsync({
-			path: { product_id: productId },
+			path: { product_id: product.id },
 			body: updateData,
 		});
 	};
@@ -220,43 +213,20 @@ export function ProductEventsForm({
 	React.useEffect(() => {
 		const previousProduct = prevProductRef.current;
 		prevProductRef.current = product;
-		if (previousProduct.id !== product.id) {
-			eventsInitializedRef.current = false;
-			eventsSelectionTouchedRef.current = false;
-			form.reset({
-				eventsEndpointUrl: product.config.events?.endpoint_url || "",
-				events:
-					product.config.events?.events ??
-					catalogQuery.data?.items?.map((item) => item.type) ??
-					[],
-			});
-			return;
-		}
-		if (previousProduct !== product && !form.state.isDirty) {
-			form.reset({
-				eventsEndpointUrl: product.config.events?.endpoint_url || "",
-				events:
-					product.config.events?.events ??
-					catalogQuery.data?.items?.map((item) => item.type) ??
-					[],
-			});
-		}
-
 		if (!eventsInitializedRef.current && catalogQuery.data?.items) {
 			eventsInitializedRef.current = true;
-			if (!form.state.isDirty) {
-				form.reset({
-					eventsEndpointUrl: product.config.events?.endpoint_url || "",
-					events:
-						product.config.events?.events ??
-						catalogQuery.data.items.map((item) => item.type),
-				});
-			} else if (!eventsSelectionTouchedRef.current && !product.config.events) {
+			if (form.state.isDirty && !product.config.events) {
 				form.setFieldValue(
 					"events",
 					catalogQuery.data.items.map((item) => item.type),
 				);
+			} else if (!form.state.isDirty) {
+				form.reset(formValues(product, catalogQuery.data.items));
 			}
+			return;
+		}
+		if (previousProduct !== product && !form.state.isDirty) {
+			form.reset(formValues(product, catalogQuery.data?.items));
 		}
 	}, [product, catalogQuery.data?.items, form]);
 
@@ -326,27 +296,11 @@ export function ProductEventsForm({
 	}, [groups, filterType, searchQuery]);
 
 	const handleReset = () => {
-		eventsSelectionTouchedRef.current = false;
-		form.reset({
-			eventsEndpointUrl: product.config.events?.endpoint_url || "",
-			events:
-				product.config.events?.events ??
-				catalogQuery.data?.items?.map((item) => item.type) ??
-				[],
-		});
+		form.reset(formValues(product, catalogQuery.data?.items));
 	};
 
 	const endpointValue = form.state.values.eventsEndpointUrl;
 	const isEndpointConfigured = Boolean(endpointValue?.trim());
-	const endpointHostname = React.useMemo(() => {
-		try {
-			if (!endpointValue) return "";
-			const parsed = new URL(endpointValue);
-			return parsed.hostname;
-		} catch {
-			return endpointValue;
-		}
-	}, [endpointValue]);
 
 	return (
 		<form
@@ -365,7 +319,6 @@ export function ProductEventsForm({
 						totalCatalogEvents === selectedEvents.length;
 
 					const toggleEvent = (eventType: string) => {
-						eventsSelectionTouchedRef.current = true;
 						const next = selectedEvents.includes(eventType)
 							? selectedEvents.filter((t) => t !== eventType)
 							: [...selectedEvents, eventType];
@@ -373,7 +326,6 @@ export function ProductEventsForm({
 					};
 
 					const toggleGroup = (group: EventGroup) => {
-						eventsSelectionTouchedRef.current = true;
 						const groupTypes = group.events.map((e) => e.type);
 						const allInGroupSelected = groupTypes.every((t) =>
 							selectedEvents.includes(t),
@@ -385,88 +337,17 @@ export function ProductEventsForm({
 					};
 
 					const selectAll = () => {
-						eventsSelectionTouchedRef.current = true;
 						const allTypes =
 							catalogQuery.data?.items?.map((item) => item.type) ?? [];
 						eventsField.handleChange(allTypes);
 					};
 
 					const deselectAll = () => {
-						eventsSelectionTouchedRef.current = true;
 						eventsField.handleChange([]);
 					};
 
-					const coveragePercent =
-						totalCatalogEvents > 0
-							? Math.round((selectedEvents.length / totalCatalogEvents) * 100)
-							: 0;
-
 					return (
 						<div className="flex flex-col gap-6">
-							<div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-								<div className="group rounded-2xl border border-border/60 bg-card/75 p-4.5 shadow-2xs backdrop-blur-md transition-all duration-200 hover:border-border hover:shadow-xs">
-									<div className="flex items-center justify-between">
-										<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-											Delivery Endpoint
-										</span>
-										<StatusBadge
-											tone={isEndpointConfigured ? "success" : "neutral"}
-										/>
-									</div>
-									<div className="mt-2.5 truncate text-base font-semibold tracking-tight text-foreground">
-										{isEndpointConfigured ? endpointHostname : "Not configured"}
-									</div>
-									<p className="mt-1 text-xs text-muted-foreground">
-										{isEndpointConfigured
-											? "Signed HTTP POST webhook delivery"
-											: "Provide a destination URL below"}
-									</p>
-								</div>
-
-								<div className="group rounded-2xl border border-border/60 bg-card/75 p-4.5 shadow-2xs backdrop-blur-md transition-all duration-200 hover:border-border hover:shadow-xs">
-									<div className="flex items-center justify-between">
-										<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-											Subscribed Events
-										</span>
-										<Badge
-											variant="secondary"
-											className="font-mono text-[11px] font-semibold"
-										>
-											{selectedEvents.length}/{totalCatalogEvents}
-										</Badge>
-									</div>
-									<div className="mt-2.5 text-base font-semibold tracking-tight text-foreground">
-										{selectedEvents.length} Active Events
-									</div>
-									<p className="mt-1 text-xs text-muted-foreground">
-										{coveragePercent}% catalog coverage
-									</p>
-								</div>
-
-								<div className="group rounded-2xl border border-border/60 bg-card/75 p-4.5 shadow-2xs backdrop-blur-md transition-all duration-200 hover:border-border hover:shadow-xs">
-									<div className="flex items-center justify-between">
-										<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-											Signing Security
-										</span>
-										<StatusBadge
-											tone={
-												product.config.events?.signing_secret_obfuscated ||
-												revealedSecret
-													? "success"
-													: "warning"
-											}
-										/>
-									</div>
-									<div className="mt-2.5 text-base font-semibold tracking-tight text-foreground">
-										HMAC SHA-256
-									</div>
-									<p className="mt-1 truncate text-xs text-muted-foreground">
-										{product.config.events?.signing_secret_obfuscated
-											? `Key: ${product.config.events.signing_secret_obfuscated}`
-											: "Mints automatically on first save"}
-									</p>
-								</div>
-							</div>
 							<Card className="rounded-2xl border-border/60 bg-card/75 pt-0 shadow-2xs backdrop-blur-md transition-all">
 								<CardHeader className="rounded-t-2xl border-b border-border/40 bg-muted/25 px-5 py-4">
 									<div className="flex items-center justify-between">

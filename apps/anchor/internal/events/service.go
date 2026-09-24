@@ -20,9 +20,6 @@ type DeliveryTarget struct {
 }
 
 func (t DeliveryTarget) Allows(eventType Type) bool {
-	if t.Events == nil {
-		return true
-	}
 	return slices.Contains(t.Events, string(eventType))
 }
 

@@ -187,9 +187,7 @@ export const zProductEventDefinitionResponse = z.object({
     name: z.string(),
     description: z.string(),
     group_type: zProductEventGroupType,
-    group_name: z.string(),
-    theme: z.optional(z.string()),
-    integration: z.optional(z.string())
+    group_name: z.string()
 });
 
 export const zProductEventsCatalogResponse = z.object({

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -46,13 +47,23 @@ func (r *endpointRepository) FindByProductIDInternal(
 	if err != nil {
 		return functional.None[Endpoint](), err
 	}
-	return row.Map(endpointFromModel), nil
+	if row.IsAbsent() {
+		return functional.None[Endpoint](), nil
+	}
+	endpoint, err := endpointFromModel(row.Value())
+	if err != nil {
+		return functional.None[Endpoint](), err
+	}
+	return functional.Some(endpoint), nil
 }
 
 func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) error {
+	if endpoint.Events == nil {
+		endpoint.Events = []string{}
+	}
 	eventsJSON, err := json.Marshal(endpoint.Events)
 	if err != nil {
-		eventsJSON = []byte("[]")
+		return fmt.Errorf("encode event subscriptions: %w", err)
 	}
 	entity := model.ProductEventEndpointConfigs{
 		ProductID:        endpoint.ProductID,
@@ -104,10 +115,13 @@ func (r *endpointRepository) DeleteByProductIDInternal(ctx context.Context, prod
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func endpointFromModel(row model.ProductEventEndpointConfigs) Endpoint {
+func endpointFromModel(row model.ProductEventEndpointConfigs) (Endpoint, error) {
 	var eventsList []string
-	if row.EventsJSON != "" {
-		_ = json.Unmarshal([]byte(row.EventsJSON), &eventsList)
+	if err := json.Unmarshal([]byte(row.EventsJSON), &eventsList); err != nil {
+		return Endpoint{}, fmt.Errorf("decode event subscriptions for product %s: %w", row.ProductID, err)
+	}
+	if eventsList == nil {
+		return Endpoint{}, fmt.Errorf("event subscriptions for product %s must be an array", row.ProductID)
 	}
 	return Endpoint{
 		ProductID:              row.ProductID,
@@ -115,5 +129,5 @@ func endpointFromModel(row model.ProductEventEndpointConfigs) Endpoint {
 		URL:                    row.EndpointURL,
 		SigningSecretEncrypted: row.SigningSecret,
 		Events:                 eventsList,
-	}
+	}, nil
 }

@@ -2,12 +2,14 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -300,11 +302,11 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		themes := make(map[string]bool)
 		integrations := make(map[string]bool)
 		for _, item := range catalogResp.JSON200.Items {
-			if item.GroupType == ct.Theme && item.Theme != nil {
-				themes[*item.Theme] = true
+			if item.GroupType == ct.Theme {
+				themes[item.GroupName] = true
 			}
-			if item.GroupType == ct.Integration && item.Integration != nil {
-				integrations[*item.Integration] = true
+			if item.GroupType == ct.Integration {
+				integrations[item.GroupName] = true
 			}
 		}
 
@@ -394,8 +396,26 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		require.NoError(t, wsErr)
 		require.Equal(t, http.StatusCreated, createdWs.StatusCode())
 
-		// Give queue a moment to process jobs and assert un-subscribed events were never delivered
-		time.Sleep(1 * time.Second)
+		// Wait until both filtered jobs finish before asserting their absence.
+		require.Eventually(t, func() bool {
+			jobs, listErr := EventQueue.ListJobs(ctx, queue.ListJobsParams{
+				QueueName: "product-events", Search: filterProduct.ProductID, Limit: 100,
+			})
+			if listErr != nil {
+				return false
+			}
+			done := map[string]bool{}
+			for _, job := range jobs {
+				var payload struct {
+					ProductID string `json:"product_id"`
+					Type      string `json:"type"`
+				}
+				if json.Unmarshal(job.Payload, &payload) == nil && payload.ProductID == filterProduct.ProductID {
+					done[payload.Type] = job.Status == queue.StatusDone
+				}
+			}
+			return done["organization.updated"] && done["workspace.created"]
+		}, 20*time.Second, 50*time.Millisecond)
 		assert.Equal(t, 0, filterSink.Count("organization.updated"))
 		assert.Equal(t, 0, filterSink.Count("workspace.created"))
 

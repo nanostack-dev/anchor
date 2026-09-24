@@ -1,6 +1,7 @@
 package clerk
 
 import (
+	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 
 	"go.uber.org/fx"
@@ -12,10 +13,7 @@ func NewModule() fx.Option {
 		"clerk_provider",
 		fx.Provide(
 			provider.AsProviderResult(NewProvider),
-			fx.Annotate(
-				WebhookEventRegistration,
-				fx.ResultTags(`group:"integration_events"`),
-			),
+			events.AsRegistration(WebhookEventRegistration),
 		),
 	)
 }

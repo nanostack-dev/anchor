@@ -19,8 +19,8 @@ export default function ProductEventsPage() {
 		>
 			{currentProduct ? (
 				<ProductEventsForm
+					key={currentProduct.id}
 					product={currentProduct}
-					productId={currentProduct.id}
 					onSaved={refreshProducts}
 				/>
 			) : (

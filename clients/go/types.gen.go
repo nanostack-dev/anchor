@@ -2506,20 +2506,10 @@ type ProductEventDefinitionResponse struct {
 	// Examples: theme
 	GroupType ProductEventGroupType `json:"group_type"`
 
-	// Integration Integration provider identifier if this event belongs to an integration.
-	//
-	// Examples: CLERK
-	Integration *string `json:"integration,omitempty"`
-
 	// Name Human-readable display name.
 	//
 	// Examples: Organization created
 	Name string `json:"name"`
-
-	// Theme Domain theme name if this event belongs to a domain theme.
-	//
-	// Examples: Organizations
-	Theme *string `json:"theme,omitempty"`
 
 	// Type Unique event type identifier.
 	//

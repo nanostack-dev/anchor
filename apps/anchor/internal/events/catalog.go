@@ -3,8 +3,6 @@ package events
 import (
 	"slices"
 
-	"anchor/internal/integration/provider"
-
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"go.uber.org/fx"
 )
@@ -23,7 +21,6 @@ const (
 	ThemeUsers            = "Users"
 	ThemeLicensing        = "Licensing"
 	ThemeRolesPermissions = "Roles & Permissions"
-	IntegrationClerk      = "CLERK"
 )
 
 type Definition struct {
@@ -32,38 +29,35 @@ type Definition struct {
 	Description string    `json:"description"`
 	GroupType   GroupType `json:"group_type"`
 	GroupName   string    `json:"group_name"`
-	Theme       string    `json:"theme,omitempty"`
-	Integration string    `json:"integration,omitempty"`
 }
 
-type DomainRegistration struct {
+type Registration struct {
+	GroupType   GroupType
+	GroupName   string
 	Definitions []Definition
 }
 
-func RegisterDomain(definitions ...Definition) DomainRegistration {
-	return DomainRegistration{Definitions: definitions}
+func RegisterDomain(theme string, definitions ...Definition) Registration {
+	return Registration{GroupType: GroupTypeTheme, GroupName: theme, Definitions: definitions}
 }
 
-type IntegrationRegistration struct {
-	ProviderType string
-	Events       []provider.WebhookEvent
+func RegisterIntegration(providerType string, definitions ...Definition) Registration {
+	return Registration{GroupType: GroupTypeIntegration, GroupName: providerType, Definitions: definitions}
 }
 
-func RegisterIntegration(providerType string, integrationEvents ...provider.WebhookEvent) IntegrationRegistration {
-	return IntegrationRegistration{ProviderType: providerType, Events: integrationEvents}
+func AsRegistration(fn any) any {
+	return fx.Annotate(fn, fx.ResultTags(`group:"product_events"`))
 }
 
 type Catalog interface {
 	All() []Definition
-	Types() []Type
 	IsKnown(t Type) bool
 	AllEventTypesStrings() []string
 }
 
 type CatalogParams struct {
 	fx.In
-	DomainRegistrations      []DomainRegistration      `group:"domain_events"`
-	IntegrationRegistrations []IntegrationRegistration `group:"integration_events"`
+	Registrations []Registration `group:"product_events"`
 }
 
 type catalog struct {
@@ -73,19 +67,11 @@ type catalog struct {
 
 func NewCatalog(p CatalogParams) Catalog {
 	var defs []Definition
-	for _, reg := range p.DomainRegistrations {
-		defs = append(defs, reg.Definitions...)
-	}
-	for _, reg := range p.IntegrationRegistrations {
-		for _, ev := range reg.Events {
-			defs = append(defs, Definition{
-				Type:        Type(ev.Type),
-				Name:        ev.Name,
-				Description: ev.Description,
-				GroupType:   GroupTypeIntegration,
-				GroupName:   reg.ProviderType,
-				Integration: reg.ProviderType,
-			})
+	for _, reg := range p.Registrations {
+		for _, definition := range reg.Definitions {
+			definition.GroupType = reg.GroupType
+			definition.GroupName = reg.GroupName
+			defs = append(defs, definition)
 		}
 	}
 	byType := make(map[Type]Definition, len(defs))
@@ -100,12 +86,6 @@ func NewCatalog(p CatalogParams) Catalog {
 
 func (c *catalog) All() []Definition {
 	return slices.Clone(c.definitions)
-}
-
-func (c *catalog) Types() []Type {
-	return functional.Slice(c.definitions).Map(func(d Definition) Type {
-		return d.Type
-	})
 }
 
 func (c *catalog) IsKnown(t Type) bool {

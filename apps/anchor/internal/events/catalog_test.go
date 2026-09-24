@@ -4,36 +4,30 @@ import (
 	"testing"
 
 	"anchor/internal/events"
-	"anchor/internal/integration/provider"
 )
 
 func TestCatalogRegistrationAndGrouping(t *testing.T) {
 	t.Parallel()
 
 	domainReg := events.RegisterDomain(
+		"Test Domain",
 		events.Definition{
 			Type:        "test.resource.created",
 			Name:        "Test Resource Created",
 			Description: "Emitted when test resource is created",
-			GroupType:   events.GroupTypeTheme,
-			GroupName:   "Test Domain",
-			Theme:       "Test Domain",
 		},
 	)
 
 	integrationReg := events.RegisterIntegration(
 		"MOCK_WH",
-		provider.WebhookEvent{
+		events.Definition{
 			Type:        "mock.item.created",
 			Name:        "Mock Item Created",
 			Description: "Emitted when a mock item is created.",
 		},
 	)
 
-	cat := events.NewCatalog(events.CatalogParams{
-		DomainRegistrations:      []events.DomainRegistration{domainReg},
-		IntegrationRegistrations: []events.IntegrationRegistration{integrationReg},
-	})
+	cat := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{domainReg, integrationReg}})
 
 	if !cat.IsKnown("test.resource.created") {
 		t.Fatal("test.resource.created should be known in registered catalog")
@@ -44,14 +38,13 @@ func TestCatalogRegistrationAndGrouping(t *testing.T) {
 	if cat.IsKnown("unknown.event") {
 		t.Fatal("unknown.event should not be known")
 	}
-	if len(cat.Types()) != 2 {
-		t.Fatalf("expected 2 registered types, got %d", len(cat.Types()))
-	}
-
 	defs := cat.All()
+	if len(defs) != 2 {
+		t.Fatalf("expected 2 registered definitions, got %d", len(defs))
+	}
 	var foundWebhookProvider bool
 	for _, d := range defs {
-		if d.Integration == "MOCK_WH" {
+		if d.GroupName == "MOCK_WH" {
 			foundWebhookProvider = true
 			if d.GroupType != events.GroupTypeIntegration {
 				t.Fatalf("expected GroupTypeIntegration, got %s", d.GroupType)

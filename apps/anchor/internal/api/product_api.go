@@ -230,20 +230,13 @@ func (s *AnchorAPI) GetProductEventsCatalog(
 ) (GetProductEventsCatalogResponseObject, error) {
 	definitions := s.ProductService.EventsCatalog(ctx)
 	items := functional.Slice(definitions).Map(func(d events.Definition) ProductEventDefinitionResponse {
-		item := ProductEventDefinitionResponse{
+		return ProductEventDefinitionResponse{
 			Type:        string(d.Type),
 			Name:        d.Name,
 			Description: d.Description,
 			GroupType:   d.GroupType,
 			GroupName:   d.GroupName,
 		}
-		if d.Theme != "" {
-			item.Theme = &d.Theme
-		}
-		if d.Integration != "" {
-			item.Integration = &d.Integration
-		}
-		return item
 	})
 	return GetProductEventsCatalog200JSONResponse{
 		Items: items,

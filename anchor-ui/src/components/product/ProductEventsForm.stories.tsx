@@ -121,10 +121,7 @@ function ProductRefreshFixture({ product }: { product: ProductResponse }) {
 			>
 				Refresh product
 			</button>
-			<ProductEventsForm
-				product={currentProduct}
-				productId={currentProduct.id}
-			/>
+			<ProductEventsForm product={currentProduct} />
 		</>
 	);
 }
@@ -135,7 +132,6 @@ const meta = {
 	tags: ["autodocs"],
 	args: {
 		product: PRODUCT,
-		productId: PRODUCT.id,
 	},
 	parameters: {
 		layout: "fullscreen",
@@ -255,7 +251,7 @@ export const PreservesUnsavedEdits: Story = {
 			canvas.getByRole("button", { name: "Refresh product" }),
 		);
 		await expect(input).toHaveValue("https://example.com/anchor/events");
-		await expect(canvas.getByText("0 Active Events")).toBeInTheDocument();
+		await expect(canvas.getByText("0 selected")).toBeInTheDocument();
 	},
 };
 
@@ -273,7 +269,7 @@ export const CatalogLoadsAfterUrlEdit: Story = {
 		);
 		await userEvent.click(canvas.getByRole("button", { name: "Load catalog" }));
 		await expect(
-			await canvas.findByText("4 Active Events"),
+			await canvas.findByText("4 selected"),
 		).toBeInTheDocument();
 		await expect(
 			canvas.getByRole("button", { name: "Save endpoint" }),

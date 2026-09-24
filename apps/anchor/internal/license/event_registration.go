@@ -1,27 +1,14 @@
 package license
 
-import (
-	"anchor/internal/events"
+import "anchor/internal/events"
 
-	"go.uber.org/fx"
-)
-
-func EventRegistration() events.DomainRegistration {
+func EventRegistration() events.Registration {
 	return events.RegisterDomain(
+		events.ThemeLicensing,
 		events.Definition{
 			Type:        events.OrganizationLicenseUpdated,
 			Name:        "Organization license updated",
 			Description: "Emitted when an organization license is instantiated, adjusted, or migrated.",
-			GroupType:   events.GroupTypeTheme,
-			GroupName:   events.ThemeLicensing,
-			Theme:       events.ThemeLicensing,
 		},
-	)
-}
-
-func AsDomainEventRegistration(fn any) any {
-	return fx.Annotate(
-		fn,
-		fx.ResultTags(`group:"domain_events"`),
 	)
 }

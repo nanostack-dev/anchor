@@ -1,6 +1,7 @@
 package service
 
 import (
+	"anchor/internal/events"
 	"anchor/internal/service/config"
 
 	"go.uber.org/fx"
@@ -36,11 +37,11 @@ func NewModule() fx.Option {
 			NewIntegrationService,
 
 			// Event registrations
-			AsDomainEventRegistration(OrganizationEventRegistration),
-			AsDomainEventRegistration(WorkspaceEventRegistration),
-			AsDomainEventRegistration(OrganizationAPIKeyEventRegistration),
-			AsDomainEventRegistration(ProductUserEventRegistration),
-			AsDomainEventRegistration(ProductRBACEventRegistration),
+			events.AsRegistration(OrganizationEventRegistration),
+			events.AsRegistration(WorkspaceEventRegistration),
+			events.AsRegistration(OrganizationAPIKeyEventRegistration),
+			events.AsRegistration(ProductUserEventRegistration),
+			events.AsRegistration(ProductRBACEventRegistration),
 		),
 
 		// Background workers

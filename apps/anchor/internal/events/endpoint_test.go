@@ -34,17 +34,14 @@ func TestValidateEndpointURL(t *testing.T) {
 func TestDeliveryTargetAllows(t *testing.T) {
 	t.Parallel()
 
-	// Nil events means all events are allowed.
-	allAllowed := events.DeliveryTarget{
+	// Invalid or absent subscriptions must never expand delivery scope.
+	noSubscriptions := events.DeliveryTarget{
 		URL:    "https://example.com",
 		Secret: "whsec_test",
 		Events: nil,
 	}
-	if !allAllowed.Allows(events.OrganizationCreated) {
-		t.Fatal("nil events must allow any event")
-	}
-	if !allAllowed.Allows(events.WorkspaceCreated) {
-		t.Fatal("nil events must allow any event")
+	if noSubscriptions.Allows(events.OrganizationCreated) {
+		t.Fatal("nil events must allow no events")
 	}
 
 	// Filtered events only allows listed event types.
