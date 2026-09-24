@@ -91,31 +91,36 @@ export function LicenseTemplateEditView({
 						This template is archived and can no longer be edited.
 					</p>
 				)}
-				{showForm ? (
-					<LicenseTemplateForm
-						productId={productId}
-						schema={schema}
-						template={template}
-						onCancel={onCancel}
-						onSaved={onSaved}
-					/>
-				) : (
-					<section
-						aria-labelledby="template-values-heading"
-						className="flex flex-col gap-3"
-					>
-						<h2
-							id="template-values-heading"
-							className="text-base font-semibold"
-						>
-							License values
-						</h2>
-						<LicenseValueFields
-							fields={schema.fields}
-							values={template.values}
+				<section
+					aria-label="Template details"
+					className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
+				>
+					{showForm ? (
+						<LicenseTemplateForm
+							productId={productId}
+							schema={schema}
+							template={template}
+							onCancel={onCancel}
+							onSaved={onSaved}
 						/>
-					</section>
-				)}
+					) : (
+						<div
+							aria-labelledby="template-values-heading"
+							className="flex flex-col gap-3"
+						>
+							<h2
+								id="template-values-heading"
+								className="text-base font-semibold"
+							>
+								License values
+							</h2>
+							<LicenseValueFields
+								fields={schema.fields}
+								values={template.values}
+							/>
+						</div>
+					)}
+				</section>
 			</div>
 		</Page>
 	);
