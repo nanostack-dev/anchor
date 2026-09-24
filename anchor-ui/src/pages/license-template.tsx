@@ -70,20 +70,20 @@ export default function LicenseTemplatePage({
 		);
 	if (schemaQuery.isLoading || (templateId && templateQuery.isLoading))
 		return (
-			<Page
-				variant="default"
-				breadCrumbs={false}
-				title="Loading template"
-				actions={<LicenseTemplateBackLink />}
-			>
-				<Skeleton className="h-64 w-full" />
+			<Page breadCrumbs={false} title="Loading template">
+				<div className="flex max-w-3xl flex-col gap-6">
+					<div>
+						<LicenseTemplateBackLink />
+					</div>
+					<Skeleton className="h-64 w-full" />
+				</div>
 			</Page>
 		);
 	const error = templateQuery.error ?? schemaQuery.error;
 	if (error) {
 		const notFound = isHttpQueryError(error) && error.status === 404;
 		return (
-			<Page variant="default" breadCrumbs={false}>
+			<Page breadCrumbs={false}>
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>
