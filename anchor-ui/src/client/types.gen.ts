@@ -314,38 +314,27 @@ export type ProductEventsConfigResponse = {
      * List of event types this endpoint receives.
      */
     events: Array<string>;
+    delivery_status: ProductEventDeliveryStatus;
+    /**
+     * Consecutive failed HTTP delivery attempts. Resets after a successful call or when the endpoint configuration is saved.
+     */
+    consecutive_failed_calls: number;
 };
+
+/**
+ * Result of the most recent HTTP delivery attempt to this endpoint.
+ */
+export enum ProductEventDeliveryStatus {
+    NEVER_ATTEMPTED = 'never_attempted',
+    SUCCEEDED = 'succeeded',
+    FAILED = 'failed'
+}
 
 export type ProductEventsCatalogResponse = {
     /**
      * Registered internal and integration events available for subscription.
      */
     items: Array<ProductEventDefinitionResponse>;
-};
-
-/**
- * Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
- */
-export type ProductEventDeliveryStatusResponse = {
-    /**
-     * Jobs whose delivery was not confirmed after all attempts.
-     */
-    failed_count: number;
-    /**
-     * Events with a failed attempt that are still queued or being retried.
-     */
-    retrying_count: number;
-    /**
-     * Most recently failed job, absent when none have failed permanently.
-     */
-    last_failure?: ProductEventDeliveryFailureResponse;
-};
-
-export type ProductEventDeliveryFailureResponse = {
-    event_type: string;
-    attempts: number;
-    error?: string;
-    failed_at: string;
 };
 
 export enum ProductEventGroupType {
@@ -2915,44 +2904,6 @@ export type GetProductEventsCatalogResponses = {
 };
 
 export type GetProductEventsCatalogResponse = GetProductEventsCatalogResponses[keyof GetProductEventsCatalogResponses];
-
-export type GetProductEventDeliveryStatusData = {
-    body?: never;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/events/status';
-};
-
-export type GetProductEventDeliveryStatusErrors = {
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-};
-
-export type GetProductEventDeliveryStatusError = GetProductEventDeliveryStatusErrors[keyof GetProductEventDeliveryStatusErrors];
-
-export type GetProductEventDeliveryStatusResponses = {
-    /**
-     * Current delivery failures and retries.
-     */
-    200: ProductEventDeliveryStatusResponse;
-};
-
-export type GetProductEventDeliveryStatusResponse = GetProductEventDeliveryStatusResponses[keyof GetProductEventDeliveryStatusResponses];
 
 export type ListIntegrationInstancesData = {
     body?: never;

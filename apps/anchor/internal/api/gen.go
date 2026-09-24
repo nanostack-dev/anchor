@@ -65,6 +65,27 @@ func (e OrganizationMemberInclude) Valid() bool {
 	}
 }
 
+// Defines values for ProductEventDeliveryStatus.
+const (
+	Failed         ProductEventDeliveryStatus = "failed"
+	NeverAttempted ProductEventDeliveryStatus = "never_attempted"
+	Succeeded      ProductEventDeliveryStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the ProductEventDeliveryStatus enum.
+func (e ProductEventDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case NeverAttempted:
+		return true
+	case Succeeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductUserStatus.
 const (
 	Active    ProductUserStatus = "active"
@@ -1729,25 +1750,8 @@ type ProductEventDefinitionResponse struct {
 	Type string `json:"type"`
 }
 
-// ProductEventDeliveryFailureResponse defines model for ProductEventDeliveryFailureResponse.
-type ProductEventDeliveryFailureResponse struct {
-	Attempts  int       `json:"attempts"`
-	Error     *string   `json:"error,omitempty"`
-	EventType string    `json:"event_type"`
-	FailedAt  time.Time `json:"failed_at"`
-}
-
-// ProductEventDeliveryStatusResponse Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
-type ProductEventDeliveryStatusResponse struct {
-	// FailedCount Jobs whose delivery was not confirmed after all attempts.
-	FailedCount int `json:"failed_count"`
-
-	// LastFailure Most recently failed job, absent when none have failed permanently.
-	LastFailure *ProductEventDeliveryFailureResponse `json:"last_failure,omitempty"`
-
-	// RetryingCount Events with a failed attempt that are still queued or being retried.
-	RetryingCount int `json:"retrying_count"`
-}
+// ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+type ProductEventDeliveryStatus string
 
 // ProductEventGroupType defines model for ProductEventGroupType.
 type ProductEventGroupType = events.GroupType
@@ -1773,6 +1777,12 @@ type ProductEventsConfigRequest struct {
 
 // ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
 type ProductEventsConfigResponse struct {
+	// ConsecutiveFailedCalls Consecutive failed HTTP delivery attempts. Resets after a successful call or when the endpoint configuration is saved.
+	ConsecutiveFailedCalls int `json:"consecutive_failed_calls"`
+
+	// DeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+	DeliveryStatus ProductEventDeliveryStatus `json:"delivery_status"`
+
 	// EndpointUrl URL Anchor POSTs product events to.
 	EndpointUrl string `json:"endpoint_url"`
 
@@ -3313,9 +3323,6 @@ type ServerInterface interface {
 	// GetProductEventsCatalog Get Product Events Catalog
 	// (GET /v1/products/{product_id}/events/catalog)
 	GetProductEventsCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
-	// GetProductEventDeliveryStatus Get Product Event Delivery Status
-	// (GET /v1/products/{product_id}/events/status)
-	GetProductEventDeliveryStatus(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// ListIntegrationInstances List Integration Instances
 	// (GET /v1/products/{product_id}/integrations)
 	ListIntegrationInstances(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3742,12 +3749,6 @@ func (_ Unimplemented) PublishEmailTemplate(w http.ResponseWriter, r *http.Reque
 // GetProductEventsCatalog Get Product Events Catalog
 // (GET /v1/products/{product_id}/events/catalog)
 func (_ Unimplemented) GetProductEventsCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// GetProductEventDeliveryStatus Get Product Event Delivery Status
-// (GET /v1/products/{product_id}/events/status)
-func (_ Unimplemented) GetProductEventDeliveryStatus(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5208,32 +5209,6 @@ func (siw *ServerInterfaceWrapper) GetProductEventsCatalog(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProductEventsCatalog(w, r, productId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetProductEventDeliveryStatus operation middleware
-func (siw *ServerInterfaceWrapper) GetProductEventDeliveryStatus(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProductEventDeliveryStatus(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7867,9 +7842,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/events/catalog", wrapper.GetProductEventsCatalog)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/products/{product_id}/events/status", wrapper.GetProductEventDeliveryStatus)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/integrations", wrapper.ListIntegrationInstances)
@@ -11080,70 +11052,6 @@ func (response GetProductEventsCatalog403JSONResponse) VisitGetProductEventsCata
 type GetProductEventsCatalog404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProductEventsCatalog404JSONResponse) VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetProductEventDeliveryStatusRequestObject struct {
-	ProductId ProductIdParameter `json:"product_id"`
-}
-
-type GetProductEventDeliveryStatusResponseObject interface {
-	VisitGetProductEventDeliveryStatusResponse(w http.ResponseWriter) error
-}
-
-type GetProductEventDeliveryStatus200JSONResponse ProductEventDeliveryStatusResponse
-
-func (response GetProductEventDeliveryStatus200JSONResponse) VisitGetProductEventDeliveryStatusResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetProductEventDeliveryStatus401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response GetProductEventDeliveryStatus401JSONResponse) VisitGetProductEventDeliveryStatusResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetProductEventDeliveryStatus403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response GetProductEventDeliveryStatus403JSONResponse) VisitGetProductEventDeliveryStatusResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetProductEventDeliveryStatus404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response GetProductEventDeliveryStatus404JSONResponse) VisitGetProductEventDeliveryStatusResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -16854,9 +16762,6 @@ type StrictServerInterface interface {
 	// GetProductEventsCatalog Get Product Events Catalog
 	// (GET /v1/products/{product_id}/events/catalog)
 	GetProductEventsCatalog(ctx context.Context, request GetProductEventsCatalogRequestObject) (GetProductEventsCatalogResponseObject, error)
-	// GetProductEventDeliveryStatus Get Product Event Delivery Status
-	// (GET /v1/products/{product_id}/events/status)
-	GetProductEventDeliveryStatus(ctx context.Context, request GetProductEventDeliveryStatusRequestObject) (GetProductEventDeliveryStatusResponseObject, error)
 	// ListIntegrationInstances List Integration Instances
 	// (GET /v1/products/{product_id}/integrations)
 	ListIntegrationInstances(ctx context.Context, request ListIntegrationInstancesRequestObject) (ListIntegrationInstancesResponseObject, error)
@@ -18176,32 +18081,6 @@ func (sh *strictHandler) GetProductEventsCatalog(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProductEventsCatalogResponseObject); ok {
 		if err := validResponse.VisitGetProductEventsCatalogResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetProductEventDeliveryStatus operation middleware
-func (sh *strictHandler) GetProductEventDeliveryStatus(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	var request GetProductEventDeliveryStatusRequestObject
-
-	request.ProductId = productId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetProductEventDeliveryStatus(ctx, request.(GetProductEventDeliveryStatusRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetProductEventDeliveryStatus")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetProductEventDeliveryStatusResponseObject); ok {
-		if err := validResponse.VisitGetProductEventDeliveryStatusResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

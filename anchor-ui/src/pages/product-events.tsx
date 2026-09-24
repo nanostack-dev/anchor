@@ -1,3 +1,4 @@
+import { getProductOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductEventsForm } from "@/components/product/ProductEventsForm";
 import {
@@ -7,9 +8,17 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { useProduct } from "@/hooks/useProduct";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ProductEventsPage() {
 	const { currentProduct, refreshProducts } = useProduct();
+	const productQuery = useQuery({
+		...getProductOptions({
+			path: { product_id: currentProduct?.id ?? "" },
+		}),
+		enabled: Boolean(currentProduct),
+		refetchInterval: 30_000,
+	});
 
 	return (
 		<Page
@@ -20,7 +29,7 @@ export default function ProductEventsPage() {
 			{currentProduct ? (
 				<ProductEventsForm
 					key={currentProduct.id}
-					product={currentProduct}
+					product={productQuery.data ?? currentProduct}
 					onSaved={refreshProducts}
 				/>
 			) : (

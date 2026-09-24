@@ -725,10 +725,23 @@ components:
             type: string
           description: List of event types this endpoint receives.
           examples: [["organization.created", "organization.updated"]]
+        delivery_status:
+          $ref: "#/components/schemas/ProductEventDeliveryStatus"
+        consecutive_failed_calls:
+          type: integer
+          description: >-
+            Consecutive failed HTTP delivery attempts. Resets after a successful
+            call or when the endpoint configuration is saved.
       required:
       - endpoint_url
       - signing_secret_obfuscated
       - events
+      - delivery_status
+      - consecutive_failed_calls
+    ProductEventDeliveryStatus:
+      type: string
+      enum: [never_attempted, succeeded, failed]
+      description: Result of the most recent HTTP delivery attempt to this endpoint.
     ProductEventsCatalogResponse:
       type: object
       properties:
@@ -739,40 +752,6 @@ components:
           description: Registered internal and integration events available for subscription.
       required:
       - items
-    ProductEventDeliveryStatusResponse:
-      type: object
-      description: >-
-        Retained delivery jobs for this product that still need attention,
-        including jobs from earlier endpoint configurations.
-      properties:
-        failed_count:
-          type: integer
-          description: Jobs whose delivery was not confirmed after all attempts.
-        retrying_count:
-          type: integer
-          description: Events with a failed attempt that are still queued or being retried.
-        last_failure:
-          $ref: "#/components/schemas/ProductEventDeliveryFailureResponse"
-          description: Most recently failed job, absent when none have failed permanently.
-      required:
-      - failed_count
-      - retrying_count
-    ProductEventDeliveryFailureResponse:
-      type: object
-      properties:
-        event_type:
-          type: string
-        attempts:
-          type: integer
-        error:
-          type: string
-        failed_at:
-          type: string
-          format: date-time
-      required:
-      - event_type
-      - attempts
-      - failed_at
     ProductEventGroupType:
       type: string
       enum: [internal, integration]
@@ -4391,32 +4370,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductEventsCatalogResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /v1/products/{product_id}/events/status:
-    parameters:
-    - $ref: "#/components/parameters/ProductIdParameter"
-    get:
-      summary: Get Product Event Delivery Status
-      description: >-
-        Returns counts of product events being retried or permanently failed.
-        Delivery stops after six failed attempts. Failed jobs remain available
-        for operator replay in the queue dashboard.
-      operationId: getProductEventDeliveryStatus
-      tags: [Product]
-      security:
-      - platformBearerAuth: []
-      responses:
-        "200":
-          description: Current delivery failures and retries.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProductEventDeliveryStatusResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

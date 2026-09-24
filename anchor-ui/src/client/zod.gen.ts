@@ -170,11 +170,22 @@ export const zProductRequest = z.object({
     config: z.optional(zProductConfigRequest)
 });
 
+/**
+ * Result of the most recent HTTP delivery attempt to this endpoint.
+ */
+export const zProductEventDeliveryStatus = z.enum([
+    'never_attempted',
+    'succeeded',
+    'failed'
+]);
+
 export const zProductEventsConfigResponse = z.object({
     endpoint_url: z.string(),
     signing_secret_obfuscated: z.string(),
     signing_secret: z.optional(z.string()),
-    events: z.array(z.string())
+    events: z.array(z.string()),
+    delivery_status: zProductEventDeliveryStatus,
+    consecutive_failed_calls: z.int()
 });
 
 export const zProductEventGroupType = z.enum([
@@ -192,22 +203,6 @@ export const zProductEventDefinitionResponse = z.object({
 
 export const zProductEventsCatalogResponse = z.object({
     items: z.array(zProductEventDefinitionResponse)
-});
-
-export const zProductEventDeliveryFailureResponse = z.object({
-    event_type: z.string(),
-    attempts: z.int(),
-    error: z.optional(z.string()),
-    failed_at: z.iso.datetime()
-});
-
-/**
- * Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
- */
-export const zProductEventDeliveryStatusResponse = z.object({
-    failed_count: z.int(),
-    retrying_count: z.int(),
-    last_failure: z.optional(zProductEventDeliveryFailureResponse)
 });
 
 export const zProductOrganizationApiKeysConfigResponse = z.object({
@@ -1811,19 +1806,6 @@ export const zGetProductEventsCatalogData = z.object({
  * Available events catalog.
  */
 export const zGetProductEventsCatalogResponse = zProductEventsCatalogResponse;
-
-export const zGetProductEventDeliveryStatusData = z.object({
-    body: z.optional(z.never()),
-    path: z.object({
-        product_id: zKsuid
-    }),
-    query: z.optional(z.never())
-});
-
-/**
- * Current delivery failures and retries.
- */
-export const zGetProductEventDeliveryStatusResponse = zProductEventDeliveryStatusResponse;
 
 export const zListIntegrationInstancesData = z.object({
     body: z.optional(z.never()),

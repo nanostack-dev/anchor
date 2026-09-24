@@ -561,6 +561,27 @@ func (e ProductAPIKeyStatus) Valid() bool {
 	}
 }
 
+// Defines values for ProductEventDeliveryStatus.
+const (
+	Failed         ProductEventDeliveryStatus = "failed"
+	NeverAttempted ProductEventDeliveryStatus = "never_attempted"
+	Succeeded      ProductEventDeliveryStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the ProductEventDeliveryStatus enum.
+func (e ProductEventDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case NeverAttempted:
+		return true
+	case Succeeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductEventGroupType.
 const (
 	Integration ProductEventGroupType = "integration"
@@ -2517,25 +2538,8 @@ type ProductEventDefinitionResponse struct {
 	Type string `json:"type"`
 }
 
-// ProductEventDeliveryFailureResponse defines model for ProductEventDeliveryFailureResponse.
-type ProductEventDeliveryFailureResponse struct {
-	Attempts  int       `json:"attempts"`
-	Error     *string   `json:"error,omitempty"`
-	EventType string    `json:"event_type"`
-	FailedAt  time.Time `json:"failed_at"`
-}
-
-// ProductEventDeliveryStatusResponse Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
-type ProductEventDeliveryStatusResponse struct {
-	// FailedCount Jobs whose delivery was not confirmed after all attempts.
-	FailedCount int `json:"failed_count"`
-
-	// LastFailure Most recently failed job, absent when none have failed permanently.
-	LastFailure *ProductEventDeliveryFailureResponse `json:"last_failure,omitempty"`
-
-	// RetryingCount Events with a failed attempt that are still queued or being retried.
-	RetryingCount int `json:"retrying_count"`
-}
+// ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+type ProductEventDeliveryStatus string
 
 // ProductEventGroupType defines model for ProductEventGroupType.
 type ProductEventGroupType string
@@ -2561,6 +2565,12 @@ type ProductEventsConfigRequest struct {
 
 // ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
 type ProductEventsConfigResponse struct {
+	// ConsecutiveFailedCalls Consecutive failed HTTP delivery attempts. Resets after a successful call or when the endpoint configuration is saved.
+	ConsecutiveFailedCalls int `json:"consecutive_failed_calls"`
+
+	// DeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+	DeliveryStatus ProductEventDeliveryStatus `json:"delivery_status"`
+
 	// EndpointUrl URL Anchor POSTs product events to.
 	EndpointUrl string `json:"endpoint_url"`
 

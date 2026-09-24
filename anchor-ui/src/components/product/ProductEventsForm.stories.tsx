@@ -1,11 +1,6 @@
-import type {
-	ProductEventDeliveryStatusResponse,
-	ProductResponse,
-} from "@/client";
-import {
-	getProductEventDeliveryStatusQueryKey,
-	getProductEventsCatalogQueryKey,
-} from "@/client/@tanstack/react-query.gen";
+import type { ProductEventsConfigResponse, ProductResponse } from "@/client";
+import { ProductEventDeliveryStatus } from "@/client";
+import { getProductEventsCatalogQueryKey } from "@/client/@tanstack/react-query.gen";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
@@ -25,6 +20,22 @@ const PRODUCT: ProductResponse = {
 	},
 	created_at: "2026-08-01T09:00:00Z",
 	updated_at: "2026-08-01T09:00:00Z",
+};
+
+const CONFIGURED_EVENTS: ProductEventsConfigResponse = {
+	endpoint_url: "https://example.com/anchor/events",
+	signing_secret_obfuscated: "whsec_••••",
+	events: ["organization.created", "workspace.created"],
+	delivery_status: ProductEventDeliveryStatus.NEVER_ATTEMPTED,
+	consecutive_failed_calls: 0,
+};
+
+const CONFIGURED_PRODUCT: ProductResponse = {
+	...PRODUCT,
+	config: {
+		organization_api_keys: { prefix: "echopoint" },
+		events: CONFIGURED_EVENTS,
+	},
 };
 
 const CATALOG_DATA = {
@@ -61,27 +72,13 @@ const CATALOG_DATA = {
 	],
 };
 
-function StoryCatalogSeeder({
-	children,
-	deliveryStatus = { failed_count: 0, retrying_count: 0 },
-}: {
-	children: React.ReactNode;
-	deliveryStatus?: ProductEventDeliveryStatusResponse;
-}) {
+function StoryCatalogSeeder({ children }: { children: React.ReactNode }) {
 	const queryClient = useQueryClient();
 	const key = getProductEventsCatalogQueryKey({
 		path: { product_id: PRODUCT.id },
 	});
 	queryClient.setQueryData(key, CATALOG_DATA);
 	queryClient.setQueryDefaults(key, {
-		staleTime: Number.POSITIVE_INFINITY,
-		gcTime: Number.POSITIVE_INFINITY,
-	});
-	const statusKey = getProductEventDeliveryStatusQueryKey({
-		path: { product_id: PRODUCT.id },
-	});
-	queryClient.setQueryData(statusKey, deliveryStatus);
-	queryClient.setQueryDefaults(statusKey, {
 		staleTime: Number.POSITIVE_INFINITY,
 		gcTime: Number.POSITIVE_INFINITY,
 	});
@@ -162,9 +159,7 @@ const meta = {
 						</div>
 					</DeferredCatalogSeeder>
 				) : (
-					<StoryCatalogSeeder
-						deliveryStatus={context.parameters.deliveryStatus}
-					>
+					<StoryCatalogSeeder>
 						<div className="w-full p-6 lg:p-8">
 							<Story />
 						</div>
@@ -193,17 +188,7 @@ export const Empty: Story = {
 
 export const Configured: Story = {
 	args: {
-		product: {
-			...PRODUCT,
-			config: {
-				organization_api_keys: { prefix: "echopoint" },
-				events: {
-					endpoint_url: "https://example.com/anchor/events",
-					signing_secret_obfuscated: "whsec_••••",
-					events: ["organization.created", "workspace.created"],
-				},
-			},
-		},
+		product: CONFIGURED_PRODUCT,
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -220,24 +205,24 @@ export const Configured: Story = {
 };
 
 export const FailedDelivery: Story = {
-	args: Configured.args,
-	parameters: {
-		deliveryStatus: {
-			failed_count: 1,
-			retrying_count: 2,
-			last_failure: {
-				event_type: "organization.created",
-				attempts: 6,
-				error: "events: delivery status 503",
-				failed_at: "2026-08-01T09:05:00Z",
+	args: {
+		product: {
+			...CONFIGURED_PRODUCT,
+			config: {
+				...CONFIGURED_PRODUCT.config,
+				events: {
+					...CONFIGURED_EVENTS,
+					delivery_status: ProductEventDeliveryStatus.FAILED,
+					consecutive_failed_calls: 6,
+				},
 			},
 		},
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.getByText(/1 failed · 2 retrying/)).toBeInTheDocument();
-		await expect(canvas.getByText(/after 6 attempts/)).toBeInTheDocument();
-		await expect(canvas.getByText(/delivery status 503/)).toBeInTheDocument();
+		await expect(
+			canvas.getByText(/6 consecutive failed calls/),
+		).toBeInTheDocument();
 	},
 };
 

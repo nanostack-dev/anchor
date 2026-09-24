@@ -12,11 +12,13 @@ import (
 )
 
 type ProductEventEndpointConfigs struct {
-	ProductID        string `sql:"primary_key"`
-	PlatformTenantID string
-	EndpointURL      string
-	SigningSecret    string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	EventsJSON       string
+	ProductID              string `sql:"primary_key"`
+	PlatformTenantID       string
+	EndpointURL            string
+	SigningSecret          string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	EventsJSON             string
+	DeliveryStatus         string
+	ConsecutiveFailedCalls int32
 }

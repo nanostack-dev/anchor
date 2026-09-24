@@ -48,6 +48,8 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 			EndpointUrl:             prod.Config.Events.EndpointURL,
 			SigningSecretObfuscated: prod.Config.Events.SigningSecretObfuscated,
 			Events:                  prod.Config.Events.Events,
+			DeliveryStatus:          ProductEventDeliveryStatus(prod.Config.Events.DeliveryStatus),
+			ConsecutiveFailedCalls:  prod.Config.Events.ConsecutiveFailedCalls,
 		}
 		if prod.Config.Events.SigningSecret != "" {
 			eventsResponse.SigningSecret = &prod.Config.Events.SigningSecret
@@ -241,39 +243,6 @@ func (s *AnchorAPI) GetProductEventsCatalog(
 	return GetProductEventsCatalog200JSONResponse{
 		Items: items,
 	}, nil
-}
-
-func (s *AnchorAPI) GetProductEventDeliveryStatus(
-	ctx context.Context, request GetProductEventDeliveryStatusRequestObject,
-) (GetProductEventDeliveryStatusResponseObject, error) {
-	tenantID, err := security.GetTenantID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	status, err := s.ProductService.EventDeliveryStatus(ctx, product.GetProductInput{
-		TenantID: tenantID, ProductID: request.ProductId,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if status == nil {
-		return GetProductEventDeliveryStatus404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("PRODUCT_NOT_FOUND", "Product does not exist."),
-		)}, nil
-	}
-	response := GetProductEventDeliveryStatus200JSONResponse{
-		FailedCount: int(status.FailedCount), RetryingCount: int(status.RetryingCount),
-	}
-	if failure := status.LastFailure; failure != nil {
-		response.LastFailure = &ProductEventDeliveryFailureResponse{
-			EventType: failure.EventType, Attempts: failure.Attempts,
-			FailedAt: failure.FailedAt,
-		}
-		if failure.Error != "" {
-			response.LastFailure.Error = &failure.Error
-		}
-	}
-	return response, nil
 }
 
 // Product User helper functions.

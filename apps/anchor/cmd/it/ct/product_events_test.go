@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
-	itdsl "anchor/cmd/it/shared/dsl"
 )
 
 func TestProductEventsConfigAndDelivery(t *testing.T) {
@@ -456,31 +455,19 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 }
 
-func TestProductEventDeliveryStatus(t *testing.T) {
+func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	owner := product.OwnerAuthenticatedClient()
 	client, _ := product.CreateAPIKeyClientWithAllScopes()
 
-	initial, err := owner.GetProductEventDeliveryStatusWithResponse(ctx, product.ProductID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, initial.StatusCode())
-	require.Equal(t, 0, initial.JSON200.FailedCount)
-	require.Equal(t, 0, initial.JSON200.RetryingCount)
-	require.Nil(t, initial.JSON200.LastFailure)
-
-	other := itdsl.Given(t).
-		Tenant(itdsl.TenantOpts{Alias: "tenant.other", Isolated: true}).
-		Product(itdsl.ProductOpts{Alias: "product.other", TenantAlias: "tenant.other"}).
-		Build().Product("product.other")
-	outsideTenant, err := owner.GetProductEventDeliveryStatusWithResponse(ctx, other.ProductID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, outsideTenant.StatusCode())
-
 	var attempts atomic.Int32
+	var available atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempts.Add(1)
-		w.WriteHeader(http.StatusServiceUnavailable)
+		if !available.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
 	}))
 	t.Cleanup(server.Close)
 
@@ -499,6 +486,8 @@ func TestProductEventDeliveryStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, configured.StatusCode())
+	require.Equal(t, ct.ProductEventDeliveryStatus("never_attempted"), configured.JSON200.Config.Events.DeliveryStatus)
+	require.Equal(t, 0, configured.JSON200.Config.Events.ConsecutiveFailedCalls)
 
 	created, err := client.CreateProductOrganizationWithResponse(
 		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
@@ -509,17 +498,24 @@ func TestProductEventDeliveryStatus(t *testing.T) {
 	require.Equal(t, http.StatusCreated, created.StatusCode())
 
 	require.Eventually(t, func() bool {
-		status, getErr := owner.GetProductEventDeliveryStatusWithResponse(ctx, product.ProductID)
-		return getErr == nil && status.JSON200 != nil && status.JSON200.FailedCount == 1
+		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("failed") &&
+			current.JSON200.Config.Events.ConsecutiveFailedCalls == 6
 	}, 90*time.Second, 100*time.Millisecond)
-	final, err := owner.GetProductEventDeliveryStatusWithResponse(ctx, product.ProductID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, final.StatusCode())
-	require.Equal(t, 0, final.JSON200.RetryingCount)
-	require.NotNil(t, final.JSON200.LastFailure)
-	assert.Equal(t, "organization.created", final.JSON200.LastFailure.EventType)
-	assert.Equal(t, 6, final.JSON200.LastFailure.Attempts)
-	require.NotNil(t, final.JSON200.LastFailure.Error)
-	assert.Contains(t, *final.JSON200.LastFailure.Error, "delivery status 503")
 	assert.EqualValues(t, 6, attempts.Load())
+
+	available.Store(true)
+	_, err = client.CreateProductOrganizationWithResponse(
+		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+			Name: "Recovered Events Org " + ids.MustNew("org"),
+		},
+	)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("succeeded") &&
+			current.JSON200.Config.Events.ConsecutiveFailedCalls == 0
+	}, 30*time.Second, 100*time.Millisecond)
 }

@@ -548,13 +548,6 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 	GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetProductEventDeliveryStatus Get Product Event Delivery Status
-	//
-	// Returns counts of product events being retried or permanently failed. Delivery stops after six failed attempts. Failed jobs remain available for operator replay in the queue dashboard.
-	//
-	// Corresponds with GET /v1/products/{product_id}/events/status (the `GetProductEventDeliveryStatus` operationId).
-	GetProductEventDeliveryStatus(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListIntegrationInstances List Integration Instances
 	//
 	// Lists all integration instances for the specified product.
@@ -2481,23 +2474,6 @@ func (c *Client) PublishEmailTemplate(ctx context.Context, productId ProductIdPa
 // Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 func (c *Client) GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProductEventsCatalogRequest(c.Server, productId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetProductEventDeliveryStatus Get Product Event Delivery Status
-//
-// Returns counts of product events being retried or permanently failed. Delivery stops after six failed attempts. Failed jobs remain available for operator replay in the queue dashboard.
-//
-// Corresponds with GET /v1/products/{product_id}/events/status (the `GetProductEventDeliveryStatus` operationId).
-func (c *Client) GetProductEventDeliveryStatus(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProductEventDeliveryStatusRequest(c.Server, productId)
 	if err != nil {
 		return nil, err
 	}
@@ -6063,40 +6039,6 @@ func NewGetProductEventsCatalogRequest(server string, productId ProductIdParamet
 	}
 
 	operationPath := fmt.Sprintf("/v1/products/%s/events/catalog", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetProductEventDeliveryStatusRequest constructs an http.Request for the GetProductEventDeliveryStatus method
-func NewGetProductEventDeliveryStatusRequest(server string, productId ProductIdParameter) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/events/status", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10076,15 +10018,6 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 	GetProductEventsCatalogWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetProductEventsCatalogResponse, error)
 
-	// GetProductEventDeliveryStatusWithResponse Get Product Event Delivery Status
-	//
-	// Returns counts of product events being retried or permanently failed. Delivery stops after six failed attempts. Failed jobs remain available for operator replay in the queue dashboard.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with GET /v1/products/{product_id}/events/status (the `GetProductEventDeliveryStatus` operationId).
-	GetProductEventDeliveryStatusWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetProductEventDeliveryStatusResponse, error)
-
 	// ListIntegrationInstancesWithResponse List Integration Instances
 	//
 	// Lists all integration instances for the specified product.
@@ -13610,68 +13543,6 @@ func (r GetProductEventsCatalogResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetProductEventsCatalogResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetProductEventDeliveryStatusResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *ProductEventDeliveryStatusResponse
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetProductEventDeliveryStatusResponse) GetJSON200() *ProductEventDeliveryStatusResponse {
-	return r.JSON200
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetProductEventDeliveryStatusResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetProductEventDeliveryStatusResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetProductEventDeliveryStatusResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetBody returns the raw response body bytes
-func (r GetProductEventDeliveryStatusResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProductEventDeliveryStatusResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProductEventDeliveryStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetProductEventDeliveryStatusResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19197,21 +19068,6 @@ func (c *ClientWithResponses) GetProductEventsCatalogWithResponse(ctx context.Co
 	return ParseGetProductEventsCatalogResponse(rsp)
 }
 
-// GetProductEventDeliveryStatusWithResponse Get Product Event Delivery Status
-//
-// Returns counts of product events being retried or permanently failed. Delivery stops after six failed attempts. Failed jobs remain available for operator replay in the queue dashboard.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with GET /v1/products/{product_id}/events/status (the `GetProductEventDeliveryStatus` operationId).
-func (c *ClientWithResponses) GetProductEventDeliveryStatusWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetProductEventDeliveryStatusResponse, error) {
-	rsp, err := c.GetProductEventDeliveryStatus(ctx, productId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProductEventDeliveryStatusResponse(rsp)
-}
-
 // ListIntegrationInstancesWithResponse List Integration Instances
 //
 // Lists all integration instances for the specified product.
@@ -22816,53 +22672,6 @@ func ParseGetProductEventsCatalogResponse(rsp *http.Response) (*GetProductEvents
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProductEventsCatalogResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetProductEventDeliveryStatusResponse parses an HTTP response from a GetProductEventDeliveryStatusWithResponse call
-func ParseGetProductEventDeliveryStatusResponse(rsp *http.Response) (*GetProductEventDeliveryStatusResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProductEventDeliveryStatusResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProductEventDeliveryStatusResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

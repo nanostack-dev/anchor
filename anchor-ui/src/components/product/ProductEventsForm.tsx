@@ -4,7 +4,6 @@ import type {
 	ProductResponse,
 } from "@/client";
 import {
-	getProductEventDeliveryStatusOptions,
 	getProductEventsCatalogOptions,
 	getProductQueryKey,
 	updateProductMutation,
@@ -132,13 +131,6 @@ export function ProductEventsForm({
 		...getProductEventsCatalogOptions({
 			path: { product_id: product.id },
 		}),
-	});
-	const deliveryStatusQuery = useQuery({
-		...getProductEventDeliveryStatusOptions({
-			path: { product_id: product.id },
-		}),
-		enabled: hadEvents,
-		refetchInterval: 30_000,
 	});
 
 	const form = useForm({
@@ -309,10 +301,8 @@ export function ProductEventsForm({
 
 	const endpointValue = form.state.values.eventsEndpointUrl;
 	const isEndpointConfigured = Boolean(endpointValue?.trim());
-	const deliveryStatus = deliveryStatusQuery.data;
-	const hasDeliveryIssues =
-		(deliveryStatus?.failed_count ?? 0) > 0 ||
-		(deliveryStatus?.retrying_count ?? 0) > 0;
+	const deliveryStatus = product.config.events?.delivery_status;
+	const failedCalls = product.config.events?.consecutive_failed_calls ?? 0;
 
 	return (
 		<form
@@ -385,39 +375,20 @@ export function ProductEventsForm({
 									{hadEvents && deliveryStatus ? (
 										<Alert
 											variant={
-												deliveryStatus.failed_count > 0
-													? "destructive"
-													: hasDeliveryIssues
-														? "warning"
-														: "default"
+												deliveryStatus === "failed" ? "destructive" : "default"
 											}
 											className="rounded-xl"
-											role={hasDeliveryIssues ? "alert" : "status"}
+											role={deliveryStatus === "failed" ? "alert" : "status"}
 										>
 											<AlertTitle>Delivery status</AlertTitle>
-											<AlertDescription className="space-y-1 text-xs">
-												<p>
-													{deliveryStatus.failed_count} failed ·{" "}
-													{deliveryStatus.retrying_count} retrying
-												</p>
-												{deliveryStatus.last_failure ? (
-													<p className="break-words">
-														Latest failure:{" "}
-														{deliveryStatus.last_failure.event_type}
-														{" after "}
-														{deliveryStatus.last_failure.attempts}
-														{" attempts"}
-														{deliveryStatus.last_failure.error
-															? ` — ${deliveryStatus.last_failure.error}`
-															: ""}
-													</p>
-												) : null}
+											<AlertDescription className="text-xs">
+												{deliveryStatus === "failed"
+													? `Last call failed · ${failedCalls} consecutive failed ${failedCalls === 1 ? "call" : "calls"}. Anchor attempts each event up to six times.`
+													: deliveryStatus === "succeeded"
+														? "Last call succeeded."
+														: "No delivery attempts yet."}
 											</AlertDescription>
 										</Alert>
-									) : hadEvents && deliveryStatusQuery.isError ? (
-										<p className="text-xs text-muted-foreground">
-											Delivery status unavailable.
-										</p>
 									) : null}
 									{revealedSecret ? (
 										<Alert variant="warning" className="rounded-xl">

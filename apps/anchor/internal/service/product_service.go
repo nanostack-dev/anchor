@@ -43,7 +43,6 @@ type ProductService interface {
 		search.Result[product.Product], error,
 	)
 	EventsCatalog(ctx context.Context) []events.Definition
-	EventDeliveryStatus(ctx context.Context, input product.GetProductInput) (*events.DeliveryStatus, error)
 }
 
 type productService struct {
@@ -370,6 +369,8 @@ func (s *productService) persistEventsConfig(
 	cfg.SigningSecret = stored.SigningSecretClear
 	cfg.SigningSecretObfuscated = stored.SigningSecretObfuscated
 	cfg.Events = stored.Events
+	cfg.DeliveryStatus = stored.DeliveryStatus
+	cfg.ConsecutiveFailedCalls = int(stored.ConsecutiveFailedCalls)
 	return nil
 }
 
@@ -385,12 +386,16 @@ func (s *productService) attachEventsConfig(ctx context.Context, tenantID string
 		prod.Config.Events.EndpointURL = endpoint.URL
 		prod.Config.Events.SigningSecretObfuscated = endpoint.SigningSecretObfuscated
 		prod.Config.Events.Events = endpoint.Events
+		prod.Config.Events.DeliveryStatus = endpoint.DeliveryStatus
+		prod.Config.Events.ConsecutiveFailedCalls = int(endpoint.ConsecutiveFailedCalls)
 		return
 	}
 	prod.Config.Events = &product.EventsConfig{
 		EndpointURL:             endpoint.URL,
 		SigningSecretObfuscated: endpoint.SigningSecretObfuscated,
 		Events:                  endpoint.Events,
+		DeliveryStatus:          endpoint.DeliveryStatus,
+		ConsecutiveFailedCalls:  int(endpoint.ConsecutiveFailedCalls),
 	}
 }
 
@@ -399,25 +404,6 @@ func (s *productService) EventsCatalog(_ context.Context) []events.Definition {
 		return []events.Definition{}
 	}
 	return s.eventEndpoints.Catalog().All()
-}
-
-func (s *productService) EventDeliveryStatus(
-	ctx context.Context, input product.GetProductInput,
-) (*events.DeliveryStatus, error) {
-	if err := validateStruct(input); err != nil {
-		return nil, err
-	}
-	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
-	if err != nil || found.IsAbsent() {
-		return nil, err
-	}
-	status, err := s.eventEndpoints.DeliveryStatus(ctx, events.DeliveryStatusInput{
-		TenantID: input.TenantID, ProductID: input.ProductID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &status, nil
 }
 
 func (s *productService) evictProductFromCache(

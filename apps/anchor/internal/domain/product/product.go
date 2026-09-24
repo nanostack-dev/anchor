@@ -22,6 +22,8 @@ type EventsConfig struct {
 	SigningSecret           string
 	SigningSecretObfuscated string
 	Events                  []string
+	DeliveryStatus          string
+	ConsecutiveFailedCalls  int
 }
 
 type Product struct {

@@ -20,7 +20,8 @@ type EndpointRepository interface {
 	Upsert(ctx context.Context, endpoint Endpoint) error
 	Delete(ctx context.Context, tenantID, productID string) error
 	DeleteByProductIDInternal(ctx context.Context, productID string) error
-	DeliveryStatus(ctx context.Context, tenantID, productID string) (DeliveryStatus, error)
+	// RecordDeliveryResultInternal updates delivery state from the background worker only.
+	RecordDeliveryResultInternal(ctx context.Context, productID, endpointURL string, succeeded bool) error
 }
 
 type endpointRepository struct {
@@ -67,11 +68,13 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 		return fmt.Errorf("encode event subscriptions: %w", err)
 	}
 	entity := model.ProductEventEndpointConfigs{
-		ProductID:        endpoint.ProductID,
-		PlatformTenantID: endpoint.PlatformTenantID,
-		EndpointURL:      endpoint.URL,
-		SigningSecret:    endpoint.SigningSecretEncrypted,
-		EventsJSON:       string(eventsJSON),
+		ProductID:              endpoint.ProductID,
+		PlatformTenantID:       endpoint.PlatformTenantID,
+		EndpointURL:            endpoint.URL,
+		SigningSecret:          endpoint.SigningSecretEncrypted,
+		EventsJSON:             string(eventsJSON),
+		DeliveryStatus:         endpoint.DeliveryStatus,
+		ConsecutiveFailedCalls: endpoint.ConsecutiveFailedCalls,
 	}
 	stmt := table.ProductEventEndpointConfigs.INSERT(
 		table.ProductEventEndpointConfigs.ProductID,
@@ -79,6 +82,8 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 		table.ProductEventEndpointConfigs.EndpointURL,
 		table.ProductEventEndpointConfigs.SigningSecret,
 		table.ProductEventEndpointConfigs.EventsJSON,
+		table.ProductEventEndpointConfigs.DeliveryStatus,
+		table.ProductEventEndpointConfigs.ConsecutiveFailedCalls,
 	).MODEL(entity).
 		ON_CONFLICT(table.ProductEventEndpointConfigs.ProductID).
 		DO_UPDATE(
@@ -94,6 +99,12 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 				),
 				table.ProductEventEndpointConfigs.EventsJSON.SET(
 					table.ProductEventEndpointConfigs.EXCLUDED.EventsJSON,
+				),
+				table.ProductEventEndpointConfigs.DeliveryStatus.SET(
+					table.ProductEventEndpointConfigs.EXCLUDED.DeliveryStatus,
+				),
+				table.ProductEventEndpointConfigs.ConsecutiveFailedCalls.SET(
+					table.ProductEventEndpointConfigs.EXCLUDED.ConsecutiveFailedCalls,
 				),
 			),
 		)
@@ -116,43 +127,19 @@ func (r *endpointRepository) DeleteByProductIDInternal(ctx context.Context, prod
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *endpointRepository) DeliveryStatus(
-	ctx context.Context, tenantID, productID string,
-) (DeliveryStatus, error) {
-	// ponytail: this reads pgqueue's existing rows. Add a dedicated status table if
-	// queue volume makes the product page's status query slow.
-	const productJobs = `
-		FROM pgqueue_jobs AS jobs
-		JOIN products ON products.id = $2 AND products.platform_tenant_id = $1
-		WHERE jobs.queue_name = 'product-events'
-		  AND convert_from(jobs.payload, 'UTF8')::jsonb ->> 'product_id' = $2`
-	var status DeliveryStatus
-	err := r.db.QueryRowContext(ctx, `
-		SELECT count(*) FILTER (WHERE jobs.status = 'failed'),
-		       count(*) FILTER (WHERE (jobs.status = 'pending' AND jobs.attempts > 0)
-		                          OR (jobs.status = 'processing' AND jobs.attempts > 1))
-		`+productJobs, tenantID, productID).Scan(&status.FailedCount, &status.RetryingCount)
-	if err != nil {
-		return DeliveryStatus{}, fmt.Errorf("read event delivery status: %w", err)
+func (r *endpointRepository) RecordDeliveryResultInternal(
+	ctx context.Context, productID, endpointURL string, succeeded bool,
+) error {
+	query := `UPDATE product_event_endpoint_configs
+		SET delivery_status = 'failed', consecutive_failed_calls = consecutive_failed_calls + 1
+		WHERE product_id = $1 AND endpoint_url = $2`
+	if succeeded {
+		query = `UPDATE product_event_endpoint_configs
+			SET delivery_status = 'succeeded', consecutive_failed_calls = 0
+			WHERE product_id = $1 AND endpoint_url = $2`
 	}
-
-	var failure DeliveryFailure
-	err = r.db.QueryRowContext(ctx, `
-		SELECT COALESCE(convert_from(jobs.payload, 'UTF8')::jsonb ->> 'type',
-		                convert_from(jobs.payload, 'UTF8')::jsonb -> 'body' ->> 'type',
-		                'unknown'),
-		       jobs.attempts, COALESCE(jobs.last_error, ''), jobs.updated_at
-		`+productJobs+`
-		  AND jobs.status = 'failed'
-		ORDER BY jobs.updated_at DESC, jobs.id DESC LIMIT 1`, tenantID, productID).
-		Scan(&failure.EventType, &failure.Attempts, &failure.Error, &failure.FailedAt)
-	if err != nil && err != sql.ErrNoRows {
-		return DeliveryStatus{}, fmt.Errorf("read last event delivery failure: %w", err)
-	}
-	if err == nil {
-		status.LastFailure = &failure
-	}
-	return status, nil
+	_, err := r.db.ExecContext(ctx, query, productID, endpointURL)
+	return err
 }
 
 func endpointFromModel(row model.ProductEventEndpointConfigs) (Endpoint, error) {
@@ -169,5 +156,7 @@ func endpointFromModel(row model.ProductEventEndpointConfigs) (Endpoint, error) 
 		URL:                    row.EndpointURL,
 		SigningSecretEncrypted: row.SigningSecret,
 		Events:                 eventsList,
+		DeliveryStatus:         row.DeliveryStatus,
+		ConsecutiveFailedCalls: row.ConsecutiveFailedCalls,
 	}, nil
 }
