@@ -151,6 +151,30 @@ export const DirectLinkLoadsTemplate: Story = {
 		await expect(canvas.getByText("10000")).toBeVisible();
 	},
 };
+export const ViewAndEditShareVisibleSurface: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const details = await canvas.findByRole("region", {
+			name: "Template details",
+		});
+		await expect(details).toHaveClass("bg-card");
+		await expect(canvas.getByText("10000")).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Edit template" }),
+		);
+		await expect(
+			await canvas.findByRole("textbox", { name: "Name" }),
+		).toHaveValue("Enterprise");
+		await expect(
+			canvas.getByRole("region", { name: "Template details" }),
+		).toHaveClass("bg-card");
+		await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
+		await expect(canvas.getByText("10000")).toBeVisible();
+		await expect(
+			canvas.getByRole("region", { name: "Template details" }),
+		).toHaveClass("bg-card");
+	},
+};
 export const DirectEditSaveAndBack: Story = {
 	args: { initialPath: `${DETAIL_PATH}?edit=true` },
 	play: async ({ canvasElement }) => {

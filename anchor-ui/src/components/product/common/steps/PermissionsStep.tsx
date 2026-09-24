@@ -7,17 +7,11 @@ import { FormValidationError } from "@/components/common/FormValidationError";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { VerticalStepperStep } from "@/components/ui/vertical-stepper";
-import { productPermissionsRoute } from "@/routes/products/permissions";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -301,7 +295,7 @@ export function PermissionsStep({
 							type="button"
 							variant="outline"
 							onClick={() => {
-								void navigate({ to: productPermissionsRoute.fullPath });
+								void navigate({ to: ROUTE_PATHS.PRODUCT_PERMISSIONS });
 							}}
 							className="mt-4 h-9 rounded-xl border-border text-muted-foreground hover:bg-muted text-sm"
 						>
@@ -472,8 +466,8 @@ export function PermissionsStep({
 			<div className="flex flex-col h-full">
 				{/* Header */}
 				<div className="px-7 pt-7 pb-5">
-					<DialogHeader className="space-y-2">
-						<DialogTitle className="flex items-center gap-3">
+					<div className="flex flex-col space-y-2">
+						<h2 className="flex items-center gap-3">
 							<div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
 								<Shield className="size-4" />
 							</div>
@@ -488,11 +482,11 @@ export function PermissionsStep({
 									Editing: {existingItem.name}
 								</Badge>
 							)}
-						</DialogTitle>
-						<DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+						</h2>
+						<p className="text-sm text-muted-foreground leading-relaxed">
 							{description}
-						</DialogDescription>
-					</DialogHeader>
+						</p>
+					</div>
 				</div>
 
 				<ScrollArea className="flex-1 px-7">
@@ -572,7 +566,7 @@ export function PermissionsStep({
 
 				{/* Footer */}
 				<div className="px-7 py-5 border-t border-border mt-auto">
-					<DialogFooter className="p-0">
+					<div className="p-0">
 						<div className="flex items-center justify-between w-full">
 							<Button
 								type="button"
@@ -613,7 +607,7 @@ export function PermissionsStep({
 								)}
 							</form.Subscribe>
 						</div>
-					</DialogFooter>
+					</div>
 				</div>
 			</div>
 		</VerticalStepperStep>

@@ -121,6 +121,8 @@ interface AnchorDataTableProps<
 	pageSizeOptions?: number[];
 	onSelectionChange?: (selected: TData[] | "all-matching" | []) => void;
 	enableRowSelection?: boolean;
+	onRowClick?: (row: TData) => void;
+	isRowClickable?: (row: TData) => boolean;
 	/**
 	 * Plural noun for the rows, e.g. `"organizations"`. Used verbatim in the
 	 * empty and error copy so every table names what it could not show.
@@ -165,6 +167,8 @@ export function AnchorDataTable<
 	pageSizeOptions = [10, 20, 50, 100],
 	onSelectionChange,
 	enableRowSelection = true,
+	onRowClick,
+	isRowClickable,
 	resourceName,
 	error,
 	onRetry,
@@ -600,6 +604,26 @@ export function AnchorDataTable<
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
+									className={
+										onRowClick && (isRowClickable?.(row.original) ?? true)
+											? "cursor-pointer"
+											: undefined
+									}
+									onClick={(event) => {
+										if (
+											!onRowClick ||
+											!(isRowClickable?.(row.original) ?? true)
+										)
+											return;
+										if (
+											event.target instanceof Element &&
+											event.target.closest(
+												"a, button, input, select, textarea, label, [role='button'], [role='checkbox'], [role='menuitem'], [contenteditable='true']",
+											)
+										)
+											return;
+										onRowClick(row.original);
+									}}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

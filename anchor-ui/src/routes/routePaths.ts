@@ -22,8 +22,11 @@ export const ROUTE_PATHS = {
 	PRODUCT_API_KEY_EDIT: "/products/product-api-keys/$apiKeyId/edit",
 	PRODUCT_USERS: "/products/users",
 	PRODUCT_ROLES: "/products/resources/roles",
+	PRODUCT_ROLE_DETAIL: "/products/resources/roles/$roleId",
 	PRODUCT_PERMISSIONS: "/products/permissions",
 	PRODUCT_RESOURCES_PERMISSIONS: "/products/resources/permissions",
+	PRODUCT_RESOURCE_PERMISSION_DETAIL:
+		"/products/resources/permissions/$permissionName",
 	PRODUCT_EDIT: "/products/$productId/edit",
 	PRODUCT_EVENTS: "/products/events",
 

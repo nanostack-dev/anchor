@@ -48,7 +48,6 @@ export function LicenseTemplateEditView({
 	const showForm = !template || (editing && !archived);
 	return (
 		<Page
-			variant="default"
 			breadCrumbs={false}
 			title={
 				template
@@ -62,8 +61,9 @@ export function LicenseTemplateEditView({
 					? "A named set of values for this product’s organization licenses."
 					: template?.description || "No description."
 			}
-			actions={
-				<>
+		>
+			<div className="flex max-w-3xl flex-col gap-6">
+				<div className="flex flex-wrap items-center gap-3">
 					<LicenseTemplateBackLink />
 					{!showForm && !archived && (
 						<Button onClick={onEdit}>
@@ -71,10 +71,7 @@ export function LicenseTemplateEditView({
 							Edit template
 						</Button>
 					)}
-				</>
-			}
-		>
-			<div className="flex flex-col gap-6">
+				</div>
 				{template && (
 					<div className="flex flex-wrap items-center gap-3">
 						<StatusBadge tone={archived ? "neutral" : "success"}>
@@ -91,31 +88,36 @@ export function LicenseTemplateEditView({
 						This template is archived and can no longer be edited.
 					</p>
 				)}
-				{showForm ? (
-					<LicenseTemplateForm
-						productId={productId}
-						schema={schema}
-						template={template}
-						onCancel={onCancel}
-						onSaved={onSaved}
-					/>
-				) : (
-					<section
-						aria-labelledby="template-values-heading"
-						className="flex flex-col gap-3"
-					>
-						<h2
-							id="template-values-heading"
-							className="text-base font-semibold"
-						>
-							License values
-						</h2>
-						<LicenseValueFields
-							fields={schema.fields}
-							values={template.values}
+				<section
+					aria-label="Template details"
+					className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
+				>
+					{showForm ? (
+						<LicenseTemplateForm
+							productId={productId}
+							schema={schema}
+							template={template}
+							onCancel={onCancel}
+							onSaved={onSaved}
 						/>
-					</section>
-				)}
+					) : (
+						<div
+							aria-labelledby="template-values-heading"
+							className="flex flex-col gap-3"
+						>
+							<h2
+								id="template-values-heading"
+								className="text-base font-semibold"
+							>
+								License values
+							</h2>
+							<LicenseValueFields
+								fields={schema.fields}
+								values={template.values}
+							/>
+						</div>
+					)}
+				</section>
 			</div>
 		</Page>
 	);
