@@ -543,7 +543,7 @@ type ClientInterface interface {
 
 	// GetProductEventsCatalog Get Product Events Catalog
 	//
-	// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+	// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
 	//
 	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 	GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2469,7 +2469,7 @@ func (c *Client) PublishEmailTemplate(ctx context.Context, productId ProductIdPa
 
 // GetProductEventsCatalog Get Product Events Catalog
 //
-// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
 //
 // Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 func (c *Client) GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10011,7 +10011,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetProductEventsCatalogWithResponse Get Product Events Catalog
 	//
-	// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+	// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -19055,7 +19055,7 @@ func (c *ClientWithResponses) PublishEmailTemplateWithResponse(ctx context.Conte
 
 // GetProductEventsCatalogWithResponse Get Product Events Catalog
 //
-// Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
 //
 // Returns a wrapper object for the known response body format(s).
 //

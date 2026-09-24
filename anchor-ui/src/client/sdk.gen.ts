@@ -188,7 +188,7 @@ export const updateProduct = <ThrowOnError extends boolean = false>(options: Opt
 
 /**
  * Get Product Events Catalog
- * Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+ * Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
  */
 export const getProductEventsCatalog = <ThrowOnError extends boolean = false>(options: Options<GetProductEventsCatalogData, ThrowOnError>) => {
     return (options.client ?? client).get<GetProductEventsCatalogResponses, GetProductEventsCatalogErrors, ThrowOnError>({

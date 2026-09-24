@@ -235,7 +235,7 @@ export const getProductEventsCatalogQueryKey = (options: Options<GetProductEvent
 
 /**
  * Get Product Events Catalog
- * Returns all registered domain and integration events available for webhook subscriptions. Events are grouped by domain theme or integration.
+ * Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
  */
 export const getProductEventsCatalogOptions = (options: Options<GetProductEventsCatalogData>) => {
     return queryOptions({

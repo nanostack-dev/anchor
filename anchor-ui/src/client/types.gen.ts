@@ -318,13 +318,13 @@ export type ProductEventsConfigResponse = {
 
 export type ProductEventsCatalogResponse = {
     /**
-     * Registered domain and integration events available for subscription.
+     * Registered internal and integration events available for subscription.
      */
     items: Array<ProductEventDefinitionResponse>;
 };
 
 export enum ProductEventGroupType {
-    THEME = 'theme',
+    INTERNAL = 'internal',
     INTEGRATION = 'integration'
 }
 
@@ -342,11 +342,11 @@ export type ProductEventDefinitionResponse = {
      */
     description: string;
     /**
-     * Classification group type.
+     * Event origin, either Anchor itself or an integration provider.
      */
     group_type: ProductEventGroupType;
     /**
-     * Display name of the theme or integration group.
+     * Display name of the Anchor area or integration provider.
      */
     group_name: string;
 };

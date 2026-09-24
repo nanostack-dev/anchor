@@ -178,7 +178,7 @@ export const zProductEventsConfigResponse = z.object({
 });
 
 export const zProductEventGroupType = z.enum([
-    'theme',
+    'internal',
     'integration'
 ]);
 

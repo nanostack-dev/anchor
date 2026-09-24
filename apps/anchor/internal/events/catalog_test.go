@@ -9,7 +9,7 @@ import (
 func TestCatalogRegistrationAndGrouping(t *testing.T) {
 	t.Parallel()
 
-	domainReg := events.RegisterDomain(
+	domainReg := events.RegisterInternal(
 		"Test Domain",
 		events.Definition{
 			Type:        "test.resource.created",

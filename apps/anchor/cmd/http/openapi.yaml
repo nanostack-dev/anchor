@@ -736,12 +736,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductEventDefinitionResponse"
-          description: Registered domain and integration events available for subscription.
+          description: Registered internal and integration events available for subscription.
       required:
       - items
     ProductEventGroupType:
       type: string
-      enum: [theme, integration]
+      enum: [internal, integration]
       x-go-type: events.GroupType
       x-go-type-import:
         path: anchor/internal/events
@@ -762,11 +762,11 @@ components:
           examples: ["Emitted when a new organization is created."]
         group_type:
           $ref: "#/components/schemas/ProductEventGroupType"
-          description: Classification group type.
-          examples: ["theme"]
+          description: Event origin, either Anchor itself or an integration provider.
+          examples: ["internal"]
         group_name:
           type: string
-          description: Display name of the theme or integration group.
+          description: Display name of the Anchor area or integration provider.
           examples: ["Organizations"]
       required:
       - type
@@ -4343,8 +4343,9 @@ paths:
     get:
       summary: Get Product Events Catalog
       description: >-
-        Returns all registered domain and integration events available for
-        webhook subscriptions. Events are grouped by domain theme or integration.
+        Returns all registered internal and integration events available for
+        webhook subscriptions. Internal events are grouped by Anchor area;
+        integration events are grouped by provider.
       operationId: getProductEventsCatalog
       tags: [Product]
       security:

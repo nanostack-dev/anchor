@@ -10,17 +10,17 @@ import (
 type GroupType string
 
 const (
-	GroupTypeTheme       GroupType = "theme"
+	GroupTypeInternal    GroupType = "internal"
 	GroupTypeIntegration GroupType = "integration"
 )
 
 const (
-	ThemeOrganizations    = "Organizations"
-	ThemeWorkspaces       = "Workspaces"
-	ThemeAPIKeys          = "API Keys"
-	ThemeUsers            = "Users"
-	ThemeLicensing        = "Licensing"
-	ThemeRolesPermissions = "Roles & Permissions"
+	GroupOrganizations    = "Organizations"
+	GroupWorkspaces       = "Workspaces"
+	GroupAPIKeys          = "API Keys"
+	GroupUsers            = "Users"
+	GroupLicensing        = "Licensing"
+	GroupRolesPermissions = "Roles & Permissions"
 )
 
 type Definition struct {
@@ -37,8 +37,8 @@ type Registration struct {
 	Definitions []Definition
 }
 
-func RegisterDomain(theme string, definitions ...Definition) Registration {
-	return Registration{GroupType: GroupTypeTheme, GroupName: theme, Definitions: definitions}
+func RegisterInternal(groupName string, definitions ...Definition) Registration {
+	return Registration{GroupType: GroupTypeInternal, GroupName: groupName, Definitions: definitions}
 }
 
 func RegisterIntegration(providerType string, definitions ...Definition) Registration {

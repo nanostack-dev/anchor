@@ -299,23 +299,23 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		require.NotNil(t, catalogResp.JSON200)
 		require.NotEmpty(t, catalogResp.JSON200.Items)
 
-		themes := make(map[string]bool)
+		internalGroups := make(map[string]bool)
 		integrations := make(map[string]bool)
 		for _, item := range catalogResp.JSON200.Items {
-			if item.GroupType == ct.Theme {
-				themes[item.GroupName] = true
+			if item.GroupType == ct.Internal {
+				internalGroups[item.GroupName] = true
 			}
 			if item.GroupType == ct.Integration {
 				integrations[item.GroupName] = true
 			}
 		}
 
-		assert.True(t, themes["Organizations"], "Organizations theme must be in catalog")
-		assert.True(t, themes["Workspaces"], "Workspaces theme must be in catalog")
-		assert.True(t, themes["API Keys"], "API Keys theme must be in catalog")
-		assert.True(t, themes["Users"], "Users theme must be in catalog")
-		assert.True(t, themes["Licensing"], "Licensing theme must be in catalog")
-		assert.True(t, themes["Roles & Permissions"], "Roles theme must be in catalog")
+		assert.True(t, internalGroups["Organizations"], "Organizations internal group must be in catalog")
+		assert.True(t, internalGroups["Workspaces"], "Workspaces internal group must be in catalog")
+		assert.True(t, internalGroups["API Keys"], "API Keys internal group must be in catalog")
+		assert.True(t, internalGroups["Users"], "Users internal group must be in catalog")
+		assert.True(t, internalGroups["Licensing"], "Licensing internal group must be in catalog")
+		assert.True(t, internalGroups["Roles & Permissions"], "Roles internal group must be in catalog")
 		assert.True(t, integrations["CLERK"], "CLERK integration must be in catalog")
 		assert.False(
 			t,

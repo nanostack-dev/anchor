@@ -63,7 +63,7 @@ const eventsFormSchema = z.object({
 type EventsFormData = z.infer<typeof eventsFormSchema>;
 
 interface EventGroup {
-	type: "theme" | "integration";
+	type: "internal" | "integration";
 	name: string;
 	events: ProductEventDefinitionResponse[];
 }
@@ -83,7 +83,7 @@ function formValues(
 	};
 }
 
-function getGroupIcon(name: string, type: "theme" | "integration") {
+function getGroupIcon(name: string, type: "internal" | "integration") {
 	if (type === "integration") {
 		return <Plug className="size-4 text-primary" />;
 	}
@@ -120,7 +120,7 @@ export function ProductEventsForm({
 	const [secretCopied, setSecretCopied] = React.useState(false);
 	const [searchQuery, setSearchQuery] = React.useState("");
 	const [filterType, setFilterType] = React.useState<
-		"all" | "theme" | "integration"
+		"all" | "internal" | "integration"
 	>("all");
 	const prevProductRef = React.useRef(product);
 	const eventsInitializedRef = React.useRef(false);
@@ -250,17 +250,17 @@ export function ProductEventsForm({
 
 		return Array.from(map.values()).sort((a, b) => {
 			if (a.type !== b.type) {
-				return a.type === "theme" ? -1 : 1;
+				return a.type === "internal" ? -1 : 1;
 			}
 			return a.name.localeCompare(b.name);
 		});
 	}, [catalogQuery.data?.items]);
 
 	const totalCatalogEvents = catalogQuery.data?.items?.length ?? 0;
-	const themeEventsCount = React.useMemo(
+	const internalEventsCount = React.useMemo(
 		() =>
 			(catalogQuery.data?.items ?? []).filter(
-				(item) => item.group_type === "theme",
+				(item) => item.group_type === "internal",
 			).length,
 		[catalogQuery.data?.items],
 	);
@@ -475,8 +475,8 @@ export function ProductEventsForm({
 												Event Subscriptions
 											</CardTitle>
 											<CardDescription className="text-xs text-muted-foreground">
-												Select the domain and integration events Anchor delivers
-												to your endpoint.
+												Select the internal and integration events Anchor
+												delivers to your endpoint.
 											</CardDescription>
 										</div>
 										<div className="flex items-center gap-2">
@@ -525,15 +525,15 @@ export function ProductEventsForm({
 											</button>
 											<button
 												type="button"
-												onClick={() => setFilterType("theme")}
+												onClick={() => setFilterType("internal")}
 												className={cn(
 													"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
-													filterType === "theme"
+													filterType === "internal"
 														? "bg-background text-foreground shadow-xs font-semibold"
 														: "text-muted-foreground hover:text-foreground",
 												)}
 											>
-												Domains ({themeEventsCount})
+												Internal ({internalEventsCount})
 											</button>
 											<button
 												type="button"

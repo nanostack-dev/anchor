@@ -14,7 +14,7 @@ func TestEmitterAcceptsRegisteredType(t *testing.T) {
 
 	catalog := events.NewCatalog(events.CatalogParams{
 		Registrations: []events.Registration{
-			events.RegisterDomain("Test", events.Definition{Type: "custom.created"}),
+			events.RegisterInternal("Test", events.Definition{Type: "custom.created"}),
 		},
 	})
 	emitter := events.NewEmitter(nil, catalog)

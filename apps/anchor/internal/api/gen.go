@@ -1708,14 +1708,14 @@ type ProductEventDefinitionResponse struct {
 	// Examples: Emitted when a new organization is created.
 	Description string `json:"description"`
 
-	// GroupName Display name of the theme or integration group.
+	// GroupName Display name of the Anchor area or integration provider.
 	//
 	// Examples: Organizations
 	GroupName string `json:"group_name"`
 
-	// GroupType Classification group type.
+	// GroupType Event origin, either Anchor itself or an integration provider.
 	//
-	// Examples: theme
+	// Examples: internal
 	GroupType ProductEventGroupType `json:"group_type"`
 
 	// Name Human-readable display name.
@@ -1734,7 +1734,7 @@ type ProductEventGroupType = events.GroupType
 
 // ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
 type ProductEventsCatalogResponse struct {
-	// Items Registered domain and integration events available for subscription.
+	// Items Registered internal and integration events available for subscription.
 	Items []ProductEventDefinitionResponse `json:"items"`
 }
 

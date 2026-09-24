@@ -3,8 +3,8 @@ package service
 import "anchor/internal/events"
 
 func OrganizationEventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeOrganizations,
+	return events.RegisterInternal(
+		events.GroupOrganizations,
 		events.Definition{
 			Type:        events.OrganizationCreated,
 			Name:        "Organization created",
@@ -39,8 +39,8 @@ func OrganizationEventRegistration() events.Registration {
 }
 
 func WorkspaceEventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeWorkspaces,
+	return events.RegisterInternal(
+		events.GroupWorkspaces,
 		events.Definition{
 			Type:        events.WorkspaceCreated,
 			Name:        "Workspace created",
@@ -60,8 +60,8 @@ func WorkspaceEventRegistration() events.Registration {
 }
 
 func OrganizationAPIKeyEventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeAPIKeys,
+	return events.RegisterInternal(
+		events.GroupAPIKeys,
 		events.Definition{
 			Type:        events.OrganizationAPIKeyCreated,
 			Name:        "API key created",
@@ -81,8 +81,8 @@ func OrganizationAPIKeyEventRegistration() events.Registration {
 }
 
 func ProductUserEventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeUsers,
+	return events.RegisterInternal(
+		events.GroupUsers,
 		events.Definition{
 			Type:        events.ProductUserCreated,
 			Name:        "Product user created",
@@ -102,8 +102,8 @@ func ProductUserEventRegistration() events.Registration {
 }
 
 func ProductRBACEventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeRolesPermissions,
+	return events.RegisterInternal(
+		events.GroupRolesPermissions,
 		events.Definition{
 			Type:        events.ProductRoleCreated,
 			Name:        "Role created",

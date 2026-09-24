@@ -3,8 +3,8 @@ package license
 import "anchor/internal/events"
 
 func EventRegistration() events.Registration {
-	return events.RegisterDomain(
-		events.ThemeLicensing,
+	return events.RegisterInternal(
+		events.GroupLicensing,
 		events.Definition{
 			Type:        events.OrganizationLicenseUpdated,
 			Name:        "Organization license updated",
