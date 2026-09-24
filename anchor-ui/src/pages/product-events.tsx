@@ -1,3 +1,4 @@
+import { getProductOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductEventsForm } from "@/components/product/ProductEventsForm";
 import {
@@ -7,20 +8,28 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { useProduct } from "@/hooks/useProduct";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ProductEventsPage() {
 	const { currentProduct, refreshProducts } = useProduct();
+	const productQuery = useQuery({
+		...getProductOptions({
+			path: { product_id: currentProduct?.id ?? "" },
+		}),
+		enabled: Boolean(currentProduct),
+		refetchInterval: 30_000,
+	});
 
 	return (
 		<Page
 			title="Events"
 			description="Outbound webhook endpoint for this product. Anchor POSTs signed catalog events to the URL you save."
-			variant="default"
+			variant="full"
 		>
 			{currentProduct ? (
 				<ProductEventsForm
-					product={currentProduct}
-					productId={currentProduct.id}
+					key={currentProduct.id}
+					product={productQuery.data ?? currentProduct}
 					onSaved={refreshProducts}
 				/>
 			) : (

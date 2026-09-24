@@ -561,6 +561,45 @@ func (e ProductAPIKeyStatus) Valid() bool {
 	}
 }
 
+// Defines values for ProductEventDeliveryStatus.
+const (
+	Failed         ProductEventDeliveryStatus = "failed"
+	NeverAttempted ProductEventDeliveryStatus = "never_attempted"
+	Succeeded      ProductEventDeliveryStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the ProductEventDeliveryStatus enum.
+func (e ProductEventDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case NeverAttempted:
+		return true
+	case Succeeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductEventGroupType.
+const (
+	Integration ProductEventGroupType = "integration"
+	Internal    ProductEventGroupType = "internal"
+)
+
+// Valid indicates whether the value is a known member of the ProductEventGroupType enum.
+func (e ProductEventGroupType) Valid() bool {
+	switch e {
+	case Integration:
+		return true
+	case Internal:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductOrganizationSearchRequestSortBy.
 const (
 	ProductOrganizationSearchRequestSortByCreatedAt ProductOrganizationSearchRequestSortBy = "created_at"
@@ -2471,18 +2510,74 @@ type ProductConfigResponse struct {
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
 }
 
+// ProductEventDefinitionResponse defines model for ProductEventDefinitionResponse.
+type ProductEventDefinitionResponse struct {
+	// Description Description of when this event is emitted.
+	//
+	// Examples: Emitted when a new organization is created.
+	Description string `json:"description"`
+
+	// GroupName Display name of the Anchor area or integration provider.
+	//
+	// Examples: Organizations
+	GroupName string `json:"group_name"`
+
+	// GroupType Event origin, either Anchor itself or an integration provider.
+	//
+	// Examples: internal
+	GroupType ProductEventGroupType `json:"group_type"`
+
+	// Name Human-readable display name.
+	//
+	// Examples: Organization created
+	Name string `json:"name"`
+
+	// Type Unique event type identifier.
+	//
+	// Examples: organization.created
+	Type string `json:"type"`
+}
+
+// ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+type ProductEventDeliveryStatus string
+
+// ProductEventGroupType defines model for ProductEventGroupType.
+type ProductEventGroupType string
+
+// ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
+type ProductEventsCatalogResponse struct {
+	// Items Registered internal and integration events available for subscription.
+	Items []ProductEventDefinitionResponse `json:"items"`
+}
+
 // ProductEventsConfigRequest defines model for ProductEventsConfigRequest.
 type ProductEventsConfigRequest struct {
 	// EndpointUrl Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
 	//
 	// Examples: https://echopoint.example/anchor/events
 	EndpointUrl *string `json:"endpoint_url,omitempty"`
+
+	// Events List of event types this endpoint subscribes to. If omitted when configuring an endpoint, all registered events are subscribed by default.
+	//
+	// Examples: ["organization.created","organization.updated"]
+	Events *[]string `json:"events,omitempty"`
 }
 
 // ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
 type ProductEventsConfigResponse struct {
+	// ConsecutiveFailedCalls Consecutive failed HTTP delivery attempts. Resets after a successful call or when the endpoint configuration is saved.
+	ConsecutiveFailedCalls int `json:"consecutive_failed_calls"`
+
+	// DeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+	DeliveryStatus ProductEventDeliveryStatus `json:"delivery_status"`
+
 	// EndpointUrl URL Anchor POSTs product events to.
 	EndpointUrl string `json:"endpoint_url"`
+
+	// Events List of event types this endpoint receives.
+	//
+	// Examples: ["organization.created","organization.updated"]
+	Events []string `json:"events"`
 
 	// SigningSecret Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
 	SigningSecret *string `json:"signing_secret,omitempty"`

@@ -2,12 +2,16 @@ package ct_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -289,4 +293,229 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 			"permission_name": permissionName,
 		})
 	})
+
+	t.Run("GetProductEventsCatalog", func(t *testing.T) {
+		catalogResp, err := owner.GetProductEventsCatalogWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, catalogResp.StatusCode())
+		require.NotNil(t, catalogResp.JSON200)
+		require.NotEmpty(t, catalogResp.JSON200.Items)
+
+		internalGroups := make(map[string]bool)
+		integrations := make(map[string]bool)
+		for _, item := range catalogResp.JSON200.Items {
+			if item.GroupType == ct.Internal {
+				internalGroups[item.GroupName] = true
+			}
+			if item.GroupType == ct.Integration {
+				integrations[item.GroupName] = true
+			}
+		}
+
+		assert.True(t, internalGroups["Organizations"], "Organizations internal group must be in catalog")
+		assert.True(t, internalGroups["Workspaces"], "Workspaces internal group must be in catalog")
+		assert.True(t, internalGroups["API Keys"], "API Keys internal group must be in catalog")
+		assert.True(t, internalGroups["Users"], "Users internal group must be in catalog")
+		assert.True(t, internalGroups["Licensing"], "Licensing internal group must be in catalog")
+		assert.True(t, internalGroups["Roles & Permissions"], "Roles internal group must be in catalog")
+		assert.True(t, integrations["CLERK"], "CLERK integration must be in catalog")
+		assert.False(
+			t,
+			integrations["SMTP"],
+			"SMTP must not be present in catalog because it does not provide webhooks",
+		)
+	})
+
+	t.Run("UnknownSubscriptionIsRejected", func(t *testing.T) {
+		before, err := owner.GetProductWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.NotNil(t, before.JSON200)
+		require.NotNil(t, before.JSON200.Config.Events)
+
+		response, err := owner.UpdateProductWithResponse(
+			ctx,
+			product.ProductID,
+			ct.UpdateProductJSONRequestBody{
+				Name: before.JSON200.Name,
+				Config: &ct.ProductConfigRequest{
+					OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+						Prefix: before.JSON200.Config.OrganizationApiKeys.Prefix,
+					},
+					Events: &ct.ProductEventsConfigRequest{
+						EndpointUrl: &sink.URL,
+						Events:      &[]string{"typo.event"},
+					},
+				},
+			},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, response.StatusCode())
+
+		after, err := owner.GetProductWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.NotNil(t, after.JSON200)
+		require.NotNil(t, after.JSON200.Config.Events)
+		assert.Equal(t, before.JSON200.Config.Events.Events, after.JSON200.Config.Events.Events)
+	})
+
+	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
+		filterProduct := createTestProductContext(t)
+		filterClient, _ := filterProduct.CreateAPIKeyClientWithAllScopes()
+		filterOwner := filterProduct.OwnerAuthenticatedClient()
+
+		// Subscribe only to organization.created
+		filterSink := filterProduct.CaptureFilteredEvents([]string{"organization.created"})
+
+		createdOrg, err := filterClient.CreateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			ct.CreateProductOrganizationJSONRequestBody{Name: "Filter Org " + ids.MustNew("org")},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, createdOrg.StatusCode())
+		orgID := createdOrg.JSON201.Id
+
+		// organization.created must be delivered
+		filterSink.WaitFor("organization.created", map[string]string{"organization_id": orgID})
+
+		// Update org -> organization.updated was emitted, but should NOT be delivered to this sink
+		updatedOrg, updateErr := filterClient.UpdateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.UpdateProductOrganizationJSONRequestBody{Name: "Filter Org Renamed"},
+		)
+		require.NoError(t, updateErr)
+		require.Equal(t, http.StatusOK, updatedOrg.StatusCode())
+
+		// Create workspace -> workspace.created was emitted, but should NOT be delivered
+		createdWs, wsErr := filterClient.CreateOrganizationWorkspaceWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Filter Workspace"},
+		)
+		require.NoError(t, wsErr)
+		require.Equal(t, http.StatusCreated, createdWs.StatusCode())
+
+		// Wait until both filtered jobs finish before asserting their absence.
+		require.Eventually(t, func() bool {
+			jobs, listErr := EventQueue.ListJobs(ctx, queue.ListJobsParams{
+				QueueName: "product-events", Search: filterProduct.ProductID, Limit: 100,
+			})
+			if listErr != nil {
+				return false
+			}
+			done := map[string]bool{}
+			for _, job := range jobs {
+				var payload struct {
+					ProductID string `json:"product_id"`
+					Type      string `json:"type"`
+				}
+				if json.Unmarshal(job.Payload, &payload) == nil && payload.ProductID == filterProduct.ProductID {
+					done[payload.Type] = job.Status == queue.StatusDone
+				}
+			}
+			return done["organization.updated"] && done["workspace.created"]
+		}, 20*time.Second, 50*time.Millisecond)
+		assert.Equal(t, 0, filterSink.Count("organization.updated"))
+		assert.Equal(t, 0, filterSink.Count("workspace.created"))
+
+		// Update product event subscription to now include organization.updated
+		gotProduct, getErr := filterOwner.GetProductWithResponse(ctx, filterProduct.ProductID)
+		require.NoError(t, getErr)
+		_, updateProdErr := filterOwner.UpdateProductWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			ct.UpdateProductJSONRequestBody{
+				Name:        gotProduct.JSON200.Name,
+				Description: gotProduct.JSON200.Description,
+				Config: &ct.ProductConfigRequest{
+					OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+						Prefix: gotProduct.JSON200.Config.OrganizationApiKeys.Prefix,
+					},
+					Events: &ct.ProductEventsConfigRequest{
+						EndpointUrl: &filterSink.URL,
+						Events:      &[]string{"organization.created", "organization.updated"},
+					},
+				},
+			},
+		)
+		require.NoError(t, updateProdErr)
+
+		// Trigger organization.updated again -> now it must be delivered!
+		_, updateAgainErr := filterClient.UpdateProductOrganizationWithResponse(
+			ctx,
+			filterProduct.ProductID,
+			orgID,
+			ct.UpdateProductOrganizationJSONRequestBody{Name: "Filter Org Renamed Again"},
+		)
+		require.NoError(t, updateAgainErr)
+		filterSink.WaitFor("organization.updated", map[string]string{"organization_id": orgID})
+	})
+}
+
+func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
+	ctx := context.Background()
+	product := createTestProductContext(t)
+	owner := product.OwnerAuthenticatedClient()
+	client, _ := product.CreateAPIKeyClientWithAllScopes()
+
+	var attempts atomic.Int32
+	var available atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		if !available.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	got, err := owner.GetProductWithResponse(ctx, product.ProductID)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, got.StatusCode())
+	eventTypes := []string{"organization.created"}
+	configured, err := owner.UpdateProductWithResponse(ctx, product.ProductID, ct.UpdateProductJSONRequestBody{
+		Name: got.JSON200.Name,
+		Config: &ct.ProductConfigRequest{
+			OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+				Prefix: got.JSON200.Config.OrganizationApiKeys.Prefix,
+			},
+			Events: &ct.ProductEventsConfigRequest{EndpointUrl: &server.URL, Events: &eventTypes},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, configured.StatusCode())
+	require.Equal(t, ct.ProductEventDeliveryStatus("never_attempted"), configured.JSON200.Config.Events.DeliveryStatus)
+	require.Equal(t, 0, configured.JSON200.Config.Events.ConsecutiveFailedCalls)
+
+	created, err := client.CreateProductOrganizationWithResponse(
+		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+			Name: "Failing Events Org " + ids.MustNew("org"),
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, created.StatusCode())
+
+	require.Eventually(t, func() bool {
+		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("failed") &&
+			current.JSON200.Config.Events.ConsecutiveFailedCalls == 6
+	}, 90*time.Second, 100*time.Millisecond)
+	assert.EqualValues(t, 6, attempts.Load())
+
+	available.Store(true)
+	_, err = client.CreateProductOrganizationWithResponse(
+		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+			Name: "Recovered Events Org " + ids.MustNew("org"),
+		},
+	)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("succeeded") &&
+			current.JSON200.Config.Events.ConsecutiveFailedCalls == 0
+	}, 30*time.Second, 100*time.Millisecond)
 }

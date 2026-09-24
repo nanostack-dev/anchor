@@ -17,12 +17,15 @@ type productEventEndpointConfigsTable struct {
 	postgres.Table
 
 	// Columns
-	ProductID        postgres.ColumnString
-	PlatformTenantID postgres.ColumnString
-	EndpointURL      postgres.ColumnString
-	SigningSecret    postgres.ColumnString
-	CreatedAt        postgres.ColumnTimestampz
-	UpdatedAt        postgres.ColumnTimestampz
+	ProductID              postgres.ColumnString
+	PlatformTenantID       postgres.ColumnString
+	EndpointURL            postgres.ColumnString
+	SigningSecret          postgres.ColumnString
+	CreatedAt              postgres.ColumnTimestampz
+	UpdatedAt              postgres.ColumnTimestampz
+	EventsJSON             postgres.ColumnString
+	DeliveryStatus         postgres.ColumnString
+	ConsecutiveFailedCalls postgres.ColumnInteger
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -64,27 +67,33 @@ func newProductEventEndpointConfigsTable(schemaName, tableName, alias string) *P
 
 func newProductEventEndpointConfigsTableImpl(schemaName, tableName, alias string) productEventEndpointConfigsTable {
 	var (
-		ProductIDColumn        = postgres.StringColumn("product_id")
-		PlatformTenantIDColumn = postgres.StringColumn("platform_tenant_id")
-		EndpointURLColumn      = postgres.StringColumn("endpoint_url")
-		SigningSecretColumn    = postgres.StringColumn("signing_secret")
-		CreatedAtColumn        = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn        = postgres.TimestampzColumn("updated_at")
-		allColumns             = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns         = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		ProductIDColumn              = postgres.StringColumn("product_id")
+		PlatformTenantIDColumn       = postgres.StringColumn("platform_tenant_id")
+		EndpointURLColumn            = postgres.StringColumn("endpoint_url")
+		SigningSecretColumn          = postgres.StringColumn("signing_secret")
+		CreatedAtColumn              = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn              = postgres.TimestampzColumn("updated_at")
+		EventsJSONColumn             = postgres.StringColumn("events_json")
+		DeliveryStatusColumn         = postgres.StringColumn("delivery_status")
+		ConsecutiveFailedCallsColumn = postgres.IntegerColumn("consecutive_failed_calls")
+		allColumns                   = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
+		mutableColumns               = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
+		defaultColumns               = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
 	)
 
 	return productEventEndpointConfigsTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ProductID:        ProductIDColumn,
-		PlatformTenantID: PlatformTenantIDColumn,
-		EndpointURL:      EndpointURLColumn,
-		SigningSecret:    SigningSecretColumn,
-		CreatedAt:        CreatedAtColumn,
-		UpdatedAt:        UpdatedAtColumn,
+		ProductID:              ProductIDColumn,
+		PlatformTenantID:       PlatformTenantIDColumn,
+		EndpointURL:            EndpointURLColumn,
+		SigningSecret:          SigningSecretColumn,
+		CreatedAt:              CreatedAtColumn,
+		UpdatedAt:              UpdatedAtColumn,
+		EventsJSON:             EventsJSONColumn,
+		DeliveryStatus:         DeliveryStatusColumn,
+		ConsecutiveFailedCalls: ConsecutiveFailedCallsColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

@@ -20,6 +20,7 @@ const (
 type queuePayload struct {
 	EventID   string          `json:"event_id"`
 	ProductID string          `json:"product_id"`
+	Type      Type            `json:"type"`
 	Body      json.RawMessage `json:"body"`
 }
 
@@ -28,14 +29,16 @@ type Emitter interface {
 }
 
 type emitter struct {
-	queue *queue.Client
-	now   func() time.Time
+	queue   *queue.Client
+	catalog Catalog
+	now     func() time.Time
 }
 
-func NewEmitter(queueClient *queue.Client) Emitter {
+func NewEmitter(queueClient *queue.Client, catalog Catalog) Emitter {
 	return &emitter{
-		queue: queueClient,
-		now:   time.Now,
+		queue:   queueClient,
+		catalog: catalog,
+		now:     time.Now,
 	}
 }
 
@@ -43,7 +46,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 	if err := validate.ValidateStruct(event); err != nil {
 		return err
 	}
-	if !event.Type.Known() {
+	if !e.catalog.IsKnown(event.Type) {
 		return unknownTypeError(event.Type)
 	}
 	tx := transactor.CurrentTx(ctx)
@@ -67,6 +70,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 	payload, err := json.Marshal(queuePayload{
 		EventID:   ids.MustNew(eventIDPrefix),
 		ProductID: event.ProductID,
+		Type:      event.Type,
 		Body:      body,
 	})
 	if err != nil {

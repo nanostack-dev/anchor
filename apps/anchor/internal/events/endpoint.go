@@ -13,12 +13,16 @@ type Endpoint struct {
 	SigningSecretEncrypted  string
 	SigningSecretClear      string
 	SigningSecretObfuscated string
+	Events                  []string
+	DeliveryStatus          string
+	ConsecutiveFailedCalls  int32
 }
 
 type UpsertEndpointInput struct {
 	TenantID  string `validate:"required,notblank"`
 	ProductID string `validate:"required,notblank"`
 	URL       string `validate:"required,notblank"`
+	Events    []string
 }
 
 func validateEndpointURL(raw string, production bool) error {

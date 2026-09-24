@@ -12,6 +12,7 @@ func NewModule() fx.Option {
 	return fx.Module(
 		"events",
 		fx.Provide(
+			NewCatalog,
 			NewEndpointRepository,
 			NewEmitter,
 			provideEndpointService,
@@ -22,9 +23,10 @@ func NewModule() fx.Option {
 
 func provideEndpointService(
 	repo EndpointRepository,
+	catalog Catalog,
 	enc *encryption.Service,
 	core *serviceconfig.CoreConfig,
 	logger zerolog.Logger,
 ) (EndpointService, error) {
-	return NewEndpointService(repo, enc, core.IsProduction(), logger)
+	return NewEndpointService(repo, catalog, enc, core.IsProduction(), logger)
 }

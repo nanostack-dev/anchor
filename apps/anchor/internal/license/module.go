@@ -1,6 +1,7 @@
 package license
 
 import (
+	"anchor/internal/events"
 	"anchor/internal/license/repository"
 	"anchor/internal/license/service"
 
@@ -34,6 +35,7 @@ func NewModule() fx.Option {
 			service.NewLicenseMigrationService,
 			service.NewUsageService,
 			service.NewUsageSeriesService,
+			events.AsRegistration(EventRegistration),
 		),
 		fx.Invoke(service.RegisterLicenseAdjustmentBackfill, service.RegisterLicenseTemplateSyncWorker),
 	)

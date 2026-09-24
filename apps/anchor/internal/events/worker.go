@@ -80,6 +80,7 @@ func RegisterWorker(p WorkerParams) {
 			logger.Error().
 				Int64("job_id", job.ID).
 				Int("attempts", job.Attempts).
+				Str("last_error", job.LastError.String).
 				Msg("product event delivery permanently failed")
 		},
 	})
@@ -131,6 +132,17 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		return nil
 	}
 
+	eventType := payload.Type
+	if eventType == "" {
+		var env Envelope
+		if unmarshalErr := json.Unmarshal(payload.Body, &env); unmarshalErr == nil {
+			eventType = env.Type
+		}
+	}
+	if !target.Allows(eventType) {
+		return nil
+	}
+
 	attemptAt := d.now()
 	headers, err := Sign(target.Secret, payload.EventID, attemptAt, payload.Body)
 	if err != nil {
@@ -150,12 +162,14 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 
 	resp, err := d.http.Do(req)
 	if err != nil {
+		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 		return fmt.Errorf("events: deliver: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDeliveryBodyBytes))
 
 	if resp.StatusCode >= successStatusMin && resp.StatusCode < successStatusMax {
+		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, true)
 		return nil
 	}
 	// Standard Webhooks: "If a delivery target has been retired, but the HTTP
@@ -167,9 +181,16 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		}
 		return nil
 	}
+	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 	d.logger.Warn().
 		Int("status", resp.StatusCode).
 		Str("event_id", payload.EventID).
 		Msg("product event delivery rejected")
 	return fmt.Errorf("events: delivery status %d", resp.StatusCode)
+}
+
+func (d *deliverer) recordDeliveryResult(ctx context.Context, productID, endpointURL string, succeeded bool) {
+	if err := d.repo.RecordDeliveryResultInternal(ctx, productID, endpointURL, succeeded); err != nil {
+		d.logger.Error().Err(err).Str("product_id", productID).Msg("failed to record event delivery result")
+	}
 }

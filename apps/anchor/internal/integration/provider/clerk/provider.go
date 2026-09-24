@@ -415,3 +415,23 @@ func headerGet(headers map[string]string, key string) string {
 	}
 	return ""
 }
+
+func WebhookEventRegistration() events.Registration {
+	return events.RegisterIntegration(clerkProviderType,
+		events.Definition{
+			Type:        events.ClerkUserCreated,
+			Name:        "Clerk user created",
+			Description: "Emitted when a product user is created from a Clerk webhook.",
+		},
+		events.Definition{
+			Type:        events.ClerkUserUpdated,
+			Name:        "Clerk user updated",
+			Description: "Emitted when a product user is updated from a Clerk webhook.",
+		},
+		events.Definition{
+			Type:        events.ClerkUserDeleted,
+			Name:        "Clerk user deleted",
+			Description: "Emitted when a product user is deleted from a Clerk webhook.",
+		},
+	)
+}

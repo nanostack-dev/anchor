@@ -26,6 +26,7 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/workspace"
+	"anchor/internal/events"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -58,6 +59,27 @@ const (
 func (e OrganizationMemberInclude) Valid() bool {
 	switch e {
 	case OrganizationMemberIncludeRolePermissions:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductEventDeliveryStatus.
+const (
+	Failed         ProductEventDeliveryStatus = "failed"
+	NeverAttempted ProductEventDeliveryStatus = "never_attempted"
+	Succeeded      ProductEventDeliveryStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the ProductEventDeliveryStatus enum.
+func (e ProductEventDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case NeverAttempted:
+		return true
+	case Succeeded:
 		return true
 	default:
 		return false
@@ -1700,18 +1722,74 @@ type ProductConfigResponse struct {
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
 }
 
+// ProductEventDefinitionResponse defines model for ProductEventDefinitionResponse.
+type ProductEventDefinitionResponse struct {
+	// Description Description of when this event is emitted.
+	//
+	// Examples: Emitted when a new organization is created.
+	Description string `json:"description"`
+
+	// GroupName Display name of the Anchor area or integration provider.
+	//
+	// Examples: Organizations
+	GroupName string `json:"group_name"`
+
+	// GroupType Event origin, either Anchor itself or an integration provider.
+	//
+	// Examples: internal
+	GroupType ProductEventGroupType `json:"group_type"`
+
+	// Name Human-readable display name.
+	//
+	// Examples: Organization created
+	Name string `json:"name"`
+
+	// Type Unique event type identifier.
+	//
+	// Examples: organization.created
+	Type string `json:"type"`
+}
+
+// ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+type ProductEventDeliveryStatus string
+
+// ProductEventGroupType defines model for ProductEventGroupType.
+type ProductEventGroupType = events.GroupType
+
+// ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
+type ProductEventsCatalogResponse struct {
+	// Items Registered internal and integration events available for subscription.
+	Items []ProductEventDefinitionResponse `json:"items"`
+}
+
 // ProductEventsConfigRequest defines model for ProductEventsConfigRequest.
 type ProductEventsConfigRequest struct {
 	// EndpointUrl Absolute URL Anchor POSTs product events to. Use HTTPS in production. Omit or send an empty string to clear the endpoint. Anchor mints the Standard Webhooks signing secret. The caller cannot supply one.
 	//
 	// Examples: https://echopoint.example/anchor/events
 	EndpointUrl *string `json:"endpoint_url,omitempty"`
+
+	// Events List of event types this endpoint subscribes to. If omitted when configuring an endpoint, all registered events are subscribed by default.
+	//
+	// Examples: ["organization.created","organization.updated"]
+	Events *[]string `json:"events,omitempty"`
 }
 
 // ProductEventsConfigResponse defines model for ProductEventsConfigResponse.
 type ProductEventsConfigResponse struct {
+	// ConsecutiveFailedCalls Consecutive failed HTTP delivery attempts. Resets after a successful call or when the endpoint configuration is saved.
+	ConsecutiveFailedCalls int `json:"consecutive_failed_calls"`
+
+	// DeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
+	DeliveryStatus ProductEventDeliveryStatus `json:"delivery_status"`
+
 	// EndpointUrl URL Anchor POSTs product events to.
 	EndpointUrl string `json:"endpoint_url"`
+
+	// Events List of event types this endpoint receives.
+	//
+	// Examples: ["organization.created","organization.updated"]
+	Events []string `json:"events"`
 
 	// SigningSecret Plaintext Standard Webhooks signing secret (`whsec_...`). Present only on the write that minted it. Store it then. Later reads return only the obfuscated marker. Encrypted at rest. Delivery must sign with the plaintext, so it is never hashed.
 	SigningSecret *string `json:"signing_secret,omitempty"`
@@ -3242,6 +3320,9 @@ type ServerInterface interface {
 	// PublishEmailTemplate Publish Template
 	// (POST /v1/products/{product_id}/email/templates/{email_template_id}/publish)
 	PublishEmailTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter)
+	// GetProductEventsCatalog Get Product Events Catalog
+	// (GET /v1/products/{product_id}/events/catalog)
+	GetProductEventsCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// ListIntegrationInstances List Integration Instances
 	// (GET /v1/products/{product_id}/integrations)
 	ListIntegrationInstances(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3662,6 +3743,12 @@ func (_ Unimplemented) PreviewEmailTemplate(w http.ResponseWriter, r *http.Reque
 // PublishEmailTemplate Publish Template
 // (POST /v1/products/{product_id}/email/templates/{email_template_id}/publish)
 func (_ Unimplemented) PublishEmailTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProductEventsCatalog Get Product Events Catalog
+// (GET /v1/products/{product_id}/events/catalog)
+func (_ Unimplemented) GetProductEventsCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5096,6 +5183,32 @@ func (siw *ServerInterfaceWrapper) PublishEmailTemplate(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PublishEmailTemplate(w, r, productId, emailTemplateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProductEventsCatalog operation middleware
+func (siw *ServerInterfaceWrapper) GetProductEventsCatalog(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProductEventsCatalog(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7726,6 +7839,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}", wrapper.UpdateProduct)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/events/catalog", wrapper.GetProductEventsCatalog)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/integrations", wrapper.ListIntegrationInstances)
@@ -10879,6 +10995,70 @@ func (response PublishEmailTemplate500JSONResponse) VisitPublishEmailTemplateRes
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductEventsCatalogRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type GetProductEventsCatalogResponseObject interface {
+	VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error
+}
+
+type GetProductEventsCatalog200JSONResponse ProductEventsCatalogResponse
+
+func (response GetProductEventsCatalog200JSONResponse) VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductEventsCatalog401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetProductEventsCatalog401JSONResponse) VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductEventsCatalog403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProductEventsCatalog403JSONResponse) VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductEventsCatalog404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProductEventsCatalog404JSONResponse) VisitGetProductEventsCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -16579,6 +16759,9 @@ type StrictServerInterface interface {
 	// PublishEmailTemplate Publish Template
 	// (POST /v1/products/{product_id}/email/templates/{email_template_id}/publish)
 	PublishEmailTemplate(ctx context.Context, request PublishEmailTemplateRequestObject) (PublishEmailTemplateResponseObject, error)
+	// GetProductEventsCatalog Get Product Events Catalog
+	// (GET /v1/products/{product_id}/events/catalog)
+	GetProductEventsCatalog(ctx context.Context, request GetProductEventsCatalogRequestObject) (GetProductEventsCatalogResponseObject, error)
 	// ListIntegrationInstances List Integration Instances
 	// (GET /v1/products/{product_id}/integrations)
 	ListIntegrationInstances(ctx context.Context, request ListIntegrationInstancesRequestObject) (ListIntegrationInstancesResponseObject, error)
@@ -17872,6 +18055,32 @@ func (sh *strictHandler) PublishEmailTemplate(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PublishEmailTemplateResponseObject); ok {
 		if err := validResponse.VisitPublishEmailTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProductEventsCatalog operation middleware
+func (sh *strictHandler) GetProductEventsCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request GetProductEventsCatalogRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProductEventsCatalog(ctx, request.(GetProductEventsCatalogRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProductEventsCatalog")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProductEventsCatalogResponseObject); ok {
+		if err := validResponse.VisitGetProductEventsCatalogResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

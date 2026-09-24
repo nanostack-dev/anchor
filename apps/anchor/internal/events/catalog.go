@@ -1,58 +1,100 @@
 package events
 
-func Types() []Type {
-	return []Type{
-		OrganizationCreated,
-		OrganizationUpdated,
-		OrganizationDeleted,
-		MembershipCreated,
-		MembershipUpdated,
-		MembershipDeleted,
-		WorkspaceCreated,
-		WorkspaceUpdated,
-		WorkspaceDeleted,
-		OrganizationAPIKeyCreated,
-		OrganizationAPIKeyUpdated,
-		OrganizationAPIKeyDeleted,
-		ProductUserCreated,
-		ProductUserUpdated,
-		ProductUserDeleted,
-		OrganizationLicenseUpdated,
-		ProductRoleCreated,
-		ProductRoleUpdated,
-		ProductRoleDeleted,
-		ProductResourcePermissionCreated,
-		ProductResourcePermissionUpdated,
-		ProductResourcePermissionDeleted,
+import (
+	"slices"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"go.uber.org/fx"
+)
+
+type GroupType string
+
+const (
+	GroupTypeInternal    GroupType = "internal"
+	GroupTypeIntegration GroupType = "integration"
+)
+
+const (
+	GroupOrganizations    = "Organizations"
+	GroupWorkspaces       = "Workspaces"
+	GroupAPIKeys          = "API Keys"
+	GroupUsers            = "Users"
+	GroupLicensing        = "Licensing"
+	GroupRolesPermissions = "Roles & Permissions"
+)
+
+type Definition struct {
+	Type        Type      `json:"type"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	GroupType   GroupType `json:"group_type"`
+	GroupName   string    `json:"group_name"`
+}
+
+type Registration struct {
+	GroupType   GroupType
+	GroupName   string
+	Definitions []Definition
+}
+
+func RegisterInternal(groupName string, definitions ...Definition) Registration {
+	return Registration{GroupType: GroupTypeInternal, GroupName: groupName, Definitions: definitions}
+}
+
+func RegisterIntegration(providerType string, definitions ...Definition) Registration {
+	return Registration{GroupType: GroupTypeIntegration, GroupName: providerType, Definitions: definitions}
+}
+
+func AsRegistration(fn any) any {
+	return fx.Annotate(fn, fx.ResultTags(`group:"product_events"`))
+}
+
+type Catalog interface {
+	All() []Definition
+	IsKnown(t Type) bool
+	AllEventTypesStrings() []string
+}
+
+type CatalogParams struct {
+	fx.In
+	Registrations []Registration `group:"product_events"`
+}
+
+type catalog struct {
+	definitions []Definition
+	byType      map[Type]Definition
+}
+
+func NewCatalog(p CatalogParams) Catalog {
+	var defs []Definition
+	for _, reg := range p.Registrations {
+		for _, definition := range reg.Definitions {
+			definition.GroupType = reg.GroupType
+			definition.GroupName = reg.GroupName
+			defs = append(defs, definition)
+		}
+	}
+	byType := make(map[Type]Definition, len(defs))
+	for _, d := range defs {
+		byType[d.Type] = d
+	}
+	return &catalog{
+		definitions: defs,
+		byType:      byType,
 	}
 }
 
-func (t Type) Known() bool {
-	switch t {
-	case OrganizationCreated,
-		OrganizationUpdated,
-		OrganizationDeleted,
-		MembershipCreated,
-		MembershipUpdated,
-		MembershipDeleted,
-		WorkspaceCreated,
-		WorkspaceUpdated,
-		WorkspaceDeleted,
-		OrganizationAPIKeyCreated,
-		OrganizationAPIKeyUpdated,
-		OrganizationAPIKeyDeleted,
-		ProductUserCreated,
-		ProductUserUpdated,
-		ProductUserDeleted,
-		OrganizationLicenseUpdated,
-		ProductRoleCreated,
-		ProductRoleUpdated,
-		ProductRoleDeleted,
-		ProductResourcePermissionCreated,
-		ProductResourcePermissionUpdated,
-		ProductResourcePermissionDeleted:
-		return true
-	default:
-		return false
-	}
+func (c *catalog) All() []Definition {
+	return slices.Clone(c.definitions)
+}
+
+func (c *catalog) IsKnown(t Type) bool {
+	_, ok := c.byType[t]
+	return ok
+}
+
+func (c *catalog) AllEventTypesStrings() []string {
+	return functional.Slice(c.definitions).Map(func(d Definition) string {
+		return string(d.Type)
+	})
 }
