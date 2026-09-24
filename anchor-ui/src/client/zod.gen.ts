@@ -194,6 +194,22 @@ export const zProductEventsCatalogResponse = z.object({
     items: z.array(zProductEventDefinitionResponse)
 });
 
+export const zProductEventDeliveryFailureResponse = z.object({
+    event_type: z.string(),
+    attempts: z.int(),
+    error: z.optional(z.string()),
+    failed_at: z.iso.datetime()
+});
+
+/**
+ * Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
+ */
+export const zProductEventDeliveryStatusResponse = z.object({
+    failed_count: z.int(),
+    retrying_count: z.int(),
+    last_failure: z.optional(zProductEventDeliveryFailureResponse)
+});
+
 export const zProductOrganizationApiKeysConfigResponse = z.object({
     prefix: z.string()
 });
@@ -1795,6 +1811,19 @@ export const zGetProductEventsCatalogData = z.object({
  * Available events catalog.
  */
 export const zGetProductEventsCatalogResponse = zProductEventsCatalogResponse;
+
+export const zGetProductEventDeliveryStatusData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Current delivery failures and retries.
+ */
+export const zGetProductEventDeliveryStatusResponse = zProductEventDeliveryStatusResponse;
 
 export const zListIntegrationInstancesData = z.object({
     body: z.optional(z.never()),

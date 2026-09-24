@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Endpoint struct {
@@ -14,6 +15,24 @@ type Endpoint struct {
 	SigningSecretClear      string
 	SigningSecretObfuscated string
 	Events                  []string
+}
+
+type DeliveryStatus struct {
+	FailedCount   int64
+	RetryingCount int64
+	LastFailure   *DeliveryFailure
+}
+
+type DeliveryStatusInput struct {
+	TenantID  string `validate:"required,notblank"`
+	ProductID string `validate:"required,notblank"`
+}
+
+type DeliveryFailure struct {
+	EventType string
+	Attempts  int
+	Error     string
+	FailedAt  time.Time
 }
 
 type UpsertEndpointInput struct {

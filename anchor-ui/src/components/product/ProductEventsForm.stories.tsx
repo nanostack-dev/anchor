@@ -1,5 +1,11 @@
-import type { ProductResponse } from "@/client";
-import { getProductEventsCatalogQueryKey } from "@/client/@tanstack/react-query.gen";
+import type {
+	ProductEventDeliveryStatusResponse,
+	ProductResponse,
+} from "@/client";
+import {
+	getProductEventDeliveryStatusQueryKey,
+	getProductEventsCatalogQueryKey,
+} from "@/client/@tanstack/react-query.gen";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
@@ -55,13 +61,27 @@ const CATALOG_DATA = {
 	],
 };
 
-function StoryCatalogSeeder({ children }: { children: React.ReactNode }) {
+function StoryCatalogSeeder({
+	children,
+	deliveryStatus = { failed_count: 0, retrying_count: 0 },
+}: {
+	children: React.ReactNode;
+	deliveryStatus?: ProductEventDeliveryStatusResponse;
+}) {
 	const queryClient = useQueryClient();
 	const key = getProductEventsCatalogQueryKey({
 		path: { product_id: PRODUCT.id },
 	});
 	queryClient.setQueryData(key, CATALOG_DATA);
 	queryClient.setQueryDefaults(key, {
+		staleTime: Number.POSITIVE_INFINITY,
+		gcTime: Number.POSITIVE_INFINITY,
+	});
+	const statusKey = getProductEventDeliveryStatusQueryKey({
+		path: { product_id: PRODUCT.id },
+	});
+	queryClient.setQueryData(statusKey, deliveryStatus);
+	queryClient.setQueryDefaults(statusKey, {
 		staleTime: Number.POSITIVE_INFINITY,
 		gcTime: Number.POSITIVE_INFINITY,
 	});
@@ -142,7 +162,9 @@ const meta = {
 						</div>
 					</DeferredCatalogSeeder>
 				) : (
-					<StoryCatalogSeeder>
+					<StoryCatalogSeeder
+						deliveryStatus={context.parameters.deliveryStatus}
+					>
 						<div className="w-full p-6 lg:p-8">
 							<Story />
 						</div>
@@ -194,6 +216,28 @@ export const Configured: Story = {
 		await expect(
 			canvas.getByRole("button", { name: "Save endpoint" }),
 		).toBeDisabled();
+	},
+};
+
+export const FailedDelivery: Story = {
+	args: Configured.args,
+	parameters: {
+		deliveryStatus: {
+			failed_count: 1,
+			retrying_count: 2,
+			last_failure: {
+				event_type: "organization.created",
+				attempts: 6,
+				error: "events: delivery status 503",
+				failed_at: "2026-08-01T09:05:00Z",
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText(/1 failed · 2 retrying/)).toBeInTheDocument();
+		await expect(canvas.getByText(/after 6 attempts/)).toBeInTheDocument();
+		await expect(canvas.getByText(/delivery status 503/)).toBeInTheDocument();
 	},
 };
 

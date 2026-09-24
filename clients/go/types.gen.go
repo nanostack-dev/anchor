@@ -2517,6 +2517,26 @@ type ProductEventDefinitionResponse struct {
 	Type string `json:"type"`
 }
 
+// ProductEventDeliveryFailureResponse defines model for ProductEventDeliveryFailureResponse.
+type ProductEventDeliveryFailureResponse struct {
+	Attempts  int       `json:"attempts"`
+	Error     *string   `json:"error,omitempty"`
+	EventType string    `json:"event_type"`
+	FailedAt  time.Time `json:"failed_at"`
+}
+
+// ProductEventDeliveryStatusResponse Retained delivery jobs for this product that still need attention, including jobs from earlier endpoint configurations.
+type ProductEventDeliveryStatusResponse struct {
+	// FailedCount Jobs whose delivery was not confirmed after all attempts.
+	FailedCount int `json:"failed_count"`
+
+	// LastFailure Most recently failed job, absent when none have failed permanently.
+	LastFailure *ProductEventDeliveryFailureResponse `json:"last_failure,omitempty"`
+
+	// RetryingCount Events with a failed attempt that are still queued or being retried.
+	RetryingCount int `json:"retrying_count"`
+}
+
 // ProductEventGroupType defines model for ProductEventGroupType.
 type ProductEventGroupType string
 

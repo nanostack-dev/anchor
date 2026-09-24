@@ -739,6 +739,40 @@ components:
           description: Registered internal and integration events available for subscription.
       required:
       - items
+    ProductEventDeliveryStatusResponse:
+      type: object
+      description: >-
+        Retained delivery jobs for this product that still need attention,
+        including jobs from earlier endpoint configurations.
+      properties:
+        failed_count:
+          type: integer
+          description: Jobs whose delivery was not confirmed after all attempts.
+        retrying_count:
+          type: integer
+          description: Events with a failed attempt that are still queued or being retried.
+        last_failure:
+          $ref: "#/components/schemas/ProductEventDeliveryFailureResponse"
+          description: Most recently failed job, absent when none have failed permanently.
+      required:
+      - failed_count
+      - retrying_count
+    ProductEventDeliveryFailureResponse:
+      type: object
+      properties:
+        event_type:
+          type: string
+        attempts:
+          type: integer
+        error:
+          type: string
+        failed_at:
+          type: string
+          format: date-time
+      required:
+      - event_type
+      - attempts
+      - failed_at
     ProductEventGroupType:
       type: string
       enum: [internal, integration]
@@ -4357,6 +4391,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductEventsCatalogResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/events/status:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      summary: Get Product Event Delivery Status
+      description: >-
+        Returns counts of product events being retried or permanently failed.
+        Delivery stops after six failed attempts. Failed jobs remain available
+        for operator replay in the queue dashboard.
+      operationId: getProductEventDeliveryStatus
+      tags: [Product]
+      security:
+      - platformBearerAuth: []
+      responses:
+        "200":
+          description: Current delivery failures and retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEventDeliveryStatusResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

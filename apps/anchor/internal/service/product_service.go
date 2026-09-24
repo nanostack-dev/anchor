@@ -43,6 +43,7 @@ type ProductService interface {
 		search.Result[product.Product], error,
 	)
 	EventsCatalog(ctx context.Context) []events.Definition
+	EventDeliveryStatus(ctx context.Context, input product.GetProductInput) (*events.DeliveryStatus, error)
 }
 
 type productService struct {
@@ -398,6 +399,25 @@ func (s *productService) EventsCatalog(_ context.Context) []events.Definition {
 		return []events.Definition{}
 	}
 	return s.eventEndpoints.Catalog().All()
+}
+
+func (s *productService) EventDeliveryStatus(
+	ctx context.Context, input product.GetProductInput,
+) (*events.DeliveryStatus, error) {
+	if err := validateStruct(input); err != nil {
+		return nil, err
+	}
+	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
+	if err != nil || found.IsAbsent() {
+		return nil, err
+	}
+	status, err := s.eventEndpoints.DeliveryStatus(ctx, events.DeliveryStatusInput{
+		TenantID: input.TenantID, ProductID: input.ProductID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &status, nil
 }
 
 func (s *productService) evictProductFromCache(

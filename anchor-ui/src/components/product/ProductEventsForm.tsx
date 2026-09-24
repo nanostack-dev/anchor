@@ -4,6 +4,7 @@ import type {
 	ProductResponse,
 } from "@/client";
 import {
+	getProductEventDeliveryStatusOptions,
 	getProductEventsCatalogOptions,
 	getProductQueryKey,
 	updateProductMutation,
@@ -131,6 +132,13 @@ export function ProductEventsForm({
 		...getProductEventsCatalogOptions({
 			path: { product_id: product.id },
 		}),
+	});
+	const deliveryStatusQuery = useQuery({
+		...getProductEventDeliveryStatusOptions({
+			path: { product_id: product.id },
+		}),
+		enabled: hadEvents,
+		refetchInterval: 30_000,
 	});
 
 	const form = useForm({
@@ -370,6 +378,42 @@ export function ProductEventsForm({
 									</div>
 								</CardHeader>
 								<CardContent className="space-y-5 p-5">
+									{hadEvents && deliveryStatusQuery.data ? (
+										<Alert
+											variant={
+												deliveryStatusQuery.data.failed_count > 0
+													? "destructive"
+													: deliveryStatusQuery.data.retrying_count > 0
+														? "warning"
+														: "default"
+											}
+											className="rounded-xl"
+										>
+											<AlertTitle>Delivery status</AlertTitle>
+											<AlertDescription className="space-y-1 text-xs">
+												<p>
+													{deliveryStatusQuery.data.failed_count} failed ·{" "}
+													{deliveryStatusQuery.data.retrying_count} retrying
+												</p>
+												{deliveryStatusQuery.data.last_failure ? (
+													<p className="break-words">
+														Latest failure:{" "}
+														{deliveryStatusQuery.data.last_failure.event_type}
+														{" after "}
+														{deliveryStatusQuery.data.last_failure.attempts}
+														{" attempts"}
+														{deliveryStatusQuery.data.last_failure.error
+															? ` — ${deliveryStatusQuery.data.last_failure.error}`
+															: ""}
+													</p>
+												) : null}
+											</AlertDescription>
+										</Alert>
+									) : hadEvents && deliveryStatusQuery.isError ? (
+										<p className="text-xs text-muted-foreground">
+											Delivery status unavailable.
+										</p>
+									) : null}
 									{revealedSecret ? (
 										<Alert variant="warning" className="rounded-xl">
 											<KeyRound className="size-4" />

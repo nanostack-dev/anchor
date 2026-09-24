@@ -80,6 +80,7 @@ func RegisterWorker(p WorkerParams) {
 			logger.Error().
 				Int64("job_id", job.ID).
 				Int("attempts", job.Attempts).
+				Str("last_error", job.LastError.String).
 				Msg("product event delivery permanently failed")
 		},
 	})

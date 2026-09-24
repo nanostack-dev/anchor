@@ -28,6 +28,7 @@ type EndpointService interface {
 	Get(ctx context.Context, tenantID, productID string) (Endpoint, bool, error)
 	Clear(ctx context.Context, tenantID, productID string) error
 	DeliveryTarget(ctx context.Context, productID string) (DeliveryTarget, bool, error)
+	DeliveryStatus(ctx context.Context, input DeliveryStatusInput) (DeliveryStatus, error)
 	Catalog() Catalog
 }
 
@@ -170,4 +171,13 @@ func (s *endpointService) DeliveryTarget(
 		return DeliveryTarget{}, false, err
 	}
 	return DeliveryTarget{URL: endpoint.URL, Secret: secret, Events: endpoint.Events}, true, nil
+}
+
+func (s *endpointService) DeliveryStatus(
+	ctx context.Context, input DeliveryStatusInput,
+) (DeliveryStatus, error) {
+	if err := validate.ValidateStruct(input); err != nil {
+		return DeliveryStatus{}, err
+	}
+	return s.repo.DeliveryStatus(ctx, input.TenantID, input.ProductID)
 }

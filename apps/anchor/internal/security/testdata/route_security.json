@@ -118,6 +118,9 @@
   "GET /v1/products/{product_id}/events/catalog": {
     "platformBearerAuth": []
   },
+  "GET /v1/products/{product_id}/events/status": {
+    "platformBearerAuth": []
+  },
   "GET /v1/products/{product_id}/integrations": {
     "platformBearerAuth": []
   },
