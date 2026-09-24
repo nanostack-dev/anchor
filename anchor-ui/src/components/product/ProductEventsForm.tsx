@@ -309,6 +309,10 @@ export function ProductEventsForm({
 
 	const endpointValue = form.state.values.eventsEndpointUrl;
 	const isEndpointConfigured = Boolean(endpointValue?.trim());
+	const deliveryStatus = deliveryStatusQuery.data;
+	const hasDeliveryIssues =
+		(deliveryStatus?.failed_count ?? 0) > 0 ||
+		(deliveryStatus?.retrying_count ?? 0) > 0;
 
 	return (
 		<form
@@ -378,32 +382,33 @@ export function ProductEventsForm({
 									</div>
 								</CardHeader>
 								<CardContent className="space-y-5 p-5">
-									{hadEvents && deliveryStatusQuery.data ? (
+									{hadEvents && deliveryStatus ? (
 										<Alert
 											variant={
-												deliveryStatusQuery.data.failed_count > 0
+												deliveryStatus.failed_count > 0
 													? "destructive"
-													: deliveryStatusQuery.data.retrying_count > 0
+													: hasDeliveryIssues
 														? "warning"
 														: "default"
 											}
 											className="rounded-xl"
+											role={hasDeliveryIssues ? "alert" : "status"}
 										>
 											<AlertTitle>Delivery status</AlertTitle>
 											<AlertDescription className="space-y-1 text-xs">
 												<p>
-													{deliveryStatusQuery.data.failed_count} failed ·{" "}
-													{deliveryStatusQuery.data.retrying_count} retrying
+													{deliveryStatus.failed_count} failed ·{" "}
+													{deliveryStatus.retrying_count} retrying
 												</p>
-												{deliveryStatusQuery.data.last_failure ? (
+												{deliveryStatus.last_failure ? (
 													<p className="break-words">
 														Latest failure:{" "}
-														{deliveryStatusQuery.data.last_failure.event_type}
+														{deliveryStatus.last_failure.event_type}
 														{" after "}
-														{deliveryStatusQuery.data.last_failure.attempts}
+														{deliveryStatus.last_failure.attempts}
 														{" attempts"}
-														{deliveryStatusQuery.data.last_failure.error
-															? ` — ${deliveryStatusQuery.data.last_failure.error}`
+														{deliveryStatus.last_failure.error
+															? ` — ${deliveryStatus.last_failure.error}`
 															: ""}
 													</p>
 												) : null}
