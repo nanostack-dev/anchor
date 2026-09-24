@@ -2,7 +2,7 @@ import type { ProductResponse } from "@/client";
 import { getProductEventsCatalogQueryKey } from "@/client/@tanstack/react-query.gen";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
-import type * as React from "react";
+import * as React from "react";
 import { expect, userEvent, within } from "storybook/test";
 
 import { StoryQuery } from "@/lib/storybook/story-query";
@@ -72,6 +72,63 @@ function StoryCatalogSeeder({ children }: { children: React.ReactNode }) {
 	return <>{children}</>;
 }
 
+function DeferredCatalogSeeder({ children }: { children: React.ReactNode }) {
+	const queryClient = useQueryClient();
+	const queryKey = getProductEventsCatalogQueryKey({
+		path: { product_id: PRODUCT.id },
+	});
+	queryClient.setQueryDefaults(queryKey, { enabled: false });
+	return (
+		<>
+			<button
+				type="button"
+				onClick={() =>
+					queryClient
+						.getQueryCache()
+						.find({ queryKey })
+						?.setState({
+							error: new Error("Catalog request failed"),
+							status: "error",
+							fetchStatus: "idle",
+						})
+				}
+			>
+				Fail catalog
+			</button>
+			<button
+				type="button"
+				onClick={() => queryClient.setQueryData(queryKey, CATALOG_DATA)}
+			>
+				Load catalog
+			</button>
+			{children}
+		</>
+	);
+}
+
+function ProductRefreshFixture({ product }: { product: ProductResponse }) {
+	const [currentProduct, setCurrentProduct] = React.useState(product);
+	return (
+		<>
+			<button
+				type="button"
+				onClick={() =>
+					setCurrentProduct({
+						...currentProduct,
+						updated_at: "2026-08-02T09:00:00Z",
+					})
+				}
+			>
+				Refresh product
+			</button>
+			<ProductEventsForm
+				product={currentProduct}
+				productId={currentProduct.id}
+			/>
+		</>
+	);
+}
+
 const meta = {
 	title: "Product/ProductEventsForm",
 	component: ProductEventsForm,
@@ -84,13 +141,21 @@ const meta = {
 		layout: "fullscreen",
 	},
 	decorators: [
-		(Story) => (
+		(Story, context) => (
 			<StoryQuery>
-				<StoryCatalogSeeder>
-					<div className="w-full p-6 lg:p-8">
-						<Story />
-					</div>
-				</StoryCatalogSeeder>
+				{context.parameters.catalogDeferred ? (
+					<DeferredCatalogSeeder>
+						<div className="w-full p-6 lg:p-8">
+							<Story />
+						</div>
+					</DeferredCatalogSeeder>
+				) : (
+					<StoryCatalogSeeder>
+						<div className="w-full p-6 lg:p-8">
+							<Story />
+						</div>
+					</StoryCatalogSeeder>
+				)}
 			</StoryQuery>
 		),
 	],
@@ -158,5 +223,60 @@ export const WithSearchFilter: Story = {
 		await userEvent.type(searchInput, "organization");
 		await expect(await canvas.findByText("Organizations")).toBeInTheDocument();
 		await expect(canvas.queryByText("Workspaces")).not.toBeInTheDocument();
+	},
+};
+
+export const CatalogUnavailable: Story = {
+	parameters: { catalogDeferred: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Fail catalog" }));
+		await expect(
+			await canvas.findByText("Event catalog unavailable"),
+		).toBeVisible();
+		await userEvent.type(
+			canvas.getByRole("textbox", { name: "Event endpoint URL" }),
+			"https://example.com/anchor/events",
+		);
+		await expect(
+			canvas.getByRole("button", { name: "Save endpoint" }),
+		).toBeDisabled();
+	},
+};
+
+export const PreservesUnsavedEdits: Story = {
+	render: (args) => <ProductRefreshFixture product={args.product} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const input = canvas.getByRole("textbox", { name: "Event endpoint URL" });
+		await userEvent.type(input, "https://example.com/anchor/events");
+		await userEvent.click(canvas.getByRole("button", { name: "Deselect all" }));
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Refresh product" }),
+		);
+		await expect(input).toHaveValue("https://example.com/anchor/events");
+		await expect(canvas.getByText("0 Active Events")).toBeInTheDocument();
+	},
+};
+
+export const CatalogLoadsAfterUrlEdit: Story = {
+	parameters: { catalogDeferred: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Fail catalog" }));
+		await expect(
+			await canvas.findByText("Event catalog unavailable"),
+		).toBeVisible();
+		await userEvent.type(
+			canvas.getByRole("textbox", { name: "Event endpoint URL" }),
+			"https://example.com/anchor/events",
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Load catalog" }));
+		await expect(
+			await canvas.findByText("4 Active Events"),
+		).toBeInTheDocument();
+		await expect(
+			canvas.getByRole("button", { name: "Save endpoint" }),
+		).toBeEnabled();
 	},
 };

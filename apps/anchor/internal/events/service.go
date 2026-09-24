@@ -73,6 +73,11 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 	if err := validateEndpointURL(input.URL, s.production); err != nil {
 		return Endpoint{}, err
 	}
+	for _, eventType := range input.Events {
+		if !s.catalog.IsKnown(Type(eventType)) {
+			return Endpoint{}, unknownTypeError(Type(eventType))
+		}
+	}
 
 	secret, generated, err := s.resolveSigningSecret(ctx, input.TenantID, input.ProductID)
 	if err != nil {
@@ -85,7 +90,7 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 	}
 
 	eventsList := input.Events
-	if eventsList == nil && s.catalog != nil {
+	if eventsList == nil {
 		eventsList = s.catalog.AllEventTypesStrings()
 	}
 

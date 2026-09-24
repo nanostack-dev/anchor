@@ -739,6 +739,12 @@ components:
           description: Registered domain and integration events available for subscription.
       required:
       - items
+    ProductEventGroupType:
+      type: string
+      enum: [theme, integration]
+      x-go-type: events.GroupType
+      x-go-type-import:
+        path: anchor/internal/events
     ProductEventDefinitionResponse:
       type: object
       properties:
@@ -755,8 +761,7 @@ components:
           description: Description of when this event is emitted.
           examples: ["Emitted when a new organization is created."]
         group_type:
-          type: string
-          enum: [theme, integration]
+          $ref: "#/components/schemas/ProductEventGroupType"
           description: Classification group type.
           examples: ["theme"]
         group_name:

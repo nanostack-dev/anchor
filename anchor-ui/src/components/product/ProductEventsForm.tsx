@@ -8,6 +8,7 @@ import {
 	getProductQueryKey,
 	updateProductMutation,
 } from "@/client/@tanstack/react-query.gen";
+import { zProductEventsConfigRequest } from "@/client/zod.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -56,8 +57,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const eventsFormSchema = z.object({
-	eventsEndpointUrl: z.string(),
-	events: z.array(z.string()),
+	eventsEndpointUrl: zProductEventsConfigRequest.shape.endpoint_url.unwrap(),
+	events: zProductEventsConfigRequest.shape.events.unwrap(),
 });
 
 type EventsFormData = z.infer<typeof eventsFormSchema>;
@@ -76,26 +77,26 @@ interface ProductEventsFormProps {
 
 function getGroupIcon(name: string, type: "theme" | "integration") {
 	if (type === "integration") {
-		return <Plug className="size-4 text-sky-500" />;
+		return <Plug className="size-4 text-primary" />;
 	}
 	const normalized = name.toLowerCase();
 	if (normalized.includes("organization")) {
-		return <Building2 className="size-4 text-blue-500" />;
+		return <Building2 className="size-4 text-primary" />;
 	}
 	if (normalized.includes("workspace")) {
-		return <FolderKanban className="size-4 text-indigo-500" />;
+		return <FolderKanban className="size-4 text-primary" />;
 	}
 	if (normalized.includes("key")) {
-		return <KeyRound className="size-4 text-amber-500" />;
+		return <KeyRound className="size-4 text-primary" />;
 	}
 	if (normalized.includes("user")) {
-		return <Users className="size-4 text-purple-500" />;
+		return <Users className="size-4 text-primary" />;
 	}
 	if (normalized.includes("role") || normalized.includes("permission")) {
-		return <ShieldCheck className="size-4 text-emerald-500" />;
+		return <ShieldCheck className="size-4 text-primary" />;
 	}
 	if (normalized.includes("licens")) {
-		return <Award className="size-4 text-teal-500" />;
+		return <Award className="size-4 text-primary" />;
 	}
 	return <Layers className="size-4 text-primary" />;
 }
@@ -114,6 +115,9 @@ export function ProductEventsForm({
 	const [filterType, setFilterType] = React.useState<
 		"all" | "theme" | "integration"
 	>("all");
+	const prevProductRef = React.useRef(product);
+	const eventsInitializedRef = React.useRef(false);
+	const eventsSelectionTouchedRef = React.useRef(false);
 
 	const hadEvents = Boolean(product.config.events?.endpoint_url);
 
@@ -147,6 +151,14 @@ export function ProductEventsForm({
 	const updateMutation = useMutation({
 		...updateProductMutation(),
 		onSuccess: (updated) => {
+			form.reset({
+				eventsEndpointUrl: updated.config.events?.endpoint_url ?? "",
+				events:
+					updated.config.events?.events ??
+					catalogQuery.data?.items?.map((item) => item.type) ??
+					[],
+			});
+			eventsSelectionTouchedRef.current = false;
 			void queryClient.invalidateQueries({
 				queryKey: getProductQueryKey({
 					path: { product_id: productId },
@@ -182,6 +194,10 @@ export function ProductEventsForm({
 		if (!endpointUrl && !hadEvents) {
 			return;
 		}
+		if (endpointUrl && !catalogQuery.data) {
+			toast.error("Load the event catalog before saving this endpoint.");
+			return;
+		}
 		const updateData: ProductRequest = {
 			name: product.name,
 			config: {
@@ -201,14 +217,12 @@ export function ProductEventsForm({
 		});
 	};
 
-	const prevProductRef = React.useRef(product);
-	const eventsInitializedRef = React.useRef(false);
-
 	React.useEffect(() => {
-		const productChanged = prevProductRef.current !== product;
-		if (productChanged) {
-			prevProductRef.current = product;
+		const previousProduct = prevProductRef.current;
+		prevProductRef.current = product;
+		if (previousProduct.id !== product.id) {
 			eventsInitializedRef.current = false;
+			eventsSelectionTouchedRef.current = false;
 			form.reset({
 				eventsEndpointUrl: product.config.events?.endpoint_url || "",
 				events:
@@ -218,19 +232,31 @@ export function ProductEventsForm({
 			});
 			return;
 		}
-
-		if (
-			!eventsInitializedRef.current &&
-			catalogQuery.data?.items &&
-			!form.state.isDirty
-		) {
-			eventsInitializedRef.current = true;
+		if (previousProduct !== product && !form.state.isDirty) {
 			form.reset({
 				eventsEndpointUrl: product.config.events?.endpoint_url || "",
 				events:
 					product.config.events?.events ??
-					catalogQuery.data.items.map((item) => item.type),
+					catalogQuery.data?.items?.map((item) => item.type) ??
+					[],
 			});
+		}
+
+		if (!eventsInitializedRef.current && catalogQuery.data?.items) {
+			eventsInitializedRef.current = true;
+			if (!form.state.isDirty) {
+				form.reset({
+					eventsEndpointUrl: product.config.events?.endpoint_url || "",
+					events:
+						product.config.events?.events ??
+						catalogQuery.data.items.map((item) => item.type),
+				});
+			} else if (!eventsSelectionTouchedRef.current && !product.config.events) {
+				form.setFieldValue(
+					"events",
+					catalogQuery.data.items.map((item) => item.type),
+				);
+			}
 		}
 	}, [product, catalogQuery.data?.items, form]);
 
@@ -300,6 +326,7 @@ export function ProductEventsForm({
 	}, [groups, filterType, searchQuery]);
 
 	const handleReset = () => {
+		eventsSelectionTouchedRef.current = false;
 		form.reset({
 			eventsEndpointUrl: product.config.events?.endpoint_url || "",
 			events:
@@ -338,6 +365,7 @@ export function ProductEventsForm({
 						totalCatalogEvents === selectedEvents.length;
 
 					const toggleEvent = (eventType: string) => {
+						eventsSelectionTouchedRef.current = true;
 						const next = selectedEvents.includes(eventType)
 							? selectedEvents.filter((t) => t !== eventType)
 							: [...selectedEvents, eventType];
@@ -345,6 +373,7 @@ export function ProductEventsForm({
 					};
 
 					const toggleGroup = (group: EventGroup) => {
+						eventsSelectionTouchedRef.current = true;
 						const groupTypes = group.events.map((e) => e.type);
 						const allInGroupSelected = groupTypes.every((t) =>
 							selectedEvents.includes(t),
@@ -356,12 +385,14 @@ export function ProductEventsForm({
 					};
 
 					const selectAll = () => {
+						eventsSelectionTouchedRef.current = true;
 						const allTypes =
 							catalogQuery.data?.items?.map((item) => item.type) ?? [];
 						eventsField.handleChange(allTypes);
 					};
 
 					const deselectAll = () => {
+						eventsSelectionTouchedRef.current = true;
 						eventsField.handleChange([]);
 					};
 
@@ -372,7 +403,6 @@ export function ProductEventsForm({
 
 					return (
 						<div className="flex flex-col gap-6">
-							{/* Executive Metric Summary Tiles (macOS Glass / Depth) */}
 							<div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
 								<div className="group rounded-2xl border border-border/60 bg-card/75 p-4.5 shadow-2xs backdrop-blur-md transition-all duration-200 hover:border-border hover:shadow-xs">
 									<div className="flex items-center justify-between">
@@ -437,8 +467,6 @@ export function ProductEventsForm({
 									</p>
 								</div>
 							</div>
-
-							{/* Endpoint Configuration Card */}
 							<Card className="rounded-2xl border-border/60 bg-card/75 pt-0 shadow-2xs backdrop-blur-md transition-all">
 								<CardHeader className="rounded-t-2xl border-b border-border/40 bg-muted/25 px-5 py-4">
 									<div className="flex items-center justify-between">
@@ -462,21 +490,21 @@ export function ProductEventsForm({
 								</CardHeader>
 								<CardContent className="space-y-5 p-5">
 									{revealedSecret ? (
-										<Alert className="rounded-xl border-amber-500/40 bg-amber-500/10 text-foreground">
-											<KeyRound className="size-4 text-amber-600 dark:text-amber-400" />
-											<AlertTitle className="font-semibold tracking-tight text-amber-900 dark:text-amber-200">
+										<Alert variant="warning" className="rounded-xl">
+											<KeyRound className="size-4" />
+											<AlertTitle className="font-semibold tracking-tight">
 												New Signing Secret Minted
 											</AlertTitle>
-											<AlertDescription className="mt-1 space-y-2 text-xs text-amber-800 dark:text-amber-300">
+											<AlertDescription className="mt-1 space-y-2 text-xs">
 												<p>
 													Store this secret in your webhook handler. It
 													validates payload signatures in the{" "}
 													<code className="font-mono font-semibold">
-														anchor-signature
+														webhook-signature
 													</code>{" "}
 													header. For security, it cannot be revealed again.
 												</p>
-												<div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-background/90 p-2.5 shadow-2xs">
+												<div className="flex items-center gap-2 rounded-xl border border-border bg-background p-2.5 shadow-2xs">
 													<code className="flex-1 truncate font-mono text-xs text-foreground">
 														{revealedSecret}
 													</code>
@@ -557,8 +585,6 @@ export function ProductEventsForm({
 									</FieldGroup>
 								</CardContent>
 							</Card>
-
-							{/* Event Subscriptions Catalog Card */}
 							<Card className="rounded-2xl border-border/60 bg-card/75 pt-0 shadow-2xs backdrop-blur-md transition-all">
 								<CardHeader className="rounded-t-2xl border-b border-border/40 bg-muted/25 px-5 py-4">
 									<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -593,7 +619,6 @@ export function ProductEventsForm({
 									</div>
 								</CardHeader>
 								<CardContent className="space-y-4 p-5">
-									{/* Apple-style search field & segmented filter buttons */}
 									<div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
 										<div className="relative max-w-sm flex-1">
 											<Search className="absolute top-2.5 left-3 size-4 text-muted-foreground/70" />
@@ -604,7 +629,6 @@ export function ProductEventsForm({
 												className="h-9 rounded-xl border-border/70 pl-9 text-xs shadow-2xs transition-all focus-visible:ring-2 focus-visible:ring-primary/20"
 											/>
 										</div>
-										{/* Segmented control bar */}
 										<div className="inline-flex rounded-xl border border-border/50 bg-muted/50 p-1 shadow-2xs backdrop-blur-xs">
 											<button
 												type="button"
@@ -652,6 +676,20 @@ export function ProductEventsForm({
 												Loading event catalog...
 											</span>
 										</div>
+									) : catalogQuery.isError && !catalogQuery.data ? (
+										<Alert variant="destructive">
+											<AlertTitle>Event catalog unavailable</AlertTitle>
+											<AlertDescription>
+												<p>Load the catalog before saving an endpoint.</p>
+												<Button
+													type="button"
+													variant="outline"
+													onClick={() => void catalogQuery.refetch()}
+												>
+													Retry
+												</Button>
+											</AlertDescription>
+										</Alert>
 									) : filteredGroups.length === 0 ? (
 										<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
 											<Radio className="mb-2.5 size-7 text-muted-foreground/40" />
@@ -752,9 +790,7 @@ export function ProductEventsForm({
 									)}
 								</CardContent>
 							</Card>
-
-							{/* Apple Floating Glass Action Bar */}
-							<div className="sticky bottom-4 z-20 flex items-center justify-between rounded-2xl border border-border/70 bg-card/85 p-4 shadow-xl backdrop-blur-xl border-t border-white/20 dark:border-white/10">
+							<div className="sticky bottom-4 z-20 flex items-center justify-between rounded-2xl border border-border/70 bg-card/85 p-4 shadow-xl backdrop-blur-xl">
 								<div className="text-xs">
 									<form.Subscribe selector={(state) => [state.isDirty]}>
 										{([isDirty]) =>
@@ -789,13 +825,16 @@ export function ProductEventsForm({
 										)}
 									</form.Subscribe>
 									<form.Subscribe
-										selector={(state) => [
-											state.canSubmit,
-											state.isSubmitting,
-											state.isDirty,
-											state.isValidating,
-											state.isValid,
-										]}
+										selector={(state) =>
+											[
+												state.canSubmit,
+												state.isSubmitting,
+												state.isDirty,
+												state.isValidating,
+												state.isValid,
+												state.values.eventsEndpointUrl,
+											] as const
+										}
 									>
 										{([
 											canSubmit,
@@ -803,6 +842,7 @@ export function ProductEventsForm({
 											isDirty,
 											isValidating,
 											isValid,
+											endpointUrl,
 										]) => (
 											<Button
 												type="submit"
@@ -814,6 +854,7 @@ export function ProductEventsForm({
 													!isValid ||
 													isValidating ||
 													!isDirty ||
+													(Boolean(endpointUrl.trim()) && !catalogQuery.data) ||
 													updateMutation.isPending
 												}
 											>

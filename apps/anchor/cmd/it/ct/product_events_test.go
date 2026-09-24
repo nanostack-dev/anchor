@@ -322,6 +322,38 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		)
 	})
 
+	t.Run("UnknownSubscriptionIsRejected", func(t *testing.T) {
+		before, err := owner.GetProductWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.NotNil(t, before.JSON200)
+		require.NotNil(t, before.JSON200.Config.Events)
+
+		response, err := owner.UpdateProductWithResponse(
+			ctx,
+			product.ProductID,
+			ct.UpdateProductJSONRequestBody{
+				Name: before.JSON200.Name,
+				Config: &ct.ProductConfigRequest{
+					OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+						Prefix: before.JSON200.Config.OrganizationApiKeys.Prefix,
+					},
+					Events: &ct.ProductEventsConfigRequest{
+						EndpointUrl: &sink.URL,
+						Events:      &[]string{"typo.event"},
+					},
+				},
+			},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, response.StatusCode())
+
+		after, err := owner.GetProductWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.NotNil(t, after.JSON200)
+		require.NotNil(t, after.JSON200.Config.Events)
+		assert.Equal(t, before.JSON200.Config.Events.Events, after.JSON200.Config.Events.Events)
+	})
+
 	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
 		filterProduct := createTestProductContext(t)
 		filterClient, _ := filterProduct.CreateAPIKeyClientWithAllScopes()

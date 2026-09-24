@@ -29,14 +29,16 @@ type Emitter interface {
 }
 
 type emitter struct {
-	queue *queue.Client
-	now   func() time.Time
+	queue   *queue.Client
+	catalog Catalog
+	now     func() time.Time
 }
 
-func NewEmitter(queueClient *queue.Client) Emitter {
+func NewEmitter(queueClient *queue.Client, catalog Catalog) Emitter {
 	return &emitter{
-		queue: queueClient,
-		now:   time.Now,
+		queue:   queueClient,
+		catalog: catalog,
+		now:     time.Now,
 	}
 }
 
@@ -44,7 +46,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 	if err := validate.ValidateStruct(event); err != nil {
 		return err
 	}
-	if !event.Type.Known() {
+	if !e.catalog.IsKnown(event.Type) {
 		return unknownTypeError(event.Type)
 	}
 	tx := transactor.CurrentTx(ctx)

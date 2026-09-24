@@ -561,14 +561,14 @@ func (e ProductAPIKeyStatus) Valid() bool {
 	}
 }
 
-// Defines values for ProductEventDefinitionResponseGroupType.
+// Defines values for ProductEventGroupType.
 const (
-	Integration ProductEventDefinitionResponseGroupType = "integration"
-	Theme       ProductEventDefinitionResponseGroupType = "theme"
+	Integration ProductEventGroupType = "integration"
+	Theme       ProductEventGroupType = "theme"
 )
 
-// Valid indicates whether the value is a known member of the ProductEventDefinitionResponseGroupType enum.
-func (e ProductEventDefinitionResponseGroupType) Valid() bool {
+// Valid indicates whether the value is a known member of the ProductEventGroupType enum.
+func (e ProductEventGroupType) Valid() bool {
 	switch e {
 	case Integration:
 		return true
@@ -2504,7 +2504,7 @@ type ProductEventDefinitionResponse struct {
 	// GroupType Classification group type.
 	//
 	// Examples: theme
-	GroupType ProductEventDefinitionResponseGroupType `json:"group_type"`
+	GroupType ProductEventGroupType `json:"group_type"`
 
 	// Integration Integration provider identifier if this event belongs to an integration.
 	//
@@ -2527,10 +2527,8 @@ type ProductEventDefinitionResponse struct {
 	Type string `json:"type"`
 }
 
-// ProductEventDefinitionResponseGroupType Classification group type.
-//
-// Examples: theme
-type ProductEventDefinitionResponseGroupType string
+// ProductEventGroupType defines model for ProductEventGroupType.
+type ProductEventGroupType string
 
 // ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
 type ProductEventsCatalogResponse struct {

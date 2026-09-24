@@ -26,6 +26,7 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/workspace"
+	"anchor/internal/events"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -58,24 +59,6 @@ const (
 func (e OrganizationMemberInclude) Valid() bool {
 	switch e {
 	case OrganizationMemberIncludeRolePermissions:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ProductEventDefinitionResponseGroupType.
-const (
-	Integration ProductEventDefinitionResponseGroupType = "integration"
-	Theme       ProductEventDefinitionResponseGroupType = "theme"
-)
-
-// Valid indicates whether the value is a known member of the ProductEventDefinitionResponseGroupType enum.
-func (e ProductEventDefinitionResponseGroupType) Valid() bool {
-	switch e {
-	case Integration:
-		return true
-	case Theme:
 		return true
 	default:
 		return false
@@ -1733,7 +1716,7 @@ type ProductEventDefinitionResponse struct {
 	// GroupType Classification group type.
 	//
 	// Examples: theme
-	GroupType ProductEventDefinitionResponseGroupType `json:"group_type"`
+	GroupType ProductEventGroupType `json:"group_type"`
 
 	// Integration Integration provider identifier if this event belongs to an integration.
 	//
@@ -1756,10 +1739,8 @@ type ProductEventDefinitionResponse struct {
 	Type string `json:"type"`
 }
 
-// ProductEventDefinitionResponseGroupType Classification group type.
-//
-// Examples: theme
-type ProductEventDefinitionResponseGroupType string
+// ProductEventGroupType defines model for ProductEventGroupType.
+type ProductEventGroupType = events.GroupType
 
 // ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
 type ProductEventsCatalogResponse struct {

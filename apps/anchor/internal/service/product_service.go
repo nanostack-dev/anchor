@@ -395,7 +395,7 @@ func (s *productService) attachEventsConfig(ctx context.Context, tenantID string
 
 func (s *productService) EventsCatalog(_ context.Context) []events.Definition {
 	if s.eventEndpoints == nil || s.eventEndpoints.Catalog() == nil {
-		return events.DefaultDefinitions()
+		return []events.Definition{}
 	}
 	return s.eventEndpoints.Catalog().All()
 }

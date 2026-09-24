@@ -234,7 +234,7 @@ func (s *AnchorAPI) GetProductEventsCatalog(
 			Type:        string(d.Type),
 			Name:        d.Name,
 			Description: d.Description,
-			GroupType:   ProductEventDefinitionResponseGroupType(d.GroupType),
+			GroupType:   d.GroupType,
 			GroupName:   d.GroupName,
 		}
 		if d.Theme != "" {

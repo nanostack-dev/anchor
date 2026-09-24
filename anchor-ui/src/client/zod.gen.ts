@@ -177,14 +177,16 @@ export const zProductEventsConfigResponse = z.object({
     events: z.array(z.string())
 });
 
+export const zProductEventGroupType = z.enum([
+    'theme',
+    'integration'
+]);
+
 export const zProductEventDefinitionResponse = z.object({
     type: z.string(),
     name: z.string(),
     description: z.string(),
-    group_type: z.enum([
-        'theme',
-        'integration'
-    ]),
+    group_type: zProductEventGroupType,
     group_name: z.string(),
     theme: z.optional(z.string()),
     integration: z.optional(z.string())

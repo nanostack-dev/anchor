@@ -418,6 +418,14 @@ func headerGet(headers map[string]string, key string) string {
 }
 
 func (p *Provider) WebhookEvents() []provider.WebhookEvent {
+	return webhookEvents()
+}
+
+func WebhookEventRegistration() events.IntegrationRegistration {
+	return events.RegisterIntegration(clerkProviderType, webhookEvents()...)
+}
+
+func webhookEvents() []provider.WebhookEvent {
 	return []provider.WebhookEvent{
 		{
 			Type:        string(events.ClerkUserCreated),

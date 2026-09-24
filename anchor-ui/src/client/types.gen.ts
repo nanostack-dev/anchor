@@ -323,6 +323,11 @@ export type ProductEventsCatalogResponse = {
     items: Array<ProductEventDefinitionResponse>;
 };
 
+export enum ProductEventGroupType {
+    THEME = 'theme',
+    INTEGRATION = 'integration'
+}
+
 export type ProductEventDefinitionResponse = {
     /**
      * Unique event type identifier.
@@ -339,7 +344,7 @@ export type ProductEventDefinitionResponse = {
     /**
      * Classification group type.
      */
-    group_type: 'theme' | 'integration';
+    group_type: ProductEventGroupType;
     /**
      * Display name of the theme or integration group.
      */
