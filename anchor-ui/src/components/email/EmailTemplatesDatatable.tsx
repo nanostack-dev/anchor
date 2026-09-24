@@ -228,6 +228,12 @@ export function EmailTemplatesDatatable() {
 			<AnchorDataTable
 				columns={columns}
 				data={data?.items ?? []}
+				onRowClick={(template) => {
+					void navigate({
+						to: ROUTE_PATHS.EMAIL_TEMPLATE_BUILDER,
+						params: { templateId: template.id },
+					});
+				}}
 				loading={isLoading}
 				resourceName="templates"
 				error={error}

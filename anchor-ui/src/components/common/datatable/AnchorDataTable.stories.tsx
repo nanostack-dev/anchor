@@ -23,6 +23,15 @@ const columns: ColumnDef<ApiKey, string>[] = [
 	{ accessorKey: "lastUsed", header: "Last used" },
 ];
 
+const clickableColumns: ColumnDef<ApiKey, string>[] = [
+	...columns,
+	{
+		id: "actions",
+		header: "Actions",
+		cell: () => <button type="button">Other action</button>,
+	},
+];
+
 const rows: ApiKey[] = [
 	{
 		id: "key_01",
@@ -41,7 +50,7 @@ const rows: ApiKey[] = [
 
 const meta = {
 	title: "Common/AnchorDataTable",
-	component: AnchorDataTable,
+	component: AnchorDataTable<ApiKey>,
 	tags: ["autodocs"],
 	args: {
 		columns,
@@ -69,6 +78,28 @@ export const Default: Story = {
 		).toBeInTheDocument();
 		await expect(canvas.getByText("checkout-prod")).toBeInTheDocument();
 		await expect(canvas.getByText("legacy-import")).toBeInTheDocument();
+	},
+};
+
+export const ClickableRows: Story = {
+	args: {
+		columns: clickableColumns,
+		onRowClick: fn(),
+		isRowClickable: (row: ApiKey) => row.id !== "key_03",
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const activeRow = canvas.getByRole("row", { name: /checkout-prod/ });
+
+		await userEvent.click(within(activeRow).getByText("checkout-prod"));
+		await expect(args.onRowClick).toHaveBeenCalledWith(rows[0]);
+
+		await userEvent.click(
+			within(activeRow).getByRole("button", { name: "Other action" }),
+		);
+		await userEvent.click(within(activeRow).getByLabelText("Select row"));
+		await userEvent.click(canvas.getByText("legacy-import"));
+		await expect(args.onRowClick).toHaveBeenCalledTimes(1);
 	},
 };
 

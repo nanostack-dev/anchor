@@ -9,7 +9,7 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PenLine } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../../ui/button";
 import {
@@ -31,6 +31,8 @@ interface EditProductPermissionDialogProps {
 	permission: ProductResourcePermissionResponse;
 	trigger?: React.ReactElement;
 	onUpdated?: () => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 export function EditProductResourcePermissionDialog({
@@ -38,13 +40,23 @@ export function EditProductResourcePermissionDialog({
 	permission,
 	trigger,
 	onUpdated,
+	open: controlledOpen,
+	onOpenChange,
 }: EditProductPermissionDialogProps) {
 	const queryClient = useQueryClient();
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [formData, setFormData] =
 		useState<UpdateProductResourcePermissionRequest>({
 			description: permission.description || "",
 		});
+
+	useEffect(() => {
+		if (open) {
+			setFormData({ description: permission.description || "" });
+		}
+	}, [open, permission.description]);
 
 	const updateMutation = useMutation({
 		...updateProductResourcePermissionMutation(),

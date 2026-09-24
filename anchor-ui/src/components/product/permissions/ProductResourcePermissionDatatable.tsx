@@ -16,7 +16,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 import { Button } from "../../ui/button";
 
@@ -30,6 +30,11 @@ export function ProductResourcePermissionDatatable({
 	productId,
 }: ProductPermissionDatatableProps) {
 	const [total, setTotal] = useState(0);
+	const [editingPermissionName, setEditingPermissionName] = useState<
+		string | null
+	>(null);
+	const editingPermissionNameRef = useRef(editingPermissionName);
+	editingPermissionNameRef.current = editingPermissionName;
 
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -139,6 +144,10 @@ export function ProductResourcePermissionDatatable({
 						<EditProductResourcePermissionDialog
 							productId={productId}
 							permission={row.original}
+							open={editingPermissionNameRef.current === row.original.name}
+							onOpenChange={(open) =>
+								setEditingPermissionName(open ? row.original.name : null)
+							}
 						/>
 						<DeleteProductResourcePermissionDialog
 							productId={productId}
@@ -180,6 +189,7 @@ export function ProductResourcePermissionDatatable({
 			<AnchorDataTable
 				columns={columns}
 				data={items}
+				onRowClick={(permission) => setEditingPermissionName(permission.name)}
 				loading={isLoading}
 				resourceName="resource permissions"
 				error={error}

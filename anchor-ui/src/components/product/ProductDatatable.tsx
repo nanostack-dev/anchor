@@ -211,6 +211,12 @@ export function ProductDatatable() {
 			<AnchorDataTable
 				columns={columns}
 				data={items}
+				onRowClick={(product) => {
+					void navigate({
+						to: "/products/$productId/edit",
+						params: { productId: product.id },
+					});
+				}}
 				loading={isLoading}
 				resourceName="products"
 				error={error}

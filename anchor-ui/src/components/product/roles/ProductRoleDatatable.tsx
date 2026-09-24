@@ -13,7 +13,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
 import { Copy, PenLine, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 import { Button } from "../../ui/button";
@@ -28,6 +28,9 @@ interface ProductRoleDatatableProps {
 
 export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 	const [total, setTotal] = useState(0);
+	const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+	const editingRoleIdRef = useRef(editingRoleId);
+	editingRoleIdRef.current = editingRoleId;
 
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -149,6 +152,10 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 							productId={productId}
 							mode="edit"
 							existingRole={row.original}
+							open={editingRoleIdRef.current === row.original.id}
+							onOpenChange={(open) =>
+								setEditingRoleId(open ? row.original.id : null)
+							}
 							trigger={
 								<Button variant="outline" size="icon">
 									<span className="sr-only">Edit product</span>
@@ -201,6 +208,7 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 			<AnchorDataTable
 				columns={columns}
 				data={items}
+				onRowClick={(role) => setEditingRoleId(role.id)}
 				loading={isLoading}
 				resourceName="roles"
 				error={error}

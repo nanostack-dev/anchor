@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/empty";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -43,6 +43,7 @@ interface LicenseTemplateDatatableProps {
 export function LicenseTemplateDatatable({
 	productId,
 }: LicenseTemplateDatatableProps) {
+	const navigate = useNavigate();
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
 		pageSize: 10,
@@ -221,6 +222,16 @@ export function LicenseTemplateDatatable({
 			<AnchorDataTable
 				columns={columns}
 				data={pageItems}
+				onRowClick={(template) => {
+					void navigate({
+						to: ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL,
+						params: { templateId: template.id },
+						search: { edit: true },
+					});
+				}}
+				isRowClickable={(template) =>
+					!!schema && template.status === LicenseTemplateStatus.ACTIVE
+				}
 				loading={templatesQuery.isLoading || schemaQuery.isLoading}
 				resourceName="license templates"
 				error={templatesQuery.error}

@@ -32,6 +32,8 @@ interface ProductRoleDialogProps {
 	onSaved?: () => void;
 	mode?: "create" | "edit";
 	existingRole?: ProductRoleResponse;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 const steps: Step[] = [
@@ -46,9 +48,13 @@ export function ProductRoleDialog({
 	onSaved,
 	mode = "create",
 	existingRole,
+	open: controlledOpen,
+	onOpenChange,
 }: ProductRoleDialogProps) {
 	const queryClient = useQueryClient();
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [currentStep, setCurrentStep] = useState(0);
 	const [formData, setFormData] = useState<RoleFormData>({
 		name: "",

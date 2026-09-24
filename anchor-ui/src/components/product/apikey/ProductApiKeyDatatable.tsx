@@ -12,7 +12,7 @@ import { DeleteProductAPIKeyDialog } from "@/components/product/apikey/DeletePro
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -36,6 +36,7 @@ interface ProductApiKeyDatatableProps {
 export function ProductApiKeyDatatable({
 	productId,
 }: ProductApiKeyDatatableProps) {
+	const navigate = useNavigate();
 	const [total, setTotal] = useState(0);
 
 	const [pagination, setPagination] = useState<PaginationState>({
@@ -238,6 +239,12 @@ export function ProductApiKeyDatatable({
 			<AnchorDataTable<ProductApiKeyResponse, ProductApiKeyFilters>
 				columns={columns}
 				data={items}
+				onRowClick={(apiKey) => {
+					void navigate({
+						to: ROUTE_PATHS.PRODUCT_API_KEY_EDIT,
+						params: { apiKeyId: apiKey.id },
+					});
+				}}
 				loading={isLoading}
 				resourceName="API keys"
 				error={error}
