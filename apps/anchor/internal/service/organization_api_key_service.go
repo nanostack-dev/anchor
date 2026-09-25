@@ -139,6 +139,7 @@ func (s *organizationAPIKeyService) Create(
 		ctx,
 		input.OrganizationID,
 		input.Name,
+		"",
 		logger,
 	); nameValidationErr != nil {
 		return orgapikey.OrganizationAPIKey{}, "", nameValidationErr
@@ -280,6 +281,7 @@ func (s *organizationAPIKeyService) Update(
 			ctx,
 			input.OrganizationID,
 			*input.Name,
+			existingAPIKey.ID,
 			logger,
 		); nameValidationErr != nil {
 			return orgapikey.OrganizationAPIKey{}, nameValidationErr
@@ -672,7 +674,7 @@ func (s *organizationAPIKeyService) enqueueExpirationEvent(
 
 func (s *organizationAPIKeyService) nameUniqueValidation(
 	ctx context.Context,
-	organizationID, name string,
+	organizationID, name, ownKeyID string,
 	logger zerolog.Logger,
 ) error {
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
@@ -684,7 +686,7 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 			Msg("failed to search for organization API keys by name")
 		return fault.ErrUnexpected
 	}
-	if found.IsPresent() {
+	if found.Exists(func(holder orgapikey.OrganizationAPIKey) bool { return holder.ID != ownKeyID }) {
 		return NewOrganizationAPIKeyNameExistsError(name, organizationID)
 	}
 	return nil

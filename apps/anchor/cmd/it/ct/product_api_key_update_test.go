@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -427,4 +428,56 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 			}
 		},
 	)
+}
+
+func TestProductAPIKeyUpdateNameConflict(t *testing.T) {
+	ctx := context.Background()
+	product := createTestProductContext(t)
+	client := product.OwnerAuthenticatedClient()
+	createKey := func(name string) string {
+		resp, err := client.CreateProductAPIKeyWithResponse(
+			ctx, product.ProductID,
+			ct.CreateProductAPIKeyJSONRequestBody{Name: name, Permissions: []string{"organization:read"}},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode())
+		return resp.JSON201.Id
+	}
+
+	t.Run("Concurrent identical renames of one key all succeed", func(t *testing.T) {
+		keyID := createKey("RaceKey_" + uuid.NewString())
+		const rounds, renamesPerRound = 20, 8
+		for range rounds {
+			newName := "RaceRenamed_" + uuid.NewString()
+			statuses := make([]int, renamesPerRound)
+			var wg sync.WaitGroup
+			for i := range renamesPerRound {
+				wg.Go(func() {
+					resp, err := client.UpdateProductAPIKeyWithResponse(
+						ctx, product.ProductID, keyID,
+						ct.UpdateProductAPIKeyJSONRequestBody{Name: newName},
+					)
+					if assert.NoError(t, err) {
+						statuses[i] = resp.StatusCode()
+					}
+				})
+			}
+			wg.Wait()
+			for _, status := range statuses {
+				assert.Equal(t, http.StatusOK, status)
+			}
+		}
+	})
+
+	t.Run("Rename to the name of another key returns conflict", func(t *testing.T) {
+		takenName := "TakenKey_" + uuid.NewString()
+		createKey(takenName)
+		keyID := createKey("OtherKey_" + uuid.NewString())
+		resp, err := client.UpdateProductAPIKeyWithResponse(
+			ctx, product.ProductID, keyID,
+			ct.UpdateProductAPIKeyJSONRequestBody{Name: takenName},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
+	})
 }

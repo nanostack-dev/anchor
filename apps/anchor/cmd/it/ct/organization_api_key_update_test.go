@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"sync"
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
@@ -120,5 +121,62 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 			"organization_id": webhookOrg.Id,
 			"api_key_id":      created.JSON201.Id,
 		})
+	})
+}
+
+func TestOrganizationAPIKeyUpdateNameConflict(t *testing.T) {
+	ctx := context.Background()
+	product := createTestProductContext(t)
+	apiKeyClient, _ := product.CreateAPIKeyClientWithScopes([]string{
+		"organization_api_key:create",
+		"organization_api_key:update",
+	})
+	org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
+	permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
+	createKey := func(name string) string {
+		resp, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
+			ctx, product.ProductID, org.Id,
+			ct.CreateOrganizationAPIKeyJSONRequestBody{Name: name, Permissions: []string{permissions.FileRead}},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode())
+		return resp.JSON201.Id
+	}
+
+	t.Run("Concurrent identical renames of one key all succeed", func(t *testing.T) {
+		keyID := createKey("RaceKey-" + uuid.NewString())
+		const rounds, renamesPerRound = 20, 8
+		for range rounds {
+			newName := "RaceRenamed-" + uuid.NewString()
+			statuses := make([]int, renamesPerRound)
+			var wg sync.WaitGroup
+			for i := range renamesPerRound {
+				wg.Go(func() {
+					resp, err := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
+						ctx, product.ProductID, org.Id, keyID,
+						ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: newName},
+					)
+					if assert.NoError(t, err) {
+						statuses[i] = resp.StatusCode()
+					}
+				})
+			}
+			wg.Wait()
+			for _, status := range statuses {
+				assert.Equal(t, http.StatusOK, status)
+			}
+		}
+	})
+
+	t.Run("Rename to the name of another key returns conflict", func(t *testing.T) {
+		takenName := "TakenKey-" + uuid.NewString()
+		createKey(takenName)
+		keyID := createKey("OtherKey-" + uuid.NewString())
+		resp, err := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
+			ctx, product.ProductID, org.Id, keyID,
+			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: takenName},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusConflict, resp.StatusCode())
 	})
 }
