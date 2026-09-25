@@ -79,7 +79,7 @@ func (s *productAPIKeyService) Create(
 		return apikey.ProductAPIKey{}, "", err
 	}
 
-	if err := s.nameUniqueValidation(ctx, input.ProductID, input.Name, logger); err != nil {
+	if err := s.nameUniqueValidation(ctx, input.ProductID, input.Name, "", logger); err != nil {
 		return apikey.ProductAPIKey{}, "", err
 	}
 
@@ -209,7 +209,13 @@ func (s *productAPIKeyService) Update(
 	permissionsUpdated := input.Permissions != nil
 
 	if input.Name != nil && *input.Name != updatedAPIKey.Name {
-		if nameErr := s.nameUniqueValidation(ctx, input.ProductID, *input.Name, logger); nameErr != nil {
+		if nameErr := s.nameUniqueValidation(
+			ctx,
+			input.ProductID,
+			*input.Name,
+			existingAPIKey.ID,
+			logger,
+		); nameErr != nil {
 			return apikey.ProductAPIKey{}, nameErr
 		}
 		updatedAPIKey.Name = *input.Name
@@ -472,7 +478,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 }
 
 func (s *productAPIKeyService) nameUniqueValidation(
-	ctx context.Context, productID, name string, logger zerolog.Logger,
+	ctx context.Context, productID, name, ownKeyID string, logger zerolog.Logger,
 ) error {
 	found, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
 	if err != nil {
@@ -483,7 +489,7 @@ func (s *productAPIKeyService) nameUniqueValidation(
 			Msg("failed to search for API keys by name")
 		return fault.ErrUnexpected
 	}
-	if found.IsPresent() {
+	if found.Exists(func(holder apikey.ProductAPIKey) bool { return holder.ID != ownKeyID }) {
 		return NewProductAPIKeyNameExistsError(name, productID)
 	}
 	return nil
