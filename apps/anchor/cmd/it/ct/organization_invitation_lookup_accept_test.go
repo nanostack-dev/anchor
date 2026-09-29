@@ -13,6 +13,7 @@ import (
 )
 
 func TestLookupInvitation_FindsTheInvitationByItsToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -24,6 +25,7 @@ func TestLookupInvitation_FindsTheInvitationByItsToken(t *testing.T) {
 }
 
 func TestLookupInvitation_ReturnsNoToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -35,6 +37,7 @@ func TestLookupInvitation_ReturnsNoToken(t *testing.T) {
 }
 
 func TestLookupInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -43,6 +46,7 @@ func TestLookupInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
 }
 
 func TestLookupInvitation_RefusesUnknownToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.LookupRaw("anchor_inv_unknown")
@@ -52,6 +56,7 @@ func TestLookupInvitation_RefusesUnknownToken(t *testing.T) {
 }
 
 func TestAcceptInvitation_CreatesTheMembershipWithTheInvitedRole(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
@@ -67,6 +72,7 @@ func TestAcceptInvitation_CreatesTheMembershipWithTheInvitedRole(t *testing.T) {
 }
 
 func TestAcceptInvitation_AcceptsWhenTheProductUserEmailDiffers(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite("invited@example.com")
 	userID := w.newProductUser("someone.else@example.com")
@@ -78,6 +84,7 @@ func TestAcceptInvitation_AcceptsWhenTheProductUserEmailDiffers(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesUnknownToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	userID := w.newProductUser(uniqueEmail())
 
@@ -89,6 +96,7 @@ func TestAcceptInvitation_RefusesUnknownToken(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.invitations.Accept(created.Token, w.newProductUser(uniqueEmail()))
@@ -102,6 +110,7 @@ func TestAcceptInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesAnExpiredInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -116,6 +125,7 @@ func TestAcceptInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesUnknownProductUser(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -127,6 +137,7 @@ func TestAcceptInvitation_RefusesUnknownProductUser(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesProductUserOfAnotherProduct(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	foreign := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -140,6 +151,7 @@ func TestAcceptInvitation_RefusesProductUserOfAnotherProduct(t *testing.T) {
 }
 
 func TestAcceptInvitation_NeverCreatesAProductUser(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	created := w.invite(email)
@@ -151,6 +163,7 @@ func TestAcceptInvitation_NeverCreatesAProductUser(t *testing.T) {
 }
 
 func TestAcceptInvitation_RefusesAProductUserWhoIsAlreadyAMember(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
@@ -164,6 +177,7 @@ func TestAcceptInvitation_RefusesAProductUserWhoIsAlreadyAMember(t *testing.T) {
 }
 
 func TestAcceptInvitation_AllowsTheSameProductUserToJoinAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	userID := w.newProductUser(uniqueEmail())
 	first := w.invite(uniqueEmail())
@@ -181,6 +195,7 @@ func TestAcceptInvitation_AllowsTheSameProductUserToJoinAnotherOrganization(t *t
 }
 
 func TestAcceptInvitation_CreatesOneMembershipUnderConcurrentAccepts(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	const attempts = 6

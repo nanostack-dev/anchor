@@ -13,6 +13,7 @@ import (
 )
 
 func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	otherRole := w.newRole()
@@ -30,13 +31,14 @@ func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
 }
 
 func TestUpdateInvitation_IgnoresAnEmailInTheBody(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	expiresAt := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 
 	resp := w.invitations.UpdateRawBody(
 		w.organizationID, created.Id,
-		`{"email":"changed@example.com","role_id":"`+w.roleID+`","expires_at":"`+expiresAt+`"}`,
+		`{"email":"`+uniqueEmail()+`","role_id":"`+w.roleID+`","expires_at":"`+expiresAt+`"}`,
 	)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
@@ -44,6 +46,7 @@ func TestUpdateInvitation_IgnoresAnEmailInTheBody(t *testing.T) {
 }
 
 func TestUpdateInvitation_KeepsTheTokenValid(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -56,6 +59,7 @@ func TestUpdateInvitation_KeepsTheTokenValid(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -69,6 +73,7 @@ func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -82,6 +87,7 @@ func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.UpdateRaw(
@@ -97,6 +103,7 @@ func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -112,6 +119,7 @@ func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.invitations.Accept(created.Token, w.newProductUser(uniqueEmail()))
@@ -127,6 +135,7 @@ func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -138,6 +147,7 @@ func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_KillsTheToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -147,6 +157,7 @@ func TestDeleteInvitation_KillsTheToken(t *testing.T) {
 }
 
 func TestDeleteInvitation_FreesTheEmailForANewInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	created := w.invite(email)
@@ -157,6 +168,7 @@ func TestDeleteInvitation_FreesTheEmailForANewInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.DeleteRaw(w.organizationID, ids.MustNew("oinv"))
@@ -165,6 +177,7 @@ func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -175,6 +188,7 @@ func TestDeleteInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
 }
 
 func TestResendInvitation_ReturnsANewTokenAndResetsTheExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	expiresAt := time.Now().Add(time.Hour)
 	created := w.invitations.Create(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
@@ -192,6 +206,7 @@ func TestResendInvitation_ReturnsANewTokenAndResetsTheExpiry(t *testing.T) {
 }
 
 func TestResendInvitation_KillsTheOldToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
@@ -205,6 +220,7 @@ func TestResendInvitation_KillsTheOldToken(t *testing.T) {
 }
 
 func TestResendInvitation_NewTokenAccepts(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
@@ -217,6 +233,7 @@ func TestResendInvitation_NewTokenAccepts(t *testing.T) {
 }
 
 func TestResendInvitation_KeepsTheInvitationPending(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -228,6 +245,7 @@ func TestResendInvitation_KeepsTheInvitationPending(t *testing.T) {
 }
 
 func TestResendInvitation_RefusesAnExpiredInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -240,6 +258,7 @@ func TestResendInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 }
 
 func TestResendInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.invitations.Accept(created.Token, w.newProductUser(uniqueEmail()))
@@ -251,6 +270,7 @@ func TestResendInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 }
 
 func TestResendInvitation_RefusesUnknownInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.ResendRaw(w.organizationID, ids.MustNew("oinv"))

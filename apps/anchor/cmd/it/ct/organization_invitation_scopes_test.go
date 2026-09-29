@@ -93,6 +93,7 @@ func scopesExcept(excluded string) []string {
 }
 
 func TestInvitationRoutes_RefuseAKeyWithoutTheScopeOfTheOperation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	for _, operation := range invitationOperations() {
 		t.Run(operation.name, func(t *testing.T) {
@@ -106,6 +107,7 @@ func TestInvitationRoutes_RefuseAKeyWithoutTheScopeOfTheOperation(t *testing.T) 
 }
 
 func TestInvitationRoutes_AcceptAKeyHoldingOnlyTheScopeOfTheOperation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	for _, operation := range invitationOperations() {
 		t.Run(operation.name, func(t *testing.T) {
