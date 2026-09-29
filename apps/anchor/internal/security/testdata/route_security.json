@@ -133,6 +133,9 @@
   "GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs": {
     "platformBearerAuth": []
   },
+  "GET /v1/products/{product_id}/invitation-settings": {
+    "platformBearerAuth": []
+  },
   "GET /v1/products/{product_id}/licensing/schema": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -496,6 +499,9 @@
     "platformBearerAuth": []
   },
   "PUT /v1/products/{product_id}/integrations/{integration_instance_id}": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/invitation-settings": {
     "platformBearerAuth": []
   },
   "PUT /v1/products/{product_id}/licensing/schema": {

@@ -6,8 +6,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
-const DefaultExpiry = 7 * 24 * time.Hour
-
 type Status string
 
 const (
@@ -46,10 +44,6 @@ func DeriveStatus(acceptedAt *time.Time, expiresAt, now time.Time) Status {
 
 func (i *Invitation) StatusAt(now time.Time) Status {
 	return DeriveStatus(i.AcceptedAt, i.ExpiresAt, now)
-}
-
-func DefaultExpiryFrom(now time.Time) time.Time {
-	return now.Add(DefaultExpiry)
 }
 
 // Created is an invitation together with the clear token, which exists only in

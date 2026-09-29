@@ -16,7 +16,9 @@ func NewModule() fx.Option {
 		"organization_invitation",
 		fx.Provide(
 			repository.NewRepository,
+			repository.NewSettingsRepository,
 			service.NewOrganizationInvitationService,
+			service.NewInvitationSettingsService,
 			events.AsRegistration(EventRegistration),
 		),
 	)

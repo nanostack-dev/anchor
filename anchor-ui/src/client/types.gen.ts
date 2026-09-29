@@ -1546,7 +1546,7 @@ export type OrganizationInvitationCreateRequest = {
      */
     role_id: Ksuid;
     /**
-     * When the invitation expires. It must be in the future. Absent means 7 days from now.
+     * When the invitation expires. It must be in the future. Absent means the default expiry of the invitation settings from now.
      */
     expires_at?: string;
 };
@@ -1608,6 +1608,52 @@ export type OrganizationInvitationSearchRequest = SearchRequest & {
      * Field to sort by.
      */
     sort_by?: 'created_at' | 'email' | 'expires_at';
+};
+
+/**
+ * Who sends the invitation email. `anchor`: Anchor sends it through the SMTP integration and the email template of the Product. `product`: the Product sends it and Anchor sends no email.
+ */
+export enum InvitationDelivery {
+    ANCHOR = 'anchor',
+    PRODUCT = 'product'
+}
+
+/**
+ * The invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 604800 seconds (7 days).
+ */
+export type InvitationSettingsResponse = {
+    invitation_delivery: InvitationDelivery;
+    /**
+     * The email template Anchor delivery sends. Null when none is chosen.
+     */
+    email_template_id: string | null;
+    /**
+     * The link of the invitation email, with a `{token}` placeholder. Null when none is set.
+     */
+    accept_url_template: string | null;
+    /**
+     * The lifetime of a new or resent invitation, in seconds, when the call gives no expiry.
+     */
+    default_expiry_seconds: number;
+};
+
+/**
+ * Request body for replacing the invitation settings of a Product. The call sets all four values: send the current value of each setting you keep.
+ */
+export type InvitationSettingsUpdateRequest = {
+    invitation_delivery: InvitationDelivery;
+    /**
+     * An email template of the Product. Absent or null clears it. The template variables are `accept_url`, `organization_name`, `role_name`, `invitee_email` and `expires_at`.
+     */
+    email_template_id?: string | null;
+    /**
+     * The link of the invitation email. It must contain the `{token}` placeholder, which Anchor replaces with the URL-encoded token. Absent or null clears it.
+     */
+    accept_url_template?: string | null;
+    /**
+     * The lifetime of a new or resent invitation, in seconds, from one hour to 90 days. A create call can still give an explicit expiry.
+     */
+    default_expiry_seconds: number;
 };
 
 /**
@@ -5963,6 +6009,10 @@ export type CreateOrganizationInvitationErrors = {
      * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
      */
     409: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type CreateOrganizationInvitationError = CreateOrganizationInvitationErrors[keyof CreateOrganizationInvitationErrors];
@@ -6217,6 +6267,10 @@ export type ResendOrganizationInvitationErrors = {
      * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
      */
     409: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type ResendOrganizationInvitationError = ResendOrganizationInvitationErrors[keyof ResendOrganizationInvitationErrors];
@@ -6309,6 +6363,90 @@ export type AcceptOrganizationInvitationResponses = {
 };
 
 export type AcceptOrganizationInvitationResponse = AcceptOrganizationInvitationResponses[keyof AcceptOrganizationInvitationResponses];
+
+export type GetInvitationSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/invitation-settings';
+};
+
+export type GetInvitationSettingsErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetInvitationSettingsError = GetInvitationSettingsErrors[keyof GetInvitationSettingsErrors];
+
+export type GetInvitationSettingsResponses = {
+    /**
+     * The invitation settings
+     */
+    200: InvitationSettingsResponse;
+};
+
+export type GetInvitationSettingsResponse = GetInvitationSettingsResponses[keyof GetInvitationSettingsResponses];
+
+export type UpdateInvitationSettingsData = {
+    body: InvitationSettingsUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/invitation-settings';
+};
+
+export type UpdateInvitationSettingsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateInvitationSettingsError = UpdateInvitationSettingsErrors[keyof UpdateInvitationSettingsErrors];
+
+export type UpdateInvitationSettingsResponses = {
+    /**
+     * The invitation settings after the change
+     */
+    200: InvitationSettingsResponse;
+};
+
+export type UpdateInvitationSettingsResponse = UpdateInvitationSettingsResponses[keyof UpdateInvitationSettingsResponses];
 
 export type ListEmailTemplatesData = {
     body?: never;

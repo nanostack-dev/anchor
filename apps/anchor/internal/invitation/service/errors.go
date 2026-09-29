@@ -1,6 +1,12 @@
 package service
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/fault"
+import (
+	"strings"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+
+	"anchor/internal/domain/organizationinvitation"
+)
 
 var (
 	errInvitationNotFound = fault.NotFound(
@@ -38,3 +44,48 @@ var (
 		"The expiry of an invitation must be in the future.",
 	)
 )
+
+var (
+	errEmailNotSent = fault.Internal(
+		"ORGANIZATION_INVITATION_EMAIL_SEND_FAILED",
+		"Anchor could not send the invitation email, so the call had no effect. Try again later.",
+	)
+
+	errSettingsTemplateNotFound = fault.BadRequest(
+		"ORGANIZATION_INVITATION_SETTINGS_EMAIL_TEMPLATE_NOT_FOUND",
+		"This product has no email template with that identifier.",
+	)
+
+	errAcceptURLTemplateWithoutToken = fault.BadRequest(
+		"ORGANIZATION_INVITATION_SETTINGS_ACCEPT_URL_TEMPLATE_WITHOUT_TOKEN",
+		"The accept URL template must contain the "+organizationinvitation.AcceptURLTokenPlaceholder+" placeholder.",
+	)
+)
+
+const (
+	invitationUnavailableCode = "ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE"
+	settingsUnavailableCode   = "ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE"
+)
+
+func unmetConditionMessage(condition string) string {
+	switch condition {
+	case organizationinvitation.ConditionSMTPIntegrationActive:
+		return "the SMTP integration of the product is not active"
+	case organizationinvitation.ConditionEmailTemplateSet:
+		return "no email template is chosen"
+	case organizationinvitation.ConditionAcceptURLTemplateSet:
+		return "no accept URL template is set"
+	}
+	return condition
+}
+
+func errAnchorDeliveryUnavailable(code string, unmetConditions []string) *fault.Error {
+	reasons := make([]string, 0, len(unmetConditions))
+	for _, condition := range unmetConditions {
+		reasons = append(reasons, unmetConditionMessage(condition))
+	}
+	return fault.Conflict(
+		code,
+		"Anchor delivery is unavailable: "+strings.Join(reasons, ", and ")+".",
+	).Metadata(map[string]any{"unmet_conditions": unmetConditions})
+}

@@ -999,6 +999,46 @@ export const zOrganizationInvitationSearchRequest = zSearchRequest.and(z.object(
 }));
 
 /**
+ * Who sends the invitation email. `anchor`: Anchor sends it through the SMTP integration and the email template of the Product. `product`: the Product sends it and Anchor sends no email.
+ */
+export const zInvitationDelivery = z.enum([
+    'anchor',
+    'product'
+]);
+
+/**
+ * The invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 604800 seconds (7 days).
+ */
+export const zInvitationSettingsResponse = z.object({
+    invitation_delivery: zInvitationDelivery,
+    email_template_id: z.union([
+        z.string(),
+        z.null()
+    ]),
+    accept_url_template: z.union([
+        z.string(),
+        z.null()
+    ]),
+    default_expiry_seconds: z.coerce.bigint()
+});
+
+/**
+ * Request body for replacing the invitation settings of a Product. The call sets all four values: send the current value of each setting you keep.
+ */
+export const zInvitationSettingsUpdateRequest = z.object({
+    invitation_delivery: zInvitationDelivery,
+    email_template_id: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    accept_url_template: z.optional(z.union([
+        z.string().max(2048),
+        z.null()
+    ])),
+    default_expiry_seconds: z.coerce.bigint().gte(BigInt(3600)).lte(BigInt(7776000))
+});
+
+/**
  * The type of integration provider.
  */
 export const zIntegrationProviderType = z.enum([
@@ -2860,6 +2900,32 @@ export const zAcceptOrganizationInvitationData = z.object({
  * Invitation accepted
  */
 export const zAcceptOrganizationInvitationResponse = zOrganizationInvitationResponse;
+
+export const zGetInvitationSettingsData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * The invitation settings
+ */
+export const zGetInvitationSettingsResponse = zInvitationSettingsResponse;
+
+export const zUpdateInvitationSettingsData = z.object({
+    body: zInvitationSettingsUpdateRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * The invitation settings after the change
+ */
+export const zUpdateInvitationSettingsResponse = zInvitationSettingsResponse;
 
 export const zListEmailTemplatesData = z.object({
     body: z.optional(z.never()),

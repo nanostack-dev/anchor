@@ -142,6 +142,10 @@ type EmailService interface {
 	TestSend(ctx context.Context, in email.TestSendInput) (email.SendRecord, error)
 
 	ListSends(ctx context.Context, in email.ListSendsInput) ([]email.SendRecord, error)
+
+	// IsMailerActive reports whether the product has an SMTP integration that
+	// Send would use: enabled and in the ACTIVE state.
+	IsMailerActive(ctx context.Context, tenantID, productID string) (bool, error)
 }
 
 type emailService struct {
@@ -198,7 +202,7 @@ func (s *emailService) resolveMailer(
 		return nil, nil, ErrEmailIntegrationNotConfigured
 	}
 	instance := found.ToPtr()
-	if instance.Status != domainintegration.StatusActive || !instance.IsEnabled {
+	if !isUsableMailer(*instance) {
 		return nil, nil, ErrEmailIntegrationInactive
 	}
 
@@ -211,6 +215,20 @@ func (s *emailService) resolveMailer(
 		return nil, instance, ErrEmailMailerCapabilityMissing
 	}
 	return mailer, instance, nil
+}
+
+func isUsableMailer(instance domainintegration.Instance) bool {
+	return instance.Status == domainintegration.StatusActive && instance.IsEnabled
+}
+
+func (s *emailService) IsMailerActive(ctx context.Context, tenantID, productID string) (bool, error) {
+	found, err := s.instanceRepo.FindByProductAndProvider(
+		ctx, tenantID, productID, string(domainintegration.ProviderTypeSMTP),
+	)
+	if err != nil {
+		return false, err
+	}
+	return found.Exists(isUsableMailer), nil
 }
 
 func (s *emailService) resolveTemplate(

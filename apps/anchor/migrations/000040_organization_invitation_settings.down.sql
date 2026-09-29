@@ -1,0 +1,1 @@
+DROP TABLE organization_invitation_settings;

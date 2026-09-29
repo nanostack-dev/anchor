@@ -189,6 +189,24 @@ func (e IntegrationProviderType) Valid() bool {
 	}
 }
 
+// Defines values for InvitationDelivery.
+const (
+	Anchor  InvitationDelivery = "anchor"
+	Product InvitationDelivery = "product"
+)
+
+// Valid indicates whether the value is a known member of the InvitationDelivery enum.
+func (e InvitationDelivery) Valid() bool {
+	switch e {
+	case Anchor:
+		return true
+	case Product:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseChangeType.
 const (
 	ADJUSTED       LicenseChangeType = "ADJUSTED"
@@ -1523,6 +1541,41 @@ type IntegrationWebhookResponse struct {
 	Status IntegrationEventStatus `json:"status"`
 }
 
+// InvitationDelivery Who sends the invitation email. `anchor`: Anchor sends it through the SMTP integration and the email template of the Product. `product`: the Product sends it and Anchor sends no email.
+type InvitationDelivery string
+
+// InvitationSettingsResponse The invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 604800 seconds (7 days).
+type InvitationSettingsResponse struct {
+	// AcceptUrlTemplate The link of the invitation email, with a `{token}` placeholder. Null when none is set.
+	AcceptUrlTemplate *string `json:"accept_url_template"`
+
+	// DefaultExpirySeconds The lifetime of a new or resent invitation, in seconds, when the call gives no expiry.
+	DefaultExpirySeconds int64 `json:"default_expiry_seconds"`
+
+	// EmailTemplateId The email template Anchor delivery sends. Null when none is chosen.
+	EmailTemplateId *string `json:"email_template_id"`
+
+	// InvitationDelivery Who sends the invitation email. `anchor`: Anchor sends it through the SMTP integration and the email template of the Product. `product`: the Product sends it and Anchor sends no email.
+	InvitationDelivery InvitationDelivery `json:"invitation_delivery"`
+}
+
+// InvitationSettingsUpdateRequest Request body for replacing the invitation settings of a Product. The call sets all four values: send the current value of each setting you keep.
+type InvitationSettingsUpdateRequest struct {
+	// AcceptUrlTemplate The link of the invitation email. It must contain the `{token}` placeholder, which Anchor replaces with the URL-encoded token. Absent or null clears it.
+	//
+	// Examples: https://app.example.com/invitations/accept?token={token}
+	AcceptUrlTemplate *string `json:"accept_url_template,omitempty"`
+
+	// DefaultExpirySeconds The lifetime of a new or resent invitation, in seconds, from one hour to 90 days. A create call can still give an explicit expiry.
+	DefaultExpirySeconds int64 `json:"default_expiry_seconds"`
+
+	// EmailTemplateId An email template of the Product. Absent or null clears it. The template variables are `accept_url`, `organization_name`, `role_name`, `invitee_email` and `expires_at`.
+	EmailTemplateId *string `json:"email_template_id,omitempty"`
+
+	// InvitationDelivery Who sends the invitation email. `anchor`: Anchor sends it through the SMTP integration and the email template of the Product. `product`: the Product sends it and Anchor sends no email.
+	InvitationDelivery InvitationDelivery `json:"invitation_delivery"`
+}
+
 // LicenseChangeType What happened to an organization's license. `INSTANTIATED` is a template being stamped onto the organization through the single-organization license route: `template_id` names it and `new_value` carries the whole set of values copied. `ADJUSTED` is one license field moved for this organization alone: `field` names it, and `old_value` and `new_value` are that field's values on either side of the change. `SET` is the organization's license set through the batch migrate route — moved from another template, or granted its first, whichever it held before the run: `template_id` names the template it now holds, `previous_template_id` the one it came from (absent for a first license), and `old_value` and `new_value` carry the whole set of values on either side (`old_value` absent to match). `TEMPLATE_SYNCED` is the license following its own template after that template's values were updated — an automatic propagation, not an operator's migrate: `template_id` names the template followed, and `old_value` and `new_value` carry the whole set of values on either side. Adjusted fields keep their values through it.
 type LicenseChangeType string
 
@@ -1932,7 +1985,7 @@ type OrganizationInvitationCreateRequest struct {
 	// Examples: alice@example.com
 	Email openapi_types.Email `json:"email"`
 
-	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
+	// ExpiresAt When the invitation expires. It must be in the future. Absent means the default expiry of the invitation settings from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
 	// RoleId The role the invited person receives on accept. It must be a role of the Product.
@@ -3925,6 +3978,9 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
+
+// UpdateInvitationSettingsJSONRequestBody defines body for UpdateInvitationSettings for application/json ContentType.
+type UpdateInvitationSettingsJSONRequestBody = InvitationSettingsUpdateRequest
 
 // AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
 type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest

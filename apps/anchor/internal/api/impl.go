@@ -30,6 +30,7 @@ type AnchorAPI struct {
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
+	InvitationSettingsService     invitationsvc.InvitationSettingsService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
 	LicenseSchemaService          licensesvc.LicenseSchemaService
@@ -61,6 +62,7 @@ type Params struct {
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
+	InvitationSettingsService     invitationsvc.InvitationSettingsService
 	IntegrationService            service.IntegrationService
 	EmailService                  emailsvc.EmailService
 	LicenseSchemaService          licensesvc.LicenseSchemaService
@@ -92,6 +94,7 @@ func NewAPI(params Params) *AnchorAPI {
 		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,
 		OrganizationInvitationService: params.OrganizationInvitationService,
+		InvitationSettingsService:     params.InvitationSettingsService,
 		IntegrationService:            params.IntegrationService,
 		EmailService:                  params.EmailService,
 		LicenseSchemaService:          params.LicenseSchemaService,

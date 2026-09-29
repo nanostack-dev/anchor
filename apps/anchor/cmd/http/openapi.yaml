@@ -49,7 +49,9 @@ tags:
   description: Manage members within an Organization. (Requires Product API Key)
 - name: OrganizationInvitation
   description: Invite email addresses to an Organization and accept the invitation. Anchor
-    returns the token to the Product and sends no email. (Requires Product API Key)
+    returns the token to the Product. Under Anchor delivery it also sends the invitation
+    email. (Requires Product API Key; the invitation settings require a Platform Bearer
+    token)
 - name: Integration
   description: Manage integration instances and process inbound webhooks for
     Products. (Admin + public webhook endpoint)
@@ -2538,7 +2540,7 @@ components:
           format: date-time
           description: >-
             When the invitation expires. It must be in the future. Absent means
-            7 days from now.
+            the default expiry of the invitation settings from now.
       required:
       - email
       - role_id
@@ -2613,6 +2615,78 @@ components:
             x-go-type: organizationinvitation.SortField
             x-go-type-import:
               path: anchor/internal/domain/organizationinvitation
+
+    InvitationDelivery:
+      type: string
+      enum: [anchor, product]
+      description: >-
+        Who sends the invitation email. `anchor`: Anchor sends it through the
+        SMTP integration and the email template of the Product. `product`: the
+        Product sends it and Anchor sends no email.
+      x-go-type: organizationinvitation.Delivery
+      x-go-type-import:
+        path: anchor/internal/domain/organizationinvitation
+    InvitationSettingsResponse:
+      type: object
+      description: >-
+        The invitation settings of a Product. A Product that never changed them
+        reads Product delivery, no email template, no accept URL template and a
+        default expiry of 604800 seconds (7 days).
+      properties:
+        invitation_delivery:
+          $ref: "#/components/schemas/InvitationDelivery"
+        email_template_id:
+          type: [string, "null"]
+          description: The email template Anchor delivery sends. Null when none is chosen.
+        accept_url_template:
+          type: [string, "null"]
+          description: >-
+            The link of the invitation email, with a `{token}` placeholder.
+            Null when none is set.
+        default_expiry_seconds:
+          type: integer
+          format: int64
+          description: >-
+            The lifetime of a new or resent invitation, in seconds, when the
+            call gives no expiry.
+      required:
+      - invitation_delivery
+      - email_template_id
+      - accept_url_template
+      - default_expiry_seconds
+    InvitationSettingsUpdateRequest:
+      type: object
+      description: >-
+        Request body for replacing the invitation settings of a Product. The
+        call sets all four values: send the current value of each setting you keep.
+      properties:
+        invitation_delivery:
+          $ref: "#/components/schemas/InvitationDelivery"
+        email_template_id:
+          type: [string, "null"]
+          description: >-
+            An email template of the Product. Absent or null clears it. The
+            template variables are `accept_url`, `organization_name`,
+            `role_name`, `invitee_email` and `expires_at`.
+        accept_url_template:
+          type: [string, "null"]
+          maxLength: 2048
+          description: >-
+            The link of the invitation email. It must contain the `{token}`
+            placeholder, which Anchor replaces with the URL-encoded token.
+            Absent or null clears it.
+          examples: ["https://app.example.com/invitations/accept?token={token}"]
+        default_expiry_seconds:
+          type: integer
+          format: int64
+          minimum: 3600
+          maximum: 7776000
+          description: >-
+            The lifetime of a new or resent invitation, in seconds, from one
+            hour to 90 days. A create call can still give an explicit expiry.
+      required:
+      - invitation_delivery
+      - default_expiry_seconds
 
     # Integration Schemas
     IntegrationProviderType:
@@ -6520,8 +6594,17 @@ paths:
         response carries the invitation token. It is the only response that
         ever carries the token, apart from resend. Anchor stores a hash of the
         token, so a lost token cannot be read back: resend the invitation to get
-        a new one. Anchor sends no email. The Product delivers the token.
-        The invitation expires 7 days from now unless `expires_at` is given.
+        a new one. The invitation expires at `expires_at` when given, else after
+        the default expiry of the invitation settings of the Product (7 days
+        until a Platform User changes it).
+        Under Product delivery Anchor sends no email and the Product delivers
+        the token. Under Anchor delivery Anchor sends one email to the
+        invitation address through the SMTP integration and the email template
+        of the invitation settings, as the last step of this call. A failed send
+        fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`,
+        logs the failure, and leaves no invitation. The call fails with a 409
+        `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings
+        choose Anchor delivery but a condition for it stopped holding.
         The create fails with a conflict when a pending invitation exists for the
         same email address in the organization, or when the email address belongs
         to a member of the organization. Email addresses compare without regard
@@ -6556,6 +6639,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/products/{product_id}/organizations/{organization_id}/invitations/search:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6696,11 +6781,18 @@ paths:
     post:
       summary: Resend Organization Invitation
       description: >-
-        Replaces the token of a pending invitation and sets its expiry to 7 days
-        from now. The response carries the new token. The old token stops
-        working. Anchor sends no email. Resend fails with a conflict on an
-        accepted invitation and on an expired invitation. For an expired
-        invitation, create a new one.
+        Replaces the token of a pending invitation and sets its expiry to the
+        default expiry of the invitation settings of the Product from now (7
+        days until a Platform User changes it). The response carries the new
+        token. The old token stops working. Under Product delivery Anchor sends
+        no email. Under Anchor delivery Anchor sends one email with the new
+        token to the invitation address, as the last step of this call. A failed
+        send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`,
+        logs the failure, and keeps the old token valid with its old expiry. The
+        call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE`
+        when the settings choose Anchor delivery but a condition for it stopped
+        holding. Resend fails with a conflict on an accepted invitation and on
+        an expired invitation. For an expired invitation, create a new one.
       operationId: resendOrganizationInvitation
       tags:
       - OrganizationInvitation
@@ -6725,6 +6817,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/products/{product_id}/invitations/lookup:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -6804,6 +6898,84 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/invitation-settings:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    get:
+      summary: Get Invitation Settings
+      description: >-
+        Returns the invitation settings of a Product. A Product that never
+        changed them reads Product delivery, no email template, no accept URL
+        template and a default expiry of 7 days. Requires a Platform Bearer
+        token. A Product API key cannot read the settings.
+      operationId: getInvitationSettings
+      tags:
+      - OrganizationInvitation
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: The invitation settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Invitation Settings
+      description: >-
+        Replaces the invitation settings of a Product. Requires a Platform
+        Bearer token. A Product API key cannot change the settings. The change
+        emits no Product event.
+
+        The accept URL template must contain the `{token}` placeholder. The
+        email template must be a template of the Product.
+
+        Anchor delivery can be chosen only when all three conditions hold: the
+        SMTP integration of the Product is active, an email template is chosen,
+        and an accept URL template is set. The call fails with a 409
+        `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise.
+        The error metadata `unmet_conditions` lists every false condition, from
+        `smtp_integration_active`, `email_template_set` and
+        `accept_url_template_set`.
+
+        Under Anchor delivery, create and resend render the email template with
+        these variables, all strings: `accept_url` (the accept URL template with
+        `{token}` replaced by the URL-encoded token), `organization_name`,
+        `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+      operationId: updateInvitationSettings
+      tags:
+      - OrganizationInvitation
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationSettingsUpdateRequest'
+      responses:
+        '200':
+          description: The invitation settings after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
   # ---------------------------------------------------------------------------

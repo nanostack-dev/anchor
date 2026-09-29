@@ -646,6 +646,37 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInvitationSettings Get Invitation Settings
+	//
+	// Returns the invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 7 days. Requires a Platform Bearer token. A Product API key cannot read the settings.
+	//
+	// Corresponds with GET /v1/products/{product_id}/invitation-settings (the `GetInvitationSettings` operationId).
+	GetInvitationSettings(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateInvitationSettingsWithBody Update Invitation Settings
+	//
+	// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+	// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+	// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+	// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+	UpdateInvitationSettingsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateInvitationSettings Update Invitation Settings
+	//
+	// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+	// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+	// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+	// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+	UpdateInvitationSettings(ctx context.Context, productId ProductIdParameter, body UpdateInvitationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AcceptOrganizationInvitationWithBody Accept Organization Invitation
 	//
 	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
@@ -1025,7 +1056,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationInvitationWithBody Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1034,7 +1065,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationInvitation Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1093,7 +1124,7 @@ type ClientInterface interface {
 
 	// ResendOrganizationInvitation Resend Organization Invitation
 	//
-	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Replaces the token of a pending invitation and sets its expiry to the default expiry of the invitation settings of the Product from now (7 days until a Platform User changes it). The response carries the new token. The old token stops working. Under Product delivery Anchor sends no email. Under Anchor delivery Anchor sends one email with the new token to the invitation address, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and keeps the old token valid with its old expiry. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
 	ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2793,6 +2824,67 @@ func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId Product
 	return c.Client.Do(req)
 }
 
+// GetInvitationSettings Get Invitation Settings
+//
+// Returns the invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 7 days. Requires a Platform Bearer token. A Product API key cannot read the settings.
+//
+// Corresponds with GET /v1/products/{product_id}/invitation-settings (the `GetInvitationSettings` operationId).
+func (c *Client) GetInvitationSettings(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInvitationSettingsRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateInvitationSettingsWithBody Update Invitation Settings
+//
+// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+func (c *Client) UpdateInvitationSettingsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateInvitationSettingsRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateInvitationSettings Update Invitation Settings
+//
+// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+func (c *Client) UpdateInvitationSettings(ctx context.Context, productId ProductIdParameter, body UpdateInvitationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateInvitationSettingsRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AcceptOrganizationInvitationWithBody Accept Organization Invitation
 //
 // Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
@@ -3572,7 +3664,7 @@ func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId Product
 
 // CreateOrganizationInvitationWithBody Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3591,7 +3683,7 @@ func (c *Client) CreateOrganizationInvitationWithBody(ctx context.Context, produ
 
 // CreateOrganizationInvitation Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3720,7 +3812,7 @@ func (c *Client) UpdateOrganizationInvitation(ctx context.Context, productId Pro
 
 // ResendOrganizationInvitation Resend Organization Invitation
 //
-// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Replaces the token of a pending invitation and sets its expiry to the default expiry of the invitation settings of the Product from now (7 days until a Platform User changes it). The response carries the new token. The old token stops working. Under Product delivery Anchor sends no email. Under Anchor delivery Anchor sends one email with the new token to the invitation address, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and keeps the old token valid with its old expiry. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
 func (c *Client) ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6716,6 +6808,87 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetInvitationSettingsRequest constructs an http.Request for the GetInvitationSettings method
+func NewGetInvitationSettingsRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/invitation-settings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateInvitationSettingsRequest calls the generic UpdateInvitationSettings builder with application/json body
+func NewUpdateInvitationSettingsRequest(server string, productId ProductIdParameter, body UpdateInvitationSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateInvitationSettingsRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewUpdateInvitationSettingsRequestWithBody constructs an http.Request for the UpdateInvitationSettings method, with any body, and a specified content type
+func NewUpdateInvitationSettingsRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/invitation-settings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10883,6 +11056,39 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
 
+	// GetInvitationSettingsWithResponse Get Invitation Settings
+	//
+	// Returns the invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 7 days. Requires a Platform Bearer token. A Product API key cannot read the settings.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/invitation-settings (the `GetInvitationSettings` operationId).
+	GetInvitationSettingsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetInvitationSettingsResponse, error)
+
+	// UpdateInvitationSettingsWithBodyWithResponse Update Invitation Settings
+	//
+	// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+	// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+	// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+	// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+	UpdateInvitationSettingsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateInvitationSettingsResponse, error)
+
+	// UpdateInvitationSettingsWithResponse Update Invitation Settings
+	//
+	// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+	// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+	// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+	// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+	UpdateInvitationSettingsWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateInvitationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateInvitationSettingsResponse, error)
+
 	// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
 	//
 	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
@@ -11282,7 +11488,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11291,7 +11497,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationInvitationWithResponse Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11354,7 +11560,7 @@ type ClientWithResponsesInterface interface {
 
 	// ResendOrganizationInvitationWithResponse Resend Organization Invitation
 	//
-	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Replaces the token of a pending invitation and sets its expiry to the default expiry of the invitation settings of the Product from now (7 days until a Platform User changes it). The response carries the new token. The old token stops working. Under Product delivery Anchor sends no email. Under Anchor delivery Anchor sends one email with the new token to the invitation address, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and keeps the old token valid with its old expiry. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14880,6 +15086,144 @@ func (r ListIntegrationAuditLogsResponse) ContentType() string {
 	return ""
 }
 
+type GetInvitationSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *InvitationSettingsResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetInvitationSettingsResponse) GetJSON200() *InvitationSettingsResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetInvitationSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetInvitationSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetInvitationSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetInvitationSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInvitationSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInvitationSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetInvitationSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateInvitationSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *InvitationSettingsResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON200() *InvitationSettingsResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateInvitationSettingsResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateInvitationSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateInvitationSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateInvitationSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateInvitationSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type AcceptOrganizationInvitationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16669,6 +17013,8 @@ type CreateOrganizationInvitationResponse struct {
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *Conflict
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalServerError
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -16699,6 +17045,11 @@ func (r CreateOrganizationInvitationResponse) GetJSON404() *NotFound {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r CreateOrganizationInvitationResponse) GetJSON409() *Conflict {
 	return r.JSON409
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON500() *InternalServerError {
+	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -17021,6 +17372,8 @@ type ResendOrganizationInvitationResponse struct {
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *Conflict
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalServerError
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -17051,6 +17404,11 @@ func (r ResendOrganizationInvitationResponse) GetJSON404() *NotFound {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ResendOrganizationInvitationResponse) GetJSON409() *Conflict {
 	return r.JSON409
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON500() *InternalServerError {
+	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -20669,6 +21027,57 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
+// GetInvitationSettingsWithResponse Get Invitation Settings
+//
+// Returns the invitation settings of a Product. A Product that never changed them reads Product delivery, no email template, no accept URL template and a default expiry of 7 days. Requires a Platform Bearer token. A Product API key cannot read the settings.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/invitation-settings (the `GetInvitationSettings` operationId).
+func (c *ClientWithResponses) GetInvitationSettingsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetInvitationSettingsResponse, error) {
+	rsp, err := c.GetInvitationSettings(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInvitationSettingsResponse(rsp)
+}
+
+// UpdateInvitationSettingsWithBodyWithResponse Update Invitation Settings
+//
+// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+func (c *ClientWithResponses) UpdateInvitationSettingsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateInvitationSettingsResponse, error) {
+	rsp, err := c.UpdateInvitationSettingsWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateInvitationSettingsResponse(rsp)
+}
+
+// UpdateInvitationSettingsWithResponse Update Invitation Settings
+//
+// Replaces the invitation settings of a Product. Requires a Platform Bearer token. A Product API key cannot change the settings. The change emits no Product event.
+// The accept URL template must contain the `{token}` placeholder. The email template must be a template of the Product.
+// Anchor delivery can be chosen only when all three conditions hold: the SMTP integration of the Product is active, an email template is chosen, and an accept URL template is set. The call fails with a 409 `ORGANIZATION_INVITATION_SETTINGS_ANCHOR_DELIVERY_UNAVAILABLE` otherwise. The error metadata `unmet_conditions` lists every false condition, from `smtp_integration_active`, `email_template_set` and `accept_url_template_set`.
+// Under Anchor delivery, create and resend render the email template with these variables, all strings: `accept_url` (the accept URL template with `{token}` replaced by the URL-encoded token), `organization_name`, `role_name`, `invitee_email` and `expires_at` (RFC 3339, UTC).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/invitation-settings (the `UpdateInvitationSettings` operationId).
+func (c *ClientWithResponses) UpdateInvitationSettingsWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateInvitationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateInvitationSettingsResponse, error) {
+	rsp, err := c.UpdateInvitationSettings(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateInvitationSettingsResponse(rsp)
+}
+
 // AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
 //
 // Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
@@ -21308,7 +21717,7 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 
 // CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21323,7 +21732,7 @@ func (c *ClientWithResponses) CreateOrganizationInvitationWithBodyWithResponse(c
 
 // CreateOrganizationInvitationWithResponse Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. The invitation expires at `expires_at` when given, else after the default expiry of the invitation settings of the Product (7 days until a Platform User changes it). Under Product delivery Anchor sends no email and the Product delivers the token. Under Anchor delivery Anchor sends one email to the invitation address through the SMTP integration and the email template of the invitation settings, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and leaves no invitation. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21428,7 +21837,7 @@ func (c *ClientWithResponses) UpdateOrganizationInvitationWithResponse(ctx conte
 
 // ResendOrganizationInvitationWithResponse Resend Organization Invitation
 //
-// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Replaces the token of a pending invitation and sets its expiry to the default expiry of the invitation settings of the Product from now (7 days until a Platform User changes it). The response carries the new token. The old token stops working. Under Product delivery Anchor sends no email. Under Anchor delivery Anchor sends one email with the new token to the invitation address, as the last step of this call. A failed send fails the call with a 500 `ORGANIZATION_INVITATION_EMAIL_SEND_FAILED`, logs the failure, and keeps the old token valid with its old expiry. The call fails with a 409 `ORGANIZATION_INVITATION_ANCHOR_DELIVERY_UNAVAILABLE` when the settings choose Anchor delivery but a condition for it stopped holding. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -24686,6 +25095,114 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 	return response, nil
 }
 
+// ParseGetInvitationSettingsResponse parses an HTTP response from a GetInvitationSettingsWithResponse call
+func ParseGetInvitationSettingsResponse(rsp *http.Response) (*GetInvitationSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInvitationSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InvitationSettingsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateInvitationSettingsResponse parses an HTTP response from a UpdateInvitationSettingsWithResponse call
+func ParseUpdateInvitationSettingsResponse(rsp *http.Response) (*UpdateInvitationSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateInvitationSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InvitationSettingsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseAcceptOrganizationInvitationResponse parses an HTTP response from a AcceptOrganizationInvitationWithResponse call
 func ParseAcceptOrganizationInvitationResponse(rsp *http.Response) (*AcceptOrganizationInvitationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -26153,6 +26670,13 @@ func ParseCreateOrganizationInvitationResponse(rsp *http.Response) (*CreateOrgan
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil
@@ -26432,6 +26956,13 @@ func ParseResendOrganizationInvitationResponse(rsp *http.Response) (*ResendOrgan
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 

@@ -2,15 +2,20 @@ package service
 
 import (
 	"context"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/domain/email"
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/organizationinvitation"
+	emailsvc "anchor/internal/email/service"
 	"anchor/internal/events"
 	"anchor/internal/invitation/repository"
 	anchorrepository "anchor/internal/repository"
@@ -19,8 +24,10 @@ import (
 )
 
 // OrganizationInvitationService manages the invitations of an Organization.
-// Anchor stores the invitation and its lifecycle and sends no email: the
-// Product delivers the token.
+// Anchor stores the invitation and its lifecycle. Under Product delivery the
+// Product delivers the token. Under Anchor delivery create and resend send the
+// invitation email as their last step, inside the transaction, so a failed
+// send undoes the call.
 type OrganizationInvitationService interface {
 	Create(ctx context.Context, input organizationinvitation.CreateInput) (organizationinvitation.Created, error)
 	Get(ctx context.Context, input organizationinvitation.GetInput) (organizationinvitation.Invitation, error)
@@ -36,9 +43,12 @@ type OrganizationInvitationService interface {
 
 type organizationInvitationService struct {
 	invitationRepo    repository.Repository
+	settingsRepo      repository.SettingsRepository
 	organizationRepo  anchorrepository.OrganizationRepository
 	productRoleRepo   anchorrepository.ProductRoleRepository
 	membershipService anchorservice.OrganizationMembershipService
+	emailService      emailsvc.EmailService
+	gate              anchorDeliveryGate
 	transactor        transactor.Transactor
 	events            events.Emitter
 	logger            zerolog.Logger
@@ -46,18 +56,23 @@ type organizationInvitationService struct {
 
 func NewOrganizationInvitationService(
 	invitationRepo repository.Repository,
+	settingsRepo repository.SettingsRepository,
 	organizationRepo anchorrepository.OrganizationRepository,
 	productRoleRepo anchorrepository.ProductRoleRepository,
 	membershipService anchorservice.OrganizationMembershipService,
+	emailService emailsvc.EmailService,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) OrganizationInvitationService {
 	return &organizationInvitationService{
 		invitationRepo:    invitationRepo,
+		settingsRepo:      settingsRepo,
 		organizationRepo:  organizationRepo,
 		productRoleRepo:   productRoleRepo,
 		membershipService: membershipService,
+		emailService:      emailService,
+		gate:              anchorDeliveryGate{emailService: emailService},
 		transactor:        tx,
 		events:            eventEmitter,
 		logger:            logger.With().Str("component", "organization_invitation_service").Logger(),
@@ -72,12 +87,8 @@ func (s *organizationInvitationService) Create(
 	}
 
 	now := time.Now()
-	expiresAt := organizationinvitation.DefaultExpiryFrom(now)
-	if input.ExpiresAt != nil {
-		if !input.ExpiresAt.After(now) {
-			return organizationinvitation.Created{}, errExpiryNotInFuture
-		}
-		expiresAt = *input.ExpiresAt
+	if input.ExpiresAt != nil && !input.ExpiresAt.After(now) {
+		return organizationinvitation.Created{}, errExpiryNotInFuture
 	}
 
 	token, tokenHash, err := s.newToken()
@@ -91,7 +102,6 @@ func (s *organizationInvitationService) Create(
 		Email:          input.Email,
 		RoleID:         input.RoleID,
 		TokenHash:      tokenHash,
-		ExpiresAt:      expiresAt,
 	}
 	invitation.GenerateID()
 
@@ -113,12 +123,27 @@ func (s *organizationInvitationService) Create(
 		); memberErr != nil {
 			return memberErr
 		}
+		settings, settingsErr := loadSettings(txCtx, s.settingsRepo, input.ProductID)
+		if settingsErr != nil {
+			return settingsErr
+		}
+		if deliveryErr := s.ensureDeliverable(txCtx, settings, input.OrganizationID); deliveryErr != nil {
+			return deliveryErr
+		}
+
+		invitation.ExpiresAt = settings.ExpiryFrom(now)
+		if input.ExpiresAt != nil {
+			invitation.ExpiresAt = *input.ExpiresAt
+		}
 		var createErr error
 		created, createErr = s.invitationRepo.Create(txCtx, invitation)
 		if createErr != nil {
 			return createErr
 		}
-		return s.emit(txCtx, events.OrganizationInvitationCreated, created)
+		if emitErr := s.emit(txCtx, events.OrganizationInvitationCreated, created); emitErr != nil {
+			return emitErr
+		}
+		return s.deliver(txCtx, settings, created, token)
 	})
 	if txErr != nil {
 		return organizationinvitation.Created{}, txErr
@@ -245,14 +270,25 @@ func (s *organizationInvitationService) Resend(
 			return statusErr
 		}
 
+		settings, settingsErr := loadSettings(txCtx, s.settingsRepo, input.ProductID)
+		if settingsErr != nil {
+			return settingsErr
+		}
+		if deliveryErr := s.ensureDeliverable(txCtx, settings, input.OrganizationID); deliveryErr != nil {
+			return deliveryErr
+		}
+
 		current.TokenHash = tokenHash
-		current.ExpiresAt = organizationinvitation.DefaultExpiryFrom(time.Now())
+		current.ExpiresAt = settings.ExpiryFrom(time.Now())
 		var replaceErr error
 		resent, replaceErr = s.invitationRepo.ReplaceToken(txCtx, current)
 		if replaceErr != nil {
 			return replaceErr
 		}
-		return s.emit(txCtx, events.OrganizationInvitationUpdated, resent)
+		if emitErr := s.emit(txCtx, events.OrganizationInvitationUpdated, resent); emitErr != nil {
+			return emitErr
+		}
+		return s.deliver(txCtx, settings, resent, token)
 	})
 	if txErr != nil {
 		return organizationinvitation.Created{}, txErr
@@ -346,6 +382,108 @@ func (s *organizationInvitationService) Accept(
 	}
 
 	return accepted, nil
+}
+
+// ensureDeliverable refuses the call when the settings choose Anchor delivery
+// and a condition for it stopped holding. It never falls back to Product
+// delivery: the Product would wait for an email nobody sends.
+func (s *organizationInvitationService) ensureDeliverable(
+	ctx context.Context, settings organizationinvitation.Settings, organizationID string,
+) error {
+	if settings.InvitationDelivery != organizationinvitation.DeliveryAnchor {
+		return nil
+	}
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return err
+	}
+	unmet, err := s.gate.unmetConditions(ctx, tenantID, settings)
+	if err != nil {
+		return err
+	}
+	if len(unmet) == 0 {
+		return nil
+	}
+	log.Ctx(ctx).Warn().
+		Str("product_id", settings.ProductID).
+		Str("organization_id", organizationID).
+		Strs("unmet_conditions", unmet).
+		Msg("anchor delivery is unavailable: invitation call refused")
+	return errAnchorDeliveryUnavailable(invitationUnavailableCode, unmet)
+}
+
+// deliver sends the invitation email under Anchor delivery. It runs as the last
+// step of the transaction: an error rolls back the invitation write.
+func (s *organizationInvitationService) deliver(
+	ctx context.Context,
+	settings organizationinvitation.Settings,
+	invitation organizationinvitation.Invitation,
+	token string,
+) error {
+	if settings.InvitationDelivery != organizationinvitation.DeliveryAnchor {
+		return nil
+	}
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return err
+	}
+	variables, err := s.templateVariables(ctx, settings, invitation, token)
+	if err != nil {
+		return err
+	}
+
+	_, sendErr := s.emailService.Send(ctx, email.SendInput{
+		TenantID:   tenantID,
+		ProductID:  invitation.ProductID,
+		TemplateID: settings.EmailTemplateID,
+		ToAddress:  invitation.Email,
+		Variables:  variables,
+	})
+	if sendErr == nil {
+		return nil
+	}
+	if log.IsContextError(sendErr) {
+		return sendErr
+	}
+	log.Ctx(ctx).Error().Err(sendErr).
+		Str("product_id", invitation.ProductID).
+		Str("organization_id", invitation.OrganizationID).
+		Str("invitation_id", invitation.ID).
+		Msg("failed to send the invitation email")
+	return errEmailNotSent.Wrap(sendErr)
+}
+
+func (s *organizationInvitationService) templateVariables(
+	ctx context.Context,
+	settings organizationinvitation.Settings,
+	invitation organizationinvitation.Invitation,
+	token string,
+) (map[string]any, error) {
+	foundOrganization, err := s.organizationRepo.FindByID(ctx, invitation.ProductID, invitation.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	if foundOrganization.IsAbsent() {
+		return nil, fault.ErrNotFound
+	}
+	foundRole, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, invitation.ProductID, invitation.RoleID)
+	if err != nil {
+		return nil, err
+	}
+	if foundRole.IsAbsent() {
+		return nil, anchorservice.NewBodyRoleNotFoundError(invitation.RoleID)
+	}
+
+	acceptURL := strings.ReplaceAll(
+		*settings.AcceptURLTemplate, organizationinvitation.AcceptURLTokenPlaceholder, url.QueryEscape(token),
+	)
+	return map[string]any{
+		organizationinvitation.TemplateVariableAcceptURL:        acceptURL,
+		organizationinvitation.TemplateVariableOrganizationName: foundOrganization.Value().Name,
+		organizationinvitation.TemplateVariableRoleName:         foundRole.Value().Name,
+		organizationinvitation.TemplateVariableInviteeEmail:     invitation.Email,
+		organizationinvitation.TemplateVariableExpiresAt:        invitation.ExpiresAt.UTC().Format(time.RFC3339),
+	}, nil
 }
 
 func (s *organizationInvitationService) newToken() (string, string, error) {
