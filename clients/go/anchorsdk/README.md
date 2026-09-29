@@ -151,7 +151,7 @@ user.
 
 ```go
 created, err := o.Invitations().Create("alice@example.com", roleID).Do(ctx)
-// created.Token is shown once. Anchor sends no email: deliver it yourself.
+// created.Token is shown once. Deliver it yourself, unless the Product chose Anchor delivery.
 pending, err := o.Invitations().Search().Statuses(nanoclient.Pending).Do(ctx)
 resent, err := o.Invitations().Resend(ctx, created.Id) // new token, old token dead
 

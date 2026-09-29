@@ -13,10 +13,13 @@ import (
 //
 //	created, err := c.Organization(orgID).Invitations().Create("alice@example.com", roleID).Do(ctx)
 //
-// Anchor stores the invitation and sends no email. The token in the response of
-// [InvitationCreateBuilder.Do] and [Invitations.Resend] is the only time the
-// caller sees it: deliver it to the invited person, who gives it back to the
-// Product, which calls [ProductInvitations.Accept].
+// Anchor stores the invitation. Under Product delivery, the default, it sends no
+// email: the token in the response of [InvitationCreateBuilder.Do] and
+// [Invitations.Resend] is the only time the caller sees it, so deliver it to the
+// invited person, who gives it back to the Product, which calls
+// [ProductInvitations.Accept]. Under Anchor delivery, chosen in the invitation
+// settings by a Platform User, Anchor also sends the email during those two
+// calls, and a failed send fails the call. The token is returned in both modes.
 type Invitations struct{ o *Org }
 
 // Invitations returns the invitation facade for this organization.
