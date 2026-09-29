@@ -16,6 +16,7 @@ import (
 	"anchor/internal/email"
 	"anchor/internal/events"
 	"anchor/internal/integration"
+	"anchor/internal/invitation"
 	"anchor/internal/license"
 	"anchor/internal/mapper"
 	"anchor/internal/middleware"
@@ -54,6 +55,7 @@ func startAnchor(target ...any) {
 		email.NewModule(),
 		events.NewModule(),
 		license.NewModule(),
+		invitation.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),
 		httpserver.NewHTTPServerModule(),

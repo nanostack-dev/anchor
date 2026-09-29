@@ -18,6 +18,7 @@ import (
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
 	orgapikey "anchor/internal/domain/organization/apikey"
+	"anchor/internal/domain/organizationinvitation"
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/platform"
 	"anchor/internal/domain/product"
@@ -316,6 +317,45 @@ type CreatedOrganizationAPIKeyResponse struct {
 	//
 	// Examples: anchor_org_apikey_5mNOP1234567890abcdefg
 	Value string `json:"value"`
+}
+
+// CreatedOrganizationInvitationResponse defines model for CreatedOrganizationInvitationResponse.
+type CreatedOrganizationInvitationResponse struct {
+	// AcceptedAt When the invitation was accepted. Absent until then.
+	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+
+	// Email The invited email address. It never changes.
+	//
+	// Examples: alice@example.com
+	Email openapi_types.Email `json:"email"`
+
+	// ExpiresAt When the invitation stops being acceptable.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Id Unique identifier of the invitation.
+	//
+	// Examples: oinv_2iABC...
+	Id Ksuid `json:"id"`
+
+	// OrganizationId The organization the invitation is for.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// RoleId The role the invited person receives on accept.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+
+	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+	Status OrganizationInvitationStatus `json:"status"`
+
+	// Token The invitation token. Shown once, on create and on resend. Anchor stores only a hash of it.
+	//
+	// Examples: anchor_inv_5mNOP1234567890abcdefg
+	Token     string    `json:"token"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CreatedProductAPIKeyResponse defines model for CreatedProductAPIKeyResponse.
@@ -1062,6 +1102,119 @@ type OrganizationFilter struct {
 
 // OrganizationInclude A related resource an organization read can ask for.
 type OrganizationInclude = organization.Include
+
+// OrganizationInvitationAcceptRequest Request body for accepting an invitation.
+type OrganizationInvitationAcceptRequest struct {
+	// ProductUserId The existing Product User of this Product who becomes a member of the organization.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductUserId Ksuid `json:"product_user_id"`
+
+	// Token The invitation token.
+	Token string `json:"token"`
+}
+
+// OrganizationInvitationCreateRequest Request body for inviting an email address to an organization.
+type OrganizationInvitationCreateRequest struct {
+	// Email The email address to invite.
+	//
+	// Examples: alice@example.com
+	Email openapi_types.Email `json:"email"`
+
+	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// RoleId The role the invited person receives on accept. It must be a role of the Product.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+}
+
+// OrganizationInvitationFilter Filter criteria for searching organization invitations.
+type OrganizationInvitationFilter struct {
+	// Statuses Keep only invitations with one of these statuses. An invitation whose expiry has passed while it was pending counts as `expired`.
+	Statuses *[]OrganizationInvitationStatus `json:"statuses,omitempty"`
+}
+
+// OrganizationInvitationListResponse defines model for OrganizationInvitationListResponse.
+type OrganizationInvitationListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                              `json:"count"`
+	Items []OrganizationInvitationResponse `json:"items"`
+
+	// Total Total number of matching items.
+	Total int64 `json:"total"`
+}
+
+// OrganizationInvitationLookupRequest Request body for finding an invitation by its token.
+type OrganizationInvitationLookupRequest struct {
+	// Token The invitation token.
+	Token string `json:"token"`
+}
+
+// OrganizationInvitationResponse An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+type OrganizationInvitationResponse struct {
+	// AcceptedAt When the invitation was accepted. Absent until then.
+	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+
+	// Email The invited email address. It never changes.
+	//
+	// Examples: alice@example.com
+	Email openapi_types.Email `json:"email"`
+
+	// ExpiresAt When the invitation stops being acceptable.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Id Unique identifier of the invitation.
+	//
+	// Examples: oinv_2iABC...
+	Id Ksuid `json:"id"`
+
+	// OrganizationId The organization the invitation is for.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// RoleId The role the invited person receives on accept.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+
+	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+	Status    OrganizationInvitationStatus `json:"status"`
+	UpdatedAt time.Time                    `json:"updated_at"`
+}
+
+// OrganizationInvitationSearchRequest defines model for OrganizationInvitationSearchRequest.
+type OrganizationInvitationSearchRequest struct {
+	// Filter Filter criteria for organization invitations.
+	Filter *OrganizationInvitationFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *organizationinvitation.SortField `json:"sort_by,omitempty"`
+
+	// SortDirection Sorting direction
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationInvitationStatus The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+type OrganizationInvitationStatus = organizationinvitation.Status
+
+// OrganizationInvitationUpdateRequest Request body for changing an invitation. Only the role and the expiry can change.
+type OrganizationInvitationUpdateRequest struct {
+	// ExpiresAt The new expiry. It must be in the future.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// RoleId The new role. It must be a role of the Product.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+}
 
 // OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
 type OrganizationLicenseAdjustRequest struct {
@@ -2683,6 +2836,11 @@ type OrganizationIdParameter = Ksuid
 // OrganizationIncludeParameter defines model for OrganizationIncludeParameter.
 type OrganizationIncludeParameter = []OrganizationInclude
 
+// OrganizationInvitationIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: oinv_2iABC...
+type OrganizationInvitationIdParameter = Ksuid
+
 // OrganizationMemberIncludeParameter defines model for OrganizationMemberIncludeParameter.
 type OrganizationMemberIncludeParameter = []OrganizationMemberInclude
 
@@ -2915,6 +3073,12 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
+// AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
+type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest
+
+// LookupOrganizationInvitationJSONRequestBody defines body for LookupOrganizationInvitation for application/json ContentType.
+type LookupOrganizationInvitationJSONRequestBody = OrganizationInvitationLookupRequest
+
 // MigrateOrganizationLicensesJSONRequestBody defines body for MigrateOrganizationLicenses for application/json ContentType.
 type MigrateOrganizationLicensesJSONRequestBody = OrganizationLicenseMigrationRequest
 
@@ -2953,6 +3117,15 @@ type ValidateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyValidateReque
 
 // UpdateOrganizationAPIKeyJSONRequestBody defines body for UpdateOrganizationAPIKey for application/json ContentType.
 type UpdateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyUpdateRequest
+
+// CreateOrganizationInvitationJSONRequestBody defines body for CreateOrganizationInvitation for application/json ContentType.
+type CreateOrganizationInvitationJSONRequestBody = OrganizationInvitationCreateRequest
+
+// SearchOrganizationInvitationsJSONRequestBody defines body for SearchOrganizationInvitations for application/json ContentType.
+type SearchOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearchRequest
+
+// UpdateOrganizationInvitationJSONRequestBody defines body for UpdateOrganizationInvitation for application/json ContentType.
+type UpdateOrganizationInvitationJSONRequestBody = OrganizationInvitationUpdateRequest
 
 // AdjustOrganizationLicenseJSONRequestBody defines body for AdjustOrganizationLicense for application/json ContentType.
 type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
@@ -3344,6 +3517,12 @@ type ServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	// (POST /v1/products/{product_id}/invitations/accept)
+	AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// LookupOrganizationInvitation Look Up Organization Invitation By Token
+	// (POST /v1/products/{product_id}/invitations/lookup)
+	LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
 	// (POST /v1/products/{product_id}/licensing/organization-licenses/migrate)
 	MigrateOrganizationLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3413,6 +3592,24 @@ type ServerInterface interface {
 	// UpdateOrganizationAPIKey Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter)
+	// CreateOrganizationInvitation Create Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations)
+	CreateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// SearchOrganizationInvitations Search Organization Invitations
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search)
+	SearchOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// DeleteOrganizationInvitation Delete Organization Invitation
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	DeleteOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
+	// GetOrganizationInvitation Get Organization Invitation
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	GetOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
+	// UpdateOrganizationInvitation Update Organization Invitation
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	UpdateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
+	// ResendOrganizationInvitation Resend Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
+	ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
 	// GetOrganizationLicense Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3794,6 +3991,18 @@ func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// AcceptOrganizationInvitation Accept Organization Invitation
+// (POST /v1/products/{product_id}/invitations/accept)
+func (_ Unimplemented) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// LookupOrganizationInvitation Look Up Organization Invitation By Token
+// (POST /v1/products/{product_id}/invitations/lookup)
+func (_ Unimplemented) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
 // (POST /v1/products/{product_id}/licensing/organization-licenses/migrate)
 func (_ Unimplemented) MigrateOrganizationLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
@@ -3929,6 +4138,42 @@ func (_ Unimplemented) GetOrganizationAPIKey(w http.ResponseWriter, r *http.Requ
 // UpdateOrganizationAPIKey Update Organization API Key
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 func (_ Unimplemented) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateOrganizationInvitation Create Organization Invitation
+// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations)
+func (_ Unimplemented) CreateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchOrganizationInvitations Search Organization Invitations
+// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search)
+func (_ Unimplemented) SearchOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteOrganizationInvitation Delete Organization Invitation
+// (DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+func (_ Unimplemented) DeleteOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationInvitation Get Organization Invitation
+// (GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+func (_ Unimplemented) GetOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateOrganizationInvitation Update Organization Invitation
+// (PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+func (_ Unimplemented) UpdateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ResendOrganizationInvitation Resend Organization Invitation
+// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
+func (_ Unimplemented) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5445,6 +5690,58 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
+// AcceptOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AcceptOrganizationInvitation(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LookupOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LookupOrganizationInvitation(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // MigrateOrganizationLicenses operation middleware
 func (siw *ServerInterfaceWrapper) MigrateOrganizationLicenses(w http.ResponseWriter, r *http.Request) {
 
@@ -6226,6 +6523,252 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationAPIKey(w http.ResponseWrite
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganizationAPIKey(w, r, productId, organizationId, apiKeyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) CreateOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateOrganizationInvitation(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchOrganizationInvitations operation middleware
+func (siw *ServerInterfaceWrapper) SearchOrganizationInvitations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchOrganizationInvitations(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) DeleteOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId OrganizationInvitationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", chi.URLParam(r, "invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "invitation_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteOrganizationInvitation(w, r, productId, organizationId, invitationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId OrganizationInvitationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", chi.URLParam(r, "invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "invitation_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationInvitation(w, r, productId, organizationId, invitationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId OrganizationInvitationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", chi.URLParam(r, "invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "invitation_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOrganizationInvitation(w, r, productId, organizationId, invitationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResendOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "invitation_id" -------------
+	var invitationId OrganizationInvitationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invitation_id", chi.URLParam(r, "invitation_id"), &invitationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "invitation_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResendOrganizationInvitation(w, r, productId, organizationId, invitationId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8025,6 +8568,30 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/members/search", wrapper.SearchOrganizationMembers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations", wrapper.CreateOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/search", wrapper.SearchOrganizationInvitations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}", wrapper.DeleteOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}", wrapper.GetOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}", wrapper.UpdateOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend", wrapper.ResendOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/invitations/lookup", wrapper.LookupOrganizationInvitation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/invitations/accept", wrapper.AcceptOrganizationInvitation)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/email/templates", wrapper.ListEmailTemplates)
@@ -11569,6 +12136,150 @@ func (response ListIntegrationAuditLogs404JSONResponse) VisitListIntegrationAudi
 	return err
 }
 
+type AcceptOrganizationInvitationRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *AcceptOrganizationInvitationJSONRequestBody
+}
+
+type AcceptOrganizationInvitationResponseObject interface {
+	VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type AcceptOrganizationInvitation200JSONResponse OrganizationInvitationResponse
+
+func (response AcceptOrganizationInvitation200JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AcceptOrganizationInvitation400JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AcceptOrganizationInvitation401JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AcceptOrganizationInvitation403JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
+
+func (response AcceptOrganizationInvitation409JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LookupOrganizationInvitationRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *LookupOrganizationInvitationJSONRequestBody
+}
+
+type LookupOrganizationInvitationResponseObject interface {
+	VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type LookupOrganizationInvitation200JSONResponse OrganizationInvitationResponse
+
+func (response LookupOrganizationInvitation200JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LookupOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response LookupOrganizationInvitation400JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LookupOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response LookupOrganizationInvitation401JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LookupOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response LookupOrganizationInvitation403JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type MigrateOrganizationLicensesRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *MigrateOrganizationLicensesJSONRequestBody
@@ -13546,6 +14257,523 @@ func (response UpdateOrganizationAPIKey404JSONResponse) VisitUpdateOrganizationA
 type UpdateOrganizationAPIKey409JSONResponse struct{ ConflictJSONResponse }
 
 func (response UpdateOrganizationAPIKey409JSONResponse) VisitUpdateOrganizationAPIKeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitationRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *CreateOrganizationInvitationJSONRequestBody
+}
+
+type CreateOrganizationInvitationResponseObject interface {
+	VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type CreateOrganizationInvitation201JSONResponse CreatedOrganizationInvitationResponse
+
+func (response CreateOrganizationInvitation201JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateOrganizationInvitation400JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateOrganizationInvitation401JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateOrganizationInvitation403JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateOrganizationInvitation404JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateOrganizationInvitation409JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationInvitationsRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *SearchOrganizationInvitationsJSONRequestBody
+}
+
+type SearchOrganizationInvitationsResponseObject interface {
+	VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error
+}
+
+type SearchOrganizationInvitations200JSONResponse OrganizationInvitationListResponse
+
+func (response SearchOrganizationInvitations200JSONResponse) VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationInvitations400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchOrganizationInvitations400JSONResponse) VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationInvitations401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchOrganizationInvitations401JSONResponse) VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationInvitations403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchOrganizationInvitations403JSONResponse) VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationInvitations404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchOrganizationInvitations404JSONResponse) VisitSearchOrganizationInvitationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteOrganizationInvitationRequestObject struct {
+	ProductId      ProductIdParameter                `json:"product_id"`
+	OrganizationId OrganizationIdParameter           `json:"organization_id"`
+	InvitationId   OrganizationInvitationIdParameter `json:"invitation_id"`
+}
+
+type DeleteOrganizationInvitationResponseObject interface {
+	VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type DeleteOrganizationInvitation204Response struct {
+}
+
+func (response DeleteOrganizationInvitation204Response) VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DeleteOrganizationInvitation400JSONResponse) VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteOrganizationInvitation401JSONResponse) VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteOrganizationInvitation403JSONResponse) VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteOrganizationInvitation404JSONResponse) VisitDeleteOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationInvitationRequestObject struct {
+	ProductId      ProductIdParameter                `json:"product_id"`
+	OrganizationId OrganizationIdParameter           `json:"organization_id"`
+	InvitationId   OrganizationInvitationIdParameter `json:"invitation_id"`
+}
+
+type GetOrganizationInvitationResponseObject interface {
+	VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationInvitation200JSONResponse OrganizationInvitationResponse
+
+func (response GetOrganizationInvitation200JSONResponse) VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetOrganizationInvitation400JSONResponse) VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetOrganizationInvitation401JSONResponse) VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetOrganizationInvitation403JSONResponse) VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetOrganizationInvitation404JSONResponse) VisitGetOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitationRequestObject struct {
+	ProductId      ProductIdParameter                `json:"product_id"`
+	OrganizationId OrganizationIdParameter           `json:"organization_id"`
+	InvitationId   OrganizationInvitationIdParameter `json:"invitation_id"`
+	Body           *UpdateOrganizationInvitationJSONRequestBody
+}
+
+type UpdateOrganizationInvitationResponseObject interface {
+	VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type UpdateOrganizationInvitation200JSONResponse OrganizationInvitationResponse
+
+func (response UpdateOrganizationInvitation200JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateOrganizationInvitation400JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateOrganizationInvitation401JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateOrganizationInvitation403JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateOrganizationInvitation404JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateOrganizationInvitation409JSONResponse) VisitUpdateOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitationRequestObject struct {
+	ProductId      ProductIdParameter                `json:"product_id"`
+	OrganizationId OrganizationIdParameter           `json:"organization_id"`
+	InvitationId   OrganizationInvitationIdParameter `json:"invitation_id"`
+}
+
+type ResendOrganizationInvitationResponseObject interface {
+	VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error
+}
+
+type ResendOrganizationInvitation200JSONResponse CreatedOrganizationInvitationResponse
+
+func (response ResendOrganizationInvitation200JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ResendOrganizationInvitation400JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ResendOrganizationInvitation401JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ResendOrganizationInvitation403JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ResendOrganizationInvitation404JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResendOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ResendOrganizationInvitation409JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -16783,6 +18011,12 @@ type StrictServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	// (POST /v1/products/{product_id}/invitations/accept)
+	AcceptOrganizationInvitation(ctx context.Context, request AcceptOrganizationInvitationRequestObject) (AcceptOrganizationInvitationResponseObject, error)
+	// LookupOrganizationInvitation Look Up Organization Invitation By Token
+	// (POST /v1/products/{product_id}/invitations/lookup)
+	LookupOrganizationInvitation(ctx context.Context, request LookupOrganizationInvitationRequestObject) (LookupOrganizationInvitationResponseObject, error)
 	// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
 	// (POST /v1/products/{product_id}/licensing/organization-licenses/migrate)
 	MigrateOrganizationLicenses(ctx context.Context, request MigrateOrganizationLicensesRequestObject) (MigrateOrganizationLicensesResponseObject, error)
@@ -16852,6 +18086,24 @@ type StrictServerInterface interface {
 	// UpdateOrganizationAPIKey Update Organization API Key
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id})
 	UpdateOrganizationAPIKey(ctx context.Context, request UpdateOrganizationAPIKeyRequestObject) (UpdateOrganizationAPIKeyResponseObject, error)
+	// CreateOrganizationInvitation Create Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations)
+	CreateOrganizationInvitation(ctx context.Context, request CreateOrganizationInvitationRequestObject) (CreateOrganizationInvitationResponseObject, error)
+	// SearchOrganizationInvitations Search Organization Invitations
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search)
+	SearchOrganizationInvitations(ctx context.Context, request SearchOrganizationInvitationsRequestObject) (SearchOrganizationInvitationsResponseObject, error)
+	// DeleteOrganizationInvitation Delete Organization Invitation
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	DeleteOrganizationInvitation(ctx context.Context, request DeleteOrganizationInvitationRequestObject) (DeleteOrganizationInvitationResponseObject, error)
+	// GetOrganizationInvitation Get Organization Invitation
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	GetOrganizationInvitation(ctx context.Context, request GetOrganizationInvitationRequestObject) (GetOrganizationInvitationResponseObject, error)
+	// UpdateOrganizationInvitation Update Organization Invitation
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
+	UpdateOrganizationInvitation(ctx context.Context, request UpdateOrganizationInvitationRequestObject) (UpdateOrganizationInvitationResponseObject, error)
+	// ResendOrganizationInvitation Resend Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
+	ResendOrganizationInvitation(ctx context.Context, request ResendOrganizationInvitationRequestObject) (ResendOrganizationInvitationResponseObject, error)
 	// GetOrganizationLicense Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(ctx context.Context, request GetOrganizationLicenseRequestObject) (GetOrganizationLicenseResponseObject, error)
@@ -18296,6 +19548,72 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 	}
 }
 
+// AcceptOrganizationInvitation operation middleware
+func (sh *strictHandler) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request AcceptOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+
+	var body AcceptOrganizationInvitationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AcceptOrganizationInvitation(ctx, request.(AcceptOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AcceptOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AcceptOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitAcceptOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// LookupOrganizationInvitation operation middleware
+func (sh *strictHandler) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request LookupOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+
+	var body LookupOrganizationInvitationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LookupOrganizationInvitation(ctx, request.(LookupOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LookupOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LookupOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitLookupOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // MigrateOrganizationLicenses operation middleware
 func (sh *strictHandler) MigrateOrganizationLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	var request MigrateOrganizationLicensesRequestObject
@@ -18997,6 +20315,193 @@ func (sh *strictHandler) UpdateOrganizationAPIKey(w http.ResponseWriter, r *http
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationAPIKeyResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateOrganizationInvitation operation middleware
+func (sh *strictHandler) CreateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request CreateOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body CreateOrganizationInvitationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateOrganizationInvitation(ctx, request.(CreateOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitCreateOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchOrganizationInvitations operation middleware
+func (sh *strictHandler) SearchOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SearchOrganizationInvitationsRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body SearchOrganizationInvitationsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchOrganizationInvitations(ctx, request.(SearchOrganizationInvitationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchOrganizationInvitations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchOrganizationInvitationsResponseObject); ok {
+		if err := validResponse.VisitSearchOrganizationInvitationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteOrganizationInvitation operation middleware
+func (sh *strictHandler) DeleteOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	var request DeleteOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.InvitationId = invitationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteOrganizationInvitation(ctx, request.(DeleteOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitDeleteOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationInvitation operation middleware
+func (sh *strictHandler) GetOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	var request GetOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.InvitationId = invitationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationInvitation(ctx, request.(GetOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateOrganizationInvitation operation middleware
+func (sh *strictHandler) UpdateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	var request UpdateOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.InvitationId = invitationId
+
+	var body UpdateOrganizationInvitationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateOrganizationInvitation(ctx, request.(UpdateOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitUpdateOrganizationInvitationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResendOrganizationInvitation operation middleware
+func (sh *strictHandler) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	var request ResendOrganizationInvitationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.InvitationId = invitationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResendOrganizationInvitation(ctx, request.(ResendOrganizationInvitationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResendOrganizationInvitation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResendOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitResendOrganizationInvitationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
