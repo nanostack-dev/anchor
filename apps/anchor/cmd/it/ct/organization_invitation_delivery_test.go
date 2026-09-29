@@ -15,7 +15,8 @@ import (
 )
 
 func TestCreateInvitation_UnderAnchorDeliverySendsOneEmailToTheInvitationAddress(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 	address := uniqueEmail()
@@ -26,11 +27,11 @@ func TestCreateInvitation_UnderAnchorDeliverySendsOneEmailToTheInvitationAddress
 	require.Len(t, sent, 1)
 	message := mp.MessageByID(t, sent[0].ID)
 	assert.Equal(t, created.Token, tokenInEmail(t, message))
-	assert.Len(t, mp.Messages(t), 1)
 }
 
 func TestCreateInvitation_UnderAnchorDeliveryStillReturnsTheToken(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 
@@ -41,7 +42,8 @@ func TestCreateInvitation_UnderAnchorDeliveryStillReturnsTheToken(t *testing.T) 
 }
 
 func TestCreateInvitation_UnderAnchorDeliveryFillsTheTemplateVariables(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 	address := uniqueEmail()
@@ -59,7 +61,8 @@ func TestCreateInvitation_UnderAnchorDeliveryFillsTheTemplateVariables(t *testin
 }
 
 func TestResendInvitation_UnderAnchorDeliverySendsOneEmailWithTheNewToken(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 	address := uniqueEmail()
@@ -80,7 +83,8 @@ func TestResendInvitation_UnderAnchorDeliverySendsOneEmailWithTheNewToken(t *tes
 }
 
 func TestCreateInvitation_UnderProductDeliverySendsNoEmail(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	templateID := d.readyForAnchorDelivery(mp)
 	d.settings.Update(settingsBody(ct.Product, &templateID, new(acceptURLTemplate), defaultExpiry))
@@ -93,7 +97,8 @@ func TestCreateInvitation_UnderProductDeliverySendsNoEmail(t *testing.T) {
 }
 
 func TestResendInvitation_UnderProductDeliverySendsNoEmail(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	templateID := d.readyForAnchorDelivery(mp)
 	d.settings.Update(settingsBody(ct.Product, &templateID, new(acceptURLTemplate), defaultExpiry))
@@ -107,6 +112,7 @@ func TestResendInvitation_UnderProductDeliverySendsNoEmail(t *testing.T) {
 }
 
 func TestCreateInvitation_UnderAnchorDeliveryWithAFailingSendReturnsAnErrorAndLeavesNoInvitation(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	d.seedUnreachableSMTP()
 	d.chooseAnchorDelivery(d.createTemplate(true))
@@ -125,6 +131,7 @@ func TestCreateInvitation_UnderAnchorDeliveryWithAFailingSendReturnsAnErrorAndLe
 }
 
 func TestCreateInvitation_UnderAnchorDeliveryLeavesRoomToInviteAgainAfterAFailingSend(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	d.seedUnreachableSMTP()
 	templateID := d.createTemplate(true)
@@ -139,6 +146,7 @@ func TestCreateInvitation_UnderAnchorDeliveryLeavesRoomToInviteAgainAfterAFailin
 }
 
 func TestResendInvitation_UnderAnchorDeliveryWithAFailingSendReturnsAnErrorAndKeepsTheOldToken(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	d.seedUnreachableSMTP()
 	templateID := d.createTemplate(true)
@@ -158,7 +166,8 @@ func TestResendInvitation_UnderAnchorDeliveryWithAFailingSendReturnsAnErrorAndKe
 }
 
 func TestCreateInvitation_UnderAnchorDeliveryFailsWhenTheTemplateHasNoPublishedVersion(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.seedMailpitSMTP(mp)
 	d.chooseAnchorDelivery(d.createTemplate(false))
@@ -173,7 +182,8 @@ func TestCreateInvitation_UnderAnchorDeliveryFailsWhenTheTemplateHasNoPublishedV
 }
 
 func TestCreateInvitation_RefusedWhenTheSMTPIntegrationStoppedBeingActive(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 	d.deactivateSMTP()
@@ -191,7 +201,8 @@ func TestCreateInvitation_RefusedWhenTheSMTPIntegrationStoppedBeingActive(t *tes
 }
 
 func TestCreateInvitation_RefusedWhenTheEmailTemplateWasDeleted(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.deleteTemplate(d.readyForAnchorDelivery(mp))
 
@@ -207,7 +218,8 @@ func TestCreateInvitation_RefusedWhenTheEmailTemplateWasDeleted(t *testing.T) {
 }
 
 func TestResendInvitation_RefusedWhenTheSMTPIntegrationStoppedBeingActive(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	d.readyForAnchorDelivery(mp)
 	address := uniqueEmail()
@@ -226,7 +238,8 @@ func TestResendInvitation_RefusedWhenTheSMTPIntegrationStoppedBeingActive(t *tes
 }
 
 func TestResendInvitation_RefusedWhenTheEmailTemplateWasDeleted(t *testing.T) {
-	mp := mailpit.Shared(t)
+	t.Parallel()
+	mp := mailpit.Inbox(t)
 	d := newDeliveryWorld(t)
 	templateID := d.readyForAnchorDelivery(mp)
 	created := d.invite(uniqueEmail())

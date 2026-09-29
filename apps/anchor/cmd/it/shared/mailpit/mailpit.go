@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -89,10 +90,20 @@ var (
 
 // Shared returns the process-wide mailpit container, starting it on first use,
 // and clears any messages left behind by an earlier test so the caller starts
-// from an empty inbox. Tests in a package run sequentially unless they opt into
-// t.Parallel, which no mailpit-backed test does — a parallel test would see
-// another test's reset.
+// from an empty inbox. The reset removes the messages of every other test, so a
+// test that calls Shared must not run in parallel. A parallel test calls Inbox
+// and finds its own messages by its unique recipient.
 func Shared(t *testing.T) *Mailpit {
+	t.Helper()
+	mp := Inbox(t)
+	mp.Reset(t)
+	return mp
+}
+
+// Inbox returns the process-wide mailpit container, starting it on first use,
+// without clearing the messages. Parallel tests use it and read only the
+// messages sent to an address that no other test uses (see MessagesTo).
+func Inbox(t *testing.T) *Mailpit {
 	t.Helper()
 
 	sharedOnce.Do(func() {
@@ -112,8 +123,6 @@ func Shared(t *testing.T) *Mailpit {
 	if current.mp == nil {
 		t.Fatal("mailpit: shared container already stopped")
 	}
-
-	current.mp.Reset(t)
 	return current.mp
 }
 
@@ -346,6 +355,42 @@ func (m *Mailpit) Messages(t *testing.T) []MessageSummary {
 		t.Fatalf("mailpit: decode list response: %v", decodeErr)
 	}
 	return lr.Messages
+}
+
+// MessagesTo returns the messages sent to exactly one recipient address
+// (newest first). It asks mailpit to search, so the answer does not depend on
+// how many messages other tests left in the inbox.
+func (m *Mailpit) MessagesTo(t *testing.T, address string) []MessageSummary {
+	t.Helper()
+	query := url.Values{"query": {`to:"` + address + `"`}}
+	req, err := http.NewRequestWithContext(
+		context.Background(), http.MethodGet, m.APIBase+"/api/v1/search?"+query.Encode(), nil,
+	)
+	if err != nil {
+		t.Fatalf("mailpit: build search request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("mailpit: search messages: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("mailpit: search messages: status %d", resp.StatusCode)
+	}
+	var lr listResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&lr); decodeErr != nil {
+		t.Fatalf("mailpit: decode search response: %v", decodeErr)
+	}
+	var matching []MessageSummary
+	for _, message := range lr.Messages {
+		for _, recipient := range message.To {
+			if recipient.Address == address {
+				matching = append(matching, message)
+				break
+			}
+		}
+	}
+	return matching
 }
 
 // WaitForMessage polls mailpit until at least one message is available or

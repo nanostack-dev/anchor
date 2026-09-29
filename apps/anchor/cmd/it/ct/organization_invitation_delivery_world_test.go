@@ -85,6 +85,15 @@ func (d *deliveryWorld) seedSMTP(host string, port int) {
 	created, err := IntegrationRepo.Create(context.Background(), instance)
 	require.NoError(d.t, err)
 	d.integrationID = created.ID
+	d.t.Cleanup(d.deleteSMTP)
+}
+
+func (d *deliveryWorld) deleteSMTP() {
+	resp, err := d.product.OwnerAuthenticatedClient().DeleteIntegrationInstanceWithResponse(
+		context.Background(), d.product.ProductID, d.integrationID,
+	)
+	require.NoError(d.t, err)
+	require.Less(d.t, resp.StatusCode(), http.StatusMultipleChoices, string(resp.Body))
 }
 
 func (d *deliveryWorld) seedMailpitSMTP(mp *mailpit.Mailpit) {
@@ -198,15 +207,7 @@ func tokenInEmail(t *testing.T, message mailpit.MessageBody) string {
 
 func emailsTo(t *testing.T, mp *mailpit.Mailpit, address string) []mailpit.MessageSummary {
 	t.Helper()
-	var matching []mailpit.MessageSummary
-	for _, message := range mp.Messages(t) {
-		for _, recipient := range message.To {
-			if recipient.Address == address {
-				matching = append(matching, message)
-			}
-		}
-	}
-	return matching
+	return mp.MessagesTo(t, address)
 }
 
 func awaitEmailsTo(t *testing.T, mp *mailpit.Mailpit, address string, count int) []mailpit.MessageSummary {

@@ -20,6 +20,7 @@ const (
 )
 
 func TestInvitationSettings_ANewProductReadsTheDefaults(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	settings := w.product.InvitationSettings().Get()
@@ -31,6 +32,7 @@ func TestInvitationSettings_ANewProductReadsTheDefaults(t *testing.T) {
 }
 
 func TestInvitationSettings_APlatformUserChangesTheDefaultExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	client := w.product.InvitationSettings()
 
@@ -41,6 +43,7 @@ func TestInvitationSettings_APlatformUserChangesTheDefaultExpiry(t *testing.T) {
 }
 
 func TestInvitationSettings_APlatformUserChangesTheAcceptURLTemplate(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	client := w.product.InvitationSettings()
 	template := "https://other.example.com/join/{token}/now"
@@ -54,6 +57,7 @@ func TestInvitationSettings_APlatformUserChangesTheAcceptURLTemplate(t *testing.
 }
 
 func TestInvitationSettings_APlatformUserChangesTheEmailTemplate(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	templateID := d.createTemplate(false)
 
@@ -66,8 +70,9 @@ func TestInvitationSettings_APlatformUserChangesTheEmailTemplate(t *testing.T) {
 }
 
 func TestInvitationSettings_APlatformUserChangesTheInvitationDelivery(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
-	mp := mailpit.Shared(t)
+	mp := mailpit.Inbox(t)
 
 	d.readyForAnchorDelivery(mp)
 	assert.Equal(t, ct.Anchor, d.settings.Get().InvitationDelivery)
@@ -81,6 +86,7 @@ func TestInvitationSettings_APlatformUserChangesTheInvitationDelivery(t *testing
 }
 
 func TestInvitationSettings_AnAbsentEmailTemplateAndAcceptURLTemplateClearThem(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	templateID := d.createTemplate(false)
 	d.settings.Update(settingsBody(ct.Product, &templateID, new(acceptURLTemplate), defaultExpiry))
@@ -95,8 +101,10 @@ func TestInvitationSettings_AnAbsentEmailTemplateAndAcceptURLTemplateClearThem(t
 }
 
 func TestInvitationSettings_RefuseAnAcceptURLTemplateWithoutTheTokenPlaceholder(t *testing.T) {
+	t.Parallel()
 	for _, delivery := range []ct.InvitationDelivery{ct.Product, ct.Anchor} {
 		t.Run(string(delivery), func(t *testing.T) {
+			t.Parallel()
 			w := newWorld(t)
 
 			resp := w.product.InvitationSettings().UpdateRaw(
@@ -110,6 +118,7 @@ func TestInvitationSettings_RefuseAnAcceptURLTemplateWithoutTheTokenPlaceholder(
 }
 
 func TestInvitationSettings_RefuseAnAcceptURLTemplateLongerThan2048Characters(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	template := "https://app.example.com/" + strings.Repeat("a", 2048) + "?token={token}"
 
@@ -119,6 +128,7 @@ func TestInvitationSettings_RefuseAnAcceptURLTemplateLongerThan2048Characters(t 
 }
 
 func TestInvitationSettings_RefuseAnEmailTemplateThatDoesNotExist(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRaw(
@@ -130,6 +140,7 @@ func TestInvitationSettings_RefuseAnEmailTemplateThatDoesNotExist(t *testing.T) 
 }
 
 func TestInvitationSettings_RefuseTheEmailTemplateOfAnotherProduct(t *testing.T) {
+	t.Parallel()
 	other := newDeliveryWorld(t)
 	foreignTemplateID := other.createTemplate(true)
 	w := newWorld(t)
@@ -141,6 +152,7 @@ func TestInvitationSettings_RefuseTheEmailTemplateOfAnotherProduct(t *testing.T)
 }
 
 func TestInvitationSettings_RefuseADefaultExpiryBelowOneHour(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRaw(settingsBody(ct.Product, nil, nil, time.Hour-time.Second))
@@ -149,6 +161,7 @@ func TestInvitationSettings_RefuseADefaultExpiryBelowOneHour(t *testing.T) {
 }
 
 func TestInvitationSettings_RefuseADefaultExpiryAboveNinetyDays(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRaw(settingsBody(ct.Product, nil, nil, 90*24*time.Hour+time.Second))
@@ -157,6 +170,7 @@ func TestInvitationSettings_RefuseADefaultExpiryAboveNinetyDays(t *testing.T) {
 }
 
 func TestInvitationSettings_AcceptTheBoundsOfTheDefaultExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	client := w.product.InvitationSettings()
 
@@ -168,6 +182,7 @@ func TestInvitationSettings_AcceptTheBoundsOfTheDefaultExpiry(t *testing.T) {
 }
 
 func TestInvitationSettings_RefuseAnUnknownInvitationDelivery(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRawBody(
@@ -178,6 +193,7 @@ func TestInvitationSettings_RefuseAnUnknownInvitationDelivery(t *testing.T) {
 }
 
 func TestInvitationSettings_RefuseAMissingDefaultExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRawBody(`{"invitation_delivery":"product"}`)
@@ -186,6 +202,7 @@ func TestInvitationSettings_RefuseAMissingDefaultExpiry(t *testing.T) {
 }
 
 func TestInvitationSettings_ARefusedChangeKeepsTheStoredSettings(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	client := w.product.InvitationSettings()
 	client.Update(settingsBody(ct.Product, nil, new(acceptURLTemplate), 48*time.Hour))
@@ -200,6 +217,7 @@ func TestInvitationSettings_ARefusedChangeKeepsTheStoredSettings(t *testing.T) {
 }
 
 func TestInvitationSettings_RefuseAnchorDeliveryWhenTheSMTPIntegrationIsNotActive(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
 	templateID := d.createTemplate(true)
 
@@ -213,8 +231,9 @@ func TestInvitationSettings_RefuseAnchorDeliveryWhenTheSMTPIntegrationIsNotActiv
 }
 
 func TestInvitationSettings_RefuseAnchorDeliveryWhenTheSMTPIntegrationIsDisabled(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
-	d.seedMailpitSMTP(mailpit.Shared(t))
+	d.seedMailpitSMTP(mailpit.Inbox(t))
 	d.deactivateSMTP()
 	templateID := d.createTemplate(true)
 
@@ -225,8 +244,9 @@ func TestInvitationSettings_RefuseAnchorDeliveryWhenTheSMTPIntegrationIsDisabled
 }
 
 func TestInvitationSettings_RefuseAnchorDeliveryWhenNoEmailTemplateIsChosen(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
-	d.seedMailpitSMTP(mailpit.Shared(t))
+	d.seedMailpitSMTP(mailpit.Inbox(t))
 
 	resp := d.settings.UpdateRaw(settingsBody(ct.Anchor, nil, new(acceptURLTemplate), defaultExpiry))
 
@@ -237,8 +257,9 @@ func TestInvitationSettings_RefuseAnchorDeliveryWhenNoEmailTemplateIsChosen(t *t
 }
 
 func TestInvitationSettings_RefuseAnchorDeliveryWhenNoAcceptURLTemplateIsSet(t *testing.T) {
+	t.Parallel()
 	d := newDeliveryWorld(t)
-	d.seedMailpitSMTP(mailpit.Shared(t))
+	d.seedMailpitSMTP(mailpit.Inbox(t))
 	templateID := d.createTemplate(true)
 
 	resp := d.settings.UpdateRaw(settingsBody(ct.Anchor, &templateID, nil, defaultExpiry))
@@ -250,6 +271,7 @@ func TestInvitationSettings_RefuseAnchorDeliveryWhenNoAcceptURLTemplateIsSet(t *
 }
 
 func TestInvitationSettings_TheAnchorDeliveryRefusalNamesEveryFalseCondition(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().UpdateRaw(settingsBody(ct.Anchor, nil, nil, defaultExpiry))
@@ -263,6 +285,7 @@ func TestInvitationSettings_TheAnchorDeliveryRefusalNamesEveryFalseCondition(t *
 }
 
 func TestInvitationSettings_AChangeEmitsNoProductEvent(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	sink := w.product.CaptureEvents()
 	before := w.invite(uniqueEmail())
@@ -277,6 +300,7 @@ func TestInvitationSettings_AChangeEmitsNoProductEvent(t *testing.T) {
 }
 
 func TestInvitationSettings_AProductAPIKeyCannotChangeThem(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	keyClient := w.product.InvitationSettings().As(w.product.AllScopeAPIKeyClient())
 
@@ -287,6 +311,7 @@ func TestInvitationSettings_AProductAPIKeyCannotChangeThem(t *testing.T) {
 }
 
 func TestInvitationSettings_AProductAPIKeyCannotReadThem(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.product.InvitationSettings().As(w.product.AllScopeAPIKeyClient()).GetRaw()
@@ -295,6 +320,7 @@ func TestInvitationSettings_AProductAPIKeyCannotReadThem(t *testing.T) {
 }
 
 func TestInvitationSettings_BelongToOneProduct(t *testing.T) {
+	t.Parallel()
 	changed := newWorld(t)
 	untouched := newWorld(t)
 
@@ -306,6 +332,7 @@ func TestInvitationSettings_BelongToOneProduct(t *testing.T) {
 }
 
 func TestCreateInvitation_UsesTheDefaultExpiryOfTheSettings(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	w.product.InvitationSettings().Update(settingsBody(ct.Product, nil, nil, 48*time.Hour))
 
@@ -315,6 +342,7 @@ func TestCreateInvitation_UsesTheDefaultExpiryOfTheSettings(t *testing.T) {
 }
 
 func TestCreateInvitation_AnExplicitExpiryWinsOverTheDefaultExpiryOfTheSettings(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	w.product.InvitationSettings().Update(settingsBody(ct.Product, nil, nil, 48*time.Hour))
 	expiresAt := time.Now().Add(5 * 24 * time.Hour).UTC().Truncate(time.Second)
@@ -329,6 +357,7 @@ func TestCreateInvitation_AnExplicitExpiryWinsOverTheDefaultExpiryOfTheSettings(
 }
 
 func TestResendInvitation_UsesTheDefaultExpiryOfTheSettings(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.product.InvitationSettings().Update(settingsBody(ct.Product, nil, nil, 72*time.Hour))
