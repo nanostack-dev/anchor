@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	"anchor/cmd/it/shared/mailpit"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 
@@ -21,6 +22,7 @@ var (
 	ProductUserRepo  repository.ProductUserRepository
 	OrgMemberRepo    repository.OrganizationMembershipRepository
 	EventQueue       *queue.Client
+	IntegrationRepo  repository.IntegrationInstanceRepository
 )
 
 func TestMain(m *testing.M) {
@@ -37,7 +39,15 @@ func TestMain(m *testing.M) {
 			UserRepository:          &UserRepository,
 			PlatformUserRepository:  &PlatformUserRepo,
 			JWTHelper:               &TokenHelper,
-			ExtraPopulateTargets:    []any{&EventQueue},
+			ExtraPopulateTargets: []any{
+				&EventQueue,
+				&IntegrationRepo,
+				&reconcileQueue,
+				&testDB,
+				&adjustmentBackfill,
+				&templateSync,
+			},
+			AfterRun: mailpit.StopShared,
 		},
 	)
 }
