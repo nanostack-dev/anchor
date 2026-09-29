@@ -1481,6 +1481,136 @@ export enum OrganizationMemberInclude {
 }
 
 /**
+ * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+ */
+export enum OrganizationInvitationStatus {
+    PENDING = 'pending',
+    ACCEPTED = 'accepted',
+    EXPIRED = 'expired'
+}
+
+/**
+ * An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+ */
+export type OrganizationInvitationResponse = {
+    /**
+     * Unique identifier of the invitation.
+     */
+    id: Ksuid;
+    /**
+     * The organization the invitation is for.
+     */
+    organization_id: Ksuid;
+    /**
+     * The invited email address. It never changes.
+     */
+    email: string;
+    /**
+     * The role the invited person receives on accept.
+     */
+    role_id: Ksuid;
+    status: OrganizationInvitationStatus;
+    /**
+     * When the invitation stops being acceptable.
+     */
+    expires_at: string;
+    /**
+     * When the invitation was accepted. Absent until then.
+     */
+    accepted_at?: string;
+    created_at: string;
+    updated_at: string;
+};
+
+export type CreatedOrganizationInvitationResponse = OrganizationInvitationResponse & {
+    /**
+     * The invitation token. Shown once, on create and on resend. Anchor stores only a hash of it.
+     */
+    token: string;
+};
+
+export type OrganizationInvitationListResponse = PagedListResponse & {
+    items: Array<OrganizationInvitationResponse>;
+};
+
+/**
+ * Request body for inviting an email address to an organization.
+ */
+export type OrganizationInvitationCreateRequest = {
+    /**
+     * The email address to invite.
+     */
+    email: string;
+    /**
+     * The role the invited person receives on accept. It must be a role of the Product.
+     */
+    role_id: Ksuid;
+    /**
+     * When the invitation expires. It must be in the future. Absent means 7 days from now.
+     */
+    expires_at?: string;
+};
+
+/**
+ * Request body for changing an invitation. Only the role and the expiry can change.
+ */
+export type OrganizationInvitationUpdateRequest = {
+    /**
+     * The new role. It must be a role of the Product.
+     */
+    role_id: Ksuid;
+    /**
+     * The new expiry. It must be in the future.
+     */
+    expires_at: string;
+};
+
+/**
+ * Request body for finding an invitation by its token.
+ */
+export type OrganizationInvitationLookupRequest = {
+    /**
+     * The invitation token.
+     */
+    token: string;
+};
+
+/**
+ * Request body for accepting an invitation.
+ */
+export type OrganizationInvitationAcceptRequest = {
+    /**
+     * The invitation token.
+     */
+    token: string;
+    /**
+     * The existing Product User of this Product who becomes a member of the organization.
+     */
+    product_user_id: Ksuid;
+};
+
+/**
+ * Filter criteria for searching organization invitations.
+ */
+export type OrganizationInvitationFilter = {
+    /**
+     * Keep only invitations with one of these statuses. An invitation whose expiry has passed while it was pending counts as `expired`.
+     */
+    statuses?: Array<OrganizationInvitationStatus>;
+};
+
+export type OrganizationInvitationSearchRequest = SearchRequest & {
+    /**
+     * Filter criteria for organization invitations.
+     */
+    filter?: OrganizationInvitationFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'created_at' | 'email' | 'expires_at';
+};
+
+/**
  * The type of integration provider.
  */
 export enum IntegrationProviderType {
@@ -2457,6 +2587,11 @@ export type ProductIdParameter = Ksuid;
  * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export type OrganizationIncludeParameter = Array<OrganizationInclude>;
+
+/**
+ * The KSUID of the organization invitation.
+ */
+export type OrganizationInvitationIdParameter = Ksuid;
 
 /**
  * Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
@@ -5790,6 +5925,390 @@ export type SearchOrganizationMembersResponses = {
 };
 
 export type SearchOrganizationMembersResponse = SearchOrganizationMembersResponses[keyof SearchOrganizationMembersResponses];
+
+export type CreateOrganizationInvitationData = {
+    body: OrganizationInvitationCreateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations';
+};
+
+export type CreateOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type CreateOrganizationInvitationError = CreateOrganizationInvitationErrors[keyof CreateOrganizationInvitationErrors];
+
+export type CreateOrganizationInvitationResponses = {
+    /**
+     * Invitation created
+     */
+    201: CreatedOrganizationInvitationResponse;
+};
+
+export type CreateOrganizationInvitationResponse = CreateOrganizationInvitationResponses[keyof CreateOrganizationInvitationResponses];
+
+export type SearchOrganizationInvitationsData = {
+    body: OrganizationInvitationSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/search';
+};
+
+export type SearchOrganizationInvitationsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchOrganizationInvitationsError = SearchOrganizationInvitationsErrors[keyof SearchOrganizationInvitationsErrors];
+
+export type SearchOrganizationInvitationsResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationInvitationListResponse;
+};
+
+export type SearchOrganizationInvitationsResponse = SearchOrganizationInvitationsResponses[keyof SearchOrganizationInvitationsResponses];
+
+export type DeleteOrganizationInvitationData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the organization invitation.
+         */
+        invitation_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}';
+};
+
+export type DeleteOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type DeleteOrganizationInvitationError = DeleteOrganizationInvitationErrors[keyof DeleteOrganizationInvitationErrors];
+
+export type DeleteOrganizationInvitationResponses = {
+    /**
+     * Successfully deleted
+     */
+    204: void;
+};
+
+export type DeleteOrganizationInvitationResponse = DeleteOrganizationInvitationResponses[keyof DeleteOrganizationInvitationResponses];
+
+export type GetOrganizationInvitationData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the organization invitation.
+         */
+        invitation_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}';
+};
+
+export type GetOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetOrganizationInvitationError = GetOrganizationInvitationErrors[keyof GetOrganizationInvitationErrors];
+
+export type GetOrganizationInvitationResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationInvitationResponse;
+};
+
+export type GetOrganizationInvitationResponse = GetOrganizationInvitationResponses[keyof GetOrganizationInvitationResponses];
+
+export type UpdateOrganizationInvitationData = {
+    body: OrganizationInvitationUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the organization invitation.
+         */
+        invitation_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}';
+};
+
+export type UpdateOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateOrganizationInvitationError = UpdateOrganizationInvitationErrors[keyof UpdateOrganizationInvitationErrors];
+
+export type UpdateOrganizationInvitationResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationInvitationResponse;
+};
+
+export type UpdateOrganizationInvitationResponse = UpdateOrganizationInvitationResponses[keyof UpdateOrganizationInvitationResponses];
+
+export type ResendOrganizationInvitationData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the organization invitation.
+         */
+        invitation_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend';
+};
+
+export type ResendOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type ResendOrganizationInvitationError = ResendOrganizationInvitationErrors[keyof ResendOrganizationInvitationErrors];
+
+export type ResendOrganizationInvitationResponses = {
+    /**
+     * Invitation resent
+     */
+    200: CreatedOrganizationInvitationResponse;
+};
+
+export type ResendOrganizationInvitationResponse = ResendOrganizationInvitationResponses[keyof ResendOrganizationInvitationResponses];
+
+export type LookupOrganizationInvitationData = {
+    body: OrganizationInvitationLookupRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/invitations/lookup';
+};
+
+export type LookupOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+};
+
+export type LookupOrganizationInvitationError = LookupOrganizationInvitationErrors[keyof LookupOrganizationInvitationErrors];
+
+export type LookupOrganizationInvitationResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationInvitationResponse;
+};
+
+export type LookupOrganizationInvitationResponse = LookupOrganizationInvitationResponses[keyof LookupOrganizationInvitationResponses];
+
+export type AcceptOrganizationInvitationData = {
+    body: OrganizationInvitationAcceptRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/invitations/accept';
+};
+
+export type AcceptOrganizationInvitationErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type AcceptOrganizationInvitationError = AcceptOrganizationInvitationErrors[keyof AcceptOrganizationInvitationErrors];
+
+export type AcceptOrganizationInvitationResponses = {
+    /**
+     * Invitation accepted
+     */
+    200: OrganizationInvitationResponse;
+};
+
+export type AcceptOrganizationInvitationResponse = AcceptOrganizationInvitationResponses[keyof AcceptOrganizationInvitationResponses];
 
 export type ListEmailTemplatesData = {
     body?: never;

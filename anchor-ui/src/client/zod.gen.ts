@@ -919,6 +919,86 @@ export const zOrganizationMemberInclude = z.enum([
 ]);
 
 /**
+ * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+ */
+export const zOrganizationInvitationStatus = z.enum([
+    'pending',
+    'accepted',
+    'expired'
+]);
+
+/**
+ * An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+ */
+export const zOrganizationInvitationResponse = z.object({
+    id: zKsuid,
+    organization_id: zKsuid,
+    email: z.email(),
+    role_id: zKsuid,
+    status: zOrganizationInvitationStatus,
+    expires_at: z.iso.datetime(),
+    accepted_at: z.optional(z.iso.datetime()),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zCreatedOrganizationInvitationResponse = zOrganizationInvitationResponse.and(z.object({
+    token: z.string()
+}));
+
+export const zOrganizationInvitationListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zOrganizationInvitationResponse)
+}));
+
+/**
+ * Request body for inviting an email address to an organization.
+ */
+export const zOrganizationInvitationCreateRequest = z.object({
+    email: z.email(),
+    role_id: zKsuid,
+    expires_at: z.optional(z.iso.datetime())
+});
+
+/**
+ * Request body for changing an invitation. Only the role and the expiry can change.
+ */
+export const zOrganizationInvitationUpdateRequest = z.object({
+    role_id: zKsuid,
+    expires_at: z.iso.datetime()
+});
+
+/**
+ * Request body for finding an invitation by its token.
+ */
+export const zOrganizationInvitationLookupRequest = z.object({
+    token: z.string()
+});
+
+/**
+ * Request body for accepting an invitation.
+ */
+export const zOrganizationInvitationAcceptRequest = z.object({
+    token: z.string(),
+    product_user_id: zKsuid
+});
+
+/**
+ * Filter criteria for searching organization invitations.
+ */
+export const zOrganizationInvitationFilter = z.object({
+    statuses: z.optional(z.array(zOrganizationInvitationStatus))
+});
+
+export const zOrganizationInvitationSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zOrganizationInvitationFilter),
+    sort_by: z.optional(z.enum([
+        'created_at',
+        'email',
+        'expires_at'
+    ]))
+}));
+
+/**
  * The type of integration provider.
  */
 export const zIntegrationProviderType = z.enum([
@@ -1610,6 +1690,11 @@ export const zProductIdParameter = zKsuid;
  * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
+
+/**
+ * The KSUID of the organization invitation.
+ */
+export const zOrganizationInvitationIdParameter = zKsuid;
 
 /**
  * Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
@@ -2661,6 +2746,120 @@ export const zSearchOrganizationMembersData = z.object({
  * Success
  */
 export const zSearchOrganizationMembersResponse = zOrganizationMemberListResponse;
+
+export const zCreateOrganizationInvitationData = z.object({
+    body: zOrganizationInvitationCreateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Invitation created
+ */
+export const zCreateOrganizationInvitationResponse = zCreatedOrganizationInvitationResponse;
+
+export const zSearchOrganizationInvitationsData = z.object({
+    body: zOrganizationInvitationSearchRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchOrganizationInvitationsResponse = zOrganizationInvitationListResponse;
+
+export const zDeleteOrganizationInvitationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid,
+        invitation_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Successfully deleted
+ */
+export const zDeleteOrganizationInvitationResponse = z.void();
+
+export const zGetOrganizationInvitationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid,
+        invitation_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetOrganizationInvitationResponse = zOrganizationInvitationResponse;
+
+export const zUpdateOrganizationInvitationData = z.object({
+    body: zOrganizationInvitationUpdateRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid,
+        invitation_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zUpdateOrganizationInvitationResponse = zOrganizationInvitationResponse;
+
+export const zResendOrganizationInvitationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid,
+        invitation_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Invitation resent
+ */
+export const zResendOrganizationInvitationResponse = zCreatedOrganizationInvitationResponse;
+
+export const zLookupOrganizationInvitationData = z.object({
+    body: zOrganizationInvitationLookupRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zLookupOrganizationInvitationResponse = zOrganizationInvitationResponse;
+
+export const zAcceptOrganizationInvitationData = z.object({
+    body: zOrganizationInvitationAcceptRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Invitation accepted
+ */
+export const zAcceptOrganizationInvitationResponse = zOrganizationInvitationResponse;
 
 export const zListEmailTemplatesData = z.object({
     body: z.optional(z.never()),

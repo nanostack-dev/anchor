@@ -42,6 +42,12 @@
       "organization_api_key:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -154,6 +160,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_api_key:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:read"
     ]
   },
   "GET /v1/products/{product_id}/organizations/{organization_id}/license": {
@@ -296,6 +308,18 @@
   "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
     "\u003cpublic\u003e": []
   },
+  "POST /v1/products/{product_id}/invitations/accept": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:update"
+    ]
+  },
+  "POST /v1/products/{product_id}/invitations/lookup": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:read"
+    ]
+  },
   "POST /v1/products/{product_id}/licensing/organization-licenses/migrate": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -351,6 +375,24 @@
   "POST /v1/products/{product_id}/organizations/{organization_id}/api-keys/validate": {
     "productApiKeyAuth": [
       "organization_api_key:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/invitations": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:update"
     ]
   },
   "POST /v1/products/{product_id}/organizations/{organization_id}/license": {
@@ -476,6 +518,12 @@
   "PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id}": {
     "productApiKeyAuth": [
       "organization_api_key:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_invitation:update"
     ]
   },
   "PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id}": {

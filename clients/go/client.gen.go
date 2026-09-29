@@ -646,6 +646,42 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AcceptOrganizationInvitationWithBody Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupOrganizationInvitationWithBody Look Up Organization Invitation By Token
+	//
+	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+	LookupOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupOrganizationInvitation Look Up Organization Invitation By Token
+	//
+	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+	LookupOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// MigrateOrganizationLicensesWithBody Migrate Organization Licenses Onto A Template
 	//
 	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. An organization already on another tier is moved; an organization with no license yet is granted one on this tier, same as any other member of the selection. Each license takes the target template's values, and `template_id` and `instantiated_at` are stamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
@@ -986,6 +1022,81 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 	UpdateOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOrganizationInvitationWithBody Create Organization Invitation
+	//
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+	CreateOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOrganizationInvitation Create Organization Invitation
+	//
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+	CreateOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationInvitationsWithBody Search Organization Invitations
+	//
+	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+	SearchOrganizationInvitationsWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationInvitations Search Organization Invitations
+	//
+	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+	SearchOrganizationInvitations(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteOrganizationInvitation Delete Organization Invitation
+	//
+	// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
+	DeleteOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrganizationInvitation Get Organization Invitation
+	//
+	// Reads one invitation by its id. The response never carries the token.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
+	GetOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationInvitationWithBody Update Organization Invitation
+	//
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+	UpdateOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationInvitation Update Organization Invitation
+	//
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+	UpdateOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResendOrganizationInvitation Resend Organization Invitation
+	//
+	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
+	ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrganizationLicense Get Organization License
 	//
@@ -2682,6 +2793,82 @@ func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId Product
 	return c.Client.Do(req)
 }
 
+// AcceptOrganizationInvitationWithBody Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *Client) AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAcceptOrganizationInvitationRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AcceptOrganizationInvitation Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *Client) AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAcceptOrganizationInvitationRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupOrganizationInvitationWithBody Look Up Organization Invitation By Token
+//
+// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+func (c *Client) LookupOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupOrganizationInvitationRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupOrganizationInvitation Look Up Organization Invitation By Token
+//
+// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+func (c *Client) LookupOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupOrganizationInvitationRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // MigrateOrganizationLicensesWithBody Migrate Organization Licenses Onto A Template
 //
 // Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. An organization already on another tier is moved; an organization with no license yet is granted one on this tier, same as any other member of the selection. Each license takes the target template's values, and `template_id` and `instantiated_at` are stamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
@@ -3373,6 +3560,171 @@ func (c *Client) UpdateOrganizationAPIKeyWithBody(ctx context.Context, productId
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationAPIKeyRequest(c.Server, productId, organizationId, apiKeyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrganizationInvitationWithBody Create Organization Invitation
+//
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+func (c *Client) CreateOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrganizationInvitationRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrganizationInvitation Create Organization Invitation
+//
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+func (c *Client) CreateOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrganizationInvitationRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationInvitationsWithBody Search Organization Invitations
+//
+// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+func (c *Client) SearchOrganizationInvitationsWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationInvitationsRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationInvitations Search Organization Invitations
+//
+// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+func (c *Client) SearchOrganizationInvitations(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationInvitationsRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteOrganizationInvitation Delete Organization Invitation
+//
+// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
+func (c *Client) DeleteOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationInvitation Get Organization Invitation
+//
+// Reads one invitation by its id. The response never carries the token.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
+func (c *Client) GetOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationInvitationWithBody Update Organization Invitation
+//
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+func (c *Client) UpdateOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationInvitationRequestWithBody(c.Server, productId, organizationId, invitationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationInvitation Update Organization Invitation
+//
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+func (c *Client) UpdateOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResendOrganizationInvitation Resend Organization Invitation
+//
+// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
+func (c *Client) ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResendOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId)
 	if err != nil {
 		return nil, err
 	}
@@ -6368,6 +6720,100 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	return req, nil
 }
 
+// NewAcceptOrganizationInvitationRequest calls the generic AcceptOrganizationInvitation builder with application/json body
+func NewAcceptOrganizationInvitationRequest(server string, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAcceptOrganizationInvitationRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewAcceptOrganizationInvitationRequestWithBody constructs an http.Request for the AcceptOrganizationInvitation method, with any body, and a specified content type
+func NewAcceptOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/invitations/accept", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLookupOrganizationInvitationRequest calls the generic LookupOrganizationInvitation builder with application/json body
+func NewLookupOrganizationInvitationRequest(server string, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLookupOrganizationInvitationRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewLookupOrganizationInvitationRequestWithBody constructs an http.Request for the LookupOrganizationInvitation method, with any body, and a specified content type
+func NewLookupOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/invitations/lookup", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewMigrateOrganizationLicensesRequest calls the generic MigrateOrganizationLicenses builder with application/json body
 func NewMigrateOrganizationLicensesRequest(server string, productId ProductIdParameter, body MigrateOrganizationLicensesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -7508,6 +7954,319 @@ func NewUpdateOrganizationAPIKeyRequestWithBody(server string, productId Product
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateOrganizationInvitationRequest calls the generic CreateOrganizationInvitation builder with application/json body
+func NewCreateOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateOrganizationInvitationRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewCreateOrganizationInvitationRequestWithBody constructs an http.Request for the CreateOrganizationInvitation method, with any body, and a specified content type
+func NewCreateOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchOrganizationInvitationsRequest calls the generic SearchOrganizationInvitations builder with application/json body
+func NewSearchOrganizationInvitationsRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationInvitationsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchOrganizationInvitationsRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewSearchOrganizationInvitationsRequestWithBody constructs an http.Request for the SearchOrganizationInvitations method, with any body, and a specified content type
+func NewSearchOrganizationInvitationsRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteOrganizationInvitationRequest constructs an http.Request for the DeleteOrganizationInvitation method
+func NewDeleteOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "invitation_id", invitationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrganizationInvitationRequest constructs an http.Request for the GetOrganizationInvitation method
+func NewGetOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "invitation_id", invitationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrganizationInvitationRequest calls the generic UpdateOrganizationInvitation builder with application/json body
+func NewUpdateOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrganizationInvitationRequestWithBody(server, productId, organizationId, invitationId, "application/json", bodyReader)
+}
+
+// NewUpdateOrganizationInvitationRequestWithBody constructs an http.Request for the UpdateOrganizationInvitation method, with any body, and a specified content type
+func NewUpdateOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "invitation_id", invitationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewResendOrganizationInvitationRequest constructs an http.Request for the ResendOrganizationInvitation method
+func NewResendOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "invitation_id", invitationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s/resend", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -10124,6 +10883,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
 
+	// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
+
+	// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
+
+	// LookupOrganizationInvitationWithBodyWithResponse Look Up Organization Invitation By Token
+	//
+	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+	LookupOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error)
+
+	// LookupOrganizationInvitationWithResponse Look Up Organization Invitation By Token
+	//
+	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+	LookupOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error)
+
 	// MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
 	//
 	// Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. An organization already on another tier is moved; an organization with no license yet is granted one on this tier, same as any other member of the selection. Each license takes the target template's values, and `template_id` and `instantiated_at` are stamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
@@ -10484,6 +11279,87 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/api-keys/{api_key_id} (the `UpdateOrganizationAPIKey` operationId).
 	UpdateOrganizationAPIKeyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, apiKeyId OrganizationAPIKeyIdParameter, body UpdateOrganizationAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationAPIKeyResponse, error)
+
+	// CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
+	//
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+	CreateOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationInvitationResponse, error)
+
+	// CreateOrganizationInvitationWithResponse Create Organization Invitation
+	//
+	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+	CreateOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationInvitationResponse, error)
+
+	// SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
+	//
+	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+	SearchOrganizationInvitationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationInvitationsResponse, error)
+
+	// SearchOrganizationInvitationsWithResponse Search Organization Invitations
+	//
+	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+	SearchOrganizationInvitationsWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationInvitationsResponse, error)
+
+	// DeleteOrganizationInvitationWithResponse Delete Organization Invitation
+	//
+	// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
+	DeleteOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationInvitationResponse, error)
+
+	// GetOrganizationInvitationWithResponse Get Organization Invitation
+	//
+	// Reads one invitation by its id. The response never carries the token.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
+	GetOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationInvitationResponse, error)
+
+	// UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
+	//
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+	UpdateOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationInvitationResponse, error)
+
+	// UpdateOrganizationInvitationWithResponse Update Organization Invitation
+	//
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+	UpdateOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationInvitationResponse, error)
+
+	// ResendOrganizationInvitationWithResponse Resend Organization Invitation
+	//
+	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
+	ResendOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*ResendOrganizationInvitationResponse, error)
 
 	// GetOrganizationLicenseWithResponse Get Organization License
 	//
@@ -14004,6 +14880,137 @@ func (r ListIntegrationAuditLogsResponse) ContentType() string {
 	return ""
 }
 
+type AcceptOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AcceptOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AcceptOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AcceptOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AcceptOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r AcceptOrganizationInvitationResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AcceptOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AcceptOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AcceptOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AcceptOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LookupOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LookupOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LookupOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LookupOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r LookupOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r LookupOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LookupOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LookupOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LookupOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type MigrateOrganizationLicensesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15641,6 +16648,434 @@ func (r UpdateOrganizationAPIKeyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateOrganizationAPIKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CreatedOrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON201() *CreatedOrganizationInvitationResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateOrganizationInvitationResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchOrganizationInvitationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationInvitationListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchOrganizationInvitationsResponse) GetJSON200() *OrganizationInvitationListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchOrganizationInvitationsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchOrganizationInvitationsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchOrganizationInvitationsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchOrganizationInvitationsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchOrganizationInvitationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchOrganizationInvitationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchOrganizationInvitationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchOrganizationInvitationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOrganizationInvitationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrganizationInvitationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateOrganizationInvitationResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrganizationInvitationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ResendOrganizationInvitationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatedOrganizationInvitationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON200() *CreatedOrganizationInvitationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ResendOrganizationInvitationResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r ResendOrganizationInvitationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResendOrganizationInvitationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResendOrganizationInvitationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResendOrganizationInvitationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19234,6 +20669,66 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
+// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *ClientWithResponses) AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
+	rsp, err := c.AcceptOrganizationInvitationWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAcceptOrganizationInvitationResponse(rsp)
+}
+
+// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *ClientWithResponses) AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
+	rsp, err := c.AcceptOrganizationInvitation(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAcceptOrganizationInvitationResponse(rsp)
+}
+
+// LookupOrganizationInvitationWithBodyWithResponse Look Up Organization Invitation By Token
+//
+// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+func (c *ClientWithResponses) LookupOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error) {
+	rsp, err := c.LookupOrganizationInvitationWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupOrganizationInvitationResponse(rsp)
+}
+
+// LookupOrganizationInvitationWithResponse Look Up Organization Invitation By Token
+//
+// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
+func (c *ClientWithResponses) LookupOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error) {
+	rsp, err := c.LookupOrganizationInvitation(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupOrganizationInvitationResponse(rsp)
+}
+
 // MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
 //
 // Moves a set of organizations onto one license template, so retiring a tier or graduating a cohort is one call rather than a script. An organization already on another tier is moved; an organization with no license yet is granted one on this tier, same as any other member of the selection. Each license takes the target template's values, and `template_id` and `instantiated_at` are stamped — which is what separates this from adjusting every field by hand, since an adjustment deliberately cannot move provenance.
@@ -19809,6 +21304,141 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseUpdateOrganizationAPIKeyResponse(rsp)
+}
+
+// CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
+//
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+func (c *ClientWithResponses) CreateOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationInvitationResponse, error) {
+	rsp, err := c.CreateOrganizationInvitationWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrganizationInvitationResponse(rsp)
+}
+
+// CreateOrganizationInvitationWithResponse Create Organization Invitation
+//
+// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations (the `CreateOrganizationInvitation` operationId).
+func (c *ClientWithResponses) CreateOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationInvitationResponse, error) {
+	rsp, err := c.CreateOrganizationInvitation(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrganizationInvitationResponse(rsp)
+}
+
+// SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
+//
+// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+func (c *ClientWithResponses) SearchOrganizationInvitationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationInvitationsResponse, error) {
+	rsp, err := c.SearchOrganizationInvitationsWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationInvitationsResponse(rsp)
+}
+
+// SearchOrganizationInvitationsWithResponse Search Organization Invitations
+//
+// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search (the `SearchOrganizationInvitations` operationId).
+func (c *ClientWithResponses) SearchOrganizationInvitationsWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationInvitationsResponse, error) {
+	rsp, err := c.SearchOrganizationInvitations(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationInvitationsResponse(rsp)
+}
+
+// DeleteOrganizationInvitationWithResponse Delete Organization Invitation
+//
+// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
+func (c *ClientWithResponses) DeleteOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationInvitationResponse, error) {
+	rsp, err := c.DeleteOrganizationInvitation(ctx, productId, organizationId, invitationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOrganizationInvitationResponse(rsp)
+}
+
+// GetOrganizationInvitationWithResponse Get Organization Invitation
+//
+// Reads one invitation by its id. The response never carries the token.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
+func (c *ClientWithResponses) GetOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationInvitationResponse, error) {
+	rsp, err := c.GetOrganizationInvitation(ctx, productId, organizationId, invitationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationInvitationResponse(rsp)
+}
+
+// UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
+//
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+func (c *ClientWithResponses) UpdateOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationInvitationResponse, error) {
+	rsp, err := c.UpdateOrganizationInvitationWithBody(ctx, productId, organizationId, invitationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationInvitationResponse(rsp)
+}
+
+// UpdateOrganizationInvitationWithResponse Update Organization Invitation
+//
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
+func (c *ClientWithResponses) UpdateOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationInvitationResponse, error) {
+	rsp, err := c.UpdateOrganizationInvitation(ctx, productId, organizationId, invitationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationInvitationResponse(rsp)
+}
+
+// ResendOrganizationInvitationWithResponse Resend Organization Invitation
+//
+// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
+func (c *ClientWithResponses) ResendOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*ResendOrganizationInvitationResponse, error) {
+	rsp, err := c.ResendOrganizationInvitation(ctx, productId, organizationId, invitationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResendOrganizationInvitationResponse(rsp)
 }
 
 // GetOrganizationLicenseWithResponse Get Organization License
@@ -23056,6 +24686,107 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 	return response, nil
 }
 
+// ParseAcceptOrganizationInvitationResponse parses an HTTP response from a AcceptOrganizationInvitationWithResponse call
+func ParseAcceptOrganizationInvitationResponse(rsp *http.Response) (*AcceptOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AcceptOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationInvitationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLookupOrganizationInvitationResponse parses an HTTP response from a LookupOrganizationInvitationWithResponse call
+func ParseLookupOrganizationInvitationResponse(rsp *http.Response) (*LookupOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LookupOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationInvitationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseMigrateOrganizationLicensesResponse parses an HTTP response from a MigrateOrganizationLicensesWithResponse call
 func ParseMigrateOrganizationLicensesResponse(rsp *http.Response) (*MigrateOrganizationLicensesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -24321,6 +26052,347 @@ func ParseUpdateOrganizationAPIKeyResponse(rsp *http.Response) (*UpdateOrganizat
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest OrganizationAPIKeyResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateOrganizationInvitationResponse parses an HTTP response from a CreateOrganizationInvitationWithResponse call
+func ParseCreateOrganizationInvitationResponse(rsp *http.Response) (*CreateOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreatedOrganizationInvitationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchOrganizationInvitationsResponse parses an HTTP response from a SearchOrganizationInvitationsWithResponse call
+func ParseSearchOrganizationInvitationsResponse(rsp *http.Response) (*SearchOrganizationInvitationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchOrganizationInvitationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationInvitationListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteOrganizationInvitationResponse parses an HTTP response from a DeleteOrganizationInvitationWithResponse call
+func ParseDeleteOrganizationInvitationResponse(rsp *http.Response) (*DeleteOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationInvitationResponse parses an HTTP response from a GetOrganizationInvitationWithResponse call
+func ParseGetOrganizationInvitationResponse(rsp *http.Response) (*GetOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationInvitationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrganizationInvitationResponse parses an HTTP response from a UpdateOrganizationInvitationWithResponse call
+func ParseUpdateOrganizationInvitationResponse(rsp *http.Response) (*UpdateOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationInvitationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResendOrganizationInvitationResponse parses an HTTP response from a ResendOrganizationInvitationWithResponse call
+func ParseResendOrganizationInvitationResponse(rsp *http.Response) (*ResendOrganizationInvitationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResendOrganizationInvitationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatedOrganizationInvitationResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
