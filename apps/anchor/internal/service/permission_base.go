@@ -11,6 +11,7 @@ var domains = []string{
 	"organization",
 	"organization_api_key",
 	"organization_member",
+	"organization_invitation",
 	"workspace",
 	"resources_permissions",
 	"product_role",

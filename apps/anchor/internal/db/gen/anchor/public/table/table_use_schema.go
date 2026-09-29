@@ -21,6 +21,7 @@ func UseSchema(schema string) {
 	LicenseTemplates = LicenseTemplates.FromSchema(schema)
 	OrganizationAPIKeyPermissions = OrganizationAPIKeyPermissions.FromSchema(schema)
 	OrganizationAPIKeys = OrganizationAPIKeys.FromSchema(schema)
+	OrganizationInvitations = OrganizationInvitations.FromSchema(schema)
 	OrganizationLicenseChanges = OrganizationLicenseChanges.FromSchema(schema)
 	OrganizationLicenses = OrganizationLicenses.FromSchema(schema)
 	OrganizationMemberships = OrganizationMemberships.FromSchema(schema)
