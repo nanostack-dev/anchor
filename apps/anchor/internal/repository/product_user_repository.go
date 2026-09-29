@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -13,7 +14,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
-	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
@@ -22,13 +22,6 @@ import (
 )
 
 var _ ProductUserRepository = (*productUserRepositoryImpl)(nil)
-
-// productUserUpsertRow carries Postgres's own insert-or-update verdict: a row
-// written by ON CONFLICT DO UPDATE has a non-zero xmax, a fresh insert has 0.
-type productUserUpsertRow struct {
-	model.ProductUsers
-	Inserted bool `alias:"upsert.inserted"`
-}
 
 func productUsersUpdatableColumns() postgres.ColumnList {
 	return table.ProductUsers.AllColumns.Except(
@@ -212,35 +205,55 @@ func (r *productUserRepositoryImpl) DeleteByID(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
+var ErrProductUserExternalIDMissing = errors.New("product user upsert requires an external ID")
+
 func (r *productUserRepositoryImpl) UpsertByExternalID(
 	ctx context.Context,
 	entity user.ProductUser,
 ) (user.ProductUser, bool, error) {
+	if entity.ExternalID == nil {
+		return user.ProductUser{}, false, ErrProductUserExternalIDMissing
+	}
 	dbEntity := r.productUserMapper.ToEntity(entity)
 
-	stmt := table.ProductUsers.INSERT(
+	insertStmt := table.ProductUsers.INSERT(
 		productUsersUpdatableColumns(),
 	).MODEL(dbEntity).
 		ON_CONFLICT(table.ProductUsers.ProductID, table.ProductUsers.ExternalID).
 		WHERE(table.ProductUsers.ExternalID.IS_NOT_NULL()).
-		DO_UPDATE(
-			postgres.SET(
-				table.ProductUsers.Email.SET(table.ProductUsers.EXCLUDED.Email),
-				table.ProductUsers.Name.SET(table.ProductUsers.EXCLUDED.Name),
-				table.ProductUsers.Status.SET(table.ProductUsers.EXCLUDED.Status),
+		DO_NOTHING().
+		RETURNING(table.ProductUsers.AllColumns)
+
+	inserted, err := transactor.QueryOptionalMap(
+		ctx, r.db, insertStmt, r.productUserMapper.ToDomain,
+	)
+	if err != nil {
+		return user.ProductUser{}, false, err
+	}
+	if inserted.IsPresent() {
+		return inserted.Value(), true, nil
+	}
+
+	updateStmt := table.ProductUsers.UPDATE(
+		table.ProductUsers.Email,
+		table.ProductUsers.Name,
+		table.ProductUsers.Status,
+	).MODEL(dbEntity).
+		WHERE(
+			table.ProductUsers.ProductID.EQ(postgres.String(dbEntity.ProductID)).AND(
+				table.ProductUsers.ExternalID.EQ(postgres.String(*entity.ExternalID)),
 			),
 		).
-		RETURNING(
-			table.ProductUsers.AllColumns,
-			postgres.RawBool("xmax = 0").AS("upsert.inserted"),
-		)
+		RETURNING(table.ProductUsers.AllColumns)
 
-	row, err := transactor.Query[productUserUpsertRow](ctx, r.db, stmt).Value()
+	updated, err := transactor.QueryMap(
+		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
+	).Value()
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
 
-	return r.productUserMapper.ToDomain(row.ProductUsers), row.Inserted, nil
+	return updated, false, nil
 }
 
 func (r *productUserRepositoryImpl) DeleteByExternalID(
