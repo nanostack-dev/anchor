@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
@@ -21,6 +22,13 @@ import (
 )
 
 var _ ProductUserRepository = (*productUserRepositoryImpl)(nil)
+
+// productUserUpsertRow carries Postgres's own insert-or-update verdict: a row
+// written by ON CONFLICT DO UPDATE has a non-zero xmax, a fresh insert has 0.
+type productUserUpsertRow struct {
+	model.ProductUsers
+	Inserted bool `alias:"upsert.inserted"`
+}
 
 func productUsersUpdatableColumns() postgres.ColumnList {
 	return table.ProductUsers.AllColumns.Except(
@@ -222,21 +230,17 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 				table.ProductUsers.Status.SET(table.ProductUsers.EXCLUDED.Status),
 			),
 		).
-		RETURNING(table.ProductUsers.AllColumns)
+		RETURNING(
+			table.ProductUsers.AllColumns,
+			postgres.RawBool("xmax = 0").AS("upsert.inserted"),
+		)
 
-	result, err := transactor.QueryMap(
-		ctx, r.db, stmt, r.productUserMapper.ToDomain,
-	).Value()
+	row, err := transactor.Query[productUserUpsertRow](ctx, r.db, stmt).Value()
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
 
-	// created_at is excluded from DO UPDATE, so it stays unchanged on conflict.
-	// If the returned created_at matches the value we attempted to insert
-	// (within one second), the row was newly inserted; otherwise it was updated.
-	created := result.CreatedAt.Truncate(time.Second).Equal(entity.CreatedAt.Truncate(time.Second))
-
-	return result, created, nil
+	return r.productUserMapper.ToDomain(row.ProductUsers), row.Inserted, nil
 }
 
 func (r *productUserRepositoryImpl) DeleteByExternalID(
