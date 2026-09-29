@@ -34,6 +34,7 @@ func invitationFields(w world, invitationID string) map[string]string {
 }
 
 func TestCreateInvitation_EmitsTheCreatedEvent(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 
 	created := w.invite(uniqueEmail())
@@ -42,6 +43,7 @@ func TestCreateInvitation_EmitsTheCreatedEvent(t *testing.T) {
 }
 
 func TestInvitationEvents_CarryIdentifiersOnly(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 
@@ -55,6 +57,7 @@ func TestInvitationEvents_CarryIdentifiersOnly(t *testing.T) {
 }
 
 func TestUpdateInvitation_EmitsTheUpdatedEvent(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 
@@ -67,6 +70,7 @@ func TestUpdateInvitation_EmitsTheUpdatedEvent(t *testing.T) {
 }
 
 func TestResendInvitation_EmitsTheUpdatedEvent(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 
@@ -76,6 +80,7 @@ func TestResendInvitation_EmitsTheUpdatedEvent(t *testing.T) {
 }
 
 func TestDeleteInvitation_EmitsTheDeletedEvent(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 
@@ -85,6 +90,7 @@ func TestDeleteInvitation_EmitsTheDeletedEvent(t *testing.T) {
 }
 
 func TestAcceptInvitation_EmitsTheAcceptedEventAndTheMembershipCreatedEvent(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
@@ -100,6 +106,7 @@ func TestAcceptInvitation_EmitsTheAcceptedEventAndTheMembershipCreatedEvent(t *t
 }
 
 func TestAcceptInvitation_EmitsNoEventWhenTheAcceptIsRefused(t *testing.T) {
+	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 	sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))

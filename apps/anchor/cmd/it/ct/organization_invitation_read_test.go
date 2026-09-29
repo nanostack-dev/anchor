@@ -15,6 +15,7 @@ import (
 )
 
 func TestGetInvitation_ReturnsNoToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -30,6 +31,7 @@ func TestGetInvitation_ReturnsNoToken(t *testing.T) {
 }
 
 func TestGetInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	require.Equal(t, ct.Pending, w.invitations.Get(w.organizationID, created.Id).Status)
@@ -40,6 +42,7 @@ func TestGetInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
 }
 
 func TestGetInvitation_NeverStoresExpired(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -59,6 +62,7 @@ func TestGetInvitation_NeverStoresExpired(t *testing.T) {
 }
 
 func TestGetInvitation_RefusesUnknownInvitation(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.GetRaw(w.organizationID, ids.MustNew("oinv"))
@@ -68,6 +72,7 @@ func TestGetInvitation_RefusesUnknownInvitation(t *testing.T) {
 }
 
 func TestGetInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -77,6 +82,7 @@ func TestGetInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
 }
 
 func TestSearchInvitations_ListsOnlyTheInvitationsOfTheOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	mine := w.invite(uniqueEmail())
 	otherOrganization := w.newOrganization()
@@ -92,6 +98,7 @@ func TestSearchInvitations_ListsOnlyTheInvitationsOfTheOrganization(t *testing.T
 }
 
 func TestSearchInvitations_ReturnsNoToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
@@ -103,6 +110,7 @@ func TestSearchInvitations_ReturnsNoToken(t *testing.T) {
 }
 
 func TestSearchInvitations_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
@@ -114,6 +122,7 @@ func TestSearchInvitations_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
 }
 
 func TestSearchInvitations_FilterByPendingKeepsOnlyPendingAndDropsExpired(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	pending := w.invite(uniqueEmail())
 	expired := w.invite(uniqueEmail())
@@ -126,6 +135,7 @@ func TestSearchInvitations_FilterByPendingKeepsOnlyPendingAndDropsExpired(t *tes
 }
 
 func TestSearchInvitations_FilterByExpiredKeepsAPendingInvitationWhoseExpiryPassed(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	w.invite(uniqueEmail())
 	expired := w.invite(uniqueEmail())
@@ -139,6 +149,7 @@ func TestSearchInvitations_FilterByExpiredKeepsAPendingInvitationWhoseExpiryPass
 }
 
 func TestSearchInvitations_FilterByAcceptedKeepsOnlyAccepted(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	w.invite(uniqueEmail())
 	accepting := w.invite(uniqueEmail())
@@ -152,6 +163,7 @@ func TestSearchInvitations_FilterByAcceptedKeepsOnlyAccepted(t *testing.T) {
 }
 
 func TestSearchInvitations_FilterByTwoStatusesKeepsBoth(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	pending := w.invite(uniqueEmail())
 	expired := w.invite(uniqueEmail())
@@ -165,6 +177,7 @@ func TestSearchInvitations_FilterByTwoStatusesKeepsBoth(t *testing.T) {
 }
 
 func TestSearchInvitations_RefusesUnknownOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.SearchRaw(ids.MustNew("org"), ct.SearchOrganizationInvitationsJSONRequestBody{})
@@ -173,6 +186,7 @@ func TestSearchInvitations_RefusesUnknownOrganization(t *testing.T) {
 }
 
 func TestSearchInvitations_RefusesUnknownStatus(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp, err := w.product.AllScopeAPIKeyClient().SearchOrganizationInvitationsWithBodyWithResponse(

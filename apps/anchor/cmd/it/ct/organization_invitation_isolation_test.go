@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testing.T) {
+	t.Parallel()
 	state := itdsl.Given(t).
 		Tenant(itdsl.TenantOpts{Alias: "t"}).
 		Product(itdsl.ProductOpts{Alias: "owner", TenantAlias: "t"}).
@@ -34,7 +36,7 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 	})
 	t.Run("create", func(t *testing.T) {
 		resp := intruder.CreateRaw(owner.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
-			Email:  "intruder@example.com",
+			Email:  openapi_types.Email(uniqueEmail()),
 			RoleId: owner.roleID,
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
@@ -72,6 +74,7 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 }
 
 func TestInvitations_APlatformOwnerOfAnotherTenantCannotReachThem(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	otherTenant := itdsl.Given(t).

@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,9 +12,12 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itshared "anchor/cmd/it/shared"
 )
 
 func TestCreateInvitation_ReturnsTokenOnce(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 
@@ -29,6 +33,7 @@ func TestCreateInvitation_ReturnsTokenOnce(t *testing.T) {
 }
 
 func TestCreateInvitation_DefaultsExpiryToSevenDays(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	created := w.invite(uniqueEmail())
@@ -37,6 +42,7 @@ func TestCreateInvitation_DefaultsExpiryToSevenDays(t *testing.T) {
 }
 
 func TestCreateInvitation_AcceptsExplicitExpiry(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	expiresAt := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
 
@@ -50,6 +56,7 @@ func TestCreateInvitation_AcceptsExplicitExpiry(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesExpiryInThePast(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	expiresAt := time.Now().Add(-time.Minute)
 
@@ -64,6 +71,7 @@ func TestCreateInvitation_RefusesExpiryInThePast(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesSecondPendingForSameEmail(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	w.invite(email)
@@ -76,16 +84,19 @@ func TestCreateInvitation_RefusesSecondPendingForSameEmail(t *testing.T) {
 }
 
 func TestCreateInvitation_ComparesEmailWithoutRegardToCase(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
-	w.invite("Casey.Mixed@Example.com")
+	local := "Casey.Mixed-" + itshared.Faker.UUID().V4()
+	w.invite(local + "@Example.com")
 
-	resp := w.inviteRaw("casey.mixed@example.COM")
+	resp := w.inviteRaw(strings.ToLower(local) + "@example.COM")
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_PENDING", errorCode(t, resp.JSON409.Errors))
 }
 
 func TestCreateInvitation_AllowsNewInvitationAfterFirstExpired(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	first := w.invite(email)
@@ -99,6 +110,7 @@ func TestCreateInvitation_AllowsNewInvitationAfterFirstExpired(t *testing.T) {
 }
 
 func TestCreateInvitation_AllowsSameEmailInAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	w.invite(email)
@@ -112,6 +124,7 @@ func TestCreateInvitation_AllowsSameEmailInAnotherOrganization(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesEmailOfExistingMember(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	w.addMember(w.newProductUser(email))
@@ -123,16 +136,19 @@ func TestCreateInvitation_RefusesEmailOfExistingMember(t *testing.T) {
 }
 
 func TestCreateInvitation_ComparesMemberEmailWithoutRegardToCase(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
-	w.addMember(w.newProductUser("Member.Mixed@Example.com"))
+	local := "Member.Mixed-" + itshared.Faker.UUID().V4()
+	w.addMember(w.newProductUser(local + "@Example.com"))
 
-	resp := w.inviteRaw("member.mixed@example.com")
+	resp := w.inviteRaw(strings.ToLower(local) + "@example.com")
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "ORGANIZATION_INVITATION_EMAIL_IS_MEMBER", errorCode(t, resp.JSON409.Errors))
 }
 
 func TestCreateInvitation_AllowsEmailOfMemberOfAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	w.addMember(w.newProductUser(email))
@@ -146,6 +162,7 @@ func TestCreateInvitation_AllowsEmailOfMemberOfAnotherOrganization(t *testing.T)
 }
 
 func TestCreateInvitation_RefusesUnknownRole(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
@@ -158,6 +175,7 @@ func TestCreateInvitation_RefusesUnknownRole(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesRoleOfAnotherProduct(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	foreign := newWorld(t)
 
@@ -171,6 +189,7 @@ func TestCreateInvitation_RefusesRoleOfAnotherProduct(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.CreateRaw(ids.MustNew("org"), ct.CreateOrganizationInvitationJSONRequestBody{
@@ -182,6 +201,7 @@ func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	resp := w.invitations.CreateRawBody(
@@ -193,6 +213,7 @@ func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {
 }
 
 func TestCreateInvitation_StoresOnlyTheHashOfTheToken(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 
 	created := w.invite(uniqueEmail())
@@ -207,6 +228,7 @@ func TestCreateInvitation_StoresOnlyTheHashOfTheToken(t *testing.T) {
 }
 
 func TestCreateInvitation_HoldsOnePendingPerEmailUnderConcurrentCreates(t *testing.T) {
+	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 	const attempts = 8
