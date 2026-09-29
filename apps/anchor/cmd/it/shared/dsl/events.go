@@ -161,6 +161,13 @@ func (s *EventSink) Count(eventType string) int {
 	return count
 }
 
+// Total counts every event received, of any type.
+func (s *EventSink) Total() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.received)
+}
+
 func (s *EventSink) assertAllDeliveries() {
 	s.t.Helper()
 	s.mu.Lock()

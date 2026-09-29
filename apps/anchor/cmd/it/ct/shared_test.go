@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	"anchor/cmd/it/shared/logcapture"
 	"anchor/cmd/it/shared/mailpit"
 	"anchor/internal/repository"
 	"anchor/internal/service"
@@ -26,6 +27,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	logcapture.Install()
 	itshared.RunTestMain(
 		m, itshared.TestConfig{
 			EnableRedis:             true,
