@@ -81,6 +81,8 @@ org := c.Organization("org_3iXYZ")
 | `c.Users()` | create, get, delete, search, list, a user's organizations |
 | `c.Introspect(ctx, rawKey, scopes...)` | resolve an organization API key without knowing its org |
 | `org.Members()` | list, search, get, add, remove, set role |
+| `org.Invitations()` | create, list, search by status, get, update, delete, resend |
+| `c.Invitations()` | look up by token, accept |
 | `org.Workspaces()` | create, get, update, delete, search, list |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
 | `org.License()` | get (cached), instantiate, adjust, diff, report usage |
@@ -144,6 +146,22 @@ err = o.Members().Remove(ctx, userID)
 A product user exists at product scope; membership is a separate grant. Create users with
 `c.Users()`, then attach them with `Members().Add`. Anchor exposes no update operation for a product
 user.
+
+### Invitations
+
+```go
+created, err := o.Invitations().Create("alice@example.com", roleID).Do(ctx)
+// created.Token is shown once. Anchor sends no email: deliver it yourself.
+pending, err := o.Invitations().Search().Statuses(nanoclient.Pending).Do(ctx)
+resent, err := o.Invitations().Resend(ctx, created.Id) // new token, old token dead
+
+found, err := c.Invitations().Lookup(ctx, token)         // compare found.Email first
+_, err = c.Invitations().Accept(ctx, token, productUserID)
+```
+
+Update and resend work only on a pending invitation that has not expired. The token travels in
+the request body, never in the URL. Accept needs an existing product user and does not compare
+email addresses.
 
 ### API keys
 
