@@ -13,12 +13,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// newBodyProductUserNotFoundError answers a product_user_id supplied in a
+// NewBodyProductUserNotFoundError answers a product_user_id supplied in a
 // request body that does not resolve. Distinct from errors.go's
 // NewProductUserNotFoundError (404), which is correct only where the caller
 // names product_user_id in the path. The code differs too: one code at two
 // statuses breaks a client that switches on code alone.
-func newBodyProductUserNotFoundError(productUserID string) *fault.Error {
+func NewBodyProductUserNotFoundError(productUserID string) *fault.Error {
 	return fault.BadRequest(
 		"PRODUCT_USER_NOT_FOUND_IN_REQUEST",
 		"This product has no product user with that identifier.",
@@ -27,12 +27,12 @@ func newBodyProductUserNotFoundError(productUserID string) *fault.Error {
 	})
 }
 
-// newBodyRoleNotFoundError answers a role_id supplied in a request body that
+// NewBodyRoleNotFoundError answers a role_id supplied in a request body that
 // does not resolve. Distinct from errors.go's NewRoleNotFoundError (404),
 // which stays correct for product_role_service.go, where role_id is a path
 // parameter. The code differs too: one code at two statuses breaks a client
 // that switches on code alone.
-func newBodyRoleNotFoundError(roleID string) *fault.Error {
+func NewBodyRoleNotFoundError(roleID string) *fault.Error {
 	return fault.BadRequest(
 		"ROLE_NOT_FOUND_IN_REQUEST",
 		"This product has no role with that identifier.",
@@ -392,7 +392,7 @@ func (s *organizationMembershipService) validateProductUser(
 		return err
 	}
 	if found.IsAbsent() {
-		return newBodyProductUserNotFoundError(productUserID)
+		return NewBodyProductUserNotFoundError(productUserID)
 	}
 
 	return nil
@@ -413,7 +413,7 @@ func (s *organizationMembershipService) validateRole(
 		return err
 	}
 	if found.IsAbsent() {
-		return newBodyRoleNotFoundError(roleID)
+		return NewBodyRoleNotFoundError(roleID)
 	}
 
 	return nil
