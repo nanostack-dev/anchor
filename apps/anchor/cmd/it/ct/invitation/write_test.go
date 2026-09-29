@@ -96,34 +96,34 @@ func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 }
 
-func TestUpdateInvitation_MakesAnExpiredInvitationPendingAgain(t *testing.T) {
+func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	w.expire(created.Id)
 
-	updated := w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    w.roleID,
-		ExpiresAt: time.Now().Add(time.Hour),
-	})
-
-	assert.Equal(t, ct.Pending, updated.Status)
-}
-
-func TestUpdateInvitation_RefusesToRevivePastAnotherPendingInvitationForTheSameEmail(t *testing.T) {
-	w := newWorld(t)
-	email := uniqueEmail()
-	first := w.invite(email)
-	w.expire(first.Id)
-	w.invite(email)
-
-	resp := w.invitations.UpdateRaw(w.organizationID, first.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
 		RoleId:    w.roleID,
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_PENDING", errorCode(t, resp.JSON409.Errors))
-	assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, first.Id).Status)
+	assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRED", errorCode(t, resp.JSON409.Errors))
+	assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
+}
+
+func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
+	w := newWorld(t)
+	created := w.invite(uniqueEmail())
+	w.invitations.Accept(created.Token, w.newProductUser(uniqueEmail()))
+
+	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+		RoleId:    w.newRole(),
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+
+	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_ACCEPTED", errorCode(t, resp.JSON409.Errors))
+	assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
 }
 
 func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {

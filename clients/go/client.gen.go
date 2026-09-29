@@ -1075,7 +1075,7 @@ type ClientInterface interface {
 
 	// UpdateOrganizationInvitationWithBody Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1084,7 +1084,7 @@ type ClientInterface interface {
 
 	// UpdateOrganizationInvitation Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -3682,7 +3682,7 @@ func (c *Client) GetOrganizationInvitation(ctx context.Context, productId Produc
 
 // UpdateOrganizationInvitationWithBody Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3701,7 +3701,7 @@ func (c *Client) UpdateOrganizationInvitationWithBody(ctx context.Context, produ
 
 // UpdateOrganizationInvitation Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -11336,7 +11336,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11345,7 +11345,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateOrganizationInvitationWithResponse Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -21398,7 +21398,7 @@ func (c *ClientWithResponses) GetOrganizationInvitationWithResponse(ctx context.
 
 // UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21413,7 +21413,7 @@ func (c *ClientWithResponses) UpdateOrganizationInvitationWithBodyWithResponse(c
 
 // UpdateOrganizationInvitationWithResponse Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

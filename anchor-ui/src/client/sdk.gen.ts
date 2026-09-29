@@ -1630,7 +1630,7 @@ export const getOrganizationInvitation = <ThrowOnError extends boolean = false>(
 
 /**
  * Update Organization Invitation
- * Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Moving the expiry of an expired invitation into the future makes it pending again, so the update fails with a conflict when another pending invitation exists for the same email address in the organization.
+ * Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
  */
 export const updateOrganizationInvitation = <ThrowOnError extends boolean = false>(options: Options<UpdateOrganizationInvitationData, ThrowOnError>) => {
     return (options.client ?? client).put<UpdateOrganizationInvitationResponses, UpdateOrganizationInvitationErrors, ThrowOnError>({

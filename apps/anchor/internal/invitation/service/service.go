@@ -103,8 +103,8 @@ func (s *organizationInvitationService) Create(
 		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
 			return roleErr
 		}
-		if pendingErr := s.ensureNoOtherPendingInvitation(
-			txCtx, input.ProductID, input.OrganizationID, input.Email, "",
+		if pendingErr := s.ensureNoPendingInvitation(
+			txCtx, input.ProductID, input.OrganizationID, input.Email,
 		); pendingErr != nil {
 			return pendingErr
 		}
@@ -179,15 +179,11 @@ func (s *organizationInvitationService) Update(
 		if findErr != nil {
 			return findErr
 		}
+		if statusErr := refuseUnlessPending(current); statusErr != nil {
+			return statusErr
+		}
 		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
 			return roleErr
-		}
-		if current.AcceptedAt == nil {
-			if integrityErr := s.ensureNoOtherPendingInvitation(
-				txCtx, input.ProductID, input.OrganizationID, current.Email, current.ID,
-			); integrityErr != nil {
-				return integrityErr
-			}
 		}
 
 		current.RoleID = input.RoleID
@@ -403,17 +399,17 @@ func (s *organizationInvitationService) ensureRoleExists(
 	return nil
 }
 
-// ensureNoOtherPendingInvitation enforces the first integrity rule: at most one
+// ensureNoPendingInvitation enforces the first integrity rule: at most one
 // pending invitation per email per Organization. It runs under the
 // Organization lock, so two concurrent writers cannot both pass it.
-func (s *organizationInvitationService) ensureNoOtherPendingInvitation(
-	ctx context.Context, productID, organizationID, email, ownInvitationID string,
+func (s *organizationInvitationService) ensureNoPendingInvitation(
+	ctx context.Context, productID, organizationID, email string,
 ) error {
 	pending, err := s.invitationRepo.FindPendingByEmail(ctx, productID, organizationID, email)
 	if err != nil {
 		return err
 	}
-	if pending.IsPresent() && pending.Value().ID != ownInvitationID {
+	if pending.IsPresent() {
 		return errPendingInvitationExists
 	}
 	return nil
