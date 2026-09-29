@@ -17,6 +17,10 @@ const (
 	eventTypeMembershipCreated                = "organization.membership.created"
 	eventTypeMembershipUpdated                = "organization.membership.updated"
 	eventTypeMembershipDeleted                = "organization.membership.deleted"
+	eventTypeOrganizationInvitationCreated    = "organization.invitation.created"
+	eventTypeOrganizationInvitationUpdated    = "organization.invitation.updated"
+	eventTypeOrganizationInvitationDeleted    = "organization.invitation.deleted"
+	eventTypeOrganizationInvitationAccepted   = "organization.invitation.accepted"
 	eventTypeWorkspaceCreated                 = "workspace.created"
 	eventTypeWorkspaceUpdated                 = "workspace.updated"
 	eventTypeWorkspaceDeleted                 = "workspace.deleted"
@@ -84,6 +88,27 @@ type MembershipUpdated struct {
 
 type MembershipDeleted struct {
 	OrganizationID string `json:"organization_id"`
+	ProductUserID  string `json:"product_user_id"`
+}
+
+type OrganizationInvitationCreated struct {
+	OrganizationID string `json:"organization_id"`
+	InvitationID   string `json:"invitation_id"`
+}
+
+type OrganizationInvitationUpdated struct {
+	OrganizationID string `json:"organization_id"`
+	InvitationID   string `json:"invitation_id"`
+}
+
+type OrganizationInvitationDeleted struct {
+	OrganizationID string `json:"organization_id"`
+	InvitationID   string `json:"invitation_id"`
+}
+
+type OrganizationInvitationAccepted struct {
+	OrganizationID string `json:"organization_id"`
+	InvitationID   string `json:"invitation_id"`
 	ProductUserID  string `json:"product_user_id"`
 }
 
@@ -172,6 +197,10 @@ func EventTypes() []string {
 		eventTypeMembershipCreated,
 		eventTypeMembershipUpdated,
 		eventTypeMembershipDeleted,
+		eventTypeOrganizationInvitationCreated,
+		eventTypeOrganizationInvitationUpdated,
+		eventTypeOrganizationInvitationDeleted,
+		eventTypeOrganizationInvitationAccepted,
 		eventTypeWorkspaceCreated,
 		eventTypeWorkspaceUpdated,
 		eventTypeWorkspaceDeleted,
@@ -209,6 +238,10 @@ type WebhookHandler struct {
 	onMembershipCreated                []func(context.Context, MembershipCreated) error
 	onMembershipUpdated                []func(context.Context, MembershipUpdated) error
 	onMembershipDeleted                []func(context.Context, MembershipDeleted) error
+	onOrganizationInvitationCreated    []func(context.Context, OrganizationInvitationCreated) error
+	onOrganizationInvitationUpdated    []func(context.Context, OrganizationInvitationUpdated) error
+	onOrganizationInvitationDeleted    []func(context.Context, OrganizationInvitationDeleted) error
+	onOrganizationInvitationAccepted   []func(context.Context, OrganizationInvitationAccepted) error
 	onWorkspaceCreated                 []func(context.Context, WorkspaceCreated) error
 	onWorkspaceUpdated                 []func(context.Context, WorkspaceUpdated) error
 	onWorkspaceDeleted                 []func(context.Context, WorkspaceDeleted) error
@@ -273,6 +306,34 @@ func (h *WebhookHandler) MembershipUpdated(fn func(context.Context, MembershipUp
 
 func (h *WebhookHandler) MembershipDeleted(fn func(context.Context, MembershipDeleted) error) *WebhookHandler {
 	h.onMembershipDeleted = append(h.onMembershipDeleted, fn)
+	return h
+}
+
+func (h *WebhookHandler) OrganizationInvitationCreated(
+	fn func(context.Context, OrganizationInvitationCreated) error,
+) *WebhookHandler {
+	h.onOrganizationInvitationCreated = append(h.onOrganizationInvitationCreated, fn)
+	return h
+}
+
+func (h *WebhookHandler) OrganizationInvitationUpdated(
+	fn func(context.Context, OrganizationInvitationUpdated) error,
+) *WebhookHandler {
+	h.onOrganizationInvitationUpdated = append(h.onOrganizationInvitationUpdated, fn)
+	return h
+}
+
+func (h *WebhookHandler) OrganizationInvitationDeleted(
+	fn func(context.Context, OrganizationInvitationDeleted) error,
+) *WebhookHandler {
+	h.onOrganizationInvitationDeleted = append(h.onOrganizationInvitationDeleted, fn)
+	return h
+}
+
+func (h *WebhookHandler) OrganizationInvitationAccepted(
+	fn func(context.Context, OrganizationInvitationAccepted) error,
+) *WebhookHandler {
+	h.onOrganizationInvitationAccepted = append(h.onOrganizationInvitationAccepted, fn)
 	return h
 }
 
@@ -443,6 +504,14 @@ func (h *WebhookHandler) dispatch(ctx context.Context, event Event) error {
 		return dispatchTyped(ctx, event.Data, h.onMembershipUpdated)
 	case eventTypeMembershipDeleted:
 		return dispatchTyped(ctx, event.Data, h.onMembershipDeleted)
+	case eventTypeOrganizationInvitationCreated:
+		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationCreated)
+	case eventTypeOrganizationInvitationUpdated:
+		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationUpdated)
+	case eventTypeOrganizationInvitationDeleted:
+		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationDeleted)
+	case eventTypeOrganizationInvitationAccepted:
+		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationAccepted)
 	case eventTypeWorkspaceCreated:
 		return dispatchTyped(ctx, event.Data, h.onWorkspaceCreated)
 	case eventTypeWorkspaceUpdated:
