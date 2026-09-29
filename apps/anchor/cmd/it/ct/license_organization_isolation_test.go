@@ -13,6 +13,7 @@ import (
 // The license-to-template direction stays isolated. The other direction is
 // deliberately not — see organization_license_template_sync_test.go.
 func TestOrganizationLicenseIsolation(t *testing.T) {
+	t.Parallel()
 	t.Run("adjusting a license leaves the template unchanged", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

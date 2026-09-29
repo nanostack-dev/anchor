@@ -50,6 +50,7 @@ func assertLicensingWriteConflict(t *testing.T, call func(context.Context) (*htt
 	)
 }
 
+// Not parallel: it asserts lock contention within tight timeouts.
 func TestLicensingWritesRejectConcurrentOperation(t *testing.T) {
 	w := newLicensedWorld(t)
 	other := newLicensedWorld(t)
@@ -137,6 +138,7 @@ func (w *licenseWorld) waitForWriteLock() {
 	}, 5*time.Second, 10*time.Millisecond)
 }
 
+// Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateRenameRejectsConcurrentValuesWrite(t *testing.T) {
 	w := newLicensedWorld(t)
 	rowLock, err := testDB.BeginTx(t.Context(), nil)
@@ -169,6 +171,7 @@ func TestTemplateRenameRejectsConcurrentValuesWrite(t *testing.T) {
 	assert.Equal(t, "Renamed", w.Template().Read().Name)
 }
 
+// Not parallel: it asserts lock contention within tight timeouts.
 func TestMigrationHoldsWriteLockAcrossOrganizationTransactions(t *testing.T) {
 	w := newLicensedWorld(t)
 	secondID := w.NewOrganization()
@@ -206,6 +209,7 @@ func TestMigrationHoldsWriteLockAcrossOrganizationTransactions(t *testing.T) {
 	waitForLicenseValues(t, w.License().For(secondID), values)
 }
 
+// Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateSyncRetriesLicensingWriteConflict(t *testing.T) {
 	w := newLicensedWorld(t)
 	payload, err := json.Marshal(

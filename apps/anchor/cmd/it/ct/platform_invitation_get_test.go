@@ -13,6 +13,7 @@ import (
 )
 
 func TestGetPlatformInvitation(t *testing.T) {
+	t.Parallel()
 	t.Run(
 		"ValidInvitation", func(t *testing.T) {
 			// Create invitation first

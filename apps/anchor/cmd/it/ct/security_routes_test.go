@@ -8,6 +8,7 @@ import (
 )
 
 func TestRouteSecurityMatrix(t *testing.T) {
+	t.Parallel()
 	routes, components := loadSecurityRouteCases(t)
 	require.NotEmpty(t, routes)
 	fx := newSecurityFixture(t)
@@ -59,6 +60,7 @@ func TestRouteSecurityMatrix(t *testing.T) {
 }
 
 func TestSecurityCoverageAllRoutesExplicitAndCovered(t *testing.T) {
+	t.Parallel()
 	routes, _ := loadSecurityRouteCases(t)
 	require.NotEmpty(t, routes)
 

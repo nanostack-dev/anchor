@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductRole_Get(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
 	testCtx.CreateDefaultProductResourcePermissions(t)

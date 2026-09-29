@@ -17,6 +17,7 @@ import (
 )
 
 func TestOrganizationAPIKeyCreate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	apiKeyClient, _ := product.CreateAPIKeyClientWithScopes(

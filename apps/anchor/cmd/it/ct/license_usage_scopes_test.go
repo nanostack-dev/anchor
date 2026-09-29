@@ -9,6 +9,7 @@ import (
 )
 
 func TestUsageScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("a license scope cannot report usage", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		licenseOnly, _ := w.product.CreateAPIKeyClientWithScopes(

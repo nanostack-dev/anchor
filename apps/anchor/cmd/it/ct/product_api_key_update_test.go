@@ -16,6 +16,7 @@ import (
 )
 
 func TestProductAPIKeyUpdate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	permission1 := "organization:read"
@@ -431,6 +432,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 }
 
 func TestProductAPIKeyUpdateNameConflict(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	client := product.OwnerAuthenticatedClient()

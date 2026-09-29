@@ -11,6 +11,7 @@ import (
 )
 
 func TestLicenseTemplateUpdate(t *testing.T) {
+	t.Parallel()
 	t.Run("renames without touching the values", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

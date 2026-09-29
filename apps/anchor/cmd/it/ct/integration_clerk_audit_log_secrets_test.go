@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Not parallel: its keyed Clerk instance seeds the process-wide reconcile scheduler.
 func TestIntegrationAuditLogs_DoNotLeakSecrets(t *testing.T) {
 	productContext := createTestProductContext(t)
 	instance := createClerkIntegrationInstance(t, productContext)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestOwnerContext(t *testing.T) {
+	t.Parallel()
 	t.Run(
 		"ContextGeneration", func(t *testing.T) {
 			assert.NotNil(

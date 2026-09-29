@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductResourcePermissionGetSuccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -50,6 +51,7 @@ func TestProductResourcePermissionGetSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetNotFound(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -64,6 +66,7 @@ func TestProductResourcePermissionGetNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetWithNonExistentProduct(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	nonExistentProductID := ids.MustNew("prod")
@@ -79,6 +82,7 @@ func TestProductResourcePermissionGetWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -119,6 +123,7 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetMultiplePermissions(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

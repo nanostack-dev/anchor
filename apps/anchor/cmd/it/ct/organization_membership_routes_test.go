@@ -13,6 +13,7 @@ import (
 )
 
 func TestOrganizationMembershipRoutes(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
 	apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()

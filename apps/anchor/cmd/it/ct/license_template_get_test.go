@@ -10,6 +10,7 @@ import (
 )
 
 func TestLicenseTemplateGet(t *testing.T) {
+	t.Parallel()
 	t.Run("reads a template back", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

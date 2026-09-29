@@ -10,6 +10,7 @@ import (
 )
 
 func TestGetOrganizationLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("reads the effective license in one call", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

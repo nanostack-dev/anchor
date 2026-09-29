@@ -30,6 +30,7 @@ func createPlatformInvitation(t *testing.T, email string) string {
 }
 
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(

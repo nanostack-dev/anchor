@@ -11,6 +11,7 @@ import (
 )
 
 func TestGetOrganizationMemberInclude(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("WithoutIncludeOmitsRolePermissions", func(t *testing.T) {

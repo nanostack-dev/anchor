@@ -15,6 +15,7 @@ import (
 // the contract declares security; this proves the four scopes are genuinely
 // distinct, so a read-only key cannot rewrite a declaration.
 func TestLicenseSchemaScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("read scope cannot write", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		readOnly, _ := tc.product.CreateAPIKeyClientWithScopes([]string{"license_schema:read"})

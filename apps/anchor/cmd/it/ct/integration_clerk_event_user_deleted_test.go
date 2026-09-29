@@ -13,6 +13,7 @@ import (
 )
 
 func TestClerkWebhookUserDeletedEvent(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
 	createActiveClerkIntegrationInstance(t, productContext)

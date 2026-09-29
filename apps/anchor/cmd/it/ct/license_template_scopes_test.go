@@ -15,6 +15,7 @@ import (
 // the contract declares security; this proves the four scopes are genuinely
 // distinct, so a read-only key cannot rewrite what a tier grants.
 func TestLicenseTemplateScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("read scope cannot write", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

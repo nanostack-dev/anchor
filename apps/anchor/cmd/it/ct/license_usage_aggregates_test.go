@@ -91,6 +91,7 @@ func dropAllRawChunks(t *testing.T) {
 }
 
 func TestUsageAggregateExistence(t *testing.T) {
+	t.Parallel()
 	t.Run("each level of the cascade is a materialized-only continuous aggregate", func(t *testing.T) {
 		// materialized_only rather than real-time aggregation: minute and hour are
 		// themselves the source of the next level, which TimescaleDB requires, and
@@ -109,6 +110,7 @@ func TestUsageAggregateExistence(t *testing.T) {
 	})
 }
 
+// Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregateBucketing(t *testing.T) {
 	t.Run("a minute bucket keeps the last gauge value observed within it", func(t *testing.T) {
 		w := newLicenseWorld(t)
@@ -151,6 +153,7 @@ func TestUsageAggregateBucketing(t *testing.T) {
 	})
 }
 
+// Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregateCascade(t *testing.T) {
 	t.Run("hour and day roll up the last value across their span, for a gauge", func(t *testing.T) {
 		w := newLicenseWorld(t)
@@ -200,6 +203,7 @@ func TestUsageAggregateCascade(t *testing.T) {
 	})
 }
 
+// Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregatePagination(t *testing.T) {
 	t.Run("paginates minute buckets and orders them chronologically", func(t *testing.T) {
 		w := newLicenseWorld(t)
@@ -230,6 +234,7 @@ func TestUsageAggregatePagination(t *testing.T) {
 	})
 }
 
+// Not parallel: it drops every raw usage chunk.
 func TestUsageAggregateRetention(t *testing.T) {
 	t.Run("dropping raw chunks leaves the coarser aggregates intact and queryable", func(t *testing.T) {
 		w := newLicenseWorld(t)

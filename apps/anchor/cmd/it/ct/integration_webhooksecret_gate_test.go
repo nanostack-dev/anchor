@@ -16,6 +16,8 @@ import (
 // guard for the bug where updating an active SMTP integration returned
 // "Webhook secret is required when integration instance is active" even though
 // SMTP is outbound-only and never ingests webhooks.
+//
+// Not parallel: it resets the shared mailpit inbox.
 func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 	mp := mailpit.Shared(t)
 
@@ -47,6 +49,7 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 // disabled wholesale: a webhook-ingesting provider (CLERK) that loses its
 // secret while active is still rejected.
 func TestClerkActiveInstanceStillRequiresWebhookSecret(t *testing.T) {
+	t.Parallel()
 	tc := newWebhookSecretTestCtx(t)
 	instance := seedActiveClerkInstance(t, tc)
 

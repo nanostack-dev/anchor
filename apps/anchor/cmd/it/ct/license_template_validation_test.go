@@ -20,6 +20,7 @@ import (
 // assembled ad hoc would trip the missing-field check first and the case would
 // pass without ever reaching the rule it names.
 func TestLicenseTemplateValidation(t *testing.T) {
+	t.Parallel()
 	t.Run("rejects a template omitting a declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
@@ -158,6 +159,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 // create-time courtesy. An edit that would leave a template violating the
 // declaration is refused the same way the original write would have been.
 func TestLicenseTemplateUpdateValidation(t *testing.T) {
+	t.Parallel()
 	t.Run("rejects an edit that drops a declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

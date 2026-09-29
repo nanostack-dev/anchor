@@ -16,6 +16,7 @@ import (
 	"anchor/cmd/it/shared/mailpit"
 )
 
+// Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendCreate(t *testing.T) {
 	mp := mailpit.Shared(t)
 

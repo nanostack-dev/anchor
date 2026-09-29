@@ -14,6 +14,7 @@ import (
 )
 
 func TestOrganizationWorkspaceRoutes(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
 	apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -255,6 +256,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 }
 
 func TestOrganizationWorkspaceAuthorization(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
 	apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()

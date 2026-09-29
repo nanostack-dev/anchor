@@ -11,6 +11,7 @@ import (
 )
 
 func TestLicenseSchemaCreate(t *testing.T) {
+	t.Parallel()
 	t.Run("declares every field type", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()

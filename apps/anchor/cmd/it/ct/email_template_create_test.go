@@ -11,6 +11,7 @@ import (
 )
 
 func TestEmailTemplateCreate(t *testing.T) {
+	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 

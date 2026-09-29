@@ -23,6 +23,7 @@ func deleteTemplate(t *testing.T, tc licenseTestCtx, templateID string) *ct.Dele
 // removed: one no Organization license has ever named. See
 // docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
 func TestLicenseTemplateDelete(t *testing.T) {
+	t.Parallel()
 	t.Run("removes a template no organization license names", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

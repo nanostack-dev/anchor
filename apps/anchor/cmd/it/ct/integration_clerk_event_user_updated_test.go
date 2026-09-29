@@ -13,6 +13,7 @@ import (
 )
 
 func TestClerkWebhookUserUpdatedEvent(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
 	createActiveClerkIntegrationInstance(t, productContext)
@@ -61,6 +62,7 @@ func TestClerkWebhookUserUpdatedEvent(t *testing.T) {
 }
 
 func TestClerkWebhookUnchangedUserDoesNotEmit(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
 	createActiveClerkIntegrationInstance(t, productContext)

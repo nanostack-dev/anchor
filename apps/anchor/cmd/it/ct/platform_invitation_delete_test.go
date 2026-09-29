@@ -14,6 +14,7 @@ import (
 )
 
 func TestDeletePlatformInvitation(t *testing.T) {
+	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(

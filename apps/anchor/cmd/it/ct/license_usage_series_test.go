@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageSeries(t *testing.T) {
 	t.Run("an empty series reads back as zero items, not an error", func(t *testing.T) {
 		w := newLicenseWorld(t)
@@ -154,6 +155,7 @@ func TestUsageSeries(t *testing.T) {
 }
 
 func TestUsageSeriesIsolation(t *testing.T) {
+	t.Parallel()
 	t.Run("an organization of another product is not addressable", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		other := newLicenseWorld(t)
@@ -180,6 +182,7 @@ func TestUsageSeriesIsolation(t *testing.T) {
 }
 
 func TestUsageSeriesScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("a usage-write-only scope cannot read the series", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"license_usage:create"})

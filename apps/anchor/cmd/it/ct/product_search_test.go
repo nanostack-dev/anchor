@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductSearch(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	productsCreated := make([]ct.ProductResponse, 0)
 	for range 5 {

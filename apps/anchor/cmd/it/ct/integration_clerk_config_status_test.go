@@ -14,6 +14,7 @@ import (
 )
 
 func TestClerkIntegrationConfigAndStatus(t *testing.T) {
+	t.Parallel()
 	t.Run("RejectsWebhookWhenSecretIsNotConfigured", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		createClerkIntegrationInstance(t, productContext)

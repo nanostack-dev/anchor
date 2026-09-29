@@ -17,6 +17,8 @@ import (
 // TestEmailSendRequiredVariables verifies that a send referencing a template
 // whose schema marks a variable required is rejected when that variable is
 // absent, and succeeds once it is supplied.
+//
+// Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendRequiredVariables(t *testing.T) {
 	mp := mailpit.Shared(t)
 

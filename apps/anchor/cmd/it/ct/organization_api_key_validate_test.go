@@ -16,6 +16,7 @@ import (
 )
 
 func TestOrganizationAPIKeyValidate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	adminClient, _ := product.CreateAPIKeyClientWithScopes([]string{

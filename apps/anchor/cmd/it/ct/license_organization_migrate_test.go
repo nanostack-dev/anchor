@@ -42,6 +42,7 @@ func migrateTo(templateID string, organizationIDs ...string) ct.OrganizationLice
 }
 
 func TestMigrateOrganizationLicenses(t *testing.T) {
+	t.Parallel()
 	t.Run("takes the target template's values and restamps the provenance", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
@@ -190,6 +191,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
+	t.Parallel()
 	t.Run("carries a bespoke value forward onto the new tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -290,6 +292,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
+	t.Parallel()
 	t.Run("grants a first license to an organization holding none", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
@@ -360,6 +363,7 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
+	t.Parallel()
 	t.Run("400 when neither selection is supplied", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())

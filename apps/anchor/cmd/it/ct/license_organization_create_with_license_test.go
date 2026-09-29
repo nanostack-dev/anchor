@@ -33,6 +33,7 @@ func (w *licenseWorld) Organizations() itdsl.OrganizationClient {
 }
 
 func TestOrganizationReadIncludesLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("get without include leaves the license out", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
@@ -123,6 +124,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 }
 
 func TestCreateOrganizationWithLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("stamps the template onto the organization it creates", func(t *testing.T) {
 		w := newLicenseWorld(t)
 

@@ -15,6 +15,7 @@ import (
 )
 
 func TestListUserOrganizations(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("EmptyListWhenUserHasNoMemberships", func(t *testing.T) {

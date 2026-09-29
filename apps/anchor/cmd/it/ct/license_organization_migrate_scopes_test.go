@@ -14,6 +14,7 @@ import (
 // changing what an organization's license says. See
 // docs/adr/0015-migrate-grants-a-first-license.md.
 func TestMigrateOrganizationLicensesScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("read and create alone do not reach it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())

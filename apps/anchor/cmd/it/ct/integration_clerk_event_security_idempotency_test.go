@@ -21,6 +21,7 @@ import (
 )
 
 func TestClerkWebhookIdempotencyDuplicateSvixIDIgnored(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)
 
@@ -63,6 +64,7 @@ func TestClerkWebhookIdempotencyDuplicateSvixIDIgnored(t *testing.T) {
 }
 
 func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)
 
@@ -85,6 +87,7 @@ func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {
 // the event-id check. A signature that does not verify is a credential that
 // failed to authenticate, so this is a 401.
 func TestClerkWebhookSignatureValidationMissingSvixIDReturns401(t *testing.T) {
+	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)
 

@@ -19,6 +19,7 @@ import (
 // observations": a nonsensical declaration is refused when the schema is
 // written, rather than the first time a value is checked against it.
 func TestLicenseSchemaValidation(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		field ct.LicenseFieldDeclaration

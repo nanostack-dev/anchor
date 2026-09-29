@@ -21,6 +21,7 @@ func decodeAPIError(t *testing.T, body []byte) ct.ApiErrorResponse {
 }
 
 func TestLogin(t *testing.T) {
+	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).Email)
 	assert.NotEmpty(t, testOwnerUser(t).Password)
 

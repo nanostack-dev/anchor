@@ -20,6 +20,7 @@ import (
 // typed error bodies — which the SDK deliberately hides; this one asserts the
 // behaviour a product backend actually programs against.
 func TestAnchorSDK(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	sdk := product.SDKClient()
