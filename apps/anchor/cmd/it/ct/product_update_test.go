@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductUpdate(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 
 	t.Run(

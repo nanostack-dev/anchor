@@ -10,6 +10,7 @@ import (
 )
 
 func TestAdjustOrganizationLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("adjusts one license field and leaves the rest alone", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

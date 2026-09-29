@@ -10,6 +10,7 @@ import (
 )
 
 func TestLogoutWithoutAuthentication(t *testing.T) {
+	t.Parallel()
 	t.Run(
 		"UnauthenticatedLogout", func(t *testing.T) {
 			// Test that logout works even without authentication headers

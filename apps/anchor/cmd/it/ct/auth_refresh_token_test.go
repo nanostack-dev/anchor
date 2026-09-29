@@ -12,6 +12,7 @@ import (
 )
 
 func TestRefreshToken(t *testing.T) {
+	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).RefreshToken)
 
 	t.Run(

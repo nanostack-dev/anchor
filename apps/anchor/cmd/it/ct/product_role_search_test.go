@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductRole_Search(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
 	productID := testCtx.ProductID
@@ -216,6 +217,7 @@ func TestProductRole_Search(t *testing.T) {
 // limit smaller than a role's permission count must still return ALL of that
 // role's permissions (regression for permission-list truncation).
 func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
 	productID := testCtx.ProductID

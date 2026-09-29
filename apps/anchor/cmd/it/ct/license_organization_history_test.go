@@ -11,6 +11,7 @@ import (
 )
 
 func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
+	t.Parallel()
 	t.Run("instantiating records the template it was stamped from", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
@@ -55,6 +56,7 @@ func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
+	t.Parallel()
 	t.Run("names the license field, the old value and the new", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
@@ -119,6 +121,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryRead(t *testing.T) {
+	t.Parallel()
 	t.Run("reads newest first", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
@@ -182,6 +185,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryStorage(t *testing.T) {
+	t.Parallel()
 	t.Run("entries carry no update timestamp", func(t *testing.T) {
 		// Immutability is structural, not a rule the service remembers to keep:
 		// there is no column to move and no update statement anywhere that

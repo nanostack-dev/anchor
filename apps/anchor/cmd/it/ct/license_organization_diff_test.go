@@ -10,6 +10,7 @@ import (
 )
 
 func TestGetOrganizationLicenseDiff(t *testing.T) {
+	t.Parallel()
 	t.Run("a fresh copy differs in nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

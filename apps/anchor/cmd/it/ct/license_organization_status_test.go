@@ -23,6 +23,7 @@ func requireFieldUsage(t *testing.T, license ct.OrganizationLicenseResponse) ct.
 // compliant organization to exceeded, and the two cache-consistency
 // guarantees the read makes.
 func TestOrganizationLicenseUsageStatus(t *testing.T) {
+	t.Parallel()
 	t.Run("within_limit: latest usage under the limit", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 400))

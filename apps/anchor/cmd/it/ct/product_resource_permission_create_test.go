@@ -16,6 +16,7 @@ import (
 )
 
 func TestProductResourcePermissionCreateSuccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -43,6 +44,7 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
@@ -59,6 +61,7 @@ func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -127,6 +130,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -155,6 +159,7 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -188,6 +193,7 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	nonExistentProductID := ids.MustNew("prod")
@@ -205,6 +211,7 @@ func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateWithMinimalData(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

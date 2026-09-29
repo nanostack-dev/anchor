@@ -13,6 +13,7 @@ import (
 )
 
 func TestLicenseSchemaDelete(t *testing.T) {
+	t.Parallel()
 	t.Run("removes the schema and its fields", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)

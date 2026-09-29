@@ -10,6 +10,7 @@ import (
 )
 
 func TestInstantiateOrganizationLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("copies the template's values onto the organization", func(t *testing.T) {
 		w := newLicenseWorld(t)
 

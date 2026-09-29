@@ -12,6 +12,7 @@ import (
 )
 
 func TestLicenseTemplateCreate(t *testing.T) {
+	t.Parallel()
 	t.Run("stores a named set of values", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 

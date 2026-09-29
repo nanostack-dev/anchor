@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductAPIKeyCreate(t *testing.T) {
+	t.Parallel()
 	product := createTestProductContext(t)
 	permission1 := "organization:read"
 	permission2 := "organization:create"

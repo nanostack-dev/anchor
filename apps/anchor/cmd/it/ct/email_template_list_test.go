@@ -11,6 +11,7 @@ import (
 )
 
 func TestEmailTemplateList(t *testing.T) {
+	t.Parallel()
 	t.Run("returns empty list for new product", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
 		resp, err := tc.product.OwnerAuthenticatedClient().ListEmailTemplatesWithResponse(

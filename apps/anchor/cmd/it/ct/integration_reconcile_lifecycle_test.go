@@ -23,6 +23,7 @@ const (
 // exercise the scheduler lifecycle without hitting real Clerk services.
 const fakeAPIKey = "sk_test_scheduler_lifecycle_fake_key_for_testing"
 
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_NoKeyOnCreate_NoSchedulerJob(t *testing.T) {
 	before := countPendingSchedulerJobs(t)
 
@@ -53,6 +54,7 @@ func TestSchedulerLifecycle_NoKeyOnCreate_NoSchedulerJob(t *testing.T) {
 	assert.Equal(t, before, after, "no scheduler job should be added when no API key is configured")
 }
 
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_FirstKeyAdded_SeedsScheduler(t *testing.T) {
 	// Each sub-test that mutates the queue must run serially to avoid
 	// interference with the RemoveLastKey / DeleteLastInstance tests that
@@ -70,6 +72,7 @@ func TestSchedulerLifecycle_FirstKeyAdded_SeedsScheduler(t *testing.T) {
 		"a scheduler job should be seeded when the first Clerk API key is added")
 }
 
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_SecondKeyAdded_DoesNotDuplicate(t *testing.T) {
 	// Seed the queue with the first instance.
 	productContextA := createTestProductContext(t)
@@ -95,6 +98,7 @@ func TestSchedulerLifecycle_SecondKeyAdded_DoesNotDuplicate(t *testing.T) {
 		"adding a second Clerk API key should not seed a duplicate scheduler job")
 }
 
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_RemoveLastKey_CancelsScheduler(t *testing.T) {
 	// This test must run after all additive tests have already seeded at
 	// least one scheduler job (or with a clean queue) and must be the sole
@@ -122,6 +126,7 @@ func TestSchedulerLifecycle_RemoveLastKey_CancelsScheduler(t *testing.T) {
 		"scheduler job should be cancelled after the last API key is removed")
 }
 
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_DeleteLastInstance_CancelsScheduler(t *testing.T) {
 	productContext := createTestProductContext(t)
 	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)

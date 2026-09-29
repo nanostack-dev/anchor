@@ -450,6 +450,10 @@ linters:
           - gosec
           - noctx
           - wrapcheck
+      # A component test runs in parallel with the others, but its subtests are
+      # ordered steps over one shared fixture, so they stay sequential.
+      - path: 'cmd/it/'
+        linters: [ tparallel ]
       - path: 'internal/buildinfo/buildinfo\.go$'
         linters: [ gochecknoglobals ]
       # Exclude generated files from all linters

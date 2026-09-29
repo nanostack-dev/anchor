@@ -22,6 +22,8 @@ import (
 // for the same dedupe key FAILED is re-dispatched (not short-circuited as a stale
 // failure). Otherwise a transient SMTP blip would permanently suppress the email
 // while reporting success.
+//
+// Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
 	mp := mailpit.Shared(t)
 

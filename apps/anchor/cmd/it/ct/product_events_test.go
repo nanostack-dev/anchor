@@ -19,6 +19,7 @@ import (
 )
 
 func TestProductEventsConfigAndDelivery(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	owner := product.OwnerAuthenticatedClient()
@@ -456,6 +457,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 }
 
 func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
 	owner := product.OwnerAuthenticatedClient()

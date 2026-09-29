@@ -12,6 +12,7 @@ import (
 )
 
 func TestEmailTemplateDelete(t *testing.T) {
+	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 

@@ -39,6 +39,7 @@ func listTemplates(
 }
 
 func TestLicenseTemplateArchive(t *testing.T) {
+	t.Parallel()
 	t.Run("withdraws the tier and keeps the record", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())

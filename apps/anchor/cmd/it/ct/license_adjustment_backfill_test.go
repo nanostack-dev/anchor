@@ -19,6 +19,7 @@ func markLegacyLicense(t *testing.T, w *licenseWorld) {
 }
 
 func TestLegacyAdjustmentsSurviveFirstTemplateSync(t *testing.T) {
+	t.Parallel()
 	t.Run("historical adjustments remain pinned even when equal to the template", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800, "sso": false})

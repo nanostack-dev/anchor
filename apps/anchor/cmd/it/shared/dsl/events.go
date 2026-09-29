@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	eventSinkWaitTimeout  = 20 * time.Second
+	eventSinkWaitTimeout  = 60 * time.Second
 	eventSinkPollInterval = 50 * time.Millisecond
 	maxEventSinkBodyBytes = 1 << 20
 )

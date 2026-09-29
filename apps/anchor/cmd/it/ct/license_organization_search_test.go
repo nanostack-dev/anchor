@@ -33,6 +33,7 @@ func summaryOrganizationIDs(page ct.OrganizationLicenseSearchResponse) []string 
 }
 
 func TestSearchOrganizationLicenses(t *testing.T) {
+	t.Parallel()
 	t.Run("lists an organization with the license it holds", func(t *testing.T) {
 		w := newLicensedWorld(t)
 

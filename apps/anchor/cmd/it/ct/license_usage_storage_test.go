@@ -10,6 +10,7 @@ import (
 )
 
 func TestUsageObservationStorage(t *testing.T) {
+	t.Parallel()
 	t.Run("observations live in a hypertable", func(t *testing.T) {
 		var count int
 		err := testDB.QueryRow(

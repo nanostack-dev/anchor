@@ -23,6 +23,7 @@ import (
 // credential by reading the status code (409 "user already exists" vs 400
 // "invitation code invalid").
 func TestRegisterDoesNotLeakAccountExistence(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	// Arrange: register a real account so this email is known to exist.

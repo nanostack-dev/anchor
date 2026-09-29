@@ -31,6 +31,7 @@ func seedSchema(t *testing.T, tc licenseTestCtx) *ct.ClientWithResponses {
 }
 
 func TestLicenseSchemaUpdate(t *testing.T) {
+	t.Parallel()
 	t.Run("replaces the field declaration wholesale", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)

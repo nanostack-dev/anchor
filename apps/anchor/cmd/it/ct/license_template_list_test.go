@@ -10,6 +10,7 @@ import (
 )
 
 func TestLicenseTemplateList(t *testing.T) {
+	t.Parallel()
 	t.Run("lists the product's templates by name", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Pro", validTemplateValues())

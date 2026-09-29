@@ -14,6 +14,7 @@ import (
 // already proves the contract declares security; this proves the scopes are
 // genuinely distinct, so a read-only key cannot raise a customer's limits.
 func TestOrganizationLicenseScopes(t *testing.T) {
+	t.Parallel()
 	t.Run("read scope cannot write", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		readOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization_license:read"})

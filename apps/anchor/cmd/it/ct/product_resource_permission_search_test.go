@@ -16,6 +16,7 @@ import (
 )
 
 func TestProductResourcePermissionSearchSuccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -78,6 +79,7 @@ func TestProductResourcePermissionSearchSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchByNames(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -144,6 +146,7 @@ func TestProductResourcePermissionSearchByNames(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithNonExistentNames(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -169,6 +172,7 @@ func TestProductResourcePermissionSearchWithNonExistentNames(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -215,6 +219,7 @@ func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -269,6 +274,7 @@ func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithNonExistentProduct(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	nonExistentProductID := ids.MustNew("prod")
@@ -285,6 +291,7 @@ func TestProductResourcePermissionSearchWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -320,6 +327,7 @@ func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchMixedNamesFilter(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

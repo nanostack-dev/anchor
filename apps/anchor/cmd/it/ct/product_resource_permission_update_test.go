@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -59,6 +60,7 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
@@ -85,6 +87,7 @@ func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -119,6 +122,7 @@ func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -136,6 +140,7 @@ func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	nonExistentProductID := ids.MustNew("prod")
@@ -154,6 +159,7 @@ func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -205,6 +211,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -245,6 +252,7 @@ func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -289,6 +297,7 @@ func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

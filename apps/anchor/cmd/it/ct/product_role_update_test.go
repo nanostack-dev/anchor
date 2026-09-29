@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductRole_Update(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
 	productID := testCtx.ProductID

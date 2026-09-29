@@ -9,6 +9,7 @@ import (
 )
 
 func TestOpenAPIProtected403(t *testing.T) {
+	t.Parallel()
 	noAuth := map[string]struct{}{
 		"post /v1/auth/login":    {},
 		"post /v1/auth/logout":   {},

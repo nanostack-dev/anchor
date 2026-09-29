@@ -20,6 +20,7 @@ const (
 )
 
 func TestGetPlatformUser(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	state := itdsl.Given(t).
 		Tenant(itdsl.TenantOpts{Alias: tenantMainAlias}).

@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -55,6 +56,7 @@ func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
@@ -81,6 +83,7 @@ func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -95,6 +98,7 @@ func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteWithNonExistentProduct(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	nonExistentProductID := ids.MustNew("prod")
@@ -110,6 +114,7 @@ func TestProductResourcePermissionDeleteWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -164,6 +169,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
@@ -224,6 +230,7 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

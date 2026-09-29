@@ -13,6 +13,7 @@ import (
 )
 
 func TestLicenseSchemaGet(t *testing.T) {
+	t.Parallel()
 	t.Run("reads back the declaration", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		state := itdsl.Given(t).

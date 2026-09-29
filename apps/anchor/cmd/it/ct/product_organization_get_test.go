@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductOrganizationGet(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)

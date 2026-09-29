@@ -22,6 +22,7 @@ import (
 // "unhandled error" 500. Delivery failure is a known operational outcome, so it
 // must carry a stable, machine-readable code for callers and dashboards.
 func TestEmailSendDeliveryFailure(t *testing.T) {
+	t.Parallel()
 	tc := newEmailTestCtx(t)
 	seedUnreachableSMTPInstance(t, tc)
 	client := tc.product.OwnerAuthenticatedClient()

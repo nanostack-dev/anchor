@@ -12,6 +12,7 @@ import (
 )
 
 func TestReportUsage(t *testing.T) {
+	t.Parallel()
 	t.Run("stores a gauge against a declared limit", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
@@ -233,6 +234,7 @@ func TestReportUsage(t *testing.T) {
 // declaration: a report's window presence must agree with the field's
 // declared usage_shape. See docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 func TestReportUsageShape(t *testing.T) {
+	t.Parallel()
 	t.Run("refuses a windowed report against a gauge field", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		from, to := billingPeriod()
@@ -291,6 +293,7 @@ func TestReportUsageShape(t *testing.T) {
 }
 
 func TestReportUsageIsolation(t *testing.T) {
+	t.Parallel()
 	t.Run("an organization of another product is not addressable", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		other := newLicenseWorld(t)
@@ -313,6 +316,7 @@ func TestReportUsageIsolation(t *testing.T) {
 }
 
 func TestReportUsageNeedsNoLicense(t *testing.T) {
+	t.Parallel()
 	t.Run("an organization on no tier can report", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		require.Equal(t, http.StatusNotFound, w.License().GetRaw().StatusCode())

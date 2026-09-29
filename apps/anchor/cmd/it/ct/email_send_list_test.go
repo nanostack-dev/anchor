@@ -14,6 +14,7 @@ import (
 	"anchor/cmd/it/shared/mailpit"
 )
 
+// Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendList(t *testing.T) {
 	t.Run("returns empty list for new product", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
