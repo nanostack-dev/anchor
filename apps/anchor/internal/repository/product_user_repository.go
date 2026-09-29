@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -204,39 +205,55 @@ func (r *productUserRepositoryImpl) DeleteByID(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
+var ErrProductUserExternalIDMissing = errors.New("product user upsert requires an external ID")
+
 func (r *productUserRepositoryImpl) UpsertByExternalID(
 	ctx context.Context,
 	entity user.ProductUser,
 ) (user.ProductUser, bool, error) {
+	if entity.ExternalID == nil {
+		return user.ProductUser{}, false, ErrProductUserExternalIDMissing
+	}
 	dbEntity := r.productUserMapper.ToEntity(entity)
 
-	stmt := table.ProductUsers.INSERT(
+	insertStmt := table.ProductUsers.INSERT(
 		productUsersUpdatableColumns(),
 	).MODEL(dbEntity).
 		ON_CONFLICT(table.ProductUsers.ProductID, table.ProductUsers.ExternalID).
 		WHERE(table.ProductUsers.ExternalID.IS_NOT_NULL()).
-		DO_UPDATE(
-			postgres.SET(
-				table.ProductUsers.Email.SET(table.ProductUsers.EXCLUDED.Email),
-				table.ProductUsers.Name.SET(table.ProductUsers.EXCLUDED.Name),
-				table.ProductUsers.Status.SET(table.ProductUsers.EXCLUDED.Status),
+		DO_NOTHING().
+		RETURNING(table.ProductUsers.AllColumns)
+
+	inserted, err := transactor.QueryOptionalMap(
+		ctx, r.db, insertStmt, r.productUserMapper.ToDomain,
+	)
+	if err != nil {
+		return user.ProductUser{}, false, err
+	}
+	if inserted.IsPresent() {
+		return inserted.Value(), true, nil
+	}
+
+	updateStmt := table.ProductUsers.UPDATE(
+		table.ProductUsers.Email,
+		table.ProductUsers.Name,
+		table.ProductUsers.Status,
+	).MODEL(dbEntity).
+		WHERE(
+			table.ProductUsers.ProductID.EQ(postgres.String(dbEntity.ProductID)).AND(
+				table.ProductUsers.ExternalID.EQ(postgres.String(*entity.ExternalID)),
 			),
 		).
 		RETURNING(table.ProductUsers.AllColumns)
 
-	result, err := transactor.QueryMap(
-		ctx, r.db, stmt, r.productUserMapper.ToDomain,
+	updated, err := transactor.QueryMap(
+		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
 	).Value()
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
 
-	// created_at is excluded from DO UPDATE, so it stays unchanged on conflict.
-	// If the returned created_at matches the value we attempted to insert
-	// (within one second), the row was newly inserted; otherwise it was updated.
-	created := result.CreatedAt.Truncate(time.Second).Equal(entity.CreatedAt.Truncate(time.Second))
-
-	return result, created, nil
+	return updated, false, nil
 }
 
 func (r *productUserRepositoryImpl) DeleteByExternalID(
