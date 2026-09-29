@@ -1,4 +1,4 @@
-package invitation_ct_test
+package ct_test
 
 import (
 	"net/http"

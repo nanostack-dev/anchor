@@ -1,14 +1,8 @@
-// Package invitation_ct_test contains component tests for the organization
-// invitation HTTP API. Every path goes through the real chi router and the
-// oapi-codegen strict server, backed by a live Postgres, and is exercised
-// through the generated public client.
-package invitation_ct_test
+package ct_test
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -21,30 +15,6 @@ import (
 	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
 )
-
-// testDB backs the fixtures and assertions no API response can show: putting an
-// expiry in the past, and reading what the table stores.
-var testDB *sql.DB
-
-func TestMain(m *testing.M) {
-	if err := os.Chdir(".."); err != nil {
-		panic(err)
-	}
-	itshared.RunTestMain(m, itshared.TestConfig{
-		ExtraPopulateTargets:    []any{&testDB},
-		EnableRedis:             true,
-		PopulateRepositories:    true,
-		APIKeyService:           &itshared.APIKeyService,
-		PermissionRepository:    &itshared.PermissionRepository,
-		ProductRepository:       &itshared.ProductRepository,
-		ProductUserRepository:   &itshared.ProductUserRepository,
-		OrgMembershipRepository: &itshared.OrgMembershipRepository,
-		TenantRepository:        &itshared.TenantRepository,
-		UserRepository:          &itshared.UserRepository,
-		PlatformUserRepository:  &itshared.PlatformTenantUserRepo,
-		JWTHelper:               &itshared.JWTHelper,
-	})
-}
 
 const defaultExpiry = 7 * 24 * time.Hour
 
