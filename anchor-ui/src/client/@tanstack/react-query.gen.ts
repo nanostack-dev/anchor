@@ -724,7 +724,7 @@ export const createProductRoleMutation = (options?: Partial<Options<CreateProduc
 
 /**
  * Delete ProductRole
- * Deletes an application role. Fails if the role is currently assigned to any users via memberships. Requires Platform Bearer token or Product API Key with product_role:delete scope.
+ * Deletes an application role. A role used by a member, through a membership, or by a pending organization invitation cannot be deleted and the call fails with ROLE_IN_USE. Change the role of the invitation or delete the invitation first. Accepted and expired invitations that name the role are deleted with it, and each emits an organization.invitation.deleted event. Requires Platform Bearer token or Product API Key with product_role:delete scope.
  */
 export const deleteProductRoleMutation = (options?: Partial<Options<DeleteProductRoleData>>): UseMutationOptions<DeleteProductRoleResponse, DeleteProductRoleError, Options<DeleteProductRoleData>> => {
     const mutationOptions: UseMutationOptions<DeleteProductRoleResponse, DeleteProductRoleError, Options<DeleteProductRoleData>> = {

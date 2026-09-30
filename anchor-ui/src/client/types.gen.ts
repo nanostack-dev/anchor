@@ -4067,7 +4067,7 @@ export type DeleteProductRoleData = {
 
 export type DeleteProductRoleErrors = {
     /**
-     * Bad Request (Role is currently assigned via memberships)
+     * Bad Request (Role is currently assigned via memberships or named by a pending invitation)
      */
     400: ApiErrorResponse;
     /**

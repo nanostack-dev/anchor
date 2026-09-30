@@ -12,6 +12,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
 	"anchor/internal/events"
+	invitationrepository "anchor/internal/invitation/repository"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -58,6 +59,7 @@ type ProductRoleService interface {
 type productRoleService struct {
 	roleRepo                      repository.ProductRoleRepository
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository
+	invitationRepo                invitationrepository.Repository
 	transactor                    transactor.Transactor
 	events                        events.Emitter
 	logger                        zerolog.Logger
@@ -66,6 +68,7 @@ type productRoleService struct {
 func NewProductRoleService(
 	roleRepo repository.ProductRoleRepository,
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
+	invitationRepo invitationrepository.Repository,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -73,6 +76,7 @@ func NewProductRoleService(
 	return &productRoleService{
 		roleRepo:                      roleRepo,
 		productResourcePermissionRepo: productResourcePermissionRepo,
+		invitationRepo:                invitationRepo,
 		transactor:                    tx,
 		events:                        eventEmitter,
 		logger: logger.With().Str(
@@ -310,6 +314,9 @@ func (s *productRoleService) DeleteProductRole(
 	}
 
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if invitationErr := s.releaseInvitations(txCtx, input.ProductID, input.ID, logger); invitationErr != nil {
+			return invitationErr
+		}
 		if deleteErr := s.roleRepo.DeleteByProductIDAndRoleID(
 			txCtx, input.ProductID, input.ID,
 		); deleteErr != nil {
@@ -331,6 +338,46 @@ func (s *productRoleService) DeleteProductRole(
 		Str("product_id", input.ProductID).
 		Msg("product role deleted")
 
+	return nil
+}
+
+// releaseInvitations refuses while a pending invitation names the role. It
+// then deletes the accepted and expired invitations that name the role, each
+// with its deleted event, so the foreign key cascade never removes one silently.
+func (s *productRoleService) releaseInvitations(
+	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+) error {
+	pending, err := s.invitationRepo.ExistsPendingForRole(ctx, productID, roleID)
+	if err != nil {
+		logger.Error().
+			Str("product_id", productID).
+			Str("role_id", roleID).
+			Err(err).
+			Msg("failed to check pending invitations of the role")
+		return fault.ErrUnexpected
+	}
+	if pending {
+		return NewRoleInUseError(roleID)
+	}
+
+	deleted, err := s.invitationRepo.DeleteNonPendingForRole(ctx, productID, roleID)
+	if err != nil {
+		logger.Error().
+			Str("product_id", productID).
+			Str("role_id", roleID).
+			Err(err).
+			Msg("failed to delete the settled invitations of the role")
+		return fault.ErrUnexpected
+	}
+	for _, invitation := range deleted {
+		if emitErr := s.events.Emit(ctx, events.Event{
+			Type:      events.OrganizationInvitationDeleted,
+			ProductID: productID,
+			Data:      events.InvitationData(invitation.OrganizationID, invitation.ID),
+		}); emitErr != nil {
+			return emitErr
+		}
+	}
 	return nil
 }
 

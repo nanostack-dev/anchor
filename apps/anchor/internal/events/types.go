@@ -57,6 +57,13 @@ const (
 
 type Data map[string]string
 
+func InvitationData(organizationID, invitationID string) Data {
+	return Data{
+		FieldOrganizationID: organizationID,
+		FieldInvitationID:   invitationID,
+	}
+}
+
 type Event struct {
 	Type      Type   `validate:"required"`
 	ProductID string `validate:"required,notblank"`

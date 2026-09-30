@@ -449,9 +449,6 @@ func (s *organizationInvitationService) emit(
 	return s.events.Emit(ctx, events.Event{
 		Type:      eventType,
 		ProductID: invitation.ProductID,
-		Data: events.Data{
-			events.FieldOrganizationID: invitation.OrganizationID,
-			events.FieldInvitationID:   invitation.ID,
-		},
+		Data:      events.InvitationData(invitation.OrganizationID, invitation.ID),
 	})
 }

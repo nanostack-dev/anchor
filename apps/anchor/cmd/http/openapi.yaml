@@ -5336,8 +5336,12 @@ paths:
           $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete ProductRole
-      description: Deletes an application role. Fails if the role is currently 
-        assigned to any users via memberships. Requires Platform Bearer token
+      description: Deletes an application role. A role used by a member, through
+        a membership, or by a pending organization invitation cannot be deleted
+        and the call fails with ROLE_IN_USE. Change the role of the invitation
+        or delete the invitation first. Accepted and expired invitations that
+        name the role are deleted with it, and each emits an
+        organization.invitation.deleted event. Requires Platform Bearer token
         or Product API Key with product_role:delete scope.
       operationId: deleteProductRole
       tags: [ProductRole]
@@ -5348,14 +5352,14 @@ paths:
         "204":
           description: Application role deleted successfully.
         "400": # Bad Request if role is in use
-          description: Bad Request (Role is currently assigned via memberships)
+          description: Bad Request (Role is currently assigned via memberships or named by a pending invitation)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
               example:
                 errors: [{"code": "ROLE_IN_USE", "message": "Cannot delete role as
-                      it is currently assigned to users."}]
+                      it is currently assigned to users or named by a pending invitation."}]
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

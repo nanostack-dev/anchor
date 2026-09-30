@@ -61,6 +61,15 @@ type Repository interface {
 		ctx context.Context, productID, organizationID, invitationID string, acceptedAt time.Time,
 	) (organizationinvitation.Invitation, error)
 	Delete(ctx context.Context, productID, organizationID, invitationID string) error
+	// ExistsPendingForRole reports whether a pending invitation in the product
+	// names the role.
+	ExistsPendingForRole(ctx context.Context, productID, roleID string) (bool, error)
+	// DeleteNonPendingForRole deletes the accepted and expired invitations in
+	// the product that name the role, and returns them. A pending invitation
+	// is never touched. Call it inside a transaction.
+	DeleteNonPendingForRole(
+		ctx context.Context, productID, roleID string,
+	) ([]organizationinvitation.Invitation, error)
 }
 
 type repositoryImpl struct {
@@ -316,4 +325,34 @@ func (r *repositoryImpl) Delete(ctx context.Context, productID, organizationID, 
 	stmt := table.OrganizationInvitations.DELETE().
 		WHERE(invitationByID(productID, organizationID, invitationID))
 	return transactor.Exec(ctx, r.db, stmt).Err()
+}
+
+func (r *repositoryImpl) ExistsPendingForRole(ctx context.Context, productID, roleID string) (bool, error) {
+	stmt := table.OrganizationInvitations.SELECT(table.OrganizationInvitations.AllColumns).
+		FROM(table.OrganizationInvitations).
+		WHERE(
+			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
+				AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(roleID))).
+				AND(pendingAt(time.Now())),
+		).
+		LIMIT(1)
+	found, err := transactor.QueryOptional[model.OrganizationInvitations](ctx, r.db, stmt)
+	if err != nil {
+		return false, err
+	}
+	return found.IsPresent(), nil
+}
+
+func (r *repositoryImpl) DeleteNonPendingForRole(
+	ctx context.Context, productID, roleID string,
+) ([]organizationinvitation.Invitation, error) {
+	now := time.Now()
+	stmt := table.OrganizationInvitations.DELETE().
+		WHERE(
+			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
+				AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(roleID))).
+				AND(postgres.NOT(pendingAt(now))),
+		).
+		RETURNING(table.OrganizationInvitations.AllColumns)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, toDomain(now)).Value()
 }

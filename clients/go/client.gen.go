@@ -1531,7 +1531,7 @@ type ClientInterface interface {
 
 	// DeleteProductRole Delete ProductRole
 	//
-	// Deletes an application role. Fails if the role is currently assigned to any users via memberships. Requires Platform Bearer token or Product API Key with product_role:delete scope.
+	// Deletes an application role. A role used by a member, through a membership, or by a pending organization invitation cannot be deleted and the call fails with ROLE_IN_USE. Change the role of the invitation or delete the invitation first. Accepted and expired invitations that name the role are deleted with it, and each emits an organization.invitation.deleted event. Requires Platform Bearer token or Product API Key with product_role:delete scope.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/roles/{role_id} (the `DeleteProductRole` operationId).
 	DeleteProductRole(ctx context.Context, productId ProductIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4658,7 +4658,7 @@ func (c *Client) SearchProductRoles(ctx context.Context, productId ProductIdPara
 
 // DeleteProductRole Delete ProductRole
 //
-// Deletes an application role. Fails if the role is currently assigned to any users via memberships. Requires Platform Bearer token or Product API Key with product_role:delete scope.
+// Deletes an application role. A role used by a member, through a membership, or by a pending organization invitation cannot be deleted and the call fails with ROLE_IN_USE. Change the role of the invitation or delete the invitation first. Accepted and expired invitations that name the role are deleted with it, and each emits an organization.invitation.deleted event. Requires Platform Bearer token or Product API Key with product_role:delete scope.
 //
 // Corresponds with DELETE /v1/products/{product_id}/roles/{role_id} (the `DeleteProductRole` operationId).
 func (c *Client) DeleteProductRole(ctx context.Context, productId ProductIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11824,7 +11824,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductRoleWithResponse Delete ProductRole
 	//
-	// Deletes an application role. Fails if the role is currently assigned to any users via memberships. Requires Platform Bearer token or Product API Key with product_role:delete scope.
+	// Deletes an application role. A role used by a member, through a membership, or by a pending organization invitation cannot be deleted and the call fails with ROLE_IN_USE. Change the role of the invitation or delete the invitation first. Accepted and expired invitations that name the role are deleted with it, and each emits an organization.invitation.deleted event. Requires Platform Bearer token or Product API Key with product_role:delete scope.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -22198,7 +22198,7 @@ func (c *ClientWithResponses) SearchProductRolesWithResponse(ctx context.Context
 
 // DeleteProductRoleWithResponse Delete ProductRole
 //
-// Deletes an application role. Fails if the role is currently assigned to any users via memberships. Requires Platform Bearer token or Product API Key with product_role:delete scope.
+// Deletes an application role. A role used by a member, through a membership, or by a pending organization invitation cannot be deleted and the call fails with ROLE_IN_USE. Change the role of the invitation or delete the invitation first. Accepted and expired invitations that name the role are deleted with it, and each emits an organization.invitation.deleted event. Requires Platform Bearer token or Product API Key with product_role:delete scope.
 //
 // Returns a wrapper object for the known response body format(s).
 //
