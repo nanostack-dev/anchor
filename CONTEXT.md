@@ -77,9 +77,9 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | --- | --- | --- |
 | **member** | A Product User who belongs to an Organization. A member holds exactly one role in that Organization. | Not "user" — a Product User exists in the directory whether or not it belongs to any Organization. |
 | **invitation** | An offer to become a member of one Organization, with a named role. It is addressed to an email address, not to a Product User, so the person can be invited before they have an account. The email never changes: a wrong address means deleting the invitation and creating a new one. Anchor stores it and its lifecycle. The Product decides who may invite and when, and delivers the invitation token itself: Anchor never sends the invitation email ([ADR-0019](docs/adr/0019-organization-invitations-live-in-anchor.md)). | Not "invite" as a noun. Not a Platform invitation — that one makes a Platform User and is unrelated. |
-| **invitation token** | The secret that proves the right to accept one invitation. Shown once, when the invitation is created. | Not an API key. |
+| **invitation token** | The secret that proves the right to accept one invitation. Shown once, when the invitation is created or resent. Anchor keeps only its hash. | Not an API key. |
 | **accept** | Turn a pending invitation into a membership for an existing Product User. The Product performs it with the invitation token it received from the link. The person never talks to Anchor. | Not "join". |
-| **resend** | Replace the invitation token of a pending invitation that has not expired, and extend its expiry. The new token is shown once, and the old one stops working. | |
+| **resend** | Replace the invitation token of a pending invitation that has not expired, and reset its expiry to 7 days from now. The new token is shown once, and the old one stops working. | |
 | **invitation status** | `pending`, `accepted`, or `expired`. An invitation reads `expired` once its expiry passes while still pending. Only a pending invitation can be accepted. | Not "revoked" — there is no revoke. Withdrawing an invitation means deleting it. |
 
 At most one pending invitation exists per email address per Organization, and an existing member cannot be invited. Every other rule on an invitation can be changed by the Product through the API, so a Product that runs its own flow is never blocked by Anchor's.
@@ -90,7 +90,7 @@ A Product stays current by receiving **events** from Anchor. The subscriber is t
 
 Inbound Clerk callbacks stay **integration webhooks**. They are a different path.
 
-The catalog is the Product SDK surface: organizations, members, workspaces, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
+The catalog is the Product SDK surface: organizations, members, organization invitations, workspaces, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
 
 | term | means | not |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ The catalog is the Product SDK surface: organizations, members, workspaces, orga
 
 Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) (Svix): headers `webhook-id`, `webhook-timestamp`, `webhook-signature`; body `{type, timestamp, data}` with a thin `data`. Not CloudEvents. See [ADR-0017](docs/adr/0017-product-events-use-standard-webhooks.md).
 
-Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). There is no Organization-member invitation.
+Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). Invitation events are `created`, `updated` (update or resend), `deleted` (delete, or a role delete that removes an accepted or expired invitation) and `accepted`. Accept also emits the membership `created` event.
 
 ## Decisions
 

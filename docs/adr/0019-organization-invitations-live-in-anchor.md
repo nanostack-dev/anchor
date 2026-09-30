@@ -14,7 +14,7 @@ Anchor stores the invitation, its token and its lifecycle, and exposes them as a
 
 A Product that wants to run the whole flow itself must never be blocked by a rule Anchor made. Anchor only validates data integrity: one pending invitation per email per Organization, and no invitation for an existing member. Everything else the Product can change or bypass through the API: update the role or expiry, delete an invitation outright, create a new one.
 
-Anchor never sends the invitation email. Create and resend return the invitation token once, and the Product builds its own link and sends its own email (through Anchor's email sending if it wants). There are no per-Product invitation settings: the default expiry is 7 days, and a create call can set another.
+Anchor never sends the invitation email. Create and resend return the invitation token once (Anchor stores only its SHA-256 hash, and the token only travels in request bodies, never in a URL), and the Product builds its own link and sends its own email (through Anchor's email sending if it wants). There are no per-Product invitation settings: the default expiry is 7 days, and a create call can set another.
 
 ## Considered Options
 
