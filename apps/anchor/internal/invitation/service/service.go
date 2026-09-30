@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/organization"
@@ -67,7 +68,7 @@ func NewOrganizationInvitationService(
 func (s *organizationInvitationService) Create(
 	ctx context.Context, input organizationinvitation.CreateInput,
 ) (organizationinvitation.Created, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Created{}, err
 	}
 
@@ -130,7 +131,7 @@ func (s *organizationInvitationService) Create(
 func (s *organizationInvitationService) Get(
 	ctx context.Context, input organizationinvitation.GetInput,
 ) (organizationinvitation.Invitation, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Invitation{}, err
 	}
 
@@ -148,7 +149,7 @@ func (s *organizationInvitationService) Get(
 func (s *organizationInvitationService) Search(
 	ctx context.Context, input organizationinvitation.SearchInput,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
 
@@ -166,7 +167,7 @@ func (s *organizationInvitationService) Search(
 func (s *organizationInvitationService) Update(
 	ctx context.Context, input organizationinvitation.UpdateInput,
 ) (organizationinvitation.Invitation, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Invitation{}, err
 	}
 	if !input.ExpiresAt.After(time.Now()) {
@@ -205,7 +206,7 @@ func (s *organizationInvitationService) Update(
 func (s *organizationInvitationService) Delete(
 	ctx context.Context, input organizationinvitation.DeleteInput,
 ) error {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -226,7 +227,7 @@ func (s *organizationInvitationService) Delete(
 func (s *organizationInvitationService) Resend(
 	ctx context.Context, input organizationinvitation.ResendInput,
 ) (organizationinvitation.Created, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Created{}, err
 	}
 
@@ -264,7 +265,7 @@ func (s *organizationInvitationService) Resend(
 func (s *organizationInvitationService) Lookup(
 	ctx context.Context, input organizationinvitation.LookupInput,
 ) (organizationinvitation.Invitation, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Invitation{}, err
 	}
 
@@ -285,7 +286,7 @@ func (s *organizationInvitationService) Lookup(
 func (s *organizationInvitationService) Accept(
 	ctx context.Context, input organizationinvitation.AcceptInput,
 ) (organizationinvitation.Invitation, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Invitation{}, err
 	}
 
