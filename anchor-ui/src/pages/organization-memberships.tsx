@@ -1,6 +1,7 @@
 import { searchProductOrganizationsOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { OrganizationMembershipDatatable } from "@/components/organization/OrganizationMembershipDatatable";
+import { OrganizationInvitationDatatable } from "@/components/organization/invitation/OrganizationInvitationDatatable";
 import {
 	Select,
 	SelectContent,
@@ -8,6 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProduct } from "@/context/product/ProductContext";
 import { useQuery } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
@@ -30,7 +32,7 @@ export default function OrganizationMembershipsPage() {
 	return (
 		<Page
 			title="Organization Members"
-			description="View and manage members across your product's organizations."
+			description="View members and invitations across your product's organizations."
 		>
 			<div className="flex flex-col gap-6">
 				<div className="flex w-full max-w-sm flex-col gap-2">
@@ -74,7 +76,18 @@ export default function OrganizationMembershipsPage() {
 				</div>
 
 				{selectedOrgId ? (
-					<OrganizationMembershipDatatable organizationId={selectedOrgId} />
+					<Tabs defaultValue="members">
+						<TabsList variant="line">
+							<TabsTrigger value="members">Members</TabsTrigger>
+							<TabsTrigger value="invitations">Invitations</TabsTrigger>
+						</TabsList>
+						<TabsContent value="members" className="pt-4">
+							<OrganizationMembershipDatatable organizationId={selectedOrgId} />
+						</TabsContent>
+						<TabsContent value="invitations" className="pt-4">
+							<OrganizationInvitationDatatable organizationId={selectedOrgId} />
+						</TabsContent>
+					</Tabs>
 				) : (
 					<div className="flex flex-col items-center justify-center p-12 text-center border border-border rounded-lg bg-muted">
 						<Building2 className="size-10 text-muted-foreground mb-4" />
