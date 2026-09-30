@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"github.com/rs/zerolog"
 )
@@ -67,7 +68,7 @@ func (s *productUserService) Find(
 ) (*user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +92,7 @@ func (s *productUserService) Create(
 ) (user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return user.ProductUser{}, err
 	}
 
@@ -154,7 +155,7 @@ func (s *productUserService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -190,7 +191,7 @@ func (s *productUserService) Search(
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[user.ProductUser]{}, err
 	}
 
@@ -216,7 +217,7 @@ func (s *productUserService) FindByExternalID(
 ) (*user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "FindByExternalID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -240,7 +241,7 @@ func (s *productUserService) ListUserOrganizations(
 ) ([]user.OrganizationMembership, error) {
 	logger := s.logger.With().Str("operation", "ListUserOrganizations").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -280,7 +281,7 @@ func (s *productUserService) GetUserOrganization(
 ) (*user.OrganizationMembership, error) {
 	logger := s.logger.With().Str("operation", "GetUserOrganization").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 

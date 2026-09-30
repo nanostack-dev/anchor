@@ -21,6 +21,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 )
 
@@ -266,7 +267,7 @@ func (s *emailService) resolveSendVersion(
 func (s *emailService) CreateTemplate(
 	ctx context.Context, in email.CreateTemplateInput,
 ) (email.Template, error) {
-	if err := validateStruct(in); err != nil {
+	if err := validate.ValidateStruct(in); err != nil {
 		return email.Template{}, err
 	}
 

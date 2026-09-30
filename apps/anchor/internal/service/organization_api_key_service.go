@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
@@ -106,7 +107,7 @@ func (s *organizationAPIKeyService) Create(
 ) (orgapikey.OrganizationAPIKey, string, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", err
 	}
 
@@ -223,7 +224,7 @@ func (s *organizationAPIKeyService) GetByID(
 ) (*orgapikey.OrganizationAPIKey, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -253,7 +254,7 @@ func (s *organizationAPIKeyService) Update(
 ) (orgapikey.OrganizationAPIKey, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -327,7 +328,7 @@ func (s *organizationAPIKeyService) Search(
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -352,7 +353,7 @@ func (s *organizationAPIKeyService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -435,7 +436,7 @@ func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(
 ) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error) {
 	logger := s.logger.With().Str("operation", "ValidateAPIKeyAndScopes").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -460,7 +461,7 @@ func (s *organizationAPIKeyService) IntrospectAPIKey(
 ) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error) {
 	logger := s.logger.With().Str("operation", "IntrospectAPIKey").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
 	}
 

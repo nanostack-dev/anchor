@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
@@ -100,7 +101,7 @@ func (s *productRoleService) CreateProductRole(
 ) (role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "CreateProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
 	if err := s.nameDuplicationValidation(ctx, input.ProductID, input.Name, "", logger); err != nil {
@@ -168,7 +169,7 @@ func (s *productRoleService) SearchProductRoles(
 ) (search.Result[role.ProductRole], error) {
 	logger := s.logger.With().Str("operation", "SearchProductRoles").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[role.ProductRole]{}, err
 	}
 
@@ -189,7 +190,7 @@ func (s *productRoleService) GetProductRole(
 ) (*role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "GetProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -211,7 +212,7 @@ func (s *productRoleService) UpdateProductRole(
 ) (role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "UpdateProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
 
@@ -283,7 +284,7 @@ func (s *productRoleService) DeleteProductRole(
 ) error {
 	logger := s.logger.With().Str("operation", "DeleteProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -386,7 +387,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 ) (role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "AssignPermissionToProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
 	logger.Info().
@@ -468,7 +469,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 ) (role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "UnassignPermissionFromProductRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
 	logger.Info().
@@ -595,7 +596,7 @@ func (s *productRoleService) permissionsValidation(
 	}{
 		Permissions: permissionNames,
 	}
-	if err := validateStruct(inputValidator); err != nil {
+	if err := validate.ValidateStruct(inputValidator); err != nil {
 		logger.Debug().Err(err).Msg("too many permissions requested")
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/product"
 	"anchor/internal/events"
@@ -75,7 +76,7 @@ func (s *productService) Get(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "Get").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
@@ -109,7 +110,7 @@ func (s *productService) GetWithCache(
 ) (*product.Product, error) {
 	logger := s.logger.With().Str("operation", "GetWithCache").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	cachedProduct, err := s.products.Key(input.TenantID, input.ProductID).GetOrElse(
@@ -133,7 +134,7 @@ func (s *productService) Create(
 ) (product.Product, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return product.Product{}, err
 	}
 	config, configErr := s.normalizeConfig(input.Config)
@@ -223,7 +224,7 @@ func (s *productService) Update(
 ) (product.Product, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return product.Product{}, err
 	}
 	var updated product.Product
@@ -417,7 +418,7 @@ func (s *productService) evictProductFromCache(
 func (s *productService) Delete(ctx context.Context, input product.DeleteProductInput) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -438,7 +439,7 @@ func (s *productService) Search(
 ) (search.Result[product.Product], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[product.Product]{}, err
 	}
 

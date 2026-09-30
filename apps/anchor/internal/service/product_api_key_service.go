@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -75,7 +76,7 @@ func (s *productAPIKeyService) Create(
 ) (apikey.ProductAPIKey, string, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return apikey.ProductAPIKey{}, "", err
 	}
 
@@ -156,7 +157,7 @@ func (s *productAPIKeyService) GetByID(
 ) (*apikey.ProductAPIKey, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -182,7 +183,7 @@ func (s *productAPIKeyService) Update(
 ) (apikey.ProductAPIKey, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return apikey.ProductAPIKey{}, err
 	}
 	logger.Info().
@@ -324,7 +325,7 @@ func (s *productAPIKeyService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -372,7 +373,7 @@ func (s *productAPIKeyService) Search(
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 

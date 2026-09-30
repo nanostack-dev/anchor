@@ -17,6 +17,7 @@ import (
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -196,7 +197,7 @@ func (s *integrationService) CreateInstance(
 ) (integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "CreateInstance").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
 	}
 
@@ -328,7 +329,7 @@ func (s *integrationService) GetInstance(
 ) (*integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "GetInstance").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 
@@ -355,7 +356,7 @@ func (s *integrationService) UpdateInstance(
 ) (integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "UpdateInstance").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
 	}
 
@@ -583,7 +584,7 @@ func (s *integrationService) DeleteInstance(
 ) error {
 	logger := s.logger.With().Str("operation", "DeleteInstance").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return valErr
 	}
 
@@ -652,7 +653,7 @@ func (s *integrationService) ListInstances(
 ) ([]integration.Instance, error) {
 	logger := s.logger.With().Str("operation", "ListInstances").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 
@@ -675,7 +676,7 @@ func (s *integrationService) ListAuditLogs(
 ) ([]integration.AuditLog, error) {
 	logger := s.logger.With().Str("operation", "ListAuditLogs").Logger()
 
-	if valErr := validateStruct(input); valErr != nil {
+	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return nil, valErr
 	}
 

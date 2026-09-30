@@ -6,6 +6,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/workspace"
@@ -67,7 +68,7 @@ func (s *workspaceService) Find(
 	ctx context.Context,
 	input workspace.FindWorkspaceInput,
 ) (*workspace.Workspace, error) {
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -89,7 +90,7 @@ func (s *workspaceService) Create(
 ) (workspace.Workspace, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -150,7 +151,7 @@ func (s *workspaceService) Update(
 ) (workspace.Workspace, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -225,7 +226,7 @@ func (s *workspaceService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -268,7 +269,7 @@ func (s *workspaceService) Search(
 ) (search.Result[workspace.Workspace], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
 

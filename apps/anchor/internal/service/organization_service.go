@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/domain/license"
@@ -194,7 +195,7 @@ func (s *organizationService) Find(
 ) (*organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -267,7 +268,7 @@ func (s *organizationService) Create(
 ) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Organization{}, err
 	}
 
@@ -338,7 +339,7 @@ func (s *organizationService) CreateWithMember(
 ) (organization.OrganizationWithMemberResult, error) {
 	logger := s.logger.With().Str("operation", "CreateWithMember").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organization.OrganizationWithMemberResult{}, err
 	}
 
@@ -546,7 +547,7 @@ func (s *organizationService) Update(
 ) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Organization{}, err
 	}
 
@@ -611,7 +612,7 @@ func (s *organizationService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -661,7 +662,7 @@ func (s *organizationService) Search(
 ) (search.Result[organization.Organization], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[organization.Organization]{}, err
 	}
 

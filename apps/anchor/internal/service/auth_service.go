@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
@@ -90,7 +91,7 @@ func (s *authService) Register(
 	logger := s.logger.With().Str("operation", "Register").Logger()
 
 	logger.Info().Str("email", input.Email).Msg("registering platform user")
-	if validationErr := validateStruct(input); validationErr != nil {
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		logServiceError(logger, validationErr).Msg("registration input validation failed")
 		return platform.User{}, validationErr
 	}
@@ -216,7 +217,7 @@ func (s *authService) Login(
 ) (auth.LoginOutput, error) {
 	logger := s.logger.With().Str("operation", "Login").Logger()
 
-	if validationErr := validateStruct(input); validationErr != nil {
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
 	}
 
@@ -293,7 +294,7 @@ func (s *authService) RefreshToken(
 ) (auth.LoginOutput, error) {
 	logger := s.logger.With().Str("operation", "RefreshToken").Logger()
 
-	if validationErr := validateStruct(input); validationErr != nil {
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
 	}
 

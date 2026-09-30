@@ -5,6 +5,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/repository"
@@ -48,7 +49,7 @@ func (s *platformUserService) SearchPlatformUsers(
 ) (search.Result[platform.User], error) {
 	logger := s.logger.With().Str("operation", "SearchPlatformUsers").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[platform.User]{}, err
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
@@ -67,7 +68,7 @@ func (s *platformUserService) GetPlatformUserByUserID(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetPlatformUserByUserID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
@@ -87,7 +88,7 @@ func (s *platformUserService) GetPlatformUser(
 ) (*platform.User, error) {
 	logger := s.logger.With().Str("operation", "GetPlatformUser").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
@@ -107,7 +108,7 @@ func (s *platformUserService) DeletePlatformUser(
 ) error {
 	logger := s.logger.With().Str("operation", "DeletePlatformUser").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 	//TODO: we should add member id in the jwt

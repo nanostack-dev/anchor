@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/events"
@@ -81,7 +82,7 @@ func (s *resourcePermissionService) Create(
 ) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
@@ -142,7 +143,7 @@ func (s *resourcePermissionService) GetByID(
 ) (*resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -166,7 +167,7 @@ func (s *resourcePermissionService) Update(
 ) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
@@ -222,7 +223,7 @@ func (s *resourcePermissionService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -285,7 +286,7 @@ func (s *resourcePermissionService) SearchByProduct(
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
 	}
 
@@ -308,7 +309,7 @@ func (s *resourcePermissionService) GetByRole(
 ) ([]resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
