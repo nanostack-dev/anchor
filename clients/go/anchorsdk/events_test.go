@@ -104,6 +104,42 @@ func TestWebhookHandlerProductRoleCreated(t *testing.T) {
 	}
 }
 
+func TestWebhookHandlerOrganizationInvitationAccepted(t *testing.T) {
+	t.Parallel()
+
+	secret := mustSigningSecret(t)
+	var got anchorsdk.OrganizationInvitationAccepted
+	handler, err := anchorsdk.Events(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.OrganizationInvitationAccepted(
+		func(_ context.Context, event anchorsdk.OrganizationInvitationAccepted) error {
+			got = event
+			return nil
+		},
+	)
+
+	body := []byte(
+		`{"type":"organization.invitation.accepted","timestamp":"2026-09-01T00:00:00Z",` +
+			`"data":{"organization_id":"org_1","invitation_id":"oinv_1","product_user_id":"pusr_1"}}`,
+	)
+	now := time.Now()
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/anchor", bytes.NewReader(body))
+	req.Header.Set("Webhook-Id", "pevt_test")
+	req.Header.Set("Webhook-Timestamp", strconv.FormatInt(now.Unix(), 10))
+	req.Header.Set("Webhook-Signature", signForTest(t, secret, "pevt_test", now, body))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status %d", recorder.Code)
+	}
+	if got.InvitationID != "oinv_1" || got.OrganizationID != "org_1" || got.ProductUserID != "pusr_1" {
+		t.Fatalf("payload: %+v", got)
+	}
+}
+
 func TestEventTypesCatalog(t *testing.T) {
 	t.Parallel()
 	if len(anchorsdk.EventTypes()) == 0 {

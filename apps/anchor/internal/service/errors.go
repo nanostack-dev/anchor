@@ -123,7 +123,9 @@ func NewPermissionAlreadyAssignedError(roleID, permissionName string) *fault.Err
 func NewRoleInUseError(roleID string) *fault.Error {
 	return fault.Conflict(
 		"ROLE_IN_USE",
-		fmt.Sprintf("You cannot delete product role %s. It is assigned to users.", roleID),
+		fmt.Sprintf(
+			"You cannot delete product role %s. It is assigned to users or named by a pending invitation.", roleID,
+		),
 	)
 }
 

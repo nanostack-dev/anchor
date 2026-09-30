@@ -426,7 +426,7 @@ func (s *organizationService) CreateWithMember(
 			return lookupErr
 		}
 		if foundProductUser.IsAbsent() {
-			return newBodyProductUserNotFoundError(input.ProductUserID)
+			return NewBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
 		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
@@ -442,7 +442,7 @@ func (s *organizationService) CreateWithMember(
 			return roleErr
 		}
 		if foundRole.IsAbsent() {
-			return newBodyRoleNotFoundError(input.RoleID)
+			return NewBodyRoleNotFoundError(input.RoleID)
 		}
 
 		template, templateErr := s.resolveLicenseTemplate(
