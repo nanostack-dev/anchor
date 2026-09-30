@@ -6,6 +6,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
@@ -56,7 +57,7 @@ func (s *permissionService) Create(
 ) (permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "Create").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
 	}
 
@@ -110,7 +111,7 @@ func (s *permissionService) Update(
 ) (permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "Update").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
 	}
 
@@ -157,7 +158,7 @@ func (s *permissionService) Delete(
 ) error {
 	logger := s.logger.With().Str("operation", "Delete").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -217,7 +218,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 ) (*permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "FindByProductAndPermissionName").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -245,7 +246,7 @@ func (s *permissionService) SearchByProductID(
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
 	}
 

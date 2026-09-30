@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 )
 
@@ -102,7 +103,7 @@ func (s *organizationMembershipService) AddMember(
 ) (organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "AddMember").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -143,7 +144,7 @@ func (s *organizationMembershipService) UpdateMemberRole(
 ) (organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "UpdateMemberRole").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -263,7 +264,7 @@ func (s *organizationMembershipService) RemoveMember(
 ) error {
 	logger := s.logger.With().Str("operation", "RemoveMember").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 
@@ -312,7 +313,7 @@ func (s *organizationMembershipService) GetMember(
 ) (*organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "GetMember").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -336,7 +337,7 @@ func (s *organizationMembershipService) ListMembers(
 ) ([]organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "ListMembers").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 
@@ -359,7 +360,7 @@ func (s *organizationMembershipService) SearchMembers(
 ) (search.Result[organization.Membership], error) {
 	logger := s.logger.With().Str("operation", "SearchMembers").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
 

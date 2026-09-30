@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
@@ -55,7 +56,7 @@ func (s *invitationService) CreateInvitation(
 ) (invitation.PlatformInvitation, error) {
 	logger := s.logger.With().Str("operation", "CreateInvitation").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
 	foundPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
@@ -148,7 +149,7 @@ func (s *invitationService) DeleteInvitation(
 ) error {
 	logger := s.logger.With().Str("operation", "DeleteInvitation").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID)
@@ -174,7 +175,7 @@ func (s *invitationService) SearchInvitation(
 ) (search.Result[invitation.PlatformInvitation], error) {
 	logger := s.logger.With().Str("operation", "SearchInvitation").Logger()
 
-	if err := validateStruct(input); err != nil {
+	if err := validate.ValidateStruct(input); err != nil {
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
