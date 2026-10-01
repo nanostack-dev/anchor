@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -96,6 +97,77 @@ func TestProductRole_ConcurrentDuplicateAssignsEmitOnce(t *testing.T) {
 	assert.Equal(t, repeatStatus(http.StatusNoContent), statuses)
 	assert.Equal(t, []string{permissionName}, rolePermissionNames(t, productContext, roleID))
 	assert.Equal(t, 1, countQueuedRoleUpdatedEvents(t, productContext.ProductID, roleID))
+}
+
+func TestProductRole_ConcurrentRenamesKeepAssignedPermissions(t *testing.T) {
+	t.Parallel()
+	productContext := createTestProductContext(t)
+	permissionNames := createRacePermissions(t, productContext)
+	roleID := createEmptyRole(t, productContext)
+	client := productContext.OwnerAuthenticatedClient()
+
+	writes := make([]string, 0, 2*concurrentPermissionWrites)
+	wantStatuses := make([]int, 0, 2*concurrentPermissionWrites)
+	for _, permissionName := range permissionNames {
+		writes = append(writes, "assign:"+permissionName, "rename:"+ids.MustNew("role"))
+		wantStatuses = append(wantStatuses, http.StatusNoContent, http.StatusOK)
+	}
+	statuses, err := runConcurrently(writes, func(write string) (int, error) {
+		kind, value, _ := strings.Cut(write, ":")
+		if kind == "rename" {
+			resp, renameErr := client.UpdateProductRoleWithResponse(
+				t.Context(), productContext.ProductID, roleID,
+				ct.UpdateProductRoleJSONRequestBody{Name: "RaceRole_" + value},
+			)
+			if renameErr != nil {
+				return 0, renameErr
+			}
+			return resp.StatusCode(), nil
+		}
+		resp, assignErr := client.AssignPermissionToProductRoleWithResponse(
+			t.Context(), productContext.ProductID, roleID,
+			ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: value},
+		)
+		if assignErr != nil {
+			return 0, assignErr
+		}
+		return resp.StatusCode(), nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, wantStatuses, statuses)
+	assert.ElementsMatch(t, permissionNames, rolePermissionNames(t, productContext, roleID))
+}
+
+func TestProductRole_UpdateWithPermissionsReplacesTheSet(t *testing.T) {
+	t.Parallel()
+	productContext := createTestProductContext(t)
+	permissionNames := createRacePermissions(t, productContext)
+	roleID := createEmptyRole(t, productContext)
+	client := productContext.OwnerAuthenticatedClient()
+	for _, permissionName := range permissionNames[:2] {
+		resp, err := client.AssignPermissionToProductRoleWithResponse(
+			t.Context(), productContext.ProductID, roleID,
+			ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: permissionName},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode())
+	}
+
+	replacement := []string{permissionNames[1], permissionNames[2]}
+	resp, err := client.UpdateProductRoleWithResponse(
+		t.Context(), productContext.ProductID, roleID,
+		ct.UpdateProductRoleJSONRequestBody{Name: "RaceRole_" + ids.MustNew("role"), Permissions: replacement},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode())
+
+	returned := functional.Slice(resp.JSON200.Permissions).Map(
+		func(permission ct.ProductRolePermissionResponse) string { return permission.PermissionName },
+	)
+	assert.ElementsMatch(t, replacement, returned)
+	assert.ElementsMatch(t, replacement, rolePermissionNames(t, productContext, roleID))
+	assert.Equal(t, 3, countQueuedRoleUpdatedEvents(t, productContext.ProductID, roleID))
 }
 
 func createRacePermissions(t *testing.T, productContext *itdsl.ProductContext) []string {

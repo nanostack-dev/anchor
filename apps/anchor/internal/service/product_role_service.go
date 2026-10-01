@@ -250,7 +250,9 @@ func (s *productRoleService) UpdateProductRole(
 		if err = s.permissionsValidation(ctx, input.ProductID, input.Permissions, logger); err != nil {
 			return role.ProductRole{}, err
 		}
-		updatedRole.Permissions = input.Permissions
+		for i := range input.Permissions {
+			input.Permissions[i].GenerateID()
+		}
 	}
 
 	var updated role.ProductRole
@@ -265,6 +267,11 @@ func (s *productRoleService) UpdateProductRole(
 				Msg("failed to update product role")
 			return fault.ErrUnexpected
 		}
+		if input.Permissions != nil {
+			if updated, updateErr = s.replacePermissions(txCtx, input, logger); updateErr != nil {
+				return updateErr
+			}
+		}
 		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
 	})
 	if err != nil {
@@ -277,6 +284,29 @@ func (s *productRoleService) UpdateProductRole(
 		Msg("product role updated")
 
 	return updated, nil
+}
+
+func (s *productRoleService) replacePermissions(
+	ctx context.Context, input role.UpdateProductRoleInput, logger zerolog.Logger,
+) (role.ProductRole, error) {
+	if err := s.roleRepo.ReplacePermissions(ctx, input.ProductID, input.ID, input.Permissions); err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("role_id", input.ID).
+			Err(err).
+			Msg("failed to replace product role permissions")
+		return role.ProductRole{}, fault.ErrUnexpected
+	}
+	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("role_id", input.ID).
+			Err(err).
+			Msg("failed to reload product role after replacing permissions")
+		return role.ProductRole{}, fault.ErrUnexpected
+	}
+	return found.ToResult(role.ErrProductRoleNotFound).Value()
 }
 
 func (s *productRoleService) DeleteProductRole(
