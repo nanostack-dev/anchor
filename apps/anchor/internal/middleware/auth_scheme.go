@@ -71,11 +71,7 @@ func (auth *AuthMiddleware) authenticateProductAPIKey(
 	if err != nil {
 		auth.logger.Error().Err(err).Str("product_id", productIDPath).
 			Msg("failed to resolve product tenant for API key auth")
-		return nil, &schemeError{
-			status:  http.StatusInternalServerError,
-			message: "Unexpected Error",
-			reason:  "product lookup failed",
-		}
+		return nil, &schemeError{fault: fault.ErrUnexpected, reason: "product lookup failed"}
 	}
 	if prod == nil {
 		return nil, unauthorized("product not found for API key")
@@ -117,32 +113,22 @@ func (auth *AuthMiddleware) authenticatePlatformBearer(
 func (auth *AuthMiddleware) renderAuthFailure(w http.ResponseWriter, err error) {
 	var failure *schemeError
 	if !errors.As(err, &failure) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeAPIError(w, fault.ErrUnauthorized)
 		return
 	}
-	if failure.fault != nil {
-		writeAPIError(w, failure.fault)
-		return
-	}
-	http.Error(w, failure.message, failure.status)
+	writeAPIError(w, failure.fault)
 }
 
 // schemeError describes how a scheme rejected the request, so the middleware can
 // render it once evaluation gives up. Under a disjunction a scheme cannot write
 // the response itself — a later alternative may still authorise the request.
 type schemeError struct {
-	status  int
-	message string
-	fault   *fault.Error
-	reason  string
+	fault  *fault.Error
+	reason string
 }
 
 func (e *schemeError) Error() string { return e.reason }
 
 func unauthorized(reason string) *schemeError {
-	return &schemeError{
-		status:  http.StatusUnauthorized,
-		message: "Unauthorized",
-		reason:  reason,
-	}
+	return &schemeError{fault: fault.ErrUnauthorized, reason: reason}
 }
