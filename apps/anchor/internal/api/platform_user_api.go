@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -123,7 +124,7 @@ func (s *AnchorAPI) GetCurrentUser(
 	}
 
 	if user == nil {
-		return GetCurrentUser401JSONResponse{}, nil
+		return GetCurrentUser401JSONResponse{UnauthorizedJSONResponse(*fault.ErrUnauthorized)}, nil
 	}
 
 	return GetCurrentUser200JSONResponse(mapAuthUserToAPIUserResponse(user)), nil
