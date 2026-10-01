@@ -4912,9 +4912,10 @@ paths:
           $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Product Resource Permission
-      description: Deletes a resource permission. Cannot delete if assigned to 
-        roles. Requires Platform Bearer token or Product API Key with 
-        permissions:delete.
+      description: Deletes a resource permission, and removes it from every
+        role and product API key that holds it. Each role that held it emits
+        `product.role.updated`. Requires Platform Bearer token or Product API
+        Key with resources_permissions:delete.
       operationId: deleteProductResourcePermission
       tags: [ProductResourcePermission]
       security:
@@ -4931,8 +4932,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        '409':
-          $ref: '#/components/responses/Conflict'
   # Platform Invitation Management (Authenticated via Platform Bearer Token)
   /v1/platform-invitations:
     post:

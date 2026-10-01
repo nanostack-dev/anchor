@@ -391,7 +391,7 @@ export const searchProductResourcePermissions = <ThrowOnError extends boolean = 
 
 /**
  * Delete Product Resource Permission
- * Deletes a resource permission. Cannot delete if assigned to roles. Requires Platform Bearer token or Product API Key with permissions:delete.
+ * Deletes a resource permission, and removes it from every role and product API key that holds it. Each role that held it emits `product.role.updated`. Requires Platform Bearer token or Product API Key with resources_permissions:delete.
  */
 export const deleteProductResourcePermission = <ThrowOnError extends boolean = false>(options: Options<DeleteProductResourcePermissionData, ThrowOnError>) => {
     return (options.client ?? client).delete<DeleteProductResourcePermissionResponses, DeleteProductResourcePermissionErrors, ThrowOnError>({

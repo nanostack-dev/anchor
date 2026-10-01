@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -118,6 +120,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
+	sink := testProduct.CaptureEvents()
 
 	createPermissionInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
@@ -166,6 +169,9 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getRoleResp.StatusCode())
 	assert.Empty(t, getRoleResp.JSON200.Permissions)
+
+	sink.WaitFor("product.resource_permission.deleted", map[string]string{"permission_name": permissionName})
+	sink.WaitFor("product.role.updated", map[string]string{"role_id": createRoleResp.JSON201.Id})
 }
 
 func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
@@ -268,4 +274,59 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 			},
 		)
 	}
+}
+
+// Not parallel: it holds an uncommitted assignment and waits for the delete to queue behind it.
+func TestProductResourcePermissionDeleteTellsRoleAssignedConcurrently(t *testing.T) {
+	ctx := context.Background()
+	testProduct := createTestProductContext(t)
+	sink := testProduct.CaptureEvents()
+	owner := testOwnerClient(t)
+
+	created, err := owner.CreateProductResourcePermissionWithResponse(
+		ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{Name: "doc:share"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, created.StatusCode())
+	permissionName := created.JSON201.Name
+
+	role, err := owner.CreateProductRoleWithResponse(
+		ctx, testProduct.ProductID, ct.ProductRoleCreateRequest{Name: "Reviewer"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, role.StatusCode())
+	roleID := role.JSON201.Id
+
+	assignInFlight, err := testDB.BeginTx(t.Context(), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = assignInFlight.Rollback() })
+	_, err = assignInFlight.ExecContext(
+		t.Context(),
+		`INSERT INTO product_role_resource_permissions (id, product_id, product_role_id, permission_name)
+		 VALUES ($1, $2, $3, $4)`,
+		ids.MustNew("prrp"), testProduct.ProductID, roleID, permissionName,
+	)
+	require.NoError(t, err)
+	var assignPID int
+	require.NoError(t, assignInFlight.QueryRowContext(t.Context(), `SELECT pg_backend_pid()`).Scan(&assignPID))
+
+	deleted := make(chan functional.Result[*ct.DeleteProductResourcePermissionResponse], 1)
+	go func() {
+		deleted <- functional.New(owner.DeleteProductResourcePermissionWithResponse(
+			t.Context(), testProduct.ProductID, permissionName,
+		))
+	}()
+	require.Eventually(t, func() bool {
+		var blocked bool
+		scanErr := testDB.QueryRowContext(t.Context(),
+			`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`, assignPID,
+		).Scan(&blocked)
+		return scanErr == nil && blocked
+	}, 5*time.Second, 10*time.Millisecond)
+	require.NoError(t, assignInFlight.Commit())
+
+	resp, err := (<-deleted).Value()
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
 }
