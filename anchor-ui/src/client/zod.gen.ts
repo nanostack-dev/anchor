@@ -528,7 +528,8 @@ export const zProductPermissionFilter = z.object({
 export const zProductRoleFilter = z.object({
     ids: z.optional(z.array(zKsuid)),
     names: z.optional(z.array(z.string())),
-    name_contains: z.optional(z.string())
+    name_contains: z.optional(z.string()),
+    permissions: z.optional(z.array(z.string()))
 });
 
 export const zProductApiKeyFilter = z.object({

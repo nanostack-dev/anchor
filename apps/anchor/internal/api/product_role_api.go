@@ -192,6 +192,7 @@ func mapToSearchProductRoleInput(
 		return role.SearchProductRoleFilter{
 			ProductRoleIDs: f.Ids,
 			Names:          f.Names,
+			Permissions:    f.Permissions,
 		}
 	}).ToPtr()
 	return search.NewRequest[role.SearchProductRoleFilter, role.SortFieldProductRole]().

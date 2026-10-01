@@ -280,6 +280,17 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 			)
 			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
 		}
+		if len(input.Filter.Permissions) > 0 {
+			whereStmt = whereStmt.AND(postgres.EXISTS(
+				table.ProductRoleResourcePermissions.SELECT(postgres.Int(1)).WHERE(
+					table.ProductRoleResourcePermissions.ProductRoleID.EQ(table.ProductRoles.ID).
+						AND(table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID))).
+						AND(postgres.LOWER(table.ProductRoleResourcePermissions.PermissionName).IN(
+							jetx.ToStringExpressions(lowerResourcePermissionStrings(input.Filter.Permissions))...,
+						)),
+				),
+			))
+		}
 	}
 
 	// Page over roles, not over the role⋈permissions join. Applying LIMIT/OFFSET

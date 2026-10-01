@@ -2260,6 +2260,9 @@ type ProductRoleFilter struct {
 
 	// Names Filter by role names (exact matches).
 	Names []string `json:"names,omitempty"`
+
+	// Permissions Filter by roles that hold any of these resource permission names, matched case-insensitively.
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // ProductRoleListResponse defines model for ProductRoleListResponse.
