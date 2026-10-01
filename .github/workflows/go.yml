@@ -41,11 +41,13 @@ on:
 # 46 PR runs sampled on 2026-08-18 kept burning a runner after a newer push had
 # already started.
 #
-# Anything that is not a PR groups on run_id, which is unique, so those runs
-# never share a group at all. Grouping pushes on github.ref would not have left
-# them alone despite cancel-in-progress false: GitHub holds at most ONE pending
-# run per group, so a third merge to main cancels the second before it starts,
-# and that merge then builds no image and dispatches no deploy.
+# Pushes to main share one group and run one at a time, in merge order, so their
+# deploys reach the infra Deploy Router in merge order. queue: max keeps every
+# waiting run; the default keeps only the newest and cancels the rest. Without
+# the queue, the build that finished first deployed first: on 2026-10-01 anchor
+# da83546 deployed after its child b38937a and dev served code that was not main.
+#
+# Anything else (workflow_dispatch) groups on run_id and never waits.
 # GITHUB_TOKEN starts with nothing. Every job states what it needs, so a new job
 # cannot quietly inherit repo-wide write access. Recommended by GitHub's secure-use
 # reference, and the blast-radius limiter in the tj-actions/changed-files
@@ -53,8 +55,9 @@ on:
 permissions: {}
 
 concurrency:
-  group: go-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: go-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && 'main') || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  queue: ${{ github.event_name == 'pull_request' && 'single' || 'max' }}
 
 jobs:
   detect_changes:
