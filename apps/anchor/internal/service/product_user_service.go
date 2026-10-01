@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
 
@@ -328,5 +329,5 @@ func (s *productUserService) GetUserOrganization(
 		return user.OrganizationMembership{}, err
 	}
 
-	return found.ToResult(user.ErrUserOrganizationNotFound).Value()
+	return found.ToResult(organization.ErrMembershipNotFound).Value()
 }

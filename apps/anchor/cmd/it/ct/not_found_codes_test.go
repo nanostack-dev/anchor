@@ -369,7 +369,7 @@ func TestNotFoundCodes_UserOrganization(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	requireNotFoundCode(t, resp.StatusCode(), resp.Body, "USER_ORGANIZATION_NOT_FOUND")
+	requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")
 }
 
 func TestNotFoundCodes_Product(t *testing.T) {
