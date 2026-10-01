@@ -1221,7 +1221,7 @@ export type UserResponse = {
 
 export type ProductOrganizationRequest = {
     /**
-     * Name of the organization. Must be unique within the Product.
+     * Name of the organization. Not unique — two Organizations in one Product may share a name, so address an Organization by its ID.
      */
     name: string;
     /**

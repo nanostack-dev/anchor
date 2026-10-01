@@ -18,8 +18,8 @@ type Organizations struct{ c *Client }
 // Organizations returns the organization facade for this client's product.
 func (c *Client) Organizations() Organizations { return Organizations{c: c} }
 
-// Create starts building an organization. The name must be unique within the
-// product.
+// Create starts building an organization. Names may repeat within a product;
+// keep the returned ID to address the organization.
 //
 //	org, err := c.Organizations().Create("Acme").
 //	    Description("Leading provider of innovative solutions").
