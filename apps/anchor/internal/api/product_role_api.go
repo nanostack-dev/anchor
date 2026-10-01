@@ -155,7 +155,7 @@ func (s *AnchorAPI) AssignPermissionToProductRole(
 		PermissionName: request.Body.PermissionName,
 	}
 
-	_, err := s.ProductRoleService.AssignPermissionToProductRole(ctx, input)
+	err := s.ProductRoleService.AssignPermissionToProductRole(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (s *AnchorAPI) UnassignPermissionFromProductRole(
 		PermissionName: request.PermissionId,
 	}
 
-	_, err := s.ProductRoleService.UnassignPermissionFromProductRole(ctx, input)
+	err := s.ProductRoleService.UnassignPermissionFromProductRole(ctx, input)
 	if err != nil {
 		return nil, err
 	}

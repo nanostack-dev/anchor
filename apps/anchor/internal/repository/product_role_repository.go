@@ -43,6 +43,15 @@ type ProductRoleRepository interface {
 	Update(
 		ctx context.Context, entity role.ProductRole,
 	) (role.ProductRole, error)
+	AddPermission(
+		ctx context.Context, permission role.ProductRolePermission,
+	) (bool, error)
+	RemovePermission(
+		ctx context.Context, productID, roleID, permissionName string,
+	) (bool, error)
+	TouchUpdatedAt(
+		ctx context.Context, productID, roleID string,
+	) error
 	DeleteByProductIDAndRoleID(
 		ctx context.Context, productID string, id string,
 	) error
@@ -199,6 +208,60 @@ func (r *productRoleRepositoryImpl) Update(
 		}
 	}
 	return r.productRoleMapper.ToDomain(updated, newPerms), nil
+}
+
+func (r *productRoleRepositoryImpl) AddPermission(
+	ctx context.Context, permission role.ProductRolePermission,
+) (bool, error) {
+	entity := r.productRoleMapper.PermissionsToEntities([]role.ProductRolePermission{permission})[0]
+	stmt := table.ProductRoleResourcePermissions.INSERT(
+		table.ProductRoleResourcePermissions.ID,
+		table.ProductRoleResourcePermissions.ProductRoleID,
+		table.ProductRoleResourcePermissions.ProductID,
+		table.ProductRoleResourcePermissions.PermissionName,
+	).MODEL(entity).
+		ON_CONFLICT(
+			table.ProductRoleResourcePermissions.ProductID,
+			table.ProductRoleResourcePermissions.ProductRoleID,
+			table.ProductRoleResourcePermissions.PermissionName,
+		).
+		DO_NOTHING()
+	return execAffectsRows(ctx, r.db, stmt)
+}
+
+func (r *productRoleRepositoryImpl) RemovePermission(
+	ctx context.Context, productID, roleID, permissionName string,
+) (bool, error) {
+	stmt := table.ProductRoleResourcePermissions.DELETE().WHERE(
+		table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoleResourcePermissions.ProductRoleID.EQ(postgres.String(roleID))).
+			AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName))),
+	)
+	return execAffectsRows(ctx, r.db, stmt)
+}
+
+func (r *productRoleRepositoryImpl) TouchUpdatedAt(
+	ctx context.Context, productID, roleID string,
+) error {
+	stmt := table.ProductRoles.UPDATE(table.ProductRoles.UpdatedAt).
+		SET(postgres.NOW()).
+		WHERE(
+			table.ProductRoles.ID.EQ(postgres.String(roleID)).
+				AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
+		)
+	return transactor.Exec(ctx, r.db, stmt).Err()
+}
+
+func execAffectsRows(ctx context.Context, db *sql.DB, stmt postgres.Statement) (bool, error) {
+	result, err := stmt.ExecContext(ctx, transactor.Executor(ctx, db))
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
 }
 
 func (r *productRoleRepositoryImpl) DeleteByProductIDAndRoleID(
