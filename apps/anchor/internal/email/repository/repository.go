@@ -35,9 +35,12 @@ type TemplateRepository interface {
 	Create(
 		ctx context.Context, template email.Template,
 	) (email.Template, error)
+	// Update writes only the envelope fields set on the input, so it never
+	// overwrites example_data or the version pointers that SaveExamples and
+	// SetVersionPointers change concurrently.
 	Update(
-		ctx context.Context, tenantID string, template email.Template,
-	) (email.Template, error)
+		ctx context.Context, in email.UpdateTemplateInput,
+	) (functional.Option[email.Template], error)
 	// SaveExamples replaces the example_data JSONB column for the given
 	// template in a single targeted UPDATE (no full read-then-write).
 	SaveExamples(

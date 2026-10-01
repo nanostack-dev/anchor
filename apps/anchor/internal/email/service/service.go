@@ -320,24 +320,17 @@ func (s *emailService) CreateTemplate(
 func (s *emailService) UpdateTemplate(
 	ctx context.Context, in email.UpdateTemplateInput,
 ) (email.Template, error) {
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	if err := validate.ValidateStruct(in); err != nil {
+		return email.Template{}, err
+	}
+	updated, err := s.templateRepo.Update(ctx, in)
 	if err != nil {
 		return email.Template{}, err
 	}
-	if found.IsAbsent() {
+	if updated.IsAbsent() {
 		return email.Template{}, ErrEmailTemplateNotFound
 	}
-	existing := found.Value()
-	if in.Name != nil {
-		existing.Name = *in.Name
-	}
-	if in.Description != nil {
-		existing.Description = *in.Description
-	}
-	if in.IsActive != nil {
-		existing.IsActive = *in.IsActive
-	}
-	return s.templateRepo.Update(ctx, in.TenantID, existing)
+	return updated.Value(), nil
 }
 
 func (s *emailService) UpdateTemplateDraft(
