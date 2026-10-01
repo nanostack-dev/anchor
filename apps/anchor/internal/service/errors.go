@@ -71,16 +71,6 @@ var (
 
 // From resource_permission/errors.go
 
-func NewResourcePermissionInUseError(resourcePermissionID string, roleCount int) error {
-	return fault.Conflict("RESOURCE_PERMISSION_IN_USE", fmt.Sprintf(
-		"You cannot delete resource permission %s. It is assigned to %d role(s).",
-		resourcePermissionID, roleCount,
-	)).Metadata(map[string]any{
-		"resource_permission_id": resourcePermissionID,
-		"role_count":             roleCount,
-	})
-}
-
 func NewResourcePermissionAlreadyExistsError(name string) error {
 	return fault.Conflict("RESOURCE_PERMISSION_ALREADY_EXISTS", fmt.Sprintf("A resource permission with the name '%s' already exists.", name)).
 		Metadata(map[string]any{

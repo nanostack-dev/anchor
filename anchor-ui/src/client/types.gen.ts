@@ -3476,10 +3476,6 @@ export type DeleteProductResourcePermissionErrors = {
      * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
     404: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
 };
 
 export type DeleteProductResourcePermissionError = DeleteProductResourcePermissionErrors[keyof DeleteProductResourcePermissionErrors];

@@ -1463,7 +1463,7 @@ type ClientInterface interface {
 
 	// DeleteProductResourcePermission Delete Product Resource Permission
 	//
-	// Deletes a resource permission. Cannot delete if assigned to roles. Requires Platform Bearer token or Product API Key with permissions:delete.
+	// Deletes a resource permission, and removes it from every role and product API key that holds it. Each role that held it emits `product.role.updated`. Requires Platform Bearer token or Product API Key with resources_permissions:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/resource-permissions/{permission_name} (the `DeleteProductResourcePermission` operationId).
 	DeleteProductResourcePermission(ctx context.Context, productId ProductIdParameter, permissionName ResourcePermissionNameParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4510,7 +4510,7 @@ func (c *Client) SearchProductResourcePermissions(ctx context.Context, productId
 
 // DeleteProductResourcePermission Delete Product Resource Permission
 //
-// Deletes a resource permission. Cannot delete if assigned to roles. Requires Platform Bearer token or Product API Key with permissions:delete.
+// Deletes a resource permission, and removes it from every role and product API key that holds it. Each role that held it emits `product.role.updated`. Requires Platform Bearer token or Product API Key with resources_permissions:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/resource-permissions/{permission_name} (the `DeleteProductResourcePermission` operationId).
 func (c *Client) DeleteProductResourcePermission(ctx context.Context, productId ProductIdParameter, permissionName ResourcePermissionNameParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11752,7 +11752,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductResourcePermissionWithResponse Delete Product Resource Permission
 	//
-	// Deletes a resource permission. Cannot delete if assigned to roles. Requires Platform Bearer token or Product API Key with permissions:delete.
+	// Deletes a resource permission, and removes it from every role and product API key that holds it. Each role that held it emits `product.role.updated`. Requires Platform Bearer token or Product API Key with resources_permissions:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -18991,8 +18991,6 @@ type DeleteProductResourcePermissionResponse struct {
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -19013,11 +19011,6 @@ func (r DeleteProductResourcePermissionResponse) GetJSON403() *Forbidden {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteProductResourcePermissionResponse) GetJSON404() *NotFound {
 	return r.JSON404
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r DeleteProductResourcePermissionResponse) GetJSON409() *Conflict {
-	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
@@ -22078,7 +22071,7 @@ func (c *ClientWithResponses) SearchProductResourcePermissionsWithResponse(ctx c
 
 // DeleteProductResourcePermissionWithResponse Delete Product Resource Permission
 //
-// Deletes a resource permission. Cannot delete if assigned to roles. Requires Platform Bearer token or Product API Key with permissions:delete.
+// Deletes a resource permission, and removes it from every role and product API key that holds it. Each role that held it emits `product.role.updated`. Requires Platform Bearer token or Product API Key with resources_permissions:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -27984,13 +27977,6 @@ func ParseDeleteProductResourcePermissionResponse(rsp *http.Response) (*DeletePr
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	}
 

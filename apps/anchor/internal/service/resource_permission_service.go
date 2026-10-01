@@ -247,6 +247,13 @@ func (s *resourcePermissionService) Delete(
 	}
 	name := found.Value()
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		assignedRoleIDs, findRolesErr := s.resourcePermissionRepo.FindAssignedRoleIDs(
+			txCtx, input.ProductID, name.Name,
+		)
+		if findRolesErr != nil {
+			return findRolesErr
+		}
+
 		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
 			txCtx, input.ProductID, name.Name,
 		); apiKeyDeleteErr != nil {
@@ -260,9 +267,21 @@ func (s *resourcePermissionService) Delete(
 		); deleteErr != nil {
 			return deleteErr
 		}
-		return s.emitResourcePermission(
+		if emitErr := s.emitResourcePermission(
 			txCtx, events.ProductResourcePermissionDeleted, input.ProductID, name.Name,
-		)
+		); emitErr != nil {
+			return emitErr
+		}
+		for _, roleID := range assignedRoleIDs {
+			if emitErr := s.events.Emit(txCtx, events.Event{
+				Type:      events.ProductRoleUpdated,
+				ProductID: input.ProductID,
+				Data:      events.Data{events.FieldRoleID: roleID},
+			}); emitErr != nil {
+				return emitErr
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		logger.Error().

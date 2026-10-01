@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/mapper"
@@ -50,10 +51,9 @@ type ProductResourcePermissionRepository interface {
 		ctx context.Context, productRoleID string,
 	) ([]resourcepermission.ProductResourcePermission, error)
 
-	// CountRoleAssignments counts how many roles use this resource permission
-	CountRoleAssignments(
+	FindAssignedRoleIDs(
 		ctx context.Context, productID, permissionName string,
-	) (int, error)
+	) ([]string, error)
 	FindByProductIDAndPermissionNames(
 		ctx context.Context, productID string, permissionNames []string,
 	) ([]resourcepermission.ProductResourcePermission, error)
@@ -199,21 +199,21 @@ func (r *productResourcePermissionRepository) GetByRole(
 	).Value()
 }
 
-func (r *productResourcePermissionRepository) CountRoleAssignments(
+func (r *productResourcePermissionRepository) FindAssignedRoleIDs(
 	ctx context.Context, productID, permissionName string,
-) (int, error) {
-	whereStmt := table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
-		AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName)))
-
-	count, err := transactor.QueryCount(
-		ctx,
-		r.db,
-		table.ProductRoleResourcePermissions.SELECT(postgres.COUNT(postgres.STAR)).WHERE(whereStmt),
+) ([]string, error) {
+	stmt := table.ProductRoleResourcePermissions.
+		SELECT(table.ProductRoleResourcePermissions.AllColumns).
+		FROM(table.ProductRoleResourcePermissions).
+		WHERE(
+			table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName))),
+		).
+		ORDER_BY(table.ProductRoleResourcePermissions.ProductRoleID)
+	return transactor.QueryMapSlice(
+		ctx, r.db, stmt,
+		func(assignment model.ProductRoleResourcePermissions) string { return assignment.ProductRoleID },
 	).Value()
-	if err != nil {
-		return 0, err
-	}
-	return int(count), nil
 }
 
 func (r *productResourcePermissionRepository) FindByProductIDAndPermissionNames(

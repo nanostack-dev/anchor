@@ -118,6 +118,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 	ctx := context.Background()
 
 	testProduct := createTestProductContext(t)
+	sink := testProduct.CaptureEvents()
 
 	createPermissionInput := ct.CreateProductResourcePermissionRequest{
 		Name:        "file:read",
@@ -166,6 +167,9 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getRoleResp.StatusCode())
 	assert.Empty(t, getRoleResp.JSON200.Permissions)
+
+	sink.WaitFor("product.resource_permission.deleted", map[string]string{"permission_name": permissionName})
+	sink.WaitFor("product.role.updated", map[string]string{"role_id": createRoleResp.JSON201.Id})
 }
 
 func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
