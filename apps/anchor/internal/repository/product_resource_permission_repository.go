@@ -51,6 +51,7 @@ type ProductResourcePermissionRepository interface {
 		ctx context.Context, productRoleID string,
 	) ([]resourcepermission.ProductResourcePermission, error)
 
+	LockByName(ctx context.Context, productID, name string) error
 	FindAssignedRoleIDs(
 		ctx context.Context, productID, permissionName string,
 	) ([]string, error)
@@ -197,6 +198,19 @@ func (r *productResourcePermissionRepository) GetByRole(
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).Value()
+}
+
+func (r *productResourcePermissionRepository) LockByName(
+	ctx context.Context, productID, name string,
+) error {
+	stmt := table.ProductResourcePermissions.
+		SELECT(table.ProductResourcePermissions.Name).
+		WHERE(
+			table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductResourcePermissions.Name.EQ(postgres.String(name))),
+		).
+		FOR(postgres.UPDATE())
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productResourcePermissionRepository) FindAssignedRoleIDs(

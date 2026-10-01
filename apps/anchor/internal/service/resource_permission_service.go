@@ -247,6 +247,9 @@ func (s *resourcePermissionService) Delete(
 	}
 	name := found.Value()
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if lockErr := s.resourcePermissionRepo.LockByName(txCtx, input.ProductID, name.Name); lockErr != nil {
+			return lockErr
+		}
 		assignedRoleIDs, findRolesErr := s.resourcePermissionRepo.FindAssignedRoleIDs(
 			txCtx, input.ProductID, name.Name,
 		)
