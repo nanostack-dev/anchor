@@ -122,23 +122,31 @@ func (r *templateRepositoryImpl) Create(
 }
 
 func (r *templateRepositoryImpl) Update(
-	ctx context.Context, tenantID string, t email.Template,
-) (email.Template, error) {
-	t.UpdatedAt = time.Now()
-	entity := r.mapper.ToEntity(t)
-	stmt := table.EmailTemplates.UPDATE(
-		emailTemplatesUpdatableColumns().Except(
-			table.EmailTemplates.ID,
-			table.EmailTemplates.PlatformTenantID,
-			table.EmailTemplates.ProductID,
-		),
-	).MODEL(entity).WHERE(
-		table.EmailTemplates.ID.EQ(postgres.String(t.ID)).
-			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
+	ctx context.Context, in email.UpdateTemplateInput,
+) (functional.Option[email.Template], error) {
+	var columns postgres.ColumnList
+	var entity model.EmailTemplates
+	if in.Name != nil {
+		columns = append(columns, table.EmailTemplates.Name)
+		entity.Name = *in.Name
+	}
+	if in.Description != nil {
+		columns = append(columns, table.EmailTemplates.Description)
+		entity.Description = *in.Description
+	}
+	if in.IsActive != nil {
+		columns = append(columns, table.EmailTemplates.IsActive)
+		entity.IsActive = *in.IsActive
+	}
+	if len(columns) == 0 {
+		return r.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	}
+	stmt := table.EmailTemplates.UPDATE(columns).MODEL(entity).WHERE(
+		table.EmailTemplates.ID.EQ(postgres.String(in.ID)).
+			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(in.TenantID))).
+			AND(table.EmailTemplates.ProductID.EQ(postgres.String(in.ProductID))),
 	).RETURNING(table.EmailTemplates.AllColumns)
-	return transactor.QueryMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *templateRepositoryImpl) SaveExamples(
