@@ -51,10 +51,10 @@ type ProductRoleService interface {
 	) error
 	AssignPermissionToProductRole(
 		ctx context.Context, input role.AssignPermissionToProductRoleInput,
-	) (role.ProductRole, error)
+	) error
 	UnassignPermissionFromProductRole(
 		ctx context.Context, input role.UnassignPermissionFromProductRoleInput,
-	) (role.ProductRole, error)
+	) error
 }
 
 type productRoleService struct {
@@ -250,7 +250,9 @@ func (s *productRoleService) UpdateProductRole(
 		if err = s.permissionsValidation(ctx, input.ProductID, input.Permissions, logger); err != nil {
 			return role.ProductRole{}, err
 		}
-		updatedRole.Permissions = input.Permissions
+		for i := range input.Permissions {
+			input.Permissions[i].GenerateID()
+		}
 	}
 
 	var updated role.ProductRole
@@ -265,6 +267,11 @@ func (s *productRoleService) UpdateProductRole(
 				Msg("failed to update product role")
 			return fault.ErrUnexpected
 		}
+		if input.Permissions != nil {
+			if updated, updateErr = s.replacePermissions(txCtx, input, logger); updateErr != nil {
+				return updateErr
+			}
+		}
 		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
 	})
 	if err != nil {
@@ -277,6 +284,29 @@ func (s *productRoleService) UpdateProductRole(
 		Msg("product role updated")
 
 	return updated, nil
+}
+
+func (s *productRoleService) replacePermissions(
+	ctx context.Context, input role.UpdateProductRoleInput, logger zerolog.Logger,
+) (role.ProductRole, error) {
+	if err := s.roleRepo.ReplacePermissions(ctx, input.ProductID, input.ID, input.Permissions); err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("role_id", input.ID).
+			Err(err).
+			Msg("failed to replace product role permissions")
+		return role.ProductRole{}, fault.ErrUnexpected
+	}
+	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("role_id", input.ID).
+			Err(err).
+			Msg("failed to reload product role after replacing permissions")
+		return role.ProductRole{}, fault.ErrUnexpected
+	}
+	return found.ToResult(role.ErrProductRoleNotFound).Value()
 }
 
 func (s *productRoleService) DeleteProductRole(
@@ -384,11 +414,11 @@ func (s *productRoleService) releaseInvitations(
 
 func (s *productRoleService) AssignPermissionToProductRole(
 	ctx context.Context, input role.AssignPermissionToProductRoleInput,
-) (role.ProductRole, error) {
+) error {
 	logger := s.logger.With().Str("operation", "AssignPermissionToProductRole").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return role.ProductRole{}, err
+		return err
 	}
 	logger.Info().
 		Str("product_role_id", input.ProductRoleID).
@@ -396,21 +426,9 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		Str("product_id", input.ProductID).
 		Msg("assigning permission to product role")
 
-	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(
-		ctx, input.ProductID, input.ProductRoleID,
-	)
-	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ProductRoleID).
-			Err(err).
-			Msg("failed to find role")
-		return role.ProductRole{}, fault.ErrUnexpected
+	if err := s.requireRole(ctx, input.ProductID, input.ProductRoleID, logger); err != nil {
+		return err
 	}
-	if foundRole.IsAbsent() {
-		return role.ProductRole{}, role.ErrProductRoleNotFound
-	}
-	productRole := foundRole.ToPtr()
 
 	newPermission := role.ProductRolePermission{
 		ProductRoleID:  input.ProductRoleID,
@@ -420,57 +438,43 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	newPermission.GenerateID()
 
 	permissions := []role.ProductRolePermission{newPermission}
-	if err = s.permissionsValidation(ctx, input.ProductID, permissions, logger); err != nil {
-		return role.ProductRole{}, err
+	if err := s.permissionsValidation(ctx, input.ProductID, permissions, logger); err != nil {
+		return err
 	}
 	newPermission = permissions[0]
 
-	alreadyAssigned := functional.Slice(productRole.Permissions).AnyMatch(func(perm role.ProductRolePermission) bool {
-		return strings.EqualFold(perm.PermissionName, newPermission.PermissionName)
-	})
-	if alreadyAssigned {
-		logger.Debug().
-			Str("permission_name", newPermission.PermissionName).
-			Str("product_role_id", input.ProductRoleID).
-			Msg("permission already assigned to role")
-		return *productRole, nil
-	}
-
-	productRole.Permissions = append(productRole.Permissions, newPermission)
-
-	var updated role.ProductRole
-	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var updateErr error
-		updated, updateErr = s.roleRepo.Update(txCtx, *productRole)
-		if updateErr != nil {
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
+		if addErr != nil {
 			logger.Error().
 				Str("product_role_id", input.ProductRoleID).
-				Str("permission_name", input.PermissionName).
-				Err(updateErr).
-				Msg("failed to update role with new permission")
+				Str("permission_name", newPermission.PermissionName).
+				Err(addErr).
+				Msg("failed to add permission to role")
 			return fault.ErrUnexpected
 		}
-		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
+		if !added {
+			logger.Debug().
+				Str("permission_name", newPermission.PermissionName).
+				Str("product_role_id", input.ProductRoleID).
+				Msg("permission already assigned to role")
+			return nil
+		}
+		logger.Info().
+			Str("product_role_id", input.ProductRoleID).
+			Str("permission_name", newPermission.PermissionName).
+			Msg("permission assigned to product role")
+		return s.markRoleUpdated(txCtx, input.ProductID, input.ProductRoleID, logger)
 	})
-	if err != nil {
-		return role.ProductRole{}, err
-	}
-
-	logger.Info().
-		Str("product_role_id", input.ProductRoleID).
-		Str("permission_name", newPermission.PermissionName).
-		Msg("permission assigned to product role")
-
-	return updated, nil
 }
 
 func (s *productRoleService) UnassignPermissionFromProductRole(
 	ctx context.Context, input role.UnassignPermissionFromProductRoleInput,
-) (role.ProductRole, error) {
+) error {
 	logger := s.logger.With().Str("operation", "UnassignPermissionFromProductRole").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return role.ProductRole{}, err
+		return err
 	}
 	logger.Info().
 		Str("product_role_id", input.ProductRoleID).
@@ -478,21 +482,9 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		Str("product_id", input.ProductID).
 		Msg("unassigning permission from product role")
 
-	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(
-		ctx, input.ProductID, input.ProductRoleID,
-	)
-	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ProductRoleID).
-			Err(err).
-			Msg("failed to find role")
-		return role.ProductRole{}, fault.ErrUnexpected
+	if err := s.requireRole(ctx, input.ProductID, input.ProductRoleID, logger); err != nil {
+		return err
 	}
-	if foundRole.IsAbsent() {
-		return role.ProductRole{}, role.ErrProductRoleNotFound
-	}
-	productRole := foundRole.ToPtr()
 
 	foundPermission, err := s.productResourcePermissionRepo.FindByName(
 		ctx, input.ProductID, input.PermissionName,
@@ -503,59 +495,72 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to find permission")
-		return role.ProductRole{}, fault.ErrUnexpected
+		return fault.ErrUnexpected
 	}
 	if foundPermission.IsAbsent() {
-		return role.ProductRole{}, NewProductRoleResourcePermissionNotFoundError(
+		return NewProductRoleResourcePermissionNotFoundError(
 			input.ProductID, input.PermissionName,
 		)
 	}
-	permissionFound := foundPermission.Value()
+	permissionName := foundPermission.Value().Name
 
-	found := false
-	var updatedPermissions []role.ProductRolePermission
-	for _, perm := range productRole.Permissions {
-		if !strings.EqualFold(perm.PermissionName, permissionFound.Name) {
-			updatedPermissions = append(updatedPermissions, perm)
-		} else {
-			found = true
-		}
-	}
-
-	if !found {
-		logger.Debug().
-			Str("permission_name", input.PermissionName).
-			Str("product_role_id", input.ProductRoleID).
-			Msg("permission not found in role")
-		return *productRole, nil
-	}
-
-	productRole.Permissions = updatedPermissions
-
-	var updated role.ProductRole
-	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var updateErr error
-		updated, updateErr = s.roleRepo.Update(txCtx, *productRole)
-		if updateErr != nil {
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		removed, removeErr := s.roleRepo.RemovePermission(
+			txCtx, input.ProductID, input.ProductRoleID, permissionName,
+		)
+		if removeErr != nil {
 			logger.Error().
 				Str("product_role_id", input.ProductRoleID).
-				Str("permission_name", input.PermissionName).
-				Err(updateErr).
-				Msg("failed to update role after removing permission")
+				Str("permission_name", permissionName).
+				Err(removeErr).
+				Msg("failed to remove permission from role")
 			return fault.ErrUnexpected
 		}
-		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
+		if !removed {
+			logger.Debug().
+				Str("permission_name", permissionName).
+				Str("product_role_id", input.ProductRoleID).
+				Msg("permission not found in role")
+			return nil
+		}
+		logger.Info().
+			Str("product_role_id", input.ProductRoleID).
+			Str("permission_name", permissionName).
+			Msg("permission unassigned from product role")
+		return s.markRoleUpdated(txCtx, input.ProductID, input.ProductRoleID, logger)
 	})
+}
+
+func (s *productRoleService) requireRole(
+	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+) error {
+	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
 	if err != nil {
-		return role.ProductRole{}, err
+		logger.Error().
+			Str("product_id", productID).
+			Str("role_id", roleID).
+			Err(err).
+			Msg("failed to find role")
+		return fault.ErrUnexpected
 	}
+	if foundRole.IsAbsent() {
+		return role.ErrProductRoleNotFound
+	}
+	return nil
+}
 
-	logger.Info().
-		Str("product_role_id", input.ProductRoleID).
-		Str("permission_name", input.PermissionName).
-		Msg("permission unassigned from product role")
-
-	return updated, nil
+func (s *productRoleService) markRoleUpdated(
+	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+) error {
+	if err := s.roleRepo.TouchUpdatedAt(ctx, productID, roleID); err != nil {
+		logger.Error().
+			Str("product_id", productID).
+			Str("role_id", roleID).
+			Err(err).
+			Msg("failed to touch role updated_at")
+		return fault.ErrUnexpected
+	}
+	return s.emitRole(ctx, events.ProductRoleUpdated, productID, roleID)
 }
 
 func (s *productRoleService) nameDuplicationValidation(
