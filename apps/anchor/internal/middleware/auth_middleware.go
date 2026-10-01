@@ -19,8 +19,6 @@ const (
 	ProductAPIKeyHeader = "X-Product-Api-Key" //nolint:gosec // This is a header name, not credentials
 )
 
-var errProductNotFound = fault.NotFound("PRODUCT_NOT_FOUND", "Product does not exist.")
-
 type AuthMiddleware struct {
 	jwtHelper               service.JWTHelper
 	productAPIKeyKeyService service.ProductAPIKeyService
@@ -137,7 +135,7 @@ func (auth *AuthMiddleware) authorizeProductAccess(
 	if find == nil {
 		auth.logger.Debug().Str("tenant_id", token.TenantID).Str("product_id", productIDPath).
 			Msg("Product not found for tenant")
-		return &schemeError{fault: errProductNotFound, reason: "product not found for tenant"}
+		return &schemeError{fault: product.ErrProductNotFound, reason: "product not found for tenant"}
 	}
 
 	return nil

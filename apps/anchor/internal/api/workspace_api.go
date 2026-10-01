@@ -86,11 +86,8 @@ func (s *AnchorAPI) GetOrganizationWorkspace(
 		logAPIError(s.logger, err).Msg("failed to find organization workspace")
 		return nil, err
 	}
-	if found == nil {
-		return nil, workspace.ErrWorkspaceNotFound
-	}
 
-	return GetOrganizationWorkspace200JSONResponse(mapWorkspaceToResponse(*found)), nil
+	return GetOrganizationWorkspace200JSONResponse(mapWorkspaceToResponse(found)), nil
 }
 
 func (s *AnchorAPI) UpdateOrganizationWorkspace(

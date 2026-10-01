@@ -110,11 +110,7 @@ func (s *AnchorAPI) GetProductResourcePermission(
 		return nil, err
 	}
 
-	if resourcePermission == nil {
-		return nil, resourcepermission.ErrResourcePermissionNotFound
-	}
-
-	response := mapProductResourcePermissionToResponse(*resourcePermission)
+	response := mapProductResourcePermissionToResponse(resourcePermission)
 	return GetProductResourcePermission200JSONResponse(response), nil
 }
 

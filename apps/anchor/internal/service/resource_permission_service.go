@@ -23,7 +23,7 @@ type ResourcePermissionService interface {
 
 	GetByID(
 		ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
-	) (*resourcepermission.ProductResourcePermission, error)
+	) (resourcepermission.ProductResourcePermission, error)
 
 	Update(
 		ctx context.Context, input resourcepermission.UpdateProductResourcePermissionInput,
@@ -140,11 +140,11 @@ func (s *resourcePermissionService) Create(
 
 func (s *resourcePermissionService) GetByID(
 	ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
-) (*resourcepermission.ProductResourcePermission, error) {
+) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return resourcepermission.ProductResourcePermission{}, err
 	}
 
 	found, err := s.resourcePermissionRepo.FindByName(
@@ -156,14 +156,10 @@ func (s *resourcePermissionService) GetByID(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to get resource permission")
-		return nil, fault.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
-	if found.IsAbsent() {
-		return nil, resourcepermission.ErrResourcePermissionNotFound
-	}
-
-	return found.ToPtr(), nil
+	return found.ToResult(resourcepermission.ErrResourcePermissionNotFound).Value()
 }
 
 func (s *resourcePermissionService) Update(

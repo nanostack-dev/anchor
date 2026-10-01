@@ -15,7 +15,7 @@ import (
 )
 
 type WorkspaceService interface {
-	Find(ctx context.Context, input workspace.FindWorkspaceInput) (*workspace.Workspace, error)
+	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)
 	Delete(ctx context.Context, input workspace.DeleteWorkspaceInput) error
@@ -67,9 +67,9 @@ func (s *workspaceService) emitWorkspace(
 func (s *workspaceService) Find(
 	ctx context.Context,
 	input workspace.FindWorkspaceInput,
-) (*workspace.Workspace, error) {
+) (workspace.Workspace, error) {
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return workspace.Workspace{}, err
 	}
 
 	found, err := s.workspaceRepo.FindByID(
@@ -79,9 +79,9 @@ func (s *workspaceService) Find(
 		input.WorkspaceID,
 	)
 	if err != nil {
-		return nil, err
+		return workspace.Workspace{}, err
 	}
-	return found.ToPtr(), nil
+	return found.ToResult(workspace.ErrWorkspaceNotFound).Value()
 }
 
 func (s *workspaceService) Create(

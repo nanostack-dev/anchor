@@ -90,20 +90,6 @@ func NewResourcePermissionAlreadyExistsError(name string) error {
 
 // From role/errors.go
 
-func NewRoleNotFoundError(roleID string) *fault.Error {
-	return fault.NotFound(
-		"ROLE_NOT_FOUND",
-		fmt.Sprintf("Product role %s does not exist.", roleID),
-	)
-}
-
-func NewProductUserNotFoundError(productUserID string) *fault.Error {
-	return fault.NotFound(
-		"PRODUCT_USER_NOT_FOUND",
-		fmt.Sprintf("Product user %s does not exist.", productUserID),
-	)
-}
-
 func NewRoleWithAlreadyExistingNameError(roleName, productID string) *fault.Error {
 	return fault.Conflict("ROLE_NAME_DUPLICATE", "A product role with this name already exists in the product.").
 		Metadata(map[string]any{

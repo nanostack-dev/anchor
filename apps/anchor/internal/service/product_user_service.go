@@ -19,7 +19,7 @@ import (
 )
 
 type ProductUserService interface {
-	Find(ctx context.Context, input user.FindProductUserInput) (*user.ProductUser, error)
+	Find(ctx context.Context, input user.FindProductUserInput) (user.ProductUser, error)
 	FindByExternalID(ctx context.Context, input user.FindProductUserByExternalIDInput) (*user.ProductUser, error)
 	Create(ctx context.Context, input user.CreateProductUserInput) (user.ProductUser, error)
 	Delete(ctx context.Context, input user.DeleteProductUserInput) error
@@ -31,7 +31,7 @@ type ProductUserService interface {
 	) ([]user.OrganizationMembership, error)
 	GetUserOrganization(
 		ctx context.Context, input user.GetUserOrganizationInput,
-	) (*user.OrganizationMembership, error)
+	) (user.OrganizationMembership, error)
 }
 
 var ErrProductUserEmailAlreadyExists = fault.Conflict(
@@ -65,11 +65,11 @@ func NewProductUserService(
 
 func (s *productUserService) Find(
 	ctx context.Context, input user.FindProductUserInput,
-) (*user.ProductUser, error) {
+) (user.ProductUser, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return user.ProductUser{}, err
 	}
 
 	found, err := s.productUserRepo.FindByProductIDAndID(
@@ -81,10 +81,10 @@ func (s *productUserService) Find(
 			Str("product_user_id", input.ProductUserID).
 			Err(err).
 			Msg("failed to find product user")
-		return nil, err
+		return user.ProductUser{}, err
 	}
 
-	return found.ToPtr(), nil
+	return found.ToResult(user.ErrProductUserNotFound).Value()
 }
 
 func (s *productUserService) Create(
@@ -272,7 +272,7 @@ func (s *productUserService) ListUserOrganizations(
 		return nil, err
 	}
 	if foundUser.IsAbsent() {
-		return nil, fault.ErrNotFound
+		return nil, user.ErrProductUserNotFound
 	}
 
 	memberships, err := s.orgMembershipRepo.FindByProductUserID(
@@ -292,11 +292,11 @@ func (s *productUserService) ListUserOrganizations(
 
 func (s *productUserService) GetUserOrganization(
 	ctx context.Context, input user.GetUserOrganizationInput,
-) (*user.OrganizationMembership, error) {
+) (user.OrganizationMembership, error) {
 	logger := s.logger.With().Str("operation", "GetUserOrganization").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return user.OrganizationMembership{}, err
 	}
 
 	// Verify the product user exists
@@ -309,10 +309,10 @@ func (s *productUserService) GetUserOrganization(
 			Str("product_user_id", input.ProductUserID).
 			Err(err).
 			Msg("failed to verify product user exists")
-		return nil, err
+		return user.OrganizationMembership{}, err
 	}
 	if foundUser.IsAbsent() {
-		return nil, fault.ErrNotFound
+		return user.OrganizationMembership{}, user.ErrProductUserNotFound
 	}
 
 	found, err := s.orgMembershipRepo.FindByProductUserIDAndOrgID(
@@ -325,8 +325,8 @@ func (s *productUserService) GetUserOrganization(
 			Str("organization_id", input.OrganizationID).
 			Err(err).
 			Msg("failed to get user organization")
-		return nil, err
+		return user.OrganizationMembership{}, err
 	}
 
-	return found.ToPtr(), nil
+	return found.ToResult(user.ErrUserOrganizationNotFound).Value()
 }

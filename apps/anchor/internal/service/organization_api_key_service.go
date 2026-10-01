@@ -14,7 +14,9 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
 
+	"anchor/internal/domain/organization"
 	orgapikey "anchor/internal/domain/organization/apikey"
+	"anchor/internal/domain/product"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/events"
 	"anchor/internal/repository"
@@ -30,7 +32,7 @@ type OrganizationAPIKeyService interface {
 	GetByID(
 		ctx context.Context,
 		input orgapikey.GetOrganizationAPIKeyInput,
-	) (*orgapikey.OrganizationAPIKey, error)
+	) (orgapikey.OrganizationAPIKey, error)
 	Update(
 		ctx context.Context,
 		input orgapikey.UpdateOrganizationAPIKeyInput,
@@ -120,7 +122,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 	if foundOrg.IsAbsent() {
-		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, "", organization.ErrOrganizationNotFound
 	}
 	org := foundOrg.Value()
 	foundProd, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
@@ -132,7 +134,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 	if foundProd.IsAbsent() {
-		return orgapikey.OrganizationAPIKey{}, "", fault.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, "", product.ErrProductNotFound
 	}
 	prod := foundProd.ToPtr()
 
@@ -221,14 +223,14 @@ func (s *organizationAPIKeyService) Create(
 func (s *organizationAPIKeyService) GetByID(
 	ctx context.Context,
 	input orgapikey.GetOrganizationAPIKeyInput,
-) (*orgapikey.OrganizationAPIKey, error) {
+) (orgapikey.OrganizationAPIKey, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return orgapikey.OrganizationAPIKey{}, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
-		return nil, err
+		return orgapikey.OrganizationAPIKey{}, err
 	}
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
@@ -238,14 +240,10 @@ func (s *organizationAPIKeyService) GetByID(
 			Str("api_key_id", input.ID).
 			Err(err).
 			Msg("failed to get organization API key")
-		return nil, fault.ErrUnexpected
+		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
-	if found.IsAbsent() {
-		return nil, fault.ErrNotFound
-	}
-
-	return found.ToPtr(), nil
+	return found.ToResult(orgapikey.ErrOrganizationAPIKeyNotFound).Value()
 }
 
 func (s *organizationAPIKeyService) Update(
@@ -272,7 +270,7 @@ func (s *organizationAPIKeyService) Update(
 	}
 
 	if found.IsAbsent() {
-		return orgapikey.OrganizationAPIKey{}, fault.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, orgapikey.ErrOrganizationAPIKeyNotFound
 	}
 
 	existingAPIKey := found.Value()
@@ -371,7 +369,7 @@ func (s *organizationAPIKeyService) Delete(
 	}
 
 	if found.IsAbsent() {
-		return fault.ErrNotFound
+		return orgapikey.ErrOrganizationAPIKeyNotFound
 	}
 	existingAPIKey := found.Value()
 
@@ -702,7 +700,7 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 		return fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 	return nil
 }

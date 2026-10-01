@@ -29,7 +29,7 @@ const (
 )
 
 type ProductService interface {
-	Get(ctx context.Context, input product.GetProductInput) (*product.Product, error)
+	Get(ctx context.Context, input product.GetProductInput) (product.Product, error)
 	// GetInternal returns a product by ID without tenant scoping.
 	// Allowed only for trusted internal paths such as auth middleware resolving
 	// tenant context from authenticated product API keys.
@@ -73,21 +73,22 @@ func NewProductService(
 
 func (s *productService) Get(
 	ctx context.Context, input product.GetProductInput,
-) (*product.Product, error) {
+) (product.Product, error) {
 	logger := s.logger.With().Str("operation", "Get").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return product.Product{}, err
 	}
 	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
 	if err != nil {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
-		return nil, err
+		return product.Product{}, err
 	}
-	prod := found.ToPtr()
-	if prod != nil {
-		s.attachEventsConfig(ctx, input.TenantID, prod)
+	if found.IsAbsent() {
+		return product.Product{}, product.ErrProductNotFound
 	}
+	prod := found.Value()
+	s.attachEventsConfig(ctx, input.TenantID, &prod)
 	return prod, nil
 }
 
@@ -293,7 +294,7 @@ func (s *productService) findProductForUpdate(
 	}
 	if found.IsAbsent() {
 		logger.Debug().Str("product_id", productID).Msg("product not found for update")
-		return nil, fault.ErrNotFound
+		return nil, product.ErrProductNotFound
 	}
 	return found.ToPtr(), nil
 }
