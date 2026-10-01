@@ -1156,7 +1156,7 @@ export const validateOrganizationApiKeyMutation = (options?: Partial<Options<Val
 
 /**
  * Introspect Credential
- * Resolves a raw credential within the product and returns the caller's identity and permissions. Currently supports organization API keys, resolving the key's organization without requiring the organization id. Optionally checks required scopes and updates last_used_at on success. Returns 404 when the credential is not found.
+ * Resolves a raw credential within the product and returns the caller's identity and permissions. Currently supports organization API keys, resolving the key's organization without requiring the organization id. Optionally checks required scopes and updates last_used_at on success. An unknown or deleted credential answers 404 `ORGANIZATION_API_KEY_NOT_FOUND`, not 400 — the credential is the resource this route looks up, and it travels in the body only to keep the secret out of URLs and logs. It is never a 401, because the caller's own product credential did authenticate.
  */
 export const introspectOrganizationApiKeyMutation = (options?: Partial<Options<IntrospectOrganizationApiKeyData>>): UseMutationOptions<IntrospectOrganizationApiKeyResponse, IntrospectOrganizationApiKeyError, Options<IntrospectOrganizationApiKeyData>> => {
     const mutationOptions: UseMutationOptions<IntrospectOrganizationApiKeyResponse, IntrospectOrganizationApiKeyError, Options<IntrospectOrganizationApiKeyData>> = {

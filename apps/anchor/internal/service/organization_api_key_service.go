@@ -565,9 +565,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
-		// The caller (the product) is authenticated; the subject credential simply
-		// does not exist. That is a not-found, not a caller-authentication failure.
-		return orgapikey.OrganizationAPIKey{}, false, fault.ErrNotFound
+		return orgapikey.OrganizationAPIKey{}, false, orgapikey.ErrOrganizationAPIKeyCredentialNotFound
 	}
 
 	return s.evaluateAPIKey(ctx, found.ToPtr(), logger)
