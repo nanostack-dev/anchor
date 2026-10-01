@@ -159,9 +159,15 @@ func (s *productUserService) Delete(
 		return err
 	}
 
+	var deleted bool
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if delErr := s.productUserRepo.DeleteByID(txCtx, input.ProductID, input.ProductUserID); delErr != nil {
+		var delErr error
+		deleted, delErr = s.productUserRepo.DeleteByID(txCtx, input.ProductID, input.ProductUserID)
+		if delErr != nil {
 			return delErr
+		}
+		if !deleted {
+			return nil
 		}
 		return s.events.Emit(txCtx, events.Event{
 			Type:      events.ProductUserDeleted,
@@ -176,6 +182,14 @@ func (s *productUserService) Delete(
 			Err(err).
 			Msg("failed to delete product user")
 		return err
+	}
+
+	if !deleted {
+		logger.Debug().
+			Str("product_user_id", input.ProductUserID).
+			Str("product_id", input.ProductID).
+			Msg("product user already absent, nothing deleted")
+		return nil
 	}
 
 	logger.Info().
