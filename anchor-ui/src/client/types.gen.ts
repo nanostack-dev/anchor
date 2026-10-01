@@ -883,6 +883,10 @@ export type ProductRoleFilter = {
      * Filter by roles whose names contain this substring.
      */
     name_contains?: string;
+    /**
+     * Filter by roles that hold any of these resource permission names, matched case-insensitively.
+     */
+    permissions?: Array<string>;
 };
 
 export type ProductApiKeyFilter = {

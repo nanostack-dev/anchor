@@ -1598,6 +1598,14 @@ components:
         name_contains:
           type: string
           description: Filter by roles whose names contain this substring.
+        permissions:
+          type: array
+          items:
+            type: string
+            examples: ["document:edit"]
+          description: Filter by roles that hold any of these resource
+            permission names, matched case-insensitively.
+          x-go-type-skip-optional-pointer: true
     ProductAPIKeyFilter:
       type: object
       properties:

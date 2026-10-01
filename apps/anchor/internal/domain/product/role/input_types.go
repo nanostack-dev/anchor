@@ -45,6 +45,7 @@ type SearchProductRolesInput struct {
 type SearchProductRoleFilter struct {
 	ProductRoleIDs []string `validate:"omitempty,dive"`
 	Names          []string `validate:"omitempty,dive,min=1"`
+	Permissions    []string `validate:"omitempty,dive,notblank,max=200"`
 }
 
 type AssignPermissionToProductRoleInput struct {
