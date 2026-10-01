@@ -2846,7 +2846,7 @@ type ProductOrganizationRequest struct {
 	// Examples: {"billing_ref":"cust_abc123","region":"us-east-1","sla_level":"gold"}
 	Metadata *Metadata `json:"metadata,omitempty"`
 
-	// Name Name of the organization. Must be unique within the Product.
+	// Name Name of the organization. Not unique — two Organizations in one Product may share a name, so address an Organization by its ID.
 	//
 	// Examples: Acme Corporation
 	Name string `json:"name"`

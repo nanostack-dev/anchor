@@ -2089,8 +2089,9 @@ components:
           type: string
           minLength: 2
           maxLength: 100
-          description: Name of the organization. Must be unique within the 
-            Product.
+          description: Name of the organization. Not unique — two Organizations
+            in one Product may share a name, so address an Organization by its
+            ID.
           examples: ["Acme Corporation"]
         description:
           type: [string, "null"]
