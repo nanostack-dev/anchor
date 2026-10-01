@@ -2,6 +2,7 @@ package itdsl
 
 import (
 	"context"
+	"sync"
 
 	itshared "anchor/cmd/it/shared"
 	dslfactory "anchor/cmd/it/shared/dsl/factory"
@@ -28,7 +29,7 @@ func (b *Builder) Tenant(opts TenantOpts) *Builder {
 
 	require.NotNil(b.t, itshared.TenantRepository, "tenant repository is not available in test setup")
 
-	tenantID := findDefaultTenantID(b.t)
+	tenantID := defaultTenantID(b.t)
 	if opts.Isolated {
 		createdTenant := createTenant(b.t, opts.Name)
 		tenantID = createdTenant.ID
@@ -59,15 +60,26 @@ func (b *Builder) Tenant(opts TenantOpts) *Builder {
 	return b
 }
 
-func findDefaultTenantID(t require.TestingT) string {
-	tenants, err := itshared.TenantRepository.FindAll(context.Background())
-	require.NoError(t, err)
-	if len(tenants) == 0 {
-		createdTenant := createTenant(t, "")
-		return createdTenant.ID
-	}
+var (
+	defaultTenantOnce sync.Once //nolint:gochecknoglobals // one shared tenant per test process
+	defaultTenant     string    //nolint:gochecknoglobals // one shared tenant per test process
+)
 
-	return tenants[0].ID
+// defaultTenantID resolves the tenant that login treats as the platform tenant,
+// once per test process, so parallel builders cannot each create their own.
+func defaultTenantID(t require.TestingT) string {
+	defaultTenantOnce.Do(func() {
+		tenants, err := itshared.TenantRepository.FindAll(context.Background())
+		require.NoError(t, err)
+		if len(tenants) == 0 {
+			defaultTenant = createTenant(t, "").ID
+			return
+		}
+		defaultTenant = tenants[0].ID
+	})
+	require.NotEmpty(t, defaultTenant, "default tenant setup failed in an earlier test")
+
+	return defaultTenant
 }
 
 func createTenant(t require.TestingT, name string) tenant.PlatformTenant {
