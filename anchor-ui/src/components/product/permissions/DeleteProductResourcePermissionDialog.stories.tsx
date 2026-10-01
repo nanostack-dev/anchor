@@ -1,24 +1,74 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, within } from "storybook/test";
-
+import type { ProductRoleResponse, ProductRoleSearchRequest } from "@/client";
+import { client } from "@/client/client.gen";
 import { StoryQuery } from "@/lib/storybook/story-query";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { DeleteProductResourcePermissionDialog } from "./DeleteProductResourcePermissionDialog";
+
+const PRODUCT_ID = "prd_2Nq8xKf3pLmR";
+
+function role(name: string): ProductRoleResponse {
+	return {
+		id: `role_${name}`,
+		product_id: PRODUCT_ID,
+		name,
+		permissions: [],
+		created_at: "2026-07-14T09:12:00Z",
+		updated_at: "2026-07-14T09:12:00Z",
+	};
+}
+
+type RoleSearchReply =
+	| { items: ProductRoleResponse[]; total?: number }
+	| "fail";
+
+const roleSearches: ProductRoleSearchRequest[] = [];
+
+function mockRoleSearch(reply: RoleSearchReply) {
+	roleSearches.length = 0;
+	const previousConfig = client.getConfig();
+	client.setConfig({
+		baseUrl: window.location.origin,
+		fetch: async (input) => {
+			if (!(input instanceof Request)) throw new Error("Expected a Request");
+			roleSearches.push(await input.json());
+			if (reply === "fail") {
+				return Response.json(
+					{ errors: [{ code: "UNEXPECTED_ERROR", message: "Unavailable" }] },
+					{ status: 500 },
+				);
+			}
+			return Response.json({
+				items: reply.items,
+				total: reply.total ?? reply.items.length,
+				count: reply.items.length,
+			});
+		},
+	});
+	const restore = () =>
+		client.setConfig({
+			...previousConfig,
+			fetch: previousConfig.fetch ?? globalThis.fetch.bind(globalThis),
+		});
+	return restore;
+}
 
 const meta = {
 	title: "Product/DeleteProductResourcePermissionDialog",
 	component: DeleteProductResourcePermissionDialog,
 	tags: ["autodocs"],
 	args: {
-		productId: "prd_2Nq8xKf3pLmR",
+		productId: PRODUCT_ID,
 		permission: {
-			product_id: "prd_2Nq8xKf3pLmR",
+			product_id: PRODUCT_ID,
 			name: "invoices:read",
 			description: "Read invoices belonging to the organization",
 			created_at: "2026-07-14T09:12:00Z",
 			updated_at: "2026-07-14T09:12:00Z",
 		},
 	},
+	beforeEach: () => mockRoleSearch({ items: [] }),
 	decorators: [
 		(Story) => (
 			<StoryQuery>
@@ -116,5 +166,89 @@ export const CancelDismisses: Story = {
 		await expect(
 			screen.queryByRole("heading", { name: "Delete Product Permission" }),
 		).not.toBeInTheDocument();
+	},
+};
+
+async function openDialog(canvasElement: HTMLElement) {
+	await userEvent.click(
+		within(canvasElement).getByRole("button", { name: "Delete permission" }),
+	);
+	await screen.findByRole("heading", { name: "Delete Product Permission" });
+}
+
+/**
+ * The roles that hold the permission are named before the user confirms, and
+ * the lookup is scoped to this permission.
+ */
+export const NamesTheRolesThatLoseIt: Story = {
+	beforeEach: () =>
+		mockRoleSearch({ items: [role("Editor"), role("Reviewer")] }),
+	play: async ({ canvasElement }) => {
+		await openDialog(canvasElement);
+
+		await expect(
+			await screen.findByText("These roles lose it: Editor, Reviewer"),
+		).toBeVisible();
+		await expect(
+			screen.getByText(/API keys currently using it will lose this permission/),
+		).toBeVisible();
+		await waitFor(() =>
+			expect(roleSearches.at(-1)?.filter?.permissions).toEqual([
+				"invoices:read",
+			]),
+		);
+	},
+};
+
+/**
+ * When the page holds fewer roles than match, the rest are counted, not hidden.
+ */
+export const CountsRolesBeyondTheList: Story = {
+	beforeEach: () =>
+		mockRoleSearch({
+			items: [role("Editor"), role("Reviewer")],
+			total: 5,
+		}),
+	play: async ({ canvasElement }) => {
+		await openDialog(canvasElement);
+
+		await expect(
+			await screen.findByText(
+				"These roles lose it: Editor, Reviewer, and 3 more",
+			),
+		).toBeVisible();
+	},
+};
+
+/**
+ * A permission no role holds says so, instead of showing an empty callout.
+ */
+export const NoRoleHoldsIt: Story = {
+	play: async ({ canvasElement }) => {
+		await openDialog(canvasElement);
+
+		await expect(
+			await screen.findByText("No role holds this permission."),
+		).toBeVisible();
+		await expect(
+			screen.queryByText(/These roles lose it/),
+		).not.toBeInTheDocument();
+	},
+};
+
+/**
+ * When the lookup fails the dialog falls back to the generic warning, so the
+ * delete is never presented as free.
+ */
+export const FallsBackWhenLookupFails: Story = {
+	beforeEach: () => mockRoleSearch("fail"),
+	play: async ({ canvasElement }) => {
+		await openDialog(canvasElement);
+
+		await expect(
+			await screen.findByText(
+				/Any roles or API keys currently using it will lose this permission immediately/,
+			),
+		).toBeVisible();
 	},
 };

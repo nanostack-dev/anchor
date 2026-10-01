@@ -2,12 +2,14 @@ import type { ProductPermissionResponse } from "@/client";
 import {
 	deleteProductResourcePermissionMutation,
 	searchProductResourcePermissionsQueryKey,
+	searchProductRolesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "../../ui/alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,6 +23,70 @@ import {
 } from "../../ui/alert-dialog";
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
+
+const LISTED_ROLES_LIMIT = 10;
+
+function AffectedRoles({
+	productId,
+	permissionName,
+	open,
+}: {
+	productId: string;
+	permissionName: string;
+	open: boolean;
+}) {
+	const roles = useQuery({
+		...searchProductRolesOptions({
+			path: { product_id: productId },
+			body: {
+				filter: { permissions: [permissionName] },
+				pagination: { limit: LISTED_ROLES_LIMIT, offset: 0 },
+			},
+		}),
+		enabled: open,
+	});
+
+	if (roles.isError) {
+		return (
+			<p className="text-sm text-muted-foreground">
+				Any roles or API keys currently using it will lose this permission
+				immediately.
+			</p>
+		);
+	}
+
+	if (!roles.data) {
+		return (
+			<div className="flex items-center gap-2 text-sm text-muted-foreground">
+				<Spinner />
+				Checking which roles hold it...
+			</div>
+		);
+	}
+
+	const { items, total } = roles.data;
+	const hiddenCount = total - items.length;
+	return (
+		<div className="space-y-2">
+			{items.length === 0 ? (
+				<p className="text-sm text-muted-foreground">
+					No role holds this permission.
+				</p>
+			) : (
+				<Alert variant="destructive">
+					<TriangleAlert />
+					<AlertDescription>
+						These roles lose it: {items.map((role) => role.name).join(", ")}
+						{hiddenCount > 0 && `, and ${hiddenCount} more`}
+					</AlertDescription>
+				</Alert>
+			)}
+			<p className="text-sm text-muted-foreground">
+				API keys currently using it will lose this permission immediately.
+			</p>
+		</div>
+	);
+}
 
 interface DeleteProductPermissionDialogProps {
 	productId: string;
@@ -94,8 +160,7 @@ export function DeleteProductResourcePermissionDialog({
 					<AlertDialogDescription>
 						Are you sure you want to delete the permission "{permission.name}"?
 						This action cannot be undone and will permanently remove the
-						permission. Any roles or API keys currently using it will lose this
-						permission immediately.
+						permission.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
@@ -115,6 +180,12 @@ export function DeleteProductResourcePermissionDialog({
 						)}
 					</div>
 				</div>
+
+				<AffectedRoles
+					productId={productId}
+					permissionName={permission.name}
+					open={open}
+				/>
 
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={deleteMutation.isPending}>
