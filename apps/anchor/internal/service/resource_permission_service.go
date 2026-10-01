@@ -159,6 +159,10 @@ func (s *resourcePermissionService) GetByID(
 		return nil, fault.ErrUnexpected
 	}
 
+	if found.IsAbsent() {
+		return nil, resourcepermission.ErrResourcePermissionNotFound
+	}
+
 	return found.ToPtr(), nil
 }
 
@@ -183,7 +187,7 @@ func (s *resourcePermissionService) Update(
 	}
 
 	if found.IsAbsent() {
-		return resourcepermission.ProductResourcePermission{}, fault.ErrNotFound
+		return resourcepermission.ProductResourcePermission{}, resourcepermission.ErrResourcePermissionNotFound
 	}
 
 	updated := found.Value()
@@ -243,7 +247,7 @@ func (s *resourcePermissionService) Delete(
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
 			Msg("resource permission not found for deletion")
-		return fault.ErrNotFound
+		return resourcepermission.ErrResourcePermissionNotFound
 	}
 	name := found.Value()
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {

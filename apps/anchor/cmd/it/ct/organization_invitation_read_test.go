@@ -182,7 +182,8 @@ func TestSearchInvitations_RefusesUnknownOrganization(t *testing.T) {
 
 	resp := w.invitations.SearchRaw(ids.MustNew("org"), ct.SearchOrganizationInvitationsJSONRequestBody{})
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
 }
 
 func TestSearchInvitations_RefusesUnknownStatus(t *testing.T) {

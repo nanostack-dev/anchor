@@ -216,20 +216,6 @@ func NewOrganizationMembershipAlreadyExistsError(
 	)
 }
 
-func NewOrganizationMembershipNotFoundError(
-	productUserID string,
-	organizationID string,
-) *fault.Error {
-	return fault.NotFound(
-		"ORGANIZATION_MEMBERSHIP_NOT_FOUND",
-		fmt.Sprintf(
-			"Organization membership not found for product user %s in organization %s.",
-			productUserID,
-			organizationID,
-		),
-	)
-}
-
 func NewOrganizationLicenseTemplateNotFoundError(templateID string) *fault.Error {
 	return fault.BadRequest(
 		"ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND",

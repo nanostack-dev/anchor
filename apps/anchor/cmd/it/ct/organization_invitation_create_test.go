@@ -197,7 +197,8 @@ func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
 		RoleId: w.roleID,
 	})
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
 }
 
 func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {

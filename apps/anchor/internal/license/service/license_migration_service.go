@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/domain/organization"
 	"anchor/internal/events"
 	licenserepo "anchor/internal/license/repository"
 	intrepo "anchor/internal/repository"
@@ -346,7 +347,7 @@ func (s *licenseMigrationService) decide(
 			return result, license.OrganizationLicense{}, err
 		}
 		if found.IsAbsent() {
-			return result, license.OrganizationLicense{}, ErrLicenseOrganizationNotFound
+			return result, license.OrganizationLicense{}, organization.ErrOrganizationNotFound
 		}
 
 		granted := license.OrganizationLicense{

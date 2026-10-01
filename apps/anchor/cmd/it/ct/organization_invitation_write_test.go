@@ -176,6 +176,16 @@ func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 }
 
+func TestDeleteInvitation_RefusesUnknownOrganization(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+
+	resp := w.invitations.DeleteRaw(ids.MustNew("org"), ids.MustNew("oinv"))
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+}
+
 func TestDeleteInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)

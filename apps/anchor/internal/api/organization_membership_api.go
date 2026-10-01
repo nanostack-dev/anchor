@@ -68,10 +68,7 @@ func (s *AnchorAPI) GetOrganizationMember(
 	}
 
 	if membership == nil {
-		return nil, fault.NotFound(
-			"MEMBER_NOT_FOUND",
-			"Organization member not found",
-		)
+		return nil, organization.ErrMembershipNotFound
 	}
 
 	resp := mapOrgMemberToResponse(*membership, includePermissions)

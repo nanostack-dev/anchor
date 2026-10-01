@@ -26,7 +26,7 @@ import (
 // a body-supplied list of permission names as a 400: this identifier is
 // path-addressed, so it is a 404.
 func NewProductRoleResourcePermissionNotFoundError(productID, permissionName string) *fault.Error {
-	return fault.NotFound("RESOURCE_PERMISSION_NOT_FOUND", "Resource permission does not exist").
+	return resourcepermission.ErrResourcePermissionNotFound.
 		Metadata(map[string]any{
 			"product_id":      productID,
 			"permission_name": permissionName,

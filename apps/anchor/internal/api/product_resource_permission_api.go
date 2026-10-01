@@ -111,9 +111,7 @@ func (s *AnchorAPI) GetProductResourcePermission(
 	}
 
 	if resourcePermission == nil {
-		return GetProductResourcePermission404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("PRODUCT_RESOURCE_PERMISSION_NOT_FOUND", "Product Resource Permission does not exist."),
-		)}, nil
+		return nil, resourcepermission.ErrResourcePermissionNotFound
 	}
 
 	response := mapProductResourcePermissionToResponse(*resourcePermission)

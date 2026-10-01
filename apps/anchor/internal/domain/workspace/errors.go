@@ -9,3 +9,8 @@ func NewNameExistsError(name, organizationID string) *fault.Error {
 			"organization_id": organizationID,
 		})
 }
+
+var ErrWorkspaceNotFound = fault.NotFound(
+	"WORKSPACE_NOT_FOUND",
+	"This organization has no workspace with that identifier",
+)

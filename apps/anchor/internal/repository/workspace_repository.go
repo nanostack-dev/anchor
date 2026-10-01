@@ -190,7 +190,7 @@ func (r *workspaceRepositoryImpl) Update(
 		return workspace.Workspace{}, err
 	}
 	if updated.IsAbsent() {
-		return workspace.Workspace{}, fault.ErrNotFound
+		return workspace.Workspace{}, workspace.ErrWorkspaceNotFound
 	}
 
 	return updated.Value(), nil

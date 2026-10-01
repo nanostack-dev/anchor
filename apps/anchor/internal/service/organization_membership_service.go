@@ -214,7 +214,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewOrganizationMembershipNotFoundError(productUserID, organizationID)
+		return organization.ErrMembershipNotFound
 	}
 
 	return nil
@@ -280,7 +280,7 @@ func (s *organizationMembershipService) RemoveMember(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
+		return organization.ErrMembershipNotFound
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -435,7 +435,7 @@ func (s *organizationMembershipService) ensureOrganizationExists(
 		return err
 	}
 	if found.IsAbsent() {
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/domain/organization"
 	licenserepo "anchor/internal/license/repository"
 	intrepo "anchor/internal/repository"
 )
@@ -63,7 +64,7 @@ func (s *usageSeriesService) GetSeries(
 		return search.Result[license.UsageSeriesPoint]{}, err
 	}
 	if found.IsAbsent() {
-		return search.Result[license.UsageSeriesPoint]{}, ErrLicenseOrganizationNotFound
+		return search.Result[license.UsageSeriesPoint]{}, organization.ErrOrganizationNotFound
 	}
 
 	return s.series.Read(ctx, request)

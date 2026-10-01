@@ -572,7 +572,7 @@ func (s *organizationService) Update(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for update")
-		return organization.Organization{}, fault.ErrNotFound
+		return organization.Organization{}, organization.ErrOrganizationNotFound
 	}
 
 	org := optOrg.Value()
@@ -632,7 +632,7 @@ func (s *organizationService) Delete(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for deletion")
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
