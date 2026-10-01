@@ -71,9 +71,11 @@ func TestGetCurrentUserPlatformUser(t *testing.T) {
 			assert.Equal(t, http.StatusOK, response.StatusCode())
 			assert.NotNil(t, response.JSON200)
 			assert.Len(t, response.JSON200.Items, 1, "should find exactly one productuserservice")
-			testTenant(t).OwnerClient.DeletePlatformUser(
+			deleteResp, err := testTenant(t).OwnerClient.DeletePlatformUserWithResponse(
 				ctx, response.JSON200.Items[0].Id,
 			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, deleteResp.StatusCode(), string(deleteResp.Body))
 
 			resp2, err := testUser.AuthenticatedClient.GetCurrentUserWithResponse(ctx)
 			require.NoError(t, err, "get current productuserservice request should not error")
