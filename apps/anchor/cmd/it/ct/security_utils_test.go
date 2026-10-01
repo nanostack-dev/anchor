@@ -647,6 +647,7 @@ func assertAuthRejected(t *testing.T, resp *http.Response, route routeSecurityCa
 		expectedStatus = http.StatusForbidden
 	}
 
+	body := readBody(t, resp)
 	require.Equalf(
 		t,
 		expectedStatus,
@@ -656,6 +657,23 @@ func assertAuthRejected(t *testing.T, resp *http.Response, route routeSecurityCa
 		route.OperationID,
 		scenario,
 		resp.StatusCode,
-		readBody(t, resp),
+		body,
 	)
+	requireJSONErrorBodyCode(t, resp, body)
+}
+
+func requireJSONErrorCode(t *testing.T, resp *http.Response) string {
+	t.Helper()
+	return requireJSONErrorBodyCode(t, resp, readBody(t, resp))
+}
+
+func requireJSONErrorBodyCode(t *testing.T, resp *http.Response, body string) string {
+	t.Helper()
+	require.Containsf(t, resp.Header.Get("Content-Type"), "application/json", "body: %s", body)
+
+	var envelope nanostackClient.ApiErrorResponse
+	require.NoErrorf(t, json.Unmarshal([]byte(body), &envelope), "body: %s", body)
+	require.NotEmptyf(t, envelope.Errors, "body: %s", body)
+	require.NotEmptyf(t, envelope.Errors[0].Code, "body: %s", body)
+	return envelope.Errors[0].Code
 }

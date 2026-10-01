@@ -29,6 +29,7 @@ func TestRouteSecurityMatrix(t *testing.T) {
 					http.StatusUnauthorized,
 					resp.StatusCode,
 				)
+				require.Equal(t, "UNAUTHORIZED", requireJSONErrorCode(t, resp))
 			})
 
 			t.Run("valid_auth_with_required_permissions", func(t *testing.T) {

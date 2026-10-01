@@ -19,6 +19,8 @@ const (
 	ProductAPIKeyHeader = "X-Product-Api-Key" //nolint:gosec // This is a header name, not credentials
 )
 
+var errProductNotFound = fault.NotFound("PRODUCT_NOT_FOUND", "Product does not exist.")
+
 type AuthMiddleware struct {
 	jwtHelper               service.JWTHelper
 	productAPIKeyKeyService service.ProductAPIKeyService
@@ -60,7 +62,7 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 					Str("method", r.Method).
 					Str("path", r.URL.Path).
 					Msg("no OpenAPI operation matched; refusing the request")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				writeAPIError(w, fault.ErrUnauthorized)
 				return
 			}
 			r = r.WithContext(apisec.WithRequirements(r.Context(), requirements))
@@ -129,21 +131,13 @@ func (auth *AuthMiddleware) authorizeProductAccess(
 		auth.logger.Warn().Err(err).Str("tenant_id", token.TenantID).Msgf(
 			"Failed to find product %s for tenant %s", productIDPath, token.TenantID,
 		)
-		return &schemeError{
-			status:  http.StatusInternalServerError,
-			message: "Unexpected Error",
-			reason:  "product lookup failed",
-		}
+		return &schemeError{fault: fault.ErrUnexpected, reason: "product lookup failed"}
 	}
 
 	if find == nil {
 		auth.logger.Debug().Str("tenant_id", token.TenantID).Str("product_id", productIDPath).
 			Msg("Product not found for tenant")
-		return &schemeError{
-			status:  http.StatusNotFound,
-			message: "Product not found",
-			reason:  "product not found for tenant",
-		}
+		return &schemeError{fault: errProductNotFound, reason: "product not found for tenant"}
 	}
 
 	return nil
