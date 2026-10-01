@@ -94,7 +94,8 @@ func (r *tenantRepositoryImpl) Count(ctx context.Context) (int64, error) {
 func (r *tenantRepositoryImpl) FindAll(
 	ctx context.Context,
 ) ([]tenant.PlatformTenant, error) {
-	stmt := table.PlatformTenants.SELECT(table.PlatformTenants.AllColumns)
+	stmt := table.PlatformTenants.SELECT(table.PlatformTenants.AllColumns).
+		ORDER_BY(table.PlatformTenants.CreatedAt.ASC(), table.PlatformTenants.ID.ASC())
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.tenantMapper.ToDomainList,
