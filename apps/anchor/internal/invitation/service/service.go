@@ -158,7 +158,7 @@ func (s *organizationInvitationService) Search(
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
 	if foundOrganization.IsAbsent() {
-		return search.Result[organizationinvitation.Invitation]{}, fault.ErrNotFound
+		return search.Result[organizationinvitation.Invitation]{}, organization.ErrOrganizationNotFound
 	}
 
 	return s.invitationRepo.Search(ctx, input.ProductID, input.OrganizationID, input.Request)
@@ -366,7 +366,7 @@ func (s *organizationInvitationService) lockOrganization(
 		return err
 	}
 	if !exists {
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 	return nil
 }

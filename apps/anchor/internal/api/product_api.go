@@ -188,13 +188,7 @@ func (s *AnchorAPI) GetProduct(
 		return nil, err
 	}
 
-	if prod == nil {
-		return GetProduct404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("PRODUCT_NOT_FOUND", "Product does not exist."),
-		)}, nil
-	}
-
-	return GetProduct200JSONResponse(mapProductToResponse(*prod)), nil
+	return GetProduct200JSONResponse(mapProductToResponse(prod)), nil
 }
 
 func (s *AnchorAPI) UpdateProduct(
@@ -376,13 +370,7 @@ func (s *AnchorAPI) GetProductUser(
 		return nil, err
 	}
 
-	if user == nil {
-		return GetProductUser404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("PRODUCT_USER_NOT_FOUND", "Product User does not exist."),
-		)}, nil
-	}
-
-	return GetProductUser200JSONResponse(mapProductUserToResponse(*user)), nil
+	return GetProductUser200JSONResponse(mapProductUserToResponse(user)), nil
 }
 
 func (s *AnchorAPI) DeleteProductUser(
@@ -463,13 +451,7 @@ func (s *AnchorAPI) GetUserOrganization(
 		return nil, err
 	}
 
-	if membership == nil {
-		return GetUserOrganization404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("USER_ORGANIZATION_NOT_FOUND", "User Organization does not exist."),
-		)}, nil
-	}
-
-	resp := mapUserOrgMembershipToResponse(*membership, includePermissions)
+	resp := mapUserOrgMembershipToResponse(membership, includePermissions)
 	return GetUserOrganization200JSONResponse(resp), nil
 }
 

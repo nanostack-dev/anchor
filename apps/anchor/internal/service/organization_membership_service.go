@@ -15,9 +15,9 @@ import (
 )
 
 // NewBodyProductUserNotFoundError answers a product_user_id supplied in a
-// request body that does not resolve. Distinct from errors.go's
-// NewProductUserNotFoundError (404), which is correct only where the caller
-// names product_user_id in the path. The code differs too: one code at two
+// request body that does not resolve. Distinct from user.ErrProductUserNotFound
+// (404), which is correct only where the caller names product_user_id in the
+// path. The code differs too: one code at two
 // statuses breaks a client that switches on code alone.
 func NewBodyProductUserNotFoundError(productUserID string) *fault.Error {
 	return fault.BadRequest(
@@ -29,8 +29,8 @@ func NewBodyProductUserNotFoundError(productUserID string) *fault.Error {
 }
 
 // NewBodyRoleNotFoundError answers a role_id supplied in a request body that
-// does not resolve. Distinct from errors.go's NewRoleNotFoundError (404),
-// which stays correct for product_role_service.go, where role_id is a path
+// does not resolve. Distinct from role.ErrProductRoleNotFound (404), which
+// stays correct for product_role_service.go, where role_id is a path
 // parameter. The code differs too: one code at two statuses breaks a client
 // that switches on code alone.
 func NewBodyRoleNotFoundError(roleID string) *fault.Error {
@@ -47,7 +47,7 @@ type OrganizationMembershipService interface {
 	AddMember(ctx context.Context, input organization.AddMemberInput) (organization.Membership, error)
 	UpdateMemberRole(ctx context.Context, input organization.UpdateMemberRoleInput) (organization.Membership, error)
 	RemoveMember(ctx context.Context, input organization.RemoveMemberInput) error
-	GetMember(ctx context.Context, input organization.GetMemberInput) (*organization.Membership, error)
+	GetMember(ctx context.Context, input organization.GetMemberInput) (organization.Membership, error)
 	ListMembers(ctx context.Context, input organization.ListMembersInput) ([]organization.Membership, error)
 	SearchMembers(
 		ctx context.Context,
@@ -214,7 +214,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewOrganizationMembershipNotFoundError(productUserID, organizationID)
+		return organization.ErrMembershipNotFound
 	}
 
 	return nil
@@ -280,7 +280,7 @@ func (s *organizationMembershipService) RemoveMember(
 		return err
 	}
 	if found.IsAbsent() {
-		return NewOrganizationMembershipNotFoundError(input.ProductUserID, input.OrganizationID)
+		return organization.ErrMembershipNotFound
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -310,11 +310,11 @@ func (s *organizationMembershipService) RemoveMember(
 
 func (s *organizationMembershipService) GetMember(
 	ctx context.Context, input organization.GetMemberInput,
-) (*organization.Membership, error) {
+) (organization.Membership, error) {
 	logger := s.logger.With().Str("operation", "GetMember").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return organization.Membership{}, err
 	}
 
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
@@ -326,10 +326,10 @@ func (s *organizationMembershipService) GetMember(
 			Str("organization_id", input.OrganizationID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("failed to get member")
-		return nil, err
+		return organization.Membership{}, err
 	}
 
-	return found.ToPtr(), nil
+	return found.ToResult(organization.ErrMembershipNotFound).Value()
 }
 
 func (s *organizationMembershipService) ListMembers(
@@ -435,7 +435,7 @@ func (s *organizationMembershipService) ensureOrganizationExists(
 		return err
 	}
 	if found.IsAbsent() {
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 
 	return nil

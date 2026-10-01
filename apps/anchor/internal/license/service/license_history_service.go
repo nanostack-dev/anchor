@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/domain/organization"
 	licenserepo "anchor/internal/license/repository"
 	intrepo "anchor/internal/repository"
 )
@@ -51,7 +52,7 @@ func (s *licenseHistoryService) ListChanges(
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
 	if found.IsAbsent() {
-		return search.Result[license.OrganizationLicenseChange]{}, ErrLicenseOrganizationNotFound
+		return search.Result[license.OrganizationLicenseChange]{}, organization.ErrOrganizationNotFound
 	}
 
 	return s.changes.ListByOrganization(ctx, in)

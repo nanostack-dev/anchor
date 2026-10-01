@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/domain/organization"
 	licenserepo "anchor/internal/license/repository"
 	"anchor/internal/license/rules"
 )
@@ -136,7 +137,7 @@ func (s *usageService) ReportUsage(
 	stored, err := s.observations.Append(ctx, observation)
 	if err != nil {
 		if isMissingOrganization(err) {
-			return license.UsageObservation{}, ErrLicenseOrganizationNotFound
+			return license.UsageObservation{}, organization.ErrOrganizationNotFound
 		}
 		return license.UsageObservation{}, err
 	}

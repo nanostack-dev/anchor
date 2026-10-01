@@ -26,7 +26,7 @@ import (
 // a body-supplied list of permission names as a 400: this identifier is
 // path-addressed, so it is a 404.
 func NewProductRoleResourcePermissionNotFoundError(productID, permissionName string) *fault.Error {
-	return fault.NotFound("RESOURCE_PERMISSION_NOT_FOUND", "Resource permission does not exist").
+	return resourcepermission.ErrResourcePermissionNotFound.
 		Metadata(map[string]any{
 			"product_id":      productID,
 			"permission_name": permissionName,
@@ -42,7 +42,7 @@ type ProductRoleService interface {
 	) (search.Result[role.ProductRole], error)
 	GetProductRole(
 		ctx context.Context, input role.GetProductRoleInput,
-	) (*role.ProductRole, error)
+	) (role.ProductRole, error)
 	UpdateProductRole(
 		ctx context.Context, input role.UpdateProductRoleInput,
 	) (role.ProductRole, error)
@@ -187,11 +187,11 @@ func (s *productRoleService) SearchProductRoles(
 
 func (s *productRoleService) GetProductRole(
 	ctx context.Context, input role.GetProductRoleInput,
-) (*role.ProductRole, error) {
+) (role.ProductRole, error) {
 	logger := s.logger.With().Str("operation", "GetProductRole").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return role.ProductRole{}, err
 	}
 
 	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
@@ -201,10 +201,10 @@ func (s *productRoleService) GetProductRole(
 			Str("role_id", input.ID).
 			Err(err).
 			Msg("failed to get product role")
-		return nil, fault.ErrUnexpected
+		return role.ProductRole{}, fault.ErrUnexpected
 	}
 
-	return found.ToPtr(), nil
+	return found.ToResult(role.ErrProductRoleNotFound).Value()
 }
 
 func (s *productRoleService) UpdateProductRole(
@@ -231,7 +231,7 @@ func (s *productRoleService) UpdateProductRole(
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
-		return role.ProductRole{}, fault.ErrNotFound
+		return role.ProductRole{}, role.ErrProductRoleNotFound
 	}
 
 	updatedRole := foundRole.Value()
@@ -298,7 +298,7 @@ func (s *productRoleService) DeleteProductRole(
 		return fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
-		return fault.ErrNotFound
+		return role.ErrProductRoleNotFound
 	}
 
 	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
@@ -408,7 +408,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
-		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
+		return role.ProductRole{}, role.ErrProductRoleNotFound
 	}
 	productRole := foundRole.ToPtr()
 
@@ -490,7 +490,7 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
-		return role.ProductRole{}, NewRoleNotFoundError(input.ProductRoleID)
+		return role.ProductRole{}, role.ErrProductRoleNotFound
 	}
 	productRole := foundRole.ToPtr()
 

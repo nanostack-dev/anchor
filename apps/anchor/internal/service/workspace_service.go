@@ -4,18 +4,18 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/domain/organization"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	"anchor/internal/repository"
 )
 
 type WorkspaceService interface {
-	Find(ctx context.Context, input workspace.FindWorkspaceInput) (*workspace.Workspace, error)
+	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)
 	Delete(ctx context.Context, input workspace.DeleteWorkspaceInput) error
@@ -67,9 +67,9 @@ func (s *workspaceService) emitWorkspace(
 func (s *workspaceService) Find(
 	ctx context.Context,
 	input workspace.FindWorkspaceInput,
-) (*workspace.Workspace, error) {
+) (workspace.Workspace, error) {
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return workspace.Workspace{}, err
 	}
 
 	found, err := s.workspaceRepo.FindByID(
@@ -79,9 +79,9 @@ func (s *workspaceService) Find(
 		input.WorkspaceID,
 	)
 	if err != nil {
-		return nil, err
+		return workspace.Workspace{}, err
 	}
-	return found.ToPtr(), nil
+	return found.ToResult(workspace.ErrWorkspaceNotFound).Value()
 }
 
 func (s *workspaceService) Create(
@@ -170,7 +170,7 @@ func (s *workspaceService) Update(
 		return workspace.Workspace{}, err
 	}
 	if foundWorkspace.IsAbsent() {
-		return workspace.Workspace{}, fault.ErrNotFound
+		return workspace.Workspace{}, workspace.ErrWorkspaceNotFound
 	}
 	currentWorkspace := foundWorkspace.Value()
 
@@ -245,7 +245,7 @@ func (s *workspaceService) Delete(
 		return err
 	}
 	if foundWorkspace.IsAbsent() {
-		return fault.ErrNotFound
+		return workspace.ErrWorkspaceNotFound
 	}
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -304,7 +304,7 @@ func (s *workspaceService) ensureOrganizationExists(
 		return err
 	}
 	if found.IsAbsent() {
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 
 	return nil

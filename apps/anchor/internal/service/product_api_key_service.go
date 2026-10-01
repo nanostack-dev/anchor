@@ -172,7 +172,7 @@ func (s *productAPIKeyService) GetByID(
 	}
 
 	if found.IsAbsent() {
-		return nil, fault.ErrNotFound
+		return nil, apikey.ErrProductAPIKeyNotFound
 	}
 
 	return found.ToPtr(), nil
@@ -202,7 +202,7 @@ func (s *productAPIKeyService) Update(
 	}
 
 	if foundAPIKey.IsAbsent() {
-		return apikey.ProductAPIKey{}, fault.ErrNotFound
+		return apikey.ProductAPIKey{}, apikey.ErrProductAPIKeyNotFound
 	}
 	existingAPIKey := foundAPIKey.Value()
 
@@ -340,7 +340,7 @@ func (s *productAPIKeyService) Delete(
 	}
 
 	if foundAPIKey.IsAbsent() {
-		return fault.ErrNotFound
+		return apikey.ErrProductAPIKeyNotFound
 	}
 	existingAPIKey := foundAPIKey.Value()
 	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {

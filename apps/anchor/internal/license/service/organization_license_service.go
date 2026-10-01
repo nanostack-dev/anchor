@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/domain/organization"
 	"anchor/internal/events"
 	licenserepo "anchor/internal/license/repository"
 )
@@ -36,10 +37,6 @@ var (
 	ErrOrganizationLicenseAlreadyExists = fault.Conflict(
 		"ORGANIZATION_LICENSE_EXISTS",
 		"This organization already has a license; adjust it instead",
-	)
-	ErrLicenseOrganizationNotFound = fault.NotFound(
-		"ORGANIZATION_NOT_FOUND",
-		"This product has no organization with that identifier",
 	)
 )
 
@@ -179,7 +176,7 @@ func (s *organizationLicenseService) Instantiate(
 			// one round trip, and no window in which the Organization is deleted
 			// between the check and the insert.
 			if pgerr.IsForeignKeyViolation(createErr, organizationLicenseOrganizationConstraint) {
-				return ErrLicenseOrganizationNotFound
+				return organization.ErrOrganizationNotFound
 			}
 			if pgerr.IsUniqueViolation(createErr, organizationLicenseUniqueConstraint) {
 				return ErrOrganizationLicenseAlreadyExists

@@ -21,11 +21,6 @@ var (
 		"Permission name must follow format 'resource:action'",
 	)
 
-	ErrProductNotFound = fault.NotFound(
-		"PRODUCT_NOT_FOUND",
-		"Product does not exist",
-	)
-
 	ErrPermissionNotFound = fault.NotFound(
 		"PERMISSION_NOT_FOUND",
 		"Permission does not exist",

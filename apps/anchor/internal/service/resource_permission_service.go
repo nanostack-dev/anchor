@@ -23,7 +23,7 @@ type ResourcePermissionService interface {
 
 	GetByID(
 		ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
-	) (*resourcepermission.ProductResourcePermission, error)
+	) (resourcepermission.ProductResourcePermission, error)
 
 	Update(
 		ctx context.Context, input resourcepermission.UpdateProductResourcePermissionInput,
@@ -140,11 +140,11 @@ func (s *resourcePermissionService) Create(
 
 func (s *resourcePermissionService) GetByID(
 	ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
-) (*resourcepermission.ProductResourcePermission, error) {
+) (resourcepermission.ProductResourcePermission, error) {
 	logger := s.logger.With().Str("operation", "GetByID").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return resourcepermission.ProductResourcePermission{}, err
 	}
 
 	found, err := s.resourcePermissionRepo.FindByName(
@@ -156,10 +156,10 @@ func (s *resourcePermissionService) GetByID(
 			Str("permission_name", input.PermissionName).
 			Err(err).
 			Msg("failed to get resource permission")
-		return nil, fault.ErrUnexpected
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
-	return found.ToPtr(), nil
+	return found.ToResult(resourcepermission.ErrResourcePermissionNotFound).Value()
 }
 
 func (s *resourcePermissionService) Update(
@@ -183,7 +183,7 @@ func (s *resourcePermissionService) Update(
 	}
 
 	if found.IsAbsent() {
-		return resourcepermission.ProductResourcePermission{}, fault.ErrNotFound
+		return resourcepermission.ProductResourcePermission{}, resourcepermission.ErrResourcePermissionNotFound
 	}
 
 	updated := found.Value()
@@ -243,7 +243,7 @@ func (s *resourcePermissionService) Delete(
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
 			Msg("resource permission not found for deletion")
-		return fault.ErrNotFound
+		return resourcepermission.ErrResourcePermissionNotFound
 	}
 	name := found.Value()
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {

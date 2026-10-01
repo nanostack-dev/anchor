@@ -121,7 +121,7 @@ func (s *AnchorAPI) GetOrganizationAPIKey(
 		return nil, err
 	}
 
-	response := mapOrganizationAPIKeyToResponse(*organizationAPIKey)
+	response := mapOrganizationAPIKeyToResponse(organizationAPIKey)
 	return GetOrganizationAPIKey200JSONResponse(response), nil
 }
 

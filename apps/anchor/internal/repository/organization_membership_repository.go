@@ -14,7 +14,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -201,7 +200,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		return organization.Membership{}, err
 	}
 	if found.IsAbsent() {
-		return organization.Membership{}, fault.ErrNotFound
+		return organization.Membership{}, organization.ErrMembershipNotFound
 	}
 
 	return found.Value(), nil
@@ -241,7 +240,7 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 	if found.IsAbsent() {
-		return organization.Membership{}, fault.ErrNotFound
+		return organization.Membership{}, organization.ErrMembershipNotFound
 	}
 
 	return found.Value(), nil

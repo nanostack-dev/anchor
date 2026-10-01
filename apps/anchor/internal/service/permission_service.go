@@ -26,7 +26,7 @@ type PermissionService interface {
 	) error
 	FindByProductAndPermissionName(
 		ctx context.Context, input permission.FindProductPermissionInput,
-	) (*permission.ProductPermission, error)
+	) (permission.ProductPermission, error)
 	SearchByProductID(
 		ctx context.Context, input permission.SearchProductPermissionInput,
 	) (search.Result[permission.ProductPermission], error)
@@ -215,11 +215,11 @@ func (s *permissionService) Delete(
 
 func (s *permissionService) FindByProductAndPermissionName(
 	ctx context.Context, input permission.FindProductPermissionInput,
-) (*permission.ProductPermission, error) {
+) (permission.ProductPermission, error) {
 	logger := s.logger.With().Str("operation", "FindByProductAndPermissionName").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return permission.ProductPermission{}, err
 	}
 
 	found, err := s.permissionRepo.FindByProductIDAndPermissionName(
@@ -231,14 +231,10 @@ func (s *permissionService) FindByProductAndPermissionName(
 			Str("name", input.Name).
 			Err(err).
 			Msg("failed to find permission")
-		return nil, fault.ErrUnexpected
+		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	if found.IsAbsent() {
-		return nil, permission.ErrPermissionNotFound
-	}
-
-	return found.ToPtr(), nil
+	return found.ToResult(permission.ErrPermissionNotFound).Value()
 }
 
 func (s *permissionService) SearchByProductID(

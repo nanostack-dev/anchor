@@ -82,7 +82,7 @@ func buildOrganizationMetadata(metadata map[string]any) (json.RawMessage, error)
 
 type OrganizationService interface {
 	Find(ctx context.Context, input organization.FindOrganizationInput) (
-		*organization.Organization, error,
+		organization.Organization, error,
 	)
 	Create(
 		ctx context.Context, input organization.CreateOrganizationInput,
@@ -192,11 +192,11 @@ func (s *organizationService) instantiateLicense(
 
 func (s *organizationService) Find(
 	ctx context.Context, input organization.FindOrganizationInput,
-) (*organization.Organization, error) {
+) (organization.Organization, error) {
 	logger := s.logger.With().Str("operation", "Find").Logger()
 
 	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
+		return organization.Organization{}, err
 	}
 
 	foundOrg, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
@@ -206,10 +206,10 @@ func (s *organizationService) Find(
 			Str("organization_id", input.OrganizationID).
 			Err(err).
 			Msg("failed to find organization")
-		return nil, err
+		return organization.Organization{}, err
 	}
 	if foundOrg.IsAbsent() {
-		return nil, nil //nolint:nilnil // absence is not an error; the handler maps it to 404
+		return organization.Organization{}, organization.ErrOrganizationNotFound
 	}
 
 	attached, err := s.attachIncludes(
@@ -220,9 +220,9 @@ func (s *organizationService) Find(
 		input.Include,
 	)
 	if err != nil {
-		return nil, err
+		return organization.Organization{}, err
 	}
-	return &attached[0], nil
+	return attached[0], nil
 }
 
 // attachIncludes fills in the related resources the caller named. Each one is
@@ -572,7 +572,7 @@ func (s *organizationService) Update(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for update")
-		return organization.Organization{}, fault.ErrNotFound
+		return organization.Organization{}, organization.ErrOrganizationNotFound
 	}
 
 	org := optOrg.Value()
@@ -632,7 +632,7 @@ func (s *organizationService) Delete(
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
 			Msg("organization not found for deletion")
-		return fault.ErrNotFound
+		return organization.ErrOrganizationNotFound
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {

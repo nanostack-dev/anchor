@@ -96,6 +96,6 @@ func TestOrganizationAPIKeyIntrospect(t *testing.T) {
 			ct.IntrospectOrganizationAPIKeyJSONRequestBody{ApiKey: "nanostack_org_apikey_not_a_real_key"},
 		)
 		require.NoError(t, introErr)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_API_KEY_NOT_FOUND")
 	})
 }

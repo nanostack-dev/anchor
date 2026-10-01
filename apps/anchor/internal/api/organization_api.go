@@ -180,13 +180,8 @@ func (s *AnchorAPI) GetProductOrganization(
 			Msg("failed to get organization")
 		return nil, err
 	}
-	if org == nil {
-		return GetProductOrganization404JSONResponse{NotFoundJSONResponse(
-			notFoundBody("PRODUCT_ORGANIZATION_NOT_FOUND", "Product Organization does not exist."),
-		)}, nil
-	}
 
-	return GetProductOrganization200JSONResponse(mapOrganizationToResponse(*org)), nil
+	return GetProductOrganization200JSONResponse(mapOrganizationToResponse(org)), nil
 }
 
 func (s *AnchorAPI) DeleteProductOrganization(
