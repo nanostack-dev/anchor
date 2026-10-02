@@ -35,15 +35,6 @@ var (
 		"The invitation code is invalid.",
 	)
 
-	// ErrUserNotFound when a refresh token's claims name a user that no
-	// longer exists. The caller never named this user — the identifier comes
-	// from the token itself — so this is the token no longer authenticating
-	// anyone, the same 401 family as ErrTokenRefreshFailed.
-	ErrUserNotFound = fault.Unauthorized(
-		"USER_NOT_FOUND",
-		"The user for this refresh token no longer exists.",
-	)
-
 	// ErrTokenRefreshFailed for issues refreshing JWTs.
 	ErrTokenRefreshFailed = fault.Unauthorized(
 		"TOKEN_REFRESH_FAILED",

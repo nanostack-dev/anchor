@@ -7,6 +7,7 @@ import (
 	"anchor/cmd/it/shared/mailpit"
 	"anchor/internal/repository"
 	"anchor/internal/service"
+	sessionservice "anchor/internal/session/service"
 
 	"github.com/nanostack-dev/pgkit/queue"
 )
@@ -16,6 +17,7 @@ var (
 	UserRepository   repository.UserRepository
 	PlatformUserRepo repository.PlatformTenantUserRepository
 	TokenHelper      service.JWTHelper
+	SessionSvc       sessionservice.Service
 	ProductRepo      repository.ProductRepository
 	PermissionRepo   repository.ProductPermissionRepository
 	ProductAPIKeySvc service.ProductAPIKeyService
@@ -39,6 +41,7 @@ func TestMain(m *testing.M) {
 			UserRepository:          &UserRepository,
 			PlatformUserRepository:  &PlatformUserRepo,
 			JWTHelper:               &TokenHelper,
+			SessionService:          &SessionSvc,
 			ExtraPopulateTargets: []any{
 				&EventQueue,
 				&IntegrationRepo,

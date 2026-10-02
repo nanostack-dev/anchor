@@ -110,15 +110,35 @@ type ClientInterface interface {
 
 	// Logout User logout
 	//
-	// Logs out the user and invalidates the refresh token.
-	// This endpoint does not require authentication to allow logout even with expired tokens.
+	// Ends the session the bearer access token belongs to. Every refresh token
+	// of that session is refused from then on, so a later `POST /v1/auth/refresh`
+	// with one of them answers 401. The user's other sessions, on other devices,
+	// stay signed in.
+	//
+	// The access token may be expired: its signature is checked, its expiry is
+	// not, so a client whose access token has lapsed can still end its session.
+	// The access token itself stays valid until it expires.
+	//
+	// Authentication is optional. Without a bearer token, or with one that does
+	// not verify, nothing is revoked and the response is still 204, so a client
+	// can always clear its state.
 	//
 	// Corresponds with POST /v1/auth/logout (the `Logout` operationId).
 	Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RefreshToken Refresh token
 	//
-	// Refreshes the authentication token for the user.
+	// Exchanges a refresh token for a new access token and a new refresh token.
+	// The presented refresh token is rotated: use the new one for the next refresh.
+	//
+	// A rotated refresh token is accepted again only within a short grace period
+	// after its rotation, so concurrent refreshes from several tabs all succeed.
+	// Presented after the grace period, it is treated as stolen: the whole
+	// session is revoked and every refresh token of it answers 401.
+	//
+	// A refresh token answers 401 once it is expired, rotated past the grace
+	// period, or belongs to a session ended by logout or by deleting the
+	// platform user.
 	//
 	// Corresponds with POST /v1/auth/refresh (the `RefreshToken` operationId).
 	RefreshToken(ctx context.Context, params *RefreshTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1620,8 +1640,18 @@ func (c *Client) Login(ctx context.Context, body LoginJSONRequestBody, reqEditor
 
 // Logout User logout
 //
-// Logs out the user and invalidates the refresh token.
-// This endpoint does not require authentication to allow logout even with expired tokens.
+// Ends the session the bearer access token belongs to. Every refresh token
+// of that session is refused from then on, so a later `POST /v1/auth/refresh`
+// with one of them answers 401. The user's other sessions, on other devices,
+// stay signed in.
+//
+// The access token may be expired: its signature is checked, its expiry is
+// not, so a client whose access token has lapsed can still end its session.
+// The access token itself stays valid until it expires.
+//
+// Authentication is optional. Without a bearer token, or with one that does
+// not verify, nothing is revoked and the response is still 204, so a client
+// can always clear its state.
 //
 // Corresponds with POST /v1/auth/logout (the `Logout` operationId).
 func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1638,7 +1668,17 @@ func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*ht
 
 // RefreshToken Refresh token
 //
-// Refreshes the authentication token for the user.
+// Exchanges a refresh token for a new access token and a new refresh token.
+// The presented refresh token is rotated: use the new one for the next refresh.
+//
+// A rotated refresh token is accepted again only within a short grace period
+// after its rotation, so concurrent refreshes from several tabs all succeed.
+// Presented after the grace period, it is treated as stolen: the whole
+// session is revoked and every refresh token of it answers 401.
+//
+// A refresh token answers 401 once it is expired, rotated past the grace
+// period, or belongs to a session ended by logout or by deleting the
+// platform user.
 //
 // Corresponds with POST /v1/auth/refresh (the `RefreshToken` operationId).
 func (c *Client) RefreshToken(ctx context.Context, params *RefreshTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10243,8 +10283,18 @@ type ClientWithResponsesInterface interface {
 
 	// LogoutWithResponse User logout
 	//
-	// Logs out the user and invalidates the refresh token.
-	// This endpoint does not require authentication to allow logout even with expired tokens.
+	// Ends the session the bearer access token belongs to. Every refresh token
+	// of that session is refused from then on, so a later `POST /v1/auth/refresh`
+	// with one of them answers 401. The user's other sessions, on other devices,
+	// stay signed in.
+	//
+	// The access token may be expired: its signature is checked, its expiry is
+	// not, so a client whose access token has lapsed can still end its session.
+	// The access token itself stays valid until it expires.
+	//
+	// Authentication is optional. Without a bearer token, or with one that does
+	// not verify, nothing is revoked and the response is still 204, so a client
+	// can always clear its state.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10253,7 +10303,17 @@ type ClientWithResponsesInterface interface {
 
 	// RefreshTokenWithResponse Refresh token
 	//
-	// Refreshes the authentication token for the user.
+	// Exchanges a refresh token for a new access token and a new refresh token.
+	// The presented refresh token is rotated: use the new one for the next refresh.
+	//
+	// A rotated refresh token is accepted again only within a short grace period
+	// after its rotation, so concurrent refreshes from several tabs all succeed.
+	// Presented after the grace period, it is treated as stolen: the whole
+	// session is revoked and every refresh token of it answers 401.
+	//
+	// A refresh token answers 401 once it is expired, rotated past the grace
+	// period, or belongs to a session ended by logout or by deleting the
+	// platform user.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -19566,8 +19626,18 @@ func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, body LoginJ
 
 // LogoutWithResponse User logout
 //
-// Logs out the user and invalidates the refresh token.
-// This endpoint does not require authentication to allow logout even with expired tokens.
+// Ends the session the bearer access token belongs to. Every refresh token
+// of that session is refused from then on, so a later `POST /v1/auth/refresh`
+// with one of them answers 401. The user's other sessions, on other devices,
+// stay signed in.
+//
+// The access token may be expired: its signature is checked, its expiry is
+// not, so a client whose access token has lapsed can still end its session.
+// The access token itself stays valid until it expires.
+//
+// Authentication is optional. Without a bearer token, or with one that does
+// not verify, nothing is revoked and the response is still 204, so a client
+// can always clear its state.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -19582,7 +19652,17 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, reqEditors
 
 // RefreshTokenWithResponse Refresh token
 //
-// Refreshes the authentication token for the user.
+// Exchanges a refresh token for a new access token and a new refresh token.
+// The presented refresh token is rotated: use the new one for the next refresh.
+//
+// A rotated refresh token is accepted again only within a short grace period
+// after its rotation, so concurrent refreshes from several tabs all succeed.
+// Presented after the grace period, it is treated as stolen: the whole
+// session is revoked and every refresh token of it answers 401.
+//
+// A refresh token answers 401 once it is expired, rotated past the grace
+// period, or belongs to a session ended by logout or by deleting the
+// platform user.
 //
 // Returns a wrapper object for the known response body format(s).
 //

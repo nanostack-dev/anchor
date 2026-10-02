@@ -230,6 +230,7 @@ func parseSecurity(opMap map[string]any) (bool, bool, bool, bool, []string) {
 		return true, true, false, false, nil
 	}
 
+	allowsAnonymous := false
 	requiresBearer := false
 	allowsAPIKey := false
 	requiredAPIKeyScopesSet := map[string]struct{}{}
@@ -237,6 +238,9 @@ func parseSecurity(opMap map[string]any) (bool, bool, bool, bool, []string) {
 		secMap, secOK := secEntry.(map[string]any)
 		if !secOK {
 			continue
+		}
+		if len(secMap) == 0 {
+			allowsAnonymous = true
 		}
 		for schemeName, rawScopes := range secMap {
 			switch schemeName {
@@ -261,7 +265,7 @@ func parseSecurity(opMap map[string]any) (bool, bool, bool, bool, []string) {
 	}
 	sort.Strings(requiredAPIKeyScopes)
 
-	return true, false, requiresBearer, allowsAPIKey, requiredAPIKeyScopes
+	return true, allowsAnonymous, requiresBearer, allowsAPIKey, requiredAPIKeyScopes
 }
 
 func getRuntimePathParams(

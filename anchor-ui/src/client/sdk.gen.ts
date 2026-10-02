@@ -20,12 +20,28 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 
 /**
  * User logout
- * Logs out the user and invalidates the refresh token.
- * This endpoint does not require authentication to allow logout even with expired tokens.
+ * Ends the session the bearer access token belongs to. Every refresh token
+ * of that session is refused from then on, so a later `POST /v1/auth/refresh`
+ * with one of them answers 401. The user's other sessions, on other devices,
+ * stay signed in.
+ *
+ * The access token may be expired: its signature is checked, its expiry is
+ * not, so a client whose access token has lapsed can still end its session.
+ * The access token itself stays valid until it expires.
+ *
+ * Authentication is optional. Without a bearer token, or with one that does
+ * not verify, nothing is revoked and the response is still 204, so a client
+ * can always clear its state.
  *
  */
 export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>) => {
     return (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
         url: '/v1/auth/logout',
         ...options
     });
@@ -48,7 +64,18 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
 
 /**
  * Refresh token
- * Refreshes the authentication token for the user.
+ * Exchanges a refresh token for a new access token and a new refresh token.
+ * The presented refresh token is rotated: use the new one for the next refresh.
+ *
+ * A rotated refresh token is accepted again only within a short grace period
+ * after its rotation, so concurrent refreshes from several tabs all succeed.
+ * Presented after the grace period, it is treated as stolen: the whole
+ * session is revoked and every refresh token of it answers 401.
+ *
+ * A refresh token answers 401 once it is expired, rotated past the grace
+ * period, or belongs to a session ended by logout or by deleting the
+ * platform user.
+ *
  */
 export const refreshToken = <ThrowOnError extends boolean = false>(options?: Options<RefreshTokenData, ThrowOnError>) => {
     return (options?.client ?? client).post<RefreshTokenResponses, RefreshTokenErrors, ThrowOnError>({

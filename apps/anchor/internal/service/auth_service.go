@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -12,10 +13,12 @@ import (
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
+	"anchor/internal/domain/session"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/service/config"
+	sessionservice "anchor/internal/session/service"
 
 	"github.com/rs/zerolog"
 
@@ -28,6 +31,7 @@ type AuthService interface {
 	)
 	Login(ctx context.Context, input auth.LoginInput) (auth.LoginOutput, error)
 	RefreshToken(ctx context.Context, input auth.RefreshTokenInput) (auth.LoginOutput, error)
+	Logout(ctx context.Context, input auth.LogoutInput) error
 	GetUserByTenantIDAndID(ctx context.Context, tenantID, userID string) (
 		*platform.User, error,
 	)
@@ -39,6 +43,7 @@ type authService struct {
 	tenantRepo             repository.TenantRepository
 	invitationRepo         repository.InvitationRepository
 	platformTenantUserRepo repository.PlatformTenantUserRepository
+	sessions               sessionservice.Service
 	platformUserMapper     *mapper.PlatformUserMapper
 	authCfg                config.AuthConfig
 	jwt                    JWTHelper
@@ -51,6 +56,7 @@ func NewAuthService(
 	tenantRepo repository.TenantRepository,
 	invitationRepository repository.InvitationRepository,
 	platformTenantUserRepo repository.PlatformTenantUserRepository,
+	sessions sessionservice.Service,
 	authCfg config.AuthConfig,
 	jwtHelper JWTHelper,
 	logger zerolog.Logger,
@@ -61,6 +67,7 @@ func NewAuthService(
 		tenantRepo:             tenantRepo,
 		invitationRepo:         invitationRepository,
 		platformTenantUserRepo: platformTenantUserRepo,
+		sessions:               sessions,
 		platformUserMapper:     mapper.NewPlatformUserMapper(),
 		authCfg:                authCfg,
 		jwt:                    jwtHelper,
@@ -272,21 +279,44 @@ func (s *authService) Login(
 	}
 	platformUser := foundPlatformUser.Value()
 
-	accessToken, refreshToken, err := s.jwt.GenerateTokens(
-		user.ID, platformUser.PlatformTenantID,
-	)
+	output, err := s.startSession(ctx, platformUser)
 	if err != nil {
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to generate tokens")
+		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to start session")
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
+	return output, nil
+}
 
-	user.HashedPassword = ""
-	return auth.LoginOutput{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+func (s *authService) startSession(ctx context.Context, platformUser platform.User) (auth.LoginOutput, error) {
+	output, firstToken, err := s.issueTokens(platformUser.UserID, platformUser.PlatformTenantID, session.NewID())
+	if err != nil {
+		return auth.LoginOutput{}, err
+	}
+	err = s.sessions.Start(ctx, sessionservice.StartInput{
+		PlatformUserID: platformUser.ID,
+		FirstToken:     firstToken,
+	})
+	if err != nil {
+		return auth.LoginOutput{}, err
+	}
+	return output, nil
+}
+
+func (s *authService) issueTokens(
+	userID, tenantID, sessionID string,
+) (auth.LoginOutput, session.RefreshToken, error) {
+	refreshToken := session.RefreshToken{
+		ID:        session.NewRefreshTokenID(),
+		SessionID: sessionID,
+		ExpiresAt: time.Now().Add(time.Second * time.Duration(s.authCfg.RefreshTokenLifetime)),
+	}
+	accessToken, signedRefreshToken, err := s.jwt.GenerateTokens(userID, tenantID, refreshToken)
+	if err != nil {
+		return auth.LoginOutput{}, session.RefreshToken{}, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+	return auth.LoginOutput{AccessToken: accessToken, RefreshToken: signedRefreshToken}, refreshToken, nil
 }
 
 func (s *authService) RefreshToken(
@@ -300,44 +330,58 @@ func (s *authService) RefreshToken(
 
 	claims, err := s.jwt.ValidateRefreshToken(input.RefreshToken)
 	if err != nil {
-		// Don't log the token itself, but log the failure
 		logger.Debug().Err(err).Msg("refresh token validation failed")
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
+	if claims.SessionID == "" || claims.ID == "" {
+		logger.Debug().Str("user_id", claims.UserID).Msg("refresh token predates sessions")
+		return auth.LoginOutput{}, ErrTokenRefreshFailed
+	}
 
-	newAccessToken, newRefreshToken, err := s.jwt.GenerateTokens(claims.UserID, claims.TenantID)
+	output, next, err := s.issueTokens(claims.UserID, claims.TenantID, claims.SessionID)
 	if err != nil {
-		logger.Error().
-			Str("user_id", claims.UserID).
-			Err(err).
-			Msg("failed to generate new tokens during refresh")
+		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to generate tokens during refresh")
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
-	foundUser, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
-		ctx, claims.TenantID, claims.UserID,
-	)
+	err = s.sessions.Rotate(ctx, sessionservice.RotateInput{PresentedTokenID: claims.ID, Next: next})
+	if errors.Is(err, sessionservice.ErrRefreshRefused) || errors.Is(err, sessionservice.ErrRefreshReplayed) {
+		return auth.LoginOutput{}, ErrTokenRefreshFailed
+	}
 	if err != nil {
-		logger.Error().
-			Str("user_id", claims.UserID).
-			Err(err).
-			Msg("failed to find user during token refresh")
-		return auth.LoginOutput{}, fmt.Errorf(
-			"failed to retrieve user details during refresh: %w", err,
-		)
+		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to rotate refresh token")
+		return auth.LoginOutput{}, err
 	}
-	if foundUser.IsAbsent() {
-		return auth.LoginOutput{}, ErrUserNotFound
-	}
-	user := foundUser.ToPtr()
 
 	logger.Debug().Str("user_id", claims.UserID).Msg("token refreshed successfully")
+	return output, nil
+}
 
-	user.HashedPassword = ""
-	return auth.LoginOutput{
-		AccessToken:  newAccessToken,
-		RefreshToken: newRefreshToken,
-	}, nil
+func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error {
+	logger := s.logger.With().Str("operation", "Logout").Logger()
+
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
+		return validationErr
+	}
+	if input.AccessToken == "" {
+		return nil
+	}
+
+	claims, err := s.jwt.ValidateAccessTokenIgnoringExpiry(input.AccessToken)
+	if err != nil {
+		logger.Debug().Err(err).Msg("logout access token rejected; nothing to revoke")
+		return nil
+	}
+	if claims.SessionID == "" {
+		return nil
+	}
+
+	if revokeErr := s.sessions.Revoke(ctx, sessionservice.RevokeInput{SessionID: claims.SessionID}); revokeErr != nil {
+		logger.Error().Str("user_id", claims.UserID).Err(revokeErr).Msg("failed to revoke session")
+		return revokeErr
+	}
+	logger.Info().Str("user_id", claims.UserID).Str("session_id", claims.SessionID).Msg("session revoked")
+	return nil
 }
 
 func (s *authService) setupTenantForRegistration(

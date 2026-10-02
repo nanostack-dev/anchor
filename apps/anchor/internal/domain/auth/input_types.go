@@ -18,3 +18,7 @@ type LoginInput struct {
 type RefreshTokenInput struct {
 	RefreshToken string `validate:"required"`
 }
+
+type LogoutInput struct {
+	AccessToken string
+}

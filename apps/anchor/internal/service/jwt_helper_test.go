@@ -2,7 +2,9 @@ package service_test
 
 import (
 	"testing"
+	"time"
 
+	"anchor/internal/domain/session"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
 
@@ -10,6 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func testRefreshToken() session.RefreshToken {
+	return session.RefreshToken{
+		ID:        "prtok_test",
+		SessionID: "psess_test",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+}
 
 func createTestAuthConfig() config.AuthConfig {
 	return config.AuthConfig{
@@ -26,8 +36,7 @@ func TestJWTHelper_AudienceValidation(t *testing.T) {
 	userID := "user_test123"
 	tenantID := "tenant_test456"
 
-	// Generate tokens
-	accessToken, refreshToken, err := jwtHelper.GenerateTokens(userID, tenantID)
+	accessToken, refreshToken, err := jwtHelper.GenerateTokens(userID, tenantID, testRefreshToken())
 	require.NoError(t, err)
 	require.NotEmpty(t, accessToken)
 	require.NotEmpty(t, refreshToken)
@@ -94,7 +103,8 @@ func TestJWTHelper_TokenGeneration(t *testing.T) {
 
 	t.Run(
 		"GenerateTokens should create tokens with correct audiences", func(t *testing.T) {
-			accessToken, refreshToken, err := jwtHelper.GenerateTokens(userID, tenantID)
+			issuedRefreshToken := testRefreshToken()
+			accessToken, refreshToken, err := jwtHelper.GenerateTokens(userID, tenantID, issuedRefreshToken)
 			require.NoError(t, err)
 			require.NotEmpty(t, accessToken)
 			require.NotEmpty(t, refreshToken)
@@ -110,6 +120,7 @@ func TestJWTHelper_TokenGeneration(t *testing.T) {
 			assert.Contains(t, accessClaims.Audience, "anchor_access")
 			assert.Equal(t, userID, accessClaims.UserID)
 			assert.Equal(t, tenantID, accessClaims.TenantID)
+			assert.Equal(t, "psess_test", accessClaims.SessionID)
 
 			// Parse and verify refresh token audience
 			refreshClaims := &service.AuthClaims{}
@@ -122,18 +133,56 @@ func TestJWTHelper_TokenGeneration(t *testing.T) {
 			assert.Contains(t, refreshClaims.Audience, "anchor_refresh")
 			assert.Equal(t, userID, refreshClaims.UserID)
 			assert.Equal(t, tenantID, refreshClaims.TenantID)
+			assert.Equal(t, "psess_test", refreshClaims.SessionID)
+			assert.Equal(t, "prtok_test", refreshClaims.ID)
+			assert.WithinDuration(t, issuedRefreshToken.ExpiresAt, refreshClaims.ExpiresAt.Time, time.Second)
 		},
 	)
 
 	t.Run(
 		"GenerateTokens should validate input parameters", func(t *testing.T) {
-			_, _, err := jwtHelper.GenerateTokens("invalid_user", tenantID)
+			_, _, err := jwtHelper.GenerateTokens("invalid_user", tenantID, testRefreshToken())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "userID and tenantID cannot be empty or are not valid")
 
-			_, _, err = jwtHelper.GenerateTokens(userID, "invalid_tenant")
+			_, _, err = jwtHelper.GenerateTokens(userID, "invalid_tenant", testRefreshToken())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "userID and tenantID cannot be empty or are not valid")
 		},
 	)
+}
+
+func TestJWTHelper_ValidateAccessTokenIgnoringExpiry(t *testing.T) {
+	authCfg := createTestAuthConfig()
+	authCfg.AccessTokenLifetime = -60
+	expiredAccessToken, refreshToken, err := service.NewJWTHelper(authCfg).
+		GenerateTokens("user_test1", "tenant_test1", testRefreshToken())
+	require.NoError(t, err)
+	jwtHelper := service.NewJWTHelper(createTestAuthConfig())
+
+	t.Run("ExpiredAccessTokenIsRefusedForAuthorization", func(t *testing.T) {
+		_, validateErr := jwtHelper.ValidateAccessToken(expiredAccessToken)
+		require.Error(t, validateErr)
+	})
+
+	t.Run("ExpiredAccessTokenStillNamesItsSession", func(t *testing.T) {
+		claims, verifyErr := jwtHelper.ValidateAccessTokenIgnoringExpiry(expiredAccessToken)
+		require.NoError(t, verifyErr)
+		assert.Equal(t, "psess_test", claims.SessionID)
+	})
+
+	t.Run("RefreshTokenIsRefused", func(t *testing.T) {
+		_, verifyErr := jwtHelper.ValidateAccessTokenIgnoringExpiry(refreshToken)
+		require.Error(t, verifyErr)
+	})
+
+	t.Run("TokenSignedWithAnotherSecretIsRefused", func(t *testing.T) {
+		otherCfg := createTestAuthConfig()
+		otherCfg.AdminJWTSecret = "another-secret-key-for-testing-purposes"
+		forgedAccessToken, _, forgeErr := service.NewJWTHelper(otherCfg).
+			GenerateTokens("user_test1", "tenant_test1", testRefreshToken())
+		require.NoError(t, forgeErr)
+		_, verifyErr := jwtHelper.ValidateAccessTokenIgnoringExpiry(forgedAccessToken)
+		require.Error(t, verifyErr)
+	})
 }
