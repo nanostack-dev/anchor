@@ -308,6 +308,7 @@ func createHandler(
 		api.NewStrictHandlerWithOptions(
 			anchorAPI, []api.StrictMiddlewareFunc{
 				api.NewWebhookHeadersMiddleware(),
+				api.NewLogoutAccessTokenMiddleware(),
 			},
 			api.StrictHTTPServerOptions{
 				RequestErrorHandlerFunc:  errorMiddleware.HandleRequestError,

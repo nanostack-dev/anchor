@@ -2,17 +2,22 @@ package dslfactory
 
 import (
 	"context"
+	"time"
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
 
 	"anchor/internal/domain/auth"
 	platformdomain "anchor/internal/domain/platform"
+	"anchor/internal/domain/session"
+	sessionservice "anchor/internal/session/service"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
 	itshared "anchor/cmd/it/shared"
 )
+
+const fixtureSessionLifetime = 24 * time.Hour
 
 type PlatformUserResult struct {
 	ID                  string
@@ -35,6 +40,7 @@ func CreatePlatformUserWithRole(
 		"platform user repository is not available in test setup",
 	)
 	require.NotNil(t, itshared.JWTHelper, "jwt helper is not available in test setup")
+	require.NotNil(t, itshared.SessionService, "session service is not available in test setup")
 
 	emailPrefix := "platform_user_"
 	if role == platformdomain.TenantRoleOwner {
@@ -79,10 +85,21 @@ func CreatePlatformUserWithRole(
 	)
 	require.NoError(t, platformUserErr)
 
+	firstToken := session.RefreshToken{
+		ID:        session.NewRefreshTokenID(),
+		SessionID: session.NewID(),
+		ExpiresAt: time.Now().Add(fixtureSessionLifetime),
+	}
 	accessToken, refreshToken, tokenErr := itshared.JWTHelper.GenerateTokens(
-		createdUser.ID, tenantID,
+		createdUser.ID, tenantID, firstToken,
 	)
 	require.NoError(t, tokenErr)
+	require.NoError(t, itshared.SessionService.Start(
+		context.Background(), sessionservice.StartInput{
+			PlatformUserID: createdPlatformUser.ID,
+			FirstToken:     firstToken,
+		},
+	))
 
 	return &PlatformUserResult{
 		ID:                  createdPlatformUser.ID,

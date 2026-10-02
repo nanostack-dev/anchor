@@ -18,7 +18,7 @@ func TestRefreshToken(t *testing.T) {
 	t.Run(
 		"ValidRefreshToken", func(t *testing.T) {
 			refreshParams := &ct.RefreshTokenParams{
-				RefreshToken: &testOwnerUser(t).RefreshToken,
+				RefreshToken: &createPlatformAdmin(t).RefreshToken,
 			}
 			refreshResp, err := testTenant(t).NoAuthClient.RefreshTokenWithResponse(
 				context.Background(), refreshParams,

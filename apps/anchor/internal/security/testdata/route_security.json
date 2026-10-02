@@ -244,7 +244,8 @@
     "\u003cpublic\u003e": []
   },
   "POST /v1/auth/logout": {
-    "\u003cpublic\u003e": []
+    "\u003cpublic\u003e": [],
+    "platformBearerAuth": []
   },
   "POST /v1/auth/refresh": {
     "\u003cpublic\u003e": []
