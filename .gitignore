@@ -114,3 +114,5 @@ terraform/**/.terraform.lock.hcl
 
 # Agent worktrees, created by git worktree add
 worktrees/
+
+*.tsbuildinfo
