@@ -15,7 +15,7 @@ var (
 	TenantRepository repository.TenantRepository
 	UserRepository   repository.UserRepository
 	PlatformUserRepo repository.PlatformTenantUserRepository
-	TokenHelper      service.JWTHelper
+	AuthSvc          service.AuthService
 	ProductRepo      repository.ProductRepository
 	PermissionRepo   repository.ProductPermissionRepository
 	ProductAPIKeySvc service.ProductAPIKeyService
@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 			TenantRepository:        &TenantRepository,
 			UserRepository:          &UserRepository,
 			PlatformUserRepository:  &PlatformUserRepo,
-			JWTHelper:               &TokenHelper,
+			AuthService:             &AuthSvc,
 			ExtraPopulateTargets: []any{
 				&EventQueue,
 				&IntegrationRepo,

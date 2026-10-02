@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -12,10 +13,13 @@ import (
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
+	"anchor/internal/domain/platformsession"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
+	"anchor/internal/security"
 	"anchor/internal/service/config"
+	sessionrepository "anchor/internal/session/repository"
 
 	"github.com/rs/zerolog"
 
@@ -28,6 +32,11 @@ type AuthService interface {
 	)
 	Login(ctx context.Context, input auth.LoginInput) (auth.LoginOutput, error)
 	RefreshToken(ctx context.Context, input auth.RefreshTokenInput) (auth.LoginOutput, error)
+	Logout(ctx context.Context, input auth.LogoutInput) error
+	// StartSession opens a session for a platform user and issues its first
+	// token pair. It checks no credential: the caller must already have
+	// authenticated the user.
+	StartSession(ctx context.Context, input auth.StartSessionInput) (auth.LoginOutput, error)
 	GetUserByTenantIDAndID(ctx context.Context, tenantID, userID string) (
 		*platform.User, error,
 	)
@@ -39,6 +48,7 @@ type authService struct {
 	tenantRepo             repository.TenantRepository
 	invitationRepo         repository.InvitationRepository
 	platformTenantUserRepo repository.PlatformTenantUserRepository
+	sessionRepo            sessionrepository.Repository
 	platformUserMapper     *mapper.PlatformUserMapper
 	authCfg                config.AuthConfig
 	jwt                    JWTHelper
@@ -51,6 +61,7 @@ func NewAuthService(
 	tenantRepo repository.TenantRepository,
 	invitationRepository repository.InvitationRepository,
 	platformTenantUserRepo repository.PlatformTenantUserRepository,
+	sessionRepo sessionrepository.Repository,
 	authCfg config.AuthConfig,
 	jwtHelper JWTHelper,
 	logger zerolog.Logger,
@@ -61,6 +72,7 @@ func NewAuthService(
 		tenantRepo:             tenantRepo,
 		invitationRepo:         invitationRepository,
 		platformTenantUserRepo: platformTenantUserRepo,
+		sessionRepo:            sessionRepo,
 		platformUserMapper:     mapper.NewPlatformUserMapper(),
 		authCfg:                authCfg,
 		jwt:                    jwtHelper,
@@ -272,21 +284,74 @@ func (s *authService) Login(
 	}
 	platformUser := foundPlatformUser.Value()
 
-	accessToken, refreshToken, err := s.jwt.GenerateTokens(
-		user.ID, platformUser.PlatformTenantID,
-	)
+	output, err := s.StartSession(ctx, auth.StartSessionInput{
+		PlatformUserID: platformUser.ID,
+		UserID:         user.ID,
+		TenantID:       platformUser.PlatformTenantID,
+	})
 	if err != nil {
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to generate tokens")
+		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to start session")
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
 	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
+	return output, nil
+}
 
-	user.HashedPassword = ""
-	return auth.LoginOutput{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+func (s *authService) StartSession(
+	ctx context.Context, input auth.StartSessionInput,
+) (auth.LoginOutput, error) {
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
+		return auth.LoginOutput{}, validationErr
+	}
+
+	now := time.Now()
+	session := platformsession.Session{PlatformUserID: input.PlatformUserID}
+	session.GenerateID()
+	issued, refreshToken, err := s.issueTokens(input.UserID, input.TenantID, session.ID)
+	if err != nil {
+		return auth.LoginOutput{}, err
+	}
+	session.ExpiresAt = refreshToken.ExpiresAt
+
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if pruneErr := s.sessionRepo.DeleteExpiredSessions(txCtx, input.PlatformUserID, now); pruneErr != nil {
+			return fmt.Errorf("failed to prune expired sessions: %w", pruneErr)
+		}
+		if _, createErr := s.sessionRepo.CreateSession(txCtx, session); createErr != nil {
+			return fmt.Errorf("failed to create session: %w", createErr)
+		}
+		if _, storeErr := s.sessionRepo.CreateRefreshToken(txCtx, refreshToken); storeErr != nil {
+			return fmt.Errorf("failed to store refresh token: %w", storeErr)
+		}
+		return nil
+	})
+	if err != nil {
+		return auth.LoginOutput{}, err
+	}
+
+	return auth.LoginOutput{AccessToken: issued.AccessToken, RefreshToken: issued.RefreshToken}, nil
+}
+
+// issueTokens signs a new token pair for the session, and returns the refresh
+// token's row with only its hash.
+func (s *authService) issueTokens(
+	userID, tenantID, sessionID string,
+) (IssuedTokens, platformsession.RefreshToken, error) {
+	refreshToken := platformsession.RefreshToken{SessionID: sessionID}
+	refreshToken.GenerateID()
+	issued, err := s.jwt.GenerateTokens(TokenSubject{
+		UserID:         userID,
+		TenantID:       tenantID,
+		SessionID:      sessionID,
+		RefreshTokenID: refreshToken.ID,
+	})
+	if err != nil {
+		return IssuedTokens{}, platformsession.RefreshToken{}, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+	refreshToken.TokenHash = security.HashSecret(issued.RefreshToken)
+	refreshToken.ExpiresAt = issued.RefreshExpiresAt
+	return issued, refreshToken, nil
 }
 
 func (s *authService) RefreshToken(
@@ -304,40 +369,108 @@ func (s *authService) RefreshToken(
 		logger.Debug().Err(err).Msg("refresh token validation failed")
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
-
-	newAccessToken, newRefreshToken, err := s.jwt.GenerateTokens(claims.UserID, claims.TenantID)
-	if err != nil {
-		logger.Error().
-			Str("user_id", claims.UserID).
-			Err(err).
-			Msg("failed to generate new tokens during refresh")
-		return auth.LoginOutput{}, fault.ErrUnexpected
+	if claims.SessionID == "" {
+		logger.Debug().Str("user_id", claims.UserID).Msg("refresh token predates sessions")
+		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 
-	foundUser, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(
-		ctx, claims.TenantID, claims.UserID,
-	)
-	if err != nil {
-		logger.Error().
-			Str("user_id", claims.UserID).
-			Err(err).
-			Msg("failed to find user during token refresh")
-		return auth.LoginOutput{}, fmt.Errorf(
-			"failed to retrieve user details during refresh: %w", err,
+	now := time.Now()
+	var output auth.LoginOutput
+	reuseDetected := false
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		foundSession, lockErr := s.sessionRepo.LockSession(txCtx, claims.SessionID)
+		if lockErr != nil {
+			return fmt.Errorf("failed to lock session: %w", lockErr)
+		}
+		if foundSession.IsAbsent() {
+			return ErrTokenRefreshFailed
+		}
+		session := foundSession.Value()
+		if session.IsRevoked() {
+			return ErrTokenRefreshFailed
+		}
+
+		foundToken, findErr := s.sessionRepo.FindRefreshToken(
+			txCtx, session.ID, security.HashSecret(input.RefreshToken),
 		)
+		if findErr != nil {
+			return fmt.Errorf("failed to find refresh token: %w", findErr)
+		}
+		if foundToken.IsAbsent() {
+			return ErrTokenRefreshFailed
+		}
+		presented := foundToken.Value()
+
+		switch presented.ExchangeAt(now) {
+		case platformsession.ExchangeReuse:
+			reuseDetected = true
+			return s.sessionRepo.RevokeSession(txCtx, session.ID, now)
+		case platformsession.ExchangeRotate:
+			if rotateErr := s.sessionRepo.MarkRefreshTokenRotated(txCtx, presented.ID, now); rotateErr != nil {
+				return fmt.Errorf("failed to rotate refresh token: %w", rotateErr)
+			}
+		case platformsession.ExchangeWithinGrace:
+		}
+
+		if pruneErr := s.sessionRepo.DeleteExpiredRefreshTokens(txCtx, session.ID, now); pruneErr != nil {
+			return fmt.Errorf("failed to prune expired refresh tokens: %w", pruneErr)
+		}
+		issued, refreshToken, issueErr := s.issueTokens(claims.UserID, claims.TenantID, session.ID)
+		if issueErr != nil {
+			return issueErr
+		}
+		if _, storeErr := s.sessionRepo.CreateRefreshToken(txCtx, refreshToken); storeErr != nil {
+			return fmt.Errorf("failed to store refresh token: %w", storeErr)
+		}
+		if extendErr := s.sessionRepo.ExtendSession(txCtx, session.ID, refreshToken.ExpiresAt); extendErr != nil {
+			return fmt.Errorf("failed to extend session: %w", extendErr)
+		}
+		output = auth.LoginOutput{AccessToken: issued.AccessToken, RefreshToken: issued.RefreshToken}
+		return nil
+	})
+	if err != nil {
+		if !errors.Is(err, ErrTokenRefreshFailed) {
+			logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to refresh token")
+		}
+		return auth.LoginOutput{}, err
 	}
-	if foundUser.IsAbsent() {
-		return auth.LoginOutput{}, ErrUserNotFound
+	if reuseDetected {
+		logger.Warn().
+			Str("user_id", claims.UserID).
+			Str("session_id", claims.SessionID).
+			Msg("rotated refresh token presented again; session revoked")
+		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
-	user := foundUser.ToPtr()
 
 	logger.Debug().Str("user_id", claims.UserID).Msg("token refreshed successfully")
+	return output, nil
+}
 
-	user.HashedPassword = ""
-	return auth.LoginOutput{
-		AccessToken:  newAccessToken,
-		RefreshToken: newRefreshToken,
-	}, nil
+func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error {
+	logger := s.logger.With().Str("operation", "Logout").Logger()
+
+	if validationErr := validate.ValidateStruct(input); validationErr != nil {
+		return validationErr
+	}
+	if input.AccessToken == "" {
+		return nil
+	}
+
+	claims, err := s.jwt.VerifyAccessTokenIgnoringExpiry(input.AccessToken)
+	if err != nil {
+		logger.Debug().Err(err).Msg("logout access token rejected; nothing to revoke")
+		return nil
+	}
+	if claims.SessionID == "" {
+		return nil
+	}
+
+	if revokeErr := s.sessionRepo.RevokeSession(ctx, claims.SessionID, time.Now()); revokeErr != nil {
+		logger.Error().Str("user_id", claims.UserID).Err(revokeErr).Msg("failed to revoke session")
+		return revokeErr
+	}
+	logger.Info().Str("user_id", claims.UserID).Str("session_id", claims.SessionID).Msg("session revoked")
+	return nil
 }
 
 func (s *authService) setupTenantForRegistration(

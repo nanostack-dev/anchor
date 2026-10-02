@@ -15,15 +15,33 @@ import (
 type AuthClaims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
-	TenantID string `json:"tenant_id"`
+	TenantID  string `json:"tenant_id"`
+	SessionID string `json:"sid,omitempty"`
+}
+
+// TokenSubject names who a token pair is for: the user and tenant every
+// endpoint authorizes against, the session logout ends, and the refresh
+// token's own row, carried as its jti.
+type TokenSubject struct {
+	UserID         string
+	TenantID       string
+	SessionID      string
+	RefreshTokenID string
+}
+
+type IssuedTokens struct {
+	AccessToken      string
+	RefreshToken     string
+	RefreshExpiresAt time.Time
 }
 
 type JWTHelper interface {
-	GenerateTokens(userID string, tenantID string) (
-		accessToken string, refreshToken string,
-		err error,
-	)
+	GenerateTokens(subject TokenSubject) (IssuedTokens, error)
 	ValidateAccessToken(tokenString string) (*AuthClaims, error)
+	// VerifyAccessTokenIgnoringExpiry checks an access token's signature and
+	// audience but not its expiry, for logout, which must work after the
+	// access token has lapsed. Never use it to authorize a request.
+	VerifyAccessTokenIgnoringExpiry(tokenString string) (*AuthClaims, error)
 	ValidateRefreshToken(tokenString string) (*AuthClaims, error)
 }
 
@@ -37,52 +55,63 @@ func NewJWTHelper(authCfg config.AuthConfig) JWTHelper {
 	}
 }
 
-func (h *jwtHelper) GenerateTokens(userID string, tenantID string) (string, string, error) {
-	if !strings.HasPrefix(userID, "user_") || !strings.HasPrefix(tenantID, "tenant_") {
-		return "", "", errors.New("userID and tenantID cannot be empty or are not valid")
+func (h *jwtHelper) GenerateTokens(subject TokenSubject) (IssuedTokens, error) {
+	if !strings.HasPrefix(subject.UserID, "user_") || !strings.HasPrefix(subject.TenantID, "tenant_") {
+		return IssuedTokens{}, errors.New("userID and tenantID cannot be empty or are not valid")
+	}
+	if subject.SessionID == "" || subject.RefreshTokenID == "" {
+		return IssuedTokens{}, errors.New("sessionID and refreshTokenID cannot be empty")
 	}
 
-	var accessToken, refreshToken string
-	var err error
-
-	accessExpireTime := time.Now().Add(time.Second * time.Duration(h.authCfg.AccessTokenLifetime))
+	now := time.Now()
+	accessExpireTime := now.Add(time.Second * time.Duration(h.authCfg.AccessTokenLifetime))
 	accessClaims := AuthClaims{
-		UserID:    userID,
+		UserID:    subject.UserID,
 		ExpiresAt: jwt.NewNumericDate(accessExpireTime),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Subject:   userID,
+		IssuedAt:  jwt.NewNumericDate(now),
+		Subject:   subject.UserID,
 		Issuer:    "anchor",
 		Audience:  jwt.ClaimStrings{"anchor_access"},
-		TenantID:  tenantID,
+		TenantID:  subject.TenantID,
+		SessionID: subject.SessionID,
 	}
-	accessTokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessToken, err = accessTokenJWT.SignedString(h.authCfg.GetAdminJWTSecretAsBytes())
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).
+		SignedString(h.authCfg.GetAdminJWTSecretAsBytes())
 	if err != nil {
-		return "", "", fmt.Errorf("failed to sign access token: %w", err)
+		return IssuedTokens{}, fmt.Errorf("failed to sign access token: %w", err)
 	}
 
-	refreshExpireTime := time.Now().Add(time.Second * time.Duration(h.authCfg.RefreshTokenLifetime))
+	refreshExpireTime := now.Add(time.Second * time.Duration(h.authCfg.RefreshTokenLifetime))
 	refreshClaims := AuthClaims{
-
-		UserID:    userID,
+		UserID:    subject.UserID,
+		ID:        subject.RefreshTokenID,
 		ExpiresAt: jwt.NewNumericDate(refreshExpireTime),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Subject:   userID,
+		IssuedAt:  jwt.NewNumericDate(now),
+		Subject:   subject.UserID,
 		Issuer:    "anchor",
 		Audience:  jwt.ClaimStrings{"anchor_refresh"},
-		TenantID:  tenantID,
+		TenantID:  subject.TenantID,
+		SessionID: subject.SessionID,
 	}
-	refreshTokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshToken, err = refreshTokenJWT.SignedString(h.authCfg.GetAdminJWTSecretAsBytes())
+	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).
+		SignedString(h.authCfg.GetAdminJWTSecretAsBytes())
 	if err != nil {
-		return "", "", fmt.Errorf("failed to sign refresh token: %w", err)
+		return IssuedTokens{}, fmt.Errorf("failed to sign refresh token: %w", err)
 	}
 
-	return accessToken, refreshToken, nil
+	return IssuedTokens{
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		RefreshExpiresAt: refreshExpireTime,
+	}, nil
 }
 
 func (h *jwtHelper) ValidateAccessToken(tokenString string) (*AuthClaims, error) {
 	return h.validateTokenWithAudience(tokenString, "anchor_access")
+}
+
+func (h *jwtHelper) VerifyAccessTokenIgnoringExpiry(tokenString string) (*AuthClaims, error) {
+	return h.validateTokenWithAudience(tokenString, "anchor_access", jwt.WithoutClaimsValidation())
 }
 
 func (h *jwtHelper) ValidateRefreshToken(tokenString string) (*AuthClaims, error) {
@@ -90,7 +119,7 @@ func (h *jwtHelper) ValidateRefreshToken(tokenString string) (*AuthClaims, error
 }
 
 func (h *jwtHelper) validateTokenWithAudience(
-	tokenString string, expectedAudience string,
+	tokenString string, expectedAudience string, parserOptions ...jwt.ParserOption,
 ) (*AuthClaims, error) {
 	claims := &AuthClaims{}
 
@@ -101,6 +130,7 @@ func (h *jwtHelper) validateTokenWithAudience(
 			}
 			return h.authCfg.GetAdminJWTSecretAsBytes(), nil
 		},
+		parserOptions...,
 	)
 
 	if err != nil {

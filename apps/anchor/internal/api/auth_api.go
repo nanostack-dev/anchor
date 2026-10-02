@@ -186,8 +186,12 @@ func (s *AnchorAPI) Register(
 }
 
 func (s *AnchorAPI) Logout(
-	_ context.Context, _ LogoutRequestObject,
+	ctx context.Context, _ LogoutRequestObject,
 ) (LogoutResponseObject, error) {
+	logoutInput := auth.LogoutInput{AccessToken: logoutAccessTokenFromContext(ctx)}
+	if err := s.AuthService.Logout(ctx, logoutInput); err != nil {
+		return nil, err
+	}
 	return Logout204Response{
 		Headers: Logout204ResponseHeaders{
 			SetCookie: s.clearRefreshTokenCookie(),

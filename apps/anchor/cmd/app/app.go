@@ -23,6 +23,7 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
+	"anchor/internal/session"
 
 	"go.uber.org/fx"
 )
@@ -56,6 +57,7 @@ func startAnchor(target ...any) {
 		events.NewModule(),
 		license.NewModule(),
 		invitation.NewModule(),
+		session.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),
 		httpserver.NewHTTPServerModule(),

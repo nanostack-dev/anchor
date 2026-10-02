@@ -34,7 +34,7 @@ func CreatePlatformUserWithRole(
 		t, itshared.PlatformTenantUserRepo,
 		"platform user repository is not available in test setup",
 	)
-	require.NotNil(t, itshared.JWTHelper, "jwt helper is not available in test setup")
+	require.NotNil(t, itshared.AuthService, "auth service is not available in test setup")
 
 	emailPrefix := "platform_user_"
 	if role == platformdomain.TenantRoleOwner {
@@ -79,8 +79,12 @@ func CreatePlatformUserWithRole(
 	)
 	require.NoError(t, platformUserErr)
 
-	accessToken, refreshToken, tokenErr := itshared.JWTHelper.GenerateTokens(
-		createdUser.ID, tenantID,
+	tokens, tokenErr := itshared.AuthService.StartSession(
+		context.Background(), auth.StartSessionInput{
+			PlatformUserID: createdPlatformUser.ID,
+			UserID:         createdUser.ID,
+			TenantID:       tenantID,
+		},
 	)
 	require.NoError(t, tokenErr)
 
@@ -89,8 +93,8 @@ func CreatePlatformUserWithRole(
 		UserID:              createdUser.ID,
 		Email:               email,
 		Password:            password,
-		AccessToken:         accessToken,
-		RefreshToken:        refreshToken,
-		AuthenticatedClient: NewBearerClient(t, itshared.ServerURL, accessToken),
+		AccessToken:         tokens.AccessToken,
+		RefreshToken:        tokens.RefreshToken,
+		AuthenticatedClient: NewBearerClient(t, itshared.ServerURL, tokens.AccessToken),
 	}
 }
