@@ -45,9 +45,13 @@ func invitationOperations() []invitationOperation {
 		{"get", scopeRead, func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
 			return c.GetRaw(w.organizationID, i.Id).StatusCode()
 		}},
-		{"search in product", scopeRead, func(_ world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
-			return c.SearchInProductRaw(ct.SearchProductOrganizationInvitationsJSONRequestBody{}).StatusCode()
-		}},
+		{
+			"search in product",
+			scopeRead,
+			func(_ world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
+				return c.SearchInProductRaw(ct.SearchProductOrganizationInvitationsJSONRequestBody{}).StatusCode()
+			},
+		},
 		{
 			"update",
 			scopeUpdate,
