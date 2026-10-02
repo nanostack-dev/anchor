@@ -103,8 +103,8 @@ jobs:
             --jq "[.[] | select(.event == \"pull_request\" and .headSha == \"${HEAD_SHA}\")] | first")"
 
           if [[ -z "$run_json" || "$run_json" == 'null' ]]; then
-            # go.yml has a paths filter, so a pull request that touches no
-            # matching file starts no run and has no image to deploy.
+            # go.yml skips the build for a pull request that changes no backend
+            # file, so such a commit has no image to deploy.
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
               'No build run was found for this commit, so there is no image to deploy. Push a commit to build one, then the preview starts.'
             exit 0
