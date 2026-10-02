@@ -76,6 +76,10 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
  * period, or belongs to a session ended by logout or by deleting the
  * platform user.
  *
+ * By default, a refresh token expires after 7 days without a refresh, and
+ * a session lasts at most 30 days from the password login that started it, however
+ * often it refreshes. The `refresh_token` cookie expires with the token.
+ *
  */
 export const refreshToken = <ThrowOnError extends boolean = false>(options?: Options<RefreshTokenData, ThrowOnError>) => {
     return (options?.client ?? client).post<RefreshTokenResponses, RefreshTokenErrors, ThrowOnError>({

@@ -67,6 +67,10 @@ export const loginMutation = (options?: Partial<Options<LoginData>>): UseMutatio
  * period, or belongs to a session ended by logout or by deleting the
  * platform user.
  *
+ * By default, a refresh token expires after 7 days without a refresh, and
+ * a session lasts at most 30 days from the password login that started it, however
+ * often it refreshes. The `refresh_token` cookie expires with the token.
+ *
  */
 export const refreshTokenMutation = (options?: Partial<Options<RefreshTokenData>>): UseMutationOptions<RefreshTokenResponse, RefreshTokenError, Options<RefreshTokenData>> => {
     const mutationOptions: UseMutationOptions<RefreshTokenResponse, RefreshTokenError, Options<RefreshTokenData>> = {

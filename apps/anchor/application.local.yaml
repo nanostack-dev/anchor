@@ -27,7 +27,8 @@ pglock:
 core:
   environment: "${ENVIRONMENT:production}"
   auth:
-    refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:84600}
+    refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:604800}
+    session_max_lifetime: ${SESSION_MAX_LIFETIME:2592000}
     access_token_lifetime: ${ACCESS_TOKEN_LIFETIME:3600}
     admin_jwt_secret: "${ADMIN_JWT_SECRET}"
   encryption:

@@ -9,10 +9,7 @@ import (
 	"anchor/internal/domain/platform"
 )
 
-const (
-	cookieLifetimeDays     = 30 // refresh token cookie lifetime in days
-	refreshTokenCookieName = "refresh_token"
-)
+const refreshTokenCookieName = "refresh_token"
 
 func mapAuthUserToAPIUserResponse(user *platform.User) UserResponse {
 	return UserResponse{
@@ -22,7 +19,7 @@ func mapAuthUserToAPIUserResponse(user *platform.User) UserResponse {
 	}
 }
 
-func (s *AnchorAPI) setRefreshTokenCookie(token string, lifetimeSeconds int64) *string {
+func (s *AnchorAPI) setRefreshTokenCookie(token string, expiresAt time.Time) *string {
 	isDev := s.CoreConfig.IsDevelopment()
 
 	if isDev {
@@ -34,7 +31,7 @@ func (s *AnchorAPI) setRefreshTokenCookie(token string, lifetimeSeconds int64) *
 		Name:     refreshTokenCookieName,
 		Value:    token,
 		Path:     "/v1/auth/refresh",
-		Expires:  time.Now().Add(time.Second * time.Duration(lifetimeSeconds)),
+		Expires:  expiresAt,
 		HttpOnly: true,
 		Secure:   !isDev, // false for development, true for production
 		SameSite: func() http.SameSite {
@@ -91,9 +88,7 @@ func (s *AnchorAPI) Login(ctx context.Context, request LoginRequestObject) (
 	response := Login200JSONResponse{
 		Body: responseBody,
 		Headers: Login200ResponseHeaders{
-			SetCookie: s.setRefreshTokenCookie(
-				responseBody.RefreshToken, 60*60*24*cookieLifetimeDays,
-			),
+			SetCookie: s.setRefreshTokenCookie(responseBody.RefreshToken, loginResponse.RefreshExpiresAt),
 		},
 	}
 
@@ -118,7 +113,6 @@ func (s *AnchorAPI) RefreshToken(
 	refreshResponse, err := s.AuthService.RefreshToken(ctx, refreshInput)
 	if err != nil {
 		logAPIError(s.logger, err).Msg("Error refreshing token")
-		s.clearRefreshTokenCookie()
 		return RefreshToken401Response{
 			Headers: RefreshToken401ResponseHeaders{
 				SetCookie: s.clearRefreshTokenCookie(),
@@ -133,9 +127,7 @@ func (s *AnchorAPI) RefreshToken(
 	response := RefreshToken200JSONResponse{
 		Body: responseBody,
 		Headers: RefreshToken200ResponseHeaders{
-			SetCookie: s.setRefreshTokenCookie(
-				responseBody.RefreshToken, 60*60*24*cookieLifetimeDays,
-			),
+			SetCookie: s.setRefreshTokenCookie(responseBody.RefreshToken, refreshResponse.RefreshExpiresAt),
 		},
 	}
 	return response, nil
@@ -176,9 +168,7 @@ func (s *AnchorAPI) Register(
 	response := Register200JSONResponse{
 		Body: responseBody,
 		Headers: Register200ResponseHeaders{
-			SetCookie: s.setRefreshTokenCookie(
-				responseBody.RefreshToken, 60*60*24*cookieLifetimeDays,
-			),
+			SetCookie: s.setRefreshTokenCookie(responseBody.RefreshToken, loginResponse.RefreshExpiresAt),
 		},
 	}
 
