@@ -35,4 +35,4 @@ The same logic decides who owns a fixture. The shared test DSL (`cmd/it/shared/d
 
 The HTTP plumbing around an act belongs in the DSL too — the credential, the request build, and the `require.NoError` / status / `NotNil` triplet, plus a `*Raw` twin for the tests whose subject is a refusal. `itdsl.OrganizationClient` is the shape to copy. See `docs/engineering-best-practices.md`.
 
-Product-event CUD tests configure an endpoint with `ProductContext.CaptureEvents` and wait with `EventSink.WaitFor`. Do not invent a one-off httptest receiver: the sink uses `anchorsdk.Events`, so a CT that asserts delivery also asserts the SDK ingest path.
+Product-event CUD tests configure an endpoint with `ProductContext.CaptureEvents` and wait with `EventSink.WaitFor`. Do not invent a one-off httptest receiver: the sink uses `anchorsdk.Events`, so a CT that asserts delivery also asserts the SDK ingest path. `CaptureEvents` and `EventSink` live in `apps/anchor/cmd/it/shared/dsl/events.go`; copy `apps/anchor/cmd/it/ct/product_events_test.go`.

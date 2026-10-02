@@ -177,8 +177,36 @@ jobs:
     needs: [detect_changes, frontend-verify, go-build-test]
     if: always()
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     steps:
+      # Two pull requests that each add a migration pick the next free number in
+      # isolation, so both can claim it and both can merge green. golang-migrate
+      # then refuses the whole source and every integration suite fails at setup.
+      # Catch the collision on the pull request, where the fix is a rename.
+      - uses: actions/checkout@v6.0.2
+        with:
+          sparse-checkout: apps/anchor/migrations
+      - name: Reject duplicate migration versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          duplicates=$(
+            find apps/anchor/migrations -type f -name '*.sql' -exec basename {} \; \
+              | sed -nE 's/^([0-9]{6})_(.*)\.(up|down)\.sql$/\1 \2/p' \
+              | sort -u \
+              | awk '{ print $1 }' \
+              | uniq -d
+          )
+          if [ -n "$duplicates" ]; then
+            echo "Two migrations share a version number:"
+            printf '%s\n' "$duplicates" | while read -r version; do
+              find apps/anchor/migrations -type f -name "${version}_*" -exec basename {} \;
+            done
+            echo "Renumber the one that merged last, then rerun."
+            exit 1
+          fi
+          echo "No duplicate migration version."
       - name: Verify required jobs
         shell: bash
         env:

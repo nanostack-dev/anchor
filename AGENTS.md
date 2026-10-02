@@ -4,6 +4,23 @@ Go OaaS core for hierarchy, identity, RBAC, and tenancy.
 
 Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (source of truth, kept identical with echopoint).
 
+## Layout and commands
+
+- Go module: `apps/anchor`. The repo root is not a Go module; run every `go` and `golangci-lint` command from `apps/anchor`.
+- UI: `anchor-ui/` (pnpm workspace member; the lockfile is the root `pnpm-lock.yaml`). Go SDK: `clients/go/`.
+- Contract: `apps/anchor/cmd/http/openapi.yaml`.
+- Regenerate the oapi server, go-jet models, and the `anchor-ui/src/client` client: `cd apps/anchor && ./generate_anchor.sh`.
+  - Needs `docker`, `migrate`, `go`, `pnpm`, and `openssl` on PATH.
+  - Starts a throwaway `timescale/timescaledb` container on port 25895, migrates `apps/anchor/migrations` into it, runs `dbgen.go`, then `pnpm run openapi-ts` in `anchor-ui`. Stops the container on exit.
+  - Run it from `apps/anchor`: every path in it is relative to that directory.
+- Regenerate the Go SDK in `clients/go`: `make generate-client` from the repo root.
+- Component tests (CTs): `cd apps/anchor && go test ./cmd/it/ct/... -count=1`. Needs Docker (testcontainers). Add `-run <TestName>` to narrow.
+- CI runs `gotestsum --format github-actions -- ./...` in `apps/anchor/cmd/it/ct`, `apps/anchor/cmd/it/service`, and `apps/anchor/internal`. A new or changed CT also needs the shuffle and race commands under Invariants.
+- Route security golden: `cd apps/anchor && UPDATE_ROUTE_SECURITY=1 go test ./internal/security/ -run TestContractSecurityIsUnchanged`. Run it only for a deliberate route-security change, and review the diff in `internal/security/testdata`.
+- Lint: `cd apps/anchor && golangci-lint run --config ../../.golangci.yml --timeout 5m`. From the repo root it prints a false `0 issues` because the root has no Go module. `./lint-fix.sh` at the root is the `--fix` variant.
+- UI checks, from `anchor-ui`: `pnpm check`, `pnpm typecheck`, `pnpm test`.
+- Raw SQL in a CT: `testDB` (`*sql.DB`), declared in `apps/anchor/cmd/it/ct/license_shared_test.go` and wired in `shared_test.go`. Scope every statement to your own IDs.
+
 ## Invariants
 
 - Every exported service method validates its input via `nanostack-framework/pkg/validate` before any repository or transaction call.
@@ -15,7 +32,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - OpenAPI enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
 - A read that offers a related resource uses `?include=` — one shared enum parameter per aggregate, absent never means empty, one statement per included resource, and no derived data. See `docs/engineering-best-practices.md`.
 - Product API keys are Anchor *management* credentials and keep the fixed `anchor_prd_apikey_` prefix. Configurable product-level prefixes apply only to organization API keys (`*_org_apikey_`).
-- Contract first: update `openapi.yaml`, then regenerate through the repo command. Generated files are never hand-edited.
+- Contract first: update `openapi.yaml`, then regenerate (see "Layout and commands"). Generated files are never hand-edited.
 - HTTP error statuses follow `docs/engineering-best-practices.md`. Changing one is a client-visible change with no compile-time check: the anchor API suite is a set of echopoint flows in the database, so a status change passes build, lint, and every Go test and then fails the post-deploy `Echopoint flow suite (anchor)` job. In the same change, update the flow assertions and re-run `echopoint flows run --tag anchor --environment dev` against both the `prod` profile (the CI organization) and `dev`. The flows exist once per organization with different ids.
 - New CTs go in the root `apps/anchor/cmd/it/ct` package, never a sub-folder, because each Go package pays a full container and app setup.
 - CTs run in parallel. Every CT shares one app server, one database, and one Redis with the others, so write each CT so that it cannot see or change the data of another CT:
@@ -39,6 +56,8 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - Never delete the `<!-- preview-deploy -->` marker on that line. CI finds the checkbox with the marker, not with the label text.
 - CI reads the checkbox live on each build, so select it before you push. A checkbox selected later makes `preview-toggle.yml` re-run the full build, because the preview image is tagged from the merge commit of the build.
 - A cleared checkbox starts the cleanup as soon as you save the description. A closed pull request always destroys the preview.
+- `main` has no branch protection and auto-merge is disabled: wait with `gh pr checks <n> --watch`, then `gh pr merge <n> --squash --delete-branch`.
+- A merge that touches `clients/go/**` auto-tags `clients/go/vX` through `release-client.yml`. Find your tag with `git tag --contains <merge-sha> 'clients/go/*'` after `git fetch --tags`, not by guessing the next version.
 
 ## Agent skills
 
