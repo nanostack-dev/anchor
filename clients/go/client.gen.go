@@ -140,6 +140,10 @@ type ClientInterface interface {
 	// period, or belongs to a session ended by logout or by deleting the
 	// platform user.
 	//
+	// By default, a refresh token expires after 7 days without a refresh, and
+	// a session lasts at most 30 days from the password login that started it, however
+	// often it refreshes. The `refresh_token` cookie expires with the token.
+	//
 	// Corresponds with POST /v1/auth/refresh (the `RefreshToken` operationId).
 	RefreshToken(ctx context.Context, params *RefreshTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1686,6 +1690,10 @@ func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*ht
 // A refresh token answers 401 once it is expired, rotated past the grace
 // period, or belongs to a session ended by logout or by deleting the
 // platform user.
+//
+// By default, a refresh token expires after 7 days without a refresh, and
+// a session lasts at most 30 days from the password login that started it, however
+// often it refreshes. The `refresh_token` cookie expires with the token.
 //
 // Corresponds with POST /v1/auth/refresh (the `RefreshToken` operationId).
 func (c *Client) RefreshToken(ctx context.Context, params *RefreshTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10372,6 +10380,10 @@ type ClientWithResponsesInterface interface {
 	// A refresh token answers 401 once it is expired, rotated past the grace
 	// period, or belongs to a session ended by logout or by deleting the
 	// platform user.
+	//
+	// By default, a refresh token expires after 7 days without a refresh, and
+	// a session lasts at most 30 days from the password login that started it, however
+	// often it refreshes. The `refresh_token` cookie expires with the token.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -19799,6 +19811,10 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, reqEditors
 // A refresh token answers 401 once it is expired, rotated past the grace
 // period, or belongs to a session ended by logout or by deleting the
 // platform user.
+//
+// By default, a refresh token expires after 7 days without a refresh, and
+// a session lasts at most 30 days from the password login that started it, however
+// often it refreshes. The `refresh_token` cookie expires with the token.
 //
 // Returns a wrapper object for the known response body format(s).
 //

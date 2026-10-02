@@ -9,6 +9,7 @@ type CoreConfig struct {
 
 type AuthConfig struct {
 	RefreshTokenLifetime int64  `yaml:"refresh_token_lifetime"`
+	SessionMaxLifetime   int64  `yaml:"session_max_lifetime"`
 	AccessTokenLifetime  int64  `yaml:"access_token_lifetime"`
 	AdminJWTSecret       string `yaml:"admin_jwt_secret"`
 }

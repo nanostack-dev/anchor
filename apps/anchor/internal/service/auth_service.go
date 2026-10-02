@@ -290,7 +290,9 @@ func (s *authService) Login(
 }
 
 func (s *authService) startSession(ctx context.Context, platformUser platform.User) (auth.LoginOutput, error) {
-	output, firstToken, err := s.issueTokens(platformUser.UserID, platformUser.PlatformTenantID, session.NewID())
+	output, firstToken, err := s.issueTokens(
+		platformUser.UserID, platformUser.PlatformTenantID, session.NewID(), time.Now(),
+	)
 	if err != nil {
 		return auth.LoginOutput{}, err
 	}
@@ -304,19 +306,43 @@ func (s *authService) startSession(ctx context.Context, platformUser platform.Us
 	return output, nil
 }
 
+// issueTokens signs a pair whose refresh token lapses after the idle lifetime,
+// but never later than the session's max lifetime counted from authTime. The
+// refresh token's own exp then enforces both.
 func (s *authService) issueTokens(
-	userID, tenantID, sessionID string,
+	userID, tenantID, sessionID string, authTime time.Time,
 ) (auth.LoginOutput, session.RefreshToken, error) {
+	expiresAt := time.Now().Add(time.Second * time.Duration(s.authCfg.RefreshTokenLifetime))
+	sessionEnd := authTime.Add(time.Second * time.Duration(s.authCfg.SessionMaxLifetime))
+	if sessionEnd.Before(expiresAt) {
+		expiresAt = sessionEnd
+	}
 	refreshToken := session.RefreshToken{
 		ID:        session.NewRefreshTokenID(),
 		SessionID: sessionID,
-		ExpiresAt: time.Now().Add(time.Second * time.Duration(s.authCfg.RefreshTokenLifetime)),
+		ExpiresAt: expiresAt,
 	}
-	accessToken, signedRefreshToken, err := s.jwt.GenerateTokens(userID, tenantID, refreshToken)
+	accessToken, signedRefreshToken, err := s.jwt.GenerateTokens(userID, tenantID, authTime, refreshToken)
 	if err != nil {
 		return auth.LoginOutput{}, session.RefreshToken{}, fmt.Errorf("failed to generate tokens: %w", err)
 	}
-	return auth.LoginOutput{AccessToken: accessToken, RefreshToken: signedRefreshToken}, refreshToken, nil
+	return auth.LoginOutput{
+		AccessToken:      accessToken,
+		RefreshToken:     signedRefreshToken,
+		RefreshExpiresAt: expiresAt,
+	}, refreshToken, nil
+}
+
+// authTimeOf reads when the session's user signed in. Refresh tokens issued
+// before auth_time existed fall back to their own issue time.
+func authTimeOf(claims *AuthClaims) (time.Time, bool) {
+	if claims.AuthTime != nil {
+		return claims.AuthTime.Time, true
+	}
+	if claims.IssuedAt != nil {
+		return claims.IssuedAt.Time, true
+	}
+	return time.Time{}, false
 }
 
 func (s *authService) RefreshToken(
@@ -333,12 +359,13 @@ func (s *authService) RefreshToken(
 		logger.Debug().Err(err).Msg("refresh token validation failed")
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
-	if claims.SessionID == "" || claims.ID == "" {
+	authTime, hasAuthTime := authTimeOf(claims)
+	if claims.SessionID == "" || claims.ID == "" || !hasAuthTime {
 		logger.Debug().Str("user_id", claims.UserID).Msg("refresh token predates sessions")
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 
-	output, next, err := s.issueTokens(claims.UserID, claims.TenantID, claims.SessionID)
+	output, next, err := s.issueTokens(claims.UserID, claims.TenantID, claims.SessionID, authTime)
 	if err != nil {
 		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to generate tokens during refresh")
 		return auth.LoginOutput{}, fault.ErrUnexpected

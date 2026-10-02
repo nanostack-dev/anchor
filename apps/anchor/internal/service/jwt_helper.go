@@ -16,14 +16,16 @@ import (
 type AuthClaims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
-	TenantID  string `json:"tenant_id"`
-	SessionID string `json:"sid,omitempty"`
+	TenantID  string           `json:"tenant_id"`
+	SessionID string           `json:"sid,omitempty"`
+	AuthTime  *jwt.NumericDate `json:"auth_time,omitempty"`
 }
 
 type JWTHelper interface {
 	// GenerateTokens signs an access token for the session and the refresh
 	// token whose row the caller stores: its id is the jti, its expiry the exp.
-	GenerateTokens(userID, tenantID string, refreshToken session.RefreshToken) (
+	// authTime is when the session's user last signed in with a password.
+	GenerateTokens(userID, tenantID string, authTime time.Time, refreshToken session.RefreshToken) (
 		accessToken string, signedRefreshToken string, err error,
 	)
 	ValidateAccessToken(tokenString string) (*AuthClaims, error)
@@ -45,7 +47,7 @@ func NewJWTHelper(authCfg config.AuthConfig) JWTHelper {
 }
 
 func (h *jwtHelper) GenerateTokens(
-	userID, tenantID string, refreshToken session.RefreshToken,
+	userID, tenantID string, authTime time.Time, refreshToken session.RefreshToken,
 ) (string, string, error) {
 	if !strings.HasPrefix(userID, "user_") || !strings.HasPrefix(tenantID, "tenant_") {
 		return "", "", errors.New("userID and tenantID cannot be empty or are not valid")
@@ -78,6 +80,7 @@ func (h *jwtHelper) GenerateTokens(
 		Audience:  jwt.ClaimStrings{"anchor_refresh"},
 		TenantID:  tenantID,
 		SessionID: refreshToken.SessionID,
+		AuthTime:  jwt.NewNumericDate(authTime),
 	}
 	signedRefreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).
 		SignedString(h.authCfg.GetAdminJWTSecretAsBytes())

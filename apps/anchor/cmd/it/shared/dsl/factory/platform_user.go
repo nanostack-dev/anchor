@@ -91,7 +91,7 @@ func CreatePlatformUserWithRole(
 		ExpiresAt: time.Now().Add(fixtureSessionLifetime),
 	}
 	accessToken, refreshToken, tokenErr := itshared.JWTHelper.GenerateTokens(
-		createdUser.ID, tenantID, firstToken,
+		createdUser.ID, tenantID, time.Now(), firstToken,
 	)
 	require.NoError(t, tokenErr)
 	require.NoError(t, itshared.SessionService.Start(
