@@ -18,23 +18,11 @@ on:
       - 'pnpm-workspace.yaml'
       - 'apps/anchor/cmd/http/openapi.yaml'
       - '.github/workflows/go.yml'
+  # No `paths:` filter on pull_request, on purpose: a filter that matches nothing
+  # starts no run and so creates no ci-ok check, which would block a docs-only PR
+  # forever once ci-ok is required. detect_changes is the only gate here.
   pull_request:
     branches: [ main ]
-    paths:
-      - '**.go'
-      - '**/go.mod'
-      - '**/go.sum'
-      - 'Dockerfile'
-      - 'apps/anchor/migrations/**'
-      - 'apps/anchor/application.yaml'
-      - 'apps/anchor/**/application.yaml'
-      - 'apps/anchor/*codegen*.yaml'
-      - '.golangci.yml'
-      - 'anchor-ui/**'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'apps/anchor/cmd/http/openapi.yaml'
-      - '.github/workflows/go.yml'
   workflow_dispatch:
 
 # One run per PR. Superseded runs are cancelled rather than left to finish: 4 of
@@ -65,16 +53,29 @@ jobs:
     permissions:
       contents: read
     with:
-      # Only the frontend surface is gated. go-build-test stays ungated on
-      # purpose: infra's anchor-deploy.yml runs its wrangler frontend deploy
+      # Backend and frontend are two surfaces. go-build-test is gated on the
+      # backend surface for pull requests only. On a push to main it always runs,
+      # because infra's anchor-deploy.yml runs its wrangler frontend deploy
       # downstream of backend, so skipping the backend track on a frontend-only
-      # change would also skip the deploy dispatch and the frontend never ships.
-      # Gating it needs a separate frontend deploy event first, the way echopoint
-      # has one.
+      # push would also skip the deploy dispatch and the frontend never ships.
+      # Gating that needs a separate frontend deploy event first, the way
+      # echopoint has one.
       #
-      # Keep this list and the `paths:` filters above in step. They are two
-      # answers to the same question, and the one that disagrees loses silently:
-      # a `paths:` miss starts no run at all, so no check is ever created.
+      # Keep backend_patterns and frontend_patterns in step with the `push`
+      # `paths:` filter above: together they are the whole list, and the one that
+      # disagrees loses silently.
+      backend_patterns: |
+        **.go
+        **/go.mod
+        **/go.sum
+        Dockerfile
+        apps/anchor/migrations/**
+        apps/anchor/application.yaml
+        apps/anchor/**/application.yaml
+        apps/anchor/*codegen*.yaml
+        .golangci.yml
+        apps/anchor/cmd/http/openapi.yaml
+        .github/workflows/go.yml
       frontend_patterns: |
         anchor-ui/**
         pnpm-lock.yaml
@@ -129,6 +130,18 @@ jobs:
     # flaky Storybook/Playwright step skipped the backend build, and with it the
     # deploy dispatch, silently leaving prod behind. The dispatch jobs below
     # still read frontend-verify's result; go-build-test success is the gate.
+    needs: [detect_changes, preview-flag]
+    # A pull request builds when it touches the backend, or when its author asked
+    # for a preview of a frontend change: the preview deploys this job's image.
+    # Every other event builds unconditionally, so a push to main keeps its
+    # deploy dispatch. !cancelled() because preview-flag is skipped off pull
+    # requests and a skipped need would otherwise skip this job too.
+    if: |
+      !cancelled() && (
+        github.event_name != 'pull_request' ||
+        needs.detect_changes.outputs.backend_changed == 'true' ||
+        (needs.preview-flag.outputs.enabled == 'true' && needs.detect_changes.outputs.frontend_changed == 'true')
+      )
     uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
     permissions:
       contents: read
@@ -167,11 +180,10 @@ jobs:
   # succeeded or was legitimately skipped, and fails if any failed or was
   # cancelled.
   #
-  # Not yet safe as a *required* check: the `paths:` filters above mean a
-  # docs-only PR starts no run, so no ci-ok check run is created and protection
-  # would block that PR forever. Dropping `paths:` and letting detect_changes be
-  # the only gate is the fix, and it needs go-build-test gated on a
-  # backend_changed output first — see the note on that job.
+  # Safe as a *required* check. pull_request has no `paths:` filter, so every PR
+  # into main starts a run and creates this check, and detect_changes decides
+  # which verification jobs a PR needs. A docs-only PR runs detect_changes and
+  # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
     needs: [detect_changes, frontend-verify, go-build-test]
