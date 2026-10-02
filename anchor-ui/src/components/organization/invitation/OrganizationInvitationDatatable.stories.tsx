@@ -109,7 +109,7 @@ function rowFor(canvas: ReturnType<typeof within>, email: string) {
 }
 
 /**
- * The list shows each invitation with its role name. No row offers a token.
+ * The list shows each invitation with its role name.
  */
 export const ListsInvitationsWithRoleNames: Story = {
 	beforeEach: () => {

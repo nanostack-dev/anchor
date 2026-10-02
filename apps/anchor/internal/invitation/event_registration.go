@@ -13,7 +13,7 @@ func EventRegistration() events.Registration {
 		events.Definition{
 			Type:        events.OrganizationInvitationUpdated,
 			Name:        "Invitation updated",
-			Description: "Emitted when an organization invitation is updated or resent.",
+			Description: "Emitted when an organization invitation is updated.",
 		},
 		events.Definition{
 			Type:        events.OrganizationInvitationDeleted,

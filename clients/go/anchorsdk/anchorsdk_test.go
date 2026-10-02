@@ -23,16 +23,14 @@ const (
 	testUserID    = "pusr_1"
 	testRoleID    = "prole_1"
 
-	testInvitationID    = "oinv_1"
-	testInvitationToken = "anchor_inv_secret"
+	testInvitationID = "oinv_1"
 
 	authHeader = "X-Product-Api-Key"
 
 	orgBody  = `{"id":"org_1","name":"Acme"}`
 	listBody = `{"count":0,"items":[],"total":0}`
 
-	invitationBody          = `{"id":"oinv_1","status":"pending"}`
-	invitationWithTokenBody = `{"id":"oinv_1","status":"pending","token":"anchor_inv_secret"}`
+	invitationBody = `{"id":"oinv_1","status":"pending"}`
 
 	// apiErrBody is the ApiErrorResponse Anchor returns on failure. Error stubs
 	// must carry it: for a status the spec declares a JSON body for, the
@@ -508,7 +506,7 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 		},
 		{
 			name:  "invitation create",
-			reply: stubResponse{status: http.StatusCreated, body: invitationWithTokenBody},
+			reply: stubResponse{status: http.StatusCreated, body: invitationBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
 				_, err := c.Organization(testOrgID).Invitations().
 					Create("alice@example.com", testRoleID).
@@ -549,26 +547,30 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantBody:   `{"role_id":"prole_1","expires_at":"2030-01-02T03:04:05Z"}`,
 		},
 		{
-			name:  "invitation lookup",
-			reply: stubResponse{status: http.StatusOK, body: invitationBody},
+			name:  "invitation search in product",
+			reply: stubResponse{status: http.StatusOK, body: listBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Invitations().Lookup(ctx, testInvitationToken)
+				_, err := c.Invitations().Search().
+					Emails("alice@example.com", "alice@work.example.com").
+					Statuses(nanoclient.Pending).
+					Do(ctx)
 				return err
 			},
 			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/invitations/lookup",
-			wantBody:   `{"token":"anchor_inv_secret"}`,
+			wantPath:   "/v1/products/prd_test/invitations/search",
+			wantBody: `{"filter":{"emails":["alice@example.com","alice@work.example.com"],` +
+				`"statuses":["pending"]}}`,
 		},
 		{
 			name:  "invitation accept",
 			reply: stubResponse{status: http.StatusOK, body: invitationBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Invitations().Accept(ctx, testInvitationToken, testUserID)
+				_, err := c.Organization(testOrgID).Invitations().Accept(ctx, testInvitationID, testUserID)
 				return err
 			},
 			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/invitations/accept",
-			wantBody:   `{"token":"anchor_inv_secret","product_user_id":"pusr_1"}`,
+			wantPath:   "/v1/products/prd_test/organizations/org_1/invitations/oinv_1/accept",
+			wantBody:   `{"product_user_id":"pusr_1"}`,
 		},
 		{
 			name:  "workspace create",
@@ -751,16 +753,6 @@ func TestReadOperationsUseExpectedRoutes(t *testing.T) {
 			wantPath:   "/v1/products/prd_test/organizations/org_1/invitations/oinv_1",
 		},
 		{
-			name:  "invitation resend",
-			reply: stubResponse{status: http.StatusOK, body: invitationWithTokenBody},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Organization(testOrgID).Invitations().Resend(ctx, testInvitationID)
-				return err
-			},
-			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/organizations/org_1/invitations/oinv_1/resend",
-		},
-		{
 			name:  "api key list",
 			reply: stubResponse{status: http.StatusOK, body: listBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
@@ -907,22 +899,6 @@ func assertJSONEqual(t *testing.T, got []byte, want string) {
 	}
 }
 
-func TestInvitationReturnsTheTokenOnlyWhereAnchorDoes(t *testing.T) {
-	_, baseURL := newStubServer(t, stubResponse{status: http.StatusCreated, body: invitationWithTokenBody})
-	c := newTestClient(t, baseURL, 1)
-
-	created, err := c.Organization(testOrgID).Invitations().Create("alice@example.com", testRoleID).Do(t.Context())
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	if created.Token != testInvitationToken {
-		t.Fatalf("token = %q, want %q", created.Token, testInvitationToken)
-	}
-	if created.Status != nanoclient.Pending {
-		t.Fatalf("status = %q, want %q", created.Status, nanoclient.Pending)
-	}
-}
-
 func TestInvitationRefusalIsPermanent(t *testing.T) {
 	stub, baseURL := newStubServer(t, stubResponse{
 		status: http.StatusConflict,
@@ -930,7 +906,7 @@ func TestInvitationRefusalIsPermanent(t *testing.T) {
 	})
 	c := newTestClient(t, baseURL, 3)
 
-	_, err := c.Invitations().Accept(t.Context(), testInvitationToken, testUserID)
+	_, err := c.Organization(testOrgID).Invitations().Accept(t.Context(), testInvitationID, testUserID)
 
 	if !errors.Is(err, anchorsdk.ErrPermanent) {
 		t.Fatalf("err = %v, want a permanent error", err)

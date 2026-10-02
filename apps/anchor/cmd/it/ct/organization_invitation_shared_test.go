@@ -74,12 +74,22 @@ func uniqueEmail() string {
 	return "invitee-" + itshared.Faker.UUID().V4() + "@example.com"
 }
 
-func (w world) invite(email string) ct.CreatedOrganizationInvitationResponse {
+func (w world) invite(email string) ct.OrganizationInvitationResponse {
 	w.t.Helper()
 	return w.invitations.Create(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 		Email:  openapi_types.Email(email),
 		RoleId: w.roleID,
 	})
+}
+
+func (w world) accept(invitationID, productUserID string) ct.OrganizationInvitationResponse {
+	w.t.Helper()
+	return w.invitations.Accept(w.organizationID, invitationID, productUserID)
+}
+
+func (w world) acceptRaw(invitationID, productUserID string) *ct.AcceptOrganizationInvitationResponse {
+	w.t.Helper()
+	return w.invitations.AcceptRaw(w.organizationID, invitationID, productUserID)
 }
 
 func (w world) inviteRaw(email string) *ct.CreateOrganizationInvitationResponse {

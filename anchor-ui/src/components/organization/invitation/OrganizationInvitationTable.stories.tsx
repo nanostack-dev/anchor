@@ -84,7 +84,7 @@ function rowFor(canvas: ReturnType<typeof within>, email: string) {
 
 /**
  * One row per status. Each row shows the status badge, the email, the role
- * name, the expiry and a delete button. The token never appears.
+ * name, the expiry and a delete button.
  */
 export const EveryStatus: Story = {
 	play: async ({ canvasElement }) => {

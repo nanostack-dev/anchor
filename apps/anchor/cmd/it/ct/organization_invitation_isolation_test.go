@@ -48,28 +48,23 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("resend", func(t *testing.T) {
-		resp := intruder.ResendRaw(owner.organizationID, created.Id)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	})
 	t.Run("delete", func(t *testing.T) {
 		resp := intruder.DeleteRaw(owner.organizationID, created.Id)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("lookup", func(t *testing.T) {
-		resp := intruder.LookupRaw(created.Token)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	t.Run("search in product", func(t *testing.T) {
+		assert.Empty(t, intruder.PendingFor(string(created.Email)))
 	})
 	t.Run("accept", func(t *testing.T) {
-		resp := intruder.AcceptRaw(created.Token, intruderUser)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		resp := intruder.AcceptRaw(owner.organizationID, created.Id, intruderUser)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
 	still := owner.invitations.Get(owner.organizationID, created.Id)
 	require.Equal(t, ct.Pending, still.Status)
 	assert.Equal(t, created.RoleId, still.RoleId)
 	assert.Equal(t, created.ExpiresAt.Unix(), still.ExpiresAt.Unix())
-	assert.Equal(t, created.Id, owner.invitations.Lookup(created.Token).Id)
+	assert.Equal(t, []string{created.Id}, invitationIDs(owner.invitations.PendingFor(string(created.Email))))
 	assert.Len(t, owner.invitations.Search(owner.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{}), 1)
 }
 

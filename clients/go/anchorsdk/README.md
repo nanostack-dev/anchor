@@ -81,8 +81,8 @@ org := c.Organization("org_3iXYZ")
 | `c.Users()` | create, get, delete, search, list, a user's organizations |
 | `c.Introspect(ctx, rawKey, scopes...)` | resolve an organization API key without knowing its org |
 | `org.Members()` | list, search, get, add, remove, set role |
-| `org.Invitations()` | create, list, search by status, get, update, delete, resend |
-| `c.Invitations()` | look up by token, accept |
+| `org.Invitations()` | create, list, search by status and email, get, update, delete, accept |
+| `c.Invitations()` | search every organization of the product by status and email |
 | `org.Workspaces()` | create, get, update, delete, search, list |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
 | `org.License()` | get (cached), instantiate, adjust, diff, report usage |
@@ -151,17 +151,19 @@ user.
 
 ```go
 created, err := o.Invitations().Create("alice@example.com", roleID).Do(ctx)
-// created.Token is shown once. Anchor sends no email: deliver it yourself.
+// Anchor sends no email and issues no token: tell the person yourself.
 pending, err := o.Invitations().Search().Statuses(nanoclient.Pending).Do(ctx)
-resent, err := o.Invitations().Resend(ctx, created.Id) // new token, old token dead
 
-found, err := c.Invitations().Lookup(ctx, token)         // compare found.Email first
-_, err = c.Invitations().Accept(ctx, token, productUserID)
+// When a person signs in, list their invitations by their VERIFIED email addresses.
+mine, err := c.Invitations().Search().Emails(verified...).Statuses(nanoclient.Pending).Do(ctx)
+_, err = c.Organization(mine.Items[0].OrganizationId).Invitations().
+	Accept(ctx, mine.Items[0].Id, productUserID)
 ```
 
-Update and resend work only on a pending invitation that has not expired. The token travels in
-the request body, never in the URL. Accept needs an existing product user and does not compare
-email addresses.
+Update works only on a pending invitation that has not expired; to give an invitation more time,
+update its expiry. Accept needs an existing product user and does not compare email addresses: the
+product checks that the invitation email is one of the person's verified addresses before it
+calls accept.
 
 ### API keys
 

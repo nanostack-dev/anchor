@@ -34,25 +34,16 @@ type DeleteInput struct {
 	InvitationID   string `validate:"required,notblank"`
 }
 
-type ResendInput struct {
+type AcceptInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 	InvitationID   string `validate:"required,notblank"`
-}
-
-type LookupInput struct {
-	ProductID string `validate:"required,notblank"`
-	Token     string `validate:"required,notblank"`
-}
-
-type AcceptInput struct {
-	ProductID     string `validate:"required,notblank"`
-	Token         string `validate:"required,notblank"`
-	ProductUserID string `validate:"required,notblank"`
+	ProductUserID  string `validate:"required,notblank"`
 }
 
 type SearchFilter struct {
 	Statuses []Status `validate:"omitempty,dive,oneof=pending accepted expired"`
+	Emails   []string `validate:"omitempty,dive,email"`
 }
 
 type SortField string
@@ -67,4 +58,9 @@ type SearchInput struct {
 	ProductID      string                                  `validate:"required,notblank"`
 	OrganizationID string                                  `validate:"required,notblank"`
 	Request        search.Request[SearchFilter, SortField] `validate:"required"`
+}
+
+type SearchInProductInput struct {
+	ProductID string                                  `validate:"required,notblank"`
+	Request   search.Request[SearchFilter, SortField] `validate:"required"`
 }

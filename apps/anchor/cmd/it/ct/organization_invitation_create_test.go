@@ -16,14 +16,13 @@ import (
 	itshared "anchor/cmd/it/shared"
 )
 
-func TestCreateInvitation_ReturnsTokenOnce(t *testing.T) {
+func TestCreateInvitation_ReturnsTheInvitation(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
 
 	created := w.invite(email)
 
-	assert.Contains(t, created.Token, "anchor_inv_")
 	assert.Equal(t, email, string(created.Email))
 	assert.Equal(t, w.organizationID, created.OrganizationId)
 	assert.Equal(t, w.roleID, created.RoleId)
@@ -211,21 +210,6 @@ func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "BAD_REQUEST", errorCode(t, resp.JSON400.Errors))
-}
-
-func TestCreateInvitation_StoresOnlyTheHashOfTheToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-
-	created := w.invite(uniqueEmail())
-
-	var storedHash string
-	require.NoError(t, testDB.QueryRow(
-		"SELECT token_hash FROM organization_invitations WHERE id = $1", created.Id,
-	).Scan(&storedHash))
-	assert.NotEmpty(t, storedHash)
-	assert.NotEqual(t, created.Token, storedHash)
-	assert.NotContains(t, storedHash, created.Token)
 }
 
 func TestCreateInvitation_HoldsOnePendingPerEmailUnderConcurrentCreates(t *testing.T) {

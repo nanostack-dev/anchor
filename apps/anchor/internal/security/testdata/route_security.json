@@ -309,13 +309,7 @@
   "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
     "\u003cpublic\u003e": []
   },
-  "POST /v1/products/{product_id}/invitations/accept": {
-    "platformBearerAuth": [],
-    "productApiKeyAuth": [
-      "organization_invitation:update"
-    ]
-  },
-  "POST /v1/products/{product_id}/invitations/lookup": {
+  "POST /v1/products/{product_id}/invitations/search": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_invitation:read"
@@ -390,7 +384,7 @@
       "organization_invitation:read"
     ]
   },
-  "POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend": {
+  "POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_invitation:update"

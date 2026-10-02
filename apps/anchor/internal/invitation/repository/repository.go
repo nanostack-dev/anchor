@@ -19,8 +19,8 @@ import (
 var _ Repository = (*repositoryImpl)(nil)
 
 // Repository persists organization invitations. Every method is scoped by
-// product, and every method but FindByTokenHash is scoped by organization
-// too, so a caller cannot reach another Product's invitation by guessing a KSUID.
+// product, so a caller cannot reach another Product's invitation by guessing a
+// KSUID.
 //
 // The status of an invitation is never stored. Every read derives it from
 // accepted_at and expires_at at the moment of the read.
@@ -35,9 +35,6 @@ type Repository interface {
 	FindByID(
 		ctx context.Context, productID, organizationID, invitationID string,
 	) (functional.Option[organizationinvitation.Invitation], error)
-	FindByTokenHash(
-		ctx context.Context, productID, tokenHash string,
-	) (functional.Option[organizationinvitation.Invitation], error)
 	// FindPendingByEmail returns a pending invitation for the email address in
 	// the organization, compared without regard to letter case.
 	FindPendingByEmail(
@@ -46,15 +43,15 @@ type Repository interface {
 	// EmailBelongsToMember reports whether a member of the organization has the
 	// email address, compared without regard to letter case.
 	EmailBelongsToMember(ctx context.Context, productID, organizationID, email string) (bool, error)
+	// Search lists the invitations of one organization, or of every
+	// organization of the product when organizationID is absent.
 	Search(
 		ctx context.Context,
-		productID, organizationID string,
+		productID string,
+		organizationID functional.Option[string],
 		req search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField],
 	) (search.Result[organizationinvitation.Invitation], error)
 	UpdateRoleAndExpiry(
-		ctx context.Context, invitation organizationinvitation.Invitation,
-	) (organizationinvitation.Invitation, error)
-	ReplaceToken(
 		ctx context.Context, invitation organizationinvitation.Invitation,
 	) (organizationinvitation.Invitation, error)
 	MarkAccepted(
@@ -102,7 +99,6 @@ func toDomain(now time.Time) func(model.OrganizationInvitations) organizationinv
 			OrganizationID: entity.OrganizationID,
 			Email:          entity.Email,
 			RoleID:         entity.ProductRoleID,
-			TokenHash:      entity.TokenHash,
 			Status:         organizationinvitation.DeriveStatus(entity.AcceptedAt, entity.ExpiresAt, now),
 			ExpiresAt:      entity.ExpiresAt,
 			AcceptedAt:     entity.AcceptedAt,
@@ -162,7 +158,6 @@ func (r *repositoryImpl) Create(
 		OrganizationID: invitation.OrganizationID,
 		Email:          invitation.Email,
 		ProductRoleID:  invitation.RoleID,
-		TokenHash:      invitation.TokenHash,
 		ExpiresAt:      invitation.ExpiresAt,
 	}
 	stmt := table.OrganizationInvitations.INSERT(
@@ -171,7 +166,6 @@ func (r *repositoryImpl) Create(
 		table.OrganizationInvitations.OrganizationID,
 		table.OrganizationInvitations.Email,
 		table.OrganizationInvitations.ProductRoleID,
-		table.OrganizationInvitations.TokenHash,
 		table.OrganizationInvitations.ExpiresAt,
 	).MODEL(entity).RETURNING(table.OrganizationInvitations.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).Value()
@@ -183,19 +177,6 @@ func (r *repositoryImpl) FindByID(
 	stmt := table.OrganizationInvitations.SELECT(table.OrganizationInvitations.AllColumns).
 		FROM(table.OrganizationInvitations).
 		WHERE(invitationByID(productID, organizationID, invitationID)).
-		LIMIT(1)
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, toDomain(time.Now()))
-}
-
-func (r *repositoryImpl) FindByTokenHash(
-	ctx context.Context, productID, tokenHash string,
-) (functional.Option[organizationinvitation.Invitation], error) {
-	stmt := table.OrganizationInvitations.SELECT(table.OrganizationInvitations.AllColumns).
-		FROM(table.OrganizationInvitations).
-		WHERE(
-			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
-				AND(table.OrganizationInvitations.TokenHash.EQ(postgres.String(tokenHash))),
-		).
 		LIMIT(1)
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, toDomain(time.Now()))
 }
@@ -240,11 +221,15 @@ func (r *repositoryImpl) EmailBelongsToMember(
 
 func (r *repositoryImpl) Search(
 	ctx context.Context,
-	productID, organizationID string,
+	productID string,
+	organizationID functional.Option[string],
 	req search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField],
 ) (search.Result[organizationinvitation.Invitation], error) {
 	now := time.Now()
-	where := invitationScope(productID, organizationID)
+	where := table.OrganizationInvitations.ProductID.EQ(postgres.String(productID))
+	if organizationID.IsPresent() {
+		where = invitationScope(productID, organizationID.Value())
+	}
 
 	if req.Filter != nil && len(req.Filter.Statuses) > 0 {
 		predicates := functional.Slice(req.Filter.Statuses).Map(
@@ -257,6 +242,13 @@ func (r *repositoryImpl) Search(
 			anyStatus = anyStatus.OR(predicate)
 		}
 		where = where.AND(anyStatus)
+	}
+
+	if req.Filter != nil && len(req.Filter.Emails) > 0 {
+		emails := functional.Slice(req.Filter.Emails).Map(func(email string) postgres.Expression {
+			return postgres.LOWER(postgres.String(email))
+		})
+		where = where.AND(postgres.LOWER(table.OrganizationInvitations.Email).IN(emails...))
 	}
 
 	return transactor.Page(
@@ -286,21 +278,6 @@ func (r *repositoryImpl) UpdateRoleAndExpiry(
 		table.OrganizationInvitations.ExpiresAt,
 	).SET(
 		postgres.String(invitation.RoleID),
-		postgres.TimestampzT(invitation.ExpiresAt),
-	).WHERE(
-		invitationByID(invitation.ProductID, invitation.OrganizationID, invitation.ID),
-	).RETURNING(table.OrganizationInvitations.AllColumns)
-	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).Value()
-}
-
-func (r *repositoryImpl) ReplaceToken(
-	ctx context.Context, invitation organizationinvitation.Invitation,
-) (organizationinvitation.Invitation, error) {
-	stmt := table.OrganizationInvitations.UPDATE(
-		table.OrganizationInvitations.TokenHash,
-		table.OrganizationInvitations.ExpiresAt,
-	).SET(
-		postgres.String(invitation.TokenHash),
 		postgres.TimestampzT(invitation.ExpiresAt),
 	).WHERE(
 		invitationByID(invitation.ProductID, invitation.OrganizationID, invitation.ID),

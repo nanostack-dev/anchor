@@ -12,56 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLookupInvitation_FindsTheInvitationByItsToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-
-	found := w.invitations.Lookup(created.Token)
-
-	assert.Equal(t, created.Id, found.Id)
-	assert.Equal(t, created.Email, found.Email)
-	assert.Equal(t, w.organizationID, found.OrganizationId)
-}
-
-func TestLookupInvitation_ReturnsNoToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-
-	resp := w.invitations.LookupRaw(created.Token)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	assert.NotContains(t, string(resp.Body), created.Token)
-	assert.NotContains(t, string(resp.Body), `"token"`)
-}
-
-func TestLookupInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.expire(created.Id)
-
-	assert.Equal(t, ct.Expired, w.invitations.Lookup(created.Token).Status)
-}
-
-func TestLookupInvitation_RefusesUnknownToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-
-	resp := w.invitations.LookupRaw("anchor_inv_unknown")
-
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_TOKEN_NOT_FOUND", errorCode(t, resp.JSON400.Errors))
-}
-
 func TestAcceptInvitation_CreatesTheMembershipWithTheInvitedRole(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
 
-	accepted := w.invitations.Accept(created.Token, userID)
+	accepted := w.accept(created.Id, userID)
 
 	assert.Equal(t, ct.Accepted, accepted.Status)
 	assert.NotNil(t, accepted.AcceptedAt)
@@ -77,32 +34,46 @@ func TestAcceptInvitation_AcceptsWhenTheProductUserEmailDiffers(t *testing.T) {
 	created := w.invite("invited@example.com")
 	userID := w.newProductUser("someone.else@example.com")
 
-	accepted := w.invitations.Accept(created.Token, userID)
+	accepted := w.accept(created.Id, userID)
 
 	assert.Equal(t, ct.Accepted, accepted.Status)
 	assert.Equal(t, http.StatusOK, w.memberRaw(w.organizationID, userID).StatusCode())
 }
 
-func TestAcceptInvitation_RefusesUnknownToken(t *testing.T) {
+func TestAcceptInvitation_RefusesUnknownInvitation(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
 	userID := w.newProductUser(uniqueEmail())
 
-	resp := w.invitations.AcceptRaw("anchor_inv_unknown", userID)
+	resp := w.acceptRaw(ids.MustNew("oinv"), userID)
 
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_TOKEN_NOT_FOUND", errorCode(t, resp.JSON400.Errors))
+	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, "ORGANIZATION_INVITATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
 	w.assertNotMember(userID)
+}
+
+func TestAcceptInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	created := w.invite(uniqueEmail())
+	otherOrganization := w.newOrganization()
+	userID := w.newProductUser(uniqueEmail())
+
+	resp := w.invitations.AcceptRaw(otherOrganization, created.Id, userID)
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	assert.Equal(t, http.StatusNotFound, w.memberRaw(otherOrganization, userID).StatusCode())
+	assert.Equal(t, ct.Pending, w.invitations.Get(w.organizationID, created.Id).Status)
 }
 
 func TestAcceptInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
-	w.invitations.Accept(created.Token, w.newProductUser(uniqueEmail()))
+	w.accept(created.Id, w.newProductUser(uniqueEmail()))
 	secondUser := w.newProductUser(uniqueEmail())
 
-	resp := w.invitations.AcceptRaw(created.Token, secondUser)
+	resp := w.acceptRaw(created.Id, secondUser)
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_ACCEPTED", errorCode(t, resp.JSON409.Errors))
@@ -116,7 +87,7 @@ func TestAcceptInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 	w.expire(created.Id)
 	userID := w.newProductUser(uniqueEmail())
 
-	resp := w.invitations.AcceptRaw(created.Token, userID)
+	resp := w.acceptRaw(created.Id, userID)
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRED", errorCode(t, resp.JSON409.Errors))
@@ -129,7 +100,7 @@ func TestAcceptInvitation_RefusesUnknownProductUser(t *testing.T) {
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
 
-	resp := w.invitations.AcceptRaw(created.Token, ids.MustNew("pusr"))
+	resp := w.acceptRaw(created.Id, ids.MustNew("pusr"))
 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "PRODUCT_USER_NOT_FOUND_IN_REQUEST", errorCode(t, resp.JSON400.Errors))
@@ -143,7 +114,7 @@ func TestAcceptInvitation_RefusesProductUserOfAnotherProduct(t *testing.T) {
 	created := w.invite(uniqueEmail())
 	foreignUser := foreign.newProductUser(uniqueEmail())
 
-	resp := w.invitations.AcceptRaw(created.Token, foreignUser)
+	resp := w.acceptRaw(created.Id, foreignUser)
 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "PRODUCT_USER_NOT_FOUND_IN_REQUEST", errorCode(t, resp.JSON400.Errors))
@@ -157,7 +128,7 @@ func TestAcceptInvitation_NeverCreatesAProductUser(t *testing.T) {
 	created := w.invite(email)
 	usersBefore := w.productUserCount()
 
-	w.invitations.AcceptRaw(created.Token, ids.MustNew("pusr"))
+	w.acceptRaw(created.Id, ids.MustNew("pusr"))
 
 	assert.Equal(t, usersBefore, w.productUserCount())
 }
@@ -169,7 +140,7 @@ func TestAcceptInvitation_RefusesAProductUserWhoIsAlreadyAMember(t *testing.T) {
 	userID := w.newProductUser(uniqueEmail())
 	w.addMember(userID)
 
-	resp := w.invitations.AcceptRaw(created.Token, userID)
+	resp := w.acceptRaw(created.Id, userID)
 
 	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	assert.Equal(t, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS", errorCode(t, resp.JSON409.Errors))
@@ -187,8 +158,8 @@ func TestAcceptInvitation_AllowsTheSameProductUserToJoinAnotherOrganization(t *t
 		RoleId: w.roleID,
 	})
 
-	w.invitations.Accept(first.Token, userID)
-	w.invitations.Accept(second.Token, userID)
+	w.accept(first.Id, userID)
+	w.invitations.Accept(otherOrganization, second.Id, userID)
 
 	assert.Equal(t, http.StatusOK, w.memberRaw(w.organizationID, userID).StatusCode())
 	assert.Equal(t, http.StatusOK, w.memberRaw(otherOrganization, userID).StatusCode())
@@ -209,8 +180,8 @@ func TestAcceptInvitation_CreatesOneMembershipUnderConcurrentAccepts(t *testing.
 	for attempt := range attempts {
 		wg.Go(func() {
 			resp, err := w.product.AllScopeAPIKeyClient().AcceptOrganizationInvitationWithResponse(
-				t.Context(), w.product.ProductID,
-				ct.AcceptOrganizationInvitationJSONRequestBody{Token: created.Token, ProductUserId: userIDs[attempt]},
+				t.Context(), w.product.ProductID, w.organizationID, created.Id,
+				ct.AcceptOrganizationInvitationJSONRequestBody{ProductUserId: userIDs[attempt]},
 			)
 			if err == nil {
 				statuses[attempt] = resp.StatusCode()

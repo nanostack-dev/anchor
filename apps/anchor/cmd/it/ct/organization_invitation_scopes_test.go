@@ -24,7 +24,7 @@ var allInvitationScopes = []string{scopeCreate, scopeRead, scopeUpdate, scopeDel
 type invitationOperation struct {
 	name  string
 	scope string
-	call  func(w world, client itdsl.InvitationClient, invitation ct.CreatedOrganizationInvitationResponse) int
+	call  func(w world, client itdsl.InvitationClient, invitation ct.OrganizationInvitationResponse) int
 }
 
 func invitationOperations() []invitationOperation {
@@ -32,26 +32,30 @@ func invitationOperations() []invitationOperation {
 		{
 			"create",
 			scopeCreate,
-			func(w world, c itdsl.InvitationClient, _ ct.CreatedOrganizationInvitationResponse) int {
+			func(w world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
 				return c.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 					Email:  openapi_types.Email(uniqueEmail()),
 					RoleId: w.roleID,
 				}).StatusCode()
 			},
 		},
-		{"search", scopeRead, func(w world, c itdsl.InvitationClient, _ ct.CreatedOrganizationInvitationResponse) int {
+		{"search", scopeRead, func(w world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
 			return c.SearchRaw(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{}).StatusCode()
 		}},
-		{"get", scopeRead, func(w world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
+		{"get", scopeRead, func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
 			return c.GetRaw(w.organizationID, i.Id).StatusCode()
 		}},
-		{"lookup", scopeRead, func(_ world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
-			return c.LookupRaw(i.Token).StatusCode()
-		}},
+		{
+			"search in product",
+			scopeRead,
+			func(_ world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
+				return c.SearchInProductRaw(ct.SearchProductOrganizationInvitationsJSONRequestBody{}).StatusCode()
+			},
+		},
 		{
 			"update",
 			scopeUpdate,
-			func(w world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
+			func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
 				return c.UpdateRaw(w.organizationID, i.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
 					RoleId:    w.roleID,
 					ExpiresAt: time.Now().Add(time.Hour),
@@ -59,23 +63,16 @@ func invitationOperations() []invitationOperation {
 			},
 		},
 		{
-			"resend",
-			scopeUpdate,
-			func(w world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
-				return c.ResendRaw(w.organizationID, i.Id).StatusCode()
-			},
-		},
-		{
 			"accept",
 			scopeUpdate,
-			func(w world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
-				return c.AcceptRaw(i.Token, w.newProductUser(uniqueEmail())).StatusCode()
+			func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
+				return c.AcceptRaw(w.organizationID, i.Id, w.newProductUser(uniqueEmail())).StatusCode()
 			},
 		},
 		{
 			"delete",
 			scopeDelete,
-			func(w world, c itdsl.InvitationClient, i ct.CreatedOrganizationInvitationResponse) int {
+			func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
 				return c.DeleteRaw(w.organizationID, i.Id).StatusCode()
 			},
 		},

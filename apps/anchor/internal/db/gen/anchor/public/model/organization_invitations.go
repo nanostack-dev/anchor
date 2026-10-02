@@ -17,7 +17,6 @@ type OrganizationInvitations struct {
 	OrganizationID string
 	Email          string
 	ProductRoleID  string
-	TokenHash      string
 	ExpiresAt      time.Time
 	AcceptedAt     *time.Time
 	CreatedAt      time.Time

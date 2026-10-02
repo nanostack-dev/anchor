@@ -93,7 +93,7 @@ func TestDeleteProductRole_DeletesAnAcceptedInvitationAndEmitsItsDeletedEvent(t 
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
-	w.invitations.Accept(created.Token, userID)
+	w.accept(created.Id, userID)
 	removed, err := w.product.AllScopeAPIKeyClient().RemoveOrganizationMemberWithResponse(
 		context.Background(), w.product.ProductID, w.organizationID, userID,
 	)

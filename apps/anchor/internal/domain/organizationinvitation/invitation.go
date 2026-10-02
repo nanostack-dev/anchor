@@ -22,7 +22,6 @@ type Invitation struct {
 	OrganizationID string
 	Email          string
 	RoleID         string
-	TokenHash      string
 	Status         Status
 	ExpiresAt      time.Time
 	AcceptedAt     *time.Time
@@ -50,11 +49,4 @@ func (i *Invitation) StatusAt(now time.Time) Status {
 
 func DefaultExpiryFrom(now time.Time) time.Time {
 	return now.Add(DefaultExpiry)
-}
-
-// Created is an invitation together with the clear token, which exists only in
-// the response of the call that made or replaced it.
-type Created struct {
-	Invitation Invitation
-	Token      string
 }

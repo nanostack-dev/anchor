@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	nanostackClient "github.com/nanostack-dev/anchor/clients/go"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,7 +67,7 @@ func (c InvitationClient) CreateRawBody(
 
 func (c InvitationClient) Create(
 	organizationID string, body nanostackClient.CreateOrganizationInvitationJSONRequestBody,
-) nanostackClient.CreatedOrganizationInvitationResponse {
+) nanostackClient.OrganizationInvitationResponse {
 	c.t.Helper()
 	resp := c.CreateRaw(organizationID, body)
 	require.Equal(c.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
@@ -124,6 +125,55 @@ func (c InvitationClient) SearchByStatus(
 	})
 }
 
+// SearchByEmail lists the organization's invitations addressed to one of the
+// email addresses.
+func (c InvitationClient) SearchByEmail(
+	organizationID string, emails ...string,
+) []nanostackClient.OrganizationInvitationResponse {
+	c.t.Helper()
+	return c.Search(organizationID, nanostackClient.SearchOrganizationInvitationsJSONRequestBody{
+		Filter: &nanostackClient.OrganizationInvitationFilter{Emails: typedEmails(emails)},
+	})
+}
+
+func (c InvitationClient) SearchInProductRaw(
+	body nanostackClient.SearchProductOrganizationInvitationsJSONRequestBody,
+) *nanostackClient.SearchProductOrganizationInvitationsResponse {
+	c.t.Helper()
+	resp, err := c.client.SearchProductOrganizationInvitationsWithResponse(context.Background(), c.productID, body)
+	require.NoError(c.t, err)
+	return resp
+}
+
+func (c InvitationClient) SearchInProduct(
+	body nanostackClient.SearchProductOrganizationInvitationsJSONRequestBody,
+) []nanostackClient.OrganizationInvitationResponse {
+	c.t.Helper()
+	resp := c.SearchInProductRaw(body)
+	require.Equal(c.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(c.t, resp.JSON200)
+	return resp.JSON200.Items
+}
+
+// PendingFor lists the pending invitations of every organization of the
+// product addressed to one of the email addresses: the call a Product makes
+// when a person signs in.
+func (c InvitationClient) PendingFor(emails ...string) []nanostackClient.OrganizationInvitationResponse {
+	c.t.Helper()
+	statuses := []nanostackClient.OrganizationInvitationStatus{nanostackClient.Pending}
+	return c.SearchInProduct(nanostackClient.SearchProductOrganizationInvitationsJSONRequestBody{
+		Filter: &nanostackClient.OrganizationInvitationFilter{Statuses: &statuses, Emails: typedEmails(emails)},
+	})
+}
+
+func typedEmails(emails []string) *[]openapi_types.Email {
+	typed := make([]openapi_types.Email, 0, len(emails))
+	for _, email := range emails {
+		typed = append(typed, openapi_types.Email(email))
+	}
+	return &typed
+}
+
 // UpdateRawBody sends the JSON as written, for the tests whose subject is a
 // field the typed request has no room for.
 func (c InvitationClient) UpdateRawBody(
@@ -175,60 +225,23 @@ func (c InvitationClient) Delete(organizationID, invitationID string) {
 	require.Equal(c.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
 }
 
-func (c InvitationClient) ResendRaw(
-	organizationID, invitationID string,
-) *nanostackClient.ResendOrganizationInvitationResponse {
-	c.t.Helper()
-	resp, err := c.client.ResendOrganizationInvitationWithResponse(
-		context.Background(), c.productID, organizationID, invitationID,
-	)
-	require.NoError(c.t, err)
-	return resp
-}
-
-func (c InvitationClient) Resend(
-	organizationID, invitationID string,
-) nanostackClient.CreatedOrganizationInvitationResponse {
-	c.t.Helper()
-	resp := c.ResendRaw(organizationID, invitationID)
-	require.Equal(c.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	require.NotNil(c.t, resp.JSON200)
-	return *resp.JSON200
-}
-
-func (c InvitationClient) LookupRaw(token string) *nanostackClient.LookupOrganizationInvitationResponse {
-	c.t.Helper()
-	resp, err := c.client.LookupOrganizationInvitationWithResponse(
-		context.Background(), c.productID,
-		nanostackClient.LookupOrganizationInvitationJSONRequestBody{Token: token},
-	)
-	require.NoError(c.t, err)
-	return resp
-}
-
-func (c InvitationClient) Lookup(token string) nanostackClient.OrganizationInvitationResponse {
-	c.t.Helper()
-	resp := c.LookupRaw(token)
-	require.Equal(c.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	require.NotNil(c.t, resp.JSON200)
-	return *resp.JSON200
-}
-
 func (c InvitationClient) AcceptRaw(
-	token, productUserID string,
+	organizationID, invitationID, productUserID string,
 ) *nanostackClient.AcceptOrganizationInvitationResponse {
 	c.t.Helper()
 	resp, err := c.client.AcceptOrganizationInvitationWithResponse(
-		context.Background(), c.productID,
-		nanostackClient.AcceptOrganizationInvitationJSONRequestBody{Token: token, ProductUserId: productUserID},
+		context.Background(), c.productID, organizationID, invitationID,
+		nanostackClient.AcceptOrganizationInvitationJSONRequestBody{ProductUserId: productUserID},
 	)
 	require.NoError(c.t, err)
 	return resp
 }
 
-func (c InvitationClient) Accept(token, productUserID string) nanostackClient.OrganizationInvitationResponse {
+func (c InvitationClient) Accept(
+	organizationID, invitationID, productUserID string,
+) nanostackClient.OrganizationInvitationResponse {
 	c.t.Helper()
-	resp := c.AcceptRaw(token, productUserID)
+	resp := c.AcceptRaw(organizationID, invitationID, productUserID)
 	require.Equal(c.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(c.t, resp.JSON200)
 	return *resp.JSON200
