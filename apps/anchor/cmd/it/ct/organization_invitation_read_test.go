@@ -2,7 +2,6 @@ package ct_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,22 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGetInvitation_ReturnsNoToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-
-	resp := w.invitations.GetRaw(w.organizationID, created.Id)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	assert.NotContains(t, string(resp.Body), created.Token)
-	var fields map[string]any
-	require.NoError(t, json.Unmarshal(resp.Body, &fields))
-	assert.NotContains(t, fields, "token")
-	assert.NotContains(t, fields, "token_hash")
-	assert.Equal(t, created.Id, resp.JSON200.Id)
-}
 
 func TestGetInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
 	t.Parallel()
@@ -97,18 +80,6 @@ func TestSearchInvitations_ListsOnlyTheInvitationsOfTheOrganization(t *testing.T
 	assert.Equal(t, mine.Id, items[0].Id)
 }
 
-func TestSearchInvitations_ReturnsNoToken(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-
-	resp := w.invitations.SearchRaw(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
-
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	assert.NotContains(t, string(resp.Body), created.Token)
-	assert.NotContains(t, string(resp.Body), `"token"`)
-}
-
 func TestSearchInvitations_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
@@ -153,7 +124,7 @@ func TestSearchInvitations_FilterByAcceptedKeepsOnlyAccepted(t *testing.T) {
 	w := newWorld(t)
 	w.invite(uniqueEmail())
 	accepting := w.invite(uniqueEmail())
-	w.invitations.Accept(accepting.Token, w.newProductUser(string(accepting.Email)))
+	w.accept(accepting.Id, w.newProductUser(string(accepting.Email)))
 
 	items := w.invitations.SearchByStatus(w.organizationID, ct.Accepted)
 
@@ -169,7 +140,7 @@ func TestSearchInvitations_FilterByTwoStatusesKeepsBoth(t *testing.T) {
 	expired := w.invite(uniqueEmail())
 	w.expire(expired.Id)
 	accepting := w.invite(uniqueEmail())
-	w.invitations.Accept(accepting.Token, w.newProductUser(uniqueEmail()))
+	w.accept(accepting.Id, w.newProductUser(uniqueEmail()))
 
 	items := w.invitations.SearchByStatus(w.organizationID, ct.Pending, ct.Expired)
 

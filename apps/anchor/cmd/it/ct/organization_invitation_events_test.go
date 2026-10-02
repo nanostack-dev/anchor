@@ -52,7 +52,6 @@ func TestInvitationEvents_CarryIdentifiersOnly(t *testing.T) {
 	var data map[string]string
 	require.NoError(t, json.Unmarshal(event.Data, &data))
 	assert.Equal(t, invitationFields(w, created.Id), data)
-	assert.NotContains(t, string(event.Data), created.Token)
 	assert.NotContains(t, string(event.Data), string(created.Email))
 }
 
@@ -65,16 +64,6 @@ func TestUpdateInvitation_EmitsTheUpdatedEvent(t *testing.T) {
 		RoleId:    w.roleID,
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
-
-	sink.WaitFor(eventInvitationUpdated, invitationFields(w, created.Id))
-}
-
-func TestResendInvitation_EmitsTheUpdatedEvent(t *testing.T) {
-	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
-
-	w.invitations.Resend(w.organizationID, created.Id)
 
 	sink.WaitFor(eventInvitationUpdated, invitationFields(w, created.Id))
 }
@@ -95,7 +84,7 @@ func TestAcceptInvitation_EmitsTheAcceptedEventAndTheMembershipCreatedEvent(t *t
 	created := w.invite(uniqueEmail())
 	userID := w.newProductUser(uniqueEmail())
 
-	w.invitations.Accept(created.Token, userID)
+	w.accept(created.Id, userID)
 
 	accepted := sink.WaitFor(eventInvitationAccepted, invitationFields(w, created.Id))
 	assert.Equal(t, userID, accepted.Field("product_user_id"))
@@ -112,7 +101,7 @@ func TestAcceptInvitation_EmitsNoEventWhenTheAcceptIsRefused(t *testing.T) {
 	sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
 	w.expire(created.Id)
 
-	w.invitations.AcceptRaw(created.Token, w.newProductUser(uniqueEmail()))
+	w.acceptRaw(created.Id, w.newProductUser(uniqueEmail()))
 	marker := w.invite(uniqueEmail())
 	sink.WaitFor(eventInvitationCreated, invitationFields(w, marker.Id))
 

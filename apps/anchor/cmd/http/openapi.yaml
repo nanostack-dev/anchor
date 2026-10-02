@@ -2456,7 +2456,7 @@ components:
         The status of an organization invitation. `expired` is derived on read:
         an invitation reads `expired` once its expiry has passed while it is
         pending. Anchor never stores it. Only a pending invitation can be
-        accepted or resent.
+        accepted or updated.
       x-go-type: organizationinvitation.Status
       x-go-type-import:
         path: anchor/internal/domain/organizationinvitation
@@ -2464,7 +2464,7 @@ components:
       type: object
       description: >-
         An offer to become a member of one organization, with one role. It is
-        addressed to an email address. It never carries the invitation token.
+        addressed to an email address.
       properties:
         id:
           $ref: "#/components/schemas/ksuid"
@@ -2506,19 +2506,6 @@ components:
       - expires_at
       - created_at
       - updated_at
-    CreatedOrganizationInvitationResponse:
-      allOf:
-      - $ref: "#/components/schemas/OrganizationInvitationResponse"
-      - type: object
-        properties:
-          token:
-            type: string
-            description: >-
-              The invitation token. Shown once, on create and on resend. Anchor
-              stores only a hash of it.
-            examples: ["anchor_inv_5mNOP1234567890abcdefg"]
-        required:
-        - token
     OrganizationInvitationListResponse:
       allOf:
       - $ref: "#/components/schemas/PagedListResponse"
@@ -2568,29 +2555,16 @@ components:
       required:
       - role_id
       - expires_at
-    OrganizationInvitationLookupRequest:
-      type: object
-      description: Request body for finding an invitation by its token.
-      properties:
-        token:
-          type: string
-          description: The invitation token.
-      required:
-      - token
     OrganizationInvitationAcceptRequest:
       type: object
       description: Request body for accepting an invitation.
       properties:
-        token:
-          type: string
-          description: The invitation token.
         product_user_id:
           $ref: "#/components/schemas/ksuid"
           description: >-
             The existing Product User of this Product who becomes a member of the
             organization.
       required:
-      - token
       - product_user_id
     OrganizationInvitationFilter:
       type: object
@@ -2603,6 +2577,14 @@ components:
           description: >-
             Keep only invitations with one of these statuses. An invitation whose
             expiry has passed while it was pending counts as `expired`.
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+          description: >-
+            Keep only invitations addressed to one of these email addresses,
+            compared without regard to letter case.
     OrganizationInvitationSearchRequest:
       allOf:
       - $ref: "#/components/schemas/SearchRequest"
@@ -6534,12 +6516,11 @@ paths:
     post:
       summary: Create Organization Invitation
       description: >-
-        Invites an email address to join an organization with a role. The
-        response carries the invitation token. It is the only response that
-        ever carries the token, apart from resend. Anchor stores a hash of the
-        token, so a lost token cannot be read back: resend the invitation to get
-        a new one. Anchor sends no email. The Product delivers the token.
-        The invitation expires 7 days from now unless `expires_at` is given.
+        Invites an email address to join an organization with a role. Anchor
+        sends no email and issues no token: the Product tells the person, and
+        later finds the invitation by searching for the verified email address
+        of the person who signed in. The invitation expires 7 days from now
+        unless `expires_at` is given.
         The create fails with a conflict when a pending invitation exists for the
         same email address in the organization, or when the email address belongs
         to a member of the organization. Email addresses compare without regard
@@ -6563,7 +6544,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreatedOrganizationInvitationResponse'
+                $ref: '#/components/schemas/OrganizationInvitationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -6582,9 +6563,8 @@ paths:
       summary: Search Organization Invitations
       description: >-
         Lists the invitations of one organization, optionally filtered by
-        status. An invitation whose expiry has passed while it was pending reads
-        and filters as `expired`. No invitation in the response carries its
-        token.
+        status and email address. An invitation whose expiry has passed while it
+        was pending reads and filters as `expired`.
       operationId: searchOrganizationInvitations
       tags:
       - OrganizationInvitation
@@ -6620,8 +6600,7 @@ paths:
     - $ref: '#/components/parameters/OrganizationInvitationIdParameter'
     get:
       summary: Get Organization Invitation
-      description: >-
-        Reads one invitation by its id. The response never carries the token.
+      description: Reads one invitation by its id.
       operationId: getOrganizationInvitation
       tags:
       - OrganizationInvitation
@@ -6650,9 +6629,10 @@ paths:
         Changes the role and the expiry of an invitation. Nothing else changes:
         the email address of an invitation is fixed. To fix a wrong address,
         delete the invitation and create a new one. Update works only on a
-        pending invitation that has not expired, like resend: it fails with a
-        conflict on an accepted invitation and on an expired invitation. For an
-        expired invitation, create a new one.
+        pending invitation that has not expired: it fails with a conflict on an
+        accepted invitation and on an expired invitation. For an expired
+        invitation, create a new one. To give a pending invitation more time,
+        update it with a later `expires_at`.
       operationId: updateOrganizationInvitation
       tags:
       - OrganizationInvitation
@@ -6686,8 +6666,9 @@ paths:
     delete:
       summary: Delete Organization Invitation
       description: >-
-        Deletes the invitation for good. Its token stops working. Anchor has no
-        revoke: deleting is how a Product withdraws an invitation.
+        Deletes the invitation for good, so it can no longer be accepted.
+        Anchor has no revoke: deleting is how a Product withdraws an
+        invitation.
       operationId: deleteOrganizationInvitation
       tags:
       - OrganizationInvitation
@@ -6706,83 +6687,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend:
+  /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
     - $ref: '#/components/parameters/OrganizationIdParameter'
     - $ref: '#/components/parameters/OrganizationInvitationIdParameter'
-    post:
-      summary: Resend Organization Invitation
-      description: >-
-        Replaces the token of a pending invitation and sets its expiry to 7 days
-        from now. The response carries the new token. The old token stops
-        working. Anchor sends no email. Resend fails with a conflict on an
-        accepted invitation and on an expired invitation. For an expired
-        invitation, create a new one.
-      operationId: resendOrganizationInvitation
-      tags:
-      - OrganizationInvitation
-      security:
-      - platformBearerAuth: []
-      - productApiKeyAuth:
-        - organization_invitation:update
-      responses:
-        '200':
-          description: Invitation resent
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreatedOrganizationInvitationResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/products/{product_id}/invitations/lookup:
-    parameters:
-    - $ref: '#/components/parameters/ProductIdParameter'
-    post:
-      summary: Look Up Organization Invitation By Token
-      description: >-
-        Finds one invitation by its token. A Product uses this to compare the
-        email address of the signed-in person with the invitation email before it
-        calls accept. The token travels in the body, never in the URL, so it stays
-        out of access logs. An unknown token answers 400 because the token is
-        named in the body. The response never carries the token.
-      operationId: lookupOrganizationInvitation
-      tags:
-      - OrganizationInvitation
-      security:
-      - platformBearerAuth: []
-      - productApiKeyAuth:
-        - organization_invitation:read
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OrganizationInvitationLookupRequest'
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrganizationInvitationResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /v1/products/{product_id}/invitations/accept:
-    parameters:
-    - $ref: '#/components/parameters/ProductIdParameter'
     post:
       summary: Accept Organization Invitation
       description: >-
@@ -6790,12 +6699,12 @@ paths:
         existing Product User, with the invited role. The membership and the
         accepted mark are written in one transaction. Accept never creates a
         Product User and never compares the email address of the Product User
-        with the invitation email: the Product makes that check. The token
-        travels in the body, never in the URL. Accept fails and changes nothing
-        with a bad request when the token is unknown or the Product User does not
-        exist in the Product. It fails with a conflict when the invitation is
-        accepted already, when it is expired, or when the Product User is a
-        member of the organization already.
+        with the invitation email: the Product makes that check, against an
+        email address it has verified. Accept fails and changes nothing with a
+        bad request when the Product User does not exist in the Product. It
+        fails with a conflict when the invitation is accepted already, when it
+        is expired, or when the Product User is a member of the organization
+        already.
       operationId: acceptOrganizationInvitation
       tags:
       - OrganizationInvitation
@@ -6822,8 +6731,48 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/invitations/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search Product Organization Invitations
+      description: >-
+        Lists the invitations of every organization of the Product, optionally
+        filtered by status and email address. A Product calls it when a person
+        signs in, with the verified email addresses of that person and the
+        `pending` status, to show the invitations waiting for them. Email
+        addresses compare without regard to letter case. An invitation whose
+        expiry has passed while it was pending reads and filters as `expired`.
+      operationId: searchProductOrganizationInvitations
+      tags:
+      - OrganizationInvitation
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_invitation:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationInvitationSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationInvitationListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   # ---------------------------------------------------------------------------
   # Email
   # ---------------------------------------------------------------------------

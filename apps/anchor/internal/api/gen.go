@@ -319,45 +319,6 @@ type CreatedOrganizationAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
-// CreatedOrganizationInvitationResponse defines model for CreatedOrganizationInvitationResponse.
-type CreatedOrganizationInvitationResponse struct {
-	// AcceptedAt When the invitation was accepted. Absent until then.
-	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-
-	// Email The invited email address. It never changes.
-	//
-	// Examples: alice@example.com
-	Email openapi_types.Email `json:"email"`
-
-	// ExpiresAt When the invitation stops being acceptable.
-	ExpiresAt time.Time `json:"expires_at"`
-
-	// Id Unique identifier of the invitation.
-	//
-	// Examples: oinv_2iABC...
-	Id Ksuid `json:"id"`
-
-	// OrganizationId The organization the invitation is for.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	OrganizationId Ksuid `json:"organization_id"`
-
-	// RoleId The role the invited person receives on accept.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
-
-	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
-	Status OrganizationInvitationStatus `json:"status"`
-
-	// Token The invitation token. Shown once, on create and on resend. Anchor stores only a hash of it.
-	//
-	// Examples: anchor_inv_5mNOP1234567890abcdefg
-	Token     string    `json:"token"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
 // CreatedProductAPIKeyResponse defines model for CreatedProductAPIKeyResponse.
 type CreatedProductAPIKeyResponse struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -1109,9 +1070,6 @@ type OrganizationInvitationAcceptRequest struct {
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductUserId Ksuid `json:"product_user_id"`
-
-	// Token The invitation token.
-	Token string `json:"token"`
 }
 
 // OrganizationInvitationCreateRequest Request body for inviting an email address to an organization.
@@ -1132,6 +1090,9 @@ type OrganizationInvitationCreateRequest struct {
 
 // OrganizationInvitationFilter Filter criteria for searching organization invitations.
 type OrganizationInvitationFilter struct {
+	// Emails Keep only invitations addressed to one of these email addresses, compared without regard to letter case.
+	Emails *[]openapi_types.Email `json:"emails,omitempty"`
+
 	// Statuses Keep only invitations with one of these statuses. An invitation whose expiry has passed while it was pending counts as `expired`.
 	Statuses *[]OrganizationInvitationStatus `json:"statuses,omitempty"`
 }
@@ -1146,13 +1107,7 @@ type OrganizationInvitationListResponse struct {
 	Total int64 `json:"total"`
 }
 
-// OrganizationInvitationLookupRequest Request body for finding an invitation by its token.
-type OrganizationInvitationLookupRequest struct {
-	// Token The invitation token.
-	Token string `json:"token"`
-}
-
-// OrganizationInvitationResponse An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+// OrganizationInvitationResponse An offer to become a member of one organization, with one role. It is addressed to an email address.
 type OrganizationInvitationResponse struct {
 	// AcceptedAt When the invitation was accepted. Absent until then.
 	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
@@ -1181,7 +1136,7 @@ type OrganizationInvitationResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	RoleId Ksuid `json:"role_id"`
 
-	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
 	Status    OrganizationInvitationStatus `json:"status"`
 	UpdatedAt time.Time                    `json:"updated_at"`
 }
@@ -1202,7 +1157,7 @@ type OrganizationInvitationSearchRequest struct {
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
-// OrganizationInvitationStatus The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+// OrganizationInvitationStatus The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
 type OrganizationInvitationStatus = organizationinvitation.Status
 
 // OrganizationInvitationUpdateRequest Request body for changing an invitation. Only the role and the expiry can change.
@@ -3076,11 +3031,8 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
-// AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
-type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest
-
-// LookupOrganizationInvitationJSONRequestBody defines body for LookupOrganizationInvitation for application/json ContentType.
-type LookupOrganizationInvitationJSONRequestBody = OrganizationInvitationLookupRequest
+// SearchProductOrganizationInvitationsJSONRequestBody defines body for SearchProductOrganizationInvitations for application/json ContentType.
+type SearchProductOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearchRequest
 
 // MigrateOrganizationLicensesJSONRequestBody defines body for MigrateOrganizationLicenses for application/json ContentType.
 type MigrateOrganizationLicensesJSONRequestBody = OrganizationLicenseMigrationRequest
@@ -3129,6 +3081,9 @@ type SearchOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearch
 
 // UpdateOrganizationInvitationJSONRequestBody defines body for UpdateOrganizationInvitation for application/json ContentType.
 type UpdateOrganizationInvitationJSONRequestBody = OrganizationInvitationUpdateRequest
+
+// AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
+type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest
 
 // AdjustOrganizationLicenseJSONRequestBody defines body for AdjustOrganizationLicense for application/json ContentType.
 type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
@@ -3520,12 +3475,9 @@ type ServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
-	// AcceptOrganizationInvitation Accept Organization Invitation
-	// (POST /v1/products/{product_id}/invitations/accept)
-	AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
-	// LookupOrganizationInvitation Look Up Organization Invitation By Token
-	// (POST /v1/products/{product_id}/invitations/lookup)
-	LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SearchProductOrganizationInvitations Search Product Organization Invitations
+	// (POST /v1/products/{product_id}/invitations/search)
+	SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
 	// (POST /v1/products/{product_id}/licensing/organization-licenses/migrate)
 	MigrateOrganizationLicenses(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3610,9 +3562,9 @@ type ServerInterface interface {
 	// UpdateOrganizationInvitation Update Organization Invitation
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
 	UpdateOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
-	// ResendOrganizationInvitation Resend Organization Invitation
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
-	ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept)
+	AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter)
 	// GetOrganizationLicense Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3994,15 +3946,9 @@ func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// AcceptOrganizationInvitation Accept Organization Invitation
-// (POST /v1/products/{product_id}/invitations/accept)
-func (_ Unimplemented) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// LookupOrganizationInvitation Look Up Organization Invitation By Token
-// (POST /v1/products/{product_id}/invitations/lookup)
-func (_ Unimplemented) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+// SearchProductOrganizationInvitations Search Product Organization Invitations
+// (POST /v1/products/{product_id}/invitations/search)
+func (_ Unimplemented) SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4174,9 +4120,9 @@ func (_ Unimplemented) UpdateOrganizationInvitation(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// ResendOrganizationInvitation Resend Organization Invitation
-// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
-func (_ Unimplemented) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+// AcceptOrganizationInvitation Accept Organization Invitation
+// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept)
+func (_ Unimplemented) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5693,8 +5639,8 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
-// AcceptOrganizationInvitation operation middleware
-func (siw *ServerInterfaceWrapper) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+// SearchProductOrganizationInvitations operation middleware
+func (siw *ServerInterfaceWrapper) SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -5709,33 +5655,7 @@ func (siw *ServerInterfaceWrapper) AcceptOrganizationInvitation(w http.ResponseW
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AcceptOrganizationInvitation(w, r, productId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// LookupOrganizationInvitation operation middleware
-func (siw *ServerInterfaceWrapper) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.LookupOrganizationInvitation(w, r, productId)
+		siw.Handler.SearchProductOrganizationInvitations(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6737,8 +6657,8 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationInvitation(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
-// ResendOrganizationInvitation operation middleware
-func (siw *ServerInterfaceWrapper) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
+// AcceptOrganizationInvitation operation middleware
+func (siw *ServerInterfaceWrapper) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -6771,7 +6691,7 @@ func (siw *ServerInterfaceWrapper) ResendOrganizationInvitation(w http.ResponseW
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ResendOrganizationInvitation(w, r, productId, organizationId, invitationId)
+		siw.Handler.AcceptOrganizationInvitation(w, r, productId, organizationId, invitationId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8588,13 +8508,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}", wrapper.UpdateOrganizationInvitation)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend", wrapper.ResendOrganizationInvitation)
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept", wrapper.AcceptOrganizationInvitation)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/invitations/lookup", wrapper.LookupOrganizationInvitation)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/invitations/accept", wrapper.AcceptOrganizationInvitation)
+		r.Post(options.BaseURL+"/v1/products/{product_id}/invitations/search", wrapper.SearchProductOrganizationInvitations)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/email/templates", wrapper.ListEmailTemplates)
@@ -12139,18 +12056,18 @@ func (response ListIntegrationAuditLogs404JSONResponse) VisitListIntegrationAudi
 	return err
 }
 
-type AcceptOrganizationInvitationRequestObject struct {
+type SearchProductOrganizationInvitationsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
-	Body      *AcceptOrganizationInvitationJSONRequestBody
+	Body      *SearchProductOrganizationInvitationsJSONRequestBody
 }
 
-type AcceptOrganizationInvitationResponseObject interface {
-	VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error
+type SearchProductOrganizationInvitationsResponseObject interface {
+	VisitSearchProductOrganizationInvitationsResponse(w http.ResponseWriter) error
 }
 
-type AcceptOrganizationInvitation200JSONResponse OrganizationInvitationResponse
+type SearchProductOrganizationInvitations200JSONResponse OrganizationInvitationListResponse
 
-func (response AcceptOrganizationInvitation200JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response SearchProductOrganizationInvitations200JSONResponse) VisitSearchProductOrganizationInvitationsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12162,88 +12079,9 @@ func (response AcceptOrganizationInvitation200JSONResponse) VisitAcceptOrganizat
 	return err
 }
 
-type AcceptOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+type SearchProductOrganizationInvitations400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response AcceptOrganizationInvitation400JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AcceptOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response AcceptOrganizationInvitation401JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AcceptOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response AcceptOrganizationInvitation403JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AcceptOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
-
-func (response AcceptOrganizationInvitation409JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type LookupOrganizationInvitationRequestObject struct {
-	ProductId ProductIdParameter `json:"product_id"`
-	Body      *LookupOrganizationInvitationJSONRequestBody
-}
-
-type LookupOrganizationInvitationResponseObject interface {
-	VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error
-}
-
-type LookupOrganizationInvitation200JSONResponse OrganizationInvitationResponse
-
-func (response LookupOrganizationInvitation200JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type LookupOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response LookupOrganizationInvitation400JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response SearchProductOrganizationInvitations400JSONResponse) VisitSearchProductOrganizationInvitationsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12255,9 +12093,9 @@ func (response LookupOrganizationInvitation400JSONResponse) VisitLookupOrganizat
 	return err
 }
 
-type LookupOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+type SearchProductOrganizationInvitations401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response LookupOrganizationInvitation401JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response SearchProductOrganizationInvitations401JSONResponse) VisitSearchProductOrganizationInvitationsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12269,9 +12107,9 @@ func (response LookupOrganizationInvitation401JSONResponse) VisitLookupOrganizat
 	return err
 }
 
-type LookupOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+type SearchProductOrganizationInvitations403JSONResponse struct{ ForbiddenJSONResponse }
 
-func (response LookupOrganizationInvitation403JSONResponse) VisitLookupOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response SearchProductOrganizationInvitations403JSONResponse) VisitSearchProductOrganizationInvitationsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14281,7 +14119,7 @@ type CreateOrganizationInvitationResponseObject interface {
 	VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error
 }
 
-type CreateOrganizationInvitation201JSONResponse CreatedOrganizationInvitationResponse
+type CreateOrganizationInvitation201JSONResponse OrganizationInvitationResponse
 
 func (response CreateOrganizationInvitation201JSONResponse) VisitCreateOrganizationInvitationResponse(w http.ResponseWriter) error {
 
@@ -14694,19 +14532,20 @@ func (response UpdateOrganizationInvitation409JSONResponse) VisitUpdateOrganizat
 	return err
 }
 
-type ResendOrganizationInvitationRequestObject struct {
+type AcceptOrganizationInvitationRequestObject struct {
 	ProductId      ProductIdParameter                `json:"product_id"`
 	OrganizationId OrganizationIdParameter           `json:"organization_id"`
 	InvitationId   OrganizationInvitationIdParameter `json:"invitation_id"`
+	Body           *AcceptOrganizationInvitationJSONRequestBody
 }
 
-type ResendOrganizationInvitationResponseObject interface {
-	VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error
+type AcceptOrganizationInvitationResponseObject interface {
+	VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error
 }
 
-type ResendOrganizationInvitation200JSONResponse CreatedOrganizationInvitationResponse
+type AcceptOrganizationInvitation200JSONResponse OrganizationInvitationResponse
 
-func (response ResendOrganizationInvitation200JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation200JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14718,9 +14557,9 @@ func (response ResendOrganizationInvitation200JSONResponse) VisitResendOrganizat
 	return err
 }
 
-type ResendOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
+type AcceptOrganizationInvitation400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response ResendOrganizationInvitation400JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation400JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14732,9 +14571,9 @@ func (response ResendOrganizationInvitation400JSONResponse) VisitResendOrganizat
 	return err
 }
 
-type ResendOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
+type AcceptOrganizationInvitation401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response ResendOrganizationInvitation401JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation401JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14746,9 +14585,9 @@ func (response ResendOrganizationInvitation401JSONResponse) VisitResendOrganizat
 	return err
 }
 
-type ResendOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
+type AcceptOrganizationInvitation403JSONResponse struct{ ForbiddenJSONResponse }
 
-func (response ResendOrganizationInvitation403JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation403JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14760,9 +14599,9 @@ func (response ResendOrganizationInvitation403JSONResponse) VisitResendOrganizat
 	return err
 }
 
-type ResendOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
+type AcceptOrganizationInvitation404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response ResendOrganizationInvitation404JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation404JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14774,9 +14613,9 @@ func (response ResendOrganizationInvitation404JSONResponse) VisitResendOrganizat
 	return err
 }
 
-type ResendOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
+type AcceptOrganizationInvitation409JSONResponse struct{ ConflictJSONResponse }
 
-func (response ResendOrganizationInvitation409JSONResponse) VisitResendOrganizationInvitationResponse(w http.ResponseWriter) error {
+func (response AcceptOrganizationInvitation409JSONResponse) VisitAcceptOrganizationInvitationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -18000,12 +17839,9 @@ type StrictServerInterface interface {
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
-	// AcceptOrganizationInvitation Accept Organization Invitation
-	// (POST /v1/products/{product_id}/invitations/accept)
-	AcceptOrganizationInvitation(ctx context.Context, request AcceptOrganizationInvitationRequestObject) (AcceptOrganizationInvitationResponseObject, error)
-	// LookupOrganizationInvitation Look Up Organization Invitation By Token
-	// (POST /v1/products/{product_id}/invitations/lookup)
-	LookupOrganizationInvitation(ctx context.Context, request LookupOrganizationInvitationRequestObject) (LookupOrganizationInvitationResponseObject, error)
+	// SearchProductOrganizationInvitations Search Product Organization Invitations
+	// (POST /v1/products/{product_id}/invitations/search)
+	SearchProductOrganizationInvitations(ctx context.Context, request SearchProductOrganizationInvitationsRequestObject) (SearchProductOrganizationInvitationsResponseObject, error)
 	// MigrateOrganizationLicenses Migrate Organization Licenses Onto A Template
 	// (POST /v1/products/{product_id}/licensing/organization-licenses/migrate)
 	MigrateOrganizationLicenses(ctx context.Context, request MigrateOrganizationLicensesRequestObject) (MigrateOrganizationLicensesResponseObject, error)
@@ -18090,9 +17926,9 @@ type StrictServerInterface interface {
 	// UpdateOrganizationInvitation Update Organization Invitation
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id})
 	UpdateOrganizationInvitation(ctx context.Context, request UpdateOrganizationInvitationRequestObject) (UpdateOrganizationInvitationResponseObject, error)
-	// ResendOrganizationInvitation Resend Organization Invitation
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend)
-	ResendOrganizationInvitation(ctx context.Context, request ResendOrganizationInvitationRequestObject) (ResendOrganizationInvitationResponseObject, error)
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept)
+	AcceptOrganizationInvitation(ctx context.Context, request AcceptOrganizationInvitationRequestObject) (AcceptOrganizationInvitationResponseObject, error)
 	// GetOrganizationLicense Get Organization License
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license)
 	GetOrganizationLicense(ctx context.Context, request GetOrganizationLicenseRequestObject) (GetOrganizationLicenseResponseObject, error)
@@ -19537,13 +19373,13 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 	}
 }
 
-// AcceptOrganizationInvitation operation middleware
-func (sh *strictHandler) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	var request AcceptOrganizationInvitationRequestObject
+// SearchProductOrganizationInvitations operation middleware
+func (sh *strictHandler) SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchProductOrganizationInvitationsRequestObject
 
 	request.ProductId = productId
 
-	var body AcceptOrganizationInvitationJSONRequestBody
+	var body SearchProductOrganizationInvitationsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -19551,51 +19387,18 @@ func (sh *strictHandler) AcceptOrganizationInvitation(w http.ResponseWriter, r *
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AcceptOrganizationInvitation(ctx, request.(AcceptOrganizationInvitationRequestObject))
+		return sh.ssi.SearchProductOrganizationInvitations(ctx, request.(SearchProductOrganizationInvitationsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AcceptOrganizationInvitation")
+		handler = middleware(handler, "SearchProductOrganizationInvitations")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AcceptOrganizationInvitationResponseObject); ok {
-		if err := validResponse.VisitAcceptOrganizationInvitationResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// LookupOrganizationInvitation operation middleware
-func (sh *strictHandler) LookupOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
-	var request LookupOrganizationInvitationRequestObject
-
-	request.ProductId = productId
-
-	var body LookupOrganizationInvitationJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.LookupOrganizationInvitation(ctx, request.(LookupOrganizationInvitationRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "LookupOrganizationInvitation")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(LookupOrganizationInvitationResponseObject); ok {
-		if err := validResponse.VisitLookupOrganizationInvitationResponse(w); err != nil {
+	} else if validResponse, ok := response.(SearchProductOrganizationInvitationsResponseObject); ok {
+		if err := validResponse.VisitSearchProductOrganizationInvitationsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -20470,27 +20273,34 @@ func (sh *strictHandler) UpdateOrganizationInvitation(w http.ResponseWriter, r *
 	}
 }
 
-// ResendOrganizationInvitation operation middleware
-func (sh *strictHandler) ResendOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
-	var request ResendOrganizationInvitationRequestObject
+// AcceptOrganizationInvitation operation middleware
+func (sh *strictHandler) AcceptOrganizationInvitation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) {
+	var request AcceptOrganizationInvitationRequestObject
 
 	request.ProductId = productId
 	request.OrganizationId = organizationId
 	request.InvitationId = invitationId
 
+	var body AcceptOrganizationInvitationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ResendOrganizationInvitation(ctx, request.(ResendOrganizationInvitationRequestObject))
+		return sh.ssi.AcceptOrganizationInvitation(ctx, request.(AcceptOrganizationInvitationRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ResendOrganizationInvitation")
+		handler = middleware(handler, "AcceptOrganizationInvitation")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ResendOrganizationInvitationResponseObject); ok {
-		if err := validResponse.VisitResendOrganizationInvitationResponse(w); err != nil {
+	} else if validResponse, ok := response.(AcceptOrganizationInvitationResponseObject); ok {
+		if err := validResponse.VisitAcceptOrganizationInvitationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

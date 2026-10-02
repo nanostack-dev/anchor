@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -15,23 +15,24 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/invitation/repository"
 	anchorrepository "anchor/internal/repository"
-	"anchor/internal/security"
 	anchorservice "anchor/internal/service"
 )
 
 // OrganizationInvitationService manages the invitations of an Organization.
-// Anchor stores the invitation and its lifecycle and sends no email: the
-// Product delivers the token.
+// Anchor stores the invitation and its lifecycle and sends no email. A Product
+// finds an invitation by the verified email address of the person who signed
+// in, and accepts it by id.
 type OrganizationInvitationService interface {
-	Create(ctx context.Context, input organizationinvitation.CreateInput) (organizationinvitation.Created, error)
+	Create(ctx context.Context, input organizationinvitation.CreateInput) (organizationinvitation.Invitation, error)
 	Get(ctx context.Context, input organizationinvitation.GetInput) (organizationinvitation.Invitation, error)
 	Search(
 		ctx context.Context, input organizationinvitation.SearchInput,
 	) (search.Result[organizationinvitation.Invitation], error)
+	SearchInProduct(
+		ctx context.Context, input organizationinvitation.SearchInProductInput,
+	) (search.Result[organizationinvitation.Invitation], error)
 	Update(ctx context.Context, input organizationinvitation.UpdateInput) (organizationinvitation.Invitation, error)
 	Delete(ctx context.Context, input organizationinvitation.DeleteInput) error
-	Resend(ctx context.Context, input organizationinvitation.ResendInput) (organizationinvitation.Created, error)
-	Lookup(ctx context.Context, input organizationinvitation.LookupInput) (organizationinvitation.Invitation, error)
 	Accept(ctx context.Context, input organizationinvitation.AcceptInput) (organizationinvitation.Invitation, error)
 }
 
@@ -67,23 +68,18 @@ func NewOrganizationInvitationService(
 
 func (s *organizationInvitationService) Create(
 	ctx context.Context, input organizationinvitation.CreateInput,
-) (organizationinvitation.Created, error) {
+) (organizationinvitation.Invitation, error) {
 	if err := validate.ValidateStruct(input); err != nil {
-		return organizationinvitation.Created{}, err
+		return organizationinvitation.Invitation{}, err
 	}
 
 	now := time.Now()
 	expiresAt := organizationinvitation.DefaultExpiryFrom(now)
 	if input.ExpiresAt != nil {
 		if !input.ExpiresAt.After(now) {
-			return organizationinvitation.Created{}, errExpiryNotInFuture
+			return organizationinvitation.Invitation{}, errExpiryNotInFuture
 		}
 		expiresAt = *input.ExpiresAt
-	}
-
-	token, tokenHash, err := s.newToken()
-	if err != nil {
-		return organizationinvitation.Created{}, err
 	}
 
 	invitation := organizationinvitation.Invitation{
@@ -91,7 +87,6 @@ func (s *organizationInvitationService) Create(
 		OrganizationID: input.OrganizationID,
 		Email:          input.Email,
 		RoleID:         input.RoleID,
-		TokenHash:      tokenHash,
 		ExpiresAt:      expiresAt,
 	}
 	invitation.GenerateID()
@@ -122,10 +117,10 @@ func (s *organizationInvitationService) Create(
 		return s.emit(txCtx, events.OrganizationInvitationCreated, created)
 	})
 	if txErr != nil {
-		return organizationinvitation.Created{}, txErr
+		return organizationinvitation.Invitation{}, txErr
 	}
 
-	return organizationinvitation.Created{Invitation: created, Token: token}, nil
+	return created, nil
 }
 
 func (s *organizationInvitationService) Get(
@@ -161,7 +156,17 @@ func (s *organizationInvitationService) Search(
 		return search.Result[organizationinvitation.Invitation]{}, organization.ErrOrganizationNotFound
 	}
 
-	return s.invitationRepo.Search(ctx, input.ProductID, input.OrganizationID, input.Request)
+	return s.invitationRepo.Search(ctx, input.ProductID, functional.Some(input.OrganizationID), input.Request)
+}
+
+func (s *organizationInvitationService) SearchInProduct(
+	ctx context.Context, input organizationinvitation.SearchInProductInput,
+) (search.Result[organizationinvitation.Invitation], error) {
+	if err := validate.ValidateStruct(input); err != nil {
+		return search.Result[organizationinvitation.Invitation]{}, err
+	}
+
+	return s.invitationRepo.Search(ctx, input.ProductID, functional.None[string](), input.Request)
 }
 
 func (s *organizationInvitationService) Update(
@@ -224,62 +229,6 @@ func (s *organizationInvitationService) Delete(
 	})
 }
 
-func (s *organizationInvitationService) Resend(
-	ctx context.Context, input organizationinvitation.ResendInput,
-) (organizationinvitation.Created, error) {
-	if err := validate.ValidateStruct(input); err != nil {
-		return organizationinvitation.Created{}, err
-	}
-
-	token, tokenHash, err := s.newToken()
-	if err != nil {
-		return organizationinvitation.Created{}, err
-	}
-
-	var resent organizationinvitation.Invitation
-	txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		current, findErr := s.lockAndFind(txCtx, input.ProductID, input.OrganizationID, input.InvitationID)
-		if findErr != nil {
-			return findErr
-		}
-		if statusErr := refuseUnlessPending(current); statusErr != nil {
-			return statusErr
-		}
-
-		current.TokenHash = tokenHash
-		current.ExpiresAt = organizationinvitation.DefaultExpiryFrom(time.Now())
-		var replaceErr error
-		resent, replaceErr = s.invitationRepo.ReplaceToken(txCtx, current)
-		if replaceErr != nil {
-			return replaceErr
-		}
-		return s.emit(txCtx, events.OrganizationInvitationUpdated, resent)
-	})
-	if txErr != nil {
-		return organizationinvitation.Created{}, txErr
-	}
-
-	return organizationinvitation.Created{Invitation: resent, Token: token}, nil
-}
-
-func (s *organizationInvitationService) Lookup(
-	ctx context.Context, input organizationinvitation.LookupInput,
-) (organizationinvitation.Invitation, error) {
-	if err := validate.ValidateStruct(input); err != nil {
-		return organizationinvitation.Invitation{}, err
-	}
-
-	found, err := s.invitationRepo.FindByTokenHash(ctx, input.ProductID, security.HashSecret(input.Token))
-	if err != nil {
-		return organizationinvitation.Invitation{}, err
-	}
-	if found.IsAbsent() {
-		return organizationinvitation.Invitation{}, errTokenNotFound
-	}
-
-	return found.Value(), nil
-}
-
 // Accept turns a pending invitation into a membership. The membership, the
 // accepted mark and both events commit together or not at all. It never
 // creates a Product User and never compares emails: the Product owns both.
@@ -290,44 +239,28 @@ func (s *organizationInvitationService) Accept(
 		return organizationinvitation.Invitation{}, err
 	}
 
-	tokenHash := security.HashSecret(input.Token)
-	located, err := s.invitationRepo.FindByTokenHash(ctx, input.ProductID, tokenHash)
-	if err != nil {
-		return organizationinvitation.Invitation{}, err
-	}
-	if located.IsAbsent() {
-		return organizationinvitation.Invitation{}, errTokenNotFound
-	}
-
 	var accepted organizationinvitation.Invitation
 	txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		organizationID := located.Value().OrganizationID
-		if lockErr := s.lockOrganization(txCtx, input.ProductID, organizationID); lockErr != nil {
-			return lockErr
-		}
-		current, findErr := s.invitationRepo.FindByTokenHash(txCtx, input.ProductID, tokenHash)
+		current, findErr := s.lockAndFind(txCtx, input.ProductID, input.OrganizationID, input.InvitationID)
 		if findErr != nil {
 			return findErr
 		}
-		if current.IsAbsent() {
-			return errTokenNotFound
-		}
-		if statusErr := refuseUnlessPending(current.Value()); statusErr != nil {
+		if statusErr := refuseUnlessPending(current); statusErr != nil {
 			return statusErr
 		}
 
 		if _, addErr := s.membershipService.AddMember(txCtx, organization.AddMemberInput{
 			ProductID:      input.ProductID,
-			OrganizationID: organizationID,
+			OrganizationID: input.OrganizationID,
 			ProductUserID:  input.ProductUserID,
-			RoleID:         current.Value().RoleID,
+			RoleID:         current.RoleID,
 		}); addErr != nil {
 			return addErr
 		}
 
 		var markErr error
 		accepted, markErr = s.invitationRepo.MarkAccepted(
-			txCtx, input.ProductID, organizationID, current.Value().ID, time.Now(),
+			txCtx, input.ProductID, input.OrganizationID, input.InvitationID, time.Now(),
 		)
 		if markErr != nil {
 			return markErr
@@ -336,7 +269,7 @@ func (s *organizationInvitationService) Accept(
 			Type:      events.OrganizationInvitationAccepted,
 			ProductID: input.ProductID,
 			Data: events.Data{
-				events.FieldOrganizationID: organizationID,
+				events.FieldOrganizationID: input.OrganizationID,
 				events.FieldInvitationID:   accepted.ID,
 				events.FieldProductUserID:  input.ProductUserID,
 			},
@@ -347,15 +280,6 @@ func (s *organizationInvitationService) Accept(
 	}
 
 	return accepted, nil
-}
-
-func (s *organizationInvitationService) newToken() (string, string, error) {
-	token, err := security.GenerateOrganizationInvitationToken()
-	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to generate invitation token")
-		return "", "", fault.ErrUnexpected
-	}
-	return token, security.HashSecret(token), nil
 }
 
 func (s *organizationInvitationService) lockOrganization(

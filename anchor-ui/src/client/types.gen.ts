@@ -1485,7 +1485,7 @@ export enum OrganizationMemberInclude {
 }
 
 /**
- * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+ * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
  */
 export enum OrganizationInvitationStatus {
     PENDING = 'pending',
@@ -1494,7 +1494,7 @@ export enum OrganizationInvitationStatus {
 }
 
 /**
- * An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+ * An offer to become a member of one organization, with one role. It is addressed to an email address.
  */
 export type OrganizationInvitationResponse = {
     /**
@@ -1524,13 +1524,6 @@ export type OrganizationInvitationResponse = {
     accepted_at?: string;
     created_at: string;
     updated_at: string;
-};
-
-export type CreatedOrganizationInvitationResponse = OrganizationInvitationResponse & {
-    /**
-     * The invitation token. Shown once, on create and on resend. Anchor stores only a hash of it.
-     */
-    token: string;
 };
 
 export type OrganizationInvitationListResponse = PagedListResponse & {
@@ -1570,23 +1563,9 @@ export type OrganizationInvitationUpdateRequest = {
 };
 
 /**
- * Request body for finding an invitation by its token.
- */
-export type OrganizationInvitationLookupRequest = {
-    /**
-     * The invitation token.
-     */
-    token: string;
-};
-
-/**
  * Request body for accepting an invitation.
  */
 export type OrganizationInvitationAcceptRequest = {
-    /**
-     * The invitation token.
-     */
-    token: string;
     /**
      * The existing Product User of this Product who becomes a member of the organization.
      */
@@ -1601,6 +1580,10 @@ export type OrganizationInvitationFilter = {
      * Keep only invitations with one of these statuses. An invitation whose expiry has passed while it was pending counts as `expired`.
      */
     statuses?: Array<OrganizationInvitationStatus>;
+    /**
+     * Keep only invitations addressed to one of these email addresses, compared without regard to letter case.
+     */
+    emails?: Array<string>;
 };
 
 export type OrganizationInvitationSearchRequest = SearchRequest & {
@@ -5971,7 +5954,7 @@ export type CreateOrganizationInvitationResponses = {
     /**
      * Invitation created
      */
-    201: CreatedOrganizationInvitationResponse;
+    201: OrganizationInvitationResponse;
 };
 
 export type CreateOrganizationInvitationResponse = CreateOrganizationInvitationResponses[keyof CreateOrganizationInvitationResponses];
@@ -6176,8 +6159,8 @@ export type UpdateOrganizationInvitationResponses = {
 
 export type UpdateOrganizationInvitationResponse = UpdateOrganizationInvitationResponses[keyof UpdateOrganizationInvitationResponses];
 
-export type ResendOrganizationInvitationData = {
-    body?: never;
+export type AcceptOrganizationInvitationData = {
+    body: OrganizationInvitationAcceptRequest;
     path: {
         /**
          * The KSUID of the product.
@@ -6193,10 +6176,10 @@ export type ResendOrganizationInvitationData = {
         invitation_id: Ksuid;
     };
     query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend';
+    url: '/v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept';
 };
 
-export type ResendOrganizationInvitationErrors = {
+export type AcceptOrganizationInvitationErrors = {
     /**
      * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
      */
@@ -6219,86 +6202,6 @@ export type ResendOrganizationInvitationErrors = {
     409: ApiErrorResponse;
 };
 
-export type ResendOrganizationInvitationError = ResendOrganizationInvitationErrors[keyof ResendOrganizationInvitationErrors];
-
-export type ResendOrganizationInvitationResponses = {
-    /**
-     * Invitation resent
-     */
-    200: CreatedOrganizationInvitationResponse;
-};
-
-export type ResendOrganizationInvitationResponse = ResendOrganizationInvitationResponses[keyof ResendOrganizationInvitationResponses];
-
-export type LookupOrganizationInvitationData = {
-    body: OrganizationInvitationLookupRequest;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/invitations/lookup';
-};
-
-export type LookupOrganizationInvitationErrors = {
-    /**
-     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
-     */
-    400: ApiErrorResponse;
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-};
-
-export type LookupOrganizationInvitationError = LookupOrganizationInvitationErrors[keyof LookupOrganizationInvitationErrors];
-
-export type LookupOrganizationInvitationResponses = {
-    /**
-     * Success
-     */
-    200: OrganizationInvitationResponse;
-};
-
-export type LookupOrganizationInvitationResponse = LookupOrganizationInvitationResponses[keyof LookupOrganizationInvitationResponses];
-
-export type AcceptOrganizationInvitationData = {
-    body: OrganizationInvitationAcceptRequest;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/invitations/accept';
-};
-
-export type AcceptOrganizationInvitationErrors = {
-    /**
-     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
-     */
-    400: ApiErrorResponse;
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
-};
-
 export type AcceptOrganizationInvitationError = AcceptOrganizationInvitationErrors[keyof AcceptOrganizationInvitationErrors];
 
 export type AcceptOrganizationInvitationResponses = {
@@ -6309,6 +6212,44 @@ export type AcceptOrganizationInvitationResponses = {
 };
 
 export type AcceptOrganizationInvitationResponse = AcceptOrganizationInvitationResponses[keyof AcceptOrganizationInvitationResponses];
+
+export type SearchProductOrganizationInvitationsData = {
+    body: OrganizationInvitationSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/invitations/search';
+};
+
+export type SearchProductOrganizationInvitationsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+};
+
+export type SearchProductOrganizationInvitationsError = SearchProductOrganizationInvitationsErrors[keyof SearchProductOrganizationInvitationsErrors];
+
+export type SearchProductOrganizationInvitationsResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationInvitationListResponse;
+};
+
+export type SearchProductOrganizationInvitationsResponse = SearchProductOrganizationInvitationsResponses[keyof SearchProductOrganizationInvitationsResponses];
 
 export type ListEmailTemplatesData = {
     body?: never;

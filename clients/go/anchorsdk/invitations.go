@@ -13,10 +13,9 @@ import (
 //
 //	created, err := c.Organization(orgID).Invitations().Create("alice@example.com", roleID).Do(ctx)
 //
-// Anchor stores the invitation and sends no email. The token in the response of
-// [InvitationCreateBuilder.Do] and [Invitations.Resend] is the only time the
-// caller sees it: deliver it to the invited person, who gives it back to the
-// Product, which calls [ProductInvitations.Accept].
+// Anchor stores the invitation and sends no email. When a person signs in, the
+// Product finds their invitations with [ProductInvitations.Search] by their
+// verified email addresses, and calls [Invitations.Accept].
 type Invitations struct{ o *Org }
 
 // Invitations returns the invitation facade for this organization.
@@ -45,10 +44,10 @@ func (i Invitations) List(ctx context.Context) (*nanoclient.OrganizationInvitati
 //
 //	page, err := org.Invitations().Search().Statuses(nanoclient.Pending).Limit(20).Do(ctx)
 func (i Invitations) Search() *InvitationSearch {
-	return &InvitationSearch{o: i.o}
+	return &InvitationSearch{c: i.o.c, o: i.o}
 }
 
-// Get returns one invitation by its ID. The response never carries the token.
+// Get returns one invitation by its ID.
 func (i Invitations) Get(
 	ctx context.Context,
 	invitationID string,
@@ -89,8 +88,8 @@ func (i Invitations) Update(
 	})
 }
 
-// Delete removes an invitation for good. Its token stops working. There is no
-// revoke: deleting is how a Product withdraws an invitation.
+// Delete removes an invitation for good, so it can no longer be accepted.
+// There is no revoke: deleting is how a Product withdraws an invitation.
 func (i Invitations) Delete(ctx context.Context, invitationID string) error {
 	const op = "Invitations.Delete"
 
@@ -105,19 +104,21 @@ func (i Invitations) Delete(ctx context.Context, invitationID string) error {
 	})
 }
 
-// Resend replaces the token of a pending invitation that has not expired,
-// resets its expiry to Anchor's default, and returns the new token. The old
-// token stops working. Anchor refuses it on an accepted or an expired
-// invitation.
-func (i Invitations) Resend(
+// Accept turns a pending invitation into a membership of the organization for
+// an existing product user, with the invited role. Anchor never creates the
+// product user and never compares its email address with the invitation email:
+// the Product checks it against an email address it has verified first.
+func (i Invitations) Accept(
 	ctx context.Context,
-	invitationID string,
-) (*nanoclient.CreatedOrganizationInvitationResponse, error) {
-	const op = "Invitations.Resend"
+	invitationID, productUserID string,
+) (*nanoclient.OrganizationInvitationResponse, error) {
+	const op = "Invitations.Accept"
 
-	return retrying(ctx, i.o.c, func(ctx context.Context) (*nanoclient.CreatedOrganizationInvitationResponse, error) {
-		resp, err := i.o.c.api.ResendOrganizationInvitationWithResponse(
-			ctx, i.o.c.productID, i.o.id, invitationID,
+	body := nanoclient.AcceptOrganizationInvitationJSONRequestBody{ProductUserId: productUserID}
+
+	return retrying(ctx, i.o.c, func(ctx context.Context) (*nanoclient.OrganizationInvitationResponse, error) {
+		resp, err := i.o.c.api.AcceptOrganizationInvitationWithResponse(
+			ctx, i.o.c.productID, i.o.id, invitationID, body,
 		)
 		if err != nil {
 			return nil, transportError(op, err)
@@ -141,15 +142,15 @@ func (b *InvitationCreateBuilder) ExpiresAt(expiresAt time.Time) *InvitationCrea
 	return b
 }
 
-// Do creates the invitation and returns it with its token.
+// Do creates the invitation.
 func (b *InvitationCreateBuilder) Do(
 	ctx context.Context,
-) (*nanoclient.CreatedOrganizationInvitationResponse, error) {
+) (*nanoclient.OrganizationInvitationResponse, error) {
 	const op = "Invitations.Create"
 
 	c := b.o.c
 
-	return retrying(ctx, c, func(ctx context.Context) (*nanoclient.CreatedOrganizationInvitationResponse, error) {
+	return retrying(ctx, c, func(ctx context.Context) (*nanoclient.OrganizationInvitationResponse, error) {
 		resp, err := c.api.CreateOrganizationInvitationWithResponse(ctx, c.productID, b.o.id, b.req)
 		if err != nil {
 			return nil, transportError(op, err)
@@ -158,9 +159,12 @@ func (b *InvitationCreateBuilder) Do(
 	})
 }
 
-// InvitationSearch accumulates an invitation query. Setter methods chain;
-// [InvitationSearch.Do] runs it.
+// InvitationSearch accumulates an invitation query over one organization, or
+// over every organization of the product when it comes from
+// [ProductInvitations.Search]. Setter methods chain; [InvitationSearch.Do] runs
+// it.
 type InvitationSearch struct {
+	c   *Client
 	o   *Org
 	req nanoclient.OrganizationInvitationSearchRequest
 }
@@ -172,6 +176,20 @@ func (s *InvitationSearch) Statuses(statuses ...nanoclient.OrganizationInvitatio
 		s.req.Filter = &nanoclient.OrganizationInvitationFilter{}
 	}
 	s.req.Filter.Statuses = new(statuses)
+	return s
+}
+
+// Emails restricts the result to invitations addressed to one of the email
+// addresses, compared without regard to letter case.
+func (s *InvitationSearch) Emails(emails ...string) *InvitationSearch {
+	if s.req.Filter == nil {
+		s.req.Filter = &nanoclient.OrganizationInvitationFilter{}
+	}
+	typed := make([]openapi_types.Email, 0, len(emails))
+	for _, email := range emails {
+		typed = append(typed, openapi_types.Email(email))
+	}
+	s.req.Filter.Emails = new(typed)
 	return s
 }
 
@@ -202,9 +220,16 @@ func (s *InvitationSearch) Offset(offset int32) *InvitationSearch {
 func (s *InvitationSearch) Do(ctx context.Context) (*nanoclient.OrganizationInvitationListResponse, error) {
 	const op = "Invitations.Search"
 
-	c := s.o.c
+	c := s.c
 
 	return retrying(ctx, c, func(ctx context.Context) (*nanoclient.OrganizationInvitationListResponse, error) {
+		if s.o == nil {
+			resp, err := c.api.SearchProductOrganizationInvitationsWithResponse(ctx, c.productID, s.req)
+			if err != nil {
+				return nil, transportError(op, err)
+			}
+			return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
+		}
 		resp, err := c.api.SearchOrganizationInvitationsWithResponse(ctx, c.productID, s.o.id, s.req)
 		if err != nil {
 			return nil, transportError(op, err)
@@ -220,53 +245,18 @@ func (s *InvitationSearch) page() *nanoclient.PaginationRequest {
 	return s.req.Pagination
 }
 
-// ProductInvitations is the facade for the invitation calls that start from a
-// token instead of an organization. Obtain one with [Client.Invitations]. The
-// token travels in the request body, never in the URL.
+// ProductInvitations is the facade for the invitations of every organization of
+// this client's product. Obtain one with [Client.Invitations].
 type ProductInvitations struct{ c *Client }
 
-// Invitations returns the token-level invitation facade for this client's
-// product.
+// Invitations returns the product-wide invitation facade.
 func (c *Client) Invitations() ProductInvitations { return ProductInvitations{c: c} }
 
-// Lookup finds the invitation a token belongs to, so the Product can compare
-// the email address of the signed-in person with the invitation email before
-// it calls [ProductInvitations.Accept]. An expired or accepted invitation is
-// found too: read its status.
-func (p ProductInvitations) Lookup(
-	ctx context.Context,
-	token string,
-) (*nanoclient.OrganizationInvitationResponse, error) {
-	const op = "Invitations.Lookup"
-
-	body := nanoclient.LookupOrganizationInvitationJSONRequestBody{Token: token}
-
-	return retrying(ctx, p.c, func(ctx context.Context) (*nanoclient.OrganizationInvitationResponse, error) {
-		resp, err := p.c.api.LookupOrganizationInvitationWithResponse(ctx, p.c.productID, body)
-		if err != nil {
-			return nil, transportError(op, err)
-		}
-		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
-	})
-}
-
-// Accept turns a pending invitation into a membership of its organization for
-// an existing product user, with the invited role. Anchor never creates the
-// product user and never compares its email address with the invitation email:
-// the Product makes that check first.
-func (p ProductInvitations) Accept(
-	ctx context.Context,
-	token, productUserID string,
-) (*nanoclient.OrganizationInvitationResponse, error) {
-	const op = "Invitations.Accept"
-
-	body := nanoclient.AcceptOrganizationInvitationJSONRequestBody{Token: token, ProductUserId: productUserID}
-
-	return retrying(ctx, p.c, func(ctx context.Context) (*nanoclient.OrganizationInvitationResponse, error) {
-		resp, err := p.c.api.AcceptOrganizationInvitationWithResponse(ctx, p.c.productID, body)
-		if err != nil {
-			return nil, transportError(op, err)
-		}
-		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
-	})
+// Search starts building a query over the invitations of every organization of
+// the product. A Product runs it when a person signs in, with the verified
+// email addresses of that person:
+//
+//	page, err := c.Invitations().Search().Emails(verified...).Statuses(nanoclient.Pending).Do(ctx)
+func (p ProductInvitations) Search() *InvitationSearch {
+	return &InvitationSearch{c: p.c}
 }

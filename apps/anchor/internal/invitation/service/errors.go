@@ -8,11 +8,6 @@ var (
 		"This organization has no invitation with that identifier.",
 	)
 
-	errTokenNotFound = fault.BadRequest(
-		"ORGANIZATION_INVITATION_TOKEN_NOT_FOUND",
-		"This product has no invitation with that token.",
-	)
-
 	errPendingInvitationExists = fault.Conflict(
 		"ORGANIZATION_INVITATION_ALREADY_PENDING",
 		"A pending invitation already exists for this email address in this organization.",

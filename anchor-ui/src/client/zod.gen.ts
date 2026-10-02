@@ -920,7 +920,7 @@ export const zOrganizationMemberInclude = z.enum([
 ]);
 
 /**
- * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+ * The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
  */
 export const zOrganizationInvitationStatus = z.enum([
     'pending',
@@ -929,7 +929,7 @@ export const zOrganizationInvitationStatus = z.enum([
 ]);
 
 /**
- * An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+ * An offer to become a member of one organization, with one role. It is addressed to an email address.
  */
 export const zOrganizationInvitationResponse = z.object({
     id: zKsuid,
@@ -942,10 +942,6 @@ export const zOrganizationInvitationResponse = z.object({
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
-
-export const zCreatedOrganizationInvitationResponse = zOrganizationInvitationResponse.and(z.object({
-    token: z.string()
-}));
 
 export const zOrganizationInvitationListResponse = zPagedListResponse.and(z.object({
     items: z.array(zOrganizationInvitationResponse)
@@ -969,17 +965,9 @@ export const zOrganizationInvitationUpdateRequest = z.object({
 });
 
 /**
- * Request body for finding an invitation by its token.
- */
-export const zOrganizationInvitationLookupRequest = z.object({
-    token: z.string()
-});
-
-/**
  * Request body for accepting an invitation.
  */
 export const zOrganizationInvitationAcceptRequest = z.object({
-    token: z.string(),
     product_user_id: zKsuid
 });
 
@@ -987,7 +975,8 @@ export const zOrganizationInvitationAcceptRequest = z.object({
  * Filter criteria for searching organization invitations.
  */
 export const zOrganizationInvitationFilter = z.object({
-    statuses: z.optional(z.array(zOrganizationInvitationStatus))
+    statuses: z.optional(z.array(zOrganizationInvitationStatus)),
+    emails: z.optional(z.array(z.email()))
 });
 
 export const zOrganizationInvitationSearchRequest = zSearchRequest.and(z.object({
@@ -2760,7 +2749,7 @@ export const zCreateOrganizationInvitationData = z.object({
 /**
  * Invitation created
  */
-export const zCreateOrganizationInvitationResponse = zCreatedOrganizationInvitationResponse;
+export const zCreateOrganizationInvitationResponse = zOrganizationInvitationResponse;
 
 export const zSearchOrganizationInvitationsData = z.object({
     body: zOrganizationInvitationSearchRequest,
@@ -2821,8 +2810,8 @@ export const zUpdateOrganizationInvitationData = z.object({
  */
 export const zUpdateOrganizationInvitationResponse = zOrganizationInvitationResponse;
 
-export const zResendOrganizationInvitationData = z.object({
-    body: z.optional(z.never()),
+export const zAcceptOrganizationInvitationData = z.object({
+    body: zOrganizationInvitationAcceptRequest,
     path: z.object({
         product_id: zKsuid,
         organization_id: zKsuid,
@@ -2832,12 +2821,12 @@ export const zResendOrganizationInvitationData = z.object({
 });
 
 /**
- * Invitation resent
+ * Invitation accepted
  */
-export const zResendOrganizationInvitationResponse = zCreatedOrganizationInvitationResponse;
+export const zAcceptOrganizationInvitationResponse = zOrganizationInvitationResponse;
 
-export const zLookupOrganizationInvitationData = z.object({
-    body: zOrganizationInvitationLookupRequest,
+export const zSearchProductOrganizationInvitationsData = z.object({
+    body: zOrganizationInvitationSearchRequest,
     path: z.object({
         product_id: zKsuid
     }),
@@ -2847,20 +2836,7 @@ export const zLookupOrganizationInvitationData = z.object({
 /**
  * Success
  */
-export const zLookupOrganizationInvitationResponse = zOrganizationInvitationResponse;
-
-export const zAcceptOrganizationInvitationData = z.object({
-    body: zOrganizationInvitationAcceptRequest,
-    path: z.object({
-        product_id: zKsuid
-    }),
-    query: z.optional(z.never())
-});
-
-/**
- * Invitation accepted
- */
-export const zAcceptOrganizationInvitationResponse = zOrganizationInvitationResponse;
+export const zSearchProductOrganizationInvitationsResponse = zOrganizationInvitationListResponse;
 
 export const zListEmailTemplatesData = z.object({
     body: z.optional(z.never()),

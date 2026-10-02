@@ -646,41 +646,23 @@ type ClientInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AcceptOrganizationInvitationWithBody Accept Organization Invitation
+	// SearchProductOrganizationInvitationsWithBody Search Product Organization Invitations
 	//
-	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-	AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// AcceptOrganizationInvitation Accept Organization Invitation
-	//
-	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-	AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LookupOrganizationInvitationWithBody Look Up Organization Invitation By Token
-	//
-	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-	LookupOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+	SearchProductOrganizationInvitationsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// LookupOrganizationInvitation Look Up Organization Invitation By Token
+	// SearchProductOrganizationInvitations Search Product Organization Invitations
 	//
-	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-	LookupOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+	SearchProductOrganizationInvitations(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MigrateOrganizationLicensesWithBody Migrate Organization Licenses Onto A Template
 	//
@@ -1025,7 +1007,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationInvitationWithBody Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1034,7 +1016,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationInvitation Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1043,7 +1025,7 @@ type ClientInterface interface {
 
 	// SearchOrganizationInvitationsWithBody Search Organization Invitations
 	//
-	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1052,7 +1034,7 @@ type ClientInterface interface {
 
 	// SearchOrganizationInvitations Search Organization Invitations
 	//
-	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1061,21 +1043,21 @@ type ClientInterface interface {
 
 	// DeleteOrganizationInvitation Delete Organization Invitation
 	//
-	// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+	// Deletes the invitation for good, so it can no longer be accepted. Anchor has no revoke: deleting is how a Product withdraws an invitation.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
 	DeleteOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrganizationInvitation Get Organization Invitation
 	//
-	// Reads one invitation by its id. The response never carries the token.
+	// Reads one invitation by its id.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
 	GetOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateOrganizationInvitationWithBody Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1084,19 +1066,30 @@ type ClientInterface interface {
 
 	// UpdateOrganizationInvitation Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
 	UpdateOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ResendOrganizationInvitation Resend Organization Invitation
+	// AcceptOrganizationInvitationWithBody Accept Organization Invitation
 	//
-	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
 	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
-	ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AcceptOrganizationInvitation Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrganizationLicense Get Organization License
 	//
@@ -2793,53 +2786,15 @@ func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId Product
 	return c.Client.Do(req)
 }
 
-// AcceptOrganizationInvitationWithBody Accept Organization Invitation
+// SearchProductOrganizationInvitationsWithBody Search Product Organization Invitations
 //
-// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-func (c *Client) AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAcceptOrganizationInvitationRequestWithBody(c.Server, productId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// AcceptOrganizationInvitation Accept Organization Invitation
-//
-// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-func (c *Client) AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAcceptOrganizationInvitationRequest(c.Server, productId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LookupOrganizationInvitationWithBody Look Up Organization Invitation By Token
-//
-// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-func (c *Client) LookupOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLookupOrganizationInvitationRequestWithBody(c.Server, productId, contentType, body)
+// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+func (c *Client) SearchProductOrganizationInvitationsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductOrganizationInvitationsRequestWithBody(c.Server, productId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2850,15 +2805,15 @@ func (c *Client) LookupOrganizationInvitationWithBody(ctx context.Context, produ
 	return c.Client.Do(req)
 }
 
-// LookupOrganizationInvitation Look Up Organization Invitation By Token
+// SearchProductOrganizationInvitations Search Product Organization Invitations
 //
-// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-func (c *Client) LookupOrganizationInvitation(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLookupOrganizationInvitationRequest(c.Server, productId, body)
+// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+func (c *Client) SearchProductOrganizationInvitations(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductOrganizationInvitationsRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3572,7 +3527,7 @@ func (c *Client) UpdateOrganizationAPIKey(ctx context.Context, productId Product
 
 // CreateOrganizationInvitationWithBody Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3591,7 +3546,7 @@ func (c *Client) CreateOrganizationInvitationWithBody(ctx context.Context, produ
 
 // CreateOrganizationInvitation Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3610,7 +3565,7 @@ func (c *Client) CreateOrganizationInvitation(ctx context.Context, productId Pro
 
 // SearchOrganizationInvitationsWithBody Search Organization Invitations
 //
-// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3629,7 +3584,7 @@ func (c *Client) SearchOrganizationInvitationsWithBody(ctx context.Context, prod
 
 // SearchOrganizationInvitations Search Organization Invitations
 //
-// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3648,7 +3603,7 @@ func (c *Client) SearchOrganizationInvitations(ctx context.Context, productId Pr
 
 // DeleteOrganizationInvitation Delete Organization Invitation
 //
-// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+// Deletes the invitation for good, so it can no longer be accepted. Anchor has no revoke: deleting is how a Product withdraws an invitation.
 //
 // Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `DeleteOrganizationInvitation` operationId).
 func (c *Client) DeleteOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3665,7 +3620,7 @@ func (c *Client) DeleteOrganizationInvitation(ctx context.Context, productId Pro
 
 // GetOrganizationInvitation Get Organization Invitation
 //
-// Reads one invitation by its id. The response never carries the token.
+// Reads one invitation by its id.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `GetOrganizationInvitation` operationId).
 func (c *Client) GetOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3682,7 +3637,7 @@ func (c *Client) GetOrganizationInvitation(ctx context.Context, productId Produc
 
 // UpdateOrganizationInvitationWithBody Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3701,7 +3656,7 @@ func (c *Client) UpdateOrganizationInvitationWithBody(ctx context.Context, produ
 
 // UpdateOrganizationInvitation Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3718,13 +3673,34 @@ func (c *Client) UpdateOrganizationInvitation(ctx context.Context, productId Pro
 	return c.Client.Do(req)
 }
 
-// ResendOrganizationInvitation Resend Organization Invitation
+// AcceptOrganizationInvitationWithBody Accept Organization Invitation
 //
-// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
 //
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
-func (c *Client) ResendOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewResendOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId)
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *Client) AcceptOrganizationInvitationWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAcceptOrganizationInvitationRequestWithBody(c.Server, productId, organizationId, invitationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AcceptOrganizationInvitation Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *Client) AcceptOrganizationInvitation(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAcceptOrganizationInvitationRequest(c.Server, productId, organizationId, invitationId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -6720,19 +6696,19 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	return req, nil
 }
 
-// NewAcceptOrganizationInvitationRequest calls the generic AcceptOrganizationInvitation builder with application/json body
-func NewAcceptOrganizationInvitationRequest(server string, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+// NewSearchProductOrganizationInvitationsRequest calls the generic SearchProductOrganizationInvitations builder with application/json body
+func NewSearchProductOrganizationInvitationsRequest(server string, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAcceptOrganizationInvitationRequestWithBody(server, productId, "application/json", bodyReader)
+	return NewSearchProductOrganizationInvitationsRequestWithBody(server, productId, "application/json", bodyReader)
 }
 
-// NewAcceptOrganizationInvitationRequestWithBody constructs an http.Request for the AcceptOrganizationInvitation method, with any body, and a specified content type
-func NewAcceptOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+// NewSearchProductOrganizationInvitationsRequestWithBody constructs an http.Request for the SearchProductOrganizationInvitations method, with any body, and a specified content type
+func NewSearchProductOrganizationInvitationsRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6747,54 +6723,7 @@ func NewAcceptOrganizationInvitationRequestWithBody(server string, productId Pro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/products/%s/invitations/accept", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewLookupOrganizationInvitationRequest calls the generic LookupOrganizationInvitation builder with application/json body
-func NewLookupOrganizationInvitationRequest(server string, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewLookupOrganizationInvitationRequestWithBody(server, productId, "application/json", bodyReader)
-}
-
-// NewLookupOrganizationInvitationRequestWithBody constructs an http.Request for the LookupOrganizationInvitation method, with any body, and a specified content type
-func NewLookupOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/invitations/lookup", pathParam0)
+	operationPath := fmt.Sprintf("/v1/products/%s/invitations/search", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8223,8 +8152,19 @@ func NewUpdateOrganizationInvitationRequestWithBody(server string, productId Pro
 	return req, nil
 }
 
-// NewResendOrganizationInvitationRequest constructs an http.Request for the ResendOrganizationInvitation method
-func NewResendOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter) (*http.Request, error) {
+// NewAcceptOrganizationInvitationRequest calls the generic AcceptOrganizationInvitation builder with application/json body
+func NewAcceptOrganizationInvitationRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body AcceptOrganizationInvitationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAcceptOrganizationInvitationRequestWithBody(server, productId, organizationId, invitationId, "application/json", bodyReader)
+}
+
+// NewAcceptOrganizationInvitationRequestWithBody constructs an http.Request for the AcceptOrganizationInvitation method, with any body, and a specified content type
+func NewAcceptOrganizationInvitationRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8253,7 +8193,7 @@ func NewResendOrganizationInvitationRequest(server string, productId ProductIdPa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s/resend", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/invitations/%s/accept", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8263,10 +8203,12 @@ func NewResendOrganizationInvitationRequest(server string, productId ProductIdPa
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10883,41 +10825,23 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
 
-	// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
+	// SearchProductOrganizationInvitationsWithBodyWithResponse Search Product Organization Invitations
 	//
-	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-	AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
-
-	// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
-	//
-	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-	AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
-
-	// LookupOrganizationInvitationWithBodyWithResponse Look Up Organization Invitation By Token
-	//
-	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-	LookupOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error)
+	// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+	SearchProductOrganizationInvitationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationInvitationsResponse, error)
 
-	// LookupOrganizationInvitationWithResponse Look Up Organization Invitation By Token
+	// SearchProductOrganizationInvitationsWithResponse Search Product Organization Invitations
 	//
-	// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-	LookupOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error)
+	// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+	SearchProductOrganizationInvitationsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationInvitationsResponse, error)
 
 	// MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
 	//
@@ -11282,7 +11206,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11291,7 +11215,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationInvitationWithResponse Create Organization Invitation
 	//
-	// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+	// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11300,7 +11224,7 @@ type ClientWithResponsesInterface interface {
 
 	// SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
 	//
-	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11309,7 +11233,7 @@ type ClientWithResponsesInterface interface {
 
 	// SearchOrganizationInvitationsWithResponse Search Organization Invitations
 	//
-	// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11318,7 +11242,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteOrganizationInvitationWithResponse Delete Organization Invitation
 	//
-	// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+	// Deletes the invitation for good, so it can no longer be accepted. Anchor has no revoke: deleting is how a Product withdraws an invitation.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -11327,7 +11251,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetOrganizationInvitationWithResponse Get Organization Invitation
 	//
-	// Reads one invitation by its id. The response never carries the token.
+	// Reads one invitation by its id.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -11336,7 +11260,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11345,21 +11269,30 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateOrganizationInvitationWithResponse Update Organization Invitation
 	//
-	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id} (the `UpdateOrganizationInvitation` operationId).
 	UpdateOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body UpdateOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationInvitationResponse, error)
 
-	// ResendOrganizationInvitationWithResponse Resend Organization Invitation
+	// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
 	//
-	// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
-	ResendOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*ResendOrganizationInvitationResponse, error)
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
+
+	// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
+	//
+	// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+	AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error)
 
 	// GetOrganizationLicenseWithResponse Get Organization License
 	//
@@ -14880,80 +14813,11 @@ func (r ListIntegrationAuditLogsResponse) ContentType() string {
 	return ""
 }
 
-type AcceptOrganizationInvitationResponse struct {
+type SearchProductOrganizationInvitationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *OrganizationInvitationResponse
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AcceptOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AcceptOrganizationInvitationResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r AcceptOrganizationInvitationResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r AcceptOrganizationInvitationResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r AcceptOrganizationInvitationResponse) GetJSON409() *Conflict {
-	return r.JSON409
-}
-
-// GetBody returns the raw response body bytes
-func (r AcceptOrganizationInvitationResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r AcceptOrganizationInvitationResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AcceptOrganizationInvitationResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AcceptOrganizationInvitationResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type LookupOrganizationInvitationResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *OrganizationInvitationResponse
+	JSON200 *OrganizationInvitationListResponse
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
@@ -14963,32 +14827,32 @@ type LookupOrganizationInvitationResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r LookupOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
+func (r SearchProductOrganizationInvitationsResponse) GetJSON200() *OrganizationInvitationListResponse {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r LookupOrganizationInvitationResponse) GetJSON400() *BadRequest {
+func (r SearchProductOrganizationInvitationsResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r LookupOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+func (r SearchProductOrganizationInvitationsResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r LookupOrganizationInvitationResponse) GetJSON403() *Forbidden {
+func (r SearchProductOrganizationInvitationsResponse) GetJSON403() *Forbidden {
 	return r.JSON403
 }
 
 // GetBody returns the raw response body bytes
-func (r LookupOrganizationInvitationResponse) GetBody() []byte {
+func (r SearchProductOrganizationInvitationsResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r LookupOrganizationInvitationResponse) Status() string {
+func (r SearchProductOrganizationInvitationsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -14996,7 +14860,7 @@ func (r LookupOrganizationInvitationResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r LookupOrganizationInvitationResponse) StatusCode() int {
+func (r SearchProductOrganizationInvitationsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15004,7 +14868,7 @@ func (r LookupOrganizationInvitationResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r LookupOrganizationInvitationResponse) ContentType() string {
+func (r SearchProductOrganizationInvitationsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16658,7 +16522,7 @@ type CreateOrganizationInvitationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *CreatedOrganizationInvitationResponse
+	JSON201 *OrganizationInvitationResponse
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
@@ -16672,7 +16536,7 @@ type CreateOrganizationInvitationResponse struct {
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r CreateOrganizationInvitationResponse) GetJSON201() *CreatedOrganizationInvitationResponse {
+func (r CreateOrganizationInvitationResponse) GetJSON201() *OrganizationInvitationResponse {
 	return r.JSON201
 }
 
@@ -17006,11 +16870,11 @@ func (r UpdateOrganizationInvitationResponse) ContentType() string {
 	return ""
 }
 
-type ResendOrganizationInvitationResponse struct {
+type AcceptOrganizationInvitationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *CreatedOrganizationInvitationResponse
+	JSON200 *OrganizationInvitationResponse
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
@@ -17024,42 +16888,42 @@ type ResendOrganizationInvitationResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON200() *CreatedOrganizationInvitationResponse {
+func (r AcceptOrganizationInvitationResponse) GetJSON200() *OrganizationInvitationResponse {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON400() *BadRequest {
+func (r AcceptOrganizationInvitationResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON401() *Unauthorized {
+func (r AcceptOrganizationInvitationResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON403() *Forbidden {
+func (r AcceptOrganizationInvitationResponse) GetJSON403() *Forbidden {
 	return r.JSON403
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON404() *NotFound {
+func (r AcceptOrganizationInvitationResponse) GetJSON404() *NotFound {
 	return r.JSON404
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r ResendOrganizationInvitationResponse) GetJSON409() *Conflict {
+func (r AcceptOrganizationInvitationResponse) GetJSON409() *Conflict {
 	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
-func (r ResendOrganizationInvitationResponse) GetBody() []byte {
+func (r AcceptOrganizationInvitationResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r ResendOrganizationInvitationResponse) Status() string {
+func (r AcceptOrganizationInvitationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -17067,7 +16931,7 @@ func (r ResendOrganizationInvitationResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ResendOrganizationInvitationResponse) StatusCode() int {
+func (r AcceptOrganizationInvitationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17075,7 +16939,7 @@ func (r ResendOrganizationInvitationResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ResendOrganizationInvitationResponse) ContentType() string {
+func (r AcceptOrganizationInvitationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20662,64 +20526,34 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
-// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
+// SearchProductOrganizationInvitationsWithBodyWithResponse Search Product Organization Invitations
 //
-// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-func (c *ClientWithResponses) AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
-	rsp, err := c.AcceptOrganizationInvitationWithBody(ctx, productId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAcceptOrganizationInvitationResponse(rsp)
-}
-
-// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
-//
-// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check. The token travels in the body, never in the URL. Accept fails and changes nothing with a bad request when the token is unknown or the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/invitations/accept (the `AcceptOrganizationInvitation` operationId).
-func (c *ClientWithResponses) AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
-	rsp, err := c.AcceptOrganizationInvitation(ctx, productId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAcceptOrganizationInvitationResponse(rsp)
-}
-
-// LookupOrganizationInvitationWithBodyWithResponse Look Up Organization Invitation By Token
-//
-// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-func (c *ClientWithResponses) LookupOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error) {
-	rsp, err := c.LookupOrganizationInvitationWithBody(ctx, productId, contentType, body, reqEditors...)
+// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+func (c *ClientWithResponses) SearchProductOrganizationInvitationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductOrganizationInvitationsResponse, error) {
+	rsp, err := c.SearchProductOrganizationInvitationsWithBody(ctx, productId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseLookupOrganizationInvitationResponse(rsp)
+	return ParseSearchProductOrganizationInvitationsResponse(rsp)
 }
 
-// LookupOrganizationInvitationWithResponse Look Up Organization Invitation By Token
+// SearchProductOrganizationInvitationsWithResponse Search Product Organization Invitations
 //
-// Finds one invitation by its token. A Product uses this to compare the email address of the signed-in person with the invitation email before it calls accept. The token travels in the body, never in the URL, so it stays out of access logs. An unknown token answers 400 because the token is named in the body. The response never carries the token.
+// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /v1/products/{product_id}/invitations/lookup (the `LookupOrganizationInvitation` operationId).
-func (c *ClientWithResponses) LookupOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, body LookupOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupOrganizationInvitationResponse, error) {
-	rsp, err := c.LookupOrganizationInvitation(ctx, productId, body, reqEditors...)
+// Corresponds with POST /v1/products/{product_id}/invitations/search (the `SearchProductOrganizationInvitations` operationId).
+func (c *ClientWithResponses) SearchProductOrganizationInvitationsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductOrganizationInvitationsResponse, error) {
+	rsp, err := c.SearchProductOrganizationInvitations(ctx, productId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseLookupOrganizationInvitationResponse(rsp)
+	return ParseSearchProductOrganizationInvitationsResponse(rsp)
 }
 
 // MigrateOrganizationLicensesWithBodyWithResponse Migrate Organization Licenses Onto A Template
@@ -21301,7 +21135,7 @@ func (c *ClientWithResponses) UpdateOrganizationAPIKeyWithResponse(ctx context.C
 
 // CreateOrganizationInvitationWithBodyWithResponse Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21316,7 +21150,7 @@ func (c *ClientWithResponses) CreateOrganizationInvitationWithBodyWithResponse(c
 
 // CreateOrganizationInvitationWithResponse Create Organization Invitation
 //
-// Invites an email address to join an organization with a role. The response carries the invitation token. It is the only response that ever carries the token, apart from resend. Anchor stores a hash of the token, so a lost token cannot be read back: resend the invitation to get a new one. Anchor sends no email. The Product delivers the token. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
+// Invites an email address to join an organization with a role. Anchor sends no email and issues no token: the Product tells the person, and later finds the invitation by searching for the verified email address of the person who signed in. The invitation expires 7 days from now unless `expires_at` is given. The create fails with a conflict when a pending invitation exists for the same email address in the organization, or when the email address belongs to a member of the organization. Email addresses compare without regard to letter case. An expired invitation does not block a new one.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21331,7 +21165,7 @@ func (c *ClientWithResponses) CreateOrganizationInvitationWithResponse(ctx conte
 
 // SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
 //
-// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21346,7 +21180,7 @@ func (c *ClientWithResponses) SearchOrganizationInvitationsWithBodyWithResponse(
 
 // SearchOrganizationInvitationsWithResponse Search Organization Invitations
 //
-// Lists the invitations of one organization, optionally filtered by status. An invitation whose expiry has passed while it was pending reads and filters as `expired`. No invitation in the response carries its token.
+// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21361,7 +21195,7 @@ func (c *ClientWithResponses) SearchOrganizationInvitationsWithResponse(ctx cont
 
 // DeleteOrganizationInvitationWithResponse Delete Organization Invitation
 //
-// Deletes the invitation for good. Its token stops working. Anchor has no revoke: deleting is how a Product withdraws an invitation.
+// Deletes the invitation for good, so it can no longer be accepted. Anchor has no revoke: deleting is how a Product withdraws an invitation.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -21376,7 +21210,7 @@ func (c *ClientWithResponses) DeleteOrganizationInvitationWithResponse(ctx conte
 
 // GetOrganizationInvitationWithResponse Get Organization Invitation
 //
-// Reads one invitation by its id. The response never carries the token.
+// Reads one invitation by its id.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -21391,7 +21225,7 @@ func (c *ClientWithResponses) GetOrganizationInvitationWithResponse(ctx context.
 
 // UpdateOrganizationInvitationWithBodyWithResponse Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21406,7 +21240,7 @@ func (c *ClientWithResponses) UpdateOrganizationInvitationWithBodyWithResponse(c
 
 // UpdateOrganizationInvitationWithResponse Update Organization Invitation
 //
-// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired, like resend: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Changes the role and the expiry of an invitation. Nothing else changes: the email address of an invitation is fixed. To fix a wrong address, delete the invitation and create a new one. Update works only on a pending invitation that has not expired: it fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one. To give a pending invitation more time, update it with a later `expires_at`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21419,19 +21253,34 @@ func (c *ClientWithResponses) UpdateOrganizationInvitationWithResponse(ctx conte
 	return ParseUpdateOrganizationInvitationResponse(rsp)
 }
 
-// ResendOrganizationInvitationWithResponse Resend Organization Invitation
+// AcceptOrganizationInvitationWithBodyWithResponse Accept Organization Invitation
 //
-// Replaces the token of a pending invitation and sets its expiry to 7 days from now. The response carries the new token. The old token stops working. Anchor sends no email. Resend fails with a conflict on an accepted invitation and on an expired invitation. For an expired invitation, create a new one.
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/resend (the `ResendOrganizationInvitation` operationId).
-func (c *ClientWithResponses) ResendOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, reqEditors ...RequestEditorFn) (*ResendOrganizationInvitationResponse, error) {
-	rsp, err := c.ResendOrganizationInvitation(ctx, productId, organizationId, invitationId, reqEditors...)
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *ClientWithResponses) AcceptOrganizationInvitationWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
+	rsp, err := c.AcceptOrganizationInvitationWithBody(ctx, productId, organizationId, invitationId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseResendOrganizationInvitationResponse(rsp)
+	return ParseAcceptOrganizationInvitationResponse(rsp)
+}
+
+// AcceptOrganizationInvitationWithResponse Accept Organization Invitation
+//
+// Turns a pending invitation into a membership of the organization for an existing Product User, with the invited role. The membership and the accepted mark are written in one transaction. Accept never creates a Product User and never compares the email address of the Product User with the invitation email: the Product makes that check, against an email address it has verified. Accept fails and changes nothing with a bad request when the Product User does not exist in the Product. It fails with a conflict when the invitation is accepted already, when it is expired, or when the Product User is a member of the organization already.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/invitations/{invitation_id}/accept (the `AcceptOrganizationInvitation` operationId).
+func (c *ClientWithResponses) AcceptOrganizationInvitationWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, invitationId OrganizationInvitationIdParameter, body AcceptOrganizationInvitationJSONRequestBody, reqEditors ...RequestEditorFn) (*AcceptOrganizationInvitationResponse, error) {
+	rsp, err := c.AcceptOrganizationInvitation(ctx, productId, organizationId, invitationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAcceptOrganizationInvitationResponse(rsp)
 }
 
 // GetOrganizationLicenseWithResponse Get Organization License
@@ -24679,76 +24528,22 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 	return response, nil
 }
 
-// ParseAcceptOrganizationInvitationResponse parses an HTTP response from a AcceptOrganizationInvitationWithResponse call
-func ParseAcceptOrganizationInvitationResponse(rsp *http.Response) (*AcceptOrganizationInvitationResponse, error) {
+// ParseSearchProductOrganizationInvitationsResponse parses an HTTP response from a SearchProductOrganizationInvitationsWithResponse call
+func ParseSearchProductOrganizationInvitationsResponse(rsp *http.Response) (*SearchProductOrganizationInvitationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AcceptOrganizationInvitationResponse{
+	response := &SearchProductOrganizationInvitationsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OrganizationInvitationResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseLookupOrganizationInvitationResponse parses an HTTP response from a LookupOrganizationInvitationWithResponse call
-func ParseLookupOrganizationInvitationResponse(rsp *http.Response) (*LookupOrganizationInvitationResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LookupOrganizationInvitationResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OrganizationInvitationResponse
+		var dest OrganizationInvitationListResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -26105,7 +25900,7 @@ func ParseCreateOrganizationInvitationResponse(rsp *http.Response) (*CreateOrgan
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreatedOrganizationInvitationResponse
+		var dest OrganizationInvitationResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -26370,22 +26165,22 @@ func ParseUpdateOrganizationInvitationResponse(rsp *http.Response) (*UpdateOrgan
 	return response, nil
 }
 
-// ParseResendOrganizationInvitationResponse parses an HTTP response from a ResendOrganizationInvitationWithResponse call
-func ParseResendOrganizationInvitationResponse(rsp *http.Response) (*ResendOrganizationInvitationResponse, error) {
+// ParseAcceptOrganizationInvitationResponse parses an HTTP response from a AcceptOrganizationInvitationWithResponse call
+func ParseAcceptOrganizationInvitationResponse(rsp *http.Response) (*AcceptOrganizationInvitationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ResendOrganizationInvitationResponse{
+	response := &AcceptOrganizationInvitationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CreatedOrganizationInvitationResponse
+		var dest OrganizationInvitationResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

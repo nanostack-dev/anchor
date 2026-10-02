@@ -93,12 +93,6 @@ func GenerateOrganizationAPIKey(rootPrefix string) (string, error) {
 	return generateSecret(OrganizationAPIKeyPrefix(rootPrefix))
 }
 
-const organizationInvitationTokenPrefix = "anchor_inv_"
-
-func GenerateOrganizationInvitationToken() (string, error) {
-	return generateSecret(organizationInvitationTokenPrefix)
-}
-
 func ProductAPIKeyLength() int {
 	return apiKeyLength(DefaultProductAPIKeyPrefix)
 }

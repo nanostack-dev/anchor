@@ -22,7 +22,6 @@ type organizationInvitationsTable struct {
 	OrganizationID postgres.ColumnString
 	Email          postgres.ColumnString
 	ProductRoleID  postgres.ColumnString
-	TokenHash      postgres.ColumnString
 	ExpiresAt      postgres.ColumnTimestampz
 	AcceptedAt     postgres.ColumnTimestampz
 	CreatedAt      postgres.ColumnTimestampz
@@ -73,13 +72,12 @@ func newOrganizationInvitationsTableImpl(schemaName, tableName, alias string) or
 		OrganizationIDColumn = postgres.StringColumn("organization_id")
 		EmailColumn          = postgres.StringColumn("email")
 		ProductRoleIDColumn  = postgres.StringColumn("product_role_id")
-		TokenHashColumn      = postgres.StringColumn("token_hash")
 		ExpiresAtColumn      = postgres.TimestampzColumn("expires_at")
 		AcceptedAtColumn     = postgres.TimestampzColumn("accepted_at")
 		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
-		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, OrganizationIDColumn, EmailColumn, ProductRoleIDColumn, TokenHashColumn, ExpiresAtColumn, AcceptedAtColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns       = postgres.ColumnList{ProductIDColumn, OrganizationIDColumn, EmailColumn, ProductRoleIDColumn, TokenHashColumn, ExpiresAtColumn, AcceptedAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, OrganizationIDColumn, EmailColumn, ProductRoleIDColumn, ExpiresAtColumn, AcceptedAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns       = postgres.ColumnList{ProductIDColumn, OrganizationIDColumn, EmailColumn, ProductRoleIDColumn, ExpiresAtColumn, AcceptedAtColumn, CreatedAtColumn, UpdatedAtColumn}
 		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
@@ -92,7 +90,6 @@ func newOrganizationInvitationsTableImpl(schemaName, tableName, alias string) or
 		OrganizationID: OrganizationIDColumn,
 		Email:          EmailColumn,
 		ProductRoleID:  ProductRoleIDColumn,
-		TokenHash:      TokenHashColumn,
 		ExpiresAt:      ExpiresAtColumn,
 		AcceptedAt:     AcceptedAtColumn,
 		CreatedAt:      CreatedAtColumn,

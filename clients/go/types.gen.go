@@ -1109,45 +1109,6 @@ type CreatedOrganizationAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
-// CreatedOrganizationInvitationResponse defines model for CreatedOrganizationInvitationResponse.
-type CreatedOrganizationInvitationResponse struct {
-	// AcceptedAt When the invitation was accepted. Absent until then.
-	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-
-	// Email The invited email address. It never changes.
-	//
-	// Examples: alice@example.com
-	Email openapi_types.Email `json:"email"`
-
-	// ExpiresAt When the invitation stops being acceptable.
-	ExpiresAt time.Time `json:"expires_at"`
-
-	// Id Unique identifier of the invitation.
-	//
-	// Examples: oinv_2iABC...
-	Id Ksuid `json:"id"`
-
-	// OrganizationId The organization the invitation is for.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	OrganizationId Ksuid `json:"organization_id"`
-
-	// RoleId The role the invited person receives on accept.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
-
-	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
-	Status OrganizationInvitationStatus `json:"status"`
-
-	// Token The invitation token. Shown once, on create and on resend. Anchor stores only a hash of it.
-	//
-	// Examples: anchor_inv_5mNOP1234567890abcdefg
-	Token     string    `json:"token"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
 // CreatedProductAPIKeyResponse defines model for CreatedProductAPIKeyResponse.
 type CreatedProductAPIKeyResponse struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -1920,9 +1881,6 @@ type OrganizationInvitationAcceptRequest struct {
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductUserId Ksuid `json:"product_user_id"`
-
-	// Token The invitation token.
-	Token string `json:"token"`
 }
 
 // OrganizationInvitationCreateRequest Request body for inviting an email address to an organization.
@@ -1943,6 +1901,9 @@ type OrganizationInvitationCreateRequest struct {
 
 // OrganizationInvitationFilter Filter criteria for searching organization invitations.
 type OrganizationInvitationFilter struct {
+	// Emails Keep only invitations addressed to one of these email addresses, compared without regard to letter case.
+	Emails *[]openapi_types.Email `json:"emails,omitempty"`
+
 	// Statuses Keep only invitations with one of these statuses. An invitation whose expiry has passed while it was pending counts as `expired`.
 	Statuses *[]OrganizationInvitationStatus `json:"statuses,omitempty"`
 }
@@ -1957,13 +1918,7 @@ type OrganizationInvitationListResponse struct {
 	Total int64 `json:"total"`
 }
 
-// OrganizationInvitationLookupRequest Request body for finding an invitation by its token.
-type OrganizationInvitationLookupRequest struct {
-	// Token The invitation token.
-	Token string `json:"token"`
-}
-
-// OrganizationInvitationResponse An offer to become a member of one organization, with one role. It is addressed to an email address. It never carries the invitation token.
+// OrganizationInvitationResponse An offer to become a member of one organization, with one role. It is addressed to an email address.
 type OrganizationInvitationResponse struct {
 	// AcceptedAt When the invitation was accepted. Absent until then.
 	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
@@ -1992,7 +1947,7 @@ type OrganizationInvitationResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	RoleId Ksuid `json:"role_id"`
 
-	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
 	Status    OrganizationInvitationStatus `json:"status"`
 	UpdatedAt time.Time                    `json:"updated_at"`
 }
@@ -2016,7 +1971,7 @@ type OrganizationInvitationSearchRequest struct {
 // OrganizationInvitationSearchRequestSortBy Field to sort by.
 type OrganizationInvitationSearchRequestSortBy string
 
-// OrganizationInvitationStatus The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or resent.
+// OrganizationInvitationStatus The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
 type OrganizationInvitationStatus string
 
 // OrganizationInvitationUpdateRequest Request body for changing an invitation. Only the role and the expiry can change.
@@ -3929,11 +3884,8 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
-// AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
-type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest
-
-// LookupOrganizationInvitationJSONRequestBody defines body for LookupOrganizationInvitation for application/json ContentType.
-type LookupOrganizationInvitationJSONRequestBody = OrganizationInvitationLookupRequest
+// SearchProductOrganizationInvitationsJSONRequestBody defines body for SearchProductOrganizationInvitations for application/json ContentType.
+type SearchProductOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearchRequest
 
 // MigrateOrganizationLicensesJSONRequestBody defines body for MigrateOrganizationLicenses for application/json ContentType.
 type MigrateOrganizationLicensesJSONRequestBody = OrganizationLicenseMigrationRequest
@@ -3982,6 +3934,9 @@ type SearchOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearch
 
 // UpdateOrganizationInvitationJSONRequestBody defines body for UpdateOrganizationInvitation for application/json ContentType.
 type UpdateOrganizationInvitationJSONRequestBody = OrganizationInvitationUpdateRequest
+
+// AcceptOrganizationInvitationJSONRequestBody defines body for AcceptOrganizationInvitation for application/json ContentType.
+type AcceptOrganizationInvitationJSONRequestBody = OrganizationInvitationAcceptRequest
 
 // AdjustOrganizationLicenseJSONRequestBody defines body for AdjustOrganizationLicense for application/json ContentType.
 type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest

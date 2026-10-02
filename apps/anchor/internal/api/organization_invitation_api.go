@@ -33,7 +33,7 @@ func (s *AnchorAPI) CreateOrganizationInvitation(
 		return nil, err
 	}
 
-	return CreateOrganizationInvitation201JSONResponse(mapCreatedInvitationToResponse(created)), nil
+	return CreateOrganizationInvitation201JSONResponse(mapInvitationToResponse(created)), nil
 }
 
 func (s *AnchorAPI) SearchOrganizationInvitations(
@@ -129,45 +129,29 @@ func (s *AnchorAPI) DeleteOrganizationInvitation(
 	return DeleteOrganizationInvitation204Response{}, nil
 }
 
-func (s *AnchorAPI) ResendOrganizationInvitation(
-	ctx context.Context, request ResendOrganizationInvitationRequestObject,
-) (ResendOrganizationInvitationResponseObject, error) {
-	resent, err := s.OrganizationInvitationService.Resend(ctx, organizationinvitation.ResendInput{
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		InvitationID:   request.InvitationId,
-	})
-	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("invitation_id", request.InvitationId).
-			Msg("failed to resend organization invitation")
-		return nil, err
-	}
-
-	return ResendOrganizationInvitation200JSONResponse(mapCreatedInvitationToResponse(resent)), nil
-}
-
-func (s *AnchorAPI) LookupOrganizationInvitation(
-	ctx context.Context, request LookupOrganizationInvitationRequestObject,
-) (LookupOrganizationInvitationResponseObject, error) {
+func (s *AnchorAPI) SearchProductOrganizationInvitations(
+	ctx context.Context, request SearchProductOrganizationInvitationsRequestObject,
+) (SearchProductOrganizationInvitationsResponseObject, error) {
 	if request.Body == nil {
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	invitation, err := s.OrganizationInvitationService.Lookup(ctx, organizationinvitation.LookupInput{
+	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, organizationinvitation.SearchInProductInput{
 		ProductID: request.ProductId,
-		Token:     request.Body.Token,
+		Request:   mapSearchOrganizationInvitationsRequestToInput(*request.Body),
 	})
 	if err != nil {
 		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
-			Msg("failed to look up organization invitation")
+			Msg("failed to search product organization invitations")
 		return nil, err
 	}
 
-	return LookupOrganizationInvitation200JSONResponse(mapInvitationToResponse(invitation)), nil
+	return SearchProductOrganizationInvitations200JSONResponse(OrganizationInvitationListResponse{
+		Items: functional.Slice(result.Items).Map(mapInvitationToResponse),
+		Total: result.Total,
+		Count: len(result.Items),
+	}), nil
 }
 
 func (s *AnchorAPI) AcceptOrganizationInvitation(
@@ -178,13 +162,16 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 	}
 
 	invitation, err := s.OrganizationInvitationService.Accept(ctx, organizationinvitation.AcceptInput{
-		ProductID:     request.ProductId,
-		Token:         request.Body.Token,
-		ProductUserID: request.Body.ProductUserId,
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+		InvitationID:   request.InvitationId,
+		ProductUserID:  request.Body.ProductUserId,
 	})
 	if err != nil {
 		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Str("invitation_id", request.InvitationId).
 			Str("product_user_id", request.Body.ProductUserId).
 			Msg("failed to accept organization invitation")
 		return nil, err
@@ -202,6 +189,9 @@ func mapSearchOrganizationInvitationsRequestToInput(
 	if body.Filter != nil {
 		filter = &organizationinvitation.SearchFilter{
 			Statuses: functional.FromPtr(body.Filter.Statuses).OrElse(nil),
+			Emails: functional.Slice(functional.FromPtr(body.Filter.Emails).OrElse(nil)).Map(
+				func(email openapi_types.Email) string { return string(email) },
+			),
 		}
 	}
 
@@ -222,21 +212,5 @@ func mapInvitationToResponse(invitation organizationinvitation.Invitation) Organ
 		AcceptedAt:     invitation.AcceptedAt,
 		CreatedAt:      invitation.CreatedAt,
 		UpdatedAt:      invitation.UpdatedAt,
-	}
-}
-
-func mapCreatedInvitationToResponse(created organizationinvitation.Created) CreatedOrganizationInvitationResponse {
-	invitation := mapInvitationToResponse(created.Invitation)
-	return CreatedOrganizationInvitationResponse{
-		Id:             invitation.Id,
-		OrganizationId: invitation.OrganizationId,
-		Email:          invitation.Email,
-		RoleId:         invitation.RoleId,
-		Status:         invitation.Status,
-		ExpiresAt:      invitation.ExpiresAt,
-		AcceptedAt:     invitation.AcceptedAt,
-		CreatedAt:      invitation.CreatedAt,
-		UpdatedAt:      invitation.UpdatedAt,
-		Token:          created.Token,
 	}
 }
