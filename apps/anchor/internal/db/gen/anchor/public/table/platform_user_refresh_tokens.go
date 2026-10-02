@@ -19,10 +19,10 @@ type platformUserRefreshTokensTable struct {
 	// Columns
 	ID        postgres.ColumnString
 	SessionID postgres.ColumnString
-	TokenHash postgres.ColumnString
 	ExpiresAt postgres.ColumnTimestampz
 	RotatedAt postgres.ColumnTimestampz
 	CreatedAt postgres.ColumnTimestampz
+	UpdatedAt postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -66,13 +66,13 @@ func newPlatformUserRefreshTokensTableImpl(schemaName, tableName, alias string) 
 	var (
 		IDColumn        = postgres.StringColumn("id")
 		SessionIDColumn = postgres.StringColumn("session_id")
-		TokenHashColumn = postgres.StringColumn("token_hash")
 		ExpiresAtColumn = postgres.TimestampzColumn("expires_at")
 		RotatedAtColumn = postgres.TimestampzColumn("rotated_at")
 		CreatedAtColumn = postgres.TimestampzColumn("created_at")
-		allColumns      = postgres.ColumnList{IDColumn, SessionIDColumn, TokenHashColumn, ExpiresAtColumn, RotatedAtColumn, CreatedAtColumn}
-		mutableColumns  = postgres.ColumnList{SessionIDColumn, TokenHashColumn, ExpiresAtColumn, RotatedAtColumn, CreatedAtColumn}
-		defaultColumns  = postgres.ColumnList{CreatedAtColumn}
+		UpdatedAtColumn = postgres.TimestampzColumn("updated_at")
+		allColumns      = postgres.ColumnList{IDColumn, SessionIDColumn, ExpiresAtColumn, RotatedAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns  = postgres.ColumnList{SessionIDColumn, ExpiresAtColumn, RotatedAtColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns  = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return platformUserRefreshTokensTable{
@@ -81,10 +81,10 @@ func newPlatformUserRefreshTokensTableImpl(schemaName, tableName, alias string) 
 		//Columns
 		ID:        IDColumn,
 		SessionID: SessionIDColumn,
-		TokenHash: TokenHashColumn,
 		ExpiresAt: ExpiresAtColumn,
 		RotatedAt: RotatedAtColumn,
 		CreatedAt: CreatedAtColumn,
+		UpdatedAt: UpdatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

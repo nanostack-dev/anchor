@@ -11,32 +11,29 @@ import (
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
-	"anchor/internal/domain/platformsession"
+	"anchor/internal/domain/session"
 )
 
 var _ Repository = (*repositoryImpl)(nil)
 
 // Repository persists platform user sessions and their refresh tokens. No
-// method is tenant scoped: a session is reached through the session id or the
-// token hash a verified token carries, on the auth endpoints, before any tenant
-// context exists.
+// method is tenant scoped: the auth endpoints reach a session through the ids
+// a verified token carries, before any tenant context exists.
 type Repository interface {
-	CreateSession(ctx context.Context, session platformsession.Session) (platformsession.Session, error)
+	CreateSession(ctx context.Context, created session.Session) (session.Session, error)
 	// LockSession takes a row lock on the session that lasts until the
 	// surrounding transaction ends, so two refreshes of one session run one
 	// after the other. Call it inside a transaction.
-	LockSession(ctx context.Context, sessionID string) (functional.Option[platformsession.Session], error)
+	LockSession(ctx context.Context, sessionID string) (functional.Option[session.Session], error)
 	ExtendSession(ctx context.Context, sessionID string, expiresAt time.Time) error
-	// RevokeSession sets revoked_at on a session that is not revoked yet, and
-	// does nothing otherwise.
 	RevokeSession(ctx context.Context, sessionID string, revokedAt time.Time) error
 	DeleteExpiredSessions(ctx context.Context, platformUserID string, now time.Time) error
 	CreateRefreshToken(
-		ctx context.Context, token platformsession.RefreshToken,
-	) (platformsession.RefreshToken, error)
+		ctx context.Context, token session.RefreshToken,
+	) (session.RefreshToken, error)
 	FindRefreshToken(
-		ctx context.Context, sessionID, tokenHash string,
-	) (functional.Option[platformsession.RefreshToken], error)
+		ctx context.Context, sessionID, tokenID string,
+	) (functional.Option[session.RefreshToken], error)
 	MarkRefreshTokenRotated(ctx context.Context, tokenID string, rotatedAt time.Time) error
 	DeleteExpiredRefreshTokens(ctx context.Context, sessionID string, now time.Time) error
 }
@@ -49,34 +46,31 @@ func NewRepository(db *sql.DB) Repository {
 	return &repositoryImpl{db: db}
 }
 
-func sessionToDomain(entity model.PlatformUserSessions) platformsession.Session {
-	return platformsession.Session{
+func sessionToDomain(entity model.PlatformUserSessions) session.Session {
+	return session.Session{
 		ID:             entity.ID,
 		PlatformUserID: entity.PlatformUserID,
 		ExpiresAt:      entity.ExpiresAt,
 		RevokedAt:      entity.RevokedAt,
-		CreatedAt:      entity.CreatedAt,
 	}
 }
 
-func refreshTokenToDomain(entity model.PlatformUserRefreshTokens) platformsession.RefreshToken {
-	return platformsession.RefreshToken{
+func refreshTokenToDomain(entity model.PlatformUserRefreshTokens) session.RefreshToken {
+	return session.RefreshToken{
 		ID:        entity.ID,
 		SessionID: entity.SessionID,
-		TokenHash: entity.TokenHash,
 		ExpiresAt: entity.ExpiresAt,
 		RotatedAt: entity.RotatedAt,
-		CreatedAt: entity.CreatedAt,
 	}
 }
 
 func (r *repositoryImpl) CreateSession(
-	ctx context.Context, session platformsession.Session,
-) (platformsession.Session, error) {
+	ctx context.Context, created session.Session,
+) (session.Session, error) {
 	entity := model.PlatformUserSessions{
-		ID:             session.ID,
-		PlatformUserID: session.PlatformUserID,
-		ExpiresAt:      session.ExpiresAt,
+		ID:             created.ID,
+		PlatformUserID: created.PlatformUserID,
+		ExpiresAt:      created.ExpiresAt,
 	}
 	stmt := table.PlatformUserSessions.INSERT(
 		table.PlatformUserSessions.ID,
@@ -88,7 +82,7 @@ func (r *repositoryImpl) CreateSession(
 
 func (r *repositoryImpl) LockSession(
 	ctx context.Context, sessionID string,
-) (functional.Option[platformsession.Session], error) {
+) (functional.Option[session.Session], error) {
 	stmt := table.PlatformUserSessions.SELECT(table.PlatformUserSessions.AllColumns).
 		FROM(table.PlatformUserSessions).
 		WHERE(table.PlatformUserSessions.ID.EQ(postgres.String(sessionID))).
@@ -123,33 +117,30 @@ func (r *repositoryImpl) DeleteExpiredSessions(ctx context.Context, platformUser
 }
 
 func (r *repositoryImpl) CreateRefreshToken(
-	ctx context.Context, token platformsession.RefreshToken,
-) (platformsession.RefreshToken, error) {
+	ctx context.Context, token session.RefreshToken,
+) (session.RefreshToken, error) {
 	entity := model.PlatformUserRefreshTokens{
 		ID:        token.ID,
 		SessionID: token.SessionID,
-		TokenHash: token.TokenHash,
 		ExpiresAt: token.ExpiresAt,
 	}
 	stmt := table.PlatformUserRefreshTokens.INSERT(
 		table.PlatformUserRefreshTokens.ID,
 		table.PlatformUserRefreshTokens.SessionID,
-		table.PlatformUserRefreshTokens.TokenHash,
 		table.PlatformUserRefreshTokens.ExpiresAt,
 	).MODEL(entity).RETURNING(table.PlatformUserRefreshTokens.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, refreshTokenToDomain).Value()
 }
 
 func (r *repositoryImpl) FindRefreshToken(
-	ctx context.Context, sessionID, tokenHash string,
-) (functional.Option[platformsession.RefreshToken], error) {
+	ctx context.Context, sessionID, tokenID string,
+) (functional.Option[session.RefreshToken], error) {
 	stmt := table.PlatformUserRefreshTokens.SELECT(table.PlatformUserRefreshTokens.AllColumns).
 		FROM(table.PlatformUserRefreshTokens).
 		WHERE(
-			table.PlatformUserRefreshTokens.SessionID.EQ(postgres.String(sessionID)).
-				AND(table.PlatformUserRefreshTokens.TokenHash.EQ(postgres.String(tokenHash))),
-		).
-		LIMIT(1)
+			table.PlatformUserRefreshTokens.ID.EQ(postgres.String(tokenID)).
+				AND(table.PlatformUserRefreshTokens.SessionID.EQ(postgres.String(sessionID))),
+		)
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, refreshTokenToDomain)
 }
 

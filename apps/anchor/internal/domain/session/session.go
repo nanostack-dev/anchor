@@ -1,4 +1,4 @@
-package platformsession
+package session
 
 import (
 	"time"
@@ -17,11 +17,10 @@ type Session struct {
 	PlatformUserID string
 	ExpiresAt      time.Time
 	RevokedAt      *time.Time
-	CreatedAt      time.Time
 }
 
-func (s *Session) GenerateID() {
-	s.ID = ids.MustNew("psess")
+func NewID() string {
+	return ids.MustNew("psess")
 }
 
 func (s *Session) IsRevoked() bool {
@@ -29,33 +28,30 @@ func (s *Session) IsRevoked() bool {
 }
 
 type RefreshToken struct {
-	ID        string
-	SessionID string
-	TokenHash string
-	ExpiresAt time.Time
+	ID        string    `validate:"required"`
+	SessionID string    `validate:"required"`
+	ExpiresAt time.Time `validate:"required"`
 	RotatedAt *time.Time
-	CreatedAt time.Time
 }
 
-func (t *RefreshToken) GenerateID() {
-	t.ID = ids.MustNew("prtok")
+func NewRefreshTokenID() string {
+	return ids.MustNew("prtok")
 }
 
-// Exchange is what presenting a refresh token at a given moment amounts to.
-type Exchange int
+type Presentation int
 
 const (
-	ExchangeRotate Exchange = iota
-	ExchangeWithinGrace
-	ExchangeReuse
+	FirstUse Presentation = iota
+	RepeatWithinGrace
+	Replay
 )
 
-func (t *RefreshToken) ExchangeAt(now time.Time) Exchange {
+func (t *RefreshToken) PresentedAt(now time.Time) Presentation {
 	if t.RotatedAt == nil {
-		return ExchangeRotate
+		return FirstUse
 	}
 	if now.Sub(*t.RotatedAt) <= ReuseGrace {
-		return ExchangeWithinGrace
+		return RepeatWithinGrace
 	}
-	return ExchangeReuse
+	return Replay
 }

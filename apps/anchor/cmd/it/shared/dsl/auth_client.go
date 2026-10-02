@@ -10,7 +10,6 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	dslfactory "anchor/cmd/it/shared/dsl/factory"
-	"anchor/internal/domain/auth"
 )
 
 // AuthClient drives the session routes, refresh and logout, each with the
@@ -42,27 +41,10 @@ func (c AuthClient) Refresh(refreshToken string) nanostackClient.AuthTokenRespon
 	return *resp.JSON200
 }
 
-// Logout ends the session the access token belongs to.
 func (c AuthClient) Logout(accessToken string) {
 	c.t.Helper()
 	resp, err := dslfactory.NewBearerClient(c.t, itshared.ServerURL, accessToken).
 		LogoutWithResponse(context.Background())
 	require.NoError(c.t, err)
 	require.Equal(c.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-}
-
-// NewSession signs the platform user in once more, as another device would,
-// and returns that session's token pair.
-func (s *State) NewSession(userAlias string) auth.LoginOutput {
-	s.t.Helper()
-	user := s.PlatformUser(userAlias)
-	tokens, err := itshared.AuthService.StartSession(
-		context.Background(), auth.StartSessionInput{
-			PlatformUserID: user.ID,
-			UserID:         user.UserID,
-			TenantID:       s.Tenant(user.TenantAlias).ID,
-		},
-	)
-	require.NoError(s.t, err)
-	return tokens
 }

@@ -4,13 +4,14 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
-	"anchor/internal/domain/platformsession"
-	"anchor/internal/security"
+	"anchor/internal/domain/session"
+	"anchor/internal/service"
 )
 
 const sessionUserAlias = "admin.session"
@@ -29,11 +30,14 @@ func givenSignedInAdmin(t *testing.T) (*itdsl.State, *itdsl.PlatformUser) {
 // reuse grace, as if the client presented it again much later.
 func endRotationGrace(t *testing.T, refreshToken string) {
 	t.Helper()
+	claims := &service.AuthClaims{}
+	_, _, err := jwt.NewParser().ParseUnverified(refreshToken, claims)
+	require.NoError(t, err)
 	result, err := testDB.ExecContext(t.Context(),
 		`UPDATE platform_user_refresh_tokens
 		 SET rotated_at = rotated_at - make_interval(secs => $1)
-		 WHERE token_hash = $2 AND rotated_at IS NOT NULL`,
-		platformsession.ReuseGrace.Seconds()+1, security.HashSecret(refreshToken),
+		 WHERE id = $2 AND rotated_at IS NOT NULL`,
+		session.ReuseGrace.Seconds()+1, claims.ID,
 	)
 	require.NoError(t, err)
 	affected, err := result.RowsAffected()

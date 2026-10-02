@@ -8,8 +8,6 @@ import (
 
 type logoutAccessTokenKey struct{}
 
-// logoutAccessTokenFromContext returns the bearer token the logout request
-// carried, or "" when it carried none.
 func logoutAccessTokenFromContext(ctx context.Context) string {
 	token, _ := ctx.Value(logoutAccessTokenKey{}).(string)
 	return token

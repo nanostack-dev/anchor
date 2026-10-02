@@ -14,8 +14,8 @@ import (
 type PlatformUserRefreshTokens struct {
 	ID        string `sql:"primary_key"`
 	SessionID string
-	TokenHash string
 	ExpiresAt time.Time
 	RotatedAt *time.Time
 	CreatedAt time.Time
+	UpdatedAt time.Time
 }

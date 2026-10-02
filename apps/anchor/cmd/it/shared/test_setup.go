@@ -20,6 +20,7 @@ import (
 	"anchor/cmd/app"
 	"anchor/internal/repository"
 	"anchor/internal/service"
+	sessionservice "anchor/internal/session/service"
 
 	_ "github.com/lib/pq" // Required for PostgreSQL driver
 	"github.com/rs/zerolog"
@@ -42,7 +43,8 @@ var (
 	TenantRepository             repository.TenantRepository                 //nolint:gochecknoglobals // Required for DSL/repo-backed tests
 	UserRepository               repository.UserRepository                   //nolint:gochecknoglobals // Required for DSL/repo-backed tests
 	PlatformTenantUserRepo       repository.PlatformTenantUserRepository     //nolint:gochecknoglobals // Required for DSL/repo-backed tests
-	AuthService                  service.AuthService                         //nolint:gochecknoglobals // Required for DSL/repo-backed tests
+	JWTHelper                    service.JWTHelper                           //nolint:gochecknoglobals // Required for DSL/repo-backed tests
+	SessionService               sessionservice.Service                      //nolint:gochecknoglobals // Required for DSL/repo-backed tests
 	setupOnce                    sync.Once                                   //nolint:gochecknoglobals,unused // Required for test setup
 	postgresContainer            testcontainers.Container                    //nolint:gochecknoglobals // Required for test setup
 	redisContainer               testcontainers.Container                    //nolint:gochecknoglobals // Required for test setup
@@ -70,7 +72,8 @@ type TestConfig struct {
 	TenantRepository             *repository.TenantRepository
 	UserRepository               *repository.UserRepository
 	PlatformUserRepository       *repository.PlatformTenantUserRepository
-	AuthService                  *service.AuthService
+	JWTHelper                    *service.JWTHelper
+	SessionService               *sessionservice.Service
 	// ExtraPopulateTargets holds additional fx.Populate targets (e.g. *queue.Client)
 	// for test packages that need direct access to FX-provided values beyond the standard
 	// repository/service set. Each entry must be a pointer to the destination variable.
@@ -275,7 +278,8 @@ func buildPopulateTargets(config TestConfig) []any {
 			config.TenantRepository,
 			config.UserRepository,
 			config.PlatformUserRepository,
-			config.AuthService,
+			config.JWTHelper,
+			config.SessionService,
 		}
 		for _, target := range maybeTargets {
 			if target != nil && isValidPopulateTarget(target) {
@@ -406,8 +410,11 @@ func RunTestMain(m *testing.M, config TestConfig) {
 	if config.PlatformUserRepository != nil {
 		PlatformTenantUserRepo = *config.PlatformUserRepository
 	}
-	if config.AuthService != nil {
-		AuthService = *config.AuthService
+	if config.JWTHelper != nil {
+		JWTHelper = *config.JWTHelper
+	}
+	if config.SessionService != nil {
+		SessionService = *config.SessionService
 	}
 	if config.AfterInit != nil {
 		config.AfterInit()
