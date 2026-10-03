@@ -2651,6 +2651,9 @@ type ProductConfigRequest struct {
 
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys *ProductOrganizationAPIKeysConfigRequest `json:"organization_api_keys,omitempty"`
+
+	// Protected Prevents product deletion when true. Defaults to false on creation; omitted updates preserve the current value. Set false before deleting.
+	Protected *bool `json:"protected,omitempty"`
 }
 
 // ProductConfigResponse defines model for ProductConfigResponse.
@@ -2660,6 +2663,9 @@ type ProductConfigResponse struct {
 
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
+
+	// Protected Whether deletion of this product is prevented.
+	Protected bool `json:"protected"`
 }
 
 // ProductEventDefinitionResponse defines model for ProductEventDefinitionResponse.

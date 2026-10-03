@@ -10,11 +10,17 @@ type CreateProductInput struct {
 }
 
 type UpdateProductInput struct {
-	TenantID    string  `json:"tenant_id"             validate:"required,notblank"`
-	ProductID   string  `json:"product_id"            validate:"required,notblank"`
-	Name        *string `json:"name,omitempty"        validate:"omitempty,notblank,min=2,max=100"`
-	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
-	Config      *Config `json:"config,omitempty"`
+	TenantID    string             `json:"tenant_id"             validate:"required,notblank"`
+	ProductID   string             `json:"product_id"            validate:"required,notblank"`
+	Name        *string            `json:"name,omitempty"        validate:"omitempty,notblank,min=2,max=100"`
+	Description *string            `json:"description,omitempty" validate:"omitempty,max=1000"`
+	Config      *UpdateConfigInput `json:"config,omitempty"`
+}
+
+type UpdateConfigInput struct {
+	Protected           *bool `json:"protected,omitempty"`
+	OrganizationAPIKeys OrganizationAPIKeysConfig
+	Events              *EventsConfig
 }
 
 type SearchProductFilter struct {

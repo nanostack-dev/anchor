@@ -164,7 +164,7 @@ export const searchProducts = <ThrowOnError extends boolean = false>(options: Op
 
 /**
  * Delete Product
- * Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+ * Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
  */
 export const deleteProduct = <ThrowOnError extends boolean = false>(options: Options<DeleteProductData, ThrowOnError>) => {
     return (options.client ?? client).delete<DeleteProductResponses, DeleteProductErrors, ThrowOnError>({

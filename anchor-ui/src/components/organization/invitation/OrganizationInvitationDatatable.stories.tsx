@@ -45,7 +45,10 @@ function backendState(
 			id: PRODUCT_ID,
 			tenant_id: "ten_2Nq8xKf3pLmR",
 			name: "Echopoint",
-			config: { organization_api_keys: { prefix: "echopoint" } },
+			config: {
+				protected: false,
+				organization_api_keys: { prefix: "echopoint" },
+			},
 			...timestamps,
 		},
 		invitations: [

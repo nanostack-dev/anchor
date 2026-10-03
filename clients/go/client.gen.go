@@ -304,7 +304,7 @@ type ClientInterface interface {
 
 	// DeleteProduct Delete Product
 	//
-	// Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+	// Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
 	//
 	// Corresponds with DELETE /v1/products/{product_id} (the `DeleteProduct` operationId).
 	DeleteProduct(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2028,7 +2028,7 @@ func (c *Client) SearchProducts(ctx context.Context, body SearchProductsJSONRequ
 
 // DeleteProduct Delete Product
 //
-// Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+// Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
 //
 // Corresponds with DELETE /v1/products/{product_id} (the `DeleteProduct` operationId).
 func (c *Client) DeleteProduct(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10499,7 +10499,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductWithResponse Delete Product
 	//
-	// Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+	// Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12775,6 +12775,8 @@ type DeleteProductResponse struct {
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
@@ -12790,6 +12792,11 @@ func (r DeleteProductResponse) GetJSON403() *Forbidden {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteProductResponse) GetJSON404() *NotFound {
 	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteProductResponse) GetJSON409() *Conflict {
+	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
@@ -19960,7 +19967,7 @@ func (c *ClientWithResponses) SearchProductsWithResponse(ctx context.Context, bo
 
 // DeleteProductWithResponse Delete Product
 //
-// Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+// Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -22980,6 +22987,13 @@ func ParseDeleteProductResponse(rsp *http.Response) (*DeleteProductResponse, err
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

@@ -23,6 +23,7 @@ type productsTable struct {
 	Description      postgres.ColumnString
 	CreatedAt        postgres.ColumnTimestampz
 	UpdatedAt        postgres.ColumnTimestampz
+	Protected        postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -70,9 +71,10 @@ func newProductsTableImpl(schemaName, tableName, alias string) productsTable {
 		DescriptionColumn      = postgres.StringColumn("description")
 		CreatedAtColumn        = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn        = postgres.TimestampzColumn("updated_at")
-		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns         = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		ProtectedColumn        = postgres.BoolColumn("protected")
+		allColumns             = postgres.ColumnList{IDColumn, PlatformTenantIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ProtectedColumn}
+		mutableColumns         = postgres.ColumnList{PlatformTenantIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ProtectedColumn}
+		defaultColumns         = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, ProtectedColumn}
 	)
 
 	return productsTable{
@@ -85,6 +87,7 @@ func newProductsTableImpl(schemaName, tableName, alias string) productsTable {
 		Description:      DescriptionColumn,
 		CreatedAt:        CreatedAtColumn,
 		UpdatedAt:        UpdatedAtColumn,
+		Protected:        ProtectedColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

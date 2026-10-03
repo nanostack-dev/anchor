@@ -201,7 +201,7 @@ export const searchProductsOptions = (options: Options<SearchProductsData>) => {
 
 /**
  * Delete Product
- * Deletes a product. This is a destructive operation. Requires Platform Bearer token.
+ * Deletes a product. This is a destructive operation. Requires Platform Bearer token. Protected products return 409 with PRODUCT_PROTECTED; disable config.protected before deleting.
  */
 export const deleteProductMutation = (options?: Partial<Options<DeleteProductData>>): UseMutationOptions<DeleteProductResponse, DeleteProductError, Options<DeleteProductData>> => {
     const mutationOptions: UseMutationOptions<DeleteProductResponse, DeleteProductError, Options<DeleteProductData>> = {

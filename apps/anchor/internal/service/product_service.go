@@ -10,6 +10,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -287,6 +288,9 @@ func (s *productService) updateProductInTransaction(
 func (s *productService) findProductForUpdate(
 	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
 ) (*product.Product, error) {
+	if err := s.productRepo.LockByID(ctx, tenantID, productID); err != nil {
+		return nil, err
+	}
 	found, err := s.productRepo.FindByID(ctx, tenantID, productID)
 	if err != nil {
 		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
@@ -312,7 +316,11 @@ func (s *productService) updateProductFields(
 		prod.Description = *input.Description
 	}
 	if input.Config != nil {
-		config, err := s.normalizeConfig(*input.Config)
+		config, err := s.normalizeConfig(product.Config{
+			Protected:           functional.FromPtr(input.Config.Protected).OrElse(prod.Config.Protected),
+			OrganizationAPIKeys: input.Config.OrganizationAPIKeys,
+			Events:              input.Config.Events,
+		})
 		if err != nil {
 			return err
 		}
@@ -423,7 +431,16 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		return err
 	}
 
-	err := s.productRepo.DeleteByID(ctx, input.TenantID, input.ProductID)
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		prod, findErr := s.findProductForUpdate(txCtx, input.TenantID, input.ProductID, logger)
+		if findErr != nil {
+			return findErr
+		}
+		if prod.Config.Protected {
+			return product.ErrProductProtected
+		}
+		return s.productRepo.DeleteByID(txCtx, input.TenantID, input.ProductID)
+	})
 	if err == nil {
 		if evictErr := s.products.Key(input.TenantID, input.ProductID).Evict(ctx); evictErr != nil {
 			logger.Warn().Err(evictErr).Msg("failed to evict product from cache after delete")

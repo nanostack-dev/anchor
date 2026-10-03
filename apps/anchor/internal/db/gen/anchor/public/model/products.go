@@ -18,4 +18,5 @@ type Products struct {
 	Description      *string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	Protected        bool
 }

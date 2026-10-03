@@ -9,6 +9,7 @@ import (
 const DefaultOrganizationAPIKeyRootPrefix = "anchor"
 
 type Config struct {
+	Protected           bool
 	OrganizationAPIKeys OrganizationAPIKeysConfig
 	Events              *EventsConfig
 }

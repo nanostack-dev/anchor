@@ -1819,6 +1819,9 @@ type ProductConfigRequest struct {
 
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys *ProductOrganizationAPIKeysConfigRequest `json:"organization_api_keys,omitempty"`
+
+	// Protected Prevents product deletion when true. Defaults to false on creation; omitted updates preserve the current value. Set false before deleting.
+	Protected *bool `json:"protected,omitempty"`
 }
 
 // ProductConfigResponse defines model for ProductConfigResponse.
@@ -1828,6 +1831,9 @@ type ProductConfigResponse struct {
 
 	// OrganizationApiKeys Organization API key configuration for this product.
 	OrganizationApiKeys ProductOrganizationAPIKeysConfigResponse `json:"organization_api_keys"`
+
+	// Protected Whether deletion of this product is prevented.
+	Protected bool `json:"protected"`
 }
 
 // ProductEventDefinitionResponse defines model for ProductEventDefinitionResponse.
@@ -9599,6 +9605,20 @@ func (response DeleteProduct404JSONResponse) VisitDeleteProductResponse(w http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProduct409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteProduct409JSONResponse) VisitDeleteProductResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
