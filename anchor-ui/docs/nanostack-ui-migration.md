@@ -1,90 +1,42 @@
-# Anchor UI — Nanostack Style Migration
+# Nanostack design-system adoption
 
-This documents the migration of `anchor-ui` onto the shared Nanostack
-application style (OpenSpec change `unify-anchor-ui-with-nanostack-style`).
-Anchor remains a **standalone shadcn app**; it does not import `packages/ui`
-and is **light-mode only**.
+Tracked by [Anchor #174](https://github.com/nanostack-dev/anchor/issues/174). This supersedes the earlier standalone shadcn migration.
 
-## Source of truth
+## Investigation baseline
 
-- **Primitives:** shadcn is the source of truth. Local primitives in
-  `src/components/ui/**` are aligned to the current product style (rounded
-  shapes, semantic tokens). Update them via the shadcn workflow or by aligning
-  local source — do **not** copy primitives from the Nanostack registry just
-  for convenience.
-- **Style reference:** the shared Nanostack reference design is the reference
-  token system. Anchor mirrors it.
+Anchor `f193b8a`, Echopoint current `origin/main`, and design-system `0.2.2` were inspected. The published package version and tarball integrity were verified on npm. Echopoint pins the same version.
 
-> Note: the change proposal prose described a "red primary / warm off-white"
-> theme, but the actual reference design uses a **blue primary**
-> (`--primary: 217 72% 43%`) on a cool off-white background with Plus Jakarta
-> Sans / Outfit fonts. The reference **code** is authoritative, so Anchor
-> adopts those values.
+The inventory found 38 route modules, 39 ordinary page files, 29 story files, 51 local primitive source files, 31 primitives with external callers, two unit-test files, and one local-backend bulk-delete e2e test. The old app duplicated shared tokens and fonts and allowed custom classes on generic primitives.
 
-## Theme tokens (`src/styles.css`)
+## Decisions and coverage
 
-- HSL CSS variables wrapped via `hsl(var(--token))` in `@theme inline`,
-  matching the reference. Tailwind v4, CSS-first config (no `tailwind.config`).
-- Added semantic tokens: `success`, `warning`, `destructive` (+ `-foreground`),
-  `border-strong`, `accent-soft`, `surface-*`, `highlight`.
-- Radius scale extended to `rounded-3xl` / `rounded-4xl` (used by Button,
-  Badge, Page sections).
-- Fonts: body `Plus Jakarta Sans` (Inter fallback), headings `Outfit`
-  (Geist fallback), loaded via Google Fonts `@import`.
-- **Light only.** The `.dark` token block is removed. `@custom-variant dark`
-  is kept so shadcn primitives' `dark:` utilities still compile but stay inert.
-  Product/route code must not author `dark:` classes.
+| Area | Shared parts | Anchor retains |
+| --- | --- | --- |
+| Theme | Canonical stylesheet, Tailwind source registration, Fontsource families | Light-only product policy |
+| Shell | AppShell, sidebar/navigation, menus, provider | Auth, product selection, route map, user actions |
+| Page/feedback | PageHeader, breadcrumbs, alerts, badges, empty/skeleton/spinner/toast | Domain status inference and form/API-error adaptation |
+| Tables | Table/checkbox/menu/select/input and layout | v8 controlled server sorting/pagination/filtering, visibility, all-matching and page selection, bulk operations/retry, row navigation |
+| Forms and dialogs | Field/input/textarea/select/switch, Dialog and AlertDialog | Generated Zod validation, secret lifecycle, CRUD, permissions |
+| Role wizard | Tabs, Progress and layout | Validation, step navigation and permission-tree state |
+| Licensing | Shared forms, tables, navigation, chart wrappers | Schema DSL, template/migration/value/history/usage behavior |
+| Email | Shared controls and overlays | Monaco and template domain |
+| Integrations/settings | Shared controls and surfaces | Clerk/SMTP configuration, auth and mutation state |
 
-## Shared components added
+The generic DataTable block uses TanStack Table v9 and lacks Anchor's full controlled behavior. Replacing the adapter would lose functionality; retaining its state layer over shared Table primitives is the deliberate boundary, consistent with Echopoint. The old vertical stepper has one live role-wizard consumer; existing Tabs/Progress/layout express that workflow, so a new shared component is not required. Status badges, alerts and routed license navigation also compose existing public APIs. New common gaps should be raised with two concrete consumer uses, not copied locally.
 
-- `components/ui/spinner.tsx`, `components/ui/empty.tsx`,
-  `components/ui/field.tsx` — standard shadcn surfaces.
-- `components/common/StatusBadge.tsx` — semantic status tones
-  (`success | warning | destructive | info | neutral`). Use this for all table
-  / status pills instead of hard-coded `bg-*-100 text-*-800` spans.
-- `components/layout/app-shell.tsx` — local `AppShell` adapter mirroring the
-  shared Nanostack shell composition (skip link, sticky topbar, sidebar inset).
-- Added `success` / `warning` variants to `Badge` and `Alert`.
+## Shared extension
 
-## Decisions
+`CopyButton` and `CopyIconButton` in design-system 0.2.3 replace repeated clipboard state in Clerk identifiers, webhook URLs and email HTML. They await the clipboard result, announce errors as well as success, preserve focus and suppress duplicate pending writes. The same control applies to Echopoint endpoint URLs. The package also fixes light-theme text contrast on muted/selected surfaces, exposed by Anchor's accessibility run.
 
-| Question | Decision |
-| --- | --- |
-| Icon library | **Keep Lucide.** Port the reference *styling* only; no Phosphor switch. |
-| Breadcrumbs | **Anchor-local route adapter** in `components/common/Page.tsx`, derived from the TanStack Router location. |
-| Data table | **Keep `AnchorDataTable`** (already supports manual/server pagination, sorting, filtering, faceted filters, column visibility, and page / all-matching selection). The registry `DataTable` would lose behavior. Restyled in place — loading uses `Skeleton`, empty/no-results uses muted standard text, borders use semantic tokens. |
-| `@nanostack` registry dependency | **Not added.** Anchor uses local shadcn primitives + local `AppShell`/`Page` adapters, so the whole migration ships as one Anchor PR. |
-| `warning` token | **First-class.** Added `--warning` / `--warning-foreground` plus `warning` Badge/Alert variants for statuses like `INVITED`, `ROTATED`, `QUEUED`. |
-| `Page` API | **Preserved.** `Page` keeps its `title` / `description` / `breadCrumbs` / `pageInfo` props (now also `actions`); internals restyled to the shared Nanostack header composition, so the 19 route call-sites are unchanged. |
+Anchor pins published `0.2.4`. [Design-system #46](https://github.com/nanostack-dev/nanostack-design-system/pull/46) preserves native disabled navigation with tooltips and routes Select names to the opened listbox. Every Anchor option list has an explicit accessible name, including tested open-popup states. Both fixes live in the shared library and use its existing closed props.
 
-## What stays product-local vs. registry
+## Regression ledger
 
-- **Product-local (stay in Anchor):** product/API-key/role dialogs, integration
-  setup pages, product/org column definitions, `sidebar-config`, the
-  `ProductTopBar` / product selector, the `AnchorDataTable` adapter.
-- **Registry-eligible (future, separate `nanostack-registry` PR):** the
-  restyled `VerticalStepper` if it stays app-neutral; promotion was **not**
-  done in this change because the registry is a separate repo.
+- Authentication/register/init, sidebar collapse/mobile menu, product switch, user navigation and query/hash/external links.
+- Table filter/search/sort/visibility/page size, checkbox and selection menu, all-matching callbacks, disabled controls, clickable rows, loading/empty/load-error/stale/retry.
+- Page-only bulk selection, sequential mutations, partial failure/retry, eligibility, selection-scope resets and empty-last-page recovery.
+- Product create/edit/delete, API-key secrets and generated validation, role wizard and permission expansion/selection.
+- Schema text/visual drafts, field rules/types/errors, templates, migration outcomes, adjusted values, usage ranges and history.
+- Email builder, SMTP and Clerk settings, read-only/detail routes, breadcrumbs and mobile overflow.
 
-## Frontend rules going forward
-
-Migrated and new UI must follow: shadcn workflow for primitives, semantic
-tokens (no hard-coded palette classes, no `dark:` in product code), Vercel
-React best practices, Vercel composition patterns, and the web interface
-guidelines (focus, keyboard nav, accessible dialog titles, labels, responsive
-behavior).
-
-**Surfaces — no box-in-a-box (nested cards).** AI tooling tends to stack
-containers and produce double borders. Keep one elevation per region: a
-component that already draws a bordered/elevated surface (a `Card`, the
-`AnchorDataTable` card, an `Alert`, `Empty`) must not be wrapped in another
-`Card`. Pick a single surface owner — the reusable component *or* the page,
-never both. `AnchorDataTable` owns its card, so render it bare (no wrapping
-`Card`); the `<Page>` supplies the title/description (don't duplicate it inside
-the table). Use `Empty` for placeholder states, not a title-only `Card`.
-
-## Verification
-
-`pnpm check` (biome) · `pnpm typecheck` (tsc) · `pnpm test` (vitest) · `pnpm build`
-(vite) all green. Manual desktop/mobile browser inspection of key surfaces is still
-recommended before release.
+Run and record actual verification in the issue/PR; a checklist here is not test evidence. The generated OpenAPI client and backend contract are unchanged.

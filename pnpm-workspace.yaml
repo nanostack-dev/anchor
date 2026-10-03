@@ -8,6 +8,7 @@ resolutionMode: time-based
 minimumReleaseAgeExclude:
   - "@types/*"
   - "typescript"
+  - "@nanostackorg/design-system"
 allowBuilds:
   '@biomejs/biome': true
   esbuild: true

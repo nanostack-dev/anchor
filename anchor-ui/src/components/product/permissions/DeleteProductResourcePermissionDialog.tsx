@@ -5,11 +5,10 @@ import {
 	searchProductRolesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Alert, AlertDescription } from "../../ui/alert";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,9 +19,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "../../ui/alert-dialog";
-import { Button } from "../../ui/button";
-import { Spinner } from "../../ui/spinner";
+} from "@nanostackorg/design-system/components/alert-dialog";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash2, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 
 const LISTED_ROLES_LIMIT = 10;
 
@@ -48,32 +52,32 @@ function AffectedRoles({
 
 	if (roles.isError) {
 		return (
-			<p className="text-sm text-muted-foreground">
+			<Box as="p" className="text-sm text-muted-foreground">
 				Any roles or API keys currently using it will lose this permission
 				immediately.
-			</p>
+			</Box>
 		);
 	}
 
 	if (!roles.data) {
 		return (
-			<div className="flex items-center gap-2 text-sm text-muted-foreground">
+			<Box className="flex items-center gap-2 text-sm text-muted-foreground">
 				<Spinner />
 				Checking which roles hold it...
-			</div>
+			</Box>
 		);
 	}
 
 	const { items, total } = roles.data;
 	const hiddenCount = total - items.length;
 	return (
-		<div className="space-y-2">
+		<Box className="space-y-2">
 			{items.length === 0 ? (
-				<p className="text-sm text-muted-foreground">
+				<Box as="p" className="text-sm text-muted-foreground">
 					No role holds this permission.
-				</p>
+				</Box>
 			) : (
-				<Alert variant="destructive">
+				<Alert tone="critical">
 					<TriangleAlert />
 					<AlertDescription>
 						These roles lose it: {items.map((role) => role.name).join(", ")}
@@ -81,10 +85,10 @@ function AffectedRoles({
 					</AlertDescription>
 				</Alert>
 			)}
-			<p className="text-sm text-muted-foreground">
+			<Box as="p" className="text-sm text-muted-foreground">
 				API keys currently using it will lose this permission immediately.
-			</p>
-		</div>
+			</Box>
+		</Box>
 	);
 }
 
@@ -107,7 +111,10 @@ export function DeleteProductResourcePermissionDialog({
 	const deleteMutation = useMutation({
 		...deleteProductResourcePermissionMutation(),
 		onSuccess: () => {
-			toast.success("Product resource permission deleted successfully!");
+			toast.add({
+				type: "success",
+				title: "Product resource permission deleted successfully!",
+			});
 			setOpen(false);
 
 			// Invalidate the search query for this product
@@ -124,9 +131,12 @@ export function DeleteProductResourcePermissionDialog({
 			console.error("Failed to delete product permission:", error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error("Failed to delete product permission. Please try again.");
+				toast.add({
+					type: "error",
+					title: "Failed to delete product permission. Please try again.",
+				});
 			}
 		},
 	});
@@ -142,11 +152,14 @@ export function DeleteProductResourcePermissionDialog({
 
 	const defaultTrigger = (
 		<Button
-			size="icon"
-			variant="outlineDestructive"
+			tone="critical"
+			size="md"
+			variant="outline"
 			disabled={deleteMutation.isPending}
 		>
-			<span className="sr-only">Delete permission</span>
+			<Box as="span" className="sr-only">
+				Delete permission
+			</Box>
 			{deleteMutation.isPending ? <Spinner /> : <Trash2 className="size-4" />}
 		</Button>
 	);
@@ -164,22 +177,28 @@ export function DeleteProductResourcePermissionDialog({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
-				<div className="my-4 p-4 bg-muted rounded-lg">
-					<div className="space-y-2">
-						<div className="flex justify-between">
-							<span className="font-medium">Permission Name:</span>
-							<span className="font-mono text-sm">{permission.name}</span>
-						</div>
+				<Box className="my-4 p-4 bg-muted rounded-lg">
+					<Box className="space-y-2">
+						<Box className="flex justify-between">
+							<Box as="span" className="font-medium">
+								Permission Name:
+							</Box>
+							<Box as="span" className="font-mono text-sm">
+								{permission.name}
+							</Box>
+						</Box>
 						{permission.description && (
-							<div className="flex justify-between">
-								<span className="font-medium">Description:</span>
-								<span className="text-right max-w-[200px] truncate">
+							<Box className="flex justify-between">
+								<Box as="span" className="font-medium">
+									Description:
+								</Box>
+								<Box as="span" className="text-right max-w-[200px] truncate">
 									{permission.description}
-								</span>
-							</div>
+								</Box>
+							</Box>
 						)}
-					</div>
-				</div>
+					</Box>
+				</Box>
 
 				<AffectedRoles
 					productId={productId}
@@ -192,13 +211,14 @@ export function DeleteProductResourcePermissionDialog({
 						Cancel
 					</AlertDialogCancel>
 					<AlertDialogAction
-						variant="destructive"
+						variant="solid"
+						tone="critical"
 						onClick={handleDelete}
 						disabled={deleteMutation.isPending}
 					>
 						{deleteMutation.isPending ? (
 							<>
-								<Spinner className="text-current" />
+								<Spinner />
 								Deleting...
 							</>
 						) : (

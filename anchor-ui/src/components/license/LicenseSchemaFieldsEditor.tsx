@@ -1,14 +1,18 @@
 import { LicenseFieldType, UsageShape } from "@/client";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import {
+	Button,
+	IconButton,
+} from "@nanostackorg/design-system/components/button";
 import {
 	Field,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@nanostackorg/design-system/components/field";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
 import {
 	Select,
 	SelectContent,
@@ -16,9 +20,18 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { ChevronRight, CornerDownLeft, Plus, Trash2 } from "lucide-react";
+} from "@nanostackorg/design-system/components/select";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	CaretRightIcon as ChevronRight,
+	ArrowElbowDownLeftIcon as CornerDownLeft,
+	PlusIcon as Plus,
+	TrashIcon as Trash2,
+} from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -40,6 +53,11 @@ const USAGE_SHAPES = [
 	{ value: UsageShape.GAUGE, label: "Gauge" },
 	{ value: UsageShape.WINDOWED_COUNTER, label: "Windowed counter" },
 ];
+
+const FIELD_TYPE_ITEMS = FIELD_TYPES.map((value) => ({
+	value,
+	label: FIELD_TYPE_LABELS[value],
+}));
 
 interface LicenseSchemaFieldsEditorProps {
 	fields: FieldRow[];
@@ -119,18 +137,18 @@ export function LicenseSchemaFieldsEditor({
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-center justify-between gap-3">
+		<Stack space="sm">
+			<Spread space="md">
 				<Label>Fields</Label>
-				<div className="flex items-center gap-3">
-					<span className="text-xs tabular-nums text-muted-foreground">
+				<Inline space="md" wrap={false}>
+					<Text as="span" size="xs" tone="muted" tabular>
 						{`${fields.length} ${fields.length === 1 ? "field" : "fields"}`}
-					</span>
+					</Text>
 					{headerAction}
-				</div>
-			</div>
+				</Inline>
+			</Spread>
 
-			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+			<Box className="divide-y divide-border overflow-hidden rounded-lg border border-border">
 				<AnimatePresence initial={false}>
 					{fields.map((field) => {
 						const expanded = expandedKey === field.uiKey;
@@ -148,20 +166,22 @@ export function LicenseSchemaFieldsEditor({
 								}}
 								transition={{ duration: OPEN_DURATION, ease: EASE_OUT }}
 							>
-								<div
+								<Box
 									className={cn(
 										"flex items-center gap-1 pr-1.5",
 										error && "bg-destructive/5",
 									)}
 								>
-									<button
+									<Button
+										width="fill"
+										variant="ghost"
+										size="sm"
 										type="button"
 										onClick={() =>
 											setExpandedKey(expanded ? null : field.uiKey)
 										}
 										aria-expanded={expanded}
 										aria-controls={`${field.uiKey}-detail`}
-										className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
 									>
 										<ChevronRight
 											className={cn(
@@ -169,37 +189,35 @@ export function LicenseSchemaFieldsEditor({
 												expanded && "rotate-90",
 											)}
 										/>
-										<span
+										<Box
+											as="span"
 											className={cn(
 												"w-44 shrink-0 truncate font-mono text-sm",
-												!name && "font-sans italic text-muted-foreground",
+												!name && "font-sans italic",
 											)}
 										>
 											{name || "New field"}
-										</span>
-										<span className="w-20 shrink-0">
+										</Box>
+										<Box as="span" className="w-20 shrink-0">
 											<Badge variant="outline">
 												{FIELD_TYPE_LABELS[field.type]}
 											</Badge>
-										</span>
-										<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+										</Box>
+										<Box as="span" className="min-w-0 flex-1 truncate text-xs">
 											{summarizeRules(field.type, field.rules)}
-										</span>
-									</button>
-									<Button
+										</Box>
+									</Button>
+									<IconButton
+										icon={Trash2}
+										label={`Remove ${name || "new field"}`}
+										tone="critical"
 										type="button"
 										variant="ghost"
-										size="icon-sm"
-										className="shrink-0 text-muted-foreground hover:text-destructive"
+										size="sm"
 										onClick={() => removeRow(field.uiKey)}
 										disabled={disabled}
-									>
-										<span className="sr-only">
-											Remove {name || "new field"}
-										</span>
-										<Trash2 />
-									</Button>
-								</div>
+									/>
+								</Box>
 
 								{/*
 								 * `grid-template-rows: 0fr -> 1fr` rather than an animated height:
@@ -208,23 +226,19 @@ export function LicenseSchemaFieldsEditor({
 								 * Collapsed content stays mounted but `inert`, which keeps it out
 								 * of the tab order and out of the accessibility tree.
 								 */}
-								<div
+								<Box
 									id={`${field.uiKey}-detail`}
 									inert={!expanded}
 									style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
 									className="grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
 								>
-									<div className="overflow-hidden">
-										<div className="flex flex-col gap-3 border-t border-border/60 px-2.5 py-3">
-											<div className="flex items-start gap-2">
-												<div className="flex-1 space-y-1.5">
-													<Label
-														htmlFor={`${field.uiKey}-name`}
-														className="text-xs"
-													>
-														Name
-													</Label>
+									<Box className="overflow-hidden">
+										<Box className="flex flex-col gap-3 border-t border-border/60 px-2.5 py-3">
+											<Inline space="sm" alignY="start" wrap={false}>
+												<Box className="flex-1 space-y-1.5">
+													<Label htmlFor={`${field.uiKey}-name`}>Name</Label>
 													<Input
+														font="mono"
 														id={`${field.uiKey}-name`}
 														// The row was just opened by the operator; focus is why it opened.
 														autoFocus={autoFocusKey === field.uiKey}
@@ -239,28 +253,27 @@ export function LicenseSchemaFieldsEditor({
 														}}
 														placeholder="max_flows"
 														maxLength={120}
-														className="font-mono"
 														aria-invalid={!!error}
 														disabled={disabled}
 													/>
-												</div>
-												<div className="w-36 space-y-1.5">
-													<Label className="text-xs">Type</Label>
+												</Box>
+												<Box className="w-36 space-y-1.5">
+													<Label htmlFor={`${field.uiKey}-type`}>Type</Label>
 													<Select
+														items={FIELD_TYPE_ITEMS}
 														value={field.type}
 														onValueChange={(value) =>
 															changeType(field.uiKey, value as LicenseFieldType)
 														}
 														disabled={disabled}
 													>
-														<SelectTrigger className="w-full">
-															<SelectValue>
-																{(value: LicenseFieldType) =>
-																	FIELD_TYPE_LABELS[value]
-																}
-															</SelectValue>
+														<SelectTrigger
+															id={`${field.uiKey}-type`}
+															width="fill"
+														>
+															<SelectValue />
 														</SelectTrigger>
-														<SelectContent>
+														<SelectContent aria-label="Field type options">
 															{FIELD_TYPES.map((type) => (
 																<SelectItem key={type} value={type}>
 																	{FIELD_TYPE_LABELS[type]}
@@ -268,14 +281,11 @@ export function LicenseSchemaFieldsEditor({
 															))}
 														</SelectContent>
 													</Select>
-												</div>
-											</div>
+												</Box>
+											</Inline>
 
-											<div className="space-y-1.5">
-												<Label
-													htmlFor={`${field.uiKey}-description`}
-													className="text-xs"
-												>
+											<Stack space="xs">
+												<Label htmlFor={`${field.uiKey}-description`}>
 													Description
 												</Label>
 												<Input
@@ -289,13 +299,13 @@ export function LicenseSchemaFieldsEditor({
 													placeholder="Optional"
 													disabled={disabled}
 												/>
-											</div>
+											</Stack>
 
 											{field.type === LicenseFieldType.LIMIT && (
 												<FieldGroup>
 													<Field
-														data-invalid={!!error && !field.usageShape}
-														data-disabled={disabled}
+														invalid={!!error && !field.usageShape}
+														disabled={disabled}
 													>
 														<FieldLabel htmlFor={`${field.uiKey}-usage-shape`}>
 															Usage shape
@@ -311,14 +321,14 @@ export function LicenseSchemaFieldsEditor({
 															disabled={disabled}
 														>
 															<SelectTrigger
+																width="fill"
 																id={`${field.uiKey}-usage-shape`}
 																aria-invalid={!!error && !field.usageShape}
 																aria-describedby={`${field.uiKey}-usage-help`}
-																className="w-full"
 															>
 																<SelectValue placeholder="Choose usage shape" />
 															</SelectTrigger>
-															<SelectContent>
+															<SelectContent aria-label="Usage shape options">
 																<SelectGroup>
 																	{USAGE_SHAPES.map(({ value, label }) => (
 																		<SelectItem key={value} value={value}>
@@ -347,34 +357,35 @@ export function LicenseSchemaFieldsEditor({
 												/>
 											)}
 
-											{error && (
-												<p className="text-sm text-destructive">{error}</p>
-											)}
-										</div>
-									</div>
-								</div>
+											{error && <Text tone="critical">{error}</Text>}
+										</Box>
+									</Box>
+								</Box>
 							</motion.div>
 						);
 					})}
 				</AnimatePresence>
-			</div>
+			</Box>
 
-			<div className="flex items-center justify-between">
+			<Spread space="md">
 				<Button
+					icon={Plus}
 					type="button"
 					variant="outline"
 					size="sm"
 					onClick={() => insertAfter(fields.at(-1)?.uiKey ?? null)}
 					disabled={disabled}
 				>
-					<Plus />
 					Add field
 				</Button>
-				<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+				<Box
+					as="span"
+					className="flex items-center gap-1.5 text-xs text-muted-foreground"
+				>
 					<CornerDownLeft className="size-3" />
 					Enter in a name adds the next field
-				</span>
-			</div>
-		</div>
+				</Box>
+			</Spread>
+		</Stack>
 	);
 }

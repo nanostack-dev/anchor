@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 
-import { Button } from "@/components/ui/button";
 import { StoryRouter } from "@/lib/storybook/story-router";
+import { Button } from "@nanostackorg/design-system/components/button";
 
 import { Page } from "./Page";
 

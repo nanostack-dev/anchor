@@ -1,9 +1,10 @@
 import { Page } from "@/components/common/Page";
+import { Heading } from "@nanostackorg/design-system";
 
 export default function WorkspaceMembershipsPage() {
 	return (
 		<Page>
-			<h1>Workspace Memberships</h1>
+			<Heading level={1}>Workspace Memberships</Heading>
 		</Page>
 	);
 }

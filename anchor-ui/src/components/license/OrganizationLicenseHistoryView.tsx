@@ -3,23 +3,27 @@ import {
 	type OrganizationLicenseChangeResponse,
 } from "@/client";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import dayjs from "dayjs";
+} from "@nanostackorg/design-system/components/empty";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import {
-	ArrowRight,
-	History,
-	SlidersHorizontal,
-	TriangleAlert,
-} from "lucide-react";
+	ArrowRightIcon as ArrowRight,
+	ClockCounterClockwiseIcon as History,
+	SlidersHorizontalIcon as SlidersHorizontal,
+	WarningIcon as TriangleAlert,
+} from "@phosphor-icons/react";
+import dayjs from "dayjs";
 import {
 	asValueSet,
 	changeTypeLabel,
@@ -55,11 +59,11 @@ export function OrganizationLicenseHistoryView({
 }: OrganizationLicenseHistoryViewProps) {
 	if (isLoading) {
 		return (
-			<div className="flex flex-col gap-2">
-				<Skeleton className="h-16 w-full" />
-				<Skeleton className="h-16 w-full" />
-				<Skeleton className="h-16 w-full" />
-			</div>
+			<Stack space="sm">
+				<Skeleton height="xl" />
+				<Skeleton height="xl" />
+				<Skeleton height="xl" />
+			</Stack>
 		);
 	}
 
@@ -67,9 +71,7 @@ export function OrganizationLicenseHistoryView({
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon" className="text-destructive">
-						<TriangleAlert />
-					</EmptyMedia>
+					<EmptyMedia icon={TriangleAlert} />
 					<EmptyTitle>Couldn&rsquo;t load license history</EmptyTitle>
 					<EmptyDescription>{errorMessage}</EmptyDescription>
 				</EmptyHeader>
@@ -86,9 +88,7 @@ export function OrganizationLicenseHistoryView({
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<History />
-					</EmptyMedia>
+					<EmptyMedia icon={History} />
 					<EmptyTitle>No changes yet</EmptyTitle>
 					<EmptyDescription>
 						Nothing has been written to this organization&rsquo;s license.
@@ -103,8 +103,11 @@ export function OrganizationLicenseHistoryView({
 	const hasMore = Boolean(onLoadMore) && items.length < total;
 
 	return (
-		<div className="flex flex-col gap-3">
-			<ol className="divide-y divide-border rounded-lg border border-border">
+		<Stack space="md">
+			<Box
+				as="ol"
+				className="divide-y divide-border rounded-lg border border-border"
+			>
 				{moments.map((group) => (
 					<HistoryMoment
 						key={group[0].id}
@@ -112,12 +115,12 @@ export function OrganizationLicenseHistoryView({
 						templateName={templateName}
 					/>
 				))}
-			</ol>
+			</Box>
 			{hasMore && (
-				<div className="flex items-center justify-between gap-3">
-					<p className="text-xs text-muted-foreground">
+				<Spread space="md">
+					<Text size="xs" tone="muted">
 						Showing {items.length} of {total}
-					</p>
+					</Text>
 					<Button
 						variant="outline"
 						size="sm"
@@ -126,9 +129,9 @@ export function OrganizationLicenseHistoryView({
 					>
 						{isLoadingMore ? "Loading…" : "Load older changes"}
 					</Button>
-				</div>
+				</Spread>
 			)}
-		</div>
+		</Stack>
 	);
 }
 
@@ -148,19 +151,23 @@ function HistoryMoment({
 		first.type === LicenseChangeType.TEMPLATE_SYNCED;
 
 	return (
-		<li
+		<Box
+			as="li"
 			className={cn(
 				"flex flex-col gap-3 p-3 first:rounded-t-lg last:rounded-b-lg",
 				isAdjustment && "bg-accent/50",
 			)}
 		>
-			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+			<Box className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 				{isAdjustment ? (
-					<span className="inline-flex items-center gap-2 text-sm font-medium text-accent-foreground">
+					<Box
+						as="span"
+						className="inline-flex items-center gap-2 text-sm font-medium text-accent-foreground"
+					>
 						<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
 						{entries.length} {entries.length === 1 ? "field" : "fields"}{" "}
 						customized
-					</span>
+					</Box>
 				) : (
 					<StatusBadge tone={stampsWholeSet ? "info" : "neutral"}>
 						{changeTypeLabel(first)}
@@ -173,18 +180,18 @@ function HistoryMoment({
 				>
 					{when}
 				</time>
-			</div>
+			</Box>
 
 			{stampsWholeSet ? (
 				<InstantiationBody entry={first} templateName={templateName} />
 			) : (
-				<ul className="flex flex-col gap-2">
+				<Stack space="sm" as="ul">
 					{entries.map((entry) => (
 						<AdjustmentRow key={entry.id} entry={entry} />
 					))}
-				</ul>
+				</Stack>
 			)}
-		</li>
+		</Box>
 	);
 }
 
@@ -201,34 +208,42 @@ function InstantiationBody({
 		: [];
 
 	return (
-		<div className="flex flex-col gap-2">
+		<Stack space="sm">
 			{entry.previous_template_id && (
-				<p className="text-sm">
-					<span className="text-muted-foreground">Moved from </span>
-					<span className="font-medium">
+				<Text>
+					<Text as="span" tone="muted">
+						Moved from{" "}
+					</Text>
+					<Text as="span" weight="medium">
 						{templateName(entry.previous_template_id)}
-					</span>
-				</p>
+					</Text>
+				</Text>
 			)}
 			{entry.template_id && (
-				<p className="text-sm">
-					<span className="text-muted-foreground">Template </span>
-					<span className="font-medium">{templateName(entry.template_id)}</span>
-				</p>
+				<Text>
+					<Text as="span" tone="muted">
+						Template{" "}
+					</Text>
+					<Text as="span" weight="medium">
+						{templateName(entry.template_id)}
+					</Text>
+				</Text>
 			)}
 			{names.length > 0 && (
 				<dl className="flex flex-col gap-1">
 					{names.map((name) => (
-						<div key={name} className="flex flex-wrap items-baseline gap-x-2">
-							<dt className="font-mono text-sm">{name}</dt>
-							<dd className="text-sm tabular-nums">
+						<Box key={name} className="flex flex-wrap items-baseline gap-x-2">
+							<Text as="dt" font="mono">
+								{name}
+							</Text>
+							<Text as="dd" tabular>
 								{formatHistoryValue(values?.[name])}
-							</dd>
-						</div>
+							</Text>
+						</Box>
 					))}
 				</dl>
 			)}
-		</div>
+		</Stack>
 	);
 }
 
@@ -238,20 +253,25 @@ function AdjustmentRow({
 	entry: OrganizationLicenseChangeResponse;
 }) {
 	return (
-		<li className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<span className="font-mono text-sm">{entry.field ?? "—"}</span>
-			<span className="inline-flex items-center gap-1.5 text-sm tabular-nums">
-				<span className="text-muted-foreground">
+		<Box as="li" className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+			<Text as="span" font="mono">
+				{entry.field ?? "—"}
+			</Text>
+			<Box
+				as="span"
+				className="inline-flex items-center gap-1.5 text-sm tabular-nums"
+			>
+				<Text as="span" tone="muted">
 					{formatHistoryValue(entry.old_value)}
-				</span>
+				</Text>
 				<ArrowRight
 					aria-hidden
 					className="size-3.5 shrink-0 text-muted-foreground"
 				/>
-				<span className="font-medium">
+				<Text as="span" weight="medium">
 					{formatHistoryValue(entry.new_value)}
-				</span>
-			</span>
-		</li>
+				</Text>
+			</Box>
+		</Box>
 	);
 }

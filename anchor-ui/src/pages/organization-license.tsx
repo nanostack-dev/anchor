@@ -1,14 +1,14 @@
 import { Page } from "@/components/common/Page";
 import { OrganizationLicenseDatatable } from "@/components/license/OrganizationLicenseDatatable";
+import { useProduct } from "@/context/product/ProductContext";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/context/product/ProductContext";
-import { Building2 } from "lucide-react";
+} from "@nanostackorg/design-system/components/empty";
+import { BuildingsIcon as Building2 } from "@phosphor-icons/react";
 
 export default function OrganizationLicensePage() {
 	const { currentProduct } = useProduct();
@@ -18,9 +18,7 @@ export default function OrganizationLicensePage() {
 			<Page>
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<Building2 />
-						</EmptyMedia>
+						<EmptyMedia icon={Building2} />
 						<EmptyTitle>No product selected</EmptyTitle>
 						<EmptyDescription>
 							Pick a product to see which tier each of its organizations is on.

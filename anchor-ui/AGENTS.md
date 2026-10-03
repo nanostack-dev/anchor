@@ -35,21 +35,29 @@ Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.
 Run these before you push. CI runs the same four as separate steps.
 
 ```sh
-pnpm check        # biome
+pnpm check        # biome and shared UI contract
 pnpm typecheck    # tsc, both projects
 pnpm test         # vitest
 pnpm build        # vite only, no type check
+pnpm test-storybook # styled Chromium component/feature tests
 ```
 
 `pnpm build` does not check types. `pnpm typecheck` is a different command. Run
 both. `pnpm typecheck:app` skips `.storybook` and `vitest.workspace.ts`; the
 deploy pipeline runs that one as a precondition, before anything ships.
 
+Capture before/after images with `pnpm ui-shot` (Storybook port 6007); attach via `gh pr create/edit --attach`. `.ui-craft/` is ignored local scratch and never committed.
+
 ## Code style
 
 - Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
 
 ## UI work
+
+Follow [the UI system and design-system consumer rule](docs/ui-system.md), shared with Echopoint. Import UI only from `@nanostackorg/design-system`; no local shadcn copies or styling props on shared components. Pages and routes compose closed components, blocks and layout; typed product visuals use `Box` with semantic tokens internally. Search the design-system and registry before adding UI. A neutral missing part goes back to the design system.
+
+Read current design-system source and tokens (`src/styles.css`) from the sibling repo's `origin/main`, not `node_modules`. Primary path from `anchor-ui` is `../../nanostack-design-system`; inside `anchor/worktrees/<topic>/anchor-ui` it is `../../../../nanostack-design-system`.
+
 
 Load the `anchor-ui-design` skill before adding or reshaping components — surface/elevation rules, semantic tokens, and feedback states live there. Light mode only: never author `dark:` classes.
 

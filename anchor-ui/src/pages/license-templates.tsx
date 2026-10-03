@@ -1,12 +1,12 @@
 import { Page } from "@/components/common/Page";
 import { LicenseTemplateDatatable } from "@/components/license/LicenseTemplateDatatable";
+import { useProduct } from "@/context/product/ProductContext";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/context/product/ProductContext";
+} from "@nanostackorg/design-system/components/empty";
 
 export default function LicenseTemplatesPage() {
 	const { currentProduct } = useProduct();

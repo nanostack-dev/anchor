@@ -1,3 +1,10 @@
+import {
+	Heading,
+	Inline,
+	Label,
+	Stack,
+	Text,
+} from "@nanostackorg/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, KeyRound } from "lucide-react";
 import { useState } from "react";
@@ -5,14 +12,14 @@ import { useState } from "react";
 import { searchProductOrganizationsOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { OrganizationApiKeyDatatable } from "@/components/organization/apikey/OrganizationApiKeyDatatable";
+import { useProduct } from "@/context/product/ProductContext";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { useProduct } from "@/context/product/ProductContext";
+} from "@nanostackorg/design-system/components/select";
 
 export default function OrganizationApiKeysPage() {
 	const { currentProduct } = useProduct();
@@ -31,11 +38,11 @@ export default function OrganizationApiKeysPage() {
 	if (!currentProduct) {
 		return (
 			<Page>
-				<div className="flex h-64 items-center justify-center">
-					<p className="text-muted-foreground">
+				<Stack space="lg" align="center">
+					<Text tone="muted">
 						Please select a product to view organization API keys.
-					</p>
-				</div>
+					</Text>
+				</Stack>
 			</Page>
 		);
 	}
@@ -45,14 +52,9 @@ export default function OrganizationApiKeysPage() {
 			title="Organization API Keys"
 			description="View API keys issued across organizations in the selected product."
 		>
-			<div className="flex flex-col gap-6">
-				<div className="flex w-full max-w-sm flex-col gap-2">
-					<label
-						htmlFor="organization-api-key-org-select"
-						className="text-sm font-medium leading-none"
-					>
-						Organization
-					</label>
+			<Stack space="lg">
+				<Stack space="lg">
+					<Label htmlFor="organization-api-key-org-select">Organization</Label>
 					<Select
 						items={organizations.map((organization) => ({
 							value: organization.id,
@@ -62,7 +64,7 @@ export default function OrganizationApiKeysPage() {
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
-						<SelectTrigger id="organization-api-key-org-select">
+						<SelectTrigger id="organization-api-key-org-select" width="fill">
 							<SelectValue
 								placeholder={
 									isLoading
@@ -73,32 +75,32 @@ export default function OrganizationApiKeysPage() {
 								}
 							/>
 						</SelectTrigger>
-						<SelectContent>
+						<SelectContent aria-label="Organization options">
 							{organizations.map((organization) => (
 								<SelectItem key={organization.id} value={organization.id}>
-									<div className="flex items-center gap-2">
-										<Building2 className="size-4" />
+									<Inline space="xs">
+										<Building2 />
 										<span>{organization.name}</span>
-									</div>
+									</Inline>
 								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
-				</div>
+				</Stack>
 
 				{selectedOrgId ? (
 					<OrganizationApiKeyDatatable organizationId={selectedOrgId} />
 				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted p-12 text-center">
-						<KeyRound className="mb-4 size-10 text-muted-foreground" />
-						<h3 className="text-lg font-medium">No Organization Selected</h3>
-						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
+					<Stack space="lg" align="center">
+						<KeyRound />
+						<Heading level={3}>No Organization Selected</Heading>
+						<Text tone="muted">
 							Select an organization to review its API keys and granted Anchor
 							permissions.
-						</p>
-					</div>
+						</Text>
+					</Stack>
 				)}
-			</div>
+			</Stack>
 		</Page>
 	);
 }

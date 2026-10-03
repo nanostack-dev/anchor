@@ -1,5 +1,5 @@
-"use client";
-
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { CaretDownIcon } from "@phosphor-icons/react";
 import {
 	type ColumnDef,
 	type PaginationState,
@@ -25,8 +25,11 @@ import {
 } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/api-error";
-import { Button } from "../../ui/button";
-import { Checkbox } from "../../ui/checkbox";
+import {
+	Button,
+	IconButton,
+} from "@nanostackorg/design-system/components/button";
+import { Checkbox } from "@nanostackorg/design-system/components/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -35,23 +38,23 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
-} from "../../ui/dropdown-menu";
+} from "@nanostackorg/design-system/components/dropdown-menu";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "../../ui/empty";
-import { Input } from "../../ui/input";
+} from "@nanostackorg/design-system/components/empty";
+import { Input } from "@nanostackorg/design-system/components/input";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "../../ui/select";
-import { Skeleton } from "../../ui/skeleton";
+} from "@nanostackorg/design-system/components/select";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -59,7 +62,7 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "../../ui/table";
+} from "@nanostackorg/design-system/components/table";
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
@@ -301,7 +304,7 @@ export function AnchorDataTable<
 		if (!filters || !onFiltersChange) return null;
 
 		return (
-			<div className="flex gap-2 items-center">
+			<Box className="flex gap-2 items-center">
 				{filters.map((filter) =>
 					filter.type === "text" ? (
 						<Input
@@ -315,7 +318,6 @@ export function AnchorDataTable<
 									[filter.key]: e.target.value,
 								} as TFilters);
 							}}
-							className="max-w-xs"
 						/>
 					) : filter.type === "select" ? (
 						<FacetedFilter
@@ -336,16 +338,11 @@ export function AnchorDataTable<
 					) : null,
 				)}
 				{hasActiveFilters && (
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={clearAllFilters}
-						className="text-muted-foreground hover:text-foreground"
-					>
+					<Button variant="ghost" size="sm" onClick={clearAllFilters}>
 						Clear all
 					</Button>
 				)}
-			</div>
+			</Box>
 		);
 	};
 
@@ -365,20 +362,9 @@ export function AnchorDataTable<
 	const selectColumn = useMemo<DataTableColumnDef<TData>>(
 		() => ({
 			id: "select",
-			// The checkbox and the menu are siblings, not one control.
-			//
-			// This used to be a single `DropdownMenuTrigger` whose `render` was
-			// the Checkbox, and it was inert for two independent reasons. The
-			// menu never opened: merging the two through `render` drops the
-			// trigger's own open behaviour, and it stays dropped even once the
-			// element is clickable. `onCheckedChange` never fired either, but
-			// for the unrelated reason below — the `disabled` header button
-			// this sat inside swallowed the click before it arrived.
-			//
-			// Splitting them is the call-site fix. `components/ui/dropdown-menu.tsx`
-			// is canonical shadcn and is not where this gets patched.
+			// Selection and its options menu need independent triggers.
 			header: ({ table }) => (
-				<div className="flex items-center gap-1">
+				<Box className="flex items-center gap-1">
 					<Checkbox
 						checked={
 							selectAllModeRef.current === "all-matching" ||
@@ -406,11 +392,11 @@ export function AnchorDataTable<
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							render={
-								<Button
+								<IconButton
 									variant="ghost"
-									size="icon-xs"
-									aria-label="Selection options"
-									className="text-muted-foreground hover:text-foreground"
+									size="xs"
+									icon={CaretDownIcon}
+									label="Selection options"
 								/>
 							}
 						>
@@ -452,7 +438,7 @@ export function AnchorDataTable<
 							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
-				</div>
+				</Box>
 			),
 			cell: ({ row }) => (
 				<Checkbox
@@ -528,24 +514,23 @@ export function AnchorDataTable<
 			disabled={bulkRunning}
 			className="min-w-0 w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm"
 		>
-			<div className="flex flex-col gap-2 p-4">
-				<div className="flex items-center gap-2">
+			<Box className="flex flex-col gap-2 p-4">
+				<Box className="flex flex-wrap items-center gap-2">
 					{onFullTextSearchChange && (
-						<Input
-							placeholder={fullTextSearchPlaceHolder}
-							value={fullTextSearch ?? ""}
-							onChange={(e) => {
-								onPaginationChange({ ...pagination, pageIndex: 0 });
-								onFullTextSearchChange(e.target.value);
-							}}
-							className="max-w-sm"
-						/>
+						<Box className="w-full max-w-sm min-w-0 flex-1">
+							<Input
+								placeholder={fullTextSearchPlaceHolder}
+								value={fullTextSearch ?? ""}
+								onChange={(e) => {
+									onPaginationChange({ ...pagination, pageIndex: 0 });
+									onFullTextSearchChange(e.target.value);
+								}}
+							/>
+						</Box>
 					)}
 					{children}
 					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" className="ml-auto" />}
-						>
+						<DropdownMenuTrigger render={<Button variant="outline" />}>
 							Columns <ChevronDown />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
@@ -555,7 +540,6 @@ export function AnchorDataTable<
 								.map((column) => (
 									<DropdownMenuCheckboxItem
 										key={column.id}
-										className="capitalize"
 										checked={column.getIsVisible()}
 										onCheckedChange={(value) =>
 											column.toggleVisibility(!!value)
@@ -566,7 +550,7 @@ export function AnchorDataTable<
 								))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-				</div>
+				</Box>
 				{renderFilters()}
 				{bulkActionsEnabled && bulkActions && getRowId && (
 					<BulkActions
@@ -611,10 +595,10 @@ export function AnchorDataTable<
 						{retryButton}
 					</output>
 				)}
-			</div>
-			<div className="border-y border-border">
+			</Box>
+			<Box className="border-y border-border">
 				<Table>
-					<TableHeader className="bg-card">
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -645,12 +629,12 @@ export function AnchorDataTable<
 											// could not sort, and a disabled button makes its whole
 											// subtree unclickable — which is what kept the selection
 											// header's checkbox from ever seeing a click.
-											<div className="flex items-center gap-2">
+											<Box className="flex flex-wrap items-center gap-2">
 												{flexRender(
 													header.column.columnDef.header,
 													header.getContext(),
 												)}
-											</div>
+											</Box>
 										)}
 									</TableHead>
 								))}
@@ -668,20 +652,17 @@ export function AnchorDataTable<
 										<TableCell
 											key={`skeleton-cell-${rowIndex}-${column.id ?? cellIndex}`}
 										>
-											<Skeleton className="h-4 w-full" />
+											<Skeleton height="sm" />
 										</TableCell>
 									))}
 								</TableRow>
 							))
 						) : showErrorState ? (
-							<TableRow className="hover:bg-transparent">
-								<TableCell colSpan={bodyColSpan} className="p-0">
-									<Empty
-										aria-live="polite"
-										className="border-none bg-transparent py-10"
-									>
+							<TableRow>
+								<TableCell colSpan={bodyColSpan}>
+									<Empty aria-live="polite">
 										<EmptyHeader>
-											<EmptyMedia variant="icon" className="text-destructive">
+											<EmptyMedia>
 												<TriangleAlert />
 											</EmptyMedia>
 											<EmptyTitle>Couldn&rsquo;t load {noun}</EmptyTitle>
@@ -699,27 +680,28 @@ export function AnchorDataTable<
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && "selected"}
-									className={
-										onRowClick && (isRowClickable?.(row.original) ?? true)
-											? "cursor-pointer"
+									onClick={
+										onRowClick &&
+										!bulkRunning &&
+										(isRowClickable?.(row.original) ?? true)
+											? (event) => {
+													if (
+														bulkRunning ||
+														!onRowClick ||
+														!(isRowClickable?.(row.original) ?? true)
+													)
+														return;
+													if (
+														event.target instanceof Element &&
+														event.target.closest(
+															"a, button, input, select, textarea, label, [role='button'], [role='checkbox'], [role='menuitem'], [contenteditable='true']",
+														)
+													)
+														return;
+													onRowClick(row.original);
+												}
 											: undefined
 									}
-									onClick={(event) => {
-										if (
-											bulkRunning ||
-											!onRowClick ||
-											!(isRowClickable?.(row.original) ?? true)
-										)
-											return;
-										if (
-											event.target instanceof Element &&
-											event.target.closest(
-												"a, button, input, select, textarea, label, [role='button'], [role='checkbox'], [role='menuitem'], [contenteditable='true']",
-											)
-										)
-											return;
-										onRowClick(row.original);
-									}}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>
@@ -732,11 +714,11 @@ export function AnchorDataTable<
 								</TableRow>
 							))
 						) : (
-							<TableRow className="hover:bg-transparent">
-								<TableCell colSpan={bodyColSpan} className="p-0">
-									<Empty className="border-none bg-transparent py-10">
+							<TableRow>
+								<TableCell colSpan={bodyColSpan}>
+									<Empty>
 										<EmptyHeader>
-											<EmptyMedia variant="icon">
+											<EmptyMedia>
 												{isNarrowed ? <SearchX /> : <Inbox />}
 											</EmptyMedia>
 											<EmptyTitle>
@@ -761,15 +743,15 @@ export function AnchorDataTable<
 						)}
 					</TableBody>
 				</Table>
-			</div>
-			<div className="flex flex-wrap items-center justify-end gap-2 p-4">
+			</Box>
+			<Box className="flex flex-wrap items-center justify-end gap-2 p-4">
 				{enableRowSelection && (
-					<div className="basis-full text-sm text-muted-foreground sm:basis-auto sm:flex-1">
+					<Box className="basis-full text-sm text-muted-foreground sm:basis-auto sm:flex-1">
 						{table.getSelectedRowModel().rows.length} of{" "}
 						{table.getFilteredRowModel().rows.length} row(s) selected.
-					</div>
+					</Box>
 				)}
-				<div className="flex gap-2">
+				<Box className="flex gap-2">
 					<Button
 						variant="outline"
 						size="sm"
@@ -786,7 +768,7 @@ export function AnchorDataTable<
 					>
 						Next
 					</Button>
-				</div>
+				</Box>
 				<Select
 					items={pageSizeOptions.map((size) => ({
 						value: String(size),
@@ -801,10 +783,10 @@ export function AnchorDataTable<
 						})
 					}
 				>
-					<SelectTrigger className="ml-4 w-32" size="sm">
+					<SelectTrigger size="sm" aria-label="Rows per page">
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent aria-label="Rows per page options">
 						{pageSizeOptions.map((size) => (
 							<SelectItem key={size} value={String(size)}>
 								Show {size}
@@ -815,7 +797,7 @@ export function AnchorDataTable<
 				<span className="ml-auto whitespace-nowrap text-sm text-muted-foreground">
 					{showErrorState ? "" : `${total} total`}
 				</span>
-			</div>
+			</Box>
 		</fieldset>
 	);
 }

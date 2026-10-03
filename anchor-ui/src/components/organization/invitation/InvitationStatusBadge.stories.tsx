@@ -1,4 +1,5 @@
 import { OrganizationInvitationStatus } from "@/client";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 
@@ -41,11 +42,11 @@ export const Expired: Story = {
  */
 export const AllStatuses: Story = {
 	render: () => (
-		<div className="flex gap-2">
+		<Box className="flex gap-2">
 			{Object.values(OrganizationInvitationStatus).map((status) => (
 				<InvitationStatusBadge key={status} status={status} />
 			))}
-		</div>
+		</Box>
 	),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);

@@ -120,7 +120,10 @@ export const ConfirmIsDestructive: Story = {
 		).toBeInTheDocument();
 
 		const confirm = screen.getByRole("button", { name: /Delete Permission/ });
-		await expect(confirm).toHaveClass("text-destructive");
+		await expect(confirm).toHaveClass(
+			"bg-destructive",
+			"text-destructive-foreground",
+		);
 		await expect(confirm).not.toHaveClass("bg-primary");
 	},
 };
@@ -163,9 +166,11 @@ export const CancelDismisses: Story = {
 			await screen.findByRole("button", { name: "Cancel" }),
 		);
 
-		await expect(
-			screen.queryByRole("heading", { name: "Delete Product Permission" }),
-		).not.toBeInTheDocument();
+		await waitFor(async () => {
+			await expect(
+				screen.queryByRole("heading", { name: "Delete Product Permission" }),
+			).not.toBeInTheDocument();
+		});
 	},
 };
 
@@ -186,12 +191,18 @@ export const NamesTheRolesThatLoseIt: Story = {
 	play: async ({ canvasElement }) => {
 		await openDialog(canvasElement);
 
-		await expect(
-			await screen.findByText("These roles lose it: Editor, Reviewer"),
-		).toBeVisible();
-		await expect(
-			screen.getByText(/API keys currently using it will lose this permission/),
-		).toBeVisible();
+		await waitFor(async () => {
+			await expect(
+				await screen.findByText("These roles lose it: Editor, Reviewer"),
+			).toBeVisible();
+		});
+		await waitFor(async () => {
+			await expect(
+				screen.getByText(
+					/API keys currently using it will lose this permission/,
+				),
+			).toBeVisible();
+		});
 		await waitFor(() =>
 			expect(roleSearches.at(-1)?.filter?.permissions).toEqual([
 				"invoices:read",
@@ -212,11 +223,13 @@ export const CountsRolesBeyondTheList: Story = {
 	play: async ({ canvasElement }) => {
 		await openDialog(canvasElement);
 
-		await expect(
-			await screen.findByText(
-				"These roles lose it: Editor, Reviewer, and 3 more",
-			),
-		).toBeVisible();
+		await waitFor(async () => {
+			await expect(
+				await screen.findByText(
+					"These roles lose it: Editor, Reviewer, and 3 more",
+				),
+			).toBeVisible();
+		});
 	},
 };
 
@@ -227,12 +240,16 @@ export const NoRoleHoldsIt: Story = {
 	play: async ({ canvasElement }) => {
 		await openDialog(canvasElement);
 
-		await expect(
-			await screen.findByText("No role holds this permission."),
-		).toBeVisible();
-		await expect(
-			screen.queryByText(/These roles lose it/),
-		).not.toBeInTheDocument();
+		await waitFor(async () => {
+			await expect(
+				await screen.findByText("No role holds this permission."),
+			).toBeVisible();
+		});
+		await waitFor(async () => {
+			await expect(
+				screen.queryByText(/These roles lose it/),
+			).not.toBeInTheDocument();
+		});
 	},
 };
 
@@ -245,10 +262,12 @@ export const FallsBackWhenLookupFails: Story = {
 	play: async ({ canvasElement }) => {
 		await openDialog(canvasElement);
 
-		await expect(
-			await screen.findByText(
-				/Any roles or API keys currently using it will lose this permission immediately/,
-			),
-		).toBeVisible();
+		await waitFor(async () => {
+			await expect(
+				await screen.findByText(
+					/Any roles or API keys currently using it will lose this permission immediately/,
+				),
+			).toBeVisible();
+		});
 	},
 };

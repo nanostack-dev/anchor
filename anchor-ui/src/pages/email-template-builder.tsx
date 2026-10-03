@@ -1,5 +1,10 @@
 import { EmailTemplateBuilder } from "@/components/email/EmailTemplateBuilder";
 import { useProduct } from "@/context/product/ProductContext";
+import {
+	Empty,
+	EmptyHeader,
+	EmptyTitle,
+} from "@nanostackorg/design-system/components/empty";
 
 interface EmailTemplateBuilderPageProps {
 	templateId: string;
@@ -12,20 +17,18 @@ export default function EmailTemplateBuilderPage({
 
 	if (!currentProduct) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<p className="text-muted-foreground text-sm">
-					Select a product to edit templates
-				</p>
-			</div>
+			<Empty>
+				<EmptyHeader>
+					<EmptyTitle>Select a product to edit templates</EmptyTitle>
+				</EmptyHeader>
+			</Empty>
 		);
 	}
 
 	return (
-		<div className="h-full min-h-0 flex flex-col">
-			<EmailTemplateBuilder
-				productId={currentProduct.id}
-				templateId={templateId}
-			/>
-		</div>
+		<EmailTemplateBuilder
+			productId={currentProduct.id}
+			templateId={templateId}
+		/>
 	);
 }

@@ -7,20 +7,22 @@ import {
 	SortDirection,
 } from "@/client";
 import { searchProductRolesOptions } from "@/client/@tanstack/react-query.gen";
-import { buttonVariants } from "@/components/ui/button";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { IconButton } from "@nanostackorg/design-system/components/button";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
 import { Copy, Eye, PenLine, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
-import { Button } from "../../ui/button";
 import { DeleteProductRoleDialog } from "./DeleteProductRoleDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
@@ -123,9 +125,12 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 				cell: (info) => {
 					const description = info.getValue();
 					return (
-						<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+						<Box
+							as="span"
+							className="text-sm text-muted-foreground max-w-[200px] truncate block"
+						>
 							{description || "No description"}
-						</span>
+						</Box>
 					);
 				},
 				enableSorting: false,
@@ -139,47 +144,53 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
-						<Button
+					<Box className={"flex gap-2"}>
+						<IconButton
 							variant="outline"
-							size="icon"
+							size="md"
 							onClick={() => {
 								navigator.clipboard.writeText(row.original.id);
-								toast.success("ID copied to clipboard");
+								toast.add({ type: "success", title: "ID copied to clipboard" });
 							}}
-						>
-							<span className="sr-only">Copy ID</span>
-							<Copy className="h-4 w-4" />
-						</Button>
-						<Link
-							to={ROUTE_PATHS.PRODUCT_ROLE_DETAIL}
-							params={{ roleId: row.original.id }}
-							search={{}}
-							className={buttonVariants({ variant: "outline", size: "icon" })}
+							icon={Copy}
+							label="Copy ID"
+						/>
+						<ButtonLink
 							aria-label={`View ${row.original.name}`}
+							href={ROUTE_PATHS.PRODUCT_ROLE_DETAIL.replace(
+								"$roleId",
+								encodeURIComponent(row.original.id),
+							)}
+							variant="outline"
+							tone="neutral"
 						>
 							<Eye />
-						</Link>
-						<Link
-							to={ROUTE_PATHS.PRODUCT_ROLE_DETAIL}
-							params={{ roleId: row.original.id }}
-							search={{ edit: true }}
-							className={buttonVariants({ variant: "outline", size: "icon" })}
+						</ButtonLink>
+						<ButtonLink
 							aria-label={`Edit ${row.original.name}`}
+							href={`${ROUTE_PATHS.PRODUCT_ROLE_DETAIL.replace(
+								"$roleId",
+								encodeURIComponent(row.original.id),
+							)}?${new URLSearchParams({ edit: "true" }).toString()}`}
+							variant="outline"
+							tone="neutral"
 						>
 							<PenLine />
-						</Link>
+						</ButtonLink>
 						<DeleteProductRoleDialog
 							productId={productId}
 							role={row.original}
 							trigger={
-								<Button variant="outlineDestructive" size="sm">
-									<span className="sr-only">Delete role</span>
-									<Trash2 />
-								</Button>
+								<IconButton
+									tone="critical"
+									variant="outline"
+									size="sm"
+									icon={Trash2}
+									label="Delete role"
+								/>
 							}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],
@@ -197,20 +208,20 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 
 	return (
 		<>
-			<div className="flex items-center justify-between mb-4">
-				<div className="flex items-center gap-2">
+			<Box className="flex items-center justify-between mb-4">
+				<Box className="flex items-center gap-2">
 					<ProductRoleDialog
 						productId={productId}
 						mode="create"
 						trigger={
-							<Button>
+							<Button variant="solid" tone="brand">
 								<Plus />
 								Create Role
 							</Button>
 						}
 					/>
-				</div>
-			</div>
+				</Box>
+			</Box>
 			<AnchorDataTable
 				columns={columns}
 				data={items}

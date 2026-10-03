@@ -1,33 +1,34 @@
 import { Page } from "@/components/common/Page";
 import { ProductRoleDatatable } from "@/components/product/roles/ProductRoleDatatable";
 import { useProduct } from "@/hooks/useProduct";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@nanostackorg/design-system/components/empty";
 
-export default function ProductRolesPage() {
+export default function ResourcePage() {
 	const { currentProduct } = useProduct();
-
-	if (!currentProduct) {
-		return (
-			<Page>
-				<div className="flex items-center justify-center h-64">
-					<p className="text-muted-foreground">
-						Please select a product to manage roles.
-					</p>
-				</div>
-			</Page>
-		);
-	}
-
 	return (
-		<Page>
-			<div className="space-y-6">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Roles</h1>
-					<p className="text-muted-foreground">
-						Manage roles for {currentProduct.name}
-					</p>
-				</div>
+		<Page
+			title="Roles"
+			description={
+				currentProduct ? `Manage roles for ${currentProduct.name}` : undefined
+			}
+		>
+			{currentProduct ? (
 				<ProductRoleDatatable productId={currentProduct.id} />
-			</div>
+			) : (
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Select a product</EmptyTitle>
+						<EmptyDescription>
+							Please select a product to manage roles.
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			)}
 		</Page>
 	);
 }

@@ -4,6 +4,7 @@ import {
 	UsageShape,
 	client,
 } from "@/client";
+import { Button } from "@nanostackorg/design-system/components/button";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -47,7 +48,11 @@ const meta = {
 	tags: ["autodocs"],
 	args: {
 		productId: "prd_2Nq8xKf3pLmR",
-		trigger: <button type="button">Open</button>,
+		trigger: (
+			<Button variant="ghost" size="sm" type="button">
+				Open
+			</Button>
+		),
 	},
 	decorators: [
 		(Story) => (
@@ -267,6 +272,9 @@ export const MissingShapeRequiresAnExplicitChoice: Story = {
 		await userEvent.click(
 			screen.getByRole("combobox", { name: "Usage shape" }),
 		);
+		await expect(
+			await screen.findByRole("listbox", { name: "Usage shape options" }),
+		).toBeVisible();
 		await userEvent.click(
 			screen.getByRole("option", { name: "Windowed counter" }),
 		);

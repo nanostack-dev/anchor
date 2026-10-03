@@ -1,6 +1,6 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import {
 	UsageHistoryChartView,
@@ -44,12 +44,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/**
- * Recharts sizes itself from a ResizeObserver that never fires in the browser
- * test runner, so the plotted SVG is absent here and present in a real browser.
- * These stories therefore assert which branch rendered, and the plotted content
- * itself is reviewed visually in Storybook.
- */
 export const CrossesTheLimit: Story = {
 	args: { points: hourlySeries(48, 400, 12) },
 	play: async ({ canvasElement }) => {
@@ -60,6 +54,14 @@ export const CrossesTheLimit: Story = {
 		await expect(
 			canvas.getByRole("group", { name: "Time range" }),
 		).toBeVisible();
+		const chart = await canvas.findByRole("application", {
+			name: "Reported api_calls usage",
+		});
+		await waitFor(() => {
+			expect(chart.getBoundingClientRect().width).toBeGreaterThan(200);
+			expect(chart.getBoundingClientRect().height).toBeGreaterThan(150);
+		});
+		await expect(canvas.getByText("Limit 800")).toBeVisible();
 	},
 };
 

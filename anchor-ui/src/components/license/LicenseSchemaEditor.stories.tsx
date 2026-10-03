@@ -1,4 +1,6 @@
 import { LicenseFieldType, UsageShape } from "@/client";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
@@ -68,7 +70,7 @@ function EditorHarness({
 	const [sourceInvalid, setSourceInvalid] = useState(false);
 
 	return (
-		<div className="mx-auto flex max-w-[680px] flex-col gap-4 p-6">
+		<Box className="mx-auto flex max-w-[680px] flex-col gap-4 p-6">
 			<LicenseSchemaEditor
 				description={description}
 				onDescriptionChange={setDescription}
@@ -81,17 +83,18 @@ function EditorHarness({
 				onSourceInvalidChange={setSourceInvalid}
 				defaultMode={defaultMode}
 			/>
-			<div className="flex justify-end gap-2 border-t border-border pt-4">
-				<button
+			<Box className="flex justify-end gap-2 border-t border-border pt-4">
+				<Button
+					variant="ghost"
+					size="sm"
 					type="button"
 					disabled={sourceInvalid}
 					onClick={() => setErrors(validateFieldRows(fields))}
-					className="h-8 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
 				>
 					Create Schema
-				</button>
-			</div>
-		</div>
+				</Button>
+			</Box>
+		</Box>
 	);
 }
 
@@ -126,6 +129,48 @@ export const Text: Story = {
 /** A first-time schema opens on one blank field, ready to type into. */
 export const Empty: Story = {
 	args: { initialFields: [newFieldRow()] },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByRole("combobox", { name: "Type" }),
+		).toHaveTextContent("String");
+	},
+};
+
+/** Changing type updates its visible label and drops rules that no longer apply. */
+export const ChangingTypeClearsInapplicableRules: Story = {
+	args: {
+		initialFields: [
+			newFieldRow({
+				name: "seats",
+				type: LicenseFieldType.NUMBER,
+				rules: { min: 1, max: 100 },
+			}),
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await userEvent.click(canvas.getByRole("button", { name: /^seats/ }));
+		const type = canvas.getByRole("combobox", { name: "Type" });
+		await expect(type).toHaveTextContent("Number");
+		await expect(canvas.getByLabelText("Min")).toHaveValue(1);
+		await userEvent.click(type);
+		await expect(
+			await page.findByRole("listbox", { name: "Field type options" }),
+		).toBeVisible();
+		await userEvent.click(await page.findByRole("option", { name: "String" }));
+		await expect(type).toHaveTextContent("String");
+		await expect(canvas.queryByLabelText("Min")).not.toBeInTheDocument();
+		await expect(
+			canvas.getByLabelText("Pattern (regular expression)"),
+		).toHaveValue("");
+		await userEvent.click(type);
+		await userEvent.click(await page.findByRole("option", { name: "Number" }));
+		await expect(type).toHaveTextContent("Number");
+		await expect(canvas.getByLabelText("Min")).toHaveValue(null);
+		await expect(canvas.getByLabelText("Max")).toHaveValue(null);
+	},
 };
 
 /**
@@ -228,6 +273,14 @@ export const TextModeReportsErrorsByLine: Story = {
 		).toBeInTheDocument();
 		// Only line 2 failed — errors are per line, not per document.
 		await expect(canvas.getAllByRole("listitem")).toHaveLength(1);
+		await userEvent.click(
+			canvas.getByRole("button", { name: /integer.*not a field type/ }),
+		);
+		await expect(editor).toHaveFocus();
+		const textarea = editor as HTMLTextAreaElement;
+		await expect(
+			textarea.value.slice(textarea.selectionStart, textarea.selectionEnd),
+		).toBe("seats: integer 1..10");
 	},
 };
 

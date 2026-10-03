@@ -1,6 +1,7 @@
 import type { ProductEventsConfigResponse, ProductResponse } from "@/client";
 import { ProductEventDeliveryStatus } from "@/client";
 import { getProductEventsCatalogQueryKey } from "@/client/@tanstack/react-query.gen";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
@@ -156,15 +157,15 @@ const meta = {
 			<StoryQuery>
 				{context.parameters.catalogDeferred ? (
 					<DeferredCatalogSeeder>
-						<div className="w-full p-6 lg:p-8">
+						<Box className="w-full p-6 lg:p-8">
 							<Story />
-						</div>
+						</Box>
 					</DeferredCatalogSeeder>
 				) : (
 					<StoryCatalogSeeder>
-						<div className="w-full p-6 lg:p-8">
+						<Box className="w-full p-6 lg:p-8">
 							<Story />
-						</div>
+						</Box>
 					</StoryCatalogSeeder>
 				)}
 			</StoryQuery>

@@ -5,12 +5,16 @@ import {
 	listLicenseTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
+import { LicenseAdjustmentBar } from "@/components/license/LicenseAdjustmentBar";
 import { LicenseValueFields } from "@/components/license/LicenseValueFields";
 import {
 	formatFieldValue,
 	isFieldValueSet,
 } from "@/components/license/license-field-format";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
+import { useProduct } from "@/context/product/ProductContext";
+import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
+import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,17 +24,17 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import { useProduct } from "@/context/product/ProductContext";
-import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
-import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
+} from "@nanostackorg/design-system/components/alert-dialog";
+
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+
+import { Text } from "@nanostackorg/design-system/components/text";
+import { toast } from "@nanostackorg/design-system/components/toast";
+
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker } from "@tanstack/react-router";
 import { useState } from "react";
-import { toast } from "sonner";
 
 const invalidatedByAdjustment = new Set([
 	"getOrganizationLicense",
@@ -91,7 +95,7 @@ export default function OrganizationLicenseValuesPage() {
 						(query.queryKey[0] as { _id?: string } | undefined)?._id ?? "",
 					),
 			});
-			toast.success("License adjusted");
+			toast.add({ type: "success", title: "License adjusted" });
 		},
 		onError: (error) => setFieldErrors(getApiFieldErrors(error)),
 	});
@@ -172,30 +176,30 @@ export default function OrganizationLicenseValuesPage() {
 	// "Declares no fields" is an answer, and an unanswered query is not it.
 	if (schemaQuery.isLoading) {
 		return (
-			<div className="flex flex-col gap-2">
-				<Skeleton className="h-9 w-full" />
-				<Skeleton className="h-9 w-full" />
-				<Skeleton className="h-9 w-full" />
-			</div>
+			<Stack space="sm">
+				<Skeleton height="lg" />
+				<Skeleton height="lg" />
+				<Skeleton height="lg" />
+			</Stack>
 		);
 	}
 
 	if (fields.length === 0) {
 		return (
-			<p className="text-sm text-muted-foreground">
+			<Text tone="muted">
 				This product&rsquo;s license schema declares no fields, so there is
 				nothing to adjust.
-			</p>
+			</Text>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-3">
-			<p className="text-xs text-muted-foreground">
+		<Stack space="md">
+			<Text size="xs" tone="muted">
 				Every field this product declares, and what this organization holds for
 				it. Change one to adjust this customer alone — the tier is untouched,
 				and so is which tier the license says it came from.
-			</p>
+			</Text>
 
 			<LicenseValueFields
 				fields={fields}
@@ -209,31 +213,15 @@ export default function OrganizationLicenseValuesPage() {
 			<FormAlert message={getApiErrorMessage(adjust.error)} />
 
 			{changed.length > 0 && (
-				<div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3 shadow-lg">
-					<p className="text-sm">
-						{changed.length} field{changed.length === 1 ? "" : "s"} changed
-						<span className="ml-2 font-mono text-xs text-muted-foreground">
-							{changed.map((field) => field.name).join(", ")}
-						</span>
-					</p>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								setDraft({});
-								setFieldErrors({});
-							}}
-							disabled={adjust.isPending}
-						>
-							Discard
-						</Button>
-						<Button size="sm" onClick={save} disabled={adjust.isPending}>
-							{adjust.isPending && <Spinner />}
-							Adjust this customer
-						</Button>
-					</div>
-				</div>
+				<LicenseAdjustmentBar
+					fields={changed.map((field) => field.name)}
+					saving={adjust.isPending}
+					onSave={save}
+					onDiscard={() => {
+						setDraft({});
+						setFieldErrors({});
+					}}
+				/>
 			)}
 
 			<AlertDialog
@@ -261,6 +249,6 @@ export default function OrganizationLicenseValuesPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</Stack>
 	);
 }

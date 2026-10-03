@@ -4,10 +4,7 @@ import {
 	searchProductResourcePermissionsQueryKey,
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Button } from "../../ui/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,10 +13,14 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "../../ui/dialog";
-import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
-import { Textarea } from "../../ui/textarea";
+} from "@nanostackorg/design-system/components/dialog";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface CreateProductPermissionDialogProps {
 	productId: string;
@@ -43,7 +44,10 @@ export function CreateProductResourcePermissionDialog({
 	const createMutation = useMutation({
 		...createProductResourcePermissionMutation(),
 		onSuccess: () => {
-			toast.success("Product resource permission created successfully!");
+			toast.add({
+				type: "success",
+				title: "Product resource permission created successfully!",
+			});
 			setOpen(false);
 			setFormData({ name: "", description: "" });
 
@@ -61,9 +65,12 @@ export function CreateProductResourcePermissionDialog({
 			console.error("Failed to create product permission:", error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error("Failed to create product permission. Please try again.");
+				toast.add({
+					type: "error",
+					title: "Failed to create product permission. Please try again.",
+				});
 			}
 		},
 	});
@@ -80,7 +87,7 @@ export function CreateProductResourcePermissionDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger render={trigger} />
-			<DialogContent className="sm:max-w-[450px]">
+			<DialogContent>
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
 						<DialogTitle>Create Product Permission</DialogTitle>
@@ -88,26 +95,21 @@ export function CreateProductResourcePermissionDialog({
 							Create a new product permission. Fill in the details below.
 						</DialogDescription>
 					</DialogHeader>
-					<div className="grid gap-4 py-4">
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="name" className="text-right">
-								Name
-							</Label>
+					<Box className="grid gap-4 py-4">
+						<Box className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="name">Name</Label>
 							<Input
 								id="name"
 								value={formData.name}
 								onChange={(e) =>
 									setFormData((prev) => ({ ...prev, name: e.target.value }))
 								}
-								className="col-span-3"
 								placeholder="Permission name (e.g., users:read)"
 								required
 							/>
-						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="description" className="text-right">
-								Description
-							</Label>
+						</Box>
+						<Box className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="description">Description</Label>
 							<Textarea
 								id="description"
 								value={formData.description || ""}
@@ -117,12 +119,11 @@ export function CreateProductResourcePermissionDialog({
 										description: e.target.value,
 									}))
 								}
-								className="col-span-3"
 								placeholder="Permission description (optional)"
 								rows={3}
 							/>
-						</div>
-					</div>
+						</Box>
+					</Box>
 					<DialogFooter>
 						<Button
 							type="button"
@@ -132,6 +133,8 @@ export function CreateProductResourcePermissionDialog({
 							Cancel
 						</Button>
 						<Button
+							variant="solid"
+							tone="brand"
 							type="submit"
 							disabled={createMutation.isPending || !formData.name.trim()}
 						>

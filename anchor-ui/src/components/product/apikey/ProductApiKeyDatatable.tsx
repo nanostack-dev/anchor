@@ -12,8 +12,10 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { DeleteProductAPIKeyDialog } from "@/components/product/apikey/DeleteProductApiKeyDialog";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -21,7 +23,6 @@ import dayjs from "dayjs";
 import { PenLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
-import { Button } from "../../ui/button";
 
 const columnHelper = createColumnHelper<ProductApiKeyResponse>();
 
@@ -138,9 +139,12 @@ export function ProductApiKeyDatatable({
 				cell: (info) => {
 					const description = info.getValue();
 					return (
-						<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+						<Box
+							as="span"
+							className="text-sm text-muted-foreground max-w-[200px] truncate block"
+						>
 							{description || "No description"}
-						</span>
+						</Box>
 					);
 				},
 				enableSorting: false,
@@ -187,25 +191,25 @@ export function ProductApiKeyDatatable({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
-						<Button
+					<Box className={"flex gap-2"}>
+						<ButtonLink
 							variant="outline"
-							size="icon"
-							render={
-								<Link
-									to={ROUTE_PATHS.PRODUCT_API_KEY_EDIT}
-									params={{ apiKeyId: row.original.id }}
-								/>
-							}
+							size="md"
+							href={ROUTE_PATHS.PRODUCT_API_KEY_EDIT.replace(
+								"$apiKeyId",
+								encodeURIComponent(row.original.id),
+							)}
 						>
-							<span className="sr-only">Edit API key</span>
+							<Box as="span" className="sr-only">
+								Edit API key
+							</Box>
 							<PenLine className="h-4 w-4" />
-						</Button>
+						</ButtonLink>
 						<DeleteProductAPIKeyDialog
 							productId={productId}
 							apiKey={row.original}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],
@@ -230,14 +234,18 @@ export function ProductApiKeyDatatable({
 
 	return (
 		<>
-			<div className="flex items-center justify-between mb-4">
-				<div className="flex items-center gap-2">
-					<Button render={<Link to={ROUTE_PATHS.PRODUCT_API_KEY_NEW} />}>
+			<Box className="flex items-center justify-between mb-4">
+				<Box className="flex items-center gap-2">
+					<ButtonLink
+						variant="solid"
+						tone="brand"
+						href={ROUTE_PATHS.PRODUCT_API_KEY_NEW}
+					>
 						<Plus />
 						Create API Key
-					</Button>
-				</div>
-			</div>
+					</ButtonLink>
+				</Box>
+			</Box>
 			<AnchorDataTable<ProductApiKeyResponse, ProductApiKeyFilters>
 				columns={columns}
 				data={items}

@@ -3,16 +3,20 @@ import {
 	LicenseFieldType,
 	type LicenseTemplateValues,
 } from "@/client";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+} from "@nanostackorg/design-system/components/select";
+import { Switch } from "@nanostackorg/design-system/components/switch";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { useMemo } from "react";
 import { formatFieldValue } from "./license-field-format";
 
 interface LicenseValueFieldsProps {
@@ -47,19 +51,30 @@ export function LicenseValueFields({
 	notes,
 }: LicenseValueFieldsProps) {
 	const readOnly = !onChange;
+	const enumItemsByField = useMemo(
+		() =>
+			new Map(
+				fields.map((field) => [
+					field.id,
+					(field.rules.values ?? []).map((value) => ({ value, label: value })),
+				]),
+			),
+		[fields],
+	);
 
 	if (fields.length === 0) {
 		return (
-			<p className="text-sm text-muted-foreground">
+			<Text tone="muted">
 				This product&rsquo;s license schema declares no fields yet.
-			</p>
+			</Text>
 		);
 	}
 
 	return (
-		<div className="divide-y divide-border rounded-lg border border-border">
+		<Box className="divide-y divide-border rounded-lg border border-border">
 			{fields.map((field) => {
 				const value = values[field.name];
+				const enumItems = enumItemsByField.get(field.id) ?? [];
 				const inputId = `license-value-${field.name}`;
 				const error = errors?.[field.name];
 				const errorId = `${inputId}-error`;
@@ -71,33 +86,26 @@ export function LicenseValueFields({
 					: {};
 
 				return (
-					<div key={field.id} className="flex flex-col gap-1.5 p-3">
-						<div className="flex min-w-0 flex-col gap-1">
-							<Label
-								htmlFor={inputId}
-								className="min-w-0 break-all font-mono text-sm"
-							>
-								{field.name}
-							</Label>
+					<Box key={field.id} className="flex flex-col gap-1.5 p-3">
+						<Stack space="xs">
+							<Label htmlFor={inputId}>{field.name}</Label>
 							{field.description && (
-								<span className="text-xs text-muted-foreground">
+								<Text as="span" size="xs" tone="muted">
 									{field.description}
-								</span>
+								</Text>
 							)}
-						</div>
+						</Stack>
 
 						{/* A sentence, so it reads as one rather than as a status chip
 							that cannot wrap on a narrow screen. */}
 						{notes?.[field.name] && (
-							<p className="text-xs text-muted-foreground">
+							<Text size="xs" tone="muted">
 								{notes[field.name]}
-							</p>
+							</Text>
 						)}
 
 						{readOnly ? (
-							<p id={inputId} className="text-sm">
-								{formatFieldValue(field.type, value)}
-							</p>
+							<Text id={inputId}>{formatFieldValue(field.type, value)}</Text>
 						) : field.type === LicenseFieldType.BOOLEAN ? (
 							<Switch
 								id={inputId}
@@ -108,17 +116,18 @@ export function LicenseValueFields({
 							/>
 						) : field.type === LicenseFieldType.ENUM ? (
 							<Select
-								value={typeof value === "string" ? value : undefined}
+								items={enumItems}
+								value={typeof value === "string" ? value : null}
 								onValueChange={(v) => onChange(field.name, v)}
 								disabled={disabled}
 							>
-								<SelectTrigger id={inputId} {...invalid} className="w-full">
+								<SelectTrigger width="fill" id={inputId} {...invalid}>
 									<SelectValue placeholder="Select a value" />
 								</SelectTrigger>
-								<SelectContent>
-									{(field.rules.values ?? []).map((option) => (
-										<SelectItem key={option} value={option}>
-											{option}
+								<SelectContent aria-label={`${field.name} options`}>
+									{enumItems.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -151,13 +160,13 @@ export function LicenseValueFields({
 						)}
 
 						{error && (
-							<p id={errorId} className="text-sm text-destructive">
+							<Text id={errorId} tone="critical">
 								{error}
-							</p>
+							</Text>
 						)}
-					</div>
+					</Box>
 				);
 			})}
-		</div>
+		</Box>
 	);
 }

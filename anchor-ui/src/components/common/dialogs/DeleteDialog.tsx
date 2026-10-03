@@ -1,4 +1,10 @@
-import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/lib/api-error";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
+import { IconButton } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -7,13 +13,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/dialog";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { TrashIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { type ReactElement, type ReactNode, useState } from "react";
-import { toast } from "sonner";
 import { FormAlert } from "../FormAlert";
 
 interface DeleteDialogProps {
@@ -46,7 +52,10 @@ export function DeleteDialog({
 	const deleteMutation = useMutation({
 		mutationFn: onDelete,
 		onSuccess: () => {
-			toast.success(`${entityType} deleted successfully!`);
+			toast.add({
+				type: "success",
+				title: `${entityType} deleted successfully!`,
+			});
 			setOpen(false);
 			onDeleted?.();
 		},
@@ -54,11 +63,12 @@ export function DeleteDialog({
 			console.error(`Failed to delete ${entityType.toLowerCase()}:`, error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error(
-					`Failed to delete ${entityType.toLowerCase()}. Please try again.`,
-				);
+				toast.add({
+					type: "error",
+					title: `Failed to delete ${entityType.toLowerCase()}. Please try again.`,
+				});
 			}
 		},
 	});
@@ -99,32 +109,31 @@ export function DeleteDialog({
 	);
 
 	const warningContent = warningMessage && (
-		<div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
-			<p className="text-sm text-warning">
-				<strong>Warning:</strong> {warningMessage}
-			</p>
-		</div>
+		<Alert tone="warning">
+			<AlertDescription>{warningMessage}</AlertDescription>
+		</Alert>
 	);
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (!deleteMutation.isPending) setOpen(nextOpen);
+			}}
+		>
 			<DialogTrigger
 				render={
 					trigger ? (
 						trigger
 					) : (
-						<Button
+						<IconButton
+							icon={TrashIcon}
+							label={`Delete ${entityType}`}
+							tone="critical"
+							variant="outline"
 							disabled={disabled}
-							variant="outlineDestructive"
-							size="icon"
-						>
-							<span className="sr-only">Delete {entityType}</span>
-							{deleteMutation.isPending ? (
-								<Spinner className="text-current" />
-							) : (
-								<Trash2 className="size-4" />
-							)}
-						</Button>
+							loading={deleteMutation.isPending}
+						/>
 					)
 				}
 			/>
@@ -160,13 +169,14 @@ export function DeleteDialog({
 						Cancel
 					</Button>
 					<Button
-						variant="destructive"
+						variant="soft"
+						tone="critical"
 						onClick={handleDelete}
 						disabled={deleteMutation.isPending}
 					>
 						{deleteMutation.isPending ? (
 							<>
-								<Spinner className="mr-2 text-current" />
+								<Spinner />
 								Deleting...
 							</>
 						) : (

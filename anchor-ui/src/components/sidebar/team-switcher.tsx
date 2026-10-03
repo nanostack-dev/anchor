@@ -4,18 +4,19 @@ import * as React from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@nanostackorg/design-system/components/dropdown-menu";
 import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar";
+} from "@nanostackorg/design-system/components/sidebar";
 
 export function TeamSwitcher({
 	teams,
@@ -37,14 +38,7 @@ export function TeamSwitcher({
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={
-							<SidebarMenuButton
-								size="lg"
-								className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
-							/>
-						}
-					>
+					<DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
 						<img
 							src="/logo.svg"
 							alt="App Logo"
@@ -57,19 +51,16 @@ export function TeamSwitcher({
 						<ChevronsUpDown className="ml-auto" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
-						className="w-(--anchor-width) min-w-56 rounded-lg"
 						align="start"
 						side={isMobile ? "bottom" : "right"}
-						sideOffset={4}
 					>
-						<DropdownMenuLabel className="text-muted-foreground text-xs">
-							Teams
-						</DropdownMenuLabel>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Teams</DropdownMenuLabel>
+						</DropdownMenuGroup>
 						{teams.map((team, index) => (
 							<DropdownMenuItem
 								key={team.name}
 								onClick={() => setActiveTeam(team)}
-								className="gap-2 p-2"
 							>
 								<div className="flex size-6 items-center justify-center rounded-md border">
 									<team.logo className="size-3.5 shrink-0" />
@@ -79,7 +70,7 @@ export function TeamSwitcher({
 							</DropdownMenuItem>
 						))}
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="gap-2 p-2">
+						<DropdownMenuItem>
 							<div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
 								<Plus className="size-4" />
 							</div>

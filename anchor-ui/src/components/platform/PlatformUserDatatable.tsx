@@ -11,8 +11,9 @@ import {
 	searchPlatformUsersOptions,
 	searchPlatformUsersQueryKey,
 } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import {
 	keepPreviousData,
 	useQuery,
@@ -127,11 +128,7 @@ export function PlatformUserDatatable() {
 				cell: (info) => {
 					const role = info.getValue();
 					return (
-						<Badge
-							variant={
-								role === PlatformUserRole.OWNER ? "default" : "secondary"
-							}
-						>
+						<Badge variant={role === PlatformUserRole.OWNER ? "solid" : "soft"}>
 							{role}
 						</Badge>
 					);
@@ -152,7 +149,7 @@ export function PlatformUserDatatable() {
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
+					<Box className={"flex gap-2"}>
 						<PlatformDeleteUserDialog
 							userId={row.original.id}
 							userEmail={row.original.email}
@@ -164,7 +161,7 @@ export function PlatformUserDatatable() {
 								setPagination((p) => ({ ...p }));
 							}}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],

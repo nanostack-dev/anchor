@@ -42,15 +42,13 @@ pnpm check
 ```
 
 
-## Shadcn
+## UI components
 
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
+Anchor uses the published `@nanostackorg/design-system`, the same theme and variable fonts as Echopoint. Follow [the UI system guide](docs/ui-system.md) and [AGENTS.md](AGENTS.md) before adding or changing UI.
 
-```bash
-pnpx shadcn@latest add button
-```
+Import shared components and layout blocks through their public entry points. Pages compose typed props; Anchor owns domain visuals and state. Reusable missing capabilities belong in the design-system repository. Keep the exact published dependency pin and never add local shadcn copies.
 
-
+Run `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build` and `pnpm test-storybook`. Capture review images with `pnpm ui-shot`; attach them to the PR and keep them out of commits.
 
 ## Routing
 This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.

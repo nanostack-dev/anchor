@@ -1,5 +1,9 @@
 import type { LicenseTemplateResponse } from "@/client";
-import { Info } from "lucide-react";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { InfoIcon as Info } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 interface TemplateValuesDiffSummaryProps {
@@ -21,21 +25,24 @@ export function TemplateValuesDiffSummary({
 	children,
 }: TemplateValuesDiffSummaryProps) {
 	return (
-		<section className="flex flex-col gap-3">
-			<div className="flex items-baseline justify-between gap-3">
-				<h3 className="text-sm font-medium">
+		<Stack space="md" as="section">
+			<Spread space="md" alignY="baseline">
+				<Heading level={3}>
 					{singleSourceName
 						? `${singleSourceName} → ${target.name}`
 						: `Moving to ${target.name}`}
-				</h3>
+				</Heading>
 				{sourceCount > 1 && (
-					<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+					<Box
+						as="span"
+						className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+					>
 						<Info aria-hidden className="size-3.5" />
 						{sourceCount} tiers in this selection
-					</span>
+					</Box>
 				)}
-			</div>
+			</Spread>
 			{children}
-		</section>
+		</Stack>
 	);
 }

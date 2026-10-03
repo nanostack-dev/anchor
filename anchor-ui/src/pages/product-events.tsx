@@ -1,13 +1,13 @@
 import { getProductOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductEventsForm } from "@/components/product/ProductEventsForm";
+import { useProduct } from "@/hooks/useProduct";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/hooks/useProduct";
+} from "@nanostackorg/design-system/components/empty";
 import { useQuery } from "@tanstack/react-query";
 
 export default function ProductEventsPage() {

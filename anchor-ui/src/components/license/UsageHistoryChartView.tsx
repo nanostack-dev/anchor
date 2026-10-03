@@ -1,21 +1,30 @@
 import { UsageGranularity } from "@/client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	ChartContainer,
 	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@nanostackorg/design-system/components/chart";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+} from "@nanostackorg/design-system/components/empty";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+import { Text } from "@nanostackorg/design-system/components/text";
+import {
+	ToggleGroup,
+	ToggleGroupItem,
+} from "@nanostackorg/design-system/components/toggle-group";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	ChartLineIcon as ChartSpline,
+	WarningIcon as TriangleAlert,
+} from "@phosphor-icons/react";
 import dayjs from "dayjs";
-import { ChartSpline, TriangleAlert } from "lucide-react";
 import {
 	CartesianGrid,
 	Line,
@@ -91,17 +100,20 @@ export function UsageHistoryChartView({
 		usageRanges[1];
 
 	return (
-		<div className="flex flex-col gap-3">
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<div className="flex flex-col gap-0.5">
-					<h3 className="text-sm font-semibold">
-						History for <span className="font-mono">{field}</span>
-					</h3>
-					<p className="text-xs text-muted-foreground">
+		<Stack space="md">
+			<Spread space="sm">
+				<Stack space="xxs">
+					<Heading level={3}>
+						History for{" "}
+						<Text as="span" font="mono">
+							{field}
+						</Text>
+					</Heading>
+					<Text size="xs" tone="muted">
 						Each point is the last value reported in its bucket, never a sum or
 						an average.
-					</p>
-				</div>
+					</Text>
+				</Stack>
 				<ToggleGroup
 					size="sm"
 					multiple={false}
@@ -124,16 +136,14 @@ export function UsageHistoryChartView({
 						</ToggleGroupItem>
 					))}
 				</ToggleGroup>
-			</div>
+			</Spread>
 
 			{isLoading ? (
-				<Skeleton className="aspect-video w-full" />
+				<Skeleton height="xxl" />
 			) : errorMessage ? (
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon" className="text-destructive">
-							<TriangleAlert />
-						</EmptyMedia>
+						<EmptyMedia icon={TriangleAlert} />
 						<EmptyTitle>Couldn&rsquo;t load usage history</EmptyTitle>
 						<EmptyDescription>{errorMessage}</EmptyDescription>
 					</EmptyHeader>
@@ -146,24 +156,27 @@ export function UsageHistoryChartView({
 			) : points.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<ChartSpline />
-						</EmptyMedia>
+						<EmptyMedia icon={ChartSpline} />
 						<EmptyTitle>Nothing reported in this range</EmptyTitle>
 						<EmptyDescription>
 							No usage was reported against{" "}
-							<span className="font-mono">{field}</span> in the last{" "}
-							{range.label}. Try a longer range, or check that the product is
-							reporting this field.
+							<Text as="span" font="mono">
+								{field}
+							</Text>{" "}
+							in the last {range.label}. Try a longer range, or check that the
+							product is reporting this field.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
 				<ChartContainer
-					config={{ value: { label: field, color: "var(--color-primary)" } }}
-					className="aspect-video w-full"
+					config={{ value: { label: field, color: "var(--chart-1)" } }}
 				>
-					<LineChart data={points} margin={{ left: 4, right: 12, top: 8 }}>
+					<LineChart
+						data={points}
+						margin={{ left: 4, right: 12, top: 8 }}
+						aria-label={`Reported ${field} usage`}
+					>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="bucket"
@@ -199,21 +212,15 @@ export function UsageHistoryChartView({
 							}}
 						/>
 						<ChartTooltip
-							content={
-								<ChartTooltipContent
-									labelFormatter={(_, payload) =>
-										dayjs(payload?.[0]?.payload?.bucket).format(
-											"D MMM YYYY HH:mm",
-										)
-									}
-									formatter={(value) => formatExactNumber(Number(value))}
-								/>
+							labelFormatter={(_, payload) =>
+								dayjs(payload?.[0]?.payload?.bucket).format("D MMM YYYY HH:mm")
 							}
+							formatter={(value) => formatExactNumber(Number(value))}
 						/>
 						<Line
 							dataKey="value"
 							type="monotone"
-							stroke="var(--color-primary)"
+							stroke="var(--color-value)"
 							strokeWidth={2}
 							dot={false}
 							activeDot={{ r: 4 }}
@@ -222,6 +229,6 @@ export function UsageHistoryChartView({
 					</LineChart>
 				</ChartContainer>
 			)}
-		</div>
+		</Stack>
 	);
 }

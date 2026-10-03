@@ -10,19 +10,23 @@ import {
 	updateLicenseTemplateMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
-import { Button } from "@/components/ui/button";
+import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/field";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { toast } from "sonner";
 import { LicenseValueFields } from "./LicenseValueFields";
 import { isFieldValueSet } from "./license-field-format";
 
@@ -61,10 +65,11 @@ export function LicenseTemplateForm({
 				(query.queryKey[0] as { _id?: string } | undefined)?._id ===
 				"listLicenseTemplates",
 		});
-		toast.success(
-			template ? "License template updated" : "License template created",
-			{ description: saved.name },
-		);
+		toast.add({
+			type: "success",
+			title: template ? "License template updated" : "License template created",
+			description: saved.name,
+		});
 		onSaved(saved);
 	};
 	const handleError = (error: unknown) => {
@@ -139,10 +144,10 @@ export function LicenseTemplateForm({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-6">
+		<Stack onSubmit={handleSubmit} space="xl" as="form">
 			<FormAlert message={generalError} />
 			<FieldGroup>
-				<Field data-invalid={!!fieldErrors.name} data-disabled={isSubmitting}>
+				<Field invalid={!!fieldErrors.name} disabled={isSubmitting}>
 					<FieldLabel htmlFor="template-name">Name</FieldLabel>
 					<Input
 						id="template-name"
@@ -160,7 +165,7 @@ export function LicenseTemplateForm({
 						<FieldError id="template-name-error">{fieldErrors.name}</FieldError>
 					)}
 				</Field>
-				<Field data-disabled={isSubmitting}>
+				<Field disabled={isSubmitting}>
 					<FieldLabel htmlFor="template-description">Description</FieldLabel>
 					<Textarea
 						id="template-description"
@@ -172,20 +177,17 @@ export function LicenseTemplateForm({
 					/>
 				</Field>
 			</FieldGroup>
-			<section
-				aria-labelledby="template-values-heading"
-				className="flex flex-col gap-3"
-			>
-				<div className="flex flex-col gap-1">
-					<h2 id="template-values-heading" className="text-base font-semibold">
+			<Stack aria-labelledby="template-values-heading" space="md" as="section">
+				<Stack space="xs">
+					<Heading id="template-values-heading" level={2}>
 						License values
-					</h2>
-					<p className="text-sm text-muted-foreground">
+					</Heading>
+					<Text tone="muted">
 						{template
 							? "Changes propagate to organizations following this template. Their adjusted fields stay unchanged."
 							: "Set a value for every field in this product’s license schema."}
-					</p>
-				</div>
+					</Text>
+				</Stack>
 				<LicenseValueFields
 					fields={schema.fields}
 					values={values}
@@ -195,8 +197,8 @@ export function LicenseTemplateForm({
 					errors={fieldErrors}
 					disabled={isSubmitting}
 				/>
-			</section>
-			<div className="flex justify-end gap-2">
+			</Stack>
+			<Inline space="sm" align="end" wrap={false}>
 				<Button
 					type="button"
 					variant="outline"
@@ -205,14 +207,19 @@ export function LicenseTemplateForm({
 				>
 					Cancel
 				</Button>
-				<Button type="submit" disabled={isSubmitting}>
+				<Button
+					variant="solid"
+					tone="brand"
+					type="submit"
+					disabled={isSubmitting}
+				>
 					{isSubmitting
 						? "Saving…"
 						: template
 							? "Save Template"
 							: "Create Template"}
 				</Button>
-			</div>
-		</form>
+			</Inline>
+		</Stack>
 	);
 }

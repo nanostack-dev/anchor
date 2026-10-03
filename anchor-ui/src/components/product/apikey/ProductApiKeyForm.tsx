@@ -8,17 +8,20 @@ import {
 	getProductApiKeyOptions,
 	updateProductApiKeyMutation,
 } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Switch } from "@nanostackorg/design-system/components/switch";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -37,7 +40,6 @@ import {
 	Shield,
 } from "lucide-react";
 import { type ComponentType, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { ApiKeyPermissionSelector } from "./ApiKeyPermissionSelector";
 import { basicInfo } from "./form-type";
 
@@ -138,21 +140,35 @@ export function ProductApiKeyForm({
 		onSuccess: (response: CreatedProductApiKeyResponse) => {
 			setCreatedApiKey(response);
 			invalidateList();
-			toast.success("API key created", { description: `${name} is ready` });
+			toast.add({
+				type: "success",
+				title: "API key created",
+				...{ description: `${name} is ready` },
+			});
 		},
 		onError: (error) =>
-			toast.error(getErrorMessage(error, "Failed to create API key")),
+			toast.add({
+				type: "error",
+				title: getErrorMessage(error, "Failed to create API key"),
+			}),
 	});
 
 	const updateMutation = useMutation({
 		...updateProductApiKeyMutation(),
 		onSuccess: () => {
 			invalidateList();
-			toast.success("API key updated", { description: `${name} was updated` });
+			toast.add({
+				type: "success",
+				title: "API key updated",
+				...{ description: `${name} was updated` },
+			});
 			void navigate({ to: ROUTE_PATHS.PRODUCT_API_KEYS });
 		},
 		onError: (error) =>
-			toast.error(getErrorMessage(error, "Failed to update API key")),
+			toast.add({
+				type: "error",
+				title: getErrorMessage(error, "Failed to update API key"),
+			}),
 	});
 
 	const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -221,25 +237,27 @@ export function ProductApiKeyForm({
 	// --- Render branches ------------------------------------------------------
 	if (isEditMode && isLoadingExisting) {
 		return (
-			<div className="flex flex-col items-center justify-center h-64 gap-3">
-				<Spinner className="size-7 text-current" />
-				<p className="text-sm text-muted-foreground">Loading API key…</p>
-			</div>
+			<Box className="flex flex-col items-center justify-center h-64 gap-3">
+				<Spinner size="lg" />
+				<Box as="p" className="text-sm text-muted-foreground">
+					Loading API key…
+				</Box>
+			</Box>
 		);
 	}
 
 	if (isEditMode && (existingError || !existingApiKey)) {
 		return (
-			<div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+			<Box className="flex flex-col items-center justify-center h-64 gap-3 text-center">
 				<AlertCircle className="size-8 text-destructive" />
-				<p className="text-sm text-muted-foreground">
+				<Box as="p" className="text-sm text-muted-foreground">
 					This API key could not be found.
-				</p>
+				</Box>
 				<Button variant="outline" onClick={goBackToList}>
 					<ArrowLeft className="mr-2 size-4" />
 					Back to API Keys
 				</Button>
-			</div>
+			</Box>
 		);
 	}
 
@@ -248,42 +266,40 @@ export function ProductApiKeyForm({
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
+		<Box className="flex flex-col gap-6">
 			{/* Header */}
-			<div className="flex flex-col gap-2">
-				<Link
-					to={ROUTE_PATHS.PRODUCT_API_KEYS}
-					className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
-				>
+			<Box className="flex flex-col gap-2">
+				<TextLink href={ROUTE_PATHS.PRODUCT_API_KEYS}>
 					<ArrowLeft className="size-4" />
 					API Keys
-				</Link>
-				<div className="flex flex-wrap items-center gap-2">
+				</TextLink>
+				<Box className="flex flex-wrap items-center gap-2">
 					<h1 className="text-2xl font-semibold tracking-tight">
 						{isEditMode ? "Edit API Key" : "Create API Key"}
 					</h1>
 					{isEditMode && existingApiKey && (
-						<Badge variant="outline" className="font-mono">
-							{existingApiKey.name}
-						</Badge>
+						<Badge variant="outline">{existingApiKey.name}</Badge>
 					)}
-				</div>
-				<p className="text-sm text-muted-foreground">
+				</Box>
+				<Box as="p" className="text-sm text-muted-foreground">
 					{isEditMode
 						? `Update the details and permissions for this API key in ${productName}.`
 						: `Create a new API key to grant programmatic access to ${productName}.`}
-				</p>
-			</div>
+				</Box>
+			</Box>
 
 			<Stepper steps={steps} current={currentStep} />
 
 			{/* Step content */}
-			<div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+			<Box className="rounded-xl border border-border bg-card p-4 sm:p-6">
 				{activeStep === "details" && (
-					<div className="flex flex-col gap-6">
-						<div className="flex flex-col gap-2">
-							<Label htmlFor="name" className="text-sm font-semibold">
-								Name <span className="text-destructive">*</span>
+					<Box className="flex flex-col gap-6">
+						<Box className="flex flex-col gap-2">
+							<Label htmlFor="name">
+								Name{" "}
+								<Box as="span" className="text-destructive">
+									*
+								</Box>
 							</Label>
 							<Input
 								id="name"
@@ -291,26 +307,25 @@ export function ProductApiKeyForm({
 								onChange={(e) => setName(e.target.value)}
 								onBlur={() => setNameTouched(true)}
 								placeholder="e.g. Production Key, Analytics API"
-								className="h-11"
 							/>
 							{nameTouched && nameError && (
-								<p className="text-xs text-destructive">{nameError}</p>
+								<Box as="p" className="text-xs text-destructive">
+									{nameError}
+								</Box>
 							)}
-						</div>
+						</Box>
 
-						<div className="flex flex-col gap-2">
-							<Label htmlFor="description" className="text-sm font-semibold">
-								Description
-							</Label>
+						<Box className="flex flex-col gap-2">
+							<Label htmlFor="description">Description</Label>
 							<Textarea
 								id="description"
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
 								placeholder="Describe what this API key is used for…"
 								rows={4}
-								className="resize-none"
 							/>
-							<p
+							<Box
+								as="p"
 								className={cn(
 									"text-xs",
 									description.length > DESCRIPTION_MAX
@@ -319,48 +334,46 @@ export function ProductApiKeyForm({
 								)}
 							>
 								{description.length}/{DESCRIPTION_MAX}
-							</p>
-						</div>
+							</Box>
+						</Box>
 
 						{!isEditMode && (
-							<div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
-								<div className="space-y-1">
-									<Label htmlFor="mutable" className="text-sm font-semibold">
-										Mutable permissions
-									</Label>
-									<p className="text-xs text-muted-foreground">
+							<Box className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+								<Box className="space-y-1">
+									<Label htmlFor="mutable">Mutable permissions</Label>
+									<Box as="p" className="text-xs text-muted-foreground">
 										Allow this key's permissions to be changed after creation.
 										This can't be toggled later.
-									</p>
-								</div>
+									</Box>
+								</Box>
 								<Switch
 									id="mutable"
 									checked={mutable}
 									onCheckedChange={setMutable}
 								/>
-							</div>
+							</Box>
 						)}
 
 						{isEditMode && !canEditPermissions && (
-							<div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4">
+							<Box className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4">
 								<Lock className="size-4 mt-0.5 text-muted-foreground shrink-0" />
-								<p className="text-xs text-muted-foreground">
+								<Box as="p" className="text-xs text-muted-foreground">
 									This API key was created as immutable, so its permissions
 									cannot be changed. You can still update its name and
 									description.
-								</p>
-							</div>
+								</Box>
+							</Box>
 						)}
-					</div>
+					</Box>
 				)}
 
 				{activeStep === "permissions" && (
-					<div className="flex flex-col gap-4">
+					<Box className="flex flex-col gap-4">
 						<div>
 							<h2 className="text-sm font-semibold">Permissions</h2>
-							<p className="text-xs text-muted-foreground mt-0.5">
+							<Box as="p" className="text-xs text-muted-foreground mt-0.5">
 								Select at least one permission to grant this API key.
-							</p>
+							</Box>
 						</div>
 						<ApiKeyPermissionSelector
 							productId={productId}
@@ -370,7 +383,7 @@ export function ProductApiKeyForm({
 								existingApiKey?.permissions?.map((p) => p.permission_name) ?? []
 							}
 						/>
-					</div>
+					</Box>
 				)}
 
 				{activeStep === "review" && (
@@ -388,16 +401,11 @@ export function ProductApiKeyForm({
 						permissionsEditable={!isEditMode || canEditPermissions}
 					/>
 				)}
-			</div>
+			</Box>
 
 			{/* Footer actions */}
-			<div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<Button
-					type="button"
-					variant="outline"
-					onClick={handleBack}
-					className="w-full sm:w-auto"
-				>
+			<Box className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<Button type="button" variant="outline" onClick={handleBack}>
 					{currentStep === 0 ? (
 						"Cancel"
 					) : (
@@ -410,14 +418,15 @@ export function ProductApiKeyForm({
 
 				{activeStep === "review" ? (
 					<Button
+						variant="solid"
+						tone="brand"
 						type="button"
 						onClick={handleSubmit}
 						disabled={isSubmitting}
-						className="w-full sm:w-auto"
 					>
 						{isSubmitting ? (
 							<>
-								<Spinner data-icon="inline-start" className="text-current" />
+								<Spinner data-icon="inline-start" />
 								{isEditMode ? "Updating…" : "Creating…"}
 							</>
 						) : (
@@ -433,17 +442,18 @@ export function ProductApiKeyForm({
 					</Button>
 				) : (
 					<Button
+						variant="solid"
+						tone="brand"
 						type="button"
 						onClick={handleNext}
 						disabled={!canAdvance}
-						className="w-full sm:w-auto"
 					>
 						Next
 						<ChevronRight className="ml-1 size-4" />
 					</Button>
 				)}
-			</div>
-		</div>
+			</Box>
+		</Box>
 	);
 }
 
@@ -456,36 +466,36 @@ function Stepper({ steps, current }: { steps: StepDef[]; current: number }) {
 	return (
 		<div>
 			{/* Mobile */}
-			<div className="flex items-center gap-3 sm:hidden">
-				<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+			<Box className="flex items-center gap-3 sm:hidden">
+				<Box className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
 					{current + 1}
-				</div>
-				<div className="min-w-0 flex-1">
-					<p className="text-xs text-muted-foreground">
+				</Box>
+				<Box className="min-w-0 flex-1">
+					<Box as="p" className="text-xs text-muted-foreground">
 						Step {current + 1} of {steps.length}
-					</p>
-					<p className="text-sm font-medium truncate">
+					</Box>
+					<Box as="p" className="text-sm font-medium truncate">
 						{steps[current]?.title}
-					</p>
-				</div>
-				<div className="h-1.5 w-16 shrink-0 rounded-full bg-muted overflow-hidden">
-					<div
+					</Box>
+				</Box>
+				<Box className="h-1.5 w-16 shrink-0 rounded-full bg-muted overflow-hidden">
+					<Box
 						className="h-full bg-primary transition-all duration-300"
 						style={{ width: `${progress}%` }}
 					/>
-				</div>
-			</div>
+				</Box>
+			</Box>
 
 			{/* Desktop */}
-			<ol className="hidden sm:flex items-center">
+			<Box as="ol" className="hidden sm:flex items-center">
 				{steps.map((step, i) => {
 					const state =
 						i < current ? "completed" : i === current ? "active" : "pending";
 					const Icon = step.icon;
 					return (
-						<li key={step.id} className="flex items-center">
-							<div className="flex items-center gap-2">
-								<div
+						<Box as="li" key={step.id} className="flex items-center">
+							<Box className="flex items-center gap-2">
+								<Box
 									className={cn(
 										"flex size-8 items-center justify-center rounded-full border transition-colors",
 										state === "active" &&
@@ -501,8 +511,9 @@ function Stepper({ steps, current }: { steps: StepDef[]; current: number }) {
 									) : (
 										<Icon className="size-4" />
 									)}
-								</div>
-								<span
+								</Box>
+								<Box
+									as="span"
 									className={cn(
 										"text-sm font-medium",
 										state === "active"
@@ -513,15 +524,15 @@ function Stepper({ steps, current }: { steps: StepDef[]; current: number }) {
 									)}
 								>
 									{step.title}
-								</span>
-							</div>
+								</Box>
+							</Box>
 							{i < steps.length - 1 && (
-								<div className="mx-3 h-px w-10 bg-border" />
+								<Box className="mx-3 h-px w-10 bg-border" />
 							)}
-						</li>
+						</Box>
 					);
 				})}
-			</ol>
+			</Box>
 		</div>
 	);
 }
@@ -545,79 +556,79 @@ function ReviewContent({
 	permissionsEditable: boolean;
 }) {
 	return (
-		<div className="flex flex-col gap-5">
-			<div className="flex items-center gap-3 rounded-xl border border-border bg-success/10 p-4">
+		<Box className="flex flex-col gap-5">
+			<Box className="flex items-center gap-3 rounded-xl border border-border bg-success/10 p-4">
 				<CheckCircle className="size-5 text-success shrink-0" />
-				<p className="text-sm text-success">
+				<Box as="p" className="text-sm text-success">
 					Review the configuration below, then{" "}
 					{isEditMode ? "update" : "create"} the API key.
-				</p>
-			</div>
+				</Box>
+			</Box>
 
-			<div className="grid gap-4 sm:grid-cols-2">
-				<div className="rounded-lg bg-muted/50 p-4">
-					<p className="text-xs font-semibold text-muted-foreground">Name</p>
-					<p className="text-base font-medium mt-1 break-words">{name}</p>
-				</div>
-				<div className="rounded-lg bg-muted/50 p-4">
-					<p className="text-xs font-semibold text-muted-foreground">
+			<Box className="grid gap-4 sm:grid-cols-2">
+				<Box className="rounded-lg bg-muted/50 p-4">
+					<Box as="p" className="text-xs font-semibold text-muted-foreground">
+						Name
+					</Box>
+					<Box as="p" className="text-base font-medium mt-1 break-words">
+						{name}
+					</Box>
+				</Box>
+				<Box className="rounded-lg bg-muted/50 p-4">
+					<Box as="p" className="text-xs font-semibold text-muted-foreground">
 						Permissions mutability
-					</p>
-					<p className="text-base font-medium mt-1">
+					</Box>
+					<Box as="p" className="text-base font-medium mt-1">
 						{mutable ? "Mutable" : "Immutable"}
-					</p>
-				</div>
-			</div>
+					</Box>
+				</Box>
+			</Box>
 
 			{description && (
-				<div className="rounded-lg bg-muted/50 p-4">
-					<p className="text-xs font-semibold text-muted-foreground">
+				<Box className="rounded-lg bg-muted/50 p-4">
+					<Box as="p" className="text-xs font-semibold text-muted-foreground">
 						Description
-					</p>
-					<p className="text-sm mt-1 whitespace-pre-wrap break-words">
+					</Box>
+					<Box as="p" className="text-sm mt-1 whitespace-pre-wrap break-words">
 						{description}
-					</p>
-				</div>
+					</Box>
+				</Box>
 			)}
 
-			<div className="rounded-lg bg-muted/50 p-4">
-				<p className="text-xs font-semibold text-muted-foreground">
+			<Box className="rounded-lg bg-muted/50 p-4">
+				<Box as="p" className="text-xs font-semibold text-muted-foreground">
 					Permissions ({permissions.length})
-				</p>
+				</Box>
 				{permissions.length === 0 ? (
-					<p className="text-sm text-muted-foreground mt-1">
+					<Box as="p" className="text-sm text-muted-foreground mt-1">
 						No permissions assigned
-					</p>
+					</Box>
 				) : (
-					<div className="flex flex-wrap gap-2 mt-2">
+					<Box className="flex flex-wrap gap-2 mt-2">
 						{permissions.map((permission) => (
-							<Badge
-								key={permission}
-								variant="outline"
-								className="text-xs font-mono"
-							>
+							<Badge key={permission} variant="outline">
 								{permission}
 							</Badge>
 						))}
-					</div>
+					</Box>
 				)}
 				{isEditMode && !permissionsEditable && (
-					<p className="text-xs text-muted-foreground mt-2">
+					<Box as="p" className="text-xs text-muted-foreground mt-2">
 						Permissions are immutable and cannot be changed.
-					</p>
+					</Box>
 				)}
-			</div>
+			</Box>
 
 			{!isEditMode && (
-				<div className="flex items-start gap-3 rounded-xl border border-border bg-warning/10 p-4">
+				<Box className="flex items-start gap-3 rounded-xl border border-border bg-warning/10 p-4">
 					<Lock className="size-5 text-warning shrink-0 mt-0.5" />
-					<p className="text-sm text-warning">
+					<Box as="p" className="text-sm text-warning-on-tint">
 						The API key value is shown only once, right after creation. Make
 						sure to copy and store it securely.
-					</p>
-				</div>
+					</Box>
+				</Box>
 			)}
-		</div>
+		</Box>
 	);
 }
 
@@ -639,54 +650,53 @@ function SuccessPanel({
 		try {
 			await navigator.clipboard.writeText(createdApiKey.value);
 			setCopied(true);
-			toast.success("API key copied to clipboard");
+			toast.add({ type: "success", title: "API key copied to clipboard" });
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			toast.error("Failed to copy API key");
+			toast.add({ type: "error", title: "Failed to copy API key" });
 		}
 	};
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-2">
-				<div className="flex items-center gap-2">
+		<Box className="flex flex-col gap-6">
+			<Box className="flex flex-col gap-2">
+				<Box className="flex items-center gap-2">
 					<CheckCircle className="size-6 text-success" />
 					<h1 className="text-2xl font-semibold tracking-tight">
 						API Key Created
 					</h1>
-				</div>
-				<p className="text-sm text-muted-foreground">
-					<span className="font-medium text-foreground">
+				</Box>
+				<Box as="p" className="text-sm text-muted-foreground">
+					<Box as="span" className="font-medium text-foreground">
 						{createdApiKey.name}
-					</span>{" "}
+					</Box>{" "}
 					is ready to use.
-				</p>
-			</div>
+				</Box>
+			</Box>
 
-			<div className="rounded-xl border border-border bg-warning/10 p-4 sm:p-6 flex flex-col gap-4">
-				<div className="flex items-start gap-3">
+			<Box className="rounded-xl border border-border bg-warning/10 p-4 sm:p-6 flex flex-col gap-4">
+				<Box className="flex items-start gap-3">
 					<AlertCircle className="size-5 text-warning shrink-0 mt-0.5" />
 					<div>
-						<p className="text-sm font-semibold text-warning">
+						<Box as="p" className="text-sm font-semibold text-warning-on-tint">
 							Copy your API key now
-						</p>
-						<p className="text-sm text-warning mt-1">
+						</Box>
+						<Box as="p" className="text-sm text-warning mt-1">
 							This is the only time the full value is shown. Store it somewhere
 							secure.
-						</p>
+						</Box>
 					</div>
-				</div>
+				</Box>
 
-				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-					<div className="flex-1 min-w-0 rounded-lg border border-border bg-muted p-3 font-mono text-sm break-all">
+				<Box className="flex flex-col gap-2 sm:flex-row sm:items-center">
+					<Box className="flex-1 min-w-0 rounded-lg border border-border bg-muted p-3 font-mono text-sm break-all">
 						{revealed ? createdApiKey.value || "No value" : "•".repeat(40)}
-					</div>
-					<div className="flex gap-2">
+					</Box>
+					<Box className="flex gap-2">
 						<Button
 							type="button"
 							variant="outline"
-							size="icon"
-							className="shrink-0"
+							size="md"
 							onClick={() => setRevealed((v) => !v)}
 							aria-label={revealed ? "Hide value" : "Show value"}
 						>
@@ -699,8 +709,7 @@ function SuccessPanel({
 						<Button
 							type="button"
 							variant="outline"
-							size="icon"
-							className="shrink-0"
+							size="md"
 							onClick={copy}
 							aria-label="Copy value"
 						>
@@ -710,35 +719,31 @@ function SuccessPanel({
 								<Copy className="size-4" />
 							)}
 						</Button>
-					</div>
-				</div>
-			</div>
+					</Box>
+				</Box>
+			</Box>
 
 			{createdApiKey.permissions && createdApiKey.permissions.length > 0 && (
-				<div className="rounded-lg bg-muted/50 p-4">
-					<p className="text-xs font-semibold text-muted-foreground">
+				<Box className="rounded-lg bg-muted/50 p-4">
+					<Box as="p" className="text-xs font-semibold text-muted-foreground">
 						Assigned permissions ({createdApiKey.permissions.length})
-					</p>
-					<div className="flex flex-wrap gap-2 mt-2">
+					</Box>
+					<Box className="flex flex-wrap gap-2 mt-2">
 						{createdApiKey.permissions.map((permission) => (
-							<Badge
-								key={permission.permission_name}
-								variant="outline"
-								className="text-xs font-mono"
-							>
+							<Badge key={permission.permission_name} variant="outline">
 								{permission.permission_name}
 							</Badge>
 						))}
-					</div>
-				</div>
+					</Box>
+				</Box>
 			)}
 
-			<div className="flex justify-end">
-				<Button type="button" onClick={onDone} className="w-full sm:w-auto">
+			<Box className="flex justify-end">
+				<Button variant="solid" tone="brand" type="button" onClick={onDone}>
 					<Check className="mr-1 size-4" />
 					Done
 				</Button>
-			</div>
-		</div>
+			</Box>
+		</Box>
 	);
 }

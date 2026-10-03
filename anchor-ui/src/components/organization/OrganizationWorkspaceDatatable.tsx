@@ -1,3 +1,4 @@
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -14,14 +15,14 @@ import type {
 import { SortDirection } from "@/client";
 import { searchOrganizationWorkspacesOptions } from "@/client/@tanstack/react-query.gen";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
+import { useProduct } from "@/context/product/ProductContext";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/context/product/ProductContext";
-import { mapSortingToApiField } from "@/utils/datatable-sorting";
+} from "@nanostackorg/design-system/components/empty";
 
 const columnHelper = createColumnHelper<ProductWorkspaceResponse>();
 
@@ -103,24 +104,30 @@ export function OrganizationWorkspaceDatatable({
 		() => [
 			columnHelper.accessor("name", {
 				header: "Name",
-				cell: (info) => <div className="font-medium">{info.getValue()}</div>,
+				cell: (info) => <Box className="font-medium">{info.getValue()}</Box>,
 				enableSorting: true,
 			}),
 			columnHelper.accessor("description", {
 				header: "Description",
 				cell: (info) => (
-					<span className="block max-w-[260px] truncate text-sm text-muted-foreground">
+					<Box
+						as="span"
+						className="block max-w-[260px] truncate text-sm text-muted-foreground"
+					>
 						{info.getValue() || "No description"}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("id", {
 				header: "ID",
 				cell: (info) => (
-					<span className="block max-w-[180px] truncate font-mono text-sm text-muted-foreground">
+					<Box
+						as="span"
+						className="block max-w-[180px] truncate font-mono text-sm text-muted-foreground"
+					>
 						{info.getValue()}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),

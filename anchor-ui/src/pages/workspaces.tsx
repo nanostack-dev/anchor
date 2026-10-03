@@ -1,3 +1,10 @@
+import {
+	Heading,
+	Inline,
+	Label,
+	Stack,
+	Text,
+} from "@nanostackorg/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, PanelsTopLeft } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -5,14 +12,14 @@ import { useEffect, useState } from "react";
 import { searchProductOrganizationsOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { OrganizationWorkspaceDatatable } from "@/components/organization/OrganizationWorkspaceDatatable";
+import { useProduct } from "@/context/product/ProductContext";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { useProduct } from "@/context/product/ProductContext";
+} from "@nanostackorg/design-system/components/select";
 
 export default function WorkspacesPage() {
 	const { currentProduct } = useProduct();
@@ -44,11 +51,9 @@ export default function WorkspacesPage() {
 	if (!currentProduct) {
 		return (
 			<Page>
-				<div className="flex h-64 items-center justify-center">
-					<p className="text-muted-foreground">
-						Please select a product to view workspaces.
-					</p>
-				</div>
+				<Stack space="lg" align="center">
+					<Text tone="muted">Please select a product to view workspaces.</Text>
+				</Stack>
 			</Page>
 		);
 	}
@@ -58,14 +63,9 @@ export default function WorkspacesPage() {
 			title="Organization Workspaces"
 			description="Read-only workspace visibility for organizations in the selected product."
 		>
-			<div className="flex flex-col gap-6">
-				<div className="flex w-full max-w-sm flex-col gap-2">
-					<label
-						htmlFor="workspace-org-select"
-						className="text-sm font-medium leading-none"
-					>
-						Organization
-					</label>
+			<Stack space="lg">
+				<Stack space="lg">
+					<Label htmlFor="workspace-org-select">Organization</Label>
 					<Select
 						items={organizations.map((organization) => ({
 							value: organization.id,
@@ -75,7 +75,7 @@ export default function WorkspacesPage() {
 						onValueChange={(value) => setSelectedOrgId(value ?? "")}
 						disabled={isLoading || organizations.length === 0}
 					>
-						<SelectTrigger id="workspace-org-select">
+						<SelectTrigger id="workspace-org-select" width="fill">
 							<SelectValue
 								placeholder={
 									isLoading
@@ -86,32 +86,32 @@ export default function WorkspacesPage() {
 								}
 							/>
 						</SelectTrigger>
-						<SelectContent>
+						<SelectContent aria-label="Organization options">
 							{organizations.map((organization) => (
 								<SelectItem key={organization.id} value={organization.id}>
-									<div className="flex items-center gap-2">
-										<Building2 className="size-4" />
+									<Inline space="xs">
+										<Building2 />
 										<span>{organization.name}</span>
-									</div>
+									</Inline>
 								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
-				</div>
+				</Stack>
 
 				{selectedOrgId ? (
 					<OrganizationWorkspaceDatatable organizationId={selectedOrgId} />
 				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted p-12 text-center">
-						<PanelsTopLeft className="mb-4 size-10 text-muted-foreground" />
-						<h3 className="text-lg font-medium">No Organization Selected</h3>
-						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
+					<Stack space="lg" align="center">
+						<PanelsTopLeft />
+						<Heading level={3}>No Organization Selected</Heading>
+						<Text tone="muted">
 							Select an organization to review its workspaces. This view is
 							read-only for platform admins.
-						</p>
-					</div>
+						</Text>
+					</Stack>
 				)}
-			</div>
+			</Stack>
 		</Page>
 	);
 }

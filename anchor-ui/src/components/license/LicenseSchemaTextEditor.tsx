@@ -1,6 +1,14 @@
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { Check, TriangleAlert } from "lucide-react";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	CheckIcon as Check,
+	WarningIcon as TriangleAlert,
+} from "@phosphor-icons/react";
 import { type ReactNode, useId, useMemo, useRef } from "react";
 
 import type { FieldRow } from "./license-schema-draft";
@@ -68,93 +76,68 @@ export function LicenseSchemaTextEditor({
 		textarea.setSelectionRange(offset, offset + (lines[line - 1]?.length ?? 0));
 	};
 
-	const errorLines = new Set(errors.map((error) => error.line));
-
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-center justify-between gap-3">
+		<Stack space="sm">
+			<Spread space="md">
 				<Label htmlFor={editorId}>Fields</Label>
 				{headerAction}
-			</div>
+			</Spread>
 
-			<div
-				className={cn(
-					"flex overflow-hidden rounded-lg border border-border bg-card font-mono text-sm transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-					errors.length > 0 && "border-destructive/50",
-				)}
-			>
-				<div
-					aria-hidden="true"
-					className="shrink-0 select-none border-r border-border bg-muted/40 py-2.5 text-right font-mono leading-6"
-				>
-					{Array.from(
-						{ length: Math.max(lines.length, MIN_ROWS) },
-						(_, index) => (
-							<div
-								key={`line-${index + 1}`}
-								className={cn(
-									"px-2.5 tabular-nums",
-									errorLines.has(index + 1)
-										? "font-medium text-destructive"
-										: "text-muted-foreground/60",
-								)}
-							>
-								{index + 1}
-							</div>
-						),
-					)}
-				</div>
-
-				<textarea
-					id={editorId}
-					ref={textareaRef}
-					value={value}
-					onChange={(e) => emit(e.target.value)}
-					// Tab belongs to the form's focus order here; there is no nesting in
-					// the grammar, so it never needs to insert one.
-					wrap="off"
-					spellCheck={false}
-					autoCapitalize="off"
-					autoCorrect="off"
-					rows={Math.max(lines.length, MIN_ROWS)}
-					placeholder={SCHEMA_DSL_PLACEHOLDER}
-					disabled={disabled}
-					aria-invalid={errors.length > 0}
-					className="w-full resize-none overflow-x-auto bg-transparent px-3 py-2.5 font-mono text-sm leading-6 outline-none placeholder:text-muted-foreground/50 disabled:opacity-50"
-				/>
-			</div>
+			<Textarea
+				id={editorId}
+				ref={textareaRef}
+				value={value}
+				onChange={(e) => emit(e.target.value)}
+				font="mono"
+				wrap="off"
+				spellCheck={false}
+				autoCapitalize="off"
+				autoCorrect="off"
+				rows={Math.max(lines.length, MIN_ROWS)}
+				placeholder={SCHEMA_DSL_PLACEHOLDER}
+				disabled={disabled}
+				aria-invalid={errors.length > 0}
+			/>
 
 			{errors.length > 0 ? (
-				<ul className="flex flex-col gap-1">
+				<Stack space="xs" as="ul">
 					{errors.map((error) => (
 						<li key={`${error.line}-${error.message}`}>
-							<button
+							<Button
+								width="fill"
+								variant="ghost"
+								tone="critical"
+								size="sm"
+								icon={TriangleAlert}
 								type="button"
 								onClick={() => focusLine(error.line)}
-								className="flex w-full items-start gap-2 rounded-md px-1 py-0.5 text-left text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus-visible:ring-3 focus-visible:ring-destructive/20"
 							>
-								<TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-								<span className="font-mono text-xs tabular-nums">
+								<Text as="span" size="xs" font="mono" tabular>
 									{error.line}
-								</span>
-								<span className="min-w-0 flex-1">{error.message}</span>
-							</button>
+								</Text>
+								<Box as="span" className="min-w-0 flex-1">
+									{error.message}
+								</Box>
+							</Button>
 						</li>
 					))}
-				</ul>
+				</Stack>
 			) : (
-				<div className="flex items-center justify-between gap-3 px-1">
-					<p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+				<Box className="flex items-center justify-between gap-3 px-1">
+					<Box
+						as="p"
+						className="flex items-center gap-1.5 text-sm text-muted-foreground"
+					>
 						<Check className="size-3.5 text-success" />
 						{rows.length === 0
 							? "Nothing declared yet."
 							: `${rows.length} ${rows.length === 1 ? "field" : "fields"} parsed.`}
-					</p>
+					</Box>
 					<code className="text-xs text-muted-foreground">
 						name: type [rules] # description
 					</code>
-				</div>
+				</Box>
 			)}
-		</div>
+		</Stack>
 	);
 }

@@ -1,20 +1,21 @@
 import { ProductCreateDialog } from "@/components/product/ProductCreateDialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { useProduct } from "@/hooks/useProduct";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
+import {
+	Button,
+	IconButton,
+} from "@nanostackorg/design-system/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Spinner } from "@/components/ui/spinner";
-import { useProduct } from "@/hooks/useProduct";
-import {
-	AlertCircleIcon,
-	ChevronDownIcon,
-	RefreshCwIcon,
-	SparklesIcon,
-} from "lucide-react";
+} from "@nanostackorg/design-system/components/dropdown-menu";
+import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
+import { AlertCircleIcon, ChevronDownIcon, SparklesIcon } from "lucide-react";
 
 export function ProductTopBar() {
 	const {
@@ -39,9 +40,7 @@ export function ProductTopBar() {
 		<div className="flex min-w-0 items-center gap-2">
 			{currentProduct && !error && products.length > 0 && (
 				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={<Button variant="outline" size="sm" className="min-w-0" />}
-					>
+					<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
 						<span
 							className="size-2 shrink-0 rounded-full bg-success"
 							aria-hidden
@@ -52,14 +51,11 @@ export function ProductTopBar() {
 						</span>
 						<ChevronDownIcon className="text-muted-foreground" />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" className="w-64">
+					<DropdownMenuContent align="start">
 						{products.map((product) => (
 							<DropdownMenuItem
 								key={product.id}
 								onClick={() => selectProduct(product)}
-								className={
-									currentProduct.id === product.id ? "bg-muted font-medium" : ""
-								}
 							>
 								<div className="flex w-full flex-col">
 									<div className="flex items-center gap-2">
@@ -84,15 +80,11 @@ export function ProductTopBar() {
 			)}
 
 			{error ? (
-				<Alert variant="destructive" className="py-2">
+				<Alert tone="critical">
 					<AlertCircleIcon />
 					<AlertDescription>
 						Failed to load products.
-						<Button
-							variant="link"
-							className="ml-1 h-auto p-0 text-sm underline"
-							onClick={handleRefresh}
-						>
+						<Button variant="ghost" tone="brand" onClick={handleRefresh}>
 							Try again
 						</Button>
 					</AlertDescription>
@@ -100,7 +92,7 @@ export function ProductTopBar() {
 			) : products.length === 0 && !isLoading ? (
 				<ProductCreateDialog
 					trigger={
-						<Button size="sm">
+						<Button variant="solid" tone="brand" size="sm">
 							<SparklesIcon data-icon="inline-start" />
 							Create Your First Product
 						</Button>
@@ -114,15 +106,14 @@ export function ProductTopBar() {
 							Loading products...
 						</span>
 					)}
-					<Button
+					<IconButton
 						variant="outline"
-						size="icon-sm"
+						size="sm"
+						icon={ArrowsClockwiseIcon}
+						label="Refresh products"
 						onClick={handleRefresh}
-						disabled={isLoading}
-						aria-label="Refresh products"
-					>
-						{isLoading ? <Spinner /> : <RefreshCwIcon />}
-					</Button>
+						loading={isLoading}
+					/>
 				</div>
 			)}
 		</div>

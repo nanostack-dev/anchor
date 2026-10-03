@@ -9,6 +9,7 @@ import {
 	updateProductRoleMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { PermissionsStep as CommonPermissionsStep } from "@/components/product/common/steps/PermissionsStep";
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
 	Dialog,
 	DialogContent,
@@ -16,13 +17,22 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { type Step, VerticalStepper } from "@/components/ui/vertical-stepper";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/dialog";
+import {
+	Progress,
+	ProgressLabel,
+} from "@nanostackorg/design-system/components/progress";
+import {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+} from "@nanostackorg/design-system/components/tabs";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, Edit, Shield, Sparkles, User } from "lucide-react";
+
+import { toast } from "@nanostackorg/design-system/components/toast";
 import { type ReactElement, useState } from "react";
-import { toast } from "sonner";
 import type { BasicInfoFormData, RoleFormData } from "./form-type";
 import { BasicInfoStep, ReviewStep } from "./steps";
 
@@ -42,11 +52,11 @@ interface ProductRoleEditorProps {
 	onCancel: () => void;
 }
 
-const steps: Step[] = [
-	{ id: "basic", title: "Basic Info", icon: User },
-	{ id: "permissions", title: "Permissions", icon: Shield },
-	{ id: "review", title: "Review", icon: ClipboardCheck },
-];
+const steps = [
+	{ id: "basic", title: "Basic Info" },
+	{ id: "permissions", title: "Permissions" },
+	{ id: "review", title: "Review" },
+] as const;
 
 export function ProductRoleEditor({
 	productId,
@@ -89,19 +99,24 @@ export function ProductRoleEditor({
 				`Failed to ${isEditMode ? "update" : "create"} role. Please try again.`,
 		);
 		if (errorMessage) {
-			toast.error(errorMessage);
+			toast.add({ type: "error", title: errorMessage });
 		} else {
-			toast.error(
-				`Failed to ${isEditMode ? "update" : "create"} role. Please try again.`,
-			);
+			toast.add({
+				type: "error",
+				title: `Failed to ${isEditMode ? "update" : "create"} role. Please try again.`,
+			});
 		}
 	};
 
 	const createMutation = useMutation({
 		...createProductRoleMutation(),
 		onSuccess: () => {
-			toast.success("Role created successfully!", {
-				description: `${formData.name} is ready to use`,
+			toast.add({
+				type: "success",
+				title: "Role created successfully!",
+				...{
+					description: `${formData.name} is ready to use`,
+				},
 			});
 			handleSuccess();
 		},
@@ -111,8 +126,12 @@ export function ProductRoleEditor({
 	const updateMutation = useMutation({
 		...updateProductRoleMutation(),
 		onSuccess: () => {
-			toast.success("Role updated successfully!", {
-				description: `${formData.name} has been updated`,
+			toast.add({
+				type: "success",
+				title: "Role updated successfully!",
+				...{
+					description: `${formData.name} has been updated`,
+				},
 			});
 			handleSuccess();
 		},
@@ -162,23 +181,32 @@ export function ProductRoleEditor({
 	const isLoading = createMutation.isPending || updateMutation.isPending;
 
 	return (
-		<div className="space-y-3">
+		<Box className="space-y-3">
 			{saveError && (
-				<p role="alert" className="text-sm text-destructive">
+				<Box as="p" role="alert" className="text-sm text-destructive">
 					{saveError}
-				</p>
+				</Box>
 			)}
-			<div className="flex h-[700px] overflow-hidden rounded-lg border border-border">
-				<VerticalStepper
-					steps={steps}
-					currentStep={currentStep}
-					onStepChange={setCurrentStep}
-					title={isEditMode ? "Edit Role" : "Create Role"}
-					titleIcon={isEditMode ? Edit : Sparkles}
-					showProgress={true}
-					allowStepNavigation={false}
-					sidebarClassName="hidden md:block"
-				>
+			<Box className="min-w-0">
+				<Tabs value={steps[currentStep].id}>
+					<Stack space="md">
+						<TabsList width="fill" aria-label="Role setup steps">
+							{steps.map((step, index) => (
+								<TabsTrigger
+									key={step.id}
+									value={step.id}
+									disabled={index !== currentStep}
+								>
+									{index + 1}. {step.title}
+								</TabsTrigger>
+							))}
+						</TabsList>
+						<Progress value={currentStep + 1} max={steps.length}>
+							<ProgressLabel>
+								Step {currentStep + 1} of {steps.length}
+							</ProgressLabel>
+						</Progress>
+					</Stack>
 					<BasicInfoStep
 						initialData={{
 							name: formData.name,
@@ -231,9 +259,9 @@ export function ProductRoleEditor({
 						onPrevious={prevStep}
 						onCancel={onCancel}
 					/>
-				</VerticalStepper>
-			</div>
-		</div>
+				</Tabs>
+			</Box>
+		</Box>
 	);
 }
 
@@ -248,8 +276,8 @@ export function ProductRoleDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger render={trigger} />
-			<DialogContent className="p-0 sm:max-w-[900px] max-h-[95vh] overflow-hidden">
-				<DialogHeader className="sr-only">
+			<DialogContent size="xl">
+				<DialogHeader visuallyHidden>
 					<DialogTitle>
 						{mode === "edit" ? "Edit Role" : "Create Role"}
 					</DialogTitle>

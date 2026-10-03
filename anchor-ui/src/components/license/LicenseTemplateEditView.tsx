@@ -5,11 +5,22 @@ import {
 } from "@/client";
 import { Page } from "@/components/common/Page";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Button, buttonVariants } from "@/components/ui/button";
 import { ROUTE_PATHS } from "@/routes/routePaths";
-import { Link } from "@tanstack/react-router";
+import {
+	Button,
+	ButtonLink,
+} from "@nanostackorg/design-system/components/button";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	ArrowLeftIcon as ArrowLeft,
+	PencilLineIcon as PenLine,
+} from "@phosphor-icons/react";
+
 import dayjs from "dayjs";
-import { ArrowLeft, PenLine } from "lucide-react";
 import { LicenseTemplateForm } from "./LicenseTemplateForm";
 import { LicenseValueFields } from "./LicenseValueFields";
 
@@ -25,13 +36,13 @@ interface LicenseTemplateEditViewProps {
 
 export function LicenseTemplateBackLink() {
 	return (
-		<Link
-			to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATES}
-			className={buttonVariants({ variant: "outline" })}
+		<ButtonLink
+			href={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATES}
+			variant="outline"
+			icon={ArrowLeft}
 		>
-			<ArrowLeft data-icon="inline-start" />
 			All templates
-		</Link>
+		</ButtonLink>
 	);
 }
 
@@ -62,36 +73,37 @@ export function LicenseTemplateEditView({
 					: template?.description || "No description."
 			}
 		>
-			<div className="flex max-w-3xl flex-col gap-6">
-				<div className="flex flex-wrap items-center gap-3">
+			<Box className="flex max-w-3xl flex-col gap-6">
+				<Inline space="md">
 					<LicenseTemplateBackLink />
 					{!showForm && !archived && (
-						<Button onClick={onEdit}>
-							<PenLine data-icon="inline-start" />
+						<Button
+							variant="solid"
+							tone="brand"
+							icon={PenLine}
+							onClick={onEdit}
+						>
 							Edit template
 						</Button>
 					)}
-				</div>
+				</Inline>
 				{template && (
-					<div className="flex flex-wrap items-center gap-3">
+					<Inline space="md">
 						<StatusBadge tone={archived ? "neutral" : "success"}>
 							{template.status}
 						</StatusBadge>
-						<p className="text-xs text-muted-foreground">
+						<Text size="xs" tone="muted">
 							Created {dayjs(template.created_at).format("D MMMM YYYY H:mm")} ·
 							Updated {dayjs(template.updated_at).format("D MMMM YYYY H:mm")}
-						</p>
-					</div>
+						</Text>
+					</Inline>
 				)}
 				{archived && (
-					<p className="text-sm text-muted-foreground">
+					<Text tone="muted">
 						This template is archived and can no longer be edited.
-					</p>
+					</Text>
 				)}
-				<section
-					aria-label="Template details"
-					className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6"
-				>
+				<Stack as="section" space="lg" aria-label="Template details">
 					{showForm ? (
 						<LicenseTemplateForm
 							productId={productId}
@@ -101,24 +113,18 @@ export function LicenseTemplateEditView({
 							onSaved={onSaved}
 						/>
 					) : (
-						<div
-							aria-labelledby="template-values-heading"
-							className="flex flex-col gap-3"
-						>
-							<h2
-								id="template-values-heading"
-								className="text-base font-semibold"
-							>
+						<Stack aria-labelledby="template-values-heading" space="md">
+							<Heading id="template-values-heading" level={2}>
 								License values
-							</h2>
+							</Heading>
 							<LicenseValueFields
 								fields={schema.fields}
 								values={template.values}
 							/>
-						</div>
+						</Stack>
 					)}
-				</section>
-			</div>
+				</Stack>
+			</Box>
 		</Page>
 	);
 }

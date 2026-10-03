@@ -4,26 +4,35 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { OrganizationLicenseIdentity } from "@/components/license/OrganizationLicenseIdentity";
 import { OrganizationLicenseTabs } from "@/components/license/OrganizationLicenseTabs";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
-import { Button } from "@/components/ui/button";
+import { useProduct } from "@/context/product/ProductContext";
+import { getErrorDetail } from "@/lib/api-error";
+import { isHttpQueryError } from "@/lib/http-query-error";
+import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useProduct } from "@/context/product/ProductContext";
-import { getErrorDetail } from "@/lib/api-error";
-import { isHttpQueryError } from "@/lib/http-query-error";
-import { organizationLicenseRoute } from "@/routes/organizations/organization-license";
-import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
+} from "@nanostackorg/design-system/components/empty";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	ArrowLeftIcon as ArrowLeft,
+	SealCheckIcon as BadgeCheck,
+	BuildingsIcon as Building2,
+	WarningIcon as TriangleAlert,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, Outlet } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { ArrowLeft, BadgeCheck, Building2, TriangleAlert } from "lucide-react";
+import { Outlet } from "@tanstack/react-router";
 
 /**
  * One organization's license, on its own route rather than in a dialog: it is
@@ -66,14 +75,13 @@ export default function OrganizationLicenseDetailPage() {
 	const licenseQuery = useOrganizationLicenseQuery(productId, organizationId);
 
 	const backLink = (
-		<Button
+		<ButtonLink
+			href={ROUTE_PATHS.ORGANIZATION_LICENSE}
+			icon={ArrowLeft}
 			variant="outline"
-			nativeButton={false}
-			render={<Link to={organizationLicenseRoute.to} />}
 		>
-			<ArrowLeft />
 			All organizations
-		</Button>
+		</ButtonLink>
 	);
 
 	if (!currentProduct) {
@@ -81,9 +89,7 @@ export default function OrganizationLicenseDetailPage() {
 			<Page breadCrumbs={false}>
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<Building2 />
-						</EmptyMedia>
+						<EmptyMedia icon={Building2} />
 						<EmptyTitle>No product selected</EmptyTitle>
 						<EmptyDescription>
 							Pick a product to read one of its organizations&rsquo; licenses.
@@ -101,11 +107,11 @@ export default function OrganizationLicenseDetailPage() {
 				breadCrumbLabels={{ [organizationId]: "Loading" }}
 				actions={backLink}
 			>
-				<div className="flex flex-col gap-3">
-					<Skeleton className="h-9 w-64" />
-					<Skeleton className="h-9 w-full" />
-					<Skeleton className="h-9 w-full" />
-				</div>
+				<Stack space="md">
+					<Skeleton height="lg" width="1/2" />
+					<Skeleton height="lg" />
+					<Skeleton height="lg" />
+				</Stack>
 			</Page>
 		);
 	}
@@ -117,9 +123,7 @@ export default function OrganizationLicenseDetailPage() {
 			<Page breadCrumbs={false}>
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon" className="text-destructive">
-							<TriangleAlert />
-						</EmptyMedia>
+						<EmptyMedia icon={TriangleAlert} />
 						<EmptyTitle>Couldn&rsquo;t load this organization</EmptyTitle>
 						<EmptyDescription>
 							{getErrorDetail(summaryQuery.error) ??
@@ -144,9 +148,7 @@ export default function OrganizationLicenseDetailPage() {
 			<Page breadCrumbs={false}>
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<Building2 />
-						</EmptyMedia>
+						<EmptyMedia icon={Building2} />
 						<EmptyTitle>No such organization</EmptyTitle>
 						<EmptyDescription>
 							This product has no organization with that identifier. It may have
@@ -177,9 +179,7 @@ export default function OrganizationLicenseDetailPage() {
 			return (
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon" className="text-destructive">
-							<TriangleAlert />
-						</EmptyMedia>
+						<EmptyMedia icon={TriangleAlert} />
 						<EmptyTitle>
 							Couldn&rsquo;t load this organization&rsquo;s license
 						</EmptyTitle>
@@ -201,9 +201,7 @@ export default function OrganizationLicenseDetailPage() {
 			return (
 				<Empty>
 					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<BadgeCheck />
-						</EmptyMedia>
+						<EmptyMedia icon={BadgeCheck} />
 						<EmptyTitle>No license</EmptyTitle>
 						<EmptyDescription>
 							This organization has not been instantiated onto a license
@@ -217,31 +215,19 @@ export default function OrganizationLicenseDetailPage() {
 
 		return (
 			<>
-				<dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<div className="rounded-lg bg-muted/50 p-4">
-						<dt className="text-xs font-semibold text-muted-foreground">
-							Template
-						</dt>
-						<dd className="mt-1 text-sm font-medium">
-							{templatesQuery.data?.items?.find(
-								(item) => item.id === license.template_id,
-							)?.name ?? license.template_id}
-						</dd>
-					</div>
-					<div className="rounded-lg bg-muted/50 p-4">
-						<dt className="text-xs font-semibold text-muted-foreground">
-							Instantiated
-						</dt>
-						<dd className="mt-1 text-sm">
-							{dayjs(license.instantiated_at).format("D MMMM YYYY H:mm")}
-						</dd>
-					</div>
-				</dl>
+				<OrganizationLicenseIdentity
+					templateName={
+						templatesQuery.data?.items?.find(
+							(item) => item.id === license.template_id,
+						)?.name ?? license.template_id
+					}
+					instantiatedAt={license.instantiated_at}
+				/>
 
-				<div className="flex flex-col gap-4">
+				<Stack space="lg">
 					<OrganizationLicenseTabs organizationId={organizationId} />
 					<Outlet />
-				</div>
+				</Stack>
 			</>
 		);
 	};
@@ -253,19 +239,19 @@ export default function OrganizationLicenseDetailPage() {
 			description="What this organization is allowed, how much of each limit it has used, and every change ever made to its license."
 			actions={backLink}
 		>
-			<div className="flex flex-col gap-6">
+			<Stack space="xl">
 				{(!summary.license || template?.status === "ARCHIVED") && (
-					<div className="flex flex-wrap items-center gap-2">
+					<Inline space="sm">
 						{!summary.license && (
 							<StatusBadge tone="neutral">No license</StatusBadge>
 						)}
 						{template?.status === "ARCHIVED" && (
 							<StatusBadge tone="warning">Tier withdrawn</StatusBadge>
 						)}
-					</div>
+					</Inline>
 				)}
 				{licenseBody()}
-			</div>
+			</Stack>
 		</Page>
 	);
 }

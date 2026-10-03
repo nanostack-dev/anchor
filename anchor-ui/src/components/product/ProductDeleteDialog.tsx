@@ -1,9 +1,10 @@
 import type { ProductResponse } from "@/client";
 import { deleteProductMutation } from "@/client/@tanstack/react-query.gen";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 import { DeleteDialog } from "../common/dialogs/DeleteDialog";
-import { Button } from "../ui/button";
 
 interface ProductDeleteDialogProps {
 	product: ProductResponse;
@@ -28,8 +29,9 @@ export function ProductDeleteDialog({
 
 	const defaultTrigger = (
 		<Button
-			size="icon"
-			variant="outlineDestructive"
+			tone="critical"
+			size="md"
+			variant="outline"
 			disabled={deleteMutation.isPending || product.config.protected}
 			title={
 				product.config.protected
@@ -37,11 +39,11 @@ export function ProductDeleteDialog({
 					: undefined
 			}
 		>
-			<span className="sr-only">
+			<Box as="span" className="sr-only">
 				{product.config.protected
 					? "Product protected from deletion"
 					: "Delete product"}
-			</span>
+			</Box>
 			{deleteMutation.isPending ? (
 				<Loader2 className="h-4 w-4 animate-spin" />
 			) : (
@@ -65,9 +67,9 @@ export function ProductDeleteDialog({
 				{
 					label: "Description",
 					value: (
-						<span className="text-right max-w-[200px] truncate">
+						<Box as="span" className="text-right max-w-[200px] truncate">
 							{product.description}
-						</span>
+						</Box>
 					),
 					condition: !!product.description,
 				},

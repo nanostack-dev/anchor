@@ -10,6 +10,7 @@ import { searchProductUsersOptions } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -103,7 +104,9 @@ export function ProductUserDatatable() {
 			columnHelper.accessor("email", {
 				header: () => <span>Email</span>,
 				cell: (info) => (
-					<span className="text-sm font-medium">{info.getValue()}</span>
+					<Box as="span" className="text-sm font-medium">
+						{info.getValue()}
+					</Box>
 				),
 				enableSorting: true,
 			}),
@@ -112,9 +115,9 @@ export function ProductUserDatatable() {
 				cell: (info) => {
 					const name = info.getValue();
 					return (
-						<span className="text-sm text-muted-foreground">
+						<Box as="span" className="text-sm text-muted-foreground">
 							{name || "No name"}
-						</span>
+						</Box>
 					);
 				},
 				enableSorting: true,
@@ -138,9 +141,12 @@ export function ProductUserDatatable() {
 			columnHelper.accessor("id", {
 				header: () => <span>ID</span>,
 				cell: (info) => (
-					<span className="text-sm font-mono text-muted-foreground max-w-[150px] truncate block">
+					<Box
+						as="span"
+						className="text-sm font-mono text-muted-foreground max-w-[150px] truncate block"
+					>
 						{info.getValue()}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),
@@ -187,13 +193,13 @@ export function ProductUserDatatable() {
 
 	if (!currentProduct) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<div className="text-center">
-					<p className="text-muted-foreground">
+			<Box className="flex items-center justify-center p-8">
+				<Box className="text-center">
+					<Box as="p" className="text-muted-foreground">
 						Please select a product to view users
-					</p>
-				</div>
-			</div>
+					</Box>
+				</Box>
+			</Box>
 		);
 	}
 
