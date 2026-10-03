@@ -762,9 +762,9 @@ export function AnchorDataTable<
 					</TableBody>
 				</Table>
 			</div>
-			<div className="flex items-center justify-end gap-2 p-4">
+			<div className="flex flex-wrap items-center justify-end gap-2 p-4">
 				{enableRowSelection && (
-					<div className="flex-1 text-sm text-muted-foreground">
+					<div className="basis-full text-sm text-muted-foreground sm:basis-auto sm:flex-1">
 						{table.getSelectedRowModel().rows.length} of{" "}
 						{table.getFilteredRowModel().rows.length} row(s) selected.
 					</div>
@@ -812,7 +812,7 @@ export function AnchorDataTable<
 						))}
 					</SelectContent>
 				</Select>
-				<span className="ml-auto text-sm text-muted-foreground">
+				<span className="ml-auto whitespace-nowrap text-sm text-muted-foreground">
 					{showErrorState ? "" : `${total} total`}
 				</span>
 			</div>

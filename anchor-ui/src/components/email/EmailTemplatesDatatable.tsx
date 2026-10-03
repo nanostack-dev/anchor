@@ -1,3 +1,4 @@
+import { deleteEmailTemplate } from "@/client";
 import type {
 	ApiErrorResponse,
 	EmailTemplateResponse,
@@ -72,7 +73,7 @@ export function EmailTemplatesDatatable() {
 		};
 	}, [pagination, productId]);
 
-	const { data, isLoading, error, refetch } = useQuery({
+	const { data, isLoading, isFetching, error, refetch } = useQuery({
 		...listEmailTemplatesOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct,
@@ -234,7 +235,7 @@ export function EmailTemplatesDatatable() {
 						params: { templateId: template.id },
 					});
 				}}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="templates"
 				error={error}
 				onRetry={() => {
@@ -245,7 +246,27 @@ export function EmailTemplatesDatatable() {
 				onPaginationChange={setPagination}
 				sorting={sorting}
 				onSortingChange={setSorting}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.name}
+				selectionScope={productId}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"This permanently deletes the selected email templates.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deleteEmailTemplate({
+								path: { product_id: productId, email_template_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			/>
 		</div>
 	);

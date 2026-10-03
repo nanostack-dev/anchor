@@ -1,3 +1,4 @@
+import { deletePlatformUser } from "@/client";
 import {
 	type Options,
 	type PlatformUserResponse,
@@ -71,6 +72,7 @@ export function PlatformUserDatatable() {
 	const {
 		data: userData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -192,7 +194,7 @@ export function PlatformUserDatatable() {
 			<AnchorDataTable
 				columns={columns}
 				data={items}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="users"
 				error={error}
 				onRetry={() => {
@@ -235,7 +237,27 @@ export function PlatformUserDatatable() {
 							: [],
 					);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.email}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"The selected users will lose access to the platform and all resources. This cannot be undone.",
+						destructive: true,
+						removesRows: true,
+						isEligible: (row) => row.role !== PlatformUserRole.OWNER,
+						run: (row) =>
+							deletePlatformUser({
+								path: { platform_user_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			/>
 		</>
 	);

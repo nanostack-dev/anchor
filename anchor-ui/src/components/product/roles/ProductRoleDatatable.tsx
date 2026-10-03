@@ -1,3 +1,4 @@
+import { deleteProductRole } from "@/client";
 import {
 	type Options,
 	type ProductRoleResponse,
@@ -71,6 +72,7 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 	const {
 		data: productRoleData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -219,7 +221,7 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 						search: { edit: true },
 					});
 				}}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="roles"
 				error={error}
 				onRetry={() => {
@@ -248,7 +250,27 @@ export function ProductRoleDatatable({ productId }: ProductRoleDatatableProps) {
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.name}
+				selectionScope={productId}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"This permanently deletes the selected roles. Roles currently assigned to users cannot be deleted.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deleteProductRole({
+								path: { product_id: productId, role_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			/>
 		</>
 	);

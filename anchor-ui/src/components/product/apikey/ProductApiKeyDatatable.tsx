@@ -1,3 +1,4 @@
+import { deleteProductApiKey } from "@/client";
 import {
 	type Options,
 	type ProductApiKeyResponse,
@@ -80,6 +81,7 @@ export function ProductApiKeyDatatable({
 	const {
 		data: apiKeyData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -245,7 +247,7 @@ export function ProductApiKeyDatatable({
 						params: { apiKeyId: apiKey.id },
 					});
 				}}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="API keys"
 				error={error}
 				onRetry={() => {
@@ -284,7 +286,27 @@ export function ProductApiKeyDatatable({
 					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
 					setStatusFilter(Array.isArray(filters.status) ? filters.status : []);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.name}
+				selectionScope={productId}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"This permanently deletes the selected API keys and revokes their access.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deleteProductApiKey({
+								path: { product_id: productId, api_key_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			/>
 		</>
 	);

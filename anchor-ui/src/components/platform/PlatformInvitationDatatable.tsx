@@ -1,3 +1,4 @@
+import { deletePlatformInvitation } from "@/client";
 import type {
 	Options,
 	PlatformInvitationResponse,
@@ -73,6 +74,7 @@ export function PlatformInvitationDatatable() {
 	const {
 		data: invitationData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -191,7 +193,7 @@ export function PlatformInvitationDatatable() {
 			<AnchorDataTable
 				columns={columns}
 				data={items}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="invitations"
 				error={error}
 				onRetry={() => {
@@ -220,7 +222,25 @@ export function PlatformInvitationDatatable() {
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 					setEmailFilter(Array.isArray(filters.email) ? filters.email : []);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.email}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description: "This permanently deletes the selected invitations.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deletePlatformInvitation({
+								path: { invitation_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			>
 				<Button variant="outline" onClick={() => setInviteOpen(true)}>
 					Add Invitation

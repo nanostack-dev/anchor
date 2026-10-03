@@ -1,9 +1,9 @@
 {
-  "include": ["vitest.workspace.ts", ".storybook/**/*.ts"],
+  "include": ["vitest.workspace.ts", ".storybook/**/*.ts", "playwright.config.ts", "e2e/**/*.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": ["node", "vite/client"],
 
     "moduleResolution": "bundler",
