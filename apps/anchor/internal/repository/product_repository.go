@@ -35,6 +35,7 @@ func productsUpdatableColumns() postgres.ColumnList {
 }
 
 type ProductRepository interface {
+	LockByID(ctx context.Context, tenantID, id string) error
 	FindByID(
 		ctx context.Context, tenantID string, id string,
 	) (functional.Option[product.Product], error)
@@ -106,6 +107,14 @@ func (r *productRepositoryImpl) FindByID(
 			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
 		},
 	)
+}
+
+func (r *productRepositoryImpl) LockByID(ctx context.Context, tenantID, id string) error {
+	stmt := table.Products.SELECT(table.Products.ID).
+		WHERE(table.Products.ID.EQ(postgres.String(id)).
+			AND(table.Products.PlatformTenantID.EQ(postgres.String(tenantID)))).
+		FOR(postgres.UPDATE())
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productRepositoryImpl) FindByIDInternal(

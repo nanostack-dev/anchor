@@ -1,6 +1,7 @@
 import {
 	type ProductRequest,
 	type ProductResponse,
+	zProductConfigRequest,
 	zProductOrganizationApiKeysConfigRequest,
 	zProductRequest,
 } from "@/client";
@@ -12,12 +13,14 @@ import { FormValidationError } from "@/components/common/FormValidationError";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
+	FieldContent,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -30,6 +33,7 @@ import { z } from "zod";
 const productFormSchema = zProductRequest
 	.pick({ name: true, description: true })
 	.extend({
+		protected: zProductConfigRequest.shape.protected,
 		organizationApiKeyPrefix:
 			zProductOrganizationApiKeysConfigRequest.shape.prefix,
 	})
@@ -71,6 +75,7 @@ export function ProductEditForm({
 
 	const form = useForm({
 		defaultValues: {
+			protected: product.config.protected ?? false,
 			name: product.name || "",
 			description: product.description || "",
 			organizationApiKeyPrefix:
@@ -116,6 +121,7 @@ export function ProductEditForm({
 			name: values.name,
 			description: values.description || "",
 			config: {
+				protected: values.protected,
 				organization_api_keys: {
 					prefix: values.organizationApiKeyPrefix,
 				},
@@ -130,6 +136,7 @@ export function ProductEditForm({
 
 	React.useEffect(() => {
 		form.reset({
+			protected: product.config.protected ?? false,
 			name: product.name || "",
 			description: product.description || "",
 			organizationApiKeyPrefix:
@@ -204,6 +211,33 @@ export function ProductEditForm({
 
 					<TabsContent value="config">
 						<FieldGroup>
+							<form.Field name="protected">
+								{(field) => (
+									<Field
+										orientation="horizontal"
+										data-disabled={updateMutation.isPending}
+									>
+										<FieldContent>
+											<FieldLabel htmlFor="product-protected">
+												Protected product
+											</FieldLabel>
+											<FieldDescription id="product-protected-description">
+												Prevents this product and its associated data from being
+												deleted. Turn this off and save before deleting the
+												product.
+											</FieldDescription>
+										</FieldContent>
+										<Switch
+											id="product-protected"
+											checked={field.state.value ?? false}
+											aria-describedby="product-protected-description"
+											onCheckedChange={field.handleChange}
+											onBlur={field.handleBlur}
+											disabled={updateMutation.isPending}
+										/>
+									</Field>
+								)}
+							</form.Field>
 							<form.Field name="organizationApiKeyPrefix">
 								{(field) => (
 									<Field

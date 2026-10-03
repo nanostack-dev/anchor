@@ -20,6 +20,7 @@ func (m *ProductMapper) ToDomain(
 	description := functional.FromPtr(entity.Description).OrElse("")
 
 	config := product.Config{
+		Protected:           entity.Protected,
 		OrganizationAPIKeys: product.OrganizationAPIKeysConfig{Prefix: organizationAPIKeyConfig.Prefix},
 	}.WithDefaults()
 
@@ -42,6 +43,7 @@ func (m *ProductMapper) ToEntity(domain product.Product) model.Products {
 		PlatformTenantID: domain.PlatformTenantID,
 		Name:             domain.Name,
 		Description:      description,
+		Protected:        domain.Config.Protected,
 		CreatedAt:        domain.CreatedAt,
 		UpdatedAt:        domain.UpdatedAt,
 	}

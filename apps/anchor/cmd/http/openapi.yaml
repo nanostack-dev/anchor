@@ -672,6 +672,11 @@ components:
     ProductConfigRequest:
       type: object
       properties:
+        protected:
+          type: boolean
+          description: >-
+            Prevents product deletion when true. Defaults to false on creation;
+            omitted updates preserve the current value. Set false before deleting.
         organization_api_keys:
           $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigRequest"
           description: Organization API key configuration for this product.
@@ -801,6 +806,9 @@ components:
     ProductConfigResponse:
       type: object
       properties:
+        protected:
+          type: boolean
+          description: Whether deletion of this product is prevented.
         organization_api_keys:
           $ref: "#/components/schemas/ProductOrganizationAPIKeysConfigResponse"
           description: Organization API key configuration for this product.
@@ -808,6 +816,7 @@ components:
           $ref: "#/components/schemas/ProductEventsConfigResponse"
           description: Outbound product-event endpoint, absent when none is configured.
       required:
+      - protected
       - organization_api_keys
     ProductOrganizationAPIKeysConfigResponse:
       type: object
@@ -4537,8 +4546,10 @@ paths:
           $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Product
-      description: Deletes a product. This is a destructive operation. Requires 
-        Platform Bearer token.
+      description: >-
+        Deletes a product. This is a destructive operation. Requires Platform
+        Bearer token. Protected products return 409 with PRODUCT_PROTECTED;
+        disable config.protected before deleting.
       operationId: deleteProduct
       tags: [Product]
       security:
@@ -4552,6 +4563,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /v1/products/{product_id}/events/catalog:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"

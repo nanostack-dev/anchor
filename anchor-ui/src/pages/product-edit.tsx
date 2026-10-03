@@ -53,7 +53,7 @@ export default function ProductEditPage() {
 					<CardHeader>
 						<CardTitle>Product</CardTitle>
 						<CardDescription>
-							Update product information and API key generation settings.
+							Update product information and configuration.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

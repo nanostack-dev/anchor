@@ -30,9 +30,18 @@ export function ProductDeleteDialog({
 		<Button
 			size="icon"
 			variant="outlineDestructive"
-			disabled={deleteMutation.isPending}
+			disabled={deleteMutation.isPending || product.config.protected}
+			title={
+				product.config.protected
+					? "Turn off Protected product in configuration before deleting"
+					: undefined
+			}
 		>
-			<span className="sr-only">Delete product</span>
+			<span className="sr-only">
+				{product.config.protected
+					? "Product protected from deletion"
+					: "Delete product"}
+			</span>
 			{deleteMutation.isPending ? (
 				<Loader2 className="h-4 w-4 animate-spin" />
 			) : (
@@ -40,6 +49,10 @@ export function ProductDeleteDialog({
 			)}
 		</Button>
 	);
+
+	if (product.config.protected) {
+		return defaultTrigger;
+	}
 
 	return (
 		<DeleteDialog

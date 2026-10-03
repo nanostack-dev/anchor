@@ -16,6 +16,7 @@ const PRODUCT: ProductResponse = {
 	name: "Echopoint",
 	description: "Webhook testing",
 	config: {
+		protected: false,
 		organization_api_keys: { prefix: "echopoint" },
 	},
 	created_at: "2026-08-01T09:00:00Z",
@@ -33,6 +34,7 @@ const CONFIGURED_EVENTS: ProductEventsConfigResponse = {
 const CONFIGURED_PRODUCT: ProductResponse = {
 	...PRODUCT,
 	config: {
+		protected: false,
 		organization_api_keys: { prefix: "echopoint" },
 		events: CONFIGURED_EVENTS,
 	},

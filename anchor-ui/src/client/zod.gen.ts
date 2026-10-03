@@ -157,6 +157,7 @@ export const zProductEventsConfigRequest = z.object({
 });
 
 export const zProductConfigRequest = z.object({
+    protected: z.optional(z.boolean()),
     organization_api_keys: z.optional(zProductOrganizationApiKeysConfigRequest),
     events: z.optional(zProductEventsConfigRequest)
 });
@@ -210,6 +211,7 @@ export const zProductOrganizationApiKeysConfigResponse = z.object({
 });
 
 export const zProductConfigResponse = z.object({
+    protected: z.boolean(),
     organization_api_keys: zProductOrganizationApiKeysConfigResponse,
     events: z.optional(zProductEventsConfigResponse)
 });

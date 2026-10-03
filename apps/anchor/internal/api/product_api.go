@@ -39,6 +39,7 @@ func mapProductToResponse(prod product.Product) ProductResponse {
 	}
 
 	config := ProductConfigResponse{
+		Protected: prod.Config.Protected,
 		OrganizationApiKeys: ProductOrganizationAPIKeysConfigResponse{
 			Prefix: prod.Config.WithDefaults().OrganizationAPIKeys.Prefix,
 		},
@@ -73,6 +74,7 @@ func mapProductRequestConfig(config *ProductConfigRequest) product.Config {
 	if config == nil {
 		return productConfig
 	}
+	productConfig.Protected = functional.FromPtr(config.Protected).OrElse(false)
 	if config.OrganizationApiKeys != nil {
 		productConfig.OrganizationAPIKeys.Prefix = config.OrganizationApiKeys.Prefix
 	}
@@ -209,7 +211,11 @@ func (s *AnchorAPI) UpdateProduct(
 	}
 	if request.Body.Config != nil {
 		config := mapProductRequestConfig(request.Body.Config)
-		input.Config = &config
+		input.Config = &product.UpdateConfigInput{
+			Protected:           request.Body.Config.Protected,
+			OrganizationAPIKeys: config.OrganizationAPIKeys,
+			Events:              config.Events,
+		}
 	}
 
 	updatedProduct, err := s.ProductService.Update(ctx, input)
