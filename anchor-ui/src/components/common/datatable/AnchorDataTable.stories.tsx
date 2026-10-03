@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 import { expect, fn, screen, userEvent, within } from "storybook/test";
 
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -376,5 +377,308 @@ export const WithSearch: Story = {
 		await expect(
 			canvas.getByPlaceholderText("Search keys..."),
 		).toBeInTheDocument();
+	},
+};
+
+const bulkRun = fn().mockResolvedValue(undefined);
+const bulkArgs = {
+	getRowId: (row: ApiKey) => row.id,
+	getRowLabel: (row: ApiKey) => row.name,
+	bulkActions: [
+		{
+			id: "delete",
+			label: "Delete selected",
+			description:
+				"This permanently deletes the selected API keys and revokes their access.",
+			destructive: true,
+			removesRows: true,
+			run: bulkRun,
+		},
+	],
+};
+
+async function openBulkDelete(canvasElement: HTMLElement) {
+	await userEvent.click(
+		within(canvasElement).getByRole("button", { name: "Bulk actions" }),
+	);
+	await userEvent.click(
+		await screen.findByRole("menuitem", { name: "Delete selected" }),
+	);
+	return within(await screen.findByRole("alertdialog"));
+}
+
+export const BulkDeleteSelectedRows: Story = {
+	args: { ...bulkArgs, total: 150 },
+	beforeEach: () => {
+		bulkRun.mockReset().mockResolvedValue(undefined);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByRole("button", { name: "Bulk actions" }),
+		).toBeDisabled();
+		await userEvent.click(canvas.getAllByLabelText("Select row")[0]);
+		await userEvent.click(canvas.getAllByLabelText("Select row")[1]);
+		let dialog = await openBulkDelete(canvasElement);
+		await expect(dialog.getByText("checkout-prod")).toBeVisible();
+		await expect(dialog.getByText("checkout-staging")).toBeVisible();
+		await expect(dialog.queryByText("legacy-import")).not.toBeInTheDocument();
+		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+		await expect(bulkRun).not.toHaveBeenCalled();
+		dialog = await openBulkDelete(canvasElement);
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Delete selected" }),
+		);
+		await expect(
+			await canvas.findByText("2 succeeded. 0 failed."),
+		).toBeVisible();
+		await expect(bulkRun).toHaveBeenCalledTimes(2);
+		await expect(bulkRun).toHaveBeenNthCalledWith(1, rows[0]);
+		await expect(bulkRun).toHaveBeenNthCalledWith(2, rows[1]);
+		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
+	},
+};
+
+export const BulkDeletePageOnly: Story = {
+	args: { ...bulkArgs, total: 150 },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Selection options"));
+		await expect(
+			screen.queryByRole("menuitem", { name: "All matching query" }),
+		).not.toBeInTheDocument();
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "All in current page" }),
+		);
+		await expect(canvas.getByText("3 selected on this page")).toBeVisible();
+	},
+};
+
+const partialRun = fn();
+export const BulkPartialFailureAndRetry: Story = {
+	args: {
+		...bulkArgs,
+		bulkActions: [{ ...bulkArgs.bulkActions[0], run: partialRun }],
+	},
+	beforeEach: () => {
+		partialRun
+			.mockReset()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error("Key is in use"))
+			.mockResolvedValue(undefined);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		let dialog = await openBulkDelete(canvasElement);
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Delete selected" }),
+		);
+		await expect(
+			await canvas.findByText("2 succeeded. 1 failed."),
+		).toBeVisible();
+		await expect(
+			canvas.getByText("checkout-staging: Key is in use"),
+		).toBeVisible();
+		await expect(canvas.getByText("1 selected on this page")).toBeVisible();
+		await expect(selectionState(canvasElement)).toEqual([
+			"false",
+			"true",
+			"false",
+		]);
+		dialog = await openBulkDelete(canvasElement);
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Delete selected" }),
+		);
+		await expect(
+			await canvas.findByText("1 succeeded. 0 failed."),
+		).toBeVisible();
+		await expect(partialRun).toHaveBeenCalledTimes(4);
+		await expect(partialRun).toHaveBeenNthCalledWith(4, rows[1]);
+	},
+};
+
+export const BulkSelectionClearsOnPageChange: Story = {
+	args: bulkArgs,
+	render: (args) => {
+		const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 3 });
+		return (
+			<AnchorDataTable
+				{...args}
+				data={
+					pagination.pageIndex === 0
+						? rows
+						: [{ ...rows[0], id: "key_04", name: "another-page" }]
+				}
+				total={4}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await userEvent.click(canvas.getByRole("button", { name: "Next" }));
+		await expect(await canvas.findByText("another-page")).toBeVisible();
+		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
+		await expect(
+			canvas.getByRole("button", { name: "Bulk actions" }),
+		).toBeDisabled();
+	},
+};
+
+export const BulkSelectionUsesStableIds: Story = {
+	args: bulkArgs,
+	render: (args) => {
+		const [data, setData] = useState(rows);
+		return (
+			<AnchorDataTable {...args} data={data}>
+				<button type="button" onClick={() => setData([...rows].reverse())}>
+					Refresh rows
+				</button>
+			</AnchorDataTable>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			within(canvas.getByRole("row", { name: /checkout-prod/ })).getByLabelText(
+				"Select row",
+			),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Refresh rows" }));
+		await expect(
+			within(canvas.getByRole("row", { name: /checkout-prod/ })).getByLabelText(
+				"Select row",
+			),
+		).toHaveAttribute("aria-checked", "true");
+		await expect(
+			within(canvas.getByRole("row", { name: /legacy-import/ })).getByLabelText(
+				"Select row",
+			),
+		).toHaveAttribute("aria-checked", "false");
+	},
+};
+
+export const BulkRespectsRowRestrictions: Story = {
+	args: {
+		...bulkArgs,
+		bulkActions: [
+			{
+				...bulkArgs.bulkActions[0],
+				isEligible: (row) => row.id !== rows[2].id,
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await userEvent.click(canvas.getByRole("button", { name: "Bulk actions" }));
+		await expect(
+			await screen.findByRole("menuitem", { name: "Delete selected" }),
+		).toHaveAttribute("aria-disabled", "true");
+	},
+};
+
+const blockingRun = fn();
+let finishFirstRequest: (() => void) | undefined;
+export const BulkRunsSequentiallyAndLocksControls: Story = {
+	args: {
+		...bulkArgs,
+		total: 150,
+		bulkActions: [{ ...bulkArgs.bulkActions[0], run: blockingRun }],
+	},
+	beforeEach: () => {
+		finishFirstRequest = undefined;
+		blockingRun
+			.mockReset()
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						finishFirstRequest = resolve;
+					}),
+			)
+			.mockResolvedValue(undefined);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getAllByLabelText("Select row")[0]);
+		await userEvent.click(canvas.getAllByLabelText("Select row")[1]);
+		const nextPage = canvas.getByRole("button", { name: "Next" });
+		const dialog = await openBulkDelete(canvasElement);
+		await userEvent.dblClick(
+			dialog.getByRole("button", { name: "Delete selected" }),
+		);
+		await expect(blockingRun).toHaveBeenCalledTimes(1);
+		await expect(dialog.getByText("Processed 0 of 2")).toBeVisible();
+		await expect(dialog.getByRole("button", { name: "Cancel" })).toBeDisabled();
+		await expect(nextPage).toBeDisabled();
+		finishFirstRequest?.();
+		await expect(
+			await canvas.findByText("2 succeeded. 0 failed."),
+		).toBeVisible();
+		await expect(blockingRun).toHaveBeenCalledTimes(2);
+	},
+};
+
+export const BulkSelectionClearsOnSearchAndProductChange: Story = {
+	args: bulkArgs,
+	render: (args) => {
+		const [search, setSearch] = useState("");
+		const [scope, setScope] = useState("first-product");
+		return (
+			<AnchorDataTable
+				{...args}
+				fullTextSearch={search}
+				onFullTextSearchChange={setSearch}
+				fullTextSearchPlaceHolder="Search keys"
+				selectionScope={scope}
+			>
+				<button type="button" onClick={() => setScope("second-product")}>
+					Switch product
+				</button>
+			</AnchorDataTable>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await userEvent.type(
+			canvas.getByPlaceholderText("Search keys"),
+			"checkout",
+		);
+		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Switch product" }),
+		);
+		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
+	},
+};
+
+export const BulkDeleteReturnsFromEmptyLastPage: Story = {
+	args: bulkArgs,
+	render: (args) => {
+		const [pagination, setPagination] = useState({ pageIndex: 1, pageSize: 3 });
+		return (
+			<AnchorDataTable
+				{...args}
+				data={pagination.pageIndex === 1 ? [rows[0]] : rows.slice(1)}
+				total={4}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByLabelText("Select all"));
+		const dialog = await openBulkDelete(canvasElement);
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Delete selected" }),
+		);
+		await expect(await canvas.findByText("checkout-staging")).toBeVisible();
+		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
 	},
 };

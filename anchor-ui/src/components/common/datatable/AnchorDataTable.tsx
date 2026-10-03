@@ -63,6 +63,7 @@ import {
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { BulkActions, type DataTableBulkAction } from "./BulkActions";
 import { FacetedFilter } from "./FacetedFilter";
 
 /**
@@ -119,6 +120,11 @@ interface AnchorDataTableProps<
 	onFiltersChange?: (filters: TFilters) => void;
 	children?: ReactNode;
 	pageSizeOptions?: number[];
+	bulkActions?: DataTableBulkAction<TData>[];
+	getRowId?: (row: TData) => string;
+	getRowLabel?: (row: TData) => string;
+	selectionScope?: string;
+	onBulkActionComplete?: () => Promise<unknown>;
 	onSelectionChange?: (selected: TData[] | "all-matching" | []) => void;
 	enableRowSelection?: boolean;
 	onRowClick?: (row: TData) => void;
@@ -165,6 +171,11 @@ export function AnchorDataTable<
 	onFiltersChange,
 	children,
 	pageSizeOptions = [10, 20, 50, 100],
+	bulkActions,
+	getRowId,
+	getRowLabel,
+	selectionScope,
+	onBulkActionComplete,
 	onSelectionChange,
 	enableRowSelection = true,
 	onRowClick,
@@ -176,6 +187,23 @@ export function AnchorDataTable<
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 	const [selectAllMode, setSelectAllMode] = useState<SelectAllMode>("none");
+	const [bulkRunning, setBulkRunning] = useState(false);
+	const bulkActionsEnabled = !!bulkActions?.length;
+	const bulkSelectionScope = JSON.stringify([
+		selectionScope,
+		pagination,
+		sorting,
+		fullTextSearch,
+		filters?.map((filter) => [filter.key, filter.value]),
+	]);
+	const previousBulkSelectionScope = useRef(bulkSelectionScope);
+	useEffect(() => {
+		if (previousBulkSelectionScope.current === bulkSelectionScope) return;
+		previousBulkSelectionScope.current = bulkSelectionScope;
+		if (!bulkActionsEnabled) return;
+		setRowSelection({});
+		setSelectAllMode("none");
+	}, [bulkActionsEnabled, bulkSelectionScope]);
 
 	const buildFilterValues = () =>
 		Object.fromEntries(
@@ -187,7 +215,7 @@ export function AnchorDataTable<
 	// writer, so this effect must not touch the selection at all.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: page selection must resync when visible rows change across pagination and filtering.
 	useEffect(() => {
-		if (!enableRowSelection) return;
+		if (!enableRowSelection || bulkActionsEnabled) return;
 		if (selectAllMode === "none") {
 			setRowSelection({});
 			onSelectionChange?.([]);
@@ -209,6 +237,7 @@ export function AnchorDataTable<
 		}
 	}, [
 		selectAllMode,
+		bulkActionsEnabled,
 		enableRowSelection,
 		onSelectionChange,
 		data,
@@ -328,6 +357,8 @@ export function AnchorDataTable<
 	// the definition referentially stable while the header still renders the
 	// current value: React re-renders the header whenever this component
 	// re-renders, which is exactly when the mode changes.
+	const bulkActionsEnabledRef = useRef(bulkActionsEnabled);
+	bulkActionsEnabledRef.current = bulkActionsEnabled;
 	const selectAllModeRef = useRef(selectAllMode);
 	selectAllModeRef.current = selectAllMode;
 
@@ -359,9 +390,18 @@ export function AnchorDataTable<
 							table.getIsSomePageRowsSelected()
 						}
 						aria-label="Select all"
-						onCheckedChange={(checked) =>
-							setSelectAllMode(checked ? "page" : "none")
+						disabled={
+							!table.options.enableRowSelection ||
+							table.getRowModel().rows.length === 0
 						}
+						onCheckedChange={(checked) => {
+							if (bulkActionsEnabledRef.current) {
+								table.toggleAllPageRowsSelected(checked);
+								setSelectAllMode("custom");
+							} else {
+								setSelectAllMode(checked ? "page" : "none");
+							}
+						}}
 					/>
 					<DropdownMenu>
 						<DropdownMenuTrigger
@@ -382,17 +422,33 @@ export function AnchorDataTable<
 								one, which took the whole popup down with it. */}
 							<DropdownMenuGroup>
 								<DropdownMenuLabel>Select</DropdownMenuLabel>
-								<DropdownMenuItem onClick={() => setSelectAllMode("none")}>
+								<DropdownMenuItem
+									onClick={() => {
+										table.resetRowSelection();
+										setSelectAllMode("none");
+									}}
+								>
 									None
 								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setSelectAllMode("page")}>
+								<DropdownMenuItem
+									onClick={() => {
+										if (bulkActionsEnabledRef.current) {
+											table.toggleAllPageRowsSelected(true);
+											setSelectAllMode("custom");
+										} else {
+											setSelectAllMode("page");
+										}
+									}}
+								>
 									All in current page
 								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() => setSelectAllMode("all-matching")}
-								>
-									All matching query
-								</DropdownMenuItem>
+								{!bulkActionsEnabledRef.current && (
+									<DropdownMenuItem
+										onClick={() => setSelectAllMode("all-matching")}
+									>
+										All matching query
+									</DropdownMenuItem>
+								)}
 							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -401,6 +457,7 @@ export function AnchorDataTable<
 			cell: ({ row }) => (
 				<Checkbox
 					checked={row.getIsSelected()}
+					disabled={!row.getCanSelect()}
 					onCheckedChange={(value) => {
 						row.toggleSelected(!!value);
 						setSelectAllMode("custom");
@@ -423,6 +480,8 @@ export function AnchorDataTable<
 
 	const table = useReactTable({
 		data,
+		getRowId,
+		enableRowSelection: enableRowSelection && !loading && !bulkRunning,
 		columns: tableColumns,
 		pageCount: Math.ceil(total / pagination.pageSize),
 		state: {
@@ -465,7 +524,10 @@ export function AnchorDataTable<
 	) : null;
 
 	return (
-		<div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+		<fieldset
+			disabled={bulkRunning}
+			className="min-w-0 w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+		>
 			<div className="flex flex-col gap-2 p-4">
 				<div className="flex items-center gap-2">
 					{onFullTextSearchChange && (
@@ -506,6 +568,39 @@ export function AnchorDataTable<
 					</DropdownMenu>
 				</div>
 				{renderFilters()}
+				{bulkActionsEnabled && bulkActions && getRowId && (
+					<BulkActions
+						actions={bulkActions}
+						selectedRows={table
+							.getSelectedRowModel()
+							.rows.map((row) => row.original)}
+						getRowId={getRowId}
+						getRowLabel={getRowLabel ?? getRowId}
+						selectionScope={bulkSelectionScope}
+						disabled={loading || bulkRunning || !!error}
+						onRunningChange={setBulkRunning}
+						onComplete={async (succeeded, failed, action) => {
+							setSelectAllMode("custom");
+							setRowSelection(
+								Object.fromEntries(failed.map((row) => [getRowId(row), true])),
+							);
+							await onBulkActionComplete?.();
+							if (
+								action.removesRows &&
+								failed.length === 0 &&
+								succeeded.length === data.length &&
+								total - succeeded.length <=
+									pagination.pageIndex * pagination.pageSize &&
+								pagination.pageIndex > 0
+							) {
+								onPaginationChange({
+									...pagination,
+									pageIndex: pagination.pageIndex - 1,
+								});
+							}
+						}}
+					/>
+				)}
 				{showStaleWarning && (
 					<output className="flex items-center gap-2 text-sm text-destructive">
 						<TriangleAlert className="size-4 shrink-0" />
@@ -611,6 +706,7 @@ export function AnchorDataTable<
 									}
 									onClick={(event) => {
 										if (
+											bulkRunning ||
 											!onRowClick ||
 											!(isRowClickable?.(row.original) ?? true)
 										)
@@ -669,7 +765,7 @@ export function AnchorDataTable<
 			<div className="flex items-center justify-end gap-2 p-4">
 				{enableRowSelection && (
 					<div className="flex-1 text-sm text-muted-foreground">
-						{Object.keys(rowSelection).length} of{" "}
+						{table.getSelectedRowModel().rows.length} of{" "}
 						{table.getFilteredRowModel().rows.length} row(s) selected.
 					</div>
 				)}
@@ -720,6 +816,6 @@ export function AnchorDataTable<
 					{showErrorState ? "" : `${total} total`}
 				</span>
 			</div>
-		</div>
+		</fieldset>
 	);
 }
