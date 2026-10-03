@@ -7,3 +7,7 @@ storybook-static
 .kiro
 
 .impeccable/
+
+.ui-craft/
+playwright-report/
+test-results/
