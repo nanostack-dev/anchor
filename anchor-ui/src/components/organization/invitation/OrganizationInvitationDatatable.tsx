@@ -117,13 +117,24 @@ export function OrganizationInvitationDatatable({
 			total={invitationsQuery.data?.total ?? 0}
 			roleNames={roleNames}
 			onDelete={handleDelete}
+			selectionScope={`${productId}:${organizationId}`}
+			onBulkDelete={(invitation) =>
+				deleteMutation.mutateAsync({
+					path: {
+						product_id: productId,
+						organization_id: organizationId,
+						invitation_id: invitation.id,
+					},
+				})
+			}
+			onBulkDeleted={() => invitationsQuery.refetch({ throwOnError: true })}
 			statusFilter={statusFilter}
 			onStatusFilterChange={setStatusFilter}
 			pagination={pagination}
 			onPaginationChange={setPagination}
 			sorting={sorting}
 			onSortingChange={setSorting}
-			loading={invitationsQuery.isLoading}
+			loading={invitationsQuery.isLoading || invitationsQuery.isFetching}
 			error={invitationsQuery.error}
 			onRetry={() => {
 				void invitationsQuery.refetch();

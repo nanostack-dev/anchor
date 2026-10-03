@@ -1,3 +1,4 @@
+import { deleteProductResourcePermission } from "@/client";
 import type {
 	Options,
 	ProductPermissionResponse,
@@ -71,6 +72,7 @@ export function ProductResourcePermissionDatatable({
 	const {
 		data: productPermissionData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -204,7 +206,7 @@ export function ProductResourcePermissionDatatable({
 						search: { edit: true },
 					});
 				}}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="resource permissions"
 				error={error}
 				onRetry={() => {
@@ -233,7 +235,27 @@ export function ProductResourcePermissionDatatable({
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.name}
+				getRowLabel={(row) => row.name}
+				selectionScope={productId}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"Any roles or API keys using the selected permissions will lose them immediately. This cannot be undone.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deleteProductResourcePermission({
+								path: { product_id: productId, permission_name: row.name },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+				}}
 			/>
 		</>
 	);

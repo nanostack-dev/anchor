@@ -1,3 +1,4 @@
+import { deleteProduct } from "@/client";
 import {
 	type Options,
 	type ProductResponse,
@@ -73,6 +74,7 @@ export function ProductDatatable() {
 	const {
 		data: productData,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useQuery({
@@ -217,7 +219,7 @@ export function ProductDatatable() {
 						params: { productId: product.id },
 					});
 				}}
-				loading={isLoading}
+				loading={isLoading || isFetching}
 				resourceName="products"
 				error={error}
 				onRetry={() => {
@@ -246,7 +248,27 @@ export function ProductDatatable() {
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
 				}}
-				enableRowSelection={false}
+				getRowId={(row) => row.id}
+				getRowLabel={(row) => row.name}
+				bulkActions={[
+					{
+						id: "delete",
+						label: "Delete selected",
+						description:
+							"This permanently deletes the selected products and all associated API keys, users, organizations, and workspaces.",
+						destructive: true,
+						removesRows: true,
+						run: (row) =>
+							deleteProduct({
+								path: { product_id: row.id },
+								throwOnError: true,
+							}),
+					},
+				]}
+				onBulkActionComplete={async () => {
+					await refetch({ throwOnError: true });
+					refreshProducts();
+				}}
 			/>
 		</>
 	);

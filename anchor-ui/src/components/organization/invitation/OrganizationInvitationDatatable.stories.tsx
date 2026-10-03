@@ -108,6 +108,41 @@ function rowFor(canvas: ReturnType<typeof within>, email: string) {
 	return within(canvas.getByRole("row", { name: new RegExp(email) }));
 }
 
+export const BulkDeleteUsesExistingCalls: Story = {
+	beforeEach: () => {
+		const backend = createInvitationBackend(backendState());
+		return backend.install();
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByText("ada@example.com");
+		await userEvent.click(
+			rowFor(canvas, "ada@example.com").getByLabelText("Select row"),
+		);
+		await userEvent.click(
+			rowFor(canvas, "grace@example.com").getByLabelText("Select row"),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Bulk actions" }));
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "Delete selected" }),
+		);
+		await userEvent.click(
+			within(await screen.findByRole("alertdialog")).getByRole("button", {
+				name: "Delete selected",
+			}),
+		);
+		await expect(
+			await canvas.findByText("2 succeeded. 0 failed."),
+		).toBeVisible();
+		await expect(canvas.queryByText("ada@example.com")).not.toBeInTheDocument();
+		await expect(
+			canvas.queryByText("grace@example.com"),
+		).not.toBeInTheDocument();
+		await expect(canvas.getByText("alan@example.com")).toBeVisible();
+		await expect(canvas.getByText("1 total")).toBeVisible();
+	},
+};
+
 /**
  * The list shows each invitation with its role name.
  */

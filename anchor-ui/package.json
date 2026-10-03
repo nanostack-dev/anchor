@@ -11,6 +11,7 @@
     "typecheck:app": "tsc",
     "serve": "vite preview",
     "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
     "test-storybook": "vitest --config vitest.workspace.ts run",
     "format": "biome format",
     "lint": "biome lint",

@@ -20,6 +20,11 @@ type OrganizationInvitationTableProps = {
 	total: number;
 	roleNames: Record<string, string>;
 	onDelete: (invitation: OrganizationInvitationResponse) => Promise<unknown>;
+	onBulkDelete?: (
+		invitation: OrganizationInvitationResponse,
+	) => Promise<unknown>;
+	onBulkDeleted?: () => Promise<unknown>;
+	selectionScope?: string;
 	statusFilter: OrganizationInvitationStatus[];
 	onStatusFilterChange: (statuses: OrganizationInvitationStatus[]) => void;
 	pagination: PaginationState;
@@ -44,6 +49,9 @@ export function OrganizationInvitationTable({
 	total,
 	roleNames,
 	onDelete,
+	onBulkDelete,
+	onBulkDeleted,
+	selectionScope,
 	statusFilter,
 	onStatusFilterChange,
 	pagination,
@@ -107,7 +115,20 @@ export function OrganizationInvitationTable({
 			resourceName="invitations"
 			error={error}
 			onRetry={onRetry}
-			enableRowSelection={false}
+			getRowId={(row) => row.id}
+			getRowLabel={(row) => row.email}
+			selectionScope={selectionScope}
+			bulkActions={[
+				{
+					id: "delete",
+					label: "Delete selected",
+					description: "This permanently deletes the selected invitations.",
+					destructive: true,
+					removesRows: true,
+					run: onBulkDelete ?? onDelete,
+				},
+			]}
+			onBulkActionComplete={onBulkDeleted}
 			filters={[
 				{
 					key: "status",
