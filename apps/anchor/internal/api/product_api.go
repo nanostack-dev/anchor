@@ -10,6 +10,7 @@ import (
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
@@ -108,7 +109,7 @@ func (s *AnchorAPI) SearchProducts(
 
 	result, err := s.ProductService.Search(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to search products")
+		log.Event(&s.logger, err).Msg("failed to search products")
 		return nil, err
 	}
 
@@ -138,7 +139,7 @@ func (s *AnchorAPI) CreateProduct(
 
 	createdProduct, err := s.ProductService.Create(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to create product")
+		log.Event(&s.logger, err).Msg("failed to create product")
 		return nil, err
 	}
 
@@ -162,7 +163,7 @@ func (s *AnchorAPI) DeleteProduct(
 
 	err = s.ProductService.Delete(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to delete product")
+		log.Event(&s.logger, err).Str("product_id", productID).Msg("failed to delete product")
 		return nil, err
 	}
 
@@ -186,7 +187,7 @@ func (s *AnchorAPI) GetProduct(
 
 	prod, err := s.ProductService.Get(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to get product")
+		log.Event(&s.logger, err).Str("product_id", productID).Msg("failed to get product")
 		return nil, err
 	}
 
@@ -220,7 +221,7 @@ func (s *AnchorAPI) UpdateProduct(
 
 	updatedProduct, err := s.ProductService.Update(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to update product")
+		log.Event(&s.logger, err).Str("product_id", productID).Msg("failed to update product")
 		return nil, err
 	}
 
@@ -322,7 +323,7 @@ func (s *AnchorAPI) CreateProductUser(
 
 	createdUser, err := s.ProductUserService.Create(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
+		log.Event(&s.logger, err).Str(
 			"product_id", request.ProductId,
 		).Msg("failed to create product user")
 		return nil, err
@@ -343,7 +344,7 @@ func (s *AnchorAPI) SearchProductUsers(
 
 	result, err := s.ProductUserService.Search(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
+		log.Event(&s.logger, err).Str(
 			"product_id", request.ProductId,
 		).Msg("failed to search product users")
 		return nil, err
@@ -369,7 +370,7 @@ func (s *AnchorAPI) GetProductUser(
 
 	user, err := s.ProductUserService.Find(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("product_user_id", productUserID).
 			Msg("failed to get product user")
@@ -391,7 +392,7 @@ func (s *AnchorAPI) DeleteProductUser(
 
 	err := s.ProductUserService.Delete(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("product_user_id", productUserID).
 			Msg("failed to delete product user")
@@ -417,7 +418,7 @@ func (s *AnchorAPI) ListUserOrganizations(
 
 	memberships, err := s.ProductUserService.ListUserOrganizations(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("product_user_id", request.ProductUserId).
 			Msg("failed to list user organizations")
@@ -449,7 +450,7 @@ func (s *AnchorAPI) GetUserOrganization(
 
 	membership, err := s.ProductUserService.GetUserOrganization(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("product_user_id", request.ProductUserId).
 			Str("organization_id", request.OrganizationId).

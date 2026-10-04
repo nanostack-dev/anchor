@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -77,10 +78,9 @@ func (s *productUserService) Find(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
-			Err(err).
 			Msg("failed to find product user")
 		return user.ProductUser{}, err
 	}
@@ -101,10 +101,9 @@ func (s *productUserService) Create(
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		existingUsers, err := s.productUserRepo.FindByProductID(txCtx, input.ProductID)
 		if err != nil {
-			logger.Error().
+			log.Event(&logger, err).
 				Str("product_id", input.ProductID).
 				Str("email", input.Email).
-				Err(err).
 				Msg("failed to check for duplicate email")
 			return err
 		}
@@ -128,10 +127,9 @@ func (s *productUserService) Create(
 
 		createdUser, err = s.productUserRepo.Create(txCtx, productUser)
 		if err != nil {
-			logger.Error().
+			log.Event(&logger, err).
 				Str("product_id", input.ProductID).
 				Str("email", input.Email).
-				Err(err).
 				Msg("failed to create product user")
 			return err
 		}
@@ -177,10 +175,9 @@ func (s *productUserService) Delete(
 		})
 	})
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
-			Err(err).
 			Msg("failed to delete product user")
 		return err
 	}
@@ -212,9 +209,8 @@ func (s *productUserService) Search(
 
 	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search product users")
 		return search.Result[user.ProductUser]{}, err
 	}
@@ -240,10 +236,9 @@ func (s *productUserService) FindByExternalID(
 		ctx, input.ProductID, input.ExternalID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("external_id", input.ExternalID).
-			Err(err).
 			Msg("failed to find product user by external ID")
 		return nil, err
 	}
@@ -265,10 +260,9 @@ func (s *productUserService) ListUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
-			Err(err).
 			Msg("failed to verify product user exists")
 		return nil, err
 	}
@@ -280,10 +274,9 @@ func (s *productUserService) ListUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
-			Err(err).
 			Msg("failed to list user organizations")
 		return nil, err
 	}
@@ -305,10 +298,9 @@ func (s *productUserService) GetUserOrganization(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
-			Err(err).
 			Msg("failed to verify product user exists")
 		return user.OrganizationMembership{}, err
 	}
@@ -320,11 +312,10 @@ func (s *productUserService) GetUserOrganization(
 		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Str("organization_id", input.OrganizationID).
-			Err(err).
 			Msg("failed to get user organization")
 		return user.OrganizationMembership{}, err
 	}

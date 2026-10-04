@@ -7,6 +7,8 @@ import (
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/platform"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 )
 
 const refreshTokenCookieName = "refresh_token"
@@ -112,7 +114,7 @@ func (s *AnchorAPI) RefreshToken(
 	}
 	refreshResponse, err := s.AuthService.RefreshToken(ctx, refreshInput)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("Error refreshing token")
+		log.Event(&s.logger, err).Msg("Error refreshing token")
 		return RefreshToken401Response{
 			Headers: RefreshToken401ResponseHeaders{
 				SetCookie: s.clearRefreshTokenCookie(),
@@ -154,7 +156,7 @@ func (s *AnchorAPI) Register(
 	}
 	loginResponse, err := s.AuthService.Login(ctx, loginInput)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
+		log.Event(&s.logger, err).Str(
 			"email", registerInput.Email,
 		).Msg("Error logging in user immediately after registration")
 		return nil, err

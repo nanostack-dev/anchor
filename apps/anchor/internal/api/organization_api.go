@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/organization"
@@ -93,7 +94,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
 		if err != nil {
-			logAPIError(s.logger, err).
+			log.Event(&s.logger, err).
 				Str("product_id", request.ProductId).
 				Str("product_user_id", request.Body.FoundingMember.ProductUserId).
 				Str("role_id", request.Body.FoundingMember.RoleId).
@@ -117,7 +118,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 	created, err := s.OrganizationService.Create(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to create organization")
+		log.Event(&s.logger, err).Msg("failed to create organization")
 		return nil, err
 	}
 
@@ -148,7 +149,7 @@ func (s *AnchorAPI) SearchProductOrganizations(
 
 	result, err := s.OrganizationService.Search(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to search product organizations")
+		log.Event(&s.logger, err).Msg("failed to search product organizations")
 		return nil, err
 	}
 
@@ -174,7 +175,7 @@ func (s *AnchorAPI) GetProductOrganization(
 		Include:        includes,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to get organization")
@@ -192,7 +193,7 @@ func (s *AnchorAPI) DeleteProductOrganization(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to delete organization")
@@ -215,7 +216,7 @@ func (s *AnchorAPI) UpdateProductOrganization(
 
 	updatedOrganization, err := s.OrganizationService.Update(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to update organization")
+		log.Event(&s.logger, err).Msg("failed to update organization")
 		return nil, err
 	}
 

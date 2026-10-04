@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -72,7 +73,7 @@ func (r *platformTenantUserRepositoryImpl) Create(
 		},
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).
+		log.Event(&r.logger, err).
 			Str("platform_user_id", platformUser.ID).
 			Str("platform_tenant_id", platformUser.PlatformTenantID).
 			Msg("Failed to create platform user")

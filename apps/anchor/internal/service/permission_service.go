@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -65,10 +66,9 @@ func (s *permissionService) Create(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to check permission uniqueness")
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
@@ -90,10 +90,9 @@ func (s *permissionService) Create(
 
 	createdPerm, err := s.permissionRepo.Create(ctx, perm)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to create permission")
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
@@ -119,10 +118,9 @@ func (s *permissionService) Update(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to find permission for update")
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
@@ -137,10 +135,9 @@ func (s *permissionService) Update(
 
 	result, err := s.permissionRepo.Update(ctx, updated)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to update permission")
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
@@ -166,10 +163,9 @@ func (s *permissionService) Delete(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to check permission existence")
 		return fault.ErrUnexpected
 	}
@@ -181,10 +177,9 @@ func (s *permissionService) Delete(
 
 	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, exists.Name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to count role assignments for permission")
 		return fault.ErrUnexpected
 	}
@@ -197,10 +192,9 @@ func (s *permissionService) Delete(
 
 	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, exists.Name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to delete permission")
 		return fault.ErrUnexpected
 	}
@@ -226,10 +220,9 @@ func (s *permissionService) FindByProductAndPermissionName(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to find permission")
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
@@ -248,9 +241,8 @@ func (s *permissionService) SearchByProductID(
 
 	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search permissions")
 		return search.Result[permission.ProductPermission]{}, fault.ErrUnexpected
 	}
@@ -270,10 +262,9 @@ func (s *permissionService) CheckPermissionExists(
 		ctx, productID, permissions,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Int("permission_count", len(permissions)).
-			Err(err).
 			Msg("failed to check permissions existence")
 		return false, fault.ErrUnexpected
 	}

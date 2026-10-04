@@ -6,6 +6,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -97,10 +98,9 @@ func (s *resourcePermissionService) Create(
 	}
 	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to check existing resource permission")
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
@@ -115,10 +115,9 @@ func (s *resourcePermissionService) Create(
 		var createErr error
 		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)
 		if createErr != nil {
-			logger.Error().
+			log.Event(&logger, createErr).
 				Str("product_id", input.ProductID).
 				Str("name", input.Name).
-				Err(createErr).
 				Msg("failed to create resource permission")
 			return fault.ErrUnexpected
 		}
@@ -151,10 +150,9 @@ func (s *resourcePermissionService) GetByID(
 		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("permission_name", input.PermissionName).
-			Err(err).
 			Msg("failed to get resource permission")
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
@@ -174,10 +172,9 @@ func (s *resourcePermissionService) Update(
 	// Get existing resource permission
 	found, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to find existing resource permission")
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
@@ -195,10 +192,9 @@ func (s *resourcePermissionService) Update(
 		var updateErr error
 		result, updateErr = s.resourcePermissionRepo.Update(txCtx, updated)
 		if updateErr != nil {
-			logger.Error().
+			log.Event(&logger, updateErr).
 				Str("product_id", input.ProductID).
 				Str("name", input.Name).
-				Err(updateErr).
 				Msg("failed to update resource permission")
 			return fault.ErrUnexpected
 		}
@@ -231,10 +227,9 @@ func (s *resourcePermissionService) Delete(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to find resource permission by name")
 		return fault.ErrUnexpected
 	}
@@ -287,10 +282,9 @@ func (s *resourcePermissionService) Delete(
 		return nil
 	})
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("name", input.Name).
-			Err(err).
 			Msg("failed to delete resource permission with cascading cleanup")
 		return fault.ErrUnexpected
 	}
@@ -316,9 +310,8 @@ func (s *resourcePermissionService) SearchByProduct(
 		ctx, input.ProductID, input.Request,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search resource permissions")
 		return search.Result[resourcepermission.ProductResourcePermission]{}, fault.ErrUnexpected
 	}
@@ -337,9 +330,8 @@ func (s *resourcePermissionService) GetByRole(
 
 	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_role_id", input.ProductRoleID).
-			Err(err).
 			Msg("failed to get resource permissions by role")
 		return nil, fault.ErrUnexpected
 	}

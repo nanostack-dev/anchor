@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/product/role"
 
@@ -128,7 +129,7 @@ func (r *productRoleRepositoryImpl) Create(
 			),
 		).MODELS(permissions)
 		if err = transactor.Exec(ctx, r.db, permStmt).Err(); err != nil {
-			r.logger.Error().Err(err).
+			log.Event(&r.logger, err).
 				Str("product_role_id", productRole.ID).
 				Str("product_id", productRole.ProductID).
 				Msg("Failed to create product role permissions")
@@ -387,7 +388,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"productID", productID,
 		).Msg("failed to search product roles")
 		return search.Result[role.ProductRole]{}, err
@@ -412,7 +413,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		),
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"productID", productID,
 		).Msg("failed to load product role permissions")
 		return search.Result[role.ProductRole]{}, err

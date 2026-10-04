@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -82,7 +83,7 @@ func (s *productService) Get(
 	}
 	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
+		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to find product")
 		return product.Product{}, err
 	}
 	if found.IsAbsent() {
@@ -100,7 +101,7 @@ func (s *productService) GetInternal(
 
 	found, err := s.productRepo.FindByIDInternal(ctx, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product internally")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to find product internally")
 		return nil, err
 	}
 
@@ -125,7 +126,7 @@ func (s *productService) GetWithCache(
 		},
 	)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to get product with cache")
+		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to get product with cache")
 		return nil, err
 	}
 	return cachedProduct, nil
@@ -146,7 +147,7 @@ func (s *productService) Create(
 
 	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
 	if err != nil {
-		logger.Error().Str("name", input.Name).Err(err).Msg("failed to look up existing product")
+		log.Event(&logger, err).Str("name", input.Name).Msg("failed to look up existing product")
 		return product.Product{}, err
 	}
 	if existingProduct.IsPresent() {
@@ -179,7 +180,7 @@ func (s *productService) Create(
 				logger.Debug().Str("name", prod.Name).Msg("product already exists (unique constraint)")
 				return ErrProductAlreadyExists
 			}
-			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
+			log.Event(&logger, createErr).Str("name", prod.Name).Msg("failed to create product")
 			return createErr
 		}
 		if upsertConfigErr := s.productRepo.UpsertOrganizationAPIKeyConfig(
@@ -187,9 +188,8 @@ func (s *productService) Create(
 			productCreated.ID,
 			config.OrganizationAPIKeys,
 		); upsertConfigErr != nil {
-			logger.Error().
+			log.Event(&logger, upsertConfigErr).
 				Str("product_id", productCreated.ID).
-				Err(upsertConfigErr).
 				Msg("failed to create product organization API key config")
 			return upsertConfigErr
 		}
@@ -208,7 +208,7 @@ func (s *productService) Create(
 			perm.ProductID = productCreated.ID
 			_, permErr := s.productPermissionRepo.Create(txCtx, perm)
 			if permErr != nil {
-				logger.Error().Str("permission", perm.Name).Err(permErr).Msg("failed to create default permission")
+				log.Event(&logger, permErr).Str("permission", perm.Name).Msg("failed to create default permission")
 				return permErr
 			}
 		}
@@ -253,7 +253,7 @@ func (s *productService) updateProductInTransaction(
 
 	result, err := s.productRepo.Update(ctx, input.TenantID, updatedProduct)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to update product")
+		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to update product")
 		return result, err
 	}
 	if input.Config != nil {
@@ -262,9 +262,8 @@ func (s *productService) updateProductInTransaction(
 			input.ProductID,
 			updatedProduct.Config.OrganizationAPIKeys,
 		); configErr != nil {
-			logger.Error().
+			log.Event(&logger, configErr).
 				Str("product_id", input.ProductID).
-				Err(configErr).
 				Msg("failed to update product organization API key config")
 			return product.Product{}, configErr
 		}
@@ -293,7 +292,7 @@ func (s *productService) findProductForUpdate(
 	}
 	found, err := s.productRepo.FindByID(ctx, tenantID, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to find product")
 		return nil, err
 	}
 	if found.IsAbsent() {
@@ -348,7 +347,7 @@ func (s *productService) validateNameUniqueness(
 ) error {
 	found, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
 	if err != nil {
-		logger.Error().Str("name", name).Err(err).Msg("failed to look up product")
+		log.Event(&logger, err).Str("name", name).Msg("failed to look up product")
 		return err
 	}
 	if found.IsPresent() && found.Value().ID != productID {
@@ -447,7 +446,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		}
 		logger.Info().Str("product_id", input.ProductID).Msg("product deleted")
 	} else {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to delete product")
+		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to delete product")
 	}
 	return err
 }
@@ -463,7 +462,7 @@ func (s *productService) Search(
 
 	result, err := s.productRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
+		log.Event(&logger, err).Str("tenant_id", input.TenantID).Msg("failed to search products")
 		return search.Result[product.Product]{}, err
 	}
 	for i := range result.Items {

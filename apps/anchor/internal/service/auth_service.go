@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/auth"
@@ -82,10 +83,9 @@ func (s *authService) GetUserByTenantIDAndID(
 
 	found, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", tenantID).
 			Str("user_id", userID).
-			Err(err).
 			Msg("failed to find user by tenant and user ID")
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *authService) Register(
 
 	logger.Info().Str("email", input.Email).Msg("registering platform user")
 	if validationErr := validate.ValidateStruct(input); validationErr != nil {
-		logServiceError(logger, validationErr).Msg("registration input validation failed")
+		log.Event(&logger, validationErr).Msg("registration input validation failed")
 		return platform.User{}, validationErr
 	}
 
@@ -122,9 +122,8 @@ func (s *authService) Register(
 
 		foundUserByEmail, err := s.userRepo.FindByEmail(txCtx, input.Email)
 		if err != nil {
-			logger.Error().
+			log.Event(&logger, err).
 				Str("email", input.Email).
-				Err(err).
 				Msg("failed to find user by email")
 			return fmt.Errorf("failed during user lookup: %w", err)
 		}
@@ -138,7 +137,7 @@ func (s *authService) Register(
 			[]byte(input.Password), bcrypt.DefaultCost,
 		)
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to hash password")
+			log.Event(&logger, err).Msg("failed to hash password")
 			return fmt.Errorf("failed to hash password: %w", err)
 		}
 
@@ -150,7 +149,7 @@ func (s *authService) Register(
 
 		newUser, err = s.userRepo.Create(txCtx, newUser)
 		if err != nil {
-			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
+			log.Event(&logger, err).Str("email", input.Email).Msg("failed to create user")
 			return fmt.Errorf("failed to create user: %w", err)
 		}
 
@@ -171,7 +170,7 @@ func (s *authService) Register(
 		// Use the repository Create method to persist the platform user
 		resUser, err := s.platformTenantUserRepo.Create(txCtx, platformUser)
 		if err != nil {
-			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
+			log.Event(&logger, err).Str("email", input.Email).Msg("failed to create platform user")
 			return fmt.Errorf("failed to create platform user: %w", err)
 		}
 
@@ -197,7 +196,7 @@ func (s *authService) handleInvitation(
 	}
 	foundInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
 	if err != nil {
-		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
+		log.Event(&logger, err).Str("email", email).Msg("failed to find invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
 	}
 	if foundInvitation.IsAbsent() {
@@ -209,10 +208,9 @@ func (s *authService) handleInvitation(
 	if err = s.invitationRepo.DeleteByTenantIDAndID(
 		ctx, optInvitation.PlatformTenantID, optInvitation.ID,
 	); err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("invitation_id", optInvitation.ID).
 			Str("tenant_id", optInvitation.PlatformTenantID).
-			Err(err).
 			Msg("failed to delete invitation")
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to delete invitation: %w", err)
 	}
@@ -230,7 +228,7 @@ func (s *authService) Login(
 
 	foundUser, err := s.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
-		logger.Error().Str("email", input.Email).Err(err).Msg("failed to find user by email")
+		log.Event(&logger, err).Str("email", input.Email).Msg("failed to find user by email")
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
 	}
 	if foundUser.IsAbsent() {
@@ -243,7 +241,7 @@ func (s *authService) Login(
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return auth.LoginOutput{}, ErrInvalidCredentials
 		}
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to compare password hash")
+		log.Event(&logger, err).Str("user_id", user.ID).Msg("failed to compare password hash")
 		return auth.LoginOutput{}, fmt.Errorf("failed during password comparison: %w", err)
 	}
 
@@ -254,7 +252,7 @@ func (s *authService) Login(
 	// Get the first tenant (for now assuming single tenant setup)
 	tenants, err := s.tenantRepo.FindAll(ctx)
 	if err != nil || len(tenants) == 0 {
-		logger.Error().Err(err).Msg("no tenants found")
+		log.Event(&logger, err).Msg("no tenants found")
 		return auth.LoginOutput{}, errors.New("no tenant configuration found")
 	}
 
@@ -281,7 +279,7 @@ func (s *authService) Login(
 
 	output, err := s.startSession(ctx, platformUser)
 	if err != nil {
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to start session")
+		log.Event(&logger, err).Str("user_id", user.ID).Msg("failed to start session")
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
@@ -367,7 +365,7 @@ func (s *authService) RefreshToken(
 
 	output, next, err := s.issueTokens(claims.UserID, claims.TenantID, claims.SessionID, authTime)
 	if err != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to generate tokens during refresh")
+		log.Event(&logger, err).Str("user_id", claims.UserID).Msg("failed to generate tokens during refresh")
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
@@ -376,7 +374,7 @@ func (s *authService) RefreshToken(
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 	if err != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to rotate refresh token")
+		log.Event(&logger, err).Str("user_id", claims.UserID).Msg("failed to rotate refresh token")
 		return auth.LoginOutput{}, err
 	}
 
@@ -404,7 +402,7 @@ func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error 
 	}
 
 	if revokeErr := s.sessions.Revoke(ctx, sessionservice.RevokeInput{SessionID: claims.SessionID}); revokeErr != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(revokeErr).Msg("failed to revoke session")
+		log.Event(&logger, revokeErr).Str("user_id", claims.UserID).Msg("failed to revoke session")
 		return revokeErr
 	}
 	logger.Info().Str("user_id", claims.UserID).Str("session_id", claims.SessionID).Msg("session revoked")
@@ -417,7 +415,7 @@ func (s *authService) setupTenantForRegistration(
 ) (string, platform.TenantRole, error) {
 	count, err := s.tenantRepo.Count(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to count tenants")
+		log.Event(&logger, err).Msg("failed to count tenants")
 		return "", "", fmt.Errorf("failed to count tenants: %w", err)
 	}
 
@@ -442,7 +440,7 @@ func (s *authService) setupTenantForRegistration(
 		t.GenerateID()
 		currentTenant, createErr := s.tenantRepo.Create(ctx, t)
 		if createErr != nil {
-			logger.Error().Str("tenant_name", tenantNameToUse).Err(createErr).Msg("failed to create tenant")
+			log.Event(&logger, createErr).Str("tenant_name", tenantNameToUse).Msg("failed to create tenant")
 			return "", "", fmt.Errorf("failed to create tenant: %w", createErr)
 		}
 		logger.Info().Str("tenant_id", currentTenant.ID).Str("tenant_name", tenantNameToUse).Msg("tenant created")
@@ -457,7 +455,7 @@ func (s *authService) setupTenantForRegistration(
 	logger.Info().Msg("using invitation code for registration")
 	userInvitation, inviteErr := s.handleInvitation(ctx, email, *invitationCode, logger)
 	if inviteErr != nil {
-		logServiceError(logger, inviteErr).Msg("failed to handle invitation")
+		log.Event(&logger, inviteErr).Msg("failed to handle invitation")
 		return "", "", fmt.Errorf("failed to handle invitation: %w", inviteErr)
 	}
 	return userInvitation.PlatformTenantID, role, nil

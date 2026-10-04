@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
@@ -34,7 +35,7 @@ func (s *AnchorAPI) CreateLicenseSchema(
 
 	schema, err := s.LicenseSchemaService.CreateSchema(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license schema")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license schema")
 		return nil, err
 	}
 	return CreateLicenseSchema201JSONResponse(mapLicenseSchemaToResponse(schema)), nil
@@ -53,7 +54,7 @@ func (s *AnchorAPI) GetLicenseSchema(
 		ProductID: request.ProductId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to get license schema")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to get license schema")
 		return nil, err
 	}
 	if schema == nil {
@@ -83,7 +84,7 @@ func (s *AnchorAPI) UpdateLicenseSchema(
 
 	schema, err := s.LicenseSchemaService.UpdateSchema(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to update license schema")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to update license schema")
 		return nil, err
 	}
 	return UpdateLicenseSchema200JSONResponse(mapLicenseSchemaToResponse(schema)), nil
@@ -101,7 +102,7 @@ func (s *AnchorAPI) DeleteLicenseSchema(
 		TenantID:  tenantID,
 		ProductID: request.ProductId,
 	}); err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to delete license schema")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to delete license schema")
 		return nil, err
 	}
 	return DeleteLicenseSchema204Response{}, nil

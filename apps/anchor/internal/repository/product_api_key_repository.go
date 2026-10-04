@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -122,7 +123,7 @@ func (r *productAPIKeyRepository) Create(
 
 	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
-		r.logger.Error().Err(err).
+		log.Event(&r.logger, err).
 			Str("api_key_id", apiKey.ID).
 			Str("product_id", apiKey.ProductID).
 			Msg("Failed to create product API key")
@@ -139,7 +140,7 @@ func (r *productAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			r.logger.Error().Err(err).
+			log.Event(&r.logger, err).
 				Str("api_key_id", apiKey.ID).
 				Str("product_id", apiKey.ProductID).
 				Msg("Failed to create product API key permissions")
@@ -277,7 +278,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to search product API keys")
 		return search.Result[apikey.ProductAPIKey]{}, err
@@ -302,7 +303,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		ctx, input.ProductID, apiKeyIDs,
 	)
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"productID", input.ProductID,
 		).Msg("failed to load product API key permissions")
 		return search.Result[apikey.ProductAPIKey]{}, err

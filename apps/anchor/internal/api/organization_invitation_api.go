@@ -5,6 +5,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -26,7 +27,7 @@ func (s *AnchorAPI) CreateOrganizationInvitation(
 		ExpiresAt:      request.Body.ExpiresAt,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to create organization invitation")
@@ -49,7 +50,7 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 		Request:        mapSearchOrganizationInvitationsRequestToInput(*request.Body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to search organization invitations")
@@ -72,7 +73,7 @@ func (s *AnchorAPI) GetOrganizationInvitation(
 		InvitationID:   request.InvitationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("invitation_id", request.InvitationId).
@@ -98,7 +99,7 @@ func (s *AnchorAPI) UpdateOrganizationInvitation(
 		ExpiresAt:      request.Body.ExpiresAt,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("invitation_id", request.InvitationId).
@@ -118,7 +119,7 @@ func (s *AnchorAPI) DeleteOrganizationInvitation(
 		InvitationID:   request.InvitationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("invitation_id", request.InvitationId).
@@ -141,7 +142,7 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 		Request:   mapSearchOrganizationInvitationsRequestToInput(*request.Body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Msg("failed to search product organization invitations")
 		return nil, err
@@ -168,7 +169,7 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 		ProductUserID:  request.Body.ProductUserId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("invitation_id", request.InvitationId).

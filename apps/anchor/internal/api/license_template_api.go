@@ -7,6 +7,7 @@ import (
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 )
 
 // ---------------------------------------------------------------------------
@@ -36,7 +37,7 @@ func (s *AnchorAPI) CreateLicenseTemplate(
 
 	template, err := s.LicenseTemplateService.CreateTemplate(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license template")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license template")
 		return nil, err
 	}
 	return CreateLicenseTemplate201JSONResponse(mapLicenseTemplateToResponse(template)), nil
@@ -56,7 +57,7 @@ func (s *AnchorAPI) GetLicenseTemplate(
 		TemplateID: request.LicenseTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
 			Msg("failed to get license template")
@@ -84,7 +85,7 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		Status:    request.Params.Status,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list license templates")
+		log.Event(&s.logger, err).Str("product_id", request.ProductId).Msg("failed to list license templates")
 		return nil, err
 	}
 
@@ -114,7 +115,7 @@ func (s *AnchorAPI) UpdateLicenseTemplate(
 		Values: request.Body.Values,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
 			Msg("failed to update license template")
@@ -136,7 +137,7 @@ func (s *AnchorAPI) DeleteLicenseTemplate(
 		ProductID:  request.ProductId,
 		TemplateID: request.LicenseTemplateId,
 	}); err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
 			Msg("failed to delete license template")
@@ -159,7 +160,7 @@ func (s *AnchorAPI) ArchiveLicenseTemplate(
 		TemplateID: request.LicenseTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("license_template_id", request.LicenseTemplateId).
 			Msg("failed to archive license template")

@@ -9,6 +9,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -182,7 +183,7 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 		ctx, productID, organizationID, productUserID, false,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
@@ -206,7 +207,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 		ctx, productID, organizationID, productUserID, false,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
@@ -240,7 +241,7 @@ func (s *organizationMembershipService) applyMembership(
 		}
 		return s.emitMembership(txCtx, eventType, productID, organizationID, productUserID)
 	}); txErr != nil {
-		logger.Error().Err(txErr).
+		log.Event(&logger, txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
@@ -272,7 +273,7 @@ func (s *organizationMembershipService) RemoveMember(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("product_user_id", input.ProductUserID).
@@ -291,7 +292,7 @@ func (s *organizationMembershipService) RemoveMember(
 			txCtx, events.MembershipDeleted, input.ProductID, input.OrganizationID, input.ProductUserID,
 		)
 	}); txErr != nil {
-		logger.Error().Err(txErr).
+		log.Event(&logger, txErr).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("product_user_id", input.ProductUserID).
@@ -321,7 +322,7 @@ func (s *organizationMembershipService) GetMember(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("product_user_id", input.ProductUserID).
@@ -345,7 +346,7 @@ func (s *organizationMembershipService) ListMembers(
 		ctx, input.ProductID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Msg("failed to list members")
@@ -368,7 +369,7 @@ func (s *organizationMembershipService) SearchMembers(
 		ctx, input.ProductID, input.OrganizationID, input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Msg("failed to search members")
@@ -386,7 +387,7 @@ func (s *organizationMembershipService) validateProductUser(
 ) error {
 	found, err := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("product_user_id", productUserID).
 			Msg("failed to verify product user exists")
@@ -407,7 +408,7 @@ func (s *organizationMembershipService) validateRole(
 ) error {
 	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
 			Msg("failed to verify role exists")
@@ -428,7 +429,7 @@ func (s *organizationMembershipService) ensureOrganizationExists(
 ) error {
 	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Msg("failed to verify organization exists")

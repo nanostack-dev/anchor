@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -86,7 +87,7 @@ func (s *productAPIKeyService) Create(
 
 	clearAPIKey, err := security.GenerateProductAPIKey()
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to generate API key")
+		log.Event(&logger, err).Msg("failed to generate API key")
 		return apikey.ProductAPIKey{}, "", fault.ErrUnexpected
 	}
 
@@ -135,10 +136,9 @@ func (s *productAPIKeyService) Create(
 
 	created, err := s.apiKeyRepo.Create(ctx, productAPIKey)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_api_key_id", productAPIKey.ID).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to create product API key")
 		return apikey.ProductAPIKey{}, "", fault.ErrUnexpected
 	}
@@ -163,10 +163,9 @@ func (s *productAPIKeyService) GetByID(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get API key")
 		return nil, fault.ErrUnexpected
 	}
@@ -193,10 +192,9 @@ func (s *productAPIKeyService) Update(
 
 	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get API key for update")
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
@@ -295,20 +293,18 @@ func (s *productAPIKeyService) Update(
 		return nil
 	})
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to update API key transaction")
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
 	err = s.apiKeys.Key(input.ProductID, existingAPIKey.HashedValue).Evict(ctx)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to evict API key from cache")
 	}
 
@@ -331,10 +327,9 @@ func (s *productAPIKeyService) Delete(
 
 	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get API key for deletion")
 		return fault.ErrUnexpected
 	}
@@ -344,19 +339,17 @@ func (s *productAPIKeyService) Delete(
 	}
 	existingAPIKey := foundAPIKey.Value()
 	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {
-		logger.Error().
+		log.Event(&logger, deleteErr).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(deleteErr).
 			Msg("failed to delete API key")
 		return fault.ErrUnexpected
 	}
 	err = s.apiKeys.Key(input.ProductID, existingAPIKey.HashedValue).Evict(ctx)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to evict API key from cache")
 	}
 
@@ -379,9 +372,8 @@ func (s *productAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByProductID(ctx, input)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search API keys")
 		return nil, fault.ErrUnexpected
 	}
@@ -410,7 +402,7 @@ func (s *productAPIKeyService) validateAPIKey(
 	)
 
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to validate API key")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to validate API key")
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
@@ -423,10 +415,9 @@ func (s *productAPIKeyService) validateAPIKey(
 		if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
 			ctx, foundAPIKey.ProductID, foundAPIKey.ID,
 		); updateErr != nil {
-			logger.Error().
+			log.Event(&logger, updateErr).
 				Str("product_id", productID).
 				Str("api_key_id", foundAPIKey.ID).
-				Err(updateErr).
 				Msg("failed to update last used timestamp")
 		}
 	}
@@ -483,10 +474,9 @@ func (s *productAPIKeyService) nameUniqueValidation(
 ) error {
 	found, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("name", name).
-			Err(err).
 			Msg("failed to search for API keys by name")
 		return fault.ErrUnexpected
 	}
@@ -503,10 +493,9 @@ func (s *productAPIKeyService) permissionsValidation(
 		ctx, productID, permissionNames,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Int("permission_count", len(permissionNames)).
-			Err(err).
 			Msg("failed to find permissions by names")
 		return nil, err
 	}

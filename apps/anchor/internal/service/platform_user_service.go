@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -54,9 +55,8 @@ func (s *platformUserService) SearchPlatformUsers(
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
-			Err(err).
 			Msg("failed to search platform users")
 		return search.Result[platform.User]{}, err
 	}
@@ -73,10 +73,9 @@ func (s *platformUserService) GetPlatformUserByUserID(
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("user_id", input.UserID).
-			Err(err).
 			Msg("failed to find platform user by user ID")
 		return nil, err
 	}
@@ -93,10 +92,9 @@ func (s *platformUserService) GetPlatformUser(
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("platform_user_id", input.PlatformUserID).
-			Err(err).
 			Msg("failed to find platform user")
 		return nil, err
 	}
@@ -136,10 +134,9 @@ func (s *platformUserService) DeletePlatformUser(
 
 	err = s.platformUserRepo.DeleteByID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("platform_user_id", input.PlatformUserID).
-			Err(err).
 			Msg("failed to delete platform user")
 		return err
 	}

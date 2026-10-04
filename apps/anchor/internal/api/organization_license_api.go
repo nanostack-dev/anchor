@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -41,7 +42,7 @@ func (s *AnchorAPI) InstantiateOrganizationLicense(
 		},
 	)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to instantiate organization license")
@@ -66,7 +67,7 @@ func (s *AnchorAPI) GetOrganizationLicense(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to get organization license")
@@ -99,7 +100,7 @@ func (s *AnchorAPI) AdjustOrganizationLicense(
 		},
 	)
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to adjust organization license")
@@ -124,7 +125,7 @@ func (s *AnchorAPI) GetOrganizationLicenseDiff(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to diff organization license against its template")
@@ -151,7 +152,7 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 		},
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Msg("failed to get organization license history")

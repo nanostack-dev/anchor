@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -63,10 +64,9 @@ func (s *invitationService) CreateInvitation(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
-			Err(err).
 			Msg("failed to find user by email")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
@@ -85,10 +85,9 @@ func (s *invitationService) CreateInvitation(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
-			Err(err).
 			Msg("failed to find invitation by email")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
@@ -104,7 +103,7 @@ func (s *invitationService) CreateInvitation(
 	}
 	code, err := generateSecureCode(invitationCodeLength)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to generate secure code")
+		log.Event(&logger, err).Msg("failed to generate secure code")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	inv := invitation.PlatformInvitation{
@@ -127,10 +126,9 @@ func (s *invitationService) CreateInvitation(
 				Msg("invitation already exists (unique constraint)")
 			return invitation.PlatformInvitation{}, ErrInvitationAlreadyExists
 		}
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("email", input.Email).
-			Err(err).
 			Msg("failed to create invitation")
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
@@ -154,10 +152,9 @@ func (s *invitationService) DeleteInvitation(
 	}
 	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
 			Str("invitation_id", input.InvitationID).
-			Err(err).
 			Msg("failed to delete invitation")
 		return err
 	}
@@ -180,9 +177,8 @@ func (s *invitationService) SearchInvitation(
 	}
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("tenant_id", input.TenantID).
-			Err(err).
 			Msg("failed to search invitations")
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}

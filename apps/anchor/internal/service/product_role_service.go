@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -142,10 +143,9 @@ func (s *productRoleService) CreateProductRole(
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
 		if createErr != nil {
-			logger.Error().
+			log.Event(&logger, createErr).
 				Str("product_id", input.ProductID).
 				Str("name", input.Name).
-				Err(createErr).
 				Msg("failed to create product role")
 			return fault.ErrUnexpected
 		}
@@ -175,9 +175,8 @@ func (s *productRoleService) SearchProductRoles(
 
 	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search product roles")
 		return search.Result[role.ProductRole]{}, fault.ErrUnexpected
 	}
@@ -196,10 +195,9 @@ func (s *productRoleService) GetProductRole(
 
 	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to get product role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
@@ -223,10 +221,9 @@ func (s *productRoleService) UpdateProductRole(
 
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to find product role for update")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
@@ -260,10 +257,9 @@ func (s *productRoleService) UpdateProductRole(
 		var updateErr error
 		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
 		if updateErr != nil {
-			logger.Error().
+			log.Event(&logger, updateErr).
 				Str("product_id", input.ProductID).
 				Str("role_id", input.ID).
-				Err(updateErr).
 				Msg("failed to update product role")
 			return fault.ErrUnexpected
 		}
@@ -290,19 +286,17 @@ func (s *productRoleService) replacePermissions(
 	ctx context.Context, input role.UpdateProductRoleInput, logger zerolog.Logger,
 ) (role.ProductRole, error) {
 	if err := s.roleRepo.ReplacePermissions(ctx, input.ProductID, input.ID, input.Permissions); err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to replace product role permissions")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to reload product role after replacing permissions")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
@@ -320,10 +314,9 @@ func (s *productRoleService) DeleteProductRole(
 
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to find product role for deletion")
 		return fault.ErrUnexpected
 	}
@@ -333,10 +326,9 @@ func (s *productRoleService) DeleteProductRole(
 
 	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("role_id", input.ID).
-			Err(err).
 			Msg("failed to count role membership assignments")
 		return fault.ErrUnexpected
 	}
@@ -351,10 +343,9 @@ func (s *productRoleService) DeleteProductRole(
 		if deleteErr := s.roleRepo.DeleteByProductIDAndRoleID(
 			txCtx, input.ProductID, input.ID,
 		); deleteErr != nil {
-			logger.Error().
+			log.Event(&logger, deleteErr).
 				Str("product_id", input.ProductID).
 				Str("role_id", input.ID).
-				Err(deleteErr).
 				Msg("failed to delete product role")
 			return fault.ErrUnexpected
 		}
@@ -380,10 +371,9 @@ func (s *productRoleService) releaseInvitations(
 ) error {
 	pending, err := s.invitationRepo.ExistsPendingForRole(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
-			Err(err).
 			Msg("failed to check pending invitations of the role")
 		return fault.ErrUnexpected
 	}
@@ -393,10 +383,9 @@ func (s *productRoleService) releaseInvitations(
 
 	deleted, err := s.invitationRepo.DeleteNonPendingForRole(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
-			Err(err).
 			Msg("failed to delete the settled invitations of the role")
 		return fault.ErrUnexpected
 	}
@@ -446,10 +435,9 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
 		if addErr != nil {
-			logger.Error().
+			log.Event(&logger, addErr).
 				Str("product_role_id", input.ProductRoleID).
 				Str("permission_name", newPermission.PermissionName).
-				Err(addErr).
 				Msg("failed to add permission to role")
 			return fault.ErrUnexpected
 		}
@@ -490,10 +478,9 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("permission_name", input.PermissionName).
-			Err(err).
 			Msg("failed to find permission")
 		return fault.ErrUnexpected
 	}
@@ -509,10 +496,9 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			txCtx, input.ProductID, input.ProductRoleID, permissionName,
 		)
 		if removeErr != nil {
-			logger.Error().
+			log.Event(&logger, removeErr).
 				Str("product_role_id", input.ProductRoleID).
 				Str("permission_name", permissionName).
-				Err(removeErr).
 				Msg("failed to remove permission from role")
 			return fault.ErrUnexpected
 		}
@@ -536,10 +522,9 @@ func (s *productRoleService) requireRole(
 ) error {
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
-			Err(err).
 			Msg("failed to find role")
 		return fault.ErrUnexpected
 	}
@@ -553,10 +538,9 @@ func (s *productRoleService) markRoleUpdated(
 	ctx context.Context, productID, roleID string, logger zerolog.Logger,
 ) error {
 	if err := s.roleRepo.TouchUpdatedAt(ctx, productID, roleID); err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
-			Err(err).
 			Msg("failed to touch role updated_at")
 		return fault.ErrUnexpected
 	}
@@ -570,10 +554,9 @@ func (s *productRoleService) nameDuplicationValidation(
 	// would wrongly flag e.g. "role" as a duplicate of "role-admin".
 	found, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Str("role_name", roleName).
-			Err(err).
 			Msg("failed to look up product role by name")
 		return fault.ErrUnexpected
 	}
@@ -618,9 +601,8 @@ func (s *productRoleService) permissionsValidation(
 		ctx, productID, searchReq,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
-			Err(err).
 			Msg("failed to search resource permissions")
 		return fault.ErrUnexpected
 	}

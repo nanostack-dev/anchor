@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/license"
@@ -29,7 +30,7 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 		Request:   mapToSearchOrganizationLicensesRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Msg("failed to search organization licenses")
 		return nil, err

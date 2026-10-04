@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -127,9 +128,8 @@ func (s *organizationAPIKeyService) Create(
 	org := foundOrg.Value()
 	foundProd, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", org.ProductID).
-			Err(err).
 			Msg("failed to find product for organization API key config")
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
@@ -151,7 +151,7 @@ func (s *organizationAPIKeyService) Create(
 	organizationAPIKeyPrefix := prod.Config.WithDefaults().OrganizationAPIKeys.Prefix
 	clearAPIKey, err := security.GenerateOrganizationAPIKey(organizationAPIKeyPrefix)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to generate organization API key")
+		log.Event(&logger, err).Msg("failed to generate organization API key")
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
@@ -209,10 +209,9 @@ func (s *organizationAPIKeyService) Create(
 		)
 	})
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_api_key_id", organizationAPIKey.ID).
 			Str("organization_id", input.OrganizationID).
-			Err(err).
 			Msg("failed to create organization API key")
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
@@ -235,10 +234,9 @@ func (s *organizationAPIKeyService) GetByID(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get organization API key")
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
@@ -261,10 +259,9 @@ func (s *organizationAPIKeyService) Update(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get organization API key for update")
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
@@ -309,10 +306,9 @@ func (s *organizationAPIKeyService) Update(
 		)
 	})
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to update organization API key")
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
@@ -335,9 +331,8 @@ func (s *organizationAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
-			Err(err).
 			Msg("failed to search organization API keys")
 		return nil, fault.ErrUnexpected
 	}
@@ -360,10 +355,9 @@ func (s *organizationAPIKeyService) Delete(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("api_key_id", input.ID).
-			Err(err).
 			Msg("failed to get organization API key for deletion")
 		return fault.ErrUnexpected
 	}
@@ -375,10 +369,9 @@ func (s *organizationAPIKeyService) Delete(
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
-			logger.Error().
+			log.Event(&logger, deleteErr).
 				Str("organization_id", input.OrganizationID).
 				Str("api_key_id", input.ID).
-				Err(deleteErr).
 				Msg("failed to delete organization API key")
 			return fault.ErrUnexpected
 		}
@@ -399,9 +392,8 @@ func (s *organizationAPIKeyService) Delete(
 			Limit:     organizationAPIKeyEventListLimit,
 		})
 		if listErr != nil {
-			logger.Error().
+			log.Event(&logger, listErr).
 				Str("api_key_id", input.ID).
-				Err(listErr).
 				Msg("failed to list pending queue jobs for api key deletion")
 			return fault.ErrUnexpected
 		}
@@ -415,10 +407,9 @@ func (s *organizationAPIKeyService) Delete(
 				continue
 			}
 			if cancelErr := s.queue.DeleteJob(txCtx, job.ID); cancelErr != nil {
-				logger.Error().
+				log.Event(&logger, cancelErr).
 					Str("api_key_id", input.ID).
 					Int64("job_id", job.ID).
-					Err(cancelErr).
 					Msg("failed to cancel queue job for deleted api key")
 				return fault.ErrUnexpected
 			}
@@ -534,7 +525,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
-		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
+		log.Event(&logger, err).Str("organization_id", organizationID).Msg("failed to validate organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -561,7 +552,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to introspect organization API key")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to introspect organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -583,10 +574,9 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 	if foundAPIKey.IsExpiredAt(now) {
 		if foundAPIKey.Status == orgapikey.StatusActive {
 			if updateErr := s.expireAPIKey(ctx, foundAPIKey); updateErr != nil {
-				logger.Error().
+				log.Event(&logger, updateErr).
 					Str("organization_id", foundAPIKey.OrganizationID).
 					Str("api_key_id", foundAPIKey.ID).
-					Err(updateErr).
 					Msg("failed to update expired organization API key status")
 			}
 		}
@@ -599,10 +589,9 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 	shouldTouch := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
 	if shouldTouch {
 		if updateErr := s.touchAPIKeyLastUsed(ctx, foundAPIKey, now); updateErr != nil {
-			logger.Error().
+			log.Event(&logger, updateErr).
 				Str("organization_id", foundAPIKey.OrganizationID).
 				Str("api_key_id", foundAPIKey.ID).
-				Err(updateErr).
 				Msg("failed to update organization API key last used timestamp")
 		}
 	}
@@ -676,10 +665,9 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 ) error {
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", organizationID).
 			Str("name", name).
-			Err(err).
 			Msg("failed to search for organization API keys by name")
 		return fault.ErrUnexpected
 	}
@@ -713,10 +701,9 @@ func (s *organizationAPIKeyService) permissionsValidation(
 		ctx, productID, permissionNames,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", productID).
 			Int("permission_count", len(permissionNames)).
-			Err(err).
 			Msg("failed to find permissions by names")
 		return nil, err
 	}

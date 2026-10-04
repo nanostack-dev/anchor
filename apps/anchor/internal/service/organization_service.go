@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
@@ -201,10 +202,9 @@ func (s *organizationService) Find(
 
 	foundOrg, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
-			Err(err).
 			Msg("failed to find organization")
 		return organization.Organization{}, err
 	}
@@ -248,9 +248,8 @@ func (s *organizationService) attachIncludes(
 		OrganizationIDs: organizationIDs,
 	})
 	if err != nil {
-		s.logger.Error().
+		log.Event(&s.logger, err).
 			Str("product_id", productID).
-			Err(err).
 			Msg("failed to read the licenses of the organizations read")
 		return nil, err
 	}
@@ -298,10 +297,9 @@ func (s *organizationService) Create(
 		var createErr error
 		created, createErr = s.organizationRepo.Create(txCtx, org)
 		if createErr != nil {
-			logger.Error().
+			log.Event(&logger, createErr).
 				Str("product_id", input.ProductID).
 				Str("name", input.Name).
-				Err(createErr).
 				Msg("failed to create organization")
 			return createErr
 		}
@@ -310,10 +308,9 @@ func (s *organizationService) Create(
 			txCtx, input.TenantID, input.ProductID, created.ID, template,
 		)
 		if licenseErr != nil {
-			logger.Error().
+			log.Event(&logger, licenseErr).
 				Str("product_id", input.ProductID).
 				Str("organization_id", created.ID).
-				Err(licenseErr).
 				Msg("failed to license the new organization")
 			return licenseErr
 		}
@@ -352,7 +349,7 @@ func (s *organizationService) CreateWithMember(
 		ctx, input.ProductID, input.ProductUserID, false,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("product_user_id", input.ProductUserID).
 			Msg("failed to check existing memberships for idempotency")
@@ -420,7 +417,7 @@ func (s *organizationService) CreateWithMember(
 			input.ProductUserID,
 		)
 		if lookupErr != nil {
-			logger.Error().Err(lookupErr).
+			log.Event(&logger, lookupErr).
 				Str("product_id", input.ProductID).
 				Str("product_user_id", input.ProductUserID).
 				Msg("failed to verify product user")
@@ -436,7 +433,7 @@ func (s *organizationService) CreateWithMember(
 			input.RoleID,
 		)
 		if roleErr != nil {
-			logger.Error().Err(roleErr).
+			log.Event(&logger, roleErr).
 				Str("product_id", input.ProductID).
 				Str("role_id", input.RoleID).
 				Msg("failed to verify product role")
@@ -463,7 +460,7 @@ func (s *organizationService) CreateWithMember(
 
 		createdOrg, err = s.organizationRepo.Create(lockCtx, org)
 		if err != nil {
-			logger.Error().Err(err).
+			log.Event(&logger, err).
 				Str("product_id", input.ProductID).
 				Str("name", input.Name).
 				Msg("failed to create organization")
@@ -474,7 +471,7 @@ func (s *organizationService) CreateWithMember(
 			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID,
 		)
 		if err != nil {
-			logger.Error().Err(err).
+			log.Event(&logger, err).
 				Str("product_id", input.ProductID).
 				Str("organization_id", createdOrg.ID).
 				Str("product_user_id", input.ProductUserID).
@@ -486,7 +483,7 @@ func (s *organizationService) CreateWithMember(
 			lockCtx, input.TenantID, input.ProductID, createdOrg.ID, template,
 		)
 		if licenseErr != nil {
-			logger.Error().Err(licenseErr).
+			log.Event(&logger, licenseErr).
 				Str("product_id", input.ProductID).
 				Str("organization_id", createdOrg.ID).
 				Msg("failed to license the new organization")
@@ -560,10 +557,9 @@ func (s *organizationService) Update(
 		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to find organization")
 		return organization.Organization{}, err
 	}
@@ -591,10 +587,9 @@ func (s *organizationService) Update(
 		}
 		return s.emitOrganization(txCtx, events.OrganizationUpdated, input.ProductID, updated.ID)
 	}); txErr != nil {
-		logger.Error().
+		log.Event(&logger, txErr).
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(txErr).
 			Msg("failed to update organization")
 		return organization.Organization{}, txErr
 	}
@@ -620,10 +615,9 @@ func (s *organizationService) Delete(
 		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to find organization")
 		return err
 	}
@@ -641,10 +635,9 @@ func (s *organizationService) Delete(
 		}
 		return s.emitOrganization(txCtx, events.OrganizationDeleted, input.ProductID, input.OrganizationID)
 	}); txErr != nil {
-		logger.Error().
+		log.Event(&logger, txErr).
 			Str("organization_id", input.OrganizationID).
 			Str("product_id", input.ProductID).
-			Err(txErr).
 			Msg("failed to delete organization")
 		return txErr
 	}
@@ -668,9 +661,8 @@ func (s *organizationService) Search(
 
 	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
-			Err(err).
 			Msg("failed to search organizations")
 		return search.Result[organization.Organization]{}, err
 	}

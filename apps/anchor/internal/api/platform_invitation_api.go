@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/invitation"
@@ -85,7 +86,7 @@ func (s *AnchorAPI) DeletePlatformInvitation(
 		},
 	)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to delete invitation")
+		log.Event(&s.logger, err).Msg("failed to delete invitation")
 		return nil, err
 	}
 	return DeletePlatformInvitation204Response{}, nil

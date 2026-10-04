@@ -6,6 +6,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -67,7 +68,7 @@ func (s *AnchorAPI) ReportOrganizationUsage(
 		To:             request.Body.To,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("key", request.Body.Key).
@@ -99,7 +100,7 @@ func (s *AnchorAPI) GetOrganizationUsageSeries(
 		Pagination:     usageSeriesPagination(request.Params.Limit, request.Params.Offset),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
+		log.Event(&s.logger, err).
 			Str("product_id", request.ProductId).
 			Str("organization_id", request.OrganizationId).
 			Str("key", request.Params.Key).

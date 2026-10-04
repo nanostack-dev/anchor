@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -124,7 +125,7 @@ func (r *organizationAPIKeyRepository) Create(
 
 	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
 	if err != nil {
-		r.logger.Error().Err(err).
+		log.Event(&r.logger, err).
 			Str("api_key_id", apiKey.ID).
 			Str("organization_id", apiKey.OrganizationID).
 			Msg("Failed to create organization API key")
@@ -142,7 +143,7 @@ func (r *organizationAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			r.logger.Error().Err(err).
+			log.Event(&r.logger, err).
 				Str("api_key_id", apiKey.ID).
 				Str("organization_id", apiKey.OrganizationID).
 				Msg("Failed to create organization API key permissions")
@@ -279,7 +280,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"organization_id", input.OrganizationID,
 		).Msg("failed to search organization API keys")
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
@@ -299,7 +300,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		apiKeyIDs,
 	)
 	if err != nil {
-		r.logger.Error().Err(err).Str(
+		log.Event(&r.logger, err).Str(
 			"organization_id", input.OrganizationID,
 		).Msg("failed to load organization API key permissions")
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -134,7 +135,7 @@ func (s *workspaceService) Create(
 		)
 	})
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("name", input.Name).
@@ -162,7 +163,7 @@ func (s *workspaceService) Update(
 		input.WorkspaceID,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("workspace_id", input.WorkspaceID).
@@ -209,7 +210,7 @@ func (s *workspaceService) Update(
 		)
 	})
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("workspace_id", input.WorkspaceID).
@@ -237,7 +238,7 @@ func (s *workspaceService) Delete(
 		input.WorkspaceID,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Str("workspace_id", input.WorkspaceID).
@@ -284,7 +285,7 @@ func (s *workspaceService) Search(
 		input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
+		log.Event(&logger, err).
 			Str("product_id", input.ProductID).
 			Str("organization_id", input.OrganizationID).
 			Msg("failed to search workspaces")

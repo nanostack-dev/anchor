@@ -284,7 +284,7 @@ linters:
         ruleguard:
           # Project rules for the functional.Seq chain idioms. The path is
           # relative to the module the linter runs in.
-          rules: "gorules/functional.go"
+          rules: "gorules/functional.go,gorules/logging.go"
           failOn: all
         captLocal:
           # Whether to restrict checker to params only.

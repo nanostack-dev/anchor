@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
@@ -57,10 +58,9 @@ func (c *organizationLicenseCache) key(
 // degrade the next read.
 func (c *organizationLicenseCache) evict(ctx context.Context, productID, organizationID string) {
 	if err := c.key(productID, organizationID).Evict(ctx); err != nil {
-		c.logger.Error().
+		log.Event(&c.logger, err).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
-			Err(err).
 			Msg("failed to evict organization license from cache")
 	}
 }
