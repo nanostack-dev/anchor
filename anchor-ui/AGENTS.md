@@ -30,6 +30,8 @@ Canonical strategy: `nanostack-registry/docs/testing-strategy.md`. anchor-ui is 
 
 Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.
 
+Creating or changing a component: run the `break-ui` skill on it (not in your skills? WebFetch `https://raw.githubusercontent.com/emilkowalski/skills/main/skills/break-ui/SKILL.md`). Its worst-case data lands as stories beside the demo story (`WorstCase`, plus `Empty` and `One` where they apply) in place of the skill's dev toggle, so the story suite guards it. Fix every Broken and Ugly finding in the same PR; list the Fragile rows and open decisions in the PR body.
+
 ## Verification
 
 Run these before you push. CI runs the same four as separate steps.
