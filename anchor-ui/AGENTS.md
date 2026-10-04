@@ -26,7 +26,7 @@ leave `src/client/` stale.
 
 ## Testing
 
-Canonical strategy: `nanostack-registry/docs/testing-strategy.md`. anchor-ui is an **app**: Storybook component tests for reusable UI + Playwright e2e per feature (same pattern as `echopoint/apps/frontend/e2e/`). Run the mutating e2e suite against a local backend, never prod.
+anchor-ui is an **app**: Storybook component tests for reusable UI + Playwright e2e per feature (same pattern as `echopoint/apps/frontend/e2e/`). Run the mutating e2e suite against a local backend, never prod.
 
 Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.
 
@@ -54,7 +54,7 @@ Capture before/after images with `pnpm ui-shot` (Storybook port 6007); attach vi
 
 ## UI work
 
-Follow [the UI system and design-system consumer rule](docs/ui-system.md), shared with Echopoint. Import UI only from `@nanostackorg/design-system`; no local shadcn copies or styling props on shared components. Pages and routes compose closed components, blocks and layout; typed product visuals use `Box` with semantic tokens internally. Search the design-system and registry before adding UI. A neutral missing part goes back to the design system.
+Follow [the UI system and design-system consumer rule](docs/ui-system.md), shared with Echopoint. Import UI only from `@nanostackorg/design-system`; no local shadcn copies or styling props on shared components. Pages and routes compose closed components, blocks and layout; typed product visuals use `Box` with semantic tokens internally. Search the design system before adding UI. A neutral missing part goes back to the design system.
 
 Read current design-system source and tokens (`src/styles.css`) from the sibling repo's `origin/main`, not `node_modules`. Primary path from `anchor-ui` is `../../nanostack-design-system`; inside `anchor/worktrees/<topic>/anchor-ui` it is `../../../../nanostack-design-system`.
 
