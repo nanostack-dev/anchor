@@ -157,6 +157,32 @@ export const UnreadableSourceBlocksSubmit: Story = {
 	},
 };
 
+/**
+ * Each editor mode renders its own copy of the mode switch, so the pressed
+ * button unmounts. Focus moves to its replacement; otherwise the dialog takes
+ * focus back a frame later, away from whatever the operator focused next.
+ */
+export const ModeSwitchKeepsFocus: Story = {
+	play: async ({ canvasElement }) => {
+		const nextFrame = () =>
+			new Promise((resolve) => requestAnimationFrame(resolve));
+		await userEvent.click(
+			within(canvasElement).getByRole("button", { name: "Open" }),
+		);
+		await screen.findByRole("heading", { name: "Create License Schema" });
+
+		await userEvent.click(screen.getByRole("button", { name: "Text" }));
+		await nextFrame();
+		await expect(screen.getByRole("button", { name: "Text" })).toHaveFocus();
+
+		await userEvent.tab({ shift: true });
+		await userEvent.keyboard("{Enter}");
+		await nextFrame();
+		await expect(screen.getByPlaceholderText("max_flows")).toBeInTheDocument();
+		await expect(screen.getByRole("button", { name: "Visual" })).toHaveFocus();
+	},
+};
+
 export const RenamePreservesUsageShapesInRequest: Story = {
 	args: {
 		mode: "edit",
