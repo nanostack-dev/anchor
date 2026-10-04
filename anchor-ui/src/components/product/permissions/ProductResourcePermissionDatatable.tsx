@@ -9,11 +9,13 @@ import { SortDirection } from "@/client";
 import { searchProductResourcePermissionsOptions } from "@/client/@tanstack/react-query.gen";
 import { CreateProductResourcePermissionDialog } from "@/components/product/permissions/CreateProductResourcePermissionDialog";
 import { DeleteProductResourcePermissionDialog } from "@/components/product/permissions/DeleteProductResourcePermissionDialog";
-import { buttonVariants } from "@/components/ui/button";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -21,7 +23,6 @@ import dayjs from "dayjs";
 import { Eye, PenLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
-import { Button } from "../../ui/button";
 
 const columnHelper = createColumnHelper<ProductPermissionResponse>();
 
@@ -124,9 +125,12 @@ export function ProductResourcePermissionDatatable({
 				cell: (info) => {
 					const description = info.getValue();
 					return (
-						<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+						<Box
+							as="span"
+							className="text-sm text-muted-foreground max-w-[200px] truncate block"
+						>
 							{description || "No description"}
-						</span>
+						</Box>
 					);
 				},
 				enableSorting: false,
@@ -140,30 +144,34 @@ export function ProductResourcePermissionDatatable({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
-						<Link
-							to={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL}
-							params={{ permissionName: row.original.name }}
-							search={{}}
-							className={buttonVariants({ variant: "outline", size: "icon" })}
+					<Box className={"flex gap-2"}>
+						<ButtonLink
 							aria-label={`View ${row.original.name}`}
+							href={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL.replace(
+								"$permissionName",
+								encodeURIComponent(row.original.name),
+							)}
+							variant="outline"
+							tone="neutral"
 						>
 							<Eye />
-						</Link>
-						<Link
-							to={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL}
-							params={{ permissionName: row.original.name }}
-							search={{ edit: true }}
-							className={buttonVariants({ variant: "outline", size: "icon" })}
+						</ButtonLink>
+						<ButtonLink
 							aria-label={`Edit ${row.original.name}`}
+							href={`${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL.replace(
+								"$permissionName",
+								encodeURIComponent(row.original.name),
+							)}?${new URLSearchParams({ edit: "true" }).toString()}`}
+							variant="outline"
+							tone="neutral"
 						>
 							<PenLine />
-						</Link>
+						</ButtonLink>
 						<DeleteProductResourcePermissionDialog
 							productId={productId}
 							permission={row.original}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],
@@ -183,19 +191,19 @@ export function ProductResourcePermissionDatatable({
 
 	return (
 		<>
-			<div className="flex items-center justify-between mb-4">
-				<div className="flex items-center gap-2">
+			<Box className="flex items-center justify-between mb-4">
+				<Box className="flex items-center gap-2">
 					<CreateProductResourcePermissionDialog
 						productId={productId}
 						trigger={
-							<Button>
+							<Button variant="solid" tone="brand">
 								<Plus />
 								Create Permission
 							</Button>
 						}
 					/>
-				</div>
-			</div>
+				</Box>
+			</Box>
 			<AnchorDataTable
 				columns={columns}
 				data={items}

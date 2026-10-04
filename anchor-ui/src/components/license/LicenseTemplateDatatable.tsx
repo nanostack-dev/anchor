@@ -5,22 +5,31 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { ROUTE_PATHS } from "@/routes/routePaths";
+} from "@nanostackorg/design-system/components/empty";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import {
+	EyeIcon as Eye,
+	LayoutIcon as LayoutTemplate,
+	PencilLineIcon as PenLine,
+	PlusIcon as Plus,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import { Eye, LayoutTemplate, PenLine, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const columnHelper = createColumnHelper<LicenseTemplateResponse>();
@@ -100,14 +109,14 @@ export function LicenseTemplateDatatable({
 			columnHelper.accessor("name", {
 				header: () => <span>Name</span>,
 				cell: (info) => (
-					<Link
-						to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
-						params={{ templateId: info.row.original.id }}
-						search={{}}
-						className="font-medium hover:underline"
+					<TextLink
+						href={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL.replace(
+							"$templateId",
+							encodeURIComponent(info.row.original.id),
+						)}
 					>
 						{info.getValue()}
-					</Link>
+					</TextLink>
 				),
 				enableSorting: true,
 			}),
@@ -129,19 +138,22 @@ export function LicenseTemplateDatatable({
 			columnHelper.accessor("description", {
 				header: () => <span>Description</span>,
 				cell: (info) => (
-					<span className="block max-w-[220px] truncate text-sm text-muted-foreground">
+					<Box
+						as="span"
+						className="block max-w-[220px] truncate text-sm text-muted-foreground"
+					>
 						{info.getValue() || "No description"}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("values", {
 				header: () => <span>Values</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground">
+					<Text as="span" tone="muted">
 						{Object.keys(info.getValue() ?? {}).length} field
 						{Object.keys(info.getValue() ?? {}).length === 1 ? "" : "s"}
-					</span>
+					</Text>
 				),
 				enableSorting: false,
 			}),
@@ -154,28 +166,29 @@ export function LicenseTemplateDatatable({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className="flex gap-2">
-						<Link
-							to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
-							params={{ templateId: row.original.id }}
-							search={{}}
-							className={buttonVariants({ variant: "outline", size: "icon" })}
+					<Inline space="sm" wrap={false}>
+						<ButtonLink
+							href={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL.replace(
+								"$templateId",
+								encodeURIComponent(row.original.id),
+							)}
+							variant="outline"
+							icon={Eye}
 							aria-label={`View ${row.original.name}`}
 						>
-							<Eye />
-						</Link>
+							View
+						</ButtonLink>
 						{row.original.status === LicenseTemplateStatus.ACTIVE && (
-							<Link
-								to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL}
-								params={{ templateId: row.original.id }}
-								search={{ edit: true }}
-								className={buttonVariants({ variant: "outline", size: "icon" })}
+							<ButtonLink
+								href={`${ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL.replace("$templateId", encodeURIComponent(row.original.id))}?edit=true`}
+								variant="outline"
+								icon={PenLine}
 								aria-label={`Edit ${row.original.name}`}
 							>
-								<PenLine />
-							</Link>
+								Edit
+							</ButtonLink>
 						)}
-					</div>
+					</Inline>
 				),
 			}),
 		],
@@ -186,39 +199,35 @@ export function LicenseTemplateDatatable({
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<LayoutTemplate />
-					</EmptyMedia>
+					<EmptyMedia icon={LayoutTemplate} />
 					<EmptyTitle>No license schema declared yet</EmptyTitle>
 					<EmptyDescription>
 						A template is a set of values checked against this product&rsquo;s
 						license schema. Declare the schema first.
 					</EmptyDescription>
 				</EmptyHeader>
-				<Button
-					variant="outline"
-					render={<Link to={ROUTE_PATHS.PRODUCT_LICENSE_SCHEMA} />}
-				>
+				<ButtonLink href={ROUTE_PATHS.PRODUCT_LICENSE_SCHEMA} variant="outline">
 					Go to License Schema
-				</Button>
+				</ButtonLink>
 			</Empty>
 		);
 	}
 
 	return (
 		<>
-			<div className="mb-4 flex items-center justify-between">
+			<Box className="mb-4 flex items-center justify-between">
 				<div />
 				{schema && (
-					<Link
-						to={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_NEW}
-						className={buttonVariants()}
+					<ButtonLink
+						href={ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_NEW}
+						variant="solid"
+						tone="brand"
+						icon={Plus}
 					>
-						<Plus data-icon="inline-start" />
 						Create Template
-					</Link>
+					</ButtonLink>
 				)}
-			</div>
+			</Box>
 			<AnchorDataTable
 				columns={columns}
 				data={pageItems}

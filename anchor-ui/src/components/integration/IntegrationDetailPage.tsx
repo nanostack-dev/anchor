@@ -1,14 +1,29 @@
 import { Page } from "@/components/common/Page";
-import { Badge } from "@/components/ui/badge";
+import {
+	StatCard,
+	StatCardLabel,
+	StatCardValue,
+} from "@nanostackorg/design-system/blocks/stat-card";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
+import {
+	Badge,
+	type BadgeTone,
+} from "@nanostackorg/design-system/components/badge";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
-import { Clock3 } from "lucide-react";
+} from "@nanostackorg/design-system/components/card";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import type { ReactNode } from "react";
 
 export interface IntegrationAuditEntry {
@@ -18,39 +33,21 @@ export interface IntegrationAuditEntry {
 	timestamp: string;
 	severity?: "info" | "success" | "warning" | "error";
 }
-
-interface SummaryItem {
-	label: string;
-	value: string | number;
-}
-
 interface IntegrationDetailPageProps {
 	title: string;
 	description: string;
 	backLink: ReactNode;
-	summary: SummaryItem[];
+	summary: { label: string; value: string | number }[];
 	children: ReactNode;
 	auditEntries: IntegrationAuditEntry[];
 	auditIsLoading?: boolean;
 	auditErrorMessage?: string | null;
 	auditTitle?: string;
 }
-
-function severityClassName(
-	severity: IntegrationAuditEntry["severity"],
-): string {
-	switch (severity) {
-		case "success":
-			return "bg-success";
-		case "warning":
-			return "bg-warning";
-		case "error":
-			return "bg-destructive";
-		default:
-			return "bg-muted-foreground";
-	}
-}
-
+const auditTone: Record<
+	NonNullable<IntegrationAuditEntry["severity"]>,
+	BadgeTone
+> = { info: "info", success: "success", warning: "warning", error: "critical" };
 export function IntegrationDetailPage({
 	title,
 	description,
@@ -62,80 +59,71 @@ export function IntegrationDetailPage({
 	auditErrorMessage,
 	auditTitle = "Audit log",
 }: IntegrationDetailPageProps) {
-	const sortedAuditEntries = [...auditEntries].sort((a, b) => {
-		return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-	});
-
+	const sortedAuditEntries = [...auditEntries].sort(
+		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+	);
 	return (
 		<Page title={title} description={description}>
-			<div className="space-y-6 pb-6">
-				<div className="space-y-3">
-					<div>{backLink}</div>
-					{summary.length > 0 ? (
-						<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-							{summary.map((item) => (
-								<div key={item.label} className="rounded-xl border bg-card p-3">
-									<p className="text-xs text-muted-foreground">{item.label}</p>
-									<p className="text-sm font-medium">{item.value}</p>
-								</div>
-							))}
-						</div>
-					) : null}
-				</div>
-
+			<Stack space="lg">
+				{backLink}
+				{summary.length > 0 && (
+					<Box className="grid grid-cols-2 gap-3 md:grid-cols-4">
+						{summary.map((item) => (
+							<StatCard key={item.label} variant="outline" size="sm">
+								<StatCardLabel>{item.label}</StatCardLabel>
+								<StatCardValue>{item.value}</StatCardValue>
+							</StatCard>
+						))}
+					</Box>
+				)}
 				{children}
-
-				<Card>
+				<Card variant="outline">
 					<CardHeader>
-						<CardTitle className="inline-flex items-center gap-2">
-							<Clock3 className="size-4" />
-							{auditTitle}
-						</CardTitle>
+						<Heading level={2}>{auditTitle}</Heading>
 						<CardDescription>
 							Recent integration activity. Most recent events appear first.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{auditIsLoading ? (
-							<div className="flex items-center gap-2 rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-								<Spinner className="size-4 text-current" />
-								Loading audit activity...
-							</div>
+							<Inline>
+								<Spinner />
+								<Text tone="muted">Loading audit activity...</Text>
+							</Inline>
 						) : auditErrorMessage ? (
-							<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-								{auditErrorMessage}
-							</div>
+							<Alert tone="critical">
+								<AlertDescription>{auditErrorMessage}</AlertDescription>
+							</Alert>
 						) : sortedAuditEntries.length === 0 ? (
-							<div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-								No activity recorded yet.
-							</div>
+							<Text tone="muted">No activity recorded yet.</Text>
 						) : (
-							<div className="space-y-3">
+							<Stack space="md">
 								{sortedAuditEntries.map((entry) => (
-									<div className="rounded-xl border bg-card p-3" key={entry.id}>
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex items-start gap-2">
-												<span
-													className={`mt-1 size-2.5 shrink-0 rounded-full ${severityClassName(entry.severity)}`}
-												/>
-												<div>
-													<p className="text-sm font-medium">{entry.title}</p>
-													<p className="text-xs text-muted-foreground">
-														{entry.description}
-													</p>
-												</div>
-											</div>
-											<Badge variant="secondary" className="text-[10px]">
-												{new Date(entry.timestamp).toLocaleString()}
-											</Badge>
-										</div>
-									</div>
+									<Box
+										key={entry.id}
+										className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
+									>
+										<Stack space="xs">
+											<Inline>
+												<Badge tone={auditTone[entry.severity ?? "info"]}>
+													{entry.severity ?? "info"}
+												</Badge>
+												<Text weight="medium">{entry.title}</Text>
+											</Inline>
+											<Text tone="muted" size="xs">
+												{entry.description}
+											</Text>
+										</Stack>
+										<Text tone="muted" size="xs">
+											{new Date(entry.timestamp).toLocaleString()}
+										</Text>
+									</Box>
 								))}
-							</div>
+							</Stack>
 						)}
 					</CardContent>
 				</Card>
-			</div>
+			</Stack>
 		</Page>
 	);
 }

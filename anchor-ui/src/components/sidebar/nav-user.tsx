@@ -8,7 +8,11 @@ import {
 	Sparkles,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@nanostackorg/design-system/components/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -17,13 +21,13 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@nanostackorg/design-system/components/dropdown-menu";
 import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar";
+} from "@nanostackorg/design-system/components/sidebar";
 
 import { useAuth } from "@/context/auth/AuthContext";
 
@@ -43,17 +47,10 @@ export function NavUser({
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={
-							<SidebarMenuButton
-								size="lg"
-								className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
-							/>
-						}
-					>
-						<Avatar className="size-8 rounded-lg">
+					<DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
+						<Avatar size="sm">
 							<AvatarImage src={user.avatar} alt={user.name} />
-							<AvatarFallback className="rounded-lg">CN</AvatarFallback>
+							<AvatarFallback>CN</AvatarFallback>
 						</Avatar>
 						<div className="grid flex-1 text-left text-sm leading-tight">
 							<span className="truncate font-medium">{user.name}</span>
@@ -61,24 +58,21 @@ export function NavUser({
 						</div>
 						<ChevronsUpDown className="ml-auto size-4" />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						className="w-(--anchor-width) min-w-56 rounded-lg"
-						side={isMobile ? "bottom" : "right"}
-						align="end"
-						sideOffset={4}
-					>
-						<DropdownMenuLabel className="p-0 font-normal">
-							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-								<Avatar className="size-8 rounded-lg">
-									<AvatarImage src={user.avatar} alt={user.name} />
-									<AvatarFallback className="rounded-lg">CN</AvatarFallback>
-								</Avatar>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{user.email}</span>
+					<DropdownMenuContent side={isMobile ? "bottom" : "right"} align="end">
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>
+								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+									<Avatar size="sm">
+										<AvatarImage src={user.avatar} alt={user.name} />
+										<AvatarFallback>CN</AvatarFallback>
+									</Avatar>
+									<div className="grid flex-1 text-left text-sm leading-tight">
+										<span className="truncate font-medium">{user.name}</span>
+										<span className="truncate text-xs">{user.email}</span>
+									</div>
 								</div>
-							</div>
-						</DropdownMenuLabel>
+							</DropdownMenuLabel>
+						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem>

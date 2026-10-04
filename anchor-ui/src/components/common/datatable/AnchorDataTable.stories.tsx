@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
-import { expect, fn, screen, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { StatusBadge } from "@/components/common/StatusBadge";
 
@@ -72,13 +72,31 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-	play: async ({ canvasElement }) => {
+	args: { onPaginationChange: fn() },
+	play: async ({ canvasElement, args }) => {
 		const canvas = within(canvasElement);
 		await expect(
 			canvas.getByRole("columnheader", { name: "Name" }),
 		).toBeInTheDocument();
 		await expect(canvas.getByText("checkout-prod")).toBeInTheDocument();
 		await expect(canvas.getByText("legacy-import")).toBeInTheDocument();
+		await userEvent.click(
+			canvas.getByRole("combobox", { name: "Rows per page" }),
+		);
+		const pageSizeOptions = await screen.findByRole("listbox", {
+			name: "Rows per page options",
+		});
+		await expect(pageSizeOptions).toBeVisible();
+		await userEvent.click(
+			within(pageSizeOptions).getByRole("option", { name: "Show 20" }),
+		);
+		await expect(args.onPaginationChange).toHaveBeenCalledWith({
+			pageIndex: 0,
+			pageSize: 20,
+		});
+		await waitFor(() =>
+			expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+		);
 	},
 };
 
@@ -91,6 +109,10 @@ export const ClickableRows: Story = {
 	play: async ({ canvasElement, args }) => {
 		const canvas = within(canvasElement);
 		const activeRow = canvas.getByRole("row", { name: /checkout-prod/ });
+		const inactiveRow = canvas.getByRole("row", { name: /legacy-import/ });
+
+		await expect(activeRow).toHaveStyle({ cursor: "pointer" });
+		await expect(inactiveRow).not.toHaveStyle({ cursor: "pointer" });
 
 		await userEvent.click(within(activeRow).getByText("checkout-prod"));
 		await expect(args.onRowClick).toHaveBeenCalledWith(rows[0]);
@@ -101,6 +123,26 @@ export const ClickableRows: Story = {
 		await userEvent.click(within(activeRow).getByLabelText("Select row"));
 		await userEvent.click(canvas.getByText("legacy-import"));
 		await expect(args.onRowClick).toHaveBeenCalledTimes(1);
+	},
+};
+
+export const ReadOnlyRows: Story = {
+	args: {
+		isRowClickable: () => true,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		for (const row of rows) {
+			await expect(
+				canvas.getByRole("row", { name: new RegExp(row.name) }),
+			).not.toHaveStyle({ cursor: "pointer" });
+		}
+		await userEvent.click(canvas.getByText("checkout-prod"));
+		await userEvent.click(canvas.getAllByLabelText("Select row")[0]);
+		await expect(canvas.getAllByLabelText("Select row")[0]).toHaveAttribute(
+			"aria-checked",
+			"true",
+		);
 	},
 };
 
@@ -271,6 +313,69 @@ export const SelectAllMenuOpens: Story = {
 			"true",
 			"true",
 		]);
+	},
+};
+
+export const SelectAllMatchingServerQuery: Story = {
+	args: {
+		total: 150,
+		onSelectionChange: fn(),
+	},
+	render: (args) => {
+		const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 3 });
+		const data =
+			pagination.pageIndex === 0
+				? rows
+				: rows.map((row) => ({
+						...row,
+						id: `next-${row.id}`,
+						name: `next-${row.name}`,
+					}));
+		return (
+			<AnchorDataTable
+				{...args}
+				data={data}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+			/>
+		);
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getAllByLabelText("Select row")).toHaveLength(3);
+		await userEvent.click(canvas.getByLabelText("Selection options"));
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "All matching query" }),
+		);
+		await waitFor(() =>
+			expect(args.onSelectionChange).toHaveBeenLastCalledWith("all-matching"),
+		);
+		await expect(canvas.getByLabelText("Select all")).toHaveAttribute(
+			"aria-checked",
+			"true",
+		);
+
+		await userEvent.click(canvas.getByRole("button", { name: "Next" }));
+		await expect(await canvas.findByText("next-checkout-prod")).toBeVisible();
+		await waitFor(() =>
+			expect(args.onSelectionChange).toHaveBeenLastCalledWith("all-matching"),
+		);
+		await expect(canvas.getByLabelText("Select all")).toHaveAttribute(
+			"aria-checked",
+			"true",
+		);
+
+		await userEvent.click(canvas.getByLabelText("Selection options"));
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "None" }),
+		);
+		await waitFor(() =>
+			expect(args.onSelectionChange).toHaveBeenLastCalledWith([]),
+		);
+		await expect(canvas.getByLabelText("Select all")).toHaveAttribute(
+			"aria-checked",
+			"false",
+		);
 	},
 };
 

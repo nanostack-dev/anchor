@@ -5,7 +5,8 @@ import {
 	updateLicenseSchemaMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
-import { Button } from "@/components/ui/button";
+import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -14,11 +15,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/dialog";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactElement, useState } from "react";
-import { toast } from "sonner";
 
 import { LicenseSchemaEditor } from "./LicenseSchemaEditor";
 import {
@@ -110,7 +112,7 @@ export function LicenseSchemaFormDialog({
 	const createMutation = useMutation({
 		...createLicenseSchemaMutation(),
 		onSuccess: () => {
-			toast.success("License schema created");
+			toast.add({ type: "success", title: "License schema created" });
 			setOpen(false);
 			invalidate();
 			onSaved?.();
@@ -121,7 +123,7 @@ export function LicenseSchemaFormDialog({
 	const updateMutation = useMutation({
 		...updateLicenseSchemaMutation(),
 		onSuccess: () => {
-			toast.success("License schema updated");
+			toast.add({ type: "success", title: "License schema updated" });
 			setOpen(false);
 			invalidate();
 			onSaved?.();
@@ -160,9 +162,9 @@ export function LicenseSchemaFormDialog({
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger render={trigger} />
-			<DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[680px]">
-				<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-					<DialogHeader className="px-6 pt-6">
+			<DialogContent size="lg">
+				<Stack as="form" onSubmit={handleSubmit} space="lg">
+					<DialogHeader>
 						<DialogTitle>
 							{isEditMode ? "Edit License Schema" : "Create License Schema"}
 						</DialogTitle>
@@ -172,7 +174,7 @@ export function LicenseSchemaFormDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4">
+					<Stack space="lg">
 						<FormAlert message={generalError} />
 
 						<LicenseSchemaEditor
@@ -185,12 +187,10 @@ export function LicenseSchemaFormDialog({
 							disabled={isSubmitting}
 						/>
 
-						{listError && (
-							<p className="text-sm text-destructive">{listError}</p>
-						)}
-					</div>
+						{listError && <Text tone="critical">{listError}</Text>}
+					</Stack>
 
-					<DialogFooter className="mx-0 mb-0 border-t border-border px-6 py-4">
+					<DialogFooter>
 						<Button
 							type="button"
 							variant="outline"
@@ -199,7 +199,12 @@ export function LicenseSchemaFormDialog({
 						>
 							Cancel
 						</Button>
-						<Button type="submit" disabled={isSubmitting || sourceInvalid}>
+						<Button
+							variant="solid"
+							tone="brand"
+							type="submit"
+							disabled={isSubmitting || sourceInvalid}
+						>
 							{isSubmitting
 								? isEditMode
 									? "Saving…"
@@ -209,7 +214,7 @@ export function LicenseSchemaFormDialog({
 									: "Create Schema"}
 						</Button>
 					</DialogFooter>
-				</form>
+				</Stack>
 			</DialogContent>
 		</Dialog>
 	);

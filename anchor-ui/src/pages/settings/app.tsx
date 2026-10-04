@@ -1,15 +1,15 @@
 import { Page } from "@/components/common/Page";
-
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
 export default function AppSettingsPage() {
 	return (
-		<Page>
-			<h1 className="text-2xl font-bold mb-4">Application Settings</h1>
-			<div>
-				<p className="text-muted-foreground">
-					Manage application-wide settings here.
-				</p>
-				{/* Add application settings form or content here */}
-			</div>
+		<Page
+			title="Application Settings"
+			description="Manage application-wide settings here."
+		>
+			<EmptyState
+				title="Settings are coming soon"
+				description="There are no additional settings to configure yet."
+			/>
 		</Page>
 	);
 }

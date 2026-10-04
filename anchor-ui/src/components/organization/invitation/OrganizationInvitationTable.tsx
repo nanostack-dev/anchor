@@ -1,6 +1,7 @@
 import type { OrganizationInvitationResponse } from "@/client";
 import { OrganizationInvitationStatus } from "@/client";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import dayjs from "dayjs";
@@ -71,7 +72,7 @@ export function OrganizationInvitationTable({
 			}),
 			columnHelper.accessor("email", {
 				header: "Email",
-				cell: (info) => <div className="font-medium">{info.getValue()}</div>,
+				cell: (info) => <Box className="font-medium">{info.getValue()}</Box>,
 			}),
 			columnHelper.accessor("role_id", {
 				header: "Role",
@@ -81,21 +82,21 @@ export function OrganizationInvitationTable({
 			columnHelper.accessor("expires_at", {
 				header: "Expires",
 				cell: (info) => (
-					<div className="text-muted-foreground">
+					<Box className="text-muted-foreground">
 						{dayjs(info.getValue()).format(EXPIRY_FORMAT)}
-					</div>
+					</Box>
 				),
 			}),
 			columnHelper.display({
 				id: "actions",
 				header: "Actions",
 				cell: ({ row }) => (
-					<div className="flex gap-2">
+					<Box className="flex gap-2">
 						<DeleteOrganizationInvitationDialog
 							email={row.original.email}
 							onConfirm={() => onDelete(row.original)}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],

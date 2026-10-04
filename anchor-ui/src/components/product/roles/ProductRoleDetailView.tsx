@@ -1,8 +1,9 @@
 import type { ProductRoleResponse } from "@/client";
 import { Page } from "@/components/common/Page";
-import { Button, buttonVariants } from "@/components/ui/button";
 import { ROUTE_PATHS } from "@/routes/routePaths";
-import { Link } from "@tanstack/react-router";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import dayjs from "dayjs";
 import { ArrowLeft, PenLine } from "lucide-react";
 import { ProductRoleEditor } from "./ProductRoleDialog";
@@ -30,28 +31,31 @@ export function ProductRoleDetailView({
 			description={role.description || "No description."}
 			actions={
 				<>
-					<Link
-						to={ROUTE_PATHS.PRODUCT_ROLES}
-						className={buttonVariants({ variant: "outline" })}
+					<ButtonLink
+						href={ROUTE_PATHS.PRODUCT_ROLES}
+						variant="outline"
+						tone="neutral"
 					>
 						<ArrowLeft data-icon="inline-start" />
 						All roles
-					</Link>
+					</ButtonLink>
 					{editing && (
 						<Button variant="outline" onClick={onCancel}>
 							Cancel editing
 						</Button>
 					)}
 					{!editing && (
-						<Link
-							to={ROUTE_PATHS.PRODUCT_ROLE_DETAIL}
-							params={{ roleId: role.id }}
-							search={{ edit: true }}
-							className={buttonVariants()}
+						<ButtonLink
+							href={`${ROUTE_PATHS.PRODUCT_ROLE_DETAIL.replace(
+								"$roleId",
+								encodeURIComponent(role.id),
+							)}?${new URLSearchParams({ edit: "true" }).toString()}`}
+							variant="solid"
+							tone="brand"
 						>
 							<PenLine data-icon="inline-start" />
 							Edit role
-						</Link>
+						</ButtonLink>
 					)}
 				</>
 			}
@@ -66,7 +70,8 @@ export function ProductRoleDetailView({
 					onSaved={onSaved}
 				/>
 			) : (
-				<section
+				<Box
+					as="section"
 					className="rounded-lg border border-border p-6"
 					aria-label="Role details"
 				>
@@ -79,25 +84,26 @@ export function ProductRoleDetailView({
 							<dt className="text-sm text-muted-foreground">Description</dt>
 							<dd className="mt-1">{role.description || "No description"}</dd>
 						</div>
-						<div className="sm:col-span-2">
+						<Box className="sm:col-span-2">
 							<dt className="text-sm text-muted-foreground">Permissions</dt>
 							<dd className="mt-2">
 								{role.permissions.length ? (
-									<ul className="flex flex-wrap gap-2">
+									<Box as="ul" className="flex flex-wrap gap-2">
 										{role.permissions.map((permission) => (
-											<li
+											<Box
+												as="li"
 												key={permission.permission_name}
 												className="rounded-md border border-border px-2 py-1 text-sm"
 											>
 												{permission.permission_name}
-											</li>
+											</Box>
 										))}
-									</ul>
+									</Box>
 								) : (
 									"No permissions assigned"
 								)}
 							</dd>
-						</div>
+						</Box>
 						<div>
 							<dt className="text-sm text-muted-foreground">Created</dt>
 							<dd className="mt-1">
@@ -111,7 +117,7 @@ export function ProductRoleDetailView({
 							</dd>
 						</div>
 					</dl>
-				</section>
+				</Box>
 			)}
 		</Page>
 	);

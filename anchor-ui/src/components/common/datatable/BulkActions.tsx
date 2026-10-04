@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -7,16 +8,15 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@nanostackorg/design-system/components/alert-dialog";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Spinner } from "@/components/ui/spinner";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/dropdown-menu";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -138,7 +138,7 @@ export function BulkActions<TData>({
 						{actions.map((action) => (
 							<DropdownMenuItem
 								key={action.id}
-								variant={action.destructive ? "destructive" : "default"}
+								tone={action.destructive ? "critical" : "neutral"}
 								disabled={selectedRows.some(
 									(row) => !(action.isEligible?.(row) ?? true),
 								)}
@@ -214,7 +214,8 @@ export function BulkActions<TData>({
 							Cancel
 						</AlertDialogCancel>
 						<AlertDialogAction
-							variant={pending?.action.destructive ? "destructive" : "default"}
+							tone={pending?.action.destructive ? "critical" : "brand"}
+							variant="solid"
 							disabled={progress !== null || disabled}
 							onClick={() => void execute()}
 						>

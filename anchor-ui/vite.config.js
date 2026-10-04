@@ -20,6 +20,7 @@ export default defineConfig({
 		environment: "jsdom",
 	},
 	resolve: {
+		dedupe: ["react", "react-dom"],
 		alias: {
 			"@": resolve(__dirname, "./src"),
 		},

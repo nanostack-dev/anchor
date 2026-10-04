@@ -1,12 +1,12 @@
 import { Page } from "@/components/common/Page";
 import { LicenseSchemaPanel } from "@/components/license/LicenseSchemaPanel";
+import { useProduct } from "@/context/product/ProductContext";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/context/product/ProductContext";
+} from "@nanostackorg/design-system/components/empty";
 
 export default function LicenseSchemaPage() {
 	const { currentProduct } = useProduct();

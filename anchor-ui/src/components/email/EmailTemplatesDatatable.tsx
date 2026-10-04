@@ -12,16 +12,21 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
-import { Button } from "@/components/ui/button";
 import { useProduct } from "@/context/product/ProductContext";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import {
 	keepPreviousData,
 	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import dayjs from "dayjs";
@@ -135,20 +140,23 @@ export function EmailTemplatesDatatable() {
 			columnHelper.accessor("slug", {
 				header: () => <span>Slug</span>,
 				cell: (info) => (
-					<span className="text-sm font-mono">{info.getValue()}</span>
+					<Text as="span" font="mono">
+						{info.getValue()}
+					</Text>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("name", {
 				header: () => <span>Name</span>,
 				cell: (info) => (
-					<Link
-						to={ROUTE_PATHS.EMAIL_TEMPLATE_BUILDER}
-						params={{ templateId: info.row.original.id }}
-						className="text-sm font-medium hover:underline text-primary"
+					<TextLink
+						href={ROUTE_PATHS.EMAIL_TEMPLATE_BUILDER.replace(
+							"$templateId",
+							encodeURIComponent(info.row.original.id),
+						)}
 					>
 						{info.getValue()}
-					</Link>
+					</TextLink>
 				),
 				enableSorting: false,
 			}),
@@ -173,9 +181,9 @@ export function EmailTemplatesDatatable() {
 			columnHelper.accessor("created_at", {
 				header: () => <span>Created</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground">
+					<Text as="span" tone="muted">
 						{dayjs(info.getValue()).format("D MMM YYYY")}
-					</span>
+					</Text>
 				),
 				enableSorting: false,
 			}),
@@ -184,7 +192,8 @@ export function EmailTemplatesDatatable() {
 				header: () => <span>Actions</span>,
 				cell: (info) => (
 					<Button
-						variant="destructive"
+						variant="soft"
+						tone="critical"
 						size="sm"
 						onClick={() => {
 							if (!currentProduct) return;
@@ -206,26 +215,28 @@ export function EmailTemplatesDatatable() {
 
 	if (!currentProduct) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<p className="text-muted-foreground">
-					Select a product to view email templates
-				</p>
-			</div>
+			<Box className="flex items-center justify-center p-8">
+				<Text tone="muted">Select a product to view email templates</Text>
+			</Box>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-center justify-between">
-				{createError && (
-					<p className="text-sm text-destructive">{createError}</p>
-				)}
-				<div className="ml-auto">
-					<Button size="sm" onClick={handleNew} disabled={isCreating}>
+		<Stack space="lg">
+			<Spread space="md">
+				{createError && <Text tone="critical">{createError}</Text>}
+				<Box className="ml-auto">
+					<Button
+						variant="solid"
+						tone="brand"
+						size="sm"
+						onClick={handleNew}
+						disabled={isCreating}
+					>
 						{isCreating ? "Creating…" : "New Template"}
 					</Button>
-				</div>
-			</div>
+				</Box>
+			</Spread>
 			<AnchorDataTable
 				columns={columns}
 				data={data?.items ?? []}
@@ -268,6 +279,6 @@ export function EmailTemplatesDatatable() {
 					await refetch({ throwOnError: true });
 				}}
 			/>
-		</div>
+		</Stack>
 	);
 }

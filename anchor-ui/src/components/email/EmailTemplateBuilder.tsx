@@ -21,47 +21,61 @@ import {
 	updateEmailTemplateMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import Editor from "@monaco-editor/react";
+import { CopyButton } from "@nanostackorg/design-system/blocks/copy-button";
+import {
+	Button,
+	IconButton,
+} from "@nanostackorg/design-system/components/button";
+import { Checkbox } from "@nanostackorg/design-system/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@nanostackorg/design-system/components/dialog";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+} from "@nanostackorg/design-system/components/select";
+import { Separator } from "@nanostackorg/design-system/components/separator";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@nanostackorg/design-system/components/tabs";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
 import {
 	Tooltip,
 	TooltipContent,
-	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { ROUTE_PATHS } from "@/routes/routePaths";
-import Editor from "@monaco-editor/react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+} from "@nanostackorg/design-system/components/tooltip";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import {
-	AlertCircle,
-	Check,
-	Code2,
-	Copy,
-	FileText,
-	LayoutTemplate,
-	Plus,
-	Save,
-	Trash2,
-} from "lucide-react";
+	WarningCircleIcon as AlertCircle,
+	CheckIcon as Check,
+	CodeIcon as Code2,
+	FileTextIcon as FileText,
+	LayoutIcon as LayoutTemplate,
+	PlusIcon as Plus,
+	FloppyDiskIcon as Save,
+	TrashIcon as Trash2,
+} from "@phosphor-icons/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VARIABLE_TYPES: EmailVariableType[] = [
@@ -116,48 +130,6 @@ function getApiErrorCode(error: unknown): string | undefined {
 	}
 
 	return undefined;
-}
-
-// Copies the current HTML body to the clipboard with transient "Copied" feedback.
-function CopyHtmlButton({ html }: { html: string }) {
-	const [copied, setCopied] = useState(false);
-	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	useEffect(
-		() => () => {
-			if (resetTimer.current) clearTimeout(resetTimer.current);
-		},
-		[],
-	);
-
-	async function handleCopy() {
-		try {
-			await navigator.clipboard.writeText(html);
-			setCopied(true);
-			if (resetTimer.current) clearTimeout(resetTimer.current);
-			resetTimer.current = setTimeout(() => setCopied(false), 2000);
-		} catch {
-			setCopied(false);
-		}
-	}
-
-	return (
-		<Button
-			type="button"
-			variant="ghost"
-			size="sm"
-			className="h-7 px-2 text-muted-foreground hover:text-foreground"
-			onClick={handleCopy}
-			disabled={!html}
-		>
-			{copied ? (
-				<Check className="size-3.5 mr-1" />
-			) : (
-				<Copy className="size-3.5 mr-1" />
-			)}
-			{copied ? "Copied" : "Copy HTML"}
-		</Button>
-	);
 }
 
 function stringifyExampleValues(
@@ -314,33 +286,45 @@ const PRIMITIVE_TYPES: EmailVariableType[] = [
 	EmailVariableType.BOOL,
 ];
 
+const LIST_ITEM_TYPES: EmailVariableType[] = [
+	...PRIMITIVE_TYPES,
+	EmailVariableType.OBJECT,
+];
+
 function TypeSelect({
+	label,
 	value,
 	options,
 	onChange,
-	className,
 }: {
+	label: string;
 	value: EmailVariableType;
 	options: EmailVariableType[];
 	onChange: (v: EmailVariableType) => void;
-	className?: string;
 }) {
+	const items = useMemo(
+		() => options.map((value) => ({ value, label: value })),
+		[options],
+	);
 	return (
-		<Select
-			value={value}
-			onValueChange={(v) => onChange(v as EmailVariableType)}
-		>
-			<SelectTrigger className={`text-xs h-7 ${className ?? ""}`}>
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				{options.map((t) => (
-					<SelectItem key={t} value={t} className="text-xs">
-						{t}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<Box className="w-28 shrink-0">
+			<Select
+				items={items}
+				value={value}
+				onValueChange={(v) => onChange(v as EmailVariableType)}
+			>
+				<SelectTrigger aria-label={label} size="sm" width="fill">
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent aria-label={`${label} options`}>
+					{items.map((item) => (
+						<SelectItem key={item.value} value={item.value}>
+							{item.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		</Box>
 	);
 }
 
@@ -372,41 +356,38 @@ function PropertyListEditor({
 	}
 
 	return (
-		<div className="flex flex-col gap-1.5">
+		<Stack space="xs">
 			{properties.map((p, i) => (
-				<div
-					key={propertyKeysRef.current[i]}
-					className="flex items-center gap-1.5"
-				>
+				<Inline key={propertyKeysRef.current[i]} space="xs" wrap={false}>
 					<Input
+						aria-label={`Property name ${i + 1}`}
+						font="mono"
+						size="sm"
 						value={p.name}
 						onChange={(e) => updateProp(i, { name: e.target.value })}
 						placeholder="field_name"
-						className="font-mono text-xs h-7 flex-1"
 					/>
 					<TypeSelect
+						label={`Type for property ${p.name || i + 1}`}
 						value={p.type}
 						options={PRIMITIVE_TYPES}
 						onChange={(t) => updateProp(i, { type: t })}
-						className="w-24"
 					/>
-					<button
+					<IconButton
+						variant="ghost"
+						tone="critical"
+						size="sm"
 						type="button"
+						icon={Trash2}
+						label={`Remove field ${p.name || i + 1}`}
 						onClick={() => removeProp(i)}
-						className="text-muted-foreground hover:text-destructive text-xs px-1"
-					>
-						✕
-					</button>
-				</div>
+					/>
+				</Inline>
 			))}
-			<button
-				type="button"
-				onClick={addProp}
-				className="text-xs text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/40 hover:border-foreground/40 rounded px-2 py-0.5 transition-colors"
-			>
+			<Button variant="ghost" size="sm" type="button" onClick={addProp}>
 				+ field
-			</button>
-		</div>
+			</Button>
+		</Stack>
 	);
 }
 
@@ -468,54 +449,57 @@ function VariableEditor({
 	}
 
 	return (
-		<div className="flex flex-col gap-2">
+		<Stack space="sm">
 			{variables.map((v, i) => (
-				<div
+				<Box
 					key={variableKeysRef.current[i]}
 					className="rounded-lg border border-border bg-card"
 				>
 					{/* Main row */}
-					<div className="flex items-center gap-2 p-2">
+					<Box className="flex items-center gap-2 p-2">
 						<Input
+							aria-label={`Variable name ${i + 1}`}
+							font="mono"
+							size="sm"
 							placeholder="variable_name"
 							value={v.name}
 							onChange={(e) => update(i, { name: e.target.value })}
-							className="font-mono text-sm h-7 flex-1"
 						/>
 						<TypeSelect
+							label={`Type for variable ${v.name || i + 1}`}
 							value={v.type}
 							options={VARIABLE_TYPES}
 							onChange={(t) => update(i, { type: t })}
-							className="w-28"
 						/>
-						<label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
-							<input
-								type="checkbox"
+						<Label>
+							<Checkbox
 								checked={v.required ?? false}
-								onChange={(e) => update(i, { required: e.target.checked })}
-								className="rounded"
+								onCheckedChange={(checked) => update(i, { required: checked })}
 							/>
 							Req
-						</label>
-						<button
+						</Label>
+						<IconButton
+							variant="ghost"
+							tone="critical"
+							size="sm"
 							type="button"
+							icon={Trash2}
+							label={`Remove variable ${v.name || i + 1}`}
 							onClick={() => remove(i)}
-							className="text-muted-foreground hover:text-destructive text-xs px-1"
-						>
-							✕
-						</button>
-					</div>
+						/>
+					</Box>
 
 					{/* LIST sub-schema */}
 					{v.type === EmailVariableType.LIST && (
-						<div className="border-t border-border px-3 py-2.5 flex flex-col gap-2 bg-muted/30 rounded-b-lg">
-							<div className="flex items-center gap-2">
-								<span className="text-xs text-muted-foreground">
+						<Box className="border-t border-border px-3 py-2.5 flex flex-col gap-2 bg-muted/30 rounded-b-lg">
+							<Inline space="sm" wrap={false}>
+								<Text as="span" size="xs" tone="muted">
 									Each item is
-								</span>
+								</Text>
 								<TypeSelect
+									label={`Item type for variable ${v.name || i + 1}`}
 									value={v.items?.type ?? EmailVariableType.STRING}
-									options={[...PRIMITIVE_TYPES, EmailVariableType.OBJECT]}
+									options={LIST_ITEM_TYPES}
 									onChange={(t) =>
 										updateItems(i, {
 											type: t,
@@ -525,42 +509,47 @@ function VariableEditor({
 													: undefined,
 										})
 									}
-									className="w-24"
 								/>
-							</div>
+							</Inline>
 							{v.items?.type === EmailVariableType.OBJECT && (
-								<div className="pl-3 border-l-2 border-border">
-									<p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
+								<Box className="pl-3 border-l-2 border-border">
+									<Box
+										as="p"
+										className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5"
+									>
 										Object fields
-									</p>
+									</Box>
 									<PropertyListEditor
 										properties={v.items.properties ?? []}
 										onChange={(props) => updateItems(i, { properties: props })}
 									/>
-								</div>
+								</Box>
 							)}
-						</div>
+						</Box>
 					)}
 
 					{/* OBJECT sub-schema */}
 					{v.type === EmailVariableType.OBJECT && (
-						<div className="border-t border-border px-3 py-2.5 flex flex-col gap-1.5 bg-muted/30 rounded-b-lg">
-							<p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+						<Box className="border-t border-border px-3 py-2.5 flex flex-col gap-1.5 bg-muted/30 rounded-b-lg">
+							<Box
+								as="p"
+								className="text-[10px] text-muted-foreground uppercase tracking-wider"
+							>
 								Properties
-							</p>
+							</Box>
 							<PropertyListEditor
 								properties={v.properties ?? []}
 								onChange={(props) => update(i, { properties: props })}
 							/>
-						</div>
+						</Box>
 					)}
-				</div>
+				</Box>
 			))}
 			<Button variant="outline" size="sm" onClick={add}>
 				+ Add Variable
 			</Button>
 			{variables.length > 0 && (
-				<p className="text-xs text-muted-foreground">
+				<Text size="xs" tone="muted">
 					Use in template:{" "}
 					<code className="font-mono bg-muted px-1 rounded">
 						{"{{ .variable_name }}"}
@@ -569,9 +558,9 @@ function VariableEditor({
 					<code className="font-mono bg-muted px-1 rounded">
 						{"{{ range .list }}{{ .field }}{{ end }}"}
 					</code>
-				</p>
+				</Text>
 			)}
-		</div>
+		</Stack>
 	);
 }
 
@@ -633,80 +622,83 @@ function ListObjectInput({
 	if (properties.length === 0) {
 		return (
 			<Textarea
+				font="mono"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder='[{"field": "value"}, ...]'
-				className="text-xs font-mono resize-y min-h-[60px]"
 				rows={3}
 			/>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-1.5">
-			<div className="rounded-md border border-border overflow-hidden">
+		<Stack space="xs">
+			<Box className="rounded-md border border-border overflow-hidden">
 				{/* Header */}
-				<div
+				<Box
 					className="grid bg-muted/60 border-b border-border"
 					style={{
-						gridTemplateColumns: `repeat(${properties.length}, 1fr) 28px`,
+						gridTemplateColumns: `repeat(${properties.length}, minmax(0, 1fr)) 32px`,
 					}}
 				>
 					{properties.map((p) => (
-						<div
+						<Box
 							key={p.name}
 							className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate"
 						>
 							{p.name}
-							<span className="ml-1 text-muted-foreground/50 normal-case tracking-normal">
+							<Box
+								as="span"
+								className="ml-1 text-muted-foreground/50 normal-case tracking-normal"
+							>
 								{p.type.toLowerCase()}
-							</span>
-						</div>
+							</Box>
+						</Box>
 					))}
 					<div />
-				</div>
+				</Box>
 				{/* Rows */}
 				{rows.length === 0 ? (
-					<div className="px-2 py-3 text-xs text-muted-foreground text-center">
+					<Box className="px-2 py-3 text-xs text-muted-foreground text-center">
 						No items — click + Add row
-					</div>
+					</Box>
 				) : (
 					rows.map((row, i) => (
-						<div
+						<Box
 							key={rowKeysRef.current[i]}
 							className={`grid items-center ${i < rows.length - 1 ? "border-b border-border" : ""}`}
 							style={{
-								gridTemplateColumns: `repeat(${properties.length}, 1fr) 28px`,
+								gridTemplateColumns: `repeat(${properties.length}, minmax(0, 1fr)) 32px`,
 							}}
 						>
 							{properties.map((p) => (
-								<input
+								<Input
 									key={p.name}
 									value={row[p.name] ?? ""}
 									onChange={(e) => updateCell(i, p.name, e.target.value)}
-									className="px-2 py-1.5 text-xs bg-transparent border-r border-border last:border-r-0 focus:outline-none focus:bg-primary/5 font-mono"
+									variant="ghost"
+									size="sm"
+									font="mono"
 									placeholder="—"
 								/>
 							))}
-							<button
+							<IconButton
+								variant="ghost"
+								tone="critical"
+								size="sm"
 								type="button"
+								icon={Trash2}
+								label={`Remove row ${i + 1}`}
 								onClick={() => removeRow(i)}
-								className="flex items-center justify-center h-full text-muted-foreground/50 hover:text-destructive text-xs"
-							>
-								✕
-							</button>
-						</div>
+							/>
+						</Box>
 					))
 				)}
-			</div>
-			<button
-				type="button"
-				onClick={addRow}
-				className="text-xs text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/40 hover:border-foreground/40 rounded px-2 py-0.5 transition-colors"
-			>
+			</Box>
+			<Button variant="ghost" size="sm" type="button" onClick={addRow}>
 				+ Add row
-			</button>
-		</div>
+			</Button>
+		</Stack>
 	);
 }
 
@@ -744,37 +736,39 @@ function ObjectInput({
 	if (properties.length === 0) {
 		return (
 			<Textarea
+				font="mono"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder='{"field": "value"}'
-				className="text-xs font-mono resize-y min-h-[60px]"
 				rows={3}
 			/>
 		);
 	}
 
 	return (
-		<div className="rounded-md border border-border overflow-hidden">
+		<Box className="rounded-md border border-border overflow-hidden">
 			{properties.map((p, i) => (
-				<div
+				<Box
 					key={p.name}
 					className={`grid items-center ${i < properties.length - 1 ? "border-b border-border" : ""}`}
 					style={{ gridTemplateColumns: "120px 1fr" }}
 				>
-					<div className="px-2 py-1.5 bg-muted/40 border-r border-border">
-						<span className="text-xs font-mono text-muted-foreground">
+					<Box className="px-2 py-1.5 bg-muted/40 border-r border-border">
+						<Text as="span" size="xs" tone="muted" font="mono">
 							{p.name}
-						</span>
-					</div>
-					<input
+						</Text>
+					</Box>
+					<Input
 						value={obj[p.name] ?? ""}
 						onChange={(e) => updateField(p.name, e.target.value)}
-						className="px-2 py-1.5 text-xs bg-transparent focus:outline-none focus:bg-primary/5 font-mono"
+						variant="ghost"
+						size="sm"
+						font="mono"
 						placeholder="—"
 					/>
-				</div>
+				</Box>
 			))}
-		</div>
+		</Box>
 	);
 }
 
@@ -813,15 +807,20 @@ function ExampleVarInput({
 	}
 
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex items-center gap-1.5">
-				<span className="font-mono text-xs text-foreground">{name}</span>
+		<Stack space="xs">
+			<Inline space="xs" wrap={false}>
+				<Text as="span" size="xs" font="mono">
+					{name}
+				</Text>
 				{typeLabel() && (
-					<span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 rounded">
+					<Box
+						as="span"
+						className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 rounded"
+					>
 						{typeLabel()}
-					</span>
+					</Box>
 				)}
-			</div>
+			</Inline>
 			{isListOfObject ? (
 				<ListObjectInput
 					properties={schema?.items?.properties ?? []}
@@ -836,6 +835,7 @@ function ExampleVarInput({
 				/>
 			) : isListPrimitive || isComplexNoSchema ? (
 				<Textarea
+					font="mono"
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					placeholder={
@@ -843,18 +843,18 @@ function ExampleVarInput({
 							? '["value1", "value2"]'
 							: '{"key": "value"}'
 					}
-					className="text-xs font-mono resize-y min-h-[48px]"
 					rows={2}
 				/>
 			) : (
 				<Input
+					font="mono"
+					size="sm"
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					placeholder={`value for .${name}`}
-					className="text-xs h-7 font-mono"
 				/>
 			)}
-		</div>
+		</Stack>
 	);
 }
 
@@ -1028,116 +1028,122 @@ function ExampleManager({
 	}, [activeId, onActiveChange, schemaNames]);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<Stack space="lg">
 			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2">
+			<Spread space="md">
+				<Inline space="sm" wrap={false}>
 					<LayoutTemplate className="size-4 text-muted-foreground" />
-					<p className="text-sm text-muted-foreground">
+					<Text tone="muted">
 						Named variable sets for preview and test sends
-					</p>
-				</div>
-				<Button variant="outline" size="sm" onClick={handleNewExample}>
-					<Plus className="size-3.5 mr-1" />
+					</Text>
+				</Inline>
+				<Button
+					icon={Plus}
+					variant="outline"
+					size="sm"
+					onClick={handleNewExample}
+				>
 					New Example
 				</Button>
-			</div>
+			</Spread>
 
 			{examples.length === 0 ? (
-				<div className="border rounded-lg p-8 text-center">
+				<Box className="border rounded-lg p-8 text-center">
 					<FileText className="size-8 text-muted-foreground mx-auto mb-3" />
-					<p className="text-sm text-muted-foreground mb-1">No examples yet</p>
-					<p className="text-xs text-muted-foreground">
+					<Box as="p" className="text-sm text-muted-foreground mb-1">
+						No examples yet
+					</Box>
+					<Text size="xs" tone="muted">
 						Create an example to pre-fill variables for preview and test sends
-					</p>
-				</div>
+					</Text>
+				</Box>
 			) : (
-				<div className="flex flex-col gap-3 sm:flex-row">
+				<Box className="flex flex-col gap-3 sm:flex-row">
 					{/* Example list sidebar */}
-					<div className="w-full sm:w-44 sm:shrink-0">
-						<div className="text-xs font-medium text-muted-foreground mb-1.5 px-1">
+					<Box className="w-full sm:w-44 sm:shrink-0">
+						<Box className="text-xs font-medium text-muted-foreground mb-1.5 px-1">
 							Examples ({examples.length})
-						</div>
-						<div className="flex flex-col gap-0.5">
+						</Box>
+						<Stack space="xxs">
 							{examples.map((ex) => (
-								<button
+								<Button
+									variant={activeId === ex.id ? "soft" : "ghost"}
+									tone={activeId === ex.id ? "brand" : "neutral"}
+									aria-pressed={activeId === ex.id}
+									size="sm"
 									type="button"
 									key={ex.id}
 									onClick={() => handleSelectExample(ex.id)}
-									className={`w-full flex items-center gap-2 text-left text-sm px-2.5 py-1.5 rounded-md transition-colors ${
-										activeId === ex.id
-											? "bg-primary/10 text-primary font-medium"
-											: "hover:bg-muted text-muted-foreground"
-									}`}
 								>
 									<FileText className="size-3.5 shrink-0 opacity-70" />
-									<span className="truncate">{ex.name || "Unnamed"}</span>
-								</button>
+									<Text as="span" truncate>
+										{ex.name || "Unnamed"}
+									</Text>
+								</Button>
 							))}
-						</div>
-					</div>
+						</Stack>
+					</Box>
 
 					{/* Active example editor */}
 					{activeExample && (
-						<div className="flex-1 bg-muted/30 rounded-lg border p-4 flex flex-col gap-3">
+						<Box className="flex-1 bg-muted/30 rounded-lg border p-4 flex flex-col gap-3">
 							{/* Editor toolbar */}
-							<div className="flex items-center gap-2">
+							<Inline space="sm" wrap={false}>
 								<Input
+									size="sm"
 									value={activeExample.name}
 									onChange={(e) =>
 										handleNameChange(activeExample.id, e.target.value)
 									}
 									placeholder="Example name"
-									className="text-sm h-8 flex-1 bg-background"
 								/>
 								<Button
+									icon={Code2}
 									variant="ghost"
 									size="sm"
-									className="h-8 px-2 text-muted-foreground hover:text-foreground"
 									onClick={() => toggleRawMode(!rawMode)}
 								>
-									<Code2 className="size-3.5 mr-1" />
 									{rawMode ? "Form" : "Raw"}
 								</Button>
-								<Button
+								<IconButton
+									tone="critical"
+									icon={Trash2}
+									label="Delete example"
 									variant="ghost"
 									size="sm"
-									className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
 									onClick={() => handleDeleteExample(activeExample.id)}
-								>
-									<Trash2 className="size-3.5" />
-								</Button>
-							</div>
+								/>
+							</Inline>
 
 							{/* Editor content */}
 							{rawMode ? (
-								<div className="flex flex-col gap-1">
+								<Stack space="xs">
 									<Textarea
+										font="mono"
 										value={rawText}
 										onChange={(e) => handleRawChange(e.target.value)}
-										className="text-xs font-mono resize-y min-h-[200px] bg-background"
 										spellCheck={false}
 										placeholder='{"userName": "Alice", "orderTotal": 99.99}'
 									/>
 									{rawError && (
-										<div className="flex items-center gap-1.5 text-xs text-destructive font-mono">
+										<Box className="flex items-center gap-1.5 text-xs text-destructive font-mono">
 											<AlertCircle className="size-3" />
 											{rawError}
-										</div>
+										</Box>
 									)}
-								</div>
+								</Stack>
 							) : varNames.length === 0 ? (
-								<div className="py-6 text-center">
-									<p className="text-xs text-muted-foreground">
+								<Box className="py-6 text-center">
+									<Text size="xs" tone="muted">
 										No variables detected yet. Add{" "}
 										<code className="font-mono bg-muted px-1 rounded">
 											{"{{ .varName }}"}
 										</code>{" "}
 										to your template.
-									</p>
-								</div>
+									</Text>
+								</Box>
 							) : (
-								<div className="flex flex-col gap-3">
+								<Stack space="md">
 									{varNames.map((name) => {
 										const schema = variables.find((v) => v.name === name);
 										return (
@@ -1150,37 +1156,45 @@ function ExampleManager({
 											/>
 										);
 									})}
-								</div>
+								</Stack>
 							)}
-						</div>
+						</Box>
 					)}
-				</div>
+				</Box>
 			)}
 
 			{/* Footer actions */}
-			<div className="flex items-center gap-2">
+			<Inline space="sm" wrap={false}>
 				<Button
+					variant="solid"
+					tone="brand"
+					icon={Save}
 					size="sm"
 					onClick={handleSave}
 					disabled={saveStatus === "saving"}
 				>
-					<Save className="size-3.5 mr-1" />
 					{saveStatus === "saving" ? "Saving…" : "Save Examples"}
 				</Button>
 				{saveStatus === "saved" && (
-					<span className="text-xs text-success flex items-center gap-1">
+					<Box
+						as="span"
+						className="text-xs text-success flex items-center gap-1"
+					>
 						<Check className="size-3" />
 						Saved
-					</span>
+					</Box>
 				)}
 				{saveStatus === "error" && (
-					<span className="text-xs text-destructive flex items-center gap-1">
+					<Box
+						as="span"
+						className="text-xs text-destructive flex items-center gap-1"
+					>
 						<AlertCircle className="size-3" />
 						Save failed
-					</span>
+					</Box>
 				)}
-			</div>
-		</div>
+			</Inline>
+		</Stack>
 	);
 }
 
@@ -1268,34 +1282,32 @@ function TestSendDialog({
 				}
 			}}
 		>
-			<TooltipProvider>
-				<Tooltip>
-					<TooltipTrigger
-						render={<span tabIndex={!hasEmailIntegration ? 0 : undefined} />}
+			<Tooltip>
+				<TooltipTrigger
+					render={<span tabIndex={!hasEmailIntegration ? 0 : undefined} />}
+				>
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={!hasEmailIntegration}
+						onClick={() => hasEmailIntegration && setOpen(true)}
 					>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={!hasEmailIntegration}
-							onClick={() => hasEmailIntegration && setOpen(true)}
-						>
-							Send Test
-						</Button>
-					</TooltipTrigger>
-					{!hasEmailIntegration && (
-						<TooltipContent side="bottom">
-							No active SMTP integration. Go to Integrations → SMTP Email to
-							configure one.
-						</TooltipContent>
-					)}
-				</Tooltip>
-			</TooltipProvider>
-			<DialogContent className="max-w-md">
+						Send Test
+					</Button>
+				</TooltipTrigger>
+				{!hasEmailIntegration && (
+					<TooltipContent side="bottom">
+						No active SMTP integration. Go to Integrations → SMTP Email to
+						configure one.
+					</TooltipContent>
+				)}
+			</Tooltip>
+			<DialogContent size="lg">
 				<DialogHeader>
 					<DialogTitle>Send Test Email</DialogTitle>
 				</DialogHeader>
-				<form onSubmit={handleSend} className="flex flex-col gap-4">
-					<div className="flex flex-col gap-1">
+				<Stack onSubmit={handleSend} space="lg" as="form">
+					<Stack space="xs">
 						<Label htmlFor="to">Recipient</Label>
 						<Input
 							id="to"
@@ -1305,15 +1317,18 @@ function TestSendDialog({
 							onChange={(e) => setToAddress(e.target.value)}
 							placeholder="you@example.com"
 						/>
-					</div>
+					</Stack>
 					{variables.length > 0 && (
-						<div className="flex flex-col gap-2">
+						<Stack space="sm">
 							<Label>Variables</Label>
 							{variables.map((v) => (
-								<div key={v.name} className="flex items-center gap-2">
-									<span className="font-mono text-xs text-muted-foreground w-24 shrink-0">
+								<Inline key={v.name} space="sm" wrap={false}>
+									<Box
+										as="span"
+										className="font-mono text-xs text-muted-foreground w-24 shrink-0"
+									>
 										{v.name}
-									</span>
+									</Box>
 									<Input
 										placeholder={v.required ? "required" : "optional"}
 										value={varValues[v.name] ?? ""}
@@ -1323,24 +1338,28 @@ function TestSendDialog({
 												[v.name]: e.target.value,
 											}))
 										}
-										className="text-sm"
 									/>
-								</div>
+								</Inline>
 							))}
-						</div>
+						</Stack>
 					)}
-					{error && <p className="text-sm text-destructive">{error}</p>}
+					{error && <Text tone="critical">{error}</Text>}
 					{result && (
-						<p className="text-sm text-success">
+						<Text tone="success">
 							Sent — status: <strong>{result.status}</strong> (ID: {result.id})
-						</p>
+						</Text>
 					)}
-					<div className="flex justify-end">
-						<Button type="submit" disabled={isPending}>
+					<Inline space="md" align="end" wrap={false}>
+						<Button
+							variant="solid"
+							tone="brand"
+							type="submit"
+							disabled={isPending}
+						>
 							{isPending ? "Sending…" : "Send"}
 						</Button>
-					</div>
-				</form>
+					</Inline>
+				</Stack>
 			</DialogContent>
 		</Dialog>
 	);
@@ -1463,8 +1482,8 @@ function PreviewPane({
 	})();
 
 	return (
-		<div className="flex flex-col h-full gap-4">
-			<div className="flex items-center justify-between">
+		<Box className="flex flex-col h-full gap-4">
+			<Spread space="md">
 				<Button
 					onClick={handlePreview}
 					disabled={isPreviewing}
@@ -1474,66 +1493,74 @@ function PreviewPane({
 					{isPreviewing ? "Rendering…" : "Refresh Preview"}
 				</Button>
 				{isPreviewing && (
-					<span className="text-xs text-muted-foreground animate-pulse">
+					<Box as="span" className="text-xs text-muted-foreground">
 						Rendering…
-					</span>
+					</Box>
 				)}
-			</div>
+			</Spread>
 			{previewError && (
-				<div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2">
-					<p className="text-xs text-destructive font-mono whitespace-pre-wrap">
+				<Box className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2">
+					<Box
+						as="p"
+						className="text-xs text-destructive font-mono whitespace-pre-wrap"
+					>
 						{previewError}
-					</p>
-				</div>
+					</Box>
+				</Box>
 			)}
 			{preview ? (
-				<div className="flex flex-col gap-2 flex-1 min-h-0">
-					<div className="text-sm">
-						<span className="font-medium">Subject: </span>
-						<span className="text-muted-foreground">{preview.subject}</span>
-					</div>
+				<Box className="flex flex-col gap-2 flex-1 min-h-0">
+					<Box className="text-sm">
+						<Text as="span" weight="medium">
+							Subject:{" "}
+						</Text>
+						<Text as="span" tone="muted">
+							{preview.subject}
+						</Text>
+					</Box>
 					{preview.warnings.length > 0 && (
-						<div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 flex flex-col gap-1">
-							<p className="text-xs font-medium text-warning">
+						<Box className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 flex flex-col gap-1">
+							<Box as="p" className="text-xs font-medium text-warning">
 								{preview.warnings.length} render warning
 								{preview.warnings.length > 1 ? "s" : ""}
-							</p>
-							<ul className="flex flex-col gap-0.5">
+							</Box>
+							<Stack space="xxs" as="ul">
 								{preview.warnings.map((w, i) => (
-									<li
+									<Box
+										as="li"
 										key={previewWarningKeys[i] ?? `${w}-${i}`}
 										className="text-xs text-warning font-mono"
 									>
 										· {w}
-									</li>
+									</Box>
 								))}
-							</ul>
-						</div>
+							</Stack>
+						</Box>
 					)}
-					<div className="flex-1 min-h-0 border rounded-md overflow-hidden">
+					<Box className="flex-1 min-h-0 border rounded-md overflow-hidden">
 						<iframe
 							title="Email Preview"
 							srcDoc={preview.body_html}
 							className="w-full h-full"
 							sandbox="allow-same-origin"
 						/>
-					</div>
-				</div>
+					</Box>
+				</Box>
 			) : draftVersion ? (
-				<div className="flex-1 min-h-0 border rounded-md overflow-hidden">
+				<Box className="flex-1 min-h-0 border rounded-md overflow-hidden">
 					<iframe
 						title="Email Preview"
 						srcDoc={draftVersion.body_html}
 						className="w-full h-full"
 						sandbox="allow-same-origin"
 					/>
-				</div>
+				</Box>
 			) : (
-				<div className="flex-1 flex items-center justify-center text-sm text-muted-foreground border rounded-md">
+				<Box className="flex-1 flex items-center justify-center text-sm text-muted-foreground border rounded-md">
 					Click "Refresh Preview" to render
-				</div>
+				</Box>
 			)}
-		</div>
+		</Box>
 	);
 }
 
@@ -1674,49 +1701,46 @@ export function EmailTemplateBuilder({
 
 	if (templateLoading || draftLoading) {
 		return (
-			<div className="p-8 text-muted-foreground text-sm">Loading template…</div>
+			<Box className="p-8 text-muted-foreground text-sm">Loading template…</Box>
 		);
 	}
 
 	if (!template) {
 		return (
-			<div className="p-8 text-destructive text-sm">Template not found.</div>
+			<Box className="p-8 text-destructive text-sm">Template not found.</Box>
 		);
 	}
 
 	return (
-		<div className="flex flex-col h-full gap-0">
+		<Box className="flex flex-col h-full gap-0">
 			{/* Header */}
-			<div className="flex flex-col gap-3 px-4 py-3 border-b shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-					<Link
-						to={ROUTE_PATHS.EMAIL_TEMPLATES}
-						className="text-sm text-muted-foreground hover:text-foreground"
-					>
-						← Templates
-					</Link>
-					<Separator orientation="vertical" className="h-4 hidden sm:block" />
-					<input
+			<Box className="flex flex-col gap-3 px-4 py-3 border-b shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+				<Box className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+					<TextLink href={ROUTE_PATHS.EMAIL_TEMPLATES}>← Templates</TextLink>
+					<Separator orientation="vertical" length="short" />
+					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						className="font-semibold text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-border outline-none px-0 py-0.5 w-40 sm:w-48"
+						variant="ghost"
+						size="sm"
+						aria-label="Template name"
 						placeholder="Template name"
 					/>
-					<span className="font-mono text-xs text-muted-foreground truncate">
+					<Text as="span" size="xs" tone="muted" font="mono" truncate>
 						/{template.slug}
-					</span>
+					</Text>
 					{template.published_version_id ? (
 						<StatusBadge tone="info">Published</StatusBadge>
 					) : (
 						<StatusBadge tone="warning">Draft only</StatusBadge>
 					)}
-				</div>
-				<div className="flex items-center gap-2 sm:justify-end">
-					<span className="text-xs text-muted-foreground">
+				</Box>
+				<Box className="flex items-center gap-2 sm:justify-end">
+					<Text as="span" size="xs" tone="muted">
 						{saveState === "saving" && "Saving…"}
 						{saveState === "saved" && "Saved"}
 						{saveState === "error" && "Save failed"}
-					</span>
+					</Text>
 					<TestSendDialog
 						productId={productId}
 						templateId={templateId}
@@ -1725,6 +1749,8 @@ export function EmailTemplateBuilder({
 						hasEmailIntegration={hasEmailIntegration}
 					/>
 					<Button
+						variant="solid"
+						tone="brand"
 						size="sm"
 						onClick={() =>
 							publish({
@@ -1735,24 +1761,24 @@ export function EmailTemplateBuilder({
 					>
 						{isPublishing ? "Publishing…" : "Publish"}
 					</Button>
-				</div>
-			</div>
+				</Box>
+			</Box>
 			{publishError && (
-				<div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-b">
+				<Box className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-b">
 					{publishError}
-				</div>
+				</Box>
 			)}
 
 			{/* Body — split editor / preview on desktop, tabbed on mobile */}
-			<div className="flex flex-1 min-h-0">
+			<Box className="flex flex-1 min-h-0">
 				{/* Left: editor */}
-				<div
-					className={`flex flex-col min-h-0 ${
+				<Box
+					className={`grid h-full min-h-0 grid-cols-1 p-4 ${
 						isMobile ? "w-full" : "w-1/2 border-r"
 					}`}
 				>
-					<Tabs defaultValue="content" className="flex flex-col flex-1 min-h-0">
-						<TabsList className="mx-4 mt-4 w-fit shrink-0">
+					<Tabs defaultValue="content">
+						<TabsList>
 							<TabsTrigger value="content">Content</TabsTrigger>
 							<TabsTrigger value="variables">
 								Variables ({variables.length})
@@ -1761,194 +1787,211 @@ export function EmailTemplateBuilder({
 							{isMobile && <TabsTrigger value="preview">Preview</TabsTrigger>}
 						</TabsList>
 
-						<TabsContent
-							value="content"
-							className="flex flex-col flex-1 min-h-0 px-4 pb-4 gap-3"
-						>
-							<div className="flex flex-col gap-1 shrink-0">
-								<Label htmlFor="subject">Subject</Label>
-								<Input
-									id="subject"
-									value={subject}
-									onChange={(e) => handleSubjectChange(e.target.value)}
-									placeholder="Hello {{ .name }}"
-									className="font-mono"
-								/>
-							</div>
-							<div className="flex flex-col flex-1 min-h-0 gap-1">
-								<div className="flex items-center justify-between shrink-0">
-									<Label>HTML Body</Label>
-									<CopyHtmlButton html={bodyHtml} />
-								</div>
-								<div className="flex-1 min-h-0 border rounded-md overflow-hidden">
-									<Editor
-										language="html"
-										value={bodyHtml}
-										onChange={(val) => handleBodyHtmlChange(val ?? "")}
-										theme="vs-light"
-										height="100%"
-										options={{
-											minimap: { enabled: false },
-											fontSize: 13,
-											lineNumbers: "on",
-											wordWrap: "on",
-											scrollBeyondLastLine: false,
-											tabSize: 2,
-											automaticLayout: true,
-										}}
+						<TabsContent value="content">
+							<Box className="flex h-full min-h-0 flex-col gap-4">
+								<Box className="flex flex-col gap-1 shrink-0">
+									<Label htmlFor="subject">Subject</Label>
+									<Input
+										font="mono"
+										id="subject"
+										value={subject}
+										onChange={(e) => handleSubjectChange(e.target.value)}
+										placeholder="Hello {{ .name }}"
 									/>
-								</div>
-							</div>
+								</Box>
+								<Box className="flex flex-col flex-1 min-h-0 gap-1">
+									<Box className="flex items-center justify-between shrink-0">
+										<Label>HTML Body</Label>
+										<CopyButton
+											value={bodyHtml}
+											label="Copy HTML"
+											copiedLabel="Copied"
+											type="button"
+											variant="ghost"
+											size="sm"
+											disabled={!bodyHtml}
+										/>
+									</Box>
+									<Box
+										className="flex-1 min-h-0 border rounded-2xl overflow-hidden"
+										as="section"
+										aria-label="HTML editor"
+									>
+										<Editor
+											language="html"
+											value={bodyHtml}
+											onChange={(val) => handleBodyHtmlChange(val ?? "")}
+											theme="vs-light"
+											height="100%"
+											options={{
+												minimap: { enabled: false },
+												fontSize: 13,
+												lineNumbers: "on",
+												wordWrap: "on",
+												scrollBeyondLastLine: false,
+												tabSize: 2,
+												automaticLayout: true,
+											}}
+										/>
+									</Box>
+								</Box>
+							</Box>
 						</TabsContent>
 
-						<TabsContent
-							value="variables"
-							className="flex-1 min-h-0 overflow-y-auto px-4 pb-4"
-						>
-							<div className="flex flex-col gap-4">
-								<p className="text-sm text-muted-foreground">
-									Define the variables your template expects. These appear in
-									the preview and test-send panels.
-								</p>
-								{(() => {
-									const schemaNames = new Set(variables.map((v) => v.name));
-									const unpushed = detectedSchemas.filter(
-										(s) => !schemaNames.has(s.name),
-									);
-									if (unpushed.length === 0) return null;
+						<TabsContent value="variables">
+							<Box className="h-full min-h-0 overflow-y-auto">
+								<Stack space="lg">
+									<Text tone="muted">
+										Define the variables your template expects. These appear in
+										the preview and test-send panels.
+									</Text>
+									{(() => {
+										const schemaNames = new Set(variables.map((v) => v.name));
+										const unpushed = detectedSchemas.filter(
+											(s) => !schemaNames.has(s.name),
+										);
+										if (unpushed.length === 0) return null;
 
-									function pushOne(s: DetectedSchema) {
-										handleVariablesChange([
-											...variables,
-											{
-												name: s.name,
-												type: s.type,
-												required: false,
-												items: s.items,
-											},
-										]);
-									}
+										function pushOne(s: DetectedSchema) {
+											handleVariablesChange([
+												...variables,
+												{
+													name: s.name,
+													type: s.type,
+													required: false,
+													items: s.items,
+												},
+											]);
+										}
 
-									function pushAll() {
-										handleVariablesChange([
-											...variables,
-											...unpushed.map((s) => ({
-												name: s.name,
-												type: s.type,
-												required: false,
-												items: s.items,
-											})),
-										]);
-									}
+										function pushAll() {
+											handleVariablesChange([
+												...variables,
+												...unpushed.map((s) => ({
+													name: s.name,
+													type: s.type,
+													required: false,
+													items: s.items,
+												})),
+											]);
+										}
 
-									return (
-										<div className="border rounded-md p-3 flex flex-col gap-2 bg-muted/40">
-											<div className="flex items-center justify-between">
-												<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-													Detected in template
-												</p>
-												<Button
-													variant="outline"
-													size="sm"
-													className="h-6 text-xs"
-													onClick={pushAll}
-												>
-													Push all ({unpushed.length})
-												</Button>
-											</div>
-											<div className="flex flex-col gap-1.5">
-												{unpushed.map((s) => {
-													const isListObj =
-														s.type === EmailVariableType.LIST &&
-														s.items?.type === EmailVariableType.OBJECT;
-													const fields = isListObj
-														? (s.items?.properties ?? [])
-														: [];
-													return (
-														<button
-															type="button"
-															key={s.name}
-															onClick={() => pushOne(s)}
-															className="w-full text-left flex items-start gap-2 px-2.5 py-1.5 rounded border border-dashed border-muted-foreground/40 hover:border-foreground/60 hover:bg-background transition-colors group"
-														>
-															<span className="font-mono text-xs text-foreground group-hover:text-foreground mt-0.5">
-																+ {s.name}
-															</span>
-															<div className="flex flex-wrap items-center gap-1 mt-0.5">
-																<span
-																	className={`text-[10px] px-1.5 py-0 rounded font-medium ${
-																		s.type === EmailVariableType.LIST
-																			? "bg-accent-soft text-accent-foreground border border-border"
-																			: s.type === EmailVariableType.OBJECT
-																				? "bg-secondary text-secondary-foreground border border-border"
-																				: "bg-muted text-muted-foreground border border-border"
-																	}`}
+										return (
+											<Box className="border rounded-md p-3 flex flex-col gap-2 bg-muted/40">
+												<Spread space="md">
+													<Box
+														as="p"
+														className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+													>
+														Detected in template
+													</Box>
+													<Button variant="outline" size="sm" onClick={pushAll}>
+														Push all ({unpushed.length})
+													</Button>
+												</Spread>
+												<Stack space="xs">
+													{unpushed.map((s) => {
+														const isListObj =
+															s.type === EmailVariableType.LIST &&
+															s.items?.type === EmailVariableType.OBJECT;
+														const fields = isListObj
+															? (s.items?.properties ?? [])
+															: [];
+														return (
+															<Button
+																width="fill"
+																variant="ghost"
+																size="sm"
+																type="button"
+																key={s.name}
+																onClick={() => pushOne(s)}
+															>
+																<Box
+																	as="span"
+																	className="font-mono text-xs text-foreground group-hover:text-foreground mt-0.5"
 																>
-																	{s.type === EmailVariableType.LIST && s.items
-																		? `LIST · ${s.items.type}`
-																		: s.type}
-																</span>
-																{fields.map((f) => (
-																	<span
-																		key={f.name}
-																		className="text-[10px] font-mono text-muted-foreground/70 bg-muted px-1 rounded"
+																	+ {s.name}
+																</Box>
+																<Box className="flex flex-wrap items-center gap-1 mt-0.5">
+																	<Box
+																		as="span"
+																		className={`text-[10px] px-1.5 py-0 rounded font-medium ${
+																			s.type === EmailVariableType.LIST
+																				? "bg-accent text-accent-foreground border border-border"
+																				: s.type === EmailVariableType.OBJECT
+																					? "bg-secondary text-secondary-foreground border border-border"
+																					: "bg-muted text-muted-foreground border border-border"
+																		}`}
 																	>
-																		{f.name}
-																	</span>
-																))}
-															</div>
-														</button>
-													);
-												})}
-											</div>
-										</div>
-									);
-								})()}
-								<VariableEditor
-									variables={variables}
-									onChange={handleVariablesChange}
-								/>
-							</div>
+																		{s.type === EmailVariableType.LIST &&
+																		s.items
+																			? `LIST · ${s.items.type}`
+																			: s.type}
+																	</Box>
+																	{fields.map((f) => (
+																		<Box
+																			as="span"
+																			key={f.name}
+																			className="text-[10px] font-mono text-muted-foreground/70 bg-muted px-1 rounded"
+																		>
+																			{f.name}
+																		</Box>
+																	))}
+																</Box>
+															</Button>
+														);
+													})}
+												</Stack>
+											</Box>
+										);
+									})()}
+									<VariableEditor
+										variables={variables}
+										onChange={handleVariablesChange}
+									/>
+								</Stack>
+							</Box>
 						</TabsContent>
 
-						<TabsContent
-							value="examples"
-							className="flex-1 min-h-0 overflow-y-auto px-4 pb-4"
-						>
-							<ExampleManager
-								productId={productId}
-								templateId={templateId}
-								detectedVarNames={detectedVarNames}
-								variables={variables}
-								activeVarValues={activeVarValues}
-								onActiveChange={setActiveVarValues}
-							/>
+						<TabsContent value="examples">
+							<Box className="h-full min-h-0 overflow-y-auto">
+								<ExampleManager
+									productId={productId}
+									templateId={templateId}
+									detectedVarNames={detectedVarNames}
+									variables={variables}
+									activeVarValues={activeVarValues}
+									onActiveChange={setActiveVarValues}
+								/>
+							</Box>
 						</TabsContent>
 
 						{/* Mobile-only preview tab (desktop renders the split panel below) */}
 						{isMobile && (
-							<TabsContent
-								value="preview"
-								className="flex flex-col flex-1 min-h-0 px-4 pb-4"
-							>
-								<PreviewPane
-									productId={productId}
-									templateId={templateId}
-									variables={variables}
-									draftVersion={draft ?? null}
-									activeVarValues={activeVarValues}
-								/>
+							<TabsContent value="preview">
+								<Box className="flex h-full min-h-0 flex-col gap-4">
+									<PreviewPane
+										productId={productId}
+										templateId={templateId}
+										variables={variables}
+										draftVersion={draft ?? null}
+										activeVarValues={activeVarValues}
+									/>
+								</Box>
 							</TabsContent>
 						)}
 					</Tabs>
-				</div>
+				</Box>
 
 				{/* Right: preview (desktop split view) */}
 				{!isMobile && (
-					<div className="flex flex-col w-1/2 p-4 min-h-0">
-						<p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+					<Box className="flex flex-col w-1/2 p-4 min-h-0">
+						<Box
+							as="p"
+							className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3"
+						>
 							Live Preview
-						</p>
+						</Box>
 						<PreviewPane
 							productId={productId}
 							templateId={templateId}
@@ -1956,9 +1999,9 @@ export function EmailTemplateBuilder({
 							draftVersion={draft ?? null}
 							activeVarValues={activeVarValues}
 						/>
-					</div>
+					</Box>
 				)}
-			</div>
-		</div>
+			</Box>
+		</Box>
 	);
 }

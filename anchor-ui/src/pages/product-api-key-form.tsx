@@ -1,6 +1,7 @@
 import { Page } from "@/components/common/Page";
 import { ProductApiKeyForm } from "@/components/product/apikey/ProductApiKeyForm";
 import { useProduct } from "@/hooks/useProduct";
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
 
 interface ProductApiKeyFormPageProps {
 	mode: "create" | "edit";
@@ -16,11 +17,10 @@ export default function ProductApiKeyFormPage({
 	if (!currentProduct) {
 		return (
 			<Page>
-				<div className="flex items-center justify-center h-64">
-					<p className="text-muted-foreground">
-						Please select a product to manage API keys.
-					</p>
-				</div>
+				<EmptyState
+					title="No product selected"
+					description="Please select a product to manage API keys."
+				/>
 			</Page>
 		);
 	}

@@ -1,5 +1,8 @@
 import { LicenseFieldType } from "@/client";
-import { ArrowRight } from "lucide-react";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react";
 import { formatFieldValue } from "./license-field-format";
 import type { ValueChange } from "./license-migration-format";
 
@@ -40,66 +43,77 @@ export function CarriedAdjustments({
 	);
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-baseline justify-between gap-3 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+		<Stack space="sm">
+			<Box className="flex items-baseline justify-between gap-3 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 				<span>Adjustments kept</span>
-				<span className="tabular-nums">
+				<Text as="span" tabular>
 					{groups.length} organization{groups.length === 1 ? "" : "s"}
-				</span>
-			</div>
+				</Text>
+			</Box>
 
-			<ul className="divide-y divide-border rounded-lg border border-border">
+			<Box
+				as="ul"
+				className="divide-y divide-border rounded-lg border border-border"
+			>
 				{shown.map((group) => (
-					<li key={group.organization} className="flex flex-col gap-1.5 p-3">
-						<span className="truncate text-sm font-medium">
+					<Box
+						as="li"
+						key={group.organization}
+						className="flex flex-col gap-1.5 p-3"
+					>
+						<Text as="span" weight="medium" truncate>
 							{group.organization}
-						</span>
-						<ul className="flex flex-col gap-1">
+						</Text>
+						<Stack space="xs" as="ul">
 							{group.changes.map((change) => (
-								<li
+								<Box
+									as="li"
 									key={change.field}
 									className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-x-3"
 								>
-									<span className="truncate font-mono text-xs text-muted-foreground">
+									<Text as="span" size="xs" tone="muted" font="mono" truncate>
 										{change.field}
-									</span>
-									<span className="flex items-baseline gap-2">
-										<span className="text-xs text-muted-foreground">
+									</Text>
+									<Box as="span" className="flex items-baseline gap-2">
+										<Text as="span" size="xs" tone="muted">
 											{tierName}
-										</span>
-										<span className="text-sm tabular-nums line-through decoration-muted-foreground/50">
+										</Text>
+										<Box
+											as="span"
+											className="text-sm tabular-nums line-through decoration-muted-foreground/50"
+										>
 											{formatFieldValue(
 												change.type ?? LicenseFieldType.STRING,
 												change.from,
 											)}
-										</span>
-									</span>
-									<span className="flex items-baseline gap-2">
+										</Box>
+									</Box>
+									<Box as="span" className="flex items-baseline gap-2">
 										<ArrowRight
 											aria-hidden
 											className="size-4 shrink-0 self-center text-muted-foreground"
 										/>
-										<span className="text-sm font-medium tabular-nums text-warning-strong">
+										<Text as="span" tone="warning" weight="medium" tabular>
 											{formatFieldValue(
 												change.type ?? LicenseFieldType.STRING,
 												change.to,
 											)}
-										</span>
-									</span>
-								</li>
+										</Text>
+									</Box>
+								</Box>
 							))}
-						</ul>
-					</li>
+						</Stack>
+					</Box>
 				))}
-			</ul>
+			</Box>
 
 			{hidden.length > 0 && (
-				<p className="px-3 text-xs text-muted-foreground">
+				<Box as="p" className="px-3 text-xs text-muted-foreground">
 					{hidden.length} more organization{hidden.length === 1 ? "" : "s"} keep
 					{hidden.length === 1 ? "s" : ""} {hiddenChanges} adjustment
 					{hiddenChanges === 1 ? "" : "s"}.
-				</p>
+				</Box>
 			)}
-		</div>
+		</Stack>
 	);
 }

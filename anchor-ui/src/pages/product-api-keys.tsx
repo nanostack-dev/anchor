@@ -1,33 +1,36 @@
 import { Page } from "@/components/common/Page";
 import { ProductApiKeyDatatable } from "@/components/product/apikey/ProductApiKeyDatatable";
 import { useProduct } from "@/hooks/useProduct";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@nanostackorg/design-system/components/empty";
 
-export default function ProductAPIKeyPage() {
+export default function ResourcePage() {
 	const { currentProduct } = useProduct();
-
-	if (!currentProduct) {
-		return (
-			<Page>
-				<div className="flex items-center justify-center h-64">
-					<p className="text-muted-foreground">
-						Please select a product to manage API keys.
-					</p>
-				</div>
-			</Page>
-		);
-	}
-
 	return (
-		<Page>
-			<div className="space-y-6">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
-					<p className="text-muted-foreground">
-						Manage API keys for {currentProduct.name}
-					</p>
-				</div>
+		<Page
+			title="API Keys"
+			description={
+				currentProduct
+					? `Manage api keys for ${currentProduct.name}`
+					: undefined
+			}
+		>
+			{currentProduct ? (
 				<ProductApiKeyDatatable productId={currentProduct.id} />
-			</div>
+			) : (
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Select a product</EmptyTitle>
+						<EmptyDescription>
+							Please select a product to manage api keys.
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			)}
 		</Page>
 	);
 }

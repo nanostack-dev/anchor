@@ -1,8 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { Code2, Rows3 } from "lucide-react";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { CodeIcon as Code2, RowsIcon as Rows3 } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { LicenseSchemaFieldsEditor } from "./LicenseSchemaFieldsEditor";
@@ -61,34 +62,30 @@ export function LicenseSchemaEditor({
 	};
 
 	const modeSwitch = (
-		<fieldset
+		<Box
+			as="fieldset"
 			aria-label="Editor mode"
 			className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5"
 		>
 			{MODES.map(({ id, label, icon: Icon }) => (
 				<Button
+					icon={Icon}
 					key={id}
 					type="button"
-					variant="ghost"
+					variant={mode === id ? "soft" : "ghost"}
 					size="xs"
 					aria-pressed={mode === id}
 					onClick={() => switchMode(id)}
-					className={cn(
-						"gap-1.5 text-muted-foreground hover:bg-transparent",
-						mode === id &&
-							"bg-background text-foreground shadow-sm hover:bg-background",
-					)}
 				>
-					<Icon />
 					{label}
 				</Button>
 			))}
-		</fieldset>
+		</Box>
 	);
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="space-y-1.5">
+		<Stack space="lg">
+			<Stack space="xs">
 				<Label htmlFor="schema-description">Schema description</Label>
 				<Textarea
 					id="schema-description"
@@ -98,7 +95,7 @@ export function LicenseSchemaEditor({
 					rows={2}
 					disabled={disabled}
 				/>
-			</div>
+			</Stack>
 
 			{mode === "visual" ? (
 				<LicenseSchemaFieldsEditor
@@ -120,6 +117,6 @@ export function LicenseSchemaEditor({
 					disabled={disabled}
 				/>
 			)}
-		</div>
+		</Stack>
 	);
 }

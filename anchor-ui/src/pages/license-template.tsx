@@ -8,18 +8,19 @@ import {
 	LicenseTemplateBackLink,
 	LicenseTemplateEditView,
 } from "@/components/license/LicenseTemplateEditView";
-import { Button } from "@/components/ui/button";
+import { useProduct } from "@/context/product/ProductContext";
+import { getErrorDetail } from "@/lib/api-error";
+import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useProduct } from "@/context/product/ProductContext";
-import { getErrorDetail } from "@/lib/api-error";
-import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
-import { ROUTE_PATHS } from "@/routes/routePaths";
+} from "@nanostackorg/design-system/components/empty";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -71,12 +72,12 @@ export default function LicenseTemplatePage({
 	if (schemaQuery.isLoading || (templateId && templateQuery.isLoading))
 		return (
 			<Page breadCrumbs={false} title="Loading template">
-				<div className="flex max-w-3xl flex-col gap-6">
+				<Stack space="xl">
 					<div>
 						<LicenseTemplateBackLink />
 					</div>
-					<Skeleton className="h-64 w-full" />
-				</div>
+					<Skeleton height="xxl" />
+				</Stack>
 			</Page>
 		);
 	const error = templateQuery.error ?? schemaQuery.error;

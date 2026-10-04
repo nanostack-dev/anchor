@@ -1,5 +1,9 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Link } from "@tanstack/react-router";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@nanostackorg/design-system/components/alert";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
 import { InfoIcon } from "lucide-react";
 
 export interface PageInfoProps {
@@ -8,7 +12,6 @@ export interface PageInfoProps {
 	linkTo?: string;
 	linkText?: string;
 }
-
 export function PageInfo({
 	title,
 	description,
@@ -16,20 +19,15 @@ export function PageInfo({
 	linkText,
 }: PageInfoProps) {
 	return (
-		<Alert className="border-border bg-accent-soft text-accent-foreground">
-			<InfoIcon className="text-primary" />
+		<Alert tone="info">
+			<InfoIcon aria-hidden />
 			<AlertTitle>{title}</AlertTitle>
-			<AlertDescription className="text-accent-foreground/90">
+			<AlertDescription>
 				{description}
 				{linkTo && linkText && (
 					<>
 						{" "}
-						<Link
-							to={linkTo}
-							className="inline-flex items-center gap-1 text-primary underline underline-offset-4 hover:text-primary/80"
-						>
-							{linkText}
-						</Link>
+						<TextLink href={linkTo}>{linkText}</TextLink>
 					</>
 				)}
 			</AlertDescription>

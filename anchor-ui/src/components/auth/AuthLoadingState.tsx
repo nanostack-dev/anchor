@@ -4,10 +4,10 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@nanostackorg/design-system/components/card";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { Database, Loader2, Shield } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
 import type React from "react";
 import {
 	AnchorAnimatedBackdrop,
@@ -25,8 +25,6 @@ export const AuthLoadingState: React.FC<AuthLoadingStateProps> = ({
 	tenantLoading,
 	message,
 }) => {
-	const reducedMotion = useReducedMotion();
-
 	const getLoadingMessage = () => {
 		if (message) return message;
 
@@ -61,60 +59,58 @@ export const AuthLoadingState: React.FC<AuthLoadingStateProps> = ({
 		<div className="relative min-h-screen overflow-hidden">
 			<AnchorAnimatedBackdrop>
 				<div className="absolute inset-0 flex flex-col items-center justify-center gap-10 px-4 py-12 sm:px-6 lg:px-8">
-					<FloatingAnchorMark width="clamp(90px, 12vh, 130px)" />
-					<motion.div
-						initial={reducedMotion ? false : { opacity: 0, y: 24 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
-					>
-						<Card className="w-72 min-w-0 max-w-[calc(100vw-2rem)] sm:w-96">
-							<CardHeader className="text-center">
-								<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent-foreground">
+					<FloatingAnchorMark size="md" />
+					<div className="w-full max-w-sm">
+						<Card variant="outline">
+							<CardHeader>
+								<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
 									{getLoadingIcon()}
 								</div>
-								<CardTitle className="text-lg font-medium text-foreground">
-									{getLoadingMessage()}
-								</CardTitle>
-								<CardDescription className="text-sm text-muted-foreground">
+								<CardTitle>{getLoadingMessage()}</CardTitle>
+								<CardDescription>
 									Please wait while we set things up for you.
 								</CardDescription>
 							</CardHeader>
-							<CardContent className="flex flex-col gap-4">
-								<div className="flex flex-col gap-3">
-									<div className="flex items-center gap-3">
-										<div
-											className={`size-2 rounded-full ${
-												authLoading ? "bg-primary animate-pulse" : "bg-success"
-											}`}
-										/>
-										<span className="text-sm text-muted-foreground">
-											Authentication{" "}
-											{authLoading ? "in progress..." : "verified"}
-										</span>
+							<CardContent>
+								<Stack space="md">
+									<div className="flex flex-col gap-3">
+										<div className="flex items-center gap-3">
+											<div
+												className={`size-2 rounded-full ${
+													authLoading
+														? "bg-primary animate-pulse"
+														: "bg-success"
+												}`}
+											/>
+											<span className="text-sm text-muted-foreground">
+												Authentication{" "}
+												{authLoading ? "in progress..." : "verified"}
+											</span>
+										</div>
+
+										<div className="flex items-center gap-3">
+											<div
+												className={`size-2 rounded-full ${
+													tenantLoading
+														? "bg-primary animate-pulse"
+														: "bg-success"
+												}`}
+											/>
+											<span className="text-sm text-muted-foreground">
+												System status {tenantLoading ? "checking..." : "ready"}
+											</span>
+										</div>
 									</div>
 
-									<div className="flex items-center gap-3">
-										<div
-											className={`size-2 rounded-full ${
-												tenantLoading
-													? "bg-primary animate-pulse"
-													: "bg-success"
-											}`}
-										/>
-										<span className="text-sm text-muted-foreground">
-											System status {tenantLoading ? "checking..." : "ready"}
-										</span>
+									<div className="flex flex-col gap-2">
+										<Skeleton height="sm" />
+										<Skeleton height="sm" width="3/4" />
+										<Skeleton height="sm" width="1/2" />
 									</div>
-								</div>
-
-								<div className="flex flex-col gap-2">
-									<Skeleton className="h-4 w-full" />
-									<Skeleton className="h-4 w-3/4" />
-									<Skeleton className="h-4 w-1/2" />
-								</div>
+								</Stack>
 							</CardContent>
 						</Card>
-					</motion.div>
+					</div>
 				</div>
 			</AnchorAnimatedBackdrop>
 		</div>

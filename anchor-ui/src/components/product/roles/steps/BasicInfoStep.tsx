@@ -1,12 +1,13 @@
 import type { ProductRoleResponse } from "@/client";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { VerticalStepperStep } from "@/components/ui/vertical-stepper";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
+import { TabsContent } from "@nanostackorg/design-system/components/tabs";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useForm } from "@tanstack/react-form";
 import { ChevronRight, Lightbulb, Lock } from "lucide-react";
 import { type BasicInfoFormData, basicInfo } from "../form-type";
@@ -43,46 +44,47 @@ export function BasicInfoStep({
 		throw new Error("Existing role must be provided in edit mode");
 	}
 	return (
-		<VerticalStepperStep id="basic">
-			<div className="flex flex-col h-full">
+		<TabsContent value="basic">
+			<Box className="flex flex-col h-full">
 				{/* Header */}
-				<div className="px-7 pt-7 pb-5">
-					<div className="flex flex-col gap-2">
+				<Box className="px-7 pt-7 pb-5">
+					<Box className="flex flex-col gap-2">
 						<h2 className="flex items-center gap-3">
-							<div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
+							<Box className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
 								<Lock className="size-4" />
-							</div>
-							<span className="text-xl font-semibold tracking-tight text-foreground">
+							</Box>
+							<Box
+								as="span"
+								className="text-xl font-semibold tracking-tight text-foreground"
+							>
 								Basic Info
-							</span>
+							</Box>
 							{isEditMode && (
-								<Badge
-									variant="outline"
-									className="ml-1 text-xs font-normal text-muted-foreground bg-muted"
-								>
-									Editing: {existingRole?.name}
-								</Badge>
+								<Badge variant="outline">Editing: {existingRole?.name}</Badge>
 							)}
 						</h2>
-						<p className="text-sm text-muted-foreground leading-relaxed">
+						<Box
+							as="p"
+							className="text-sm text-muted-foreground leading-relaxed"
+						>
 							{isEditMode
 								? "Update the basic information for this role."
 								: "Give your new role a clear name and description."}
-						</p>
-					</div>
-				</div>
+						</Box>
+					</Box>
+				</Box>
 
-				<ScrollArea className="flex-1 px-7">
-					<div className="flex flex-col gap-6 pb-6">
+				<ScrollArea maxHeight="md">
+					<Box className="flex flex-col gap-6 pb-6">
 						{/* Role Name */}
 						<form.Field name="name">
 							{(field) => (
-								<div className="flex flex-col gap-2">
-									<Label
-										htmlFor="name"
-										className="text-sm font-medium text-foreground"
-									>
-										Role Name <span className="text-destructive">*</span>
+								<Box className="flex flex-col gap-2">
+									<Label htmlFor="name">
+										Role Name{" "}
+										<Box as="span" className="text-destructive">
+											*
+										</Box>
 									</Label>
 									<Input
 										id="name"
@@ -90,25 +92,24 @@ export function BasicInfoStep({
 										onChange={(e) => field.handleChange(e.target.value)}
 										onBlur={field.handleBlur}
 										placeholder="e.g., Content Editor, Admin, Viewer"
-										className="h-11 text-base rounded-xl"
 									/>
 									<FormValidationError field={field} />
-								</div>
+								</Box>
 							)}
 						</form.Field>
 
 						{/* Description */}
 						<form.Field name="description">
 							{(field) => (
-								<div className="flex flex-col gap-2">
-									<Label
-										htmlFor="description"
-										className="text-sm font-medium text-foreground"
-									>
+								<Box className="flex flex-col gap-2">
+									<Label htmlFor="description">
 										Description
-										<span className="ml-1.5 text-xs font-normal text-muted-foreground">
+										<Box
+											as="span"
+											className="ml-1.5 text-xs font-normal text-muted-foreground"
+										>
 											Optional
-										</span>
+										</Box>
 									</Label>
 									<Textarea
 										id="description"
@@ -117,36 +118,38 @@ export function BasicInfoStep({
 										onBlur={field.handleBlur}
 										placeholder="Describe what this role can do and who should have it..."
 										rows={4}
-										className="resize-none text-sm rounded-xl leading-relaxed"
 									/>
 									<FormValidationError field={field} />
-								</div>
+								</Box>
 							)}
 						</form.Field>
 
 						{/* Tip card */}
-						<div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-muted">
-							<div className="mt-0.5 p-1.5 rounded-lg bg-warning/10">
-								<Lightbulb className="size-3.5 text-warning" />
-							</div>
-							<div className="flex flex-col gap-1">
-								<p className="text-xs font-semibold text-foreground">
+						<Box className="flex items-start gap-3 p-4 rounded-xl border border-border bg-muted">
+							<Box className="mt-0.5 p-1.5 rounded-lg bg-warning/10">
+								<Lightbulb className="size-3.5 text-warning-on-tint" />
+							</Box>
+							<Box className="flex flex-col gap-1">
+								<Box as="p" className="text-xs font-semibold text-foreground">
 									Role Naming Best Practices
-								</p>
-								<p className="text-xs text-muted-foreground leading-relaxed">
+								</Box>
+								<Box
+									as="p"
+									className="text-xs text-muted-foreground leading-relaxed"
+								>
 									Use descriptive names like "Content Editor" or "Analytics
 									Viewer". Clear names help team members understand permissions
 									at a glance.
-								</p>
-							</div>
-						</div>
-					</div>
+								</Box>
+							</Box>
+						</Box>
+					</Box>
 				</ScrollArea>
 
 				{/* Footer */}
-				<div className="px-7 py-5 border-t border-border mt-auto">
-					<div className="p-0">
-						<div className="flex justify-end w-full">
+				<Box className="px-7 py-5 border-t border-border mt-auto">
+					<Box className="p-0">
+						<Box className="flex justify-end w-full">
 							<form.Subscribe
 								selector={(state) => [
 									state.canSubmit,
@@ -157,6 +160,8 @@ export function BasicInfoStep({
 							>
 								{([canSubmit, isSubmitting, isValid, isDirty]) => (
 									<Button
+										variant="solid"
+										tone="brand"
 										onClick={form.handleSubmit}
 										disabled={
 											!canSubmit ||
@@ -164,17 +169,16 @@ export function BasicInfoStep({
 											!isValid ||
 											(!isEditMode && !isDirty)
 										}
-										className="px-6 h-10 rounded-xl font-medium shadow-sm transition-all"
 									>
 										Continue
 										<ChevronRight className="ml-1.5 size-4" />
 									</Button>
 								)}
 							</form.Subscribe>
-						</div>
-					</div>
-				</div>
-			</div>
-		</VerticalStepperStep>
+						</Box>
+					</Box>
+				</Box>
+			</Box>
+		</TabsContent>
 	);
 }

@@ -1,11 +1,12 @@
 import { getProductRoleOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductRoleDetailView } from "@/components/product/roles/ProductRoleDetailView";
-import { Button, buttonVariants } from "@/components/ui/button";
 import { useProduct } from "@/hooks/useProduct";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 interface ProductRoleDetailPageProps {
 	roleId: string;
@@ -51,16 +52,23 @@ export default function ProductRoleDetailPage({
 							: "Could not load role"
 				}
 				actions={
-					<Link
-						to={ROUTE_PATHS.PRODUCT_ROLES}
-						className={buttonVariants({ variant: "outline" })}
+					<ButtonLink
+						href={ROUTE_PATHS.PRODUCT_ROLES}
+						variant="outline"
+						tone="neutral"
 					>
 						All roles
-					</Link>
+					</ButtonLink>
 				}
 			>
 				{roleQuery.isError && (
-					<Button onClick={() => void roleQuery.refetch()}>Try again</Button>
+					<Button
+						variant="solid"
+						tone="brand"
+						onClick={() => void roleQuery.refetch()}
+					>
+						Try again
+					</Button>
 				)}
 			</Page>
 		);

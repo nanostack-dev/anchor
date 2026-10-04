@@ -1,8 +1,8 @@
 import type { ProductApiKeyResponse } from "@/client";
 import { deleteProductApiKeyMutation } from "@/client/@tanstack/react-query.gen";
 import { DeleteDialog } from "@/components/common/dialogs/DeleteDialog";
+import { toast } from "@nanostackorg/design-system/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 interface DeleteProductAPIKeyDialogProps {
 	productId: string;
@@ -31,8 +31,12 @@ export function DeleteProductAPIKeyDialog({
 
 		queryClient.invalidateQueries({ queryKey: ["searchProductAPIKeys"] });
 
-		toast.success("🗑️ API Key deleted successfully!", {
-			description: `${apiKey.name} has been permanently removed`,
+		toast.add({
+			type: "success",
+			title: "🗑️ API Key deleted successfully!",
+			...{
+				description: `${apiKey.name} has been permanently removed`,
+			},
 		});
 	};
 

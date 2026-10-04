@@ -1,9 +1,10 @@
 import { Page } from "@/components/common/Page";
+import { Heading } from "@nanostackorg/design-system";
 
 export default function AppRolesPage() {
 	return (
 		<Page>
-			<h1>App Roles</h1>
+			<Heading level={1}>App Roles</Heading>
 		</Page>
 	);
 }

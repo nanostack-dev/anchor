@@ -6,12 +6,13 @@ import type {
 } from "@/client";
 import { SortDirection } from "@/client";
 import { searchProductPermissionsOptions } from "@/client/@tanstack/react-query.gen";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { mapSortingToApiField } from "@/utils/datatable-sorting";
+} from "@nanostackorg/design-system/components/tooltip";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -120,11 +121,14 @@ export function ProductPermissionDatatable({
 					return (
 						<Tooltip>
 							<TooltipTrigger>
-								<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+								<Box
+									as="span"
+									className="text-sm text-muted-foreground max-w-[200px] truncate block"
+								>
 									{description || "No description"}
-								</span>
+								</Box>
 							</TooltipTrigger>
-							<TooltipContent side="top" className="max-w-xs">
+							<TooltipContent side="top">
 								{description || "No description available"}
 							</TooltipContent>
 						</Tooltip>

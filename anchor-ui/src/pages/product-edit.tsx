@@ -4,16 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { getProductOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductEditForm } from "@/components/product/ProductEditForm";
-import { Button } from "@/components/ui/button";
+import { productEditRoute } from "@/routes/products/$productId.edit";
+import { productsRoute } from "@/routes/products/products";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { productEditRoute } from "@/routes/products/$productId.edit";
-import { productsRoute } from "@/routes/products/products";
+} from "@nanostackorg/design-system/components/card";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useNavigate } from "@tanstack/react-router";
 
 export default function ProductEditPage() {
@@ -41,15 +43,15 @@ export default function ProductEditPage() {
 			description="Update product details and configuration"
 			variant="full"
 		>
-			<div className="flex flex-col gap-6">
-				<div className="flex items-center gap-4">
+			<Stack space="lg">
+				<Inline space="md">
 					<Button onClick={handleBack} variant="outline" size="sm">
 						<ArrowLeft data-icon="inline-start" />
 						Back to Products
 					</Button>
-				</div>
+				</Inline>
 
-				<Card className="max-w-3xl">
+				<Card>
 					<CardHeader>
 						<CardTitle>Product</CardTitle>
 						<CardDescription>
@@ -65,7 +67,7 @@ export default function ProductEditPage() {
 						/>
 					</CardContent>
 				</Card>
-			</div>
+			</Stack>
 		</Page>
 	);
 }

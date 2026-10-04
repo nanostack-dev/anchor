@@ -1,5 +1,6 @@
 import { availableParallelism } from "node:os";
 import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
@@ -25,6 +26,7 @@ const storyTestWorkers = Math.min(4, Math.max(2, availableParallelism() - 1));
 
 export default defineConfig({
 	resolve: {
+		dedupe: ["react", "react-dom"],
 		alias: {
 			"@": resolve(import.meta.dirname, "./src"),
 		},
@@ -39,6 +41,7 @@ export default defineConfig({
 		projects: [
 			defineProject({
 				plugins: [
+					tailwindcss(),
 					storybookTest({
 						configDir: resolve(import.meta.dirname, ".storybook"),
 						storybookScript: "pnpm storybook --ci",
@@ -46,6 +49,9 @@ export default defineConfig({
 				],
 				test: {
 					name: "storybook",
+					setupFiles: [
+						resolve(import.meta.dirname, ".storybook/vitest.setup.ts"),
+					],
 					maxWorkers: storyTestWorkers,
 					browser: {
 						enabled: true,

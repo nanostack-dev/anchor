@@ -1,13 +1,14 @@
 import type { ProductResponse } from "@/client";
 import { client } from "@/client/client.gen";
+import { StoryQuery } from "@/lib/storybook/story-query";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { StoryQuery } from "@/lib/storybook/story-query";
+} from "@nanostackorg/design-system/components/card";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { ProductEditForm } from "./ProductEditForm";
@@ -30,8 +31,8 @@ const meta = {
 	decorators: [
 		(Story) => (
 			<StoryQuery>
-				<div className="p-8">
-					<Card className="max-w-3xl">
+				<Box className="p-8">
+					<Card>
 						<CardHeader>
 							<CardTitle>Product</CardTitle>
 							<CardDescription>
@@ -42,7 +43,7 @@ const meta = {
 							<Story />
 						</CardContent>
 					</Card>
-				</div>
+				</Box>
 			</StoryQuery>
 		),
 	],

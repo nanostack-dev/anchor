@@ -1,12 +1,22 @@
+import { cn } from "@/lib/utils";
+import {
+	PageHeader,
+	PageHeaderActions,
+	PageHeaderContent,
+	PageHeaderDescription,
+	PageHeaderTitle,
+} from "@nanostackorg/design-system/blocks/page-header";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
+	BreadcrumbLink,
 	BreadcrumbList,
 	BreadcrumbPage,
 	BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { cn } from "@/lib/utils";
-import { Link, useLocation } from "@tanstack/react-router";
+} from "@nanostackorg/design-system/components/breadcrumb";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { useLocation } from "@tanstack/react-router";
 import { HomeIcon } from "lucide-react";
 import * as React from "react";
 import { useMemo } from "react";
@@ -25,16 +35,6 @@ function getBreadcrumbs(pathname: string) {
 	}
 	return crumbs;
 }
-
-/**
- * A breadcrumb trail must carry exactly one `aria-current="page"`, on the final
- * crumb. TanStack Router marks a `<Link>` active on a prefix match by default
- * (`exact: false`), so every ancestor crumb would also claim to be the current
- * page — three claims at /products/checkout-api/api-keys, all announced by a
- * screen reader. Ancestors are by definition not the current page, so the crumb
- * links opt into exact matching and leave the marker to `BreadcrumbPage`.
- */
-const crumbActiveOptions = { exact: true } as const;
 
 type PageVariant = "full" | "wide" | "narrow" | "default";
 
@@ -88,7 +88,8 @@ export function Page({
 	}, [location.pathname, breadCrumbLabels]);
 
 	return (
-		<section
+		<Box
+			as="section"
 			data-slot="page"
 			data-testid="page-root"
 			className={cn(
@@ -97,95 +98,54 @@ export function Page({
 			)}
 		>
 			{breadCrumbs && (
-				<nav aria-label="Breadcrumb" data-testid="breadcrumb-nav">
-					<Breadcrumb>
-						<BreadcrumbList>
-							{crumbs.map((crumb, idx) => (
-								<React.Fragment key={crumb.path}>
-									<BreadcrumbItem>
-										{idx === 0 ? (
-											<Link
-												to={crumb.path}
-												activeOptions={crumbActiveOptions}
-												className="inline-flex items-center gap-1 transition-colors hover:text-foreground focus-visible:underline"
-												aria-label="Dashboard"
-											>
-												<HomeIcon className="size-4" />
-												<span
-													className="max-w-[120px] truncate"
-													title={crumb.name}
-												>
-													{crumb.name}
-												</span>
-											</Link>
-										) : idx === crumbs.length - 1 ? (
-											<BreadcrumbPage aria-current="page">
-												<span
-													className="max-w-[120px] truncate"
-													title={crumb.name}
-												>
-													{crumb.name}
-												</span>
-											</BreadcrumbPage>
-										) : (
-											<Link
-												to={crumb.path}
-												activeOptions={crumbActiveOptions}
-												className="transition-colors hover:text-foreground focus-visible:underline"
-											>
-												<span
-													className="max-w-[120px] truncate"
-													title={crumb.name}
-												>
-													{crumb.name}
-												</span>
-											</Link>
-										)}
-									</BreadcrumbItem>
-									{idx < crumbs.length - 1 && <BreadcrumbSeparator />}
-								</React.Fragment>
-							))}
-						</BreadcrumbList>
-					</Breadcrumb>
-				</nav>
+				<Breadcrumb aria-label="Breadcrumb" data-testid="breadcrumb-nav">
+					<BreadcrumbList>
+						{crumbs.map((crumb, idx) => (
+							<React.Fragment key={crumb.path}>
+								<BreadcrumbItem>
+									{idx === crumbs.length - 1 && idx !== 0 ? (
+										<BreadcrumbPage>{crumb.name}</BreadcrumbPage>
+									) : (
+										<BreadcrumbLink
+											href={crumb.path}
+											aria-label={idx === 0 ? "Dashboard" : undefined}
+										>
+											<Inline space="xs">
+												{idx === 0 && (
+													<HomeIcon aria-hidden className="size-4" />
+												)}
+												{crumb.name}
+											</Inline>
+										</BreadcrumbLink>
+									)}
+								</BreadcrumbItem>
+								{idx < crumbs.length - 1 && <BreadcrumbSeparator />}
+							</React.Fragment>
+						))}
+					</BreadcrumbList>
+				</Breadcrumb>
 			)}
-
 			{(title || actions) && (
-				<header
-					data-slot="page-header"
-					className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
-				>
-					<div className="max-w-3xl min-w-0 space-y-2">
+				<PageHeader>
+					<PageHeaderContent>
 						{title && (
-							<h1
-								data-testid="page-title"
-								className="text-3xl font-semibold tracking-tight text-balance text-foreground"
-							>
+							<PageHeaderTitle data-testid="page-title">
 								{title}
-							</h1>
+							</PageHeaderTitle>
 						)}
 						{description && (
-							<p
-								data-testid="page-description"
-								className="text-sm leading-6 text-muted-foreground"
-							>
+							<PageHeaderDescription data-testid="page-description">
 								{description}
-							</p>
+							</PageHeaderDescription>
 						)}
-					</div>
-					{actions && (
-						<div className="flex flex-wrap items-center gap-3 lg:justify-end">
-							{actions}
-						</div>
-					)}
-				</header>
+					</PageHeaderContent>
+					{actions && <PageHeaderActions>{actions}</PageHeaderActions>}
+				</PageHeader>
 			)}
-
 			{pageInfo && <PageInfo {...pageInfo} />}
-
-			<div className="min-h-0 flex-1" data-testid="page-content">
+			<Box className="min-h-0 flex-1" data-testid="page-content">
 				{children}
-			</div>
-		</section>
+			</Box>
+		</Box>
 	);
 }

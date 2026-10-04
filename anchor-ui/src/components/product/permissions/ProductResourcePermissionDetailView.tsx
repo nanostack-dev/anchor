@@ -5,18 +5,19 @@ import {
 	updateProductResourcePermissionMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { ArrowLeft, PenLine } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 interface ProductResourcePermissionDetailViewProps {
 	productId: string;
@@ -49,11 +50,14 @@ export function ProductResourcePermissionDetailView({
 					path: { product_id: productId, permission_name: permission.name },
 				}),
 			});
-			toast.success("Resource permission updated");
+			toast.add({ type: "success", title: "Resource permission updated" });
 			onSaved();
 		},
 		onError: (error) => {
-			toast.error(getApiErrorMessage(error) || "Could not update permission");
+			toast.add({
+				type: "error",
+				title: getApiErrorMessage(error) || "Could not update permission",
+			});
 		},
 	});
 
@@ -65,29 +69,33 @@ export function ProductResourcePermissionDetailView({
 			description={permission.description || "No description."}
 			actions={
 				<>
-					<Link
-						to={ROUTE_PATHS.PRODUCT_RESOURCES_PERMISSIONS}
-						className={buttonVariants({ variant: "outline" })}
+					<ButtonLink
+						href={ROUTE_PATHS.PRODUCT_RESOURCES_PERMISSIONS}
+						variant="outline"
+						tone="neutral"
 					>
 						<ArrowLeft data-icon="inline-start" />
 						All resource permissions
-					</Link>
+					</ButtonLink>
 					{!editing && (
-						<Link
-							to={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL}
-							params={{ permissionName: permission.name }}
-							search={{ edit: true }}
-							className={buttonVariants()}
+						<ButtonLink
+							href={`${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL.replace(
+								"$permissionName",
+								encodeURIComponent(permission.name),
+							)}?${new URLSearchParams({ edit: "true" }).toString()}`}
+							variant="solid"
+							tone="brand"
 						>
 							<PenLine data-icon="inline-start" />
 							Edit permission
-						</Link>
+						</ButtonLink>
 					)}
 				</>
 			}
 		>
 			{editing ? (
-				<form
+				<Box
+					as="form"
 					className="space-y-6 rounded-lg border border-border p-6"
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -97,7 +105,7 @@ export function ProductResourcePermissionDetailView({
 						});
 					}}
 				>
-					<div className="space-y-2">
+					<Box className="space-y-2">
 						<Label htmlFor="permission-name">Name</Label>
 						<Input
 							id="permission-name"
@@ -105,11 +113,11 @@ export function ProductResourcePermissionDetailView({
 							readOnly
 							disabled
 						/>
-						<p className="text-sm text-muted-foreground">
+						<Box as="p" className="text-sm text-muted-foreground">
 							The permission name cannot be changed.
-						</p>
-					</div>
-					<div className="space-y-2">
+						</Box>
+					</Box>
+					<Box className="space-y-2">
 						<Label htmlFor="permission-description">Description</Label>
 						<Textarea
 							id="permission-description"
@@ -117,24 +125,30 @@ export function ProductResourcePermissionDetailView({
 							onChange={(event) => setDescription(event.target.value)}
 							rows={5}
 						/>
-					</div>
+					</Box>
 					{updateMutation.isError && (
-						<p role="alert" className="text-sm text-destructive">
+						<Box as="p" role="alert" className="text-sm text-destructive">
 							{getApiErrorMessage(updateMutation.error) ||
 								"Could not update permission. Try again."}
-						</p>
+						</Box>
 					)}
-					<div className="flex gap-2">
-						<Button type="submit" disabled={updateMutation.isPending}>
+					<Box className="flex gap-2">
+						<Button
+							variant="solid"
+							tone="brand"
+							type="submit"
+							disabled={updateMutation.isPending}
+						>
 							{updateMutation.isPending ? "Saving..." : "Save changes"}
 						</Button>
 						<Button type="button" variant="outline" onClick={onCancel}>
 							Cancel
 						</Button>
-					</div>
-				</form>
+					</Box>
+				</Box>
 			) : (
-				<section
+				<Box
+					as="section"
 					className="rounded-lg border border-border p-6"
 					aria-label="Resource permission details"
 				>
@@ -162,7 +176,7 @@ export function ProductResourcePermissionDetailView({
 							</dd>
 						</div>
 					</dl>
-				</section>
+				</Box>
 			)}
 		</Page>
 	);

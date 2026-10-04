@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 
 /**
  * Semantic status tones. Use these instead of hard-coded palette classes
@@ -14,16 +14,13 @@ export type StatusTone =
 	| "info"
 	| "neutral";
 
-const toneToVariant: Record<
-	StatusTone,
-	React.ComponentProps<typeof Badge>["variant"]
-> = {
+const badgeTone = {
 	success: "success",
 	warning: "warning",
-	destructive: "destructive",
-	info: "default",
-	neutral: "secondary",
-};
+	destructive: "critical",
+	info: "info",
+	neutral: "neutral",
+} as const;
 
 /**
  * Best-effort mapping from a raw status string to a semantic tone. Callers with
@@ -73,7 +70,7 @@ export function inferStatusTone(status: string): StatusTone {
 
 export type StatusBadgeProps = Omit<
 	React.ComponentProps<typeof Badge>,
-	"variant"
+	"variant" | "tone"
 > & {
 	/** Explicit semantic tone. Falls back to inference from the label text. */
 	tone?: StatusTone;
@@ -87,7 +84,7 @@ export function StatusBadge({ tone, children, ...props }: StatusBadgeProps) {
 	const resolvedTone =
 		tone ?? (typeof children === "string" ? inferStatusTone(children) : "info");
 	return (
-		<Badge variant={toneToVariant[resolvedTone]} {...props}>
+		<Badge variant="soft" tone={badgeTone[resolvedTone]} {...props}>
 			{children}
 		</Badge>
 	);

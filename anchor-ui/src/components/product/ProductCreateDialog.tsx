@@ -1,14 +1,8 @@
 import type { ProductRequest } from "@/client";
 import { createProductMutation } from "@/client/@tanstack/react-query.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
-import { Button } from "../ui/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -17,10 +11,17 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Spinner } from "../ui/spinner";
+} from "@nanostackorg/design-system/components/dialog";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { z } from "zod";
 
 const productFormSchema = z.object({
 	name: z
@@ -70,7 +71,7 @@ export function ProductCreateDialog({
 	const { mutate: createProduct, isPending: isCreating } = useMutation({
 		...createProductMutation(),
 		onSuccess: () => {
-			toast.success("Product created successfully!");
+			toast.add({ type: "success", title: "Product created successfully!" });
 			setOpen(false);
 			form.reset();
 			onCreated?.();
@@ -79,9 +80,12 @@ export function ProductCreateDialog({
 			console.error("Failed to create product:", error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error("Failed to create product. Please try again.");
+				toast.add({
+					type: "error",
+					title: "Failed to create product. Please try again.",
+				});
 			}
 		},
 	});
@@ -107,7 +111,7 @@ export function ProductCreateDialog({
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger render={trigger} />
-			<DialogContent className="sm:max-w-[450px]">
+			<DialogContent>
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
@@ -121,10 +125,10 @@ export function ProductCreateDialog({
 							Create a new product. Fill in the details below.
 						</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-6 py-4">
+					<Box className="space-y-6 py-4">
 						<form.Field name="name">
 							{(field) => (
-								<div className="space-y-2">
+								<Box className="space-y-2">
 									<Label htmlFor="name">Product Name</Label>
 									<Input
 										id="name"
@@ -135,18 +139,17 @@ export function ProductCreateDialog({
 										disabled={isCreating}
 									/>
 									<FormValidationError field={field} />
-								</div>
+								</Box>
 							)}
 						</form.Field>
 
 						<form.Field name="description">
 							{(field) => (
-								<div className="space-y-2">
+								<Box className="space-y-2">
 									<Label htmlFor="description">Description</Label>
 									<Textarea
 										id="description"
 										placeholder="Product description (optional)"
-										className=""
 										rows={3}
 										value={field.state.value || ""}
 										onChange={(e) => field.handleChange(e.target.value)}
@@ -154,10 +157,10 @@ export function ProductCreateDialog({
 										disabled={isCreating}
 									/>
 									<FormValidationError field={field} />
-								</div>
+								</Box>
 							)}
 						</form.Field>
-					</div>
+					</Box>
 					<DialogFooter>
 						<Button
 							type="button"
@@ -178,6 +181,8 @@ export function ProductCreateDialog({
 						>
 							{([canSubmit, isSubmitting, isDirty, isValidating, isValid]) => (
 								<Button
+									variant="solid"
+									tone="brand"
 									type="submit"
 									disabled={
 										!canSubmit ||
@@ -187,13 +192,12 @@ export function ProductCreateDialog({
 										!isDirty ||
 										isCreating
 									}
-									className="h-11"
 								>
 									{isCreating || isSubmitting ? (
-										<div className="flex items-center gap-2">
-											<Spinner className="text-current" />
+										<Box className="flex items-center gap-2">
+											<Spinner />
 											<span>Creating...</span>
-										</div>
+										</Box>
 									) : (
 										<span>Create Product</span>
 									)}

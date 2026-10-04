@@ -1,84 +1,40 @@
-import { cn } from "@/lib/utils";
-import { type VariantProps, cva } from "class-variance-authority";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@nanostackorg/design-system/components/alert";
 import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import type React from "react";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import type { ReactNode } from "react";
 
-const formAlertVariants = cva("", {
-	variants: {
-		variant: {
-			default: "bg-destructive/10 text-destructive border-destructive/20",
-			warning: "bg-warning/10 text-warning border-warning/20",
-			info: "bg-accent-soft text-accent-foreground border-border",
-			success: "bg-success/10 text-success border-success/20",
-		},
-	},
-	defaultVariants: {
-		variant: "default",
-	},
-});
-
-const alertVariantMap = {
-	default: "destructive",
-	warning: "warning",
-	info: "default",
-	success: "success",
-} as const;
-
-export interface FormAlertProps
-	extends React.HTMLAttributes<HTMLDivElement>,
-		VariantProps<typeof formAlertVariants> {
+export interface FormAlertProps {
+	variant?: "default" | "warning" | "info" | "success";
 	title?: string;
 	message?: string | null;
-	icon?: React.ReactNode;
+	icon?: ReactNode;
+	id?: string;
 }
 
+const alerts = {
+	default: { tone: "critical", title: "Error", icon: AlertCircle },
+	warning: { tone: "warning", title: "Warning", icon: AlertTriangle },
+	info: { tone: "info", title: "Information", icon: Info },
+	success: { tone: "success", title: "Success", icon: CheckCircle },
+} as const;
+
 export function FormAlert({
-	className,
-	variant,
+	variant = "default",
 	title,
 	message,
 	icon,
-	...props
+	id,
 }: FormAlertProps) {
 	if (!message) return null;
-
-	const getIcon = () => {
-		if (icon) return icon;
-		switch (variant) {
-			case "warning":
-				return <AlertTriangle className="size-4" />;
-			case "info":
-				return <Info className="size-4" />;
-			case "success":
-				return <CheckCircle className="size-4" />;
-			default:
-				return <AlertCircle className="size-4" />;
-		}
-	};
-
-	const getTitle = () => {
-		if (title) return title;
-		switch (variant) {
-			case "warning":
-				return "Warning";
-			case "info":
-				return "Information";
-			case "success":
-				return "Success";
-			default:
-				return "Error";
-		}
-	};
-
+	const alert = alerts[variant];
+	const Icon = alert.icon;
 	return (
-		<Alert
-			variant={alertVariantMap[variant ?? "default"]}
-			className={cn(formAlertVariants({ variant }), className)}
-			{...props}
-		>
-			{getIcon()}
-			<AlertTitle>{getTitle()}</AlertTitle>
+		<Alert tone={alert.tone} id={id}>
+			{icon ?? <Icon aria-hidden />}
+			<AlertTitle>{title ?? alert.title}</AlertTitle>
 			<AlertDescription>{message}</AlertDescription>
 		</Alert>
 	);

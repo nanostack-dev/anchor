@@ -1,6 +1,9 @@
 import { type LicenseFieldRules, LicenseFieldType } from "@/client";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 
 interface LicenseFieldRulesEditorProps {
 	idPrefix: string;
@@ -31,11 +34,9 @@ export function LicenseFieldRulesEditor({
 }: LicenseFieldRulesEditorProps) {
 	if (type === LicenseFieldType.LIMIT || type === LicenseFieldType.NUMBER) {
 		return (
-			<div className="grid grid-cols-2 gap-3">
-				<div className="space-y-1.5">
-					<Label htmlFor={`${idPrefix}-min`} className="text-xs">
-						Min
-					</Label>
+			<Box className="grid grid-cols-2 gap-3">
+				<Stack space="xs">
+					<Label htmlFor={`${idPrefix}-min`}>Min</Label>
 					<Input
 						id={`${idPrefix}-min`}
 						type="number"
@@ -46,11 +47,9 @@ export function LicenseFieldRulesEditor({
 						placeholder="No minimum"
 						disabled={disabled}
 					/>
-				</div>
-				<div className="space-y-1.5">
-					<Label htmlFor={`${idPrefix}-max`} className="text-xs">
-						Max
-					</Label>
+				</Stack>
+				<Stack space="xs">
+					<Label htmlFor={`${idPrefix}-max`}>Max</Label>
 					<Input
 						id={`${idPrefix}-max`}
 						type="number"
@@ -61,33 +60,31 @@ export function LicenseFieldRulesEditor({
 						placeholder="No maximum"
 						disabled={disabled}
 					/>
-				</div>
-			</div>
+				</Stack>
+			</Box>
 		);
 	}
 
 	if (type === LicenseFieldType.STRING) {
 		return (
-			<div className="grid grid-cols-3 gap-3">
-				<div className="col-span-3 space-y-1.5">
-					<Label htmlFor={`${idPrefix}-pattern`} className="text-xs">
+			<Box className="grid grid-cols-3 gap-3">
+				<Box className="col-span-3 space-y-1.5">
+					<Label htmlFor={`${idPrefix}-pattern`}>
 						Pattern (regular expression)
 					</Label>
 					<Input
+						font="mono"
 						id={`${idPrefix}-pattern`}
 						value={rules.pattern ?? ""}
 						onChange={(e) =>
 							onChange({ ...rules, pattern: e.target.value || undefined })
 						}
 						placeholder="No pattern"
-						className="font-mono"
 						disabled={disabled}
 					/>
-				</div>
-				<div className="space-y-1.5">
-					<Label htmlFor={`${idPrefix}-min-length`} className="text-xs">
-						Min length
-					</Label>
+				</Box>
+				<Stack space="xs">
+					<Label htmlFor={`${idPrefix}-min-length`}>Min length</Label>
 					<Input
 						id={`${idPrefix}-min-length`}
 						type="number"
@@ -102,11 +99,9 @@ export function LicenseFieldRulesEditor({
 						placeholder="None"
 						disabled={disabled}
 					/>
-				</div>
-				<div className="space-y-1.5">
-					<Label htmlFor={`${idPrefix}-max-length`} className="text-xs">
-						Max length
-					</Label>
+				</Stack>
+				<Stack space="xs">
+					<Label htmlFor={`${idPrefix}-max-length`}>Max length</Label>
 					<Input
 						id={`${idPrefix}-max-length`}
 						type="number"
@@ -121,15 +116,15 @@ export function LicenseFieldRulesEditor({
 						placeholder="None"
 						disabled={disabled}
 					/>
-				</div>
-			</div>
+				</Stack>
+			</Box>
 		);
 	}
 
 	if (type === LicenseFieldType.ENUM) {
 		return (
-			<div className="space-y-1.5">
-				<Label htmlFor={`${idPrefix}-values`} className="text-xs">
+			<Stack space="xs">
+				<Label htmlFor={`${idPrefix}-values`}>
 					Allowed values (comma-separated)
 				</Label>
 				<Input
@@ -147,13 +142,13 @@ export function LicenseFieldRulesEditor({
 					placeholder="free, pro, enterprise"
 					disabled={disabled}
 				/>
-			</div>
+			</Stack>
 		);
 	}
 
 	return (
-		<p className="text-xs text-muted-foreground">
+		<Text size="xs" tone="muted">
 			Boolean fields take no validation rules.
-		</p>
+		</Text>
 	);
 }

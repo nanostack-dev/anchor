@@ -116,3 +116,6 @@ terraform/**/.terraform.lock.hcl
 worktrees/
 
 *.tsbuildinfo
+
+# Local UI review captures
+.ui-craft/

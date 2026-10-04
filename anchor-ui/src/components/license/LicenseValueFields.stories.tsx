@@ -1,7 +1,7 @@
 import { LicenseFieldType, type LicenseTemplateValues } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LicenseValueFields } from "./LicenseValueFields";
 
@@ -77,7 +77,9 @@ export const EditableRendersTypedInputs: Story = {
 		const canvas = within(canvasElement);
 		await expect(canvas.getByRole("spinbutton")).toHaveValue(500);
 		await expect(canvas.getByRole("switch")).toBeChecked();
-		await expect(canvas.getByRole("combobox")).toBeInTheDocument();
+		await expect(
+			canvas.getByRole("combobox", { name: "support_tier" }),
+		).toHaveTextContent("priority");
 	},
 };
 
@@ -98,6 +100,33 @@ function StatefulHarness({
 		/>
 	);
 }
+
+/** An existing enum label is visible before opening, then selections keep their wire value. */
+export const EnumSelectionRoundTripsItsValue: Story = {
+	render: () => (
+		<StatefulHarness
+			values={{ max_flows: 500, sso: false, support_tier: "standard" }}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		const tier = canvas.getByRole("combobox", { name: "support_tier" });
+		await expect(tier).toHaveTextContent("standard");
+		await userEvent.click(tier);
+		await expect(
+			await page.findByRole("listbox", { name: "support_tier options" }),
+		).toBeVisible();
+		await userEvent.click(
+			await page.findByRole("option", { name: "priority" }),
+		);
+		await waitFor(() => {
+			expect(page.queryByRole("listbox")).not.toBeInTheDocument();
+			expect(tier).toHaveFocus();
+		});
+		await expect(tier).toHaveTextContent("priority");
+	},
+};
 
 /**
  * Typing into the limit's number input must round-trip a real `number` back

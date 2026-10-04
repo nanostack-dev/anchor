@@ -1,3 +1,4 @@
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -12,15 +13,15 @@ import type {
 } from "@/client";
 import { type Options, SortDirection } from "@/client";
 import { searchOrganizationMembersOptions } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
+import { useProduct } from "@/context/product/ProductContext";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { useProduct } from "@/context/product/ProductContext";
-import { mapSortingToApiField } from "@/utils/datatable-sorting";
+} from "@nanostackorg/design-system/components/empty";
 import { AnchorDataTable } from "../common/datatable/AnchorDataTable";
 
 const columnHelper = createColumnHelper<OrganizationMemberResponse>();
@@ -76,27 +77,31 @@ export function OrganizationMembershipDatatable({
 			columnHelper.accessor("email", {
 				header: "Email",
 				cell: (info) => (
-					<div className="font-medium">{info.getValue() || "No email"}</div>
+					<Box className="font-medium">{info.getValue() || "No email"}</Box>
 				),
 			}),
 			columnHelper.accessor("name", {
 				header: "Name",
 				cell: (info) => (
-					<div className="text-muted-foreground">
+					<Box className="text-muted-foreground">
 						{info.getValue() || "No name"}
-					</div>
+					</Box>
 				),
 			}),
 			columnHelper.accessor("role.name", {
 				header: "Role",
-				cell: (info) => <Badge variant="secondary">{info.getValue()}</Badge>,
+				cell: (info) => (
+					<Badge tone="neutral" variant="soft">
+						{info.getValue()}
+					</Badge>
+				),
 			}),
 			columnHelper.accessor("joined_at", {
 				header: "Joined",
 				cell: (info) => (
-					<div className="text-muted-foreground">
+					<Box className="text-muted-foreground">
 						{dayjs(info.getValue()).format("MMM D, YYYY")}
-					</div>
+					</Box>
 				),
 			}),
 		],

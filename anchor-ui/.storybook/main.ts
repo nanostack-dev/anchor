@@ -32,6 +32,7 @@ const config: StorybookConfig = {
 		);
 
 		config.resolve ??= {};
+		config.resolve.dedupe = ["react", "react-dom"];
 		config.resolve.alias = {
 			...(Array.isArray(config.resolve.alias) ? {} : config.resolve.alias),
 			"@": resolve(import.meta.dirname, "../src"),

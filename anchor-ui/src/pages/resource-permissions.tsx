@@ -2,6 +2,7 @@ import { Page } from "@/components/common/Page";
 import { ProductResourcePermissionDatatable } from "@/components/product/permissions/ProductResourcePermissionDatatable";
 import { useProduct } from "@/hooks/useProduct";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Inline, Text } from "@nanostackorg/design-system";
 
 export default function ProductResourcePermissionsPage() {
 	const { currentProduct } = useProduct();
@@ -9,11 +10,11 @@ export default function ProductResourcePermissionsPage() {
 	if (!currentProduct) {
 		return (
 			<Page>
-				<div className="flex items-center justify-center h-64">
-					<p className="text-muted-foreground">
+				<Inline space="xs" align="center">
+					<Text tone="muted">
 						Please select a product to manage permissions.
-					</p>
-				</div>
+					</Text>
+				</Inline>
 			</Page>
 		);
 	}

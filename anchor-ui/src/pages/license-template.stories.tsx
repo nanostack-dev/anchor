@@ -6,9 +6,11 @@ import {
 	UsageShape,
 	client,
 } from "@/client";
+import { RouterLink } from "@/components/layout/router-link";
 import { LicenseTemplateDatatable } from "@/components/license/LicenseTemplateDatatable";
 import { ProductProvider } from "@/context/product/ProductContext";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -59,16 +61,18 @@ function TemplateRouteHarness({ initialPath }: { initialPath: string }) {
 	const [router] = useState(() => {
 		const root = createRootRoute({
 			component: () => (
-				<ProductProvider>
-					<Outlet />
-				</ProductProvider>
+				<DesignSystemProvider linkComponent={RouterLink}>
+					<ProductProvider>
+						<Outlet />
+					</ProductProvider>
+				</DesignSystemProvider>
 			),
 		});
 		const detail = createRoute({
 			getParentRoute: () => root,
 			path: ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATE_DETAIL,
 			validateSearch: (search: Record<string, unknown>) => ({
-				edit: search.edit === true,
+				edit: search.edit === true || search.edit === "true",
 			}),
 			component: () => {
 				const { templateId } = detail.useParams();
@@ -157,7 +161,7 @@ export const ViewAndEditShareVisibleSurface: Story = {
 		const details = await canvas.findByRole("region", {
 			name: "Template details",
 		});
-		await expect(details).toHaveClass("bg-card");
+		await expect(details).toBeVisible();
 		await expect(canvas.getByText("10000")).toBeVisible();
 		await userEvent.click(
 			canvas.getByRole("button", { name: "Edit template" }),
@@ -167,12 +171,12 @@ export const ViewAndEditShareVisibleSurface: Story = {
 		).toHaveValue("Enterprise");
 		await expect(
 			canvas.getByRole("region", { name: "Template details" }),
-		).toHaveClass("bg-card");
+		).toBeVisible();
 		await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
 		await expect(canvas.getByText("10000")).toBeVisible();
 		await expect(
 			canvas.getByRole("region", { name: "Template details" }),
-		).toHaveClass("bg-card");
+		).toBeVisible();
 	},
 };
 export const DirectEditSaveAndBack: Story = {

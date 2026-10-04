@@ -1,5 +1,8 @@
 import { LicenseFieldType } from "@/client";
-import { ArrowRight } from "lucide-react";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react";
 import { formatFieldValue } from "./license-field-format";
 import type { ValueChange } from "./license-migration-format";
 
@@ -27,70 +30,81 @@ export function TemplateValuesDiff({
 	emptyMessage = "The two tiers grant exactly the same values.",
 }: TemplateValuesDiffProps) {
 	if (changes.length === 0) {
-		return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
+		return <Text tone="muted">{emptyMessage}</Text>;
 	}
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-				<span className="truncate">{fromLabel}</span>
-				<span aria-hidden className="w-4" />
-				<span className="truncate text-right">{toLabel}</span>
-			</div>
+		<Stack space="sm">
+			<Box className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+				<Text as="span" truncate>
+					{fromLabel}
+				</Text>
+				<Box as="span" aria-hidden className="w-4" />
+				<Text as="span" truncate align="end">
+					{toLabel}
+				</Text>
+			</Box>
 
-			<ul className="divide-y divide-border rounded-lg border border-border">
+			<Box
+				as="ul"
+				className="divide-y divide-border rounded-lg border border-border"
+			>
 				{changes.map((change) => (
-					<li
+					<Box
+						as="li"
 						key={change.field}
 						className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-x-3 px-3 py-2.5"
 					>
-						<div className="min-w-0">
-							<span className="block truncate font-mono text-xs text-muted-foreground">
+						<Box className="min-w-0">
+							<Text as="span" size="xs" tone="muted" font="mono" truncate>
 								{change.field}
-							</span>
+							</Text>
 							{/* A selection spread over several tiers has no single value
 								to strike out; a struck-through dash would read as a
 								rendering fault rather than as an absence. */}
 							{change.from !== undefined && (
-								<span className="block truncate text-sm tabular-nums line-through decoration-muted-foreground/50">
+								<Box
+									as="span"
+									className="block truncate text-sm tabular-nums line-through decoration-muted-foreground/50"
+								>
 									{formatFieldValue(
 										change.type ?? LicenseFieldType.STRING,
 										change.from,
 									)}
-								</span>
+								</Box>
 							)}
-						</div>
+						</Box>
 
 						<ArrowRight
 							aria-hidden
 							className="size-4 shrink-0 self-center text-muted-foreground"
 						/>
 
-						<div className="min-w-0 text-right">
+						<Box className="min-w-0 text-right">
 							{change.carried ? (
-								<span className="block truncate text-xs text-warning-strong">
+								<Text as="span" size="xs" tone="warning" truncate>
 									kept for this customer
-								</span>
+								</Text>
 							) : (
-								<span aria-hidden className="block h-4" />
+								<Box as="span" aria-hidden className="block h-4" />
 							)}
-							<span className="block truncate text-sm font-medium tabular-nums">
+							<Text as="span" weight="medium" tabular truncate>
 								{formatFieldValue(
 									change.type ?? LicenseFieldType.STRING,
 									change.to,
 								)}
-							</span>
-						</div>
-					</li>
+							</Text>
+						</Box>
+					</Box>
 				))}
-			</ul>
+			</Box>
 
 			{unchangedCount !== undefined && unchangedCount > 0 && (
-				<p className="px-3 text-xs text-muted-foreground">
+				<Box as="p" className="px-3 text-xs text-muted-foreground">
 					{unchangedCount} other license field
 					{unchangedCount === 1 ? "" : "s"} unchanged.
-				</p>
+				</Box>
 			)}
-		</div>
+		</Stack>
 	);
 }

@@ -1,16 +1,20 @@
-import { Check, X } from "lucide-react";
-// FacetedFilter.tsx
-import * as React from "react";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Command,
 	CommandEmpty,
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "../../ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+} from "@nanostackorg/design-system/components/command";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@nanostackorg/design-system/components/popover";
+import { Check, X } from "lucide-react";
+// FacetedFilter.tsx
+import * as React from "react";
 
 type Option = { label: string; value: string };
 
@@ -75,22 +79,19 @@ export function FacetedFilter({
 	return (
 		<div className="flex items-center gap-2">
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger
-					render={
-						<Button variant="outline" size="sm" className="justify-start" />
-					}
-				>
+				<PopoverTrigger render={<Button variant="outline" size="sm" />}>
 					{selected.length > 0
 						? `${label}: ${selected
 								.map((v) => options.find((opt) => opt.value === v)?.label || v)
 								.join(", ")}`
 						: `${label}`}
 				</PopoverTrigger>
-				<PopoverContent className="p-0 w-56">
+				<PopoverContent aria-label={`${label} filter`}>
 					<Command>
 						<CommandInput
 							ref={inputRef}
 							placeholder={placeholder}
+							aria-label={`Search ${label.toLowerCase()} options`}
 							value={search}
 							onValueChange={setSearch}
 							autoFocus
@@ -104,7 +105,6 @@ export function FacetedFilter({
 										setSearch("");
 										inputRef.current?.blur();
 									}}
-									className="text-primary"
 									value={search.trim()}
 								>
 									Add "{search.trim()}"
@@ -121,7 +121,6 @@ export function FacetedFilter({
 										setSearch("");
 										inputRef.current?.blur();
 									}}
-									className={selected.includes(opt.value) ? "bg-muted" : ""}
 								>
 									<span>{opt.label}</span>
 									{selected.includes(opt.value) && (
@@ -136,11 +135,7 @@ export function FacetedFilter({
 			{selected.map((v) => {
 				const opt = options.find((o) => o.value === v);
 				return (
-					<Badge
-						key={v}
-						variant="secondary"
-						className="flex items-center gap-1"
-					>
+					<Badge key={v} variant="soft">
 						{opt?.label || v}
 						<button
 							type="button"

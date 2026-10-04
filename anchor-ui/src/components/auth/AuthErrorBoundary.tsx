@@ -1,13 +1,19 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import type { AuthError } from "@/context/auth/AuthContext";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@nanostackorg/design-system/components/alert";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import type { AuthError } from "@/context/auth/AuthContext";
+} from "@nanostackorg/design-system/components/card";
+import { Heading } from "@nanostackorg/design-system/components/heading";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { AlertTriangle, LogIn, LogOut, RefreshCw, WifiOff } from "lucide-react";
 import type React from "react";
 
@@ -78,57 +84,58 @@ export const AuthErrorBoundary: React.FC<AuthErrorBoundaryProps> = ({
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-muted px-4 py-12 sm:px-6 lg:px-8">
-			<Card className="w-72 min-w-0 max-w-[calc(100vw-2rem)] sm:w-full sm:max-w-md">
-				<CardHeader className="text-center">
-					<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-						{getErrorIcon()}
-					</div>
-					<CardTitle className="text-lg font-medium text-foreground">
-						{getErrorTitle()}
-					</CardTitle>
-					<CardDescription className="text-sm text-muted-foreground">
-						{getErrorDescription()}
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="flex flex-col gap-4">
-					<Alert variant="destructive" className="min-w-0">
-						<AlertTriangle className="size-4" />
-						<AlertTitle>Error Details</AlertTitle>
-						<AlertDescription className="min-w-0 break-words text-xs">
-							{error.message}
-							<br />
-							<span className="text-muted-foreground break-words">
-								Occurred at: {new Date(error.timestamp).toLocaleString()}
-							</span>
-						</AlertDescription>
-					</Alert>
+			<Box className="w-full max-w-md">
+				<Card variant="outline">
+					<CardHeader>
+						<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+							{getErrorIcon()}
+						</div>
+						<Heading level={1}>{getErrorTitle()}</Heading>
+						<CardDescription>{getErrorDescription()}</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Stack space="md">
+							<Alert tone="critical">
+								<AlertTriangle className="size-4" />
+								<AlertTitle>Error Details</AlertTitle>
+								<AlertDescription>
+									{error.message}
+									<br />
+									<span className="text-muted-foreground break-words">
+										Occurred at: {new Date(error.timestamp).toLocaleString()}
+									</span>
+								</AlertDescription>
+							</Alert>
 
-					<div className="flex flex-col gap-2">
-						{shouldShowRetry && (
-							<Button onClick={onRetry} className="w-full" variant="default">
-								<RefreshCw data-icon="inline-start" />
-								Try Again
-							</Button>
-						)}
+							<div className="flex flex-col gap-2">
+								{shouldShowRetry && (
+									<Button
+										onClick={onRetry}
+										width="fill"
+										variant="solid"
+										tone="brand"
+									>
+										<RefreshCw data-icon="inline-start" />
+										Try Again
+									</Button>
+								)}
 
-						<Button onClick={onLogout} variant="outline" className="w-full">
-							<LogOut data-icon="inline-start" />
-							Logout
-						</Button>
+								<Button onClick={onLogout} variant="outline" width="fill">
+									<LogOut data-icon="inline-start" />
+									Logout
+								</Button>
 
-						{error.type === "auth" && (
-							<Button
-								onClick={goToLogin}
-								variant="secondary"
-								className="w-full"
-							>
-								<LogIn data-icon="inline-start" />
-								Go to Login
-							</Button>
-						)}
-					</div>
-				</CardContent>
-			</Card>
+								{error.type === "auth" && (
+									<Button onClick={goToLogin} variant="soft" width="fill">
+										<LogIn data-icon="inline-start" />
+										Go to Login
+									</Button>
+								)}
+							</div>
+						</Stack>
+					</CardContent>
+				</Card>
+			</Box>
 
 			{children}
 		</div>

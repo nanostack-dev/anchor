@@ -10,24 +10,30 @@ import {
 	updateProductMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Field,
 	FieldContent,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/field";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Switch } from "@nanostackorg/design-system/components/switch";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@nanostackorg/design-system/components/tabs";
+import { Textarea } from "@nanostackorg/design-system/components/textarea";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
-import { toast } from "sonner";
 import { z } from "zod";
 
 const productFormSchema = zProductRequest
@@ -56,7 +62,7 @@ const productFormSchema = zProductRequest
 
 type ProductFormData = z.infer<typeof productFormSchema>;
 
-interface ProductEditFormProps extends React.ComponentPropsWithoutRef<"div"> {
+interface ProductEditFormProps {
 	product: ProductResponse;
 	productId: string;
 	onSuccess?: () => void;
@@ -64,12 +70,10 @@ interface ProductEditFormProps extends React.ComponentPropsWithoutRef<"div"> {
 }
 
 export function ProductEditForm({
-	className,
 	product,
 	productId,
 	onSuccess,
 	onCancel,
-	...props
 }: ProductEditFormProps) {
 	const queryClient = useQueryClient();
 
@@ -102,16 +106,19 @@ export function ProductEditForm({
 					path: { product_id: productId },
 				}),
 			});
-			toast.success("Product updated successfully!");
+			toast.add({ type: "success", title: "Product updated successfully!" });
 			onSuccess?.();
 		},
 		onError: (error) => {
 			console.error("Failed to update product:", error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error("Failed to update product. Please try again.");
+				toast.add({
+					type: "error",
+					title: "Failed to update product. Please try again.",
+				});
 			}
 		},
 	});
@@ -145,8 +152,9 @@ export function ProductEditForm({
 	}, [product, form]);
 
 	return (
-		<div className={className} {...props}>
-			<form
+		<Box>
+			<Box
+				as="form"
 				onSubmit={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
@@ -154,7 +162,7 @@ export function ProductEditForm({
 				}}
 				className="flex flex-col gap-6"
 			>
-				<Tabs defaultValue="details" className="gap-6">
+				<Tabs defaultValue="details">
 					<TabsList>
 						<TabsTrigger value="details">Details</TabsTrigger>
 						<TabsTrigger value="config">Config</TabsTrigger>
@@ -269,7 +277,7 @@ export function ProductEditForm({
 					</TabsContent>
 				</Tabs>
 
-				<div className="flex justify-end gap-4">
+				<Box className="flex justify-end gap-4">
 					<Button
 						type="button"
 						variant="outline"
@@ -289,6 +297,8 @@ export function ProductEditForm({
 					>
 						{([canSubmit, isSubmitting, isDirty, isValidating, isValid]) => (
 							<Button
+								variant="solid"
+								tone="brand"
 								type="submit"
 								disabled={
 									!canSubmit ||
@@ -310,8 +320,8 @@ export function ProductEditForm({
 							</Button>
 						)}
 					</form.Subscribe>
-				</div>
-			</form>
-		</div>
+				</Box>
+			</Box>
+		</Box>
 	);
 }

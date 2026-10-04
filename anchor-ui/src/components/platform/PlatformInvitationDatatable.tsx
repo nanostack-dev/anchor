@@ -12,6 +12,13 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { generateInvitationLink } from "@/components/platform/invitationUtils";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Button } from "@nanostackorg/design-system/components/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@nanostackorg/design-system/components/tooltip";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import {
 	keepPreviousData,
 	useQuery,
@@ -24,8 +31,6 @@ import dayjs from "dayjs";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../common/datatable/AnchorDataTable";
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { PlatformAddInvitationDialog } from "./PlatformAddInvitationDialog";
 import { PlatformDeleteInvitationDialog } from "./PlatformDeleteInvitationDialog";
 
@@ -140,12 +145,12 @@ export function PlatformInvitationDatatable() {
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
+					<Box className={"flex gap-2"}>
 						<Tooltip>
 							<TooltipTrigger
 								render={
 									<Button
-										size="icon"
+										size="md"
 										variant={"outline"}
 										onClick={() =>
 											handleCopy(
@@ -170,7 +175,7 @@ export function PlatformInvitationDatatable() {
 								setPagination((p) => ({ ...p }));
 							}}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],

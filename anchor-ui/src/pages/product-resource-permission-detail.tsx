@@ -1,11 +1,12 @@
 import { getProductResourcePermissionOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductResourcePermissionDetailView } from "@/components/product/permissions/ProductResourcePermissionDetailView";
-import { Button, buttonVariants } from "@/components/ui/button";
 import { useProduct } from "@/hooks/useProduct";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 interface ProductResourcePermissionDetailPageProps {
 	permissionName: string;
@@ -51,16 +52,21 @@ export default function ProductResourcePermissionDetailPage({
 							: "Could not load resource permission"
 				}
 				actions={
-					<Link
-						to={ROUTE_PATHS.PRODUCT_RESOURCES_PERMISSIONS}
-						className={buttonVariants({ variant: "outline" })}
+					<ButtonLink
+						href={ROUTE_PATHS.PRODUCT_RESOURCES_PERMISSIONS}
+						variant="outline"
+						tone="neutral"
 					>
 						All resource permissions
-					</Link>
+					</ButtonLink>
 				}
 			>
 				{permissionQuery.isError && (
-					<Button onClick={() => void permissionQuery.refetch()}>
+					<Button
+						variant="solid"
+						tone="brand"
+						onClick={() => void permissionQuery.refetch()}
+					>
 						Try again
 					</Button>
 				)}

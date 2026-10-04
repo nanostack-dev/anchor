@@ -1,11 +1,16 @@
 import { SortDirection } from "@/client";
 import { searchProductPermissionsOptions } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Checkbox } from "@nanostackorg/design-system/components/checkbox";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from "@nanostackorg/design-system/components/input-group";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Search, Settings, X } from "lucide-react";
@@ -84,138 +89,139 @@ export function ApiKeyPermissionSelector({
 
 	if (isLoading) {
 		return (
-			<div className="flex flex-col items-center justify-center h-40 rounded-xl border border-border bg-muted/40 gap-3">
-				<Spinner className="size-7 text-current" />
-				<p className="text-sm text-muted-foreground">Loading permissions…</p>
-			</div>
+			<Box className="flex flex-col items-center justify-center h-40 rounded-xl border border-border bg-muted/40 gap-3">
+				<Spinner size="lg" />
+				<Box as="p" className="text-sm text-muted-foreground">
+					Loading permissions…
+				</Box>
+			</Box>
 		);
 	}
 
 	if (allPermissions.length === 0) {
 		return (
-			<div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/40 text-center px-6 py-10">
-				<div className="p-3 rounded-2xl bg-muted mb-4">
+			<Box className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/40 text-center px-6 py-10">
+				<Box className="p-3 rounded-2xl bg-muted mb-4">
 					<Settings className="size-8 text-muted-foreground" />
-				</div>
-				<p className="text-sm font-semibold text-foreground">
+				</Box>
+				<Box as="p" className="text-sm font-semibold text-foreground">
 					No permissions configured
-				</p>
-				<p className="text-xs text-muted-foreground mt-1 max-w-xs">
+				</Box>
+				<Box as="p" className="text-xs text-muted-foreground mt-1 max-w-xs">
 					Set up permissions for this product before assigning them to an API
 					key.
-				</p>
+				</Box>
 				<Button
 					type="button"
 					variant="outline"
 					onClick={() => {
 						void navigate({ to: ROUTE_PATHS.PRODUCT_PERMISSIONS });
 					}}
-					className="mt-4"
 				>
 					<ExternalLink className="mr-2 size-3.5" />
 					Go to Permissions
 				</Button>
-			</div>
+			</Box>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
+		<Box className="flex flex-col gap-4">
 			{/* Selected summary */}
 			{value.length > 0 && (
-				<div className="rounded-xl border border-border bg-muted/50 p-3">
-					<div className="flex items-center justify-between gap-2 mb-2">
-						<span className="text-sm font-medium text-foreground">
+				<Box className="rounded-xl border border-border bg-muted/50 p-3">
+					<Box className="flex items-center justify-between gap-2 mb-2">
+						<Box as="span" className="text-sm font-medium text-foreground">
 							{value.length} selected
-						</span>
+						</Box>
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
 							onClick={() => onChange([])}
 						>
 							Clear all
 						</Button>
-					</div>
-					<div className="flex flex-wrap gap-1.5">
+					</Box>
+					<Box className="flex flex-wrap gap-1.5">
 						{value.map((name) => (
 							<Badge
+								tone="neutral"
 								key={name}
-								variant="secondary"
-								className="text-xs flex items-center gap-1 px-2 py-1 font-mono cursor-pointer hover:bg-destructive/10 hover:text-destructive transition-colors"
+								variant="soft"
 								onClick={() => toggle(name)}
 							>
 								{name}
 								<X className="size-3" />
 							</Badge>
 						))}
-					</div>
-				</div>
+					</Box>
+				</Box>
 			)}
 
 			{/* Search + filter */}
-			<div className="flex flex-col gap-2 sm:flex-row">
-				<div className="relative flex-1">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-					<Input
+			<Box className="flex flex-col gap-2 sm:flex-row">
+				<InputGroup>
+					<InputGroupAddon>
+						<Search aria-hidden />
+					</InputGroupAddon>
+					<InputGroupInput
 						placeholder="Search permissions…"
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-9"
 					/>
-				</div>
-				<div className="flex gap-1.5">
+				</InputGroup>
+				<Box className="flex gap-1.5">
 					<Button
+						tone="brand"
 						type="button"
-						variant={filter === "all" ? "default" : "outline"}
+						variant={filter === "all" ? "solid" : "outline"}
 						size="sm"
-						className="flex-1 sm:flex-none"
 						onClick={() => setFilter("all")}
 					>
 						All
 					</Button>
 					<Button
+						tone="brand"
 						type="button"
-						variant={filter === "selected" ? "default" : "outline"}
+						variant={filter === "selected" ? "solid" : "outline"}
 						size="sm"
-						className="flex-1 sm:flex-none"
 						onClick={() => setFilter("selected")}
 					>
 						Selected
 					</Button>
-				</div>
-			</div>
+				</Box>
+			</Box>
 
 			{/* List */}
-			<div className="rounded-xl border border-border overflow-hidden">
-				<div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
+			<Box className="rounded-xl border border-border overflow-hidden">
+				<Box className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
 					<button
 						type="button"
 						className="flex items-center gap-2"
 						onClick={toggleAllVisible}
 					>
-						<Checkbox
-							checked={allVisibleSelected}
-							className="size-4 pointer-events-none"
-						/>
-						<span className="text-xs font-medium text-muted-foreground">
+						<Checkbox checked={allVisibleSelected} />
+						<Box
+							as="span"
+							className="text-xs font-medium text-muted-foreground"
+						>
 							Select all visible
-						</span>
+						</Box>
 					</button>
-					<Badge variant="outline" className="text-xs">
+					<Badge variant="outline">
 						{visiblePermissions.filter((p) => value.includes(p.name)).length}/
 						{visiblePermissions.length}
 					</Badge>
-				</div>
-				<div className="max-h-[22rem] overflow-y-auto divide-y divide-border">
+				</Box>
+				<Box className="max-h-[22rem] overflow-y-auto divide-y divide-border">
 					{visiblePermissions.length === 0 ? (
-						<div className="flex flex-col items-center justify-center py-10 text-center">
+						<Box className="flex flex-col items-center justify-center py-10 text-center">
 							<Search className="size-7 text-muted-foreground mb-2" />
-							<p className="text-sm text-muted-foreground">
+							<Box as="p" className="text-sm text-muted-foreground">
 								No permissions match your search
-							</p>
-						</div>
+							</Box>
+						</Box>
 					) : (
 						visiblePermissions.map((permission) => {
 							const isSelected = value.includes(permission.name);
@@ -228,40 +234,39 @@ export function ApiKeyPermissionSelector({
 									type="button"
 									onClick={() => toggle(permission.name)}
 									className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
-										isSelected ? "bg-accent-soft" : "bg-card hover:bg-muted/60"
+										isSelected ? "bg-accent" : "bg-card hover:bg-muted/60"
 									}`}
 								>
 									<Checkbox
 										checked={isSelected}
 										onCheckedChange={() => toggle(permission.name)}
-										className="size-4 mt-0.5 shrink-0 pointer-events-none"
 									/>
-									<div className="flex-1 min-w-0">
-										<div className="flex flex-wrap items-center gap-2">
+									<Box className="flex-1 min-w-0">
+										<Box className="flex flex-wrap items-center gap-2">
 											<code className="text-xs bg-muted text-foreground px-2 py-0.5 rounded-md font-mono break-all">
 												{permission.name}
 											</code>
 											{wasOriginal && (
-												<Badge
-													variant="secondary"
-													className="text-[10px] h-5 px-1.5 text-muted-foreground"
-												>
+												<Badge tone="neutral" variant="soft">
 													Currently assigned
 												</Badge>
 											)}
-										</div>
+										</Box>
 										{permission.description && (
-											<p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+											<Box
+												as="p"
+												className="text-xs text-muted-foreground mt-1 leading-relaxed"
+											>
 												{permission.description}
-											</p>
+											</Box>
 										)}
-									</div>
+									</Box>
 								</button>
 							);
 						})
 					)}
-				</div>
-			</div>
-		</div>
+				</Box>
+			</Box>
+		</Box>
 	);
 }

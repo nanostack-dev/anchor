@@ -1,3 +1,5 @@
+import { RouterLink } from "@/components/layout/router-link";
+import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import "@/context/auth/AuthContext";
 import { LicenseTemplateStatus, client } from "@/client";
 import { ProductProvider } from "@/context/product/ProductContext";
@@ -32,9 +34,11 @@ function LicenseDetailHarness() {
 	const [router] = useState(() => {
 		const root = createRootRoute({
 			component: () => (
-				<ProductProvider>
-					<Outlet />
-				</ProductProvider>
+				<DesignSystemProvider linkComponent={RouterLink}>
+					<ProductProvider>
+						<Outlet />
+					</ProductProvider>
+				</DesignSystemProvider>
 			),
 		});
 		const detail = createRoute({

@@ -1,15 +1,15 @@
 import { Page } from "@/components/common/Page";
-
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
 export default function UserSettingsPage() {
 	return (
-		<Page>
-			<h1 className="text-2xl font-bold mb-4">User Settings</h1>
-			<div>
-				<p className="text-muted-foreground">
-					Manage your profile and account settings here.
-				</p>
-				{/* Add settings form or content here */}
-			</div>
+		<Page
+			title="User Settings"
+			description="Manage your profile and account settings here."
+		>
+			<EmptyState
+				title="Settings are coming soon"
+				description="There are no additional settings to configure yet."
+			/>
 		</Page>
 	);
 }

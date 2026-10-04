@@ -3,11 +3,12 @@ import {
 	deleteProductRoleMutation,
 	searchProductRolesQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 import type { ReactElement } from "react";
 import { DeleteDialog } from "../../common/dialogs/DeleteDialog";
-import { Button } from "../../ui/button";
 
 interface DeleteProductRoleDialogProps {
 	productId: string;
@@ -46,11 +47,14 @@ export function DeleteProductRoleDialog({
 
 	const defaultTrigger = (
 		<Button
-			size="icon"
-			variant="outlineDestructive"
+			tone="critical"
+			size="md"
+			variant="outline"
 			disabled={deleteMutation.isPending}
 		>
-			<span className="sr-only">Delete role</span>
+			<Box as="span" className="sr-only">
+				Delete role
+			</Box>
 			{deleteMutation.isPending ? (
 				<Loader2 className="h-4 w-4 animate-spin" />
 			) : (
@@ -74,19 +78,19 @@ export function DeleteProductRoleDialog({
 				{
 					label: "Description",
 					value: (
-						<span className="text-right max-w-[200px] truncate">
+						<Box as="span" className="text-right max-w-[200px] truncate">
 							{role.description}
-						</span>
+						</Box>
 					),
 					condition: !!role.description,
 				},
 				{
 					label: "Permissions",
 					value: (
-						<span className="text-sm text-muted-foreground">
+						<Box as="span" className="text-sm text-muted-foreground">
 							{rolePermissions.length} permission
 							{rolePermissions.length !== 1 ? "s" : ""}
-						</span>
+						</Box>
 					),
 				},
 			]}

@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { StoryQuery } from "@/lib/storybook/story-query";
 
-import { Button } from "../ui/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import { PlatformDeleteInvitationDialog } from "./PlatformDeleteInvitationDialog";
 
 const meta = {
@@ -76,7 +76,10 @@ export const OpensConfirmation: Story = {
 		).toBeInTheDocument();
 
 		const confirm = screen.getByRole("button", { name: "Delete" });
-		await expect(confirm).toHaveClass("text-destructive");
+		await expect(confirm).toHaveClass(
+			"bg-destructive",
+			"text-destructive-foreground",
+		);
 		await expect(confirm).not.toHaveClass("bg-primary");
 
 		await expect(
@@ -100,9 +103,11 @@ export const CancelDismisses: Story = {
 			await screen.findByRole("button", { name: "Cancel" }),
 		);
 
-		await expect(
-			screen.queryByRole("heading", { name: "Delete Invitation?" }),
-		).not.toBeInTheDocument();
+		await waitFor(async () => {
+			await expect(
+				screen.queryByRole("heading", { name: "Delete Invitation?" }),
+			).not.toBeInTheDocument();
+		});
 	},
 };
 
@@ -117,7 +122,11 @@ export const CancelDismisses: Story = {
  */
 export const CustomTrigger: Story = {
 	args: {
-		trigger: <Button variant="outlineDestructive">Revoke invite</Button>,
+		trigger: (
+			<Button tone="critical" variant="outline">
+				Revoke invite
+			</Button>
+		),
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);

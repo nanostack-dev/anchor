@@ -12,6 +12,13 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Button } from "@nanostackorg/design-system/components/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@nanostackorg/design-system/components/tooltip";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import {
 	keepPreviousData,
 	useQuery,
@@ -25,8 +32,6 @@ import dayjs from "dayjs";
 import { PenLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AnchorDataTable } from "../common/datatable/AnchorDataTable";
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ProductCreateDialog } from "./ProductCreateDialog";
 import { ProductDeleteDialog } from "./ProductDeleteDialog";
 
@@ -122,9 +127,12 @@ export function ProductDatatable() {
 				cell: (info) => {
 					const description = info.getValue();
 					return (
-						<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+						<Box
+							as="span"
+							className="text-sm text-muted-foreground max-w-[200px] truncate block"
+						>
 							{description || "No description"}
-						</span>
+						</Box>
 					);
 				},
 				enableSorting: false,
@@ -143,12 +151,12 @@ export function ProductDatatable() {
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<div className={"flex gap-2"}>
+					<Box className={"flex gap-2"}>
 						<Tooltip>
 							<TooltipTrigger
 								render={
 									<Button
-										size="icon"
+										size="md"
 										variant="outline"
 										onClick={() => {
 											navigate({
@@ -159,7 +167,9 @@ export function ProductDatatable() {
 									/>
 								}
 							>
-								<span className="sr-only">Edit product</span>
+								<Box as="span" className="sr-only">
+									Edit product
+								</Box>
 								<PenLine className="h-4 w-4" />
 							</TooltipTrigger>
 							<TooltipContent>Edit product</TooltipContent>
@@ -173,7 +183,7 @@ export function ProductDatatable() {
 								setPagination((p) => ({ ...p }));
 							}}
 						/>
-					</div>
+					</Box>
 				),
 			}),
 		],
@@ -191,11 +201,11 @@ export function ProductDatatable() {
 
 	return (
 		<>
-			<div className="flex items-center justify-between mb-4">
-				<div className="flex items-center gap-2">
+			<Box className="flex items-center justify-between mb-4">
+				<Box className="flex items-center gap-2">
 					<ProductCreateDialog
 						trigger={
-							<Button>
+							<Button variant="solid" tone="brand">
 								<Plus />
 								Create Product
 							</Button>
@@ -208,8 +218,8 @@ export function ProductDatatable() {
 							refreshProducts();
 						}}
 					/>
-				</div>
-			</div>
+				</Box>
+			</Box>
 			<AnchorDataTable
 				columns={columns}
 				data={items}

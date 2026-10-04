@@ -1,10 +1,5 @@
 import { deletePlatformInvitationMutation } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useMutation } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
-import { type ReactElement, useState } from "react";
-import { toast } from "sonner";
-import { FormAlert } from "../common/FormAlert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,9 +10,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "../ui/alert-dialog";
-import { Button } from "../ui/button";
-import { Spinner } from "../ui/spinner";
+} from "@nanostackorg/design-system/components/alert-dialog";
+import { IconButton } from "@nanostackorg/design-system/components/button";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { useMutation } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
+import { type ReactElement, useState } from "react";
+import { FormAlert } from "../common/FormAlert";
 
 type PlatformDeleteInvitationDialogProps = {
 	invitationId: string;
@@ -44,17 +44,20 @@ export function PlatformDeleteInvitationDialog({
 	const { mutate, isPending, error } = useMutation({
 		...deletePlatformInvitationMutation(),
 		onSuccess: () => {
-			toast.success("Invitation deleted successfully!");
+			toast.add({ type: "success", title: "Invitation deleted successfully!" });
 			setOpen(false);
 			onDeleted?.();
 		},
 	});
 
 	const defaultTrigger = (
-		<Button size="icon" variant="outlineDestructive">
-			<span className="sr-only">Delete invitation</span>
-			<Trash2 />
-		</Button>
+		<IconButton
+			tone="critical"
+			size="md"
+			variant="outline"
+			icon={Trash2}
+			label="Delete invitation"
+		/>
 	);
 
 	return (
@@ -80,13 +83,14 @@ export function PlatformDeleteInvitationDialog({
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
 					<AlertDialogAction
-						variant="destructive"
+						variant="solid"
+						tone="critical"
 						disabled={isPending}
 						onClick={() => mutate({ path: { invitation_id: invitationId } })}
 					>
 						{isPending ? (
 							<>
-								<Spinner className="text-current" />
+								<Spinner />
 								Deleting...
 							</>
 						) : (

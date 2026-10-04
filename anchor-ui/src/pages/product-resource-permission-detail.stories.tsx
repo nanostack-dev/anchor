@@ -1,7 +1,9 @@
 import { type ProductResourcePermissionResponse, client } from "@/client";
+import { RouterLink } from "@/components/layout/router-link";
 import { ProductResourcePermissionDatatable } from "@/components/product/permissions/ProductResourcePermissionDatatable";
 import { ProductProvider } from "@/context/product/ProductContext";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -33,9 +35,11 @@ function PermissionRouteHarness({ initialPath }: { initialPath: string }) {
 	const [router] = useState(() => {
 		const root = createRootRoute({
 			component: () => (
-				<ProductProvider>
-					<Outlet />
-				</ProductProvider>
+				<DesignSystemProvider linkComponent={RouterLink}>
+					<ProductProvider>
+						<Outlet />
+					</ProductProvider>
+				</DesignSystemProvider>
 			),
 		});
 		const list = createRoute({
@@ -49,7 +53,7 @@ function PermissionRouteHarness({ initialPath }: { initialPath: string }) {
 			getParentRoute: () => root,
 			path: ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL,
 			validateSearch: (search: Record<string, unknown>) => ({
-				edit: search.edit === true,
+				edit: search.edit === true || search.edit === "true",
 			}),
 			component: () => {
 				const { permissionName } = detail.useParams();

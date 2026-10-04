@@ -1,15 +1,17 @@
 import { getLicenseSchema } from "@/client";
 import { getLicenseSchemaQueryKey } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { getErrorDetail } from "@/lib/api-error";
+import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
+import { Badge } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@nanostackorg/design-system/components/empty";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -17,11 +19,17 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "@/components/ui/table";
-import { getErrorDetail } from "@/lib/api-error";
-import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
+} from "@nanostackorg/design-system/components/table";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
+import {
+	PencilLineIcon as PenLine,
+	PlusIcon as Plus,
+	ScrollIcon as ScrollText,
+	WarningIcon as TriangleAlert,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { PenLine, Plus, ScrollText, TriangleAlert } from "lucide-react";
 import { LicenseSchemaFormDialog } from "./LicenseSchemaFormDialog";
 import { FIELD_TYPE_LABELS, summarizeRules } from "./license-field-format";
 
@@ -50,11 +58,11 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 
 	if (isLoading) {
 		return (
-			<div className="flex flex-col gap-2">
-				<Skeleton className="h-9 w-full" />
-				<Skeleton className="h-9 w-full" />
-				<Skeleton className="h-9 w-full" />
-			</div>
+			<Stack space="sm">
+				<Skeleton height="lg" />
+				<Skeleton height="lg" />
+				<Skeleton height="lg" />
+			</Stack>
 		);
 	}
 
@@ -73,9 +81,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon" className="text-destructive">
-						<TriangleAlert />
-					</EmptyMedia>
+					<EmptyMedia icon={TriangleAlert} />
 					<EmptyTitle>Couldn&rsquo;t load the license schema</EmptyTitle>
 					<EmptyDescription>{detail}</EmptyDescription>
 				</EmptyHeader>
@@ -90,9 +96,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<ScrollText />
-					</EmptyMedia>
+					<EmptyMedia icon={ScrollText} />
 					<EmptyTitle>No license schema declared</EmptyTitle>
 					<EmptyDescription>
 						This product has not declared what a license may contain. Create a
@@ -103,8 +107,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 					productId={productId}
 					mode="create"
 					trigger={
-						<Button>
-							<Plus />
+						<Button variant="solid" tone="brand" icon={Plus}>
 							Create Schema
 						</Button>
 					}
@@ -114,25 +117,24 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-start justify-between gap-4">
-				<p className="max-w-2xl text-sm text-muted-foreground">
+		<Stack space="lg">
+			<Spread space="lg" alignY="start">
+				<Box as="p" className="max-w-2xl text-sm text-muted-foreground">
 					{schema.description || "No description."}
-				</p>
+				</Box>
 				<LicenseSchemaFormDialog
 					productId={productId}
 					mode="edit"
 					existingSchema={schema}
 					trigger={
-						<Button variant="outline">
-							<PenLine />
+						<Button icon={PenLine} variant="outline">
 							Edit Schema
 						</Button>
 					}
 				/>
-			</div>
+			</Spread>
 
-			<div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			<Box className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -145,25 +147,21 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 					<TableBody>
 						{schema.fields.map((field) => (
 							<TableRow key={field.id}>
-								<TableCell className="font-mono text-sm">
-									{field.name}
-								</TableCell>
+								<TableCell font="mono">{field.name}</TableCell>
 								<TableCell>
 									<Badge variant="outline">
 										{FIELD_TYPE_LABELS[field.type]}
 									</Badge>
 								</TableCell>
-								<TableCell className="max-w-[280px] truncate text-sm text-muted-foreground">
-									{field.description || "—"}
-								</TableCell>
-								<TableCell className="text-sm text-muted-foreground">
+								<TableCell tone="muted">{field.description || "—"}</TableCell>
+								<TableCell tone="muted">
 									{summarizeRules(field.type, field.rules)}
 								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>
 				</Table>
-			</div>
-		</div>
+			</Box>
+		</Stack>
 	);
 }

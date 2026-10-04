@@ -13,30 +13,35 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
-import { Button } from "@/components/ui/button";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { ButtonLink } from "@nanostackorg/design-system/components/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
-} from "@/components/ui/empty";
-import { ROUTE_PATHS } from "@/routes/routePaths";
-import { mapSortingToApiField } from "@/utils/datatable-sorting";
+} from "@nanostackorg/design-system/components/empty";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { TextLink } from "@nanostackorg/design-system/components/text-link";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import {
+	ArrowsLeftRightIcon as ArrowRightLeft,
+	EyeIcon as Eye,
+	ScrollIcon as ScrollText,
+	SlidersHorizontalIcon as SlidersHorizontal,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
-import {
-	ArrowRightLeft,
-	Eye,
-	ScrollText,
-	SlidersHorizontal,
-} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { LicenseMigrationDialog } from "./LicenseMigrationDialog";
 import { differsFromItsTemplate } from "./license-migration-format";
 
@@ -180,13 +185,17 @@ export function OrganizationLicenseDatatable({
 				},
 			});
 			if (error || !data) {
-				toast.error("Could not read the organizations matching this query.");
+				toast.add({
+					type: "error",
+					title: "Could not read the organizations matching this query.",
+				});
 				return;
 			}
 			if (data.items.length > MIGRATION_LIMIT) {
-				toast.error(
-					`${data.total} organizations match. At most ${MIGRATION_LIMIT} can move in one run — narrow the search first.`,
-				);
+				toast.add({
+					type: "error",
+					title: `${data.total} organizations match. At most ${MIGRATION_LIMIT} can move in one run — narrow the search first.`,
+				});
 				return;
 			}
 			setSelection(data.items);
@@ -211,7 +220,11 @@ export function OrganizationLicenseDatatable({
 		() => [
 			columnHelper.accessor("organization_name", {
 				header: () => <span>Organization</span>,
-				cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+				cell: (info) => (
+					<Text as="span" weight="medium">
+						{info.getValue()}
+					</Text>
+				),
 				enableSorting: true,
 			}),
 			columnHelper.display({
@@ -225,14 +238,14 @@ export function OrganizationLicenseDatatable({
 						return <StatusBadge tone="neutral">No license</StatusBadge>;
 					}
 					return (
-						<div className="flex items-center gap-2">
-							<span className="font-medium">
+						<Inline space="sm" wrap={false}>
+							<Text as="span" weight="medium">
 								{template?.name ?? row.original.license.template_id}
-							</span>
+							</Text>
 							{template?.status === "ARCHIVED" && (
 								<StatusBadge tone="warning">Archived</StatusBadge>
 							)}
-						</div>
+						</Inline>
 					);
 				},
 			}),
@@ -241,20 +254,25 @@ export function OrganizationLicenseDatatable({
 				header: () => <span>Template values</span>,
 				cell: ({ row }) => {
 					if (!row.original.license)
-						return <span className="text-muted-foreground">—</span>;
+						return (
+							<Text as="span" tone="muted">
+								—
+							</Text>
+						);
 					const customCount = row.original.license.adjusted_fields?.length ?? 0;
 					if (customCount > 0) {
 						const label = `${customCount} custom ${customCount === 1 ? "field" : "fields"}`;
 						return (
-							<Link
-								to={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL}
-								params={{ organizationId: row.original.organization_id }}
+							<TextLink
+								href={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL.replace(
+									"$organizationId",
+									encodeURIComponent(row.original.organization_id),
+								)}
 								aria-label={`${row.original.organization_name}: ${label}. Open license details`}
-								className="inline-flex min-h-8 items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							>
 								<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
 								<span>{label}</span>
-							</Link>
+							</TextLink>
 						);
 					}
 					const template = templatesById.get(row.original.license.template_id);
@@ -263,14 +281,20 @@ export function OrganizationLicenseDatatable({
 						template?.values,
 					);
 					if (differs === undefined) {
-						return <span className="text-muted-foreground">—</span>;
+						return (
+							<Text as="span" tone="muted">
+								—
+							</Text>
+						);
 					}
 					return differs ? (
-						<span className="text-sm text-muted-foreground">
+						<Text as="span" tone="muted">
 							Differs from template
-						</span>
+						</Text>
 					) : (
-						<span className="text-sm text-muted-foreground">Matches</span>
+						<Text as="span" tone="muted">
+							Matches
+						</Text>
 					);
 				},
 			}),
@@ -281,29 +305,26 @@ export function OrganizationLicenseDatatable({
 					row.original.license ? (
 						dayjs(row.original.license.instantiated_at).format("D MMMM YYYY")
 					) : (
-						<span className="text-muted-foreground">—</span>
+						<Text as="span" tone="muted">
+							—
+						</Text>
 					),
 			}),
 			columnHelper.display({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<Button
+					<ButtonLink
+						href={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL.replace(
+							"$organizationId",
+							encodeURIComponent(row.original.organization_id),
+						)}
+						icon={Eye}
 						variant="outline"
-						size="icon"
-						nativeButton={false}
-						render={
-							<Link
-								to={ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL}
-								params={{ organizationId: row.original.organization_id }}
-							/>
-						}
+						aria-label={`Open ${row.original.organization_name}’s license`}
 					>
-						<span className="sr-only">
-							Open {row.original.organization_name}&rsquo;s license
-						</span>
-						<Eye className="size-4" />
-					</Button>
+						View
+					</ButtonLink>
 				),
 			}),
 		],
@@ -314,9 +335,7 @@ export function OrganizationLicenseDatatable({
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<ScrollText />
-					</EmptyMedia>
+					<EmptyMedia icon={ScrollText} />
 					<EmptyTitle>No license schema declared yet</EmptyTitle>
 					<EmptyDescription>
 						An organization&rsquo;s license is a copy of a template&rsquo;s
@@ -324,12 +343,9 @@ export function OrganizationLicenseDatatable({
 						schema. Declare the schema first.
 					</EmptyDescription>
 				</EmptyHeader>
-				<Button
-					variant="outline"
-					render={<Link to={ROUTE_PATHS.PRODUCT_LICENSE_SCHEMA} />}
-				>
+				<ButtonLink href={ROUTE_PATHS.PRODUCT_LICENSE_SCHEMA} variant="outline">
 					Go to License Schema
-				</Button>
+				</ButtonLink>
 			</Empty>
 		);
 	}
@@ -374,6 +390,7 @@ export function OrganizationLicenseDatatable({
 				onSelectionChange={handleSelectionChange}
 			>
 				<Button
+					icon={ArrowRightLeft}
 					variant="outline"
 					size="sm"
 					disabled={resolvingSelection || templatesQuery.isLoading || !schema}
@@ -385,17 +402,16 @@ export function OrganizationLicenseDatatable({
 						void resolveAllMatching();
 					}}
 				>
-					<ArrowRightLeft />
-					<span className="hidden sm:inline">
+					<Box as="span" className="hidden sm:inline">
 						{selection.length > 0
 							? `Move ${selection.length} to another tier`
 							: `Move ${matchingLabel} to another tier`}
-					</span>
-					<span className="sm:hidden">
+					</Box>
+					<Box as="span" className="sm:hidden">
 						{selection.length > 0
 							? `Move ${selection.length}`
 							: `Move ${matchingLabel}`}
-					</span>
+					</Box>
 				</Button>
 			</AnchorDataTable>
 

@@ -8,6 +8,8 @@ import { listEmailSendsOptions } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import { useProduct } from "@/context/product/ProductContext";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -67,15 +69,18 @@ export function EmailSendsDatatable() {
 		() => [
 			columnHelper.accessor("to_address", {
 				header: () => <span>To</span>,
-				cell: (info) => <span className="text-sm">{info.getValue()}</span>,
+				cell: (info) => <Text as="span">{info.getValue()}</Text>,
 				enableSorting: false,
 			}),
 			columnHelper.accessor("subject", {
 				header: () => <span>Subject</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+					<Box
+						as="span"
+						className="text-sm text-muted-foreground max-w-[200px] truncate block"
+					>
 						{info.getValue()}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),
@@ -91,29 +96,29 @@ export function EmailSendsDatatable() {
 			columnHelper.accessor("from_address", {
 				header: () => <span>From</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground">
+					<Text as="span" tone="muted">
 						{info.getValue()}
-					</span>
+					</Text>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("sent_at", {
 				header: () => <span>Sent At</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground">
+					<Text as="span" tone="muted">
 						{info.getValue()
 							? dayjs(info.getValue()).format("D MMM YYYY H:mm")
 							: "—"}
-					</span>
+					</Text>
 				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("created_at", {
 				header: () => <span>Created</span>,
 				cell: (info) => (
-					<span className="text-sm text-muted-foreground">
+					<Text as="span" tone="muted">
 						{dayjs(info.getValue()).format("D MMM YYYY H:mm")}
-					</span>
+					</Text>
 				),
 				enableSorting: false,
 			}),
@@ -123,11 +128,9 @@ export function EmailSendsDatatable() {
 
 	if (!currentProduct) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<p className="text-muted-foreground">
-					Select a product to view email sends
-				</p>
-			</div>
+			<Box className="flex items-center justify-center p-8">
+				<Text tone="muted">Select a product to view email sends</Text>
+			</Box>
 		);
 	}
 

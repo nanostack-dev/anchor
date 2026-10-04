@@ -3,9 +3,11 @@ import ReactDOM from "react-dom/client";
 
 // Import OpenAPI config
 import "./styles.css";
+import { RouterLink } from "@/components/layout/router-link";
 import type { router } from "@/routeTree";
+import { Toaster } from "@nanostackorg/design-system/components/toast";
+import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
 import App from "./App";
 import { client } from "./client/client.gen";
 import reportWebVitals from "./reportWebVitals";
@@ -57,10 +59,12 @@ if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<StrictMode>
-			<QueryClientProvider client={queryClient}>
-				<App />
-				<Toaster />
-			</QueryClientProvider>
+			<DesignSystemProvider linkComponent={RouterLink}>
+				<QueryClientProvider client={queryClient}>
+					<App />
+					<Toaster />
+				</QueryClientProvider>
+			</DesignSystemProvider>
 		</StrictMode>,
 	);
 }

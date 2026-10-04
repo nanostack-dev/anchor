@@ -1,3 +1,4 @@
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -14,9 +15,9 @@ import {
 	SortDirection,
 } from "@/client";
 import { searchOrganizationApiKeysOptions } from "@/client/@tanstack/react-query.gen";
-import { Badge } from "@/components/ui/badge";
 import { useProduct } from "@/context/product/ProductContext";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 
 const columnHelper = createColumnHelper<OrganizationApiKeyResponse>();
@@ -105,15 +106,18 @@ export function OrganizationApiKeyDatatable({
 		() => [
 			columnHelper.accessor("name", {
 				header: "Name",
-				cell: (info) => <div className="font-medium">{info.getValue()}</div>,
+				cell: (info) => <Box className="font-medium">{info.getValue()}</Box>,
 				enableSorting: true,
 			}),
 			columnHelper.accessor("description", {
 				header: "Description",
 				cell: (info) => (
-					<span className="block max-w-[260px] truncate text-sm text-muted-foreground">
+					<Box
+						as="span"
+						className="block max-w-[260px] truncate text-sm text-muted-foreground"
+					>
 						{info.getValue() || "No description"}
-					</span>
+					</Box>
 				),
 				enableSorting: false,
 			}),
@@ -129,9 +133,9 @@ export function OrganizationApiKeyDatatable({
 
 					if (permissions.length === 0) {
 						return (
-							<span className="text-sm text-muted-foreground">
+							<Box as="span" className="text-sm text-muted-foreground">
 								No permissions
-							</span>
+							</Box>
 						);
 					}
 
@@ -139,16 +143,20 @@ export function OrganizationApiKeyDatatable({
 					const remainingCount = permissions.length - visiblePermissions.length;
 
 					return (
-						<div className="flex flex-wrap gap-1">
+						<Box className="flex flex-wrap gap-1">
 							{visiblePermissions.map((permission) => (
-								<Badge key={permission.permission_name} variant="secondary">
+								<Badge
+									tone="neutral"
+									key={permission.permission_name}
+									variant="soft"
+								>
 									{permission.permission_name}
 								</Badge>
 							))}
 							{remainingCount > 0 ? (
 								<Badge variant="outline">+{remainingCount} more</Badge>
 							) : null}
-						</div>
+						</Box>
 					);
 				},
 				enableSorting: false,
@@ -163,9 +171,7 @@ export function OrganizationApiKeyDatatable({
 					return (
 						<Badge
 							variant={
-								status === OrganizationApiKeyStatus.ACTIVE
-									? "default"
-									: "secondary"
+								status === OrganizationApiKeyStatus.ACTIVE ? "solid" : "soft"
 							}
 						>
 							{label}

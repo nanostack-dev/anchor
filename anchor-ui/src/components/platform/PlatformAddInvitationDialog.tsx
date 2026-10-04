@@ -2,12 +2,7 @@ import { createPlatformInvitationMutation } from "@/client/@tanstack/react-query
 import { FormValidationError } from "@/components/common/FormValidationError";
 import { generateInvitationLink } from "@/components/platform/invitationUtils";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
-import { Button } from "../ui/button";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -15,10 +10,16 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Spinner } from "../ui/spinner";
+} from "@nanostackorg/design-system/components/dialog";
+import { Input } from "@nanostackorg/design-system/components/input";
+import { Label } from "@nanostackorg/design-system/components/label";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { z } from "zod";
 
 const invitationFormSchema = z.object({
 	email: z
@@ -69,7 +70,7 @@ export function PlatformAddInvitationDialog({
 	} = useMutation({
 		...createPlatformInvitationMutation(),
 		onSuccess: (resp) => {
-			toast.success("Invitation created successfully!");
+			toast.add({ type: "success", title: "Invitation created successfully!" });
 			if (onSuccess) {
 				onSuccess({ code: resp.code, email: form.state.values.email });
 			}
@@ -78,9 +79,12 @@ export function PlatformAddInvitationDialog({
 			console.error("Failed to create invitation:", error);
 			const errorMessage = getApiErrorMessage(error);
 			if (errorMessage) {
-				toast.error(errorMessage);
+				toast.add({ type: "error", title: errorMessage });
 			} else {
-				toast.error("Failed to create invitation. Please try again.");
+				toast.add({
+					type: "error",
+					title: "Failed to create invitation. Please try again.",
+				});
 			}
 		},
 	});
@@ -126,7 +130,7 @@ export function PlatformAddInvitationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent className="sm:max-w-[450px]">
+			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Invite User</DialogTitle>
 					<DialogDescription>
@@ -134,27 +138,22 @@ export function PlatformAddInvitationDialog({
 					</DialogDescription>
 				</DialogHeader>
 				{isSuccess && invitationUrl ? (
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label className="block">Invitation link generated:</Label>
-							<div className="flex gap-2 items-center">
-								<Input
-									value={invitationUrl}
-									readOnly
-									className="flex-1 cursor-pointer"
-									onClick={handleCopy}
-								/>
+					<Box className="space-y-4">
+						<Box className="space-y-2">
+							<Label>Invitation link generated:</Label>
+							<Box className="flex gap-2 items-center">
+								<Input value={invitationUrl} readOnly onClick={handleCopy} />
 								<Button type="button" variant="outline" onClick={handleCopy}>
 									{copied ? "Copied!" : "Copy"}
 								</Button>
-							</div>
-						</div>
+							</Box>
+						</Box>
 						<DialogFooter>
 							<Button type="button" variant="outline" onClick={handleClose}>
 								Close
 							</Button>
 						</DialogFooter>
-					</div>
+					</Box>
 				) : (
 					<form
 						onSubmit={(e) => {
@@ -163,10 +162,10 @@ export function PlatformAddInvitationDialog({
 							form.handleSubmit();
 						}}
 					>
-						<div className="space-y-6 py-4">
+						<Box className="space-y-6 py-4">
 							<form.Field name="email">
 								{(field) => (
-									<div className="space-y-2">
+									<Box className="space-y-2">
 										<Label htmlFor="invite-email">Email</Label>
 										<Input
 											id="invite-email"
@@ -178,10 +177,10 @@ export function PlatformAddInvitationDialog({
 											disabled={isCreating}
 										/>
 										<FormValidationError field={field} />
-									</div>
+									</Box>
 								)}
 							</form.Field>
-						</div>
+						</Box>
 						<DialogFooter>
 							<Button
 								type="button"
@@ -208,6 +207,8 @@ export function PlatformAddInvitationDialog({
 									isValid,
 								]) => (
 									<Button
+										variant="solid"
+										tone="brand"
 										type="submit"
 										disabled={
 											!canSubmit ||
@@ -217,13 +218,12 @@ export function PlatformAddInvitationDialog({
 											!isDirty ||
 											isCreating
 										}
-										className="h-11"
 									>
 										{isCreating || isSubmitting ? (
-											<div className="flex items-center gap-2">
-												<Spinner className="text-current" />
+											<Box className="flex items-center gap-2">
+												<Spinner />
 												<span>Sending...</span>
-											</div>
+											</Box>
 										) : (
 											<span>Send Invitation</span>
 										)}

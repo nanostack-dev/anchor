@@ -8,7 +8,8 @@ import {
 } from "@/client";
 import { migrateOrganizationLicensesMutation } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
-import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,21 +17,23 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+} from "@nanostackorg/design-system/components/dialog";
+import { Label } from "@nanostackorg/design-system/components/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@nanostackorg/design-system/components/select";
+import { Spinner } from "@nanostackorg/design-system/components/spinner";
+import { Switch } from "@nanostackorg/design-system/components/switch";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { toast } from "@nanostackorg/design-system/components/toast";
+import { Box } from "@nanostackorg/design-system/layout/box";
+import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { CarriedAdjustments } from "./CarriedAdjustments";
 import { LicenseMigrationOutcomes } from "./LicenseMigrationOutcomes";
 import { TemplateValuesDiff } from "./TemplateValuesDiff";
@@ -82,6 +85,14 @@ export function LicenseMigrationDialog({
 				(template) => template.status === LicenseTemplateStatus.ACTIVE,
 			),
 		[templates],
+	);
+	const targetItems = useMemo(
+		() =>
+			activeTemplates.map((template) => ({
+				value: template.id,
+				label: template.name,
+			})),
+		[activeTemplates],
 	);
 	const target = activeTemplates.find((template) => template.id === targetId);
 
@@ -156,13 +167,15 @@ export function LicenseMigrationDialog({
 					"searchOrganizationLicenses",
 			});
 			if (result.failed > 0) {
-				toast.warning(
-					`${result.changed} set, ${result.failed} failed. Review the results.`,
-				);
+				toast.add({
+					type: "warning",
+					title: `${result.changed} set, ${result.failed} failed. Review the results.`,
+				});
 			} else {
-				toast.success(
-					`${result.changed} organization${result.changed === 1 ? "" : "s"} set to ${target?.name}.`,
-				);
+				toast.add({
+					type: "success",
+					title: `${result.changed} organization${result.changed === 1 ? "" : "s"} set to ${target?.name}.`,
+				});
 			}
 			onMigrated?.();
 		},
@@ -200,10 +213,7 @@ export function LicenseMigrationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={close}>
-			{/* The body scrolls, not the dialog: with a long carried-adjustments
-				list the confirming button would otherwise sit below the fold with
-				nothing pointing to it. */}
-			<DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
+			<DialogContent size="lg">
 				<DialogHeader>
 					<DialogTitle>
 						{migration
@@ -218,28 +228,25 @@ export function LicenseMigrationDialog({
 				</DialogHeader>
 
 				{migration ? (
-					<div className="min-h-0 flex-1 overflow-y-auto">
+					<Box className="min-h-0 flex-1 overflow-y-auto">
 						<LicenseMigrationOutcomes
 							migration={migration}
 							organizationNames={migratedNames}
 						/>
-					</div>
+					</Box>
 				) : (
-					<div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
-						<div className="flex flex-col gap-2">
+					<Box className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
+						<Stack space="sm">
 							<Label htmlFor="license-migration-target">Move to tier</Label>
 							<Select
-								items={activeTemplates.map((template) => ({
-									value: template.id,
-									label: template.name,
-								}))}
+								items={targetItems}
 								value={targetId}
 								onValueChange={setTargetId}
 							>
-								<SelectTrigger id="license-migration-target" className="w-full">
+								<SelectTrigger width="fill" id="license-migration-target">
 									<SelectValue placeholder="Select a tier..." />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent aria-label="Target license tier options">
 									{activeTemplates.map((template) => (
 										<SelectItem key={template.id} value={template.id}>
 											{template.name}
@@ -247,11 +254,11 @@ export function LicenseMigrationDialog({
 									))}
 								</SelectContent>
 							</Select>
-							<p className="text-xs text-muted-foreground">
+							<Text size="xs" tone="muted">
 								Only active tiers can be moved onto. An archived tier is
 								withdrawn, so nobody new can be put on it.
-							</p>
-						</div>
+							</Text>
+						</Stack>
 
 						{target && (
 							<TemplateValuesDiffSummary
@@ -273,25 +280,25 @@ export function LicenseMigrationDialog({
 						)}
 
 						{target && (
-							<div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3 py-3">
-								<div className="flex flex-col gap-1">
+							<Box className="flex items-start justify-between gap-4 rounded-lg border border-border px-3 py-3">
+								<Stack space="xs">
 									<Label htmlFor="license-migration-discard">
 										Discard customer adjustments
 									</Label>
-									<p className="text-xs text-muted-foreground">
+									<Text size="xs" tone="muted">
 										{discardDifferences
 											? `Every selected organization takes ${target.name} exactly, adjustments included. An adjustment made for one customer is lost.`
 											: carried.length > 0
 												? `Every value moves to ${target.name}, except ${carriedCount} adjustment${carriedCount === 1 ? "" : "s"} held by ${carried.length} organization${carried.length === 1 ? "" : "s"}, which ${carriedCount === 1 ? "is" : "are"} kept.`
 												: `No organization in the selection is adjusted, so every one of them takes ${target.name} whole.`}
-									</p>
-								</div>
+									</Text>
+								</Stack>
 								<Switch
 									id="license-migration-discard"
 									checked={discardDifferences}
 									onCheckedChange={setDiscardDifferences}
 								/>
-							</div>
+							</Box>
 						)}
 
 						{target && !discardDifferences && (
@@ -299,23 +306,26 @@ export function LicenseMigrationDialog({
 						)}
 
 						<FormAlert message={getApiErrorMessage(migrate.error)} />
-					</div>
+					</Box>
 				)}
 
 				<DialogFooter>
 					{migration ? (
-						<Button onClick={() => close(false)}>Done</Button>
+						<Button variant="solid" tone="brand" onClick={() => close(false)}>
+							Done
+						</Button>
 					) : (
 						<>
 							<Button variant="outline" onClick={() => close(false)}>
 								Cancel
 							</Button>
 							<Button
+								variant="solid"
 								onClick={run}
 								disabled={
 									!target || migrate.isPending || selection.length === 0
 								}
-								variant={discardDifferences ? "destructive" : "default"}
+								tone={discardDifferences ? "critical" : "brand"}
 							>
 								{migrate.isPending && <Spinner />}
 								Move {selection.length} organization

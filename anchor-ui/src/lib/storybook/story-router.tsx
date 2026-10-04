@@ -1,3 +1,5 @@
+import { RouterLink } from "@/components/layout/router-link";
+import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import {
 	RouterProvider,
 	createMemoryHistory,
@@ -21,7 +23,13 @@ export function StoryRouter({
 	children: ReactNode;
 	initialPath?: string;
 }) {
-	const rootRoute = createRootRoute({ component: () => children });
+	const rootRoute = createRootRoute({
+		component: () => (
+			<DesignSystemProvider linkComponent={RouterLink}>
+				{children}
+			</DesignSystemProvider>
+		),
+	});
 	const router = createRouter({
 		routeTree: rootRoute,
 		history: createMemoryHistory({ initialEntries: [initialPath] }),

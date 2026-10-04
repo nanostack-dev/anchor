@@ -1,18 +1,9 @@
+import { AppShellBrand, AppShellSidebar } from "@/components/layout/app-shell";
 import { NavUser } from "@/components/sidebar/nav-user";
 import { useProduct } from "@/hooks/useProduct";
+import { sidebarConfig } from "@/lib/sidebar-config";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import {
-	type MenuItem as ConfigMenuItem,
-	type SubMenuItem as ConfigSubMenuItem,
-	type SidebarGroup as SidebarConfigGroup,
-	sidebarConfig,
-} from "@/lib/sidebar-config";
-import { Link } from "@tanstack/react-router";
-import type { LucideIcon } from "lucide-react";
-import type * as React from "react";
-
-import { AppShellBrand } from "@/components/layout/app-shell";
-import {
-	Sidebar,
 	SidebarContent,
 	SidebarFooter,
 	SidebarGroup,
@@ -24,191 +15,130 @@ import {
 	SidebarMenuSub,
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
-	SidebarRail,
-} from "@/components/ui/sidebar";
-
-interface UserData {
-	name: string;
-	email: string;
-	avatar: string;
-}
-
-interface TeamData {
-	name: string;
-	logo: React.ElementType | LucideIcon;
-	plan: string;
-}
-
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-	user: UserData;
-	teams: TeamData[];
-}
-
-import { ROUTE_PATHS } from "@/routes/routePaths";
+} from "@nanostackorg/design-system/components/sidebar";
 import { useLocation } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
+import type { ElementType } from "react";
 
-export function AppSidebar({ user, teams, ...props }: AppSidebarProps) {
+interface AppSidebarProps {
+	user: { name: string; email: string; avatar: string };
+	teams: { name: string; logo: ElementType | LucideIcon; plan: string }[];
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
 	const { currentProduct } = useProduct();
-	const hasProductSelected = !!currentProduct;
-
-	const renderIcon = (IconComponent?: LucideIcon) => {
-		if (IconComponent) {
-			return <IconComponent className="size-4 shrink-0" />;
-		}
-		return null;
-	};
-
 	const location = useLocation();
-
-	// Helper to check if a path is active
-	const isActivePath = (path?: string): boolean =>
-		!!path && location.pathname === path;
-
-	const isGroupDisabled = (group: SidebarConfigGroup): boolean =>
-		group.type === "product" && !hasProductSelected;
-
-	const getMenuItemClasses = (group: SidebarConfigGroup): string => {
-		if (isGroupDisabled(group)) {
-			return "opacity-50";
-		}
-		return "";
-	};
-
+	const isActivePath = (path?: string) => !!path && location.pathname === path;
+	const renderIcon = (Icon?: LucideIcon) =>
+		Icon ? <Icon aria-hidden /> : null;
 	return (
-		<Sidebar collapsible="icon" {...props}>
+		<AppShellSidebar material="frosted">
 			<SidebarHeader>
 				<AppShellBrand
 					name="Anchor"
 					description="Organization-as-a-Service"
-					logo={<img src="/logo.svg" alt="" className="brightness-0 invert" />}
-					render={
-						<Link
-							to={ROUTE_PATHS.PRODUCT_PERMISSIONS}
-							aria-label="Anchor home"
+					href={ROUTE_PATHS.PRODUCT_PERMISSIONS}
+					logo={
+						<img
+							src="/logo.svg"
+							alt=""
+							className="size-6 brightness-0 invert"
 						/>
 					}
 				/>
 			</SidebarHeader>
 			<SidebarContent>
-				{sidebarConfig.map((group: SidebarConfigGroup) => (
-					<SidebarGroup key={group.id} className={getMenuItemClasses(group)}>
-						{group.title && (
-							<SidebarGroupLabel
-								className={
-									isGroupDisabled(group) ? "text-muted-foreground" : ""
-								}
-							>
-								{group.title}
-							</SidebarGroupLabel>
-						)}
-						<SidebarMenu>
-							{group.items.map((item: ConfigMenuItem, itemIndex: number) => (
-								<SidebarMenuItem key={`${group.id}-item-${itemIndex}`}>
-									{item.path && !item.submenu ? (
+				{sidebarConfig.map((group) => {
+					const disabled = group.type === "product" && !currentProduct;
+					return (
+						<SidebarGroup key={group.id}>
+							{group.title && (
+								<SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+							)}
+							<SidebarMenu>
+								{group.items.map((item) => (
+									<SidebarMenuItem key={item.title}>
 										<SidebarMenuButton
+											href={
+												item.path && !item.submenu && !disabled
+													? item.path
+													: undefined
+											}
+											disabled={disabled}
 											isActive={
-												!isGroupDisabled(group) && isActivePath(item.path)
+												!disabled &&
+												(isActivePath(item.path) ||
+													item.subItems?.some((child) =>
+														isActivePath(child.path),
+													))
 											}
-											render={
-												item.external ? (
-													<a
-														href={item.path}
-														target="_blank"
-														rel="noopener noreferrer"
-														className={
-															isGroupDisabled(group)
-																? "pointer-events-none"
-																: ""
-														}
-													>
-														{renderIcon(item.icon)}
-														<span>{item.title}</span>
-													</a>
-												) : (
-													<Link
-														to={item.path}
-														className={
-															isGroupDisabled(group)
-																? "pointer-events-none"
-																: ""
-														}
-													>
-														{renderIcon(item.icon)}
-														<span>{item.title}</span>
-													</Link>
-												)
+											aria-current={
+												!disabled && isActivePath(item.path)
+													? "page"
+													: undefined
 											}
-										/>
-									) : (
-										<SidebarMenuButton
-											isActive={
-												!isGroupDisabled(group) &&
-												item.subItems?.some((subItem) =>
-													isActivePath(subItem.path),
-												)
-											}
+											tooltip={item.title}
+											{...(item.external
+												? {
+														render: (
+															<a
+																aria-label={item.title}
+																href={disabled ? undefined : item.path}
+																target="_blank"
+																rel="noopener noreferrer"
+															>
+																{item.title}
+															</a>
+														),
+													}
+												: {})}
 										>
 											{renderIcon(item.icon)}
 											<span>{item.title}</span>
 										</SidebarMenuButton>
-									)}
-									{item.submenu && item.subItems && (
-										<SidebarMenuSub>
-											{item.subItems.map(
-												(subItem: ConfigSubMenuItem, subItemIndex: number) => (
-													<SidebarMenuSubItem
-														key={`${group.id}-item-${itemIndex}-sub-${subItemIndex}`}
-													>
+										{item.submenu && item.subItems && (
+											<SidebarMenuSub>
+												{item.subItems.map((child) => (
+													<SidebarMenuSubItem key={child.title}>
 														<SidebarMenuSubButton
-															isActive={
-																!isGroupDisabled(group) &&
-																isActivePath(subItem.path)
+															href={child.path}
+															isActive={!disabled && isActivePath(child.path)}
+															aria-current={
+																!disabled && isActivePath(child.path)
+																	? "page"
+																	: undefined
 															}
-															render={
-																subItem.external ? (
-																	<a
-																		href={subItem.path}
-																		target="_blank"
-																		rel="noopener noreferrer"
-																		className={
-																			isGroupDisabled(group)
-																				? "pointer-events-none"
-																				: ""
-																		}
-																	>
-																		{renderIcon(subItem.icon)}
-																		<span>{subItem.title}</span>
-																	</a>
-																) : (
-																	<Link
-																		to={subItem.path}
-																		className={
-																			isGroupDisabled(group)
-																				? "pointer-events-none"
-																				: ""
-																		}
-																	>
-																		{renderIcon(subItem.icon)}
-																		<span>{subItem.title}</span>
-																	</Link>
-																)
+															aria-disabled={disabled || undefined}
+															tabIndex={disabled ? -1 : undefined}
+															onClick={
+																disabled
+																	? (event) => event.preventDefault()
+																	: undefined
 															}
-														/>
+															target={child.external ? "_blank" : undefined}
+															rel={
+																child.external
+																	? "noopener noreferrer"
+																	: undefined
+															}
+														>
+															{renderIcon(child.icon)}
+															<span>{child.title}</span>
+														</SidebarMenuSubButton>
 													</SidebarMenuSubItem>
-												),
-											)}
-										</SidebarMenuSub>
-									)}
-								</SidebarMenuItem>
-							))}
-						</SidebarMenu>
-					</SidebarGroup>
-				))}
+												))}
+											</SidebarMenuSub>
+										)}
+									</SidebarMenuItem>
+								))}
+							</SidebarMenu>
+						</SidebarGroup>
+					);
+				})}
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser user={user} />
 			</SidebarFooter>
-			<SidebarRail />
-		</Sidebar>
+		</AppShellSidebar>
 	);
 }

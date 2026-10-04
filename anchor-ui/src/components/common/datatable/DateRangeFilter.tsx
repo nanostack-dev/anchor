@@ -1,9 +1,13 @@
+import { Button } from "@nanostackorg/design-system/components/button";
+import { Calendar } from "@nanostackorg/design-system/components/calendar";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@nanostackorg/design-system/components/popover";
 import { format } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 import * as React from "react";
-import { Button } from "../../ui/button";
-import { Calendar } from "../../ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
 interface DateRangeFilterProps {
 	label: string;
@@ -47,15 +51,11 @@ export function DateRangeFilter({
 	return (
 		<div className="flex items-center gap-2">
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger
-					render={
-						<Button variant="outline" size="sm" className="justify-start" />
-					}
-				>
+				<PopoverTrigger render={<Button variant="outline" size="sm" />}>
 					<CalendarIcon className="mr-2 h-4 w-4" />
 					{hasValue ? `${label}: ${displayText}` : label}
 				</PopoverTrigger>
-				<PopoverContent className="w-auto p-0" align="start">
+				<PopoverContent align="start" aria-label={`${label} date range`}>
 					<Calendar
 						mode="range"
 						selected={{ from: fromDate, to: toDate }}
@@ -69,7 +69,7 @@ export function DateRangeFilter({
 					variant="ghost"
 					size="sm"
 					onClick={handleClear}
-					className="h-8 px-2"
+					aria-label={`Clear ${label.toLowerCase()}`}
 				>
 					<X className="h-4 w-4" />
 				</Button>
