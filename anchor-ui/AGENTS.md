@@ -26,6 +26,8 @@ leave `src/client/` stale.
 
 ## Testing
 
+Writing, extending, diagnosing or tuning browser tests: read `e2e/guide/README.md` first. Update the feature coverage matrix and record reproduced fixes in the linked troubleshooting guide in the same change.
+
 anchor-ui is an **app**: Storybook component tests for reusable UI + Playwright e2e per feature (same pattern as `echopoint/apps/frontend/e2e/`). Run the mutating e2e suite against a local backend, never prod.
 
 Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.

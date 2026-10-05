@@ -13,16 +13,18 @@
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --config playwright.smoke.config.ts",
+    "test:e2e:app": "playwright test --config playwright.app.config.ts",
+    "test:e2e:ui": "playwright test --config playwright.app.config.ts --ui --ui-host=127.0.0.1 --ui-port=9351",
+    "check:e2e": "node scripts/check-e2e.mjs",
     "test-storybook": "vitest --config vitest.workspace.ts run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check && pnpm check:ui",
+    "check": "biome check && pnpm check:ui && pnpm check:e2e",
     "storybook": "storybook dev -p 6007 --ci",
     "build-storybook": "storybook build",
     "check:ui": "node scripts/check-ui-contract.mjs",
     "ui-shot": "node scripts/ui-shot.mjs",
-    "test:e2e:app": "playwright test --config playwright.app.config.ts",
-    "test:e2e:ui": "playwright test --config playwright.app.config.ts --ui --ui-host=127.0.0.1 --ui-port=9351"
+    "benchmark:e2e": "node scripts/benchmark-e2e.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

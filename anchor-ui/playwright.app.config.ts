@@ -1,6 +1,11 @@
+import { availableParallelism } from "node:os";
 import { defineConfig, devices } from "playwright/test";
 
-const workers = process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : 2;
+const workers = process.env.E2E_WORKERS
+	? Number(process.env.E2E_WORKERS)
+	: process.env.CI
+		? 2
+		: Math.min(4, availableParallelism());
 if (!Number.isInteger(workers) || workers < 1)
 	throw new Error("E2E_WORKERS must be a positive integer");
 

@@ -114,8 +114,21 @@ export async function openLicensing(page: Page, world: World, path: string) {
 }
 
 export async function chooseOption(page: Page, control: Locator, name: string) {
-	await control.click();
-	await page.getByRole("option", { name, exact: true }).click();
+	// Closed selects may retain a hidden portal. Synchronize the accessible menu
+	// state, rather than treating every mounted listbox as an open dropdown.
+	const listboxes = page.getByRole("listbox");
+	await expect(listboxes).toHaveCount(0);
+	await control.press("Enter");
+	await expect(control).toHaveAttribute("aria-expanded", "true");
+	await expect(listboxes).toHaveCount(1);
+	const option = listboxes.getByRole("option", { name, exact: true });
+	await expect(option).toBeVisible();
+	// Keyboard activation reaches the named option without another portal
+	// intercepting a pointer click at the same coordinates.
+	await option.press("Enter");
+	await expect(control).toContainText(name);
+	await expect(control).toHaveAttribute("aria-expanded", "false");
+	await expect(listboxes).toHaveCount(0);
 }
 
 export async function fillTemplateValues(page: Page) {

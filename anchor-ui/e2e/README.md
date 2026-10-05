@@ -3,6 +3,41 @@
 Playwright drives the built Anchor UI in Chromium. Use roles, labels and visible
 text, and wait for observable results with `expect` rather than fixed sleeps.
 
+## Whole application
+
+Start with [the browser test guide](guide/README.md). It links the feature matrix,
+ten-article research, performance evidence and reproduced failure recipes.
+
+The full suite requires Node 24, pnpm 11.1, Go 1.27 and running Docker with Compose.
+It starts a disposable TimescaleDB, Redis, Mailpit and the actual Anchor binary,
+builds this worktree once, and creates its own accounts. No dev credentials or
+external vendor account is required.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm test:e2e:app
+pnpm test:e2e:ui
+```
+
+The app preview uses `http://127.0.0.1:3015`; Playwright UI uses
+`http://127.0.0.1:9351`. Stop the UI command with Ctrl-C to tear down its owned
+runtime. After an interrupted process, `node scripts/e2e-runtime.mjs stop`
+cleans up only this worktree's disposable services. The runtime refuses foreign
+processes and records ownership under ignored `e2e/runtime/.local/`.
+
+Run one feature with `pnpm test:e2e:app e2e/features/licensing/schema.e2e.ts`.
+For repeated local iterations, keep `node scripts/serve-e2e-full.mjs` running and
+use `E2E_REUSE_SERVER=1 pnpm test:e2e:app`. Rebuild it after app/backend changes;
+the browser fixtures reject a mismatched frontend fingerprint. CI starts clean.
+
+`pnpm check:e2e` checks the route-to-scenario inventory; update it with
+`pnpm check:e2e --write` after reviewing a route change. This is a maintenance
+guard, not an executable coverage measurement. The isolated PR workflow runs
+the full suite without secrets and uploads results plus failure screenshots.
+Reports, traces and generated credentials remain ignored; UI mode records local
+diagnostic traces, so keep its server on loopback and recordings out of commits.
+
 ## Login and Products smoke
 
 This suite covers the public browser boundary: guest access protection, real
@@ -68,9 +103,8 @@ requires resetting that disposable database.
 
 ## Extending coverage
 
-Add one user journey at a time. Start with admin invitations, product management,
-then product-scoped organizations, memberships, API keys, workspaces, roles,
-licensing and email. Reads can join `e2e/smoke/`; writes belong in the local suite
-with unique fixtures and cleanup scoped to those fixtures. Run cross-browser
-journeys once Chromium coverage is stable. Storybook tests remain the faster
-place for component states and validation combinations.
+Use the domain folders under `e2e/features/`, following [the guide](guide/README.md).
+Update its coverage matrix and troubleshooting recipes in the same change.
+The deployed smoke remains a small read-only health check. Storybook retains
+component states and validation combinations; browser tests verify integration
+and persistence through actual user journeys.
