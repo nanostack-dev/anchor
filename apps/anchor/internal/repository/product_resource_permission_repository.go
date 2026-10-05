@@ -149,6 +149,13 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 	input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	whereStmt := table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))
+	if input.FullTextSearch != nil {
+		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
+		whereStmt = whereStmt.AND(
+			postgres.LOWER(table.ProductResourcePermissions.Name).LIKE(pattern).
+				OR(postgres.LOWER(table.ProductResourcePermissions.Description).LIKE(pattern)),
+		)
+	}
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {

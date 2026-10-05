@@ -54,6 +54,7 @@ func mapToSearchProductResourcePermissionInput(
 		}).
 		ToPtr()
 	return search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
+		WithFullTextSearch(req.FullTextSearch).
 		WithFilter(filter).
 		WithSort(req.SortBy, req.SortDirection).
 		WithPagination(req.Pagination)
