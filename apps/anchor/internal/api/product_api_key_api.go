@@ -21,7 +21,7 @@ func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKe
 		Status:          productAPIKey.Status,
 		CreatedAt:       productAPIKey.CreatedAt,
 		UpdatedAt:       productAPIKey.UpdatedAt,
-		Permissions: functional.Slice(
+		Permissions: append([]ProductAPIKeyPermissionResponse{}, functional.Slice(
 			productAPIKey.Permissions).Map(
 
 			func(perm apikey.ProductAPIKeyPermission) ProductAPIKeyPermissionResponse {
@@ -30,7 +30,7 @@ func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKe
 					ProductApiKeyId: perm.APIKeyID,
 					PermissionName:  perm.PermissionName,
 				}
-			}),
+			})...),
 	}
 }
 
