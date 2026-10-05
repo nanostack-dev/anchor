@@ -25,6 +25,21 @@ Anchor's ordinary unit runner discovers `.spec.ts`. Browser scenarios use
 `.e2e.ts`, and each Playwright config explicitly selects its owned test folders.
 Keep discovery checks in validation when moving or adding suites.
 
+## Changing stack layers or running inside an agent sandbox
+
+Switching to a layer with a different lockfile made pnpm 11 attempt an automatic
+dependency reinstall; without a terminal it aborted module replacement. Install
+that layer explicitly with `CI=true pnpm install --frozen-lockfile` before using
+its package scripts. During the story relocation, the installed Vitest,
+Storybook and Playwright versions were verified identical in both layers, so a
+focused check could use the installed Vitest CLI directly. Full PR CI still
+installs from each layer's frozen lockfile.
+
+A browser runner that stops before collecting tests with `listen EPERM` needs
+authorized local-server access from its agent sandbox. This was an execution
+boundary; rerunning with that access collected and passed the story. Do not
+treat zero collected tests as application verification.
+
 ## UI mode omits project dependencies
 
 The bootstrap project is visible in headless reports. Playwright UI mode does
