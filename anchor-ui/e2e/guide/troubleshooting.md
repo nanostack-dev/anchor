@@ -172,18 +172,31 @@ was therefore insufficient.
 The installed Storybook `userEvent.paste(text)` implementation dispatches to
 `document.activeElement`; a supplied string uses a synthetic data transfer,
 so this is not evidence of an operating-system clipboard race. Dialog focus
-could change that target, but the cloud DOM was truncated before the textbox
-and did not capture its value. The focus explanation remains an unproven,
-source-supported hypothesis; no API or network cause was reproduced.
+could change that target, but those cloud DOM captures were truncated before
+the textbox and did not capture its value. No API or network cause was
+reproduced.
 
 Enter the invalid DSL through `userEvent.type(editor, invalidSource)` and assert
 the textbox's complete value before checking the error. The new create dialog
 serializes its blank field to an empty source, which is also asserted before
-typing. Retain the awaited exact error and disabled-submit assertions. This
-adds input evidence and removes the separate untargeted paste operation; a
-genuinely missing error still fails within the query timeout. Verify the focused
-story three times without retries, then run the complete Storybook suite and
-cloud frontend check:
+typing. That change passed locally and in one cloud run, but the following cloud
+run proved the input was incomplete: it expected the full DSL and received only
+`m`. The parse-error and disabled-submit assertions were not reached.
+
+The app's editor and textarea are module-level components without an
+input-dependent key, conditional textarea replacement or source-reset effect.
+The installed Base UI focus manager queues its default initial focus through a
+microtask and the next animation frame. Its queued callback can still focus
+the first tabbable control when it recorded focus already inside the dialog.
+That scheduling is confirmed in source; its role in the incomplete input is
+an inference until repeated cloud validation succeeds.
+
+Wait for the dialog's default `Schema description` textbox to have focus after
+opening, before switching to Text mode. Then type into Fields and retain the
+full-value, awaited exact-error and disabled-submit assertions. This waits for
+an observable opening behavior without forcing focus or adding a delay. Verify
+the focused story three times without retries, then run the complete Storybook
+suite and repeat the cloud frontend check at the same commit:
 
 ```sh
 pnpm test-storybook src/components/license/LicenseSchemaFormDialog.stories.tsx \
