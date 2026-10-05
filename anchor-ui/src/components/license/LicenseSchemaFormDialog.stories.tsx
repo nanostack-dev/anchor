@@ -144,12 +144,24 @@ export const UnreadableSourceBlocksSubmit: Story = {
 		await screen.findByRole("heading", { name: "Create License Schema" });
 
 		await userEvent.click(screen.getByRole("button", { name: "Text" }));
-		const editor = screen.getByLabelText("Fields");
-		await userEvent.click(editor);
-		await userEvent.paste("max_flows: integer 0..100");
+		await expect(screen.getByRole("button", { name: "Text" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		const editor = screen.getByRole("textbox", { name: "Fields" });
+		const invalidSource = "max_flows: integer 0..100";
+		await expect(editor).toHaveValue("");
+		if ("__vitest_browser__" in globalThis) {
+			const { userEvent: browserUserEvent } = await import("vitest/browser");
+			await browserUserEvent.fill(editor, invalidSource);
+		} else {
+			await userEvent.type(editor, invalidSource);
+		}
+		await expect(screen.getByRole("textbox", { name: "Fields" })).toBe(editor);
+		await expect(editor).toHaveValue(invalidSource);
 
 		await expect(
-			screen.getByText(/`integer` is not a field type/),
+			await screen.findByText(/`integer` is not a field type/),
 		).toBeInTheDocument();
 		await expect(
 			screen.getByRole("button", { name: "Create Schema" }),

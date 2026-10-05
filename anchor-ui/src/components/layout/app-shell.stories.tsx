@@ -234,11 +234,7 @@ export const MobileMenuNavigationAndFocus: Story = {
 			await canvas.findByText("Roles for Echopoint"),
 		).toBeInTheDocument();
 		await userEvent.keyboard("{Escape}");
-		await waitFor(() =>
-			expect(
-				screen.queryByRole("dialog", { name: "Sidebar" }),
-			).not.toBeInTheDocument(),
-		);
+		await waitFor(() => expect(sidebar).not.toBeInTheDocument());
 		await expect(
 			canvas.getByRole("heading", { name: "Roles for Echopoint" }),
 		).toBeVisible();
@@ -246,12 +242,14 @@ export const MobileMenuNavigationAndFocus: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", { name: "Working on: Echopoint" }),
 		);
+		const productMenu = await screen.findByRole("menu");
 		await userEvent.click(
-			await screen.findByRole("menuitem", { name: "Anchor" }),
+			within(productMenu).getByRole("menuitem", { name: "Anchor" }),
 		);
 		await expect(
 			await canvas.findByRole("heading", { name: "Roles for Anchor" }),
 		).toBeVisible();
+		await waitFor(() => expect(productMenu).not.toBeInTheDocument());
 	},
 };
 
