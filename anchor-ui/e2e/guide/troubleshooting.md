@@ -160,19 +160,30 @@ pnpm test-storybook src/components/common/datatable/AnchorDataTable.stories.tsx 
 Then run the full Storybook suite and inspect the cloud frontend check. A green
 result is required before treating this synchronization repair as verified.
 
-## Storybook read a schema error before it rendered
+## Storybook did not observe a schema parse error after untargeted paste
 
 After the bulk-dialog repair, cloud CI passed that story but failed
 `LicenseSchemaFormDialog > Unreadable Source Blocks Submit`. Immediately after
-pasting invalid DSL, `getByText` threw before the error was in the DOM. The
-parser has no network dependency or debounce. The captured DOM does not prove
-whether focus or React scheduling caused that specific run, so avoid claiming
-more than the observed missing error at assertion time.
+pasting invalid DSL, `getByText` could not find the error. Changing it to
+`findByText` passed three local focused runs and the complete 190-story suite,
+but the next cloud run still failed after waiting for the error. Waiting alone
+was therefore insufficient.
 
-Use `await screen.findByText` for the exact error, then retain the original
-error-presence and disabled-submit assertions. A genuinely missing error still
-fails within the query timeout. Verify the focused story three times without
-retries, then run the complete Storybook suite and cloud frontend check:
+The installed Storybook `userEvent.paste(text)` implementation dispatches to
+`document.activeElement`; a supplied string uses a synthetic data transfer,
+so this is not evidence of an operating-system clipboard race. Dialog focus
+could change that target, but the cloud DOM was truncated before the textbox
+and did not capture its value. The focus explanation remains an unproven,
+source-supported hypothesis; no API or network cause was reproduced.
+
+Enter the invalid DSL through `userEvent.type(editor, invalidSource)` and assert
+the textbox's complete value before checking the error. The new create dialog
+serializes its blank field to an empty source, which is also asserted before
+typing. Retain the awaited exact error and disabled-submit assertions. This
+adds input evidence and removes the separate untargeted paste operation; a
+genuinely missing error still fails within the query timeout. Verify the focused
+story three times without retries, then run the complete Storybook suite and
+cloud frontend check:
 
 ```sh
 pnpm test-storybook src/components/license/LicenseSchemaFormDialog.stories.tsx \
