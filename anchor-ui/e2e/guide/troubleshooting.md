@@ -132,3 +132,30 @@ job-level environment. Resolve the cache in the test step with
 again. Validate workflow changes with `actionlint`, and allow pull requests
 targeting stack branches so the final stack layer receives the browser check
 before merging.
+
+## Storybook scanned a bulk dialog during teardown
+
+The cloud frontend run passed 189 of 190 stories but reported an unnamed
+`alert-dialog-action` in the accessibility `afterEach` for
+`BulkRunsSequentiallyAndLocksControls`. Its play function stopped as soon as
+the completed summary appeared and the second request was recorded. At that
+point, the action/progress state had cleared while the closing dialog portal
+could still be mounted. The reported button was enabled; the actual blocked
+request renders the named, disabled `Working…` action.
+
+The story now captures its alertdialog element before starting, explicitly
+asserts the busy action's accessible name and disabled state, retains the
+single-in-flight, double-click, progress, cancel/pagination lock and two-call
+completion assertions, then waits for that captured element to leave the DOM.
+This gives the unchanged axe hook the completed UI instead of an exit frame.
+It uses a DOM condition, not a sleep, retry or disabled accessibility rule.
+
+Run the focused Storybook case after any concurrent benchmark finishes:
+
+```sh
+pnpm test-storybook src/components/common/datatable/AnchorDataTable.stories.tsx \
+  -t "Bulk Runs Sequentially And Locks Controls"
+```
+
+Then run the full Storybook suite and inspect the cloud frontend check. A green
+result is required before treating this synchronization repair as verified.
