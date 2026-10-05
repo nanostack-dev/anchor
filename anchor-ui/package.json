@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --config playwright.smoke.config.ts",
     "test:e2e:app": "playwright test --config playwright.app.config.ts",
-    "test:e2e:ui": "playwright test --config playwright.app.config.ts --ui --ui-host=127.0.0.1 --ui-port=9351",
+    "test:e2e:ui": "node scripts/open-e2e-ui.mjs",
     "check:e2e": "node scripts/check-e2e.mjs",
     "test-storybook": "vitest --config vitest.workspace.ts run",
     "format": "biome format",

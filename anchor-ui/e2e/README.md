@@ -21,9 +21,18 @@ pnpm test:e2e:ui
 ```
 
 The app preview uses `http://127.0.0.1:3015`; Playwright UI uses
-`http://127.0.0.1:9351`. Stop the UI command with Ctrl-C to tear down its owned
-runtime. After an interrupted process, `node scripts/e2e-runtime.mjs stop`
-cleans up only this worktree's disposable services. The runtime refuses foreign
+`http://127.0.0.1:9351`. The UI launcher starts and verifies one managed preview
+before opening Playwright, so Reload can reconnect without starting it again.
+It accepts an existing preview only when its live backend belongs to this
+worktree and its run ID, API URL and frontend fingerprint match. It runs the
+idempotent browser bootstrap before opening the UI, whose feature selection
+does not automatically run project dependencies. Select and rerun cases in the
+UI. Stop the UI command with Ctrl-C to tear down the preview and runtime it
+started. An explicitly prestarted preview remains its original owner's
+responsibility. A live backend without a ready preview is refused; start its
+managed preview explicitly or stop that backend first. After an interrupted
+process, `node scripts/e2e-runtime.mjs stop` cleans up only this worktree's
+disposable services. The runtime refuses foreign
 processes and records ownership under ignored `e2e/runtime/.local/`.
 After a managed run, `node scripts/e2e-runtime.mjs verify-stopped` checks that
 its metadata, startup lock and containers are gone. PR CI enforces this too.

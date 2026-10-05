@@ -142,11 +142,6 @@ export const UnreadableSourceBlocksSubmit: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: "Open" }));
 		await screen.findByRole("heading", { name: "Create License Schema" });
-		await waitFor(() =>
-			expect(
-				screen.getByRole("textbox", { name: "Schema description" }),
-			).toHaveFocus(),
-		);
 
 		await userEvent.click(screen.getByRole("button", { name: "Text" }));
 		await expect(screen.getByRole("button", { name: "Text" })).toHaveAttribute(

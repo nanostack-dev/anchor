@@ -28,12 +28,46 @@ Keep discovery checks in validation when moving or adding suites.
 ## UI mode omits project dependencies
 
 The bootstrap project is visible in headless reports. Playwright UI mode does
-not automatically run it. Worker auth fixtures initialize the owned local
+not automatically run it. The UI launcher runs its idempotent browser test
+before opening the UI. Worker auth fixtures also initialize the owned local
 platform through the public registration API when it is still empty, allowing
 a selected feature to run alone. Full cold headless runs verify bootstrap UI.
 
-## Domain incidents
+## UI showed No tests after its preview became ready
 
+The UI's output reported that `http://127.0.0.1:3015/__e2e/ready` was already
+used. CLI discovery still listed all 56 scenarios. Playwright UI runs global
+setup before collecting tests, and Reload reconnects and repeats that setup;
+the occupied ready URL made setup fail before collection. Reloading could
+therefore repeat the same failure even while the backend was healthy.
+
+Use `pnpm test:e2e:ui`, whose launcher verifies or starts the owned preview
+first, then gives Playwright `E2E_REUSE_SERVER=1`. It checks the live worktree
+backend, readiness run ID, API URL and current frontend fingerprint before
+running the bootstrap browser test and opening the UI. It refuses foreign or
+stale previews and an occupied UI port. Ctrl-C or SIGTERM stops its Playwright
+process and only the preview it started; an explicitly prestarted preview stays running.
+If an owned backend is running without a ready preview, start its managed
+preview explicitly or stop that backend first; the launcher refuses to take
+over its lifecycle.
+Never stop an unrelated server just to free either loopback port.
+
+To distinguish discovery from setup, run this without launching browsers:
+
+```sh
+pnpm exec playwright test --config playwright.app.config.ts --list
+```
+
+If discovery succeeds but the UI stays empty, check Output for setup errors
+and clear text, project or "Show only changed files" filters. The changed-files
+filter can correctly produce zero cases after all e2e changes are committed.
+Validate the launcher with a fresh UI start, a Reload, a selected test and
+Ctrl-C followed by `node scripts/e2e-runtime.mjs verify-stopped`. When reusing
+an explicitly started preview, stop that preview before checking teardown.
+
+## Domain and component incidents
+
+- [Component tests](troubleshooting/components.md)
 - [Access control and tenancy](troubleshooting/access.md)
 - [Licensing](troubleshooting/licensing.md)
 - [Email and integrations](troubleshooting/integrations.md)
@@ -73,11 +107,11 @@ Go toolchain separately.
 ## Preview connections delayed shutdown
 
 An open preview websocket could keep HTTP close waiting and leave disposable
-services running. Shutdown now stops its owned backend/Compose services before
-closing HTTP connections, including an explicit connection close and bounded
-fallback. Signal handlers register before runtime startup; an abort during setup
-also follows the owned cleanup path. Use `e2e-runtime.mjs status` after a managed
-cold run to verify teardown.
+services running. Shutdown now closes Vite through its public API and closes
+HTTP connections before stopping its owned backend/Compose services. Headless
+Playwright allows 30 seconds for that cleanup. Signal handlers register before
+runtime startup; an abort during setup also follows the owned cleanup path.
+Use `e2e-runtime.mjs verify-stopped` after a managed cold run to verify teardown.
 
 ## Selecting two UI tests raced first-owner registration
 
@@ -135,73 +169,11 @@ before merging.
 
 ## Storybook scanned a bulk dialog during teardown
 
-The cloud frontend run passed 189 of 190 stories but reported an unnamed
-`alert-dialog-action` in the accessibility `afterEach` for
-`BulkRunsSequentiallyAndLocksControls`. Its play function stopped as soon as
-the completed summary appeared and the second request was recorded. At that
-point, the action/progress state had cleared while the closing dialog portal
-could still be mounted. The reported button was enabled; the actual blocked
-request renders the named, disabled `Working…` action.
-
-The story now captures its alertdialog element before starting, explicitly
-asserts the busy action's accessible name and disabled state, retains the
-single-in-flight, double-click, progress, cancel/pagination lock and two-call
-completion assertions, then waits for that captured element to leave the DOM.
-This gives the unchanged axe hook the completed UI instead of an exit frame.
-It uses a DOM condition, not a sleep, retry or disabled accessibility rule.
-
-Run the focused Storybook case after any concurrent benchmark finishes:
-
-```sh
-pnpm test-storybook src/components/common/datatable/AnchorDataTable.stories.tsx \
-  -t "Bulk Runs Sequentially And Locks Controls"
-```
-
-Then run the full Storybook suite and inspect the cloud frontend check. A green
-result is required before treating this synchronization repair as verified.
+See [the dialog teardown recipe](troubleshooting/components.md#storybook-scanned-a-bulk-dialog-during-teardown).
 
 ## Storybook did not observe a schema parse error after untargeted paste
 
-After the bulk-dialog repair, cloud CI passed that story but failed
-`LicenseSchemaFormDialog > Unreadable Source Blocks Submit`. Immediately after
-pasting invalid DSL, `getByText` could not find the error. Changing it to
-`findByText` passed three local focused runs and the complete 190-story suite,
-but the next cloud run still failed after waiting for the error. Waiting alone
-was therefore insufficient.
-
-The installed Storybook `userEvent.paste(text)` implementation dispatches to
-`document.activeElement`; a supplied string uses a synthetic data transfer,
-so this is not evidence of an operating-system clipboard race. Dialog focus
-could change that target, but those cloud DOM captures were truncated before
-the textbox and did not capture its value. No API or network cause was
-reproduced.
-
-Enter the invalid DSL through `userEvent.type(editor, invalidSource)` and assert
-the textbox's complete value before checking the error. The new create dialog
-serializes its blank field to an empty source, which is also asserted before
-typing. That change passed locally and in one cloud run, but the following cloud
-run proved the input was incomplete: it expected the full DSL and received only
-`m`. The parse-error and disabled-submit assertions were not reached.
-
-The app's editor and textarea are module-level components without an
-input-dependent key, conditional textarea replacement or source-reset effect.
-The installed Base UI focus manager queues its default initial focus through a
-microtask and the next animation frame. Its queued callback can still focus
-the first tabbable control when it recorded focus already inside the dialog.
-That scheduling is confirmed in source; its role in the incomplete input is
-an inference until repeated cloud validation succeeds.
-
-Wait for the dialog's default `Schema description` textbox to have focus after
-opening, before switching to Text mode. Then type into Fields and retain the
-full-value, awaited exact-error and disabled-submit assertions. This waits for
-an observable opening behavior without forcing focus or adding a delay. Verify
-the focused story three times without retries, then run the complete Storybook
-suite and repeat the cloud frontend check at the same commit:
-
-```sh
-pnpm test-storybook src/components/license/LicenseSchemaFormDialog.stories.tsx \
-  -t "Unreadable Source Blocks Submit" --retry 0
-```
+See [the targeted-input recipe](troubleshooting/components.md#storybook-did-not-observe-a-schema-parse-error-after-untargeted-paste).
 
 ## Managed tests passed but left the backend running
 

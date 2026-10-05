@@ -83,6 +83,9 @@ Evidence: ignored `.ui-craft/performance/2026-10-05T22-33-07.637Z/summary.json`
 and the nine individual JSON reports/logs.
 Component-story synchronization edits during this series were outside the
 production frontend and browser-input fingerprints; both remained unchanged.
+The managed UI launcher and its package command were added after this baseline.
+They prepare the interactive demo; the headless scenarios and configuration
+remain unchanged. The commit and hashes above identify the measured inputs.
 
 That preview used a new database, pre-pulled container images and a cached Go
 binary. Startup was 38.47 s: backend 20.16 s and frontend build 17.87 s, plus
