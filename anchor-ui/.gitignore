@@ -12,3 +12,4 @@ storybook-static
 .ui-craft/
 playwright-report/
 test-results/
+e2e/runtime/.local/

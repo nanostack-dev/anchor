@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: timescale/timescaledb:2.23.0-pg18
+    environment:
+      POSTGRES_DB: anchor_e2e
+      POSTGRES_USER: anchor_e2e
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    ports:
+      - "127.0.0.1::5432"
+    labels:
+      dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anchor_e2e -d anchor_e2e"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1::6379"
+    labels:
+      dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "127.0.0.1::1025"
+      - "127.0.0.1::8025"
+    labels:
+      dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+
+secrets:
+  postgres_password:
+    file: ${ANCHOR_E2E_RUN_DIRECTORY}/postgres-password
