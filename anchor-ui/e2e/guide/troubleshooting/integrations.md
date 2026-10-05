@@ -110,6 +110,25 @@ through the supported API to trigger delivery. It checks the received envelope
 and Standard Webhooks signature using the one-time secret returned by the UI
 save request. Always close the receiver in `finally`.
 
+The signing-secret notification can cover **Discard** after the endpoint save.
+The failed browser action log showed the visible toast title and content intercepting
+the button's pointer events. The accessibility snapshot names this notification
+as the dialog **Store the event signing secret now. It is not shown again.**, with
+a **Close toast** button, matching the shared design-system toast source. After
+checking the newly minted secret panel, scope to that named dialog, activate
+**Close toast** with `press("Enter")`, and assert the dialog is absent before
+editing and discarding the endpoint draft. This follows the real dismissal
+control without a fixed delay or forced click. The action log does not establish why
+the notification remained visible; do not infer a product defect from this
+pointer interception alone. Keep the reload, one-time secret and signed-delivery
+assertions after dismissal.
+
+After this repair, the signed-webhook scenario passed three consecutive Chromium
+runs with one worker in 25.7 seconds, then all eight integration scenarios passed
+with two workers in 17.0 seconds on 2026-10-05. Both checks reused the owned local
+preview under Node 24 and used zero retries. These focused checks validate the
+recipe; use the full-suite comparison for overall performance claims.
+
 Send History is a read-only delivered feature: its status filters are tested.
 Single and bulk deletion apply to the email template list, which exposes those
 actions. Do not describe API-seeded sends as coverage of an absent send-creation

@@ -159,3 +159,54 @@ pnpm test-storybook src/components/common/datatable/AnchorDataTable.stories.tsx 
 
 Then run the full Storybook suite and inspect the cloud frontend check. A green
 result is required before treating this synchronization repair as verified.
+
+## Storybook read a schema error before it rendered
+
+After the bulk-dialog repair, cloud CI passed that story but failed
+`LicenseSchemaFormDialog > Unreadable Source Blocks Submit`. Immediately after
+pasting invalid DSL, `getByText` threw before the error was in the DOM. The
+parser has no network dependency or debounce. The captured DOM does not prove
+whether focus or React scheduling caused that specific run, so avoid claiming
+more than the observed missing error at assertion time.
+
+Use `await screen.findByText` for the exact error, then retain the original
+error-presence and disabled-submit assertions. A genuinely missing error still
+fails within the query timeout. Verify the focused story three times without
+retries, then run the complete Storybook suite and cloud frontend check:
+
+```sh
+pnpm test-storybook src/components/license/LicenseSchemaFormDialog.stories.tsx \
+  -t "Unreadable Source Blocks Submit" --retry 0
+```
+
+## Managed tests passed but left the backend running
+
+The first fresh managed run passed all 56 cases, then exited while its owned
+API, three containers and `runtime.json` remained. An explicit SIGTERM startup
+interruption had already cleaned up correctly. The missing piece was the
+Playwright web-server configuration: its
+[default shutdown force-kills the process group](https://playwright.dev/docs/test-webserver#configuring-a-web-server),
+so the preview's shutdown handler never ran. The detached API and Docker
+services are outside that process group.
+
+Configure `gracefulShutdown: { signal: "SIGTERM", timeout: 30_000 }` so the
+handler can stop the owned API, take down its Compose volumes and remove run
+metadata. The first graceful rerun still left resources: Vite preview installs
+its own SIGTERM handler, closes HTTP and calls `process.exit()` before the
+asynchronous backend cleanup completes. Close the preview through its public
+`server.close()` API at the start of our handler, before awaiting backend work.
+This also unregisters Vite's signal callback. Closing only `httpServer` after
+backend cleanup does not release that handler. The upper bound still
+force-kills a stuck preview. CI runs the
+ownership-scoped cleanup verification even when tests fail:
+
+```sh
+node scripts/e2e-runtime.mjs verify-stopped
+```
+
+That check fails on leftover runtime/startup metadata, a startup lock or Docker
+containers whose project prefix belongs to this worktree. It detected the
+original leftover metadata before cleanup. To recover, use the existing owned
+`stop` command, then repeat the full managed run and cleanup verification. It
+does not stop another worktree's services. Benchmark timings above excluded
+teardown; this configuration repair does not change their scenario assertions.

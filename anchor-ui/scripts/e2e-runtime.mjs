@@ -424,6 +424,35 @@ if (
 			console.log("Stopped this worktree's Anchor E2E runtime.");
 		} else if (command === "status") {
 			console.log(JSON.stringify(await statusRuntime(), null, 2));
+		} else if (command === "verify-stopped") {
+			for (const name of ["runtime.json", "startup.json", "startup.lock"]) {
+				try {
+					await access(join(localDirectory, name));
+				} catch (error) {
+					if (error.code === "ENOENT") continue;
+					throw error;
+				}
+				throw new Error(
+					`Anchor E2E cleanup left ${name}. Run the owned runtime stop command.`,
+				);
+			}
+			const projects = await run("docker", [
+				"ps",
+				"-a",
+				"--filter",
+				"label=com.docker.compose.project",
+				"--format",
+				'{{.Label "com.docker.compose.project"}}',
+			]);
+			if (
+				projects
+					.split("\n")
+					.some((project) => project.startsWith(projectPrefix))
+			)
+				throw new Error(
+					"Anchor E2E cleanup left containers owned by this worktree.",
+				);
+			console.log("Anchor E2E runtime cleanup verified.");
 		} else if (command === "start") {
 			const controller = new AbortController();
 			const cancelStartup = () =>
@@ -463,7 +492,7 @@ if (
 			}
 		} else
 			throw new Error(
-				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | stop | status",
+				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | stop | status | verify-stopped",
 			);
 	} catch (error) {
 		console.error(error.message);

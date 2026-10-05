@@ -54,6 +54,7 @@ export default defineConfig({
 		command: "node scripts/serve-e2e-full.mjs",
 		url: "http://127.0.0.1:3015/__e2e/ready",
 		timeout: 180_000,
+		gracefulShutdown: { signal: "SIGTERM", timeout: 30_000 },
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
 		env: {
 			E2E_EMAIL: "",

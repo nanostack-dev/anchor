@@ -54,6 +54,9 @@ jobs:
         run: pnpm check:e2e
       - name: Test the isolated app
         run: GOCACHE="$(go env GOCACHE)" pnpm test:e2e:app
+      - name: Verify disposable runtime cleanup
+        if: always()
+        run: node scripts/e2e-runtime.mjs verify-stopped
       - name: Upload results and failure screenshots
         if: always()
         uses: actions/upload-artifact@v7.0.0

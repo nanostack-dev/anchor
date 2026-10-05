@@ -17,6 +17,12 @@ async function shutdown() {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	cancellation.abort();
+	if (server) {
+		// Release Vite's own signal handler before awaiting backend cleanup.
+		const closing = server.close();
+		server.httpServer.closeAllConnections();
+		await closing;
+	}
 	if (!runtime && startup) {
 		try {
 			runtime = await startup;
@@ -26,12 +32,6 @@ async function shutdown() {
 	}
 	build?.kill("SIGTERM");
 	if (runtime) await stopRuntime(runtime);
-	if (server)
-		await new Promise((resolve) => {
-			server.httpServer.close(resolve);
-			server.httpServer.closeAllConnections();
-			setTimeout(resolve, 2000).unref();
-		});
 	process.exit(0);
 }
 process.on("SIGINT", shutdown);
@@ -80,20 +80,24 @@ try {
 		plugins: [
 			{
 				name: "e2e-ready",
-				configurePreviewServer(server) {
-					server.middlewares.use("/__e2e/ready", (_request, response) => {
-						response.setHeader("Content-Type", "application/json");
-						response.end(
-							JSON.stringify({
-								runId: runtime.runId,
-								apiURL: runtime.apiURL,
-								fingerprint,
-								runtimeMs,
-								frontendBuildMs,
-								startupMs,
-							}),
-						);
-					});
+				configurePreviewServer(previewServer) {
+					server = previewServer;
+					previewServer.middlewares.use(
+						"/__e2e/ready",
+						(_request, response) => {
+							response.setHeader("Content-Type", "application/json");
+							response.end(
+								JSON.stringify({
+									runId: runtime.runId,
+									apiURL: runtime.apiURL,
+									fingerprint,
+									runtimeMs,
+									frontendBuildMs,
+									startupMs,
+								}),
+							);
+						},
+					);
 				},
 			},
 		],

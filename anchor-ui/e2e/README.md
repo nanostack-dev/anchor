@@ -25,6 +25,8 @@ The app preview uses `http://127.0.0.1:3015`; Playwright UI uses
 runtime. After an interrupted process, `node scripts/e2e-runtime.mjs stop`
 cleans up only this worktree's disposable services. The runtime refuses foreign
 processes and records ownership under ignored `e2e/runtime/.local/`.
+After a managed run, `node scripts/e2e-runtime.mjs verify-stopped` checks that
+its metadata, startup lock and containers are gone. PR CI enforces this too.
 
 Run one feature with `pnpm test:e2e:app e2e/features/licensing/schema.e2e.ts`.
 For repeated local iterations, keep `node scripts/serve-e2e-full.mjs` running and
