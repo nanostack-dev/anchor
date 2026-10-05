@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/email"
 )
@@ -31,7 +32,7 @@ type TemplateRepository interface {
 	) (functional.Option[email.Template], error)
 	List(
 		ctx context.Context, tenantID string, productID string, limit int64, offset int64,
-	) ([]email.Template, error)
+	) (search.Result[email.Template], error)
 	Create(
 		ctx context.Context, template email.Template,
 	) (email.Template, error)
@@ -134,7 +135,7 @@ type SendRecordRepository interface {
 	) (functional.Option[email.SendRecord], error)
 	List(
 		ctx context.Context, input email.ListSendsInput,
-	) ([]email.SendRecord, error)
+	) (search.Result[email.SendRecord], error)
 	// CountSinceInternal returns the number of sends for a product since the
 	// given timestamp. Used by the rate limiter; bypasses tenant scoping
 	// because the rate-limit decision is keyed on (product_id, since).

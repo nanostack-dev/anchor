@@ -7,6 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -165,7 +166,7 @@ func (r *sendRecordRepositoryImpl) FindByID(
 
 func (r *sendRecordRepositoryImpl) List(
 	ctx context.Context, input email.ListSendsInput,
-) ([]email.SendRecord, error) {
+) (search.Result[email.SendRecord], error) {
 	limit := input.Limit
 	if limit <= 0 {
 		limit = 50
@@ -179,12 +180,17 @@ func (r *sendRecordRepositoryImpl) List(
 		where = where.AND(table.EmailSendRecords.Status.EQ(postgres.String(string(*input.Status))))
 	}
 
+	countStmt := postgres.SELECT(postgres.COUNT(postgres.STAR).AS("count_result.count")).
+		FROM(table.EmailSendRecords).WHERE(where)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
+	if err != nil {
+		return search.Result[email.SendRecord]{}, err
+	}
 	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
-		FROM(table.EmailSendRecords).
-		WHERE(where).
-		ORDER_BY(table.EmailSendRecords.CreatedAt.DESC()).
-		LIMIT(limit).OFFSET(input.Offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+		FROM(table.EmailSendRecords).WHERE(where).
+		ORDER_BY(table.EmailSendRecords.CreatedAt.DESC()).LIMIT(limit).OFFSET(input.Offset)
+	items, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	return search.Result[email.SendRecord]{Items: items, Total: total, Count: len(items)}, err
 }
 
 func (r *sendRecordRepositoryImpl) CountSince(
