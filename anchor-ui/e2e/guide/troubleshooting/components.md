@@ -88,3 +88,31 @@ pnpm test-storybook src/components/license/LicenseSchemaFormDialog.stories.tsx \
   -t "Unreadable Source Blocks Submit" --retry 0
 ```
 
+## Closing popups in last-page deletion and mobile navigation
+
+A later stack-layer run passed 188 of 190 stories but failed the accessibility
+`afterEach` for `BulkDeleteReturnsFromEmptyLastPage` (`button-name`) and
+`MobileMenuNavigationAndFocus` (`aria-hidden-focus`). Their play assertions had
+completed. The first reported an unnamed closing bulk action; the second
+reported two inside Base UI focus guards, without identifying which popup owned
+them. A green earlier run did not establish reliable teardown.
+
+The last-page story observed pagination and selection updates, which happen
+before bulk execution clears its pending state and closes the portal. Capture
+the actual alertdialog before deleting, retain both assertions, then await that
+node's removal. The separate sequential/busy story keeps its existing repair.
+
+The mobile story queried the accessible Sidebar role after Escape. Such queries
+exclude inaccessible nodes and can miss a closing portal still in the document.
+It also finished after product selection without awaiting menu teardown. Wait
+for the captured Sidebar node to unmount, preserve route and restored-focus
+assertions, scope the Anchor option to the captured product menu, and await that
+menu's removal too. These default portals use `keepMounted=false`; Base UI's
+focus manager follows the mounted lifecycle through closing transitions.
+
+These changes complete each story's lifecycle before the unchanged accessibility
+hook. They do not alter the application's popup labels or focus-guard source.
+Both focused cases passed three consecutive Node 24/Chromium runs with zero
+retries, followed by the complete 185-story foundation suite. Run the full
+190-story top layer and repeat its cloud check after restacking; retain every
+navigation, focus, paging, selection and accessibility assertion.
