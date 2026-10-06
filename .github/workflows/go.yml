@@ -170,7 +170,7 @@ jobs:
       image_description: Multi-tenant service platform
       docker_context: .
       dockerfile_path: ./Dockerfile
-      build_platforms: linux/amd64
+      build_platforms: linux/amd64,linux/arm64
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
