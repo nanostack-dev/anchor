@@ -6,6 +6,7 @@ import type {
 import { createAPI } from "../../support/api";
 import { expect, test, unique } from "../../support/fixtures";
 import { runtime } from "../../support/runtime";
+import { revealAccountButton } from "../../support/ui";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ mode: "parallel" });
@@ -101,7 +102,7 @@ test(
 			await expect(
 				page.getByRole("heading", { name: "Products", exact: true }),
 			).toBeVisible();
-			await page.getByRole("button").filter({ hasText: account.email }).click();
+			await (await revealAccountButton(page, account.email)).click();
 			const logout = page.waitForResponse(
 				(r) => new URL(r.url()).pathname === "/v1/auth/logout",
 			);
@@ -132,7 +133,7 @@ test(
 		await page.getByRole("button", { name: "Login", exact: true }).click();
 		await expect(page).toHaveURL("http://127.0.0.1:3015/");
 		await expect(
-			page.getByRole("link", { name: "Products", exact: true }),
+			page.getByRole("heading", { name: "Dashboard", exact: true }),
 		).toBeVisible();
 	},
 );

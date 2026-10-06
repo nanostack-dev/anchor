@@ -156,8 +156,12 @@ The suite covers the route families and primary lifecycles above. Ancillary
 dashboard/provider-card links still lack individual click assertions. Do not
 count their route annotation as proof that these particular controls passed.
 
-Responsive/mobile layouts and Firefox/WebKit are outside this desktop Chromium
-configuration. Numeric and boolean email examples, nested object fields and a list
+The ordinary complete gate uses desktop Chromium. The separate
+`playwright.review.config.ts` validates selected changed-feature scenarios on
+mobile, tablet and desktop with screenshots/video; each PR records its exact
+selection and results. This is device emulation, and does not imply all existing
+scenarios have passed on every device or that Firefox/WebKit or real hardware
+were tested. Numeric and boolean email examples, nested object fields and a list
 of objects are covered, but arbitrary recursive nesting and every schema/rule
 combination are not enumerated in browser scenarios. The suite observes genuine
 validation failures, rejected credentials, missing records and partial migration

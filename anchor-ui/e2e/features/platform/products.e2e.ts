@@ -1,12 +1,13 @@
 import type { ProductResponse } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { bulkDelete, searchTable, selectProduct } from "../../support/ui";
 
 // Covers: PRODUCTS, PRODUCT_EDIT
 test(
 	"product create validation, cancellation, edit, protection and persistence",
 	{ tag: "@products" },
-	async ({ page, world }) => {
+	async ({ page, world }, testInfo) => {
 		const name = world.name("browser-create");
 		let created: ProductResponse | undefined;
 		try {
@@ -32,6 +33,8 @@ test(
 			await dialog
 				.getByLabel("Description", { exact: true })
 				.fill("Created in the browser");
+			await expect(dialog.getByLabel("Product Name")).toHaveValue(name);
+			await captureReviewCheckpoint(page, testInfo, "create-product-ready");
 			const response = page.waitForResponse(
 				(r) =>
 					new URL(r.url()).pathname === "/v1/products" &&
@@ -89,6 +92,7 @@ test(
 			await expect(
 				page.getByRole("switch", { name: "Protected product" }),
 			).toBeChecked();
+			await captureReviewCheckpoint(page, testInfo, "saved-product-config");
 			await page.getByRole("switch", { name: "Protected product" }).uncheck();
 			await page
 				.getByRole("button", { name: "Update Product", exact: true })

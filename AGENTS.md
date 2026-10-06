@@ -51,6 +51,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 ## Pull requests
 
+- Completing a feature or behavior change: follow `.claude/skills/feature-review/SKILL.md` for independent Playwright validation on mobile, tablet and desktop, screenshot review, test maintenance and a readable PR video.
 - Follow `.github/pull_request_template.md`. `gh pr create` starts from it. Keep every section, and fill each one in.
 - The preview checkbox controls the preview environment. Select it to deploy a preview for the pull request. Clear it to destroy the preview.
 - Never delete the `<!-- preview-deploy -->` marker on that line. CI finds the checkbox with the marker, not with the label text.

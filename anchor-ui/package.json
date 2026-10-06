@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --config playwright.smoke.config.ts",
     "test:e2e:app": "playwright test --config playwright.app.config.ts",
+    "test:e2e:review": "playwright test --config playwright.review.config.ts",
     "test:e2e:plan": "node scripts/e2e-impact.mjs",
     "test:e2e:affected": "node scripts/run-e2e-affected.mjs",
     "test:e2e:verify": "node scripts/run-e2e-affected.mjs --complete",
