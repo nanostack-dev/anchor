@@ -1,5 +1,10 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import {
+	checkCoverageDocument,
+	discoverCoverage,
+	updateCoverageDocument,
+} from "./e2e-coverage.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 function files(directory) {
@@ -70,6 +75,16 @@ else {
 		errors.push(
 			"Route map changed: run pnpm check:e2e --write and review the coverage matrix",
 		);
+}
+try {
+	const guidePath = path.join(root, "e2e/guide/coverage.md");
+	const summary = await discoverCoverage();
+	const document = readFileSync(guidePath, "utf8");
+	if (process.argv.includes("--write"))
+		writeFileSync(guidePath, updateCoverageDocument(document, summary));
+	else checkCoverageDocument(document, summary);
+} catch (error) {
+	errors.push(error.message);
 }
 if (errors.length) {
 	console.error(errors.join("\n"));

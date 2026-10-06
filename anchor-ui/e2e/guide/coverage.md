@@ -1,10 +1,39 @@
 # Anchor browser coverage inventory
 
-The managed app suite declares **57 scenarios in 14 spec files** for the
-**39 keys in `src/routes/routePaths.ts`**, plus the three organization-license
-child pages registered separately. It drives the real local Anchor browser and
-API in desktop Chromium. This is a behavior inventory, not a claim of 100% code,
+The managed app suite covers the keys in `src/routes/routePaths.ts`, plus the
+organization-license child pages registered separately. It drives the real local
+Anchor browser and API in desktop Chromium. This is a behavior inventory, not a claim of 100% code,
 branch, device, browser or API coverage.
+
+<!-- e2e-coverage:start -->
+Generated from `playwright.app.config.ts` discovery. Refresh with
+`pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
+
+The managed app suite declares **57 scenarios in 14 spec files**.
+
+| Spec | Scenarios |
+| --- | ---: |
+| [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
+| [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 5 |
+| [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
+| [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
+| [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
+| [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
+| [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 4 |
+| [licensing/migrations.e2e.ts](../features/licensing/migrations.e2e.ts) | 3 |
+| [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 6 |
+| [licensing/schema.e2e.ts](../features/licensing/schema.e2e.ts) | 4 |
+| [licensing/templates.e2e.ts](../features/licensing/templates.e2e.ts) | 4 |
+| [platform/administration.e2e.ts](../features/platform/administration.e2e.ts) | 3 |
+| [platform/api-keys.e2e.ts](../features/platform/api-keys.e2e.ts) | 4 |
+| [platform/products.e2e.ts](../features/platform/products.e2e.ts) | 3 |
+<!-- e2e-coverage:end -->
+
+Count refresh and checks use Playwright's full JSON discovery inventory without
+starting Docker, the app or a browser. The generated block counts declared
+scenarios; it does not establish that they passed. Maintain the behavior and
+boundary descriptions below when changing a scenario. Historical run counts and
+timings stay in [performance](performance.md).
 
 The tables describe assertions present in the scenarios. A route annotation
 detects inventory drift; it does not prove that its controls were exercised or
@@ -26,7 +55,7 @@ it never uses saved development credentials.
 Specs: [bootstrap](../features/auth/bootstrap.e2e.ts),
 [session](../features/auth/session.e2e.ts),
 [administration](../features/platform/administration.e2e.ts),
-[products](../features/platform/products.e2e.ts). These declare 11 scenarios.
+[products](../features/platform/products.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
@@ -46,8 +75,7 @@ Specs: [bootstrap](../features/auth/bootstrap.e2e.ts),
 Specs: [management keys](../features/platform/api-keys.e2e.ts),
 [permissions](../features/access/permissions.e2e.ts),
 [roles](../features/access/roles.e2e.ts),
-[tenancy](../features/access/tenancy.e2e.ts). Management keys declare four
-scenarios; access declares sixteen across this section and the next.
+[tenancy](../features/access/tenancy.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
@@ -80,7 +108,7 @@ coverage of a browser create/assign flow.
 Specs: [schema](../features/licensing/schema.e2e.ts),
 [templates](../features/licensing/templates.e2e.ts),
 [organization licenses](../features/licensing/organizations.e2e.ts),
-[migrations](../features/licensing/migrations.e2e.ts). These declare 17 scenarios.
+[migrations](../features/licensing/migrations.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
@@ -101,7 +129,7 @@ The detail route registers these child pages outside `ROUTE_PATHS`:
 
 ## Provider integrations and events
 
-Spec: [integrations](../features/integrations/integrations.e2e.ts), four scenarios.
+Spec: [integrations](../features/integrations/integrations.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
@@ -114,7 +142,7 @@ Spec: [integrations](../features/integrations/integrations.e2e.ts), four scenari
 
 ## Email
 
-Spec: [email](../features/integrations/email.e2e.ts), five scenarios.
+Spec: [email](../features/integrations/email.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |

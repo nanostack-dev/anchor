@@ -3,8 +3,7 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { frontendFingerprint } from "../e2e/support/fingerprint.ts";
-import { statusRuntime } from "./e2e-runtime.mjs";
+import { parseUIOptions, uiHelp, uiLaunchPlan } from "./e2e-ui-options.mjs";
 
 const directory = path.resolve(import.meta.dirname, "..");
 const frontendURL = "http://127.0.0.1:3015";
@@ -64,12 +63,6 @@ function shutdown() {
 	return cleanup;
 }
 
-for (const signal of ["SIGINT", "SIGTERM"])
-	process.on(signal, () => {
-		cancellation.abort(new Error("Playwright UI interrupted."));
-		void shutdown();
-	});
-
 async function readReady() {
 	let response;
 	try {
@@ -99,7 +92,7 @@ async function readReady() {
 	}
 }
 
-async function verifyPreview(ready) {
+async function verifyPreview(ready, statusRuntime, frontendFingerprint) {
 	if (!ready) throw new Error("The owned preview is no longer ready.");
 	const local = await statusRuntime();
 	if (
@@ -127,9 +120,16 @@ async function assertUIPortAvailable() {
 	);
 }
 
-try {
-	if (process.argv.length > 2)
-		throw new Error("Usage: pnpm test:e2e:ui (select tests in the UI).");
+async function openUI(plan) {
+	const [{ frontendFingerprint }, { statusRuntime }] = await Promise.all([
+		import("../e2e/support/fingerprint.ts"),
+		import("./e2e-runtime.mjs"),
+	]);
+	for (const signal of ["SIGINT", "SIGTERM"])
+		process.on(signal, () => {
+			cancellation.abort(new Error("Playwright UI interrupted."));
+			void shutdown();
+		});
 	await assertUIPortAvailable();
 	let ready = await readReady();
 	if (!ready) {
@@ -150,39 +150,40 @@ try {
 			if (!ready) await delay(200, undefined, { signal: cancellation.signal });
 		}
 	}
-	await verifyPreview(ready);
+	await verifyPreview(ready, statusRuntime, frontendFingerprint);
 	cancellation.signal.throwIfAborted();
 	const playwright = path.join(
 		path.dirname(fileURLToPath(import.meta.resolve("playwright/package.json"))),
 		"cli.js",
 	);
-	const reuseEnvironment = { ...environment, E2E_REUSE_SERVER: "1" };
-	ui = launch(
-		playwright,
-		["test", "--config", "playwright.app.config.ts", "--project=bootstrap"],
-		reuseEnvironment,
-	);
+	ui = launch(playwright, plan.bootstrap.args, {
+		...environment,
+		...plan.bootstrap.environment,
+	});
 	const bootstrap = await waitForUI();
 	if (bootstrap.error) throw bootstrap.error;
 	if (bootstrap.code !== 0)
 		throw new Error("Owned platform bootstrap failed; UI was not opened.");
-	await verifyPreview(await readReady());
+	await verifyPreview(await readReady(), statusRuntime, frontendFingerprint);
 	cancellation.signal.throwIfAborted();
-	ui = launch(
-		playwright,
-		[
-			"test",
-			"--config",
-			"playwright.app.config.ts",
-			"--ui",
-			"--ui-host=127.0.0.1",
-			"--ui-port=9351",
-		],
-		reuseEnvironment,
-	);
+	ui = launch(playwright, plan.ui.args, {
+		...environment,
+		...plan.ui.environment,
+	});
 	const result = await waitForUI();
 	if (result.error) throw result.error;
 	process.exitCode = cancellation.signal.aborted ? 0 : (result.code ?? 1);
+}
+
+try {
+	const options = parseUIOptions(process.argv.slice(2));
+	if (options.action === "help") console.log(uiHelp);
+	else {
+		const plan = uiLaunchPlan(options);
+		if (options.action === "print-config")
+			console.log(JSON.stringify({ directory, ...plan }, null, 2));
+		else await openUI(plan);
+	}
 } catch (error) {
 	if (!cancellation.signal.aborted) {
 		console.error(error.message);
