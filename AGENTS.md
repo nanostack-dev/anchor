@@ -62,6 +62,14 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 ## Agent skills
 
+### Agent workflow
+
+Before implementing a feature or behavioral fix, read and follow the shared
+[agent-workflow skill](https://raw.githubusercontent.com/nanostack-dev/skills/main/agent-workflow/SKILL.md)
+for affected-area local E2E before pushing, complete CI verification, and the
+documented cloud exception. Use this repository's guides and scripts for setup
+and scenario selection.
+
 ### Issue tracker
 
 GitHub Issues on `nanostack-dev/anchor`, driven through the `gh` CLI. See `docs/agents/issue-tracker.md`.

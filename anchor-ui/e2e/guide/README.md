@@ -28,9 +28,14 @@ fixtures and evidence; keep verified Anchor troubleshooting in this guide.
    [Troubleshooting](troubleshooting.md) records reproduced causes and verified
    repairs. Product failures keep a failing assertion until fixed or explicitly
    reported; skipped/optional assertions never count as verified coverage.
-5. Run the full suite, update the coverage matrix, then compare repeated timings
-   using [performance.md](performance.md). New tests own resources even under
-   shuffled/concurrent runs. Keep the scenario set identical during tuning.
+5. Run the affected local selection, including new or modified scenarios and
+   existing regressions; broaden it when shared dependencies warrant it. Update
+   the coverage matrix and require the complete CI gate before review readiness.
+   For performance tuning, compare repeated timings using
+   [performance.md](performance.md) with an identical scenario set. New tests own
+   resources even under shuffled/concurrent runs. Follow the shared
+   [agent workflow](../../../AGENTS.md#agent-workflow) for the documented cloud
+   exception when local runtime access is unavailable.
 6. Update this guide when a convention changes; record new failure recipes with
    the failing scenario, cause, repair and verification command. Use one source
    of truth for operational commands in `package.json` and configuration in the
@@ -73,5 +78,6 @@ API and browser fixtures own unique resources even when agents share the local
 runtime. Only the coordinator starts, rebuilds or stops that runtime. Finish all
 source/test edits and close other test runners before benchmarking; the benchmark
 rejects changed scenarios/helpers/configuration. Integration of a domain requires
-its passing narrow run, the whole suite and the updated coverage/troubleshooting
-evidence. A route annotation alone is not proof that its controls were exercised.
+its passing affected local selection, the complete CI gate and the updated
+coverage/troubleshooting evidence. A route annotation alone is not proof that
+its controls were exercised.
