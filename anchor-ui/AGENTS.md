@@ -28,7 +28,7 @@ leave `src/client/` stale.
 
 Writing, extending, diagnosing, tuning or showing browser tests: read `e2e/guide/README.md` first. Reviewing browser changes or asynchronously populated forms: read `e2e/guide/review.md`.
 
-Completing a feature or behavior change: follow `../.claude/skills/feature-review/SKILL.md`; mobile, tablet and desktop tests, reviewed screenshots and an attached readable PR video are completion requirements.
+Before implementing a browser-visible feature or behavior change, read `../.claude/skills/anchor-feature-review/SKILL.md`. It loads the shared Nanostack `feature-review` skill and Anchor bindings for responsive tests, screenshot inspection, independent validation and readable PR videos.
 
 anchor-ui is an **app**: Storybook component tests for reusable UI + Playwright e2e per feature (same pattern as `echopoint/apps/frontend/e2e/`). Run the mutating e2e suite against a local backend, never prod.
 

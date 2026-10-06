@@ -53,5 +53,5 @@ odd dimensions. Check configured emulation plus PNG dimensions and meaningful
 UI content before diagnosing a desktop-context fallback from video metadata.
 
 Inspect the actual file with `ffprobe`; retain its native speed when converting
-to MP4. The [feature review skill](../../../../.claude/skills/feature-review/SKILL.md)
-owns recording, playback and attachment instructions.
+to MP4. [Anchor feature review](../../../../.claude/skills/anchor-feature-review/SKILL.md)
+binds the shared recording, playback and attachment procedure to this setup.

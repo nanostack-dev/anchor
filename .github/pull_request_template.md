@@ -12,7 +12,8 @@
 
 ## Feature review
 
-<!-- For feature/behavior changes, follow .claude/skills/feature-review/SKILL.md.
+<!-- For browser-visible changes, follow .claude/skills/anchor-feature-review/SKILL.md
+to load the shared Nanostack feature-review skill and Anchor project bindings.
 Give the tested commit, scenario commands/results for mobile/tablet/desktop and
 independent agent verdict. Attach reviewed screenshots (before/after for rendered
 UI changes) and readable videos using gh pr create/edit --attach.

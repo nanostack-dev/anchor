@@ -56,7 +56,7 @@ authentication only where shared account state cannot invalidate another test.
 Actions/assertions wait for specific outcomes. Timeouts are bounded failure
 budgets; fixed sleeps and whole-page network-idle waits add cost and uncertainty.
 Video is off in the ordinary suite. The focused
-[feature review](../../../.claude/skills/feature-review/SKILL.md) run records
+[feature review](../../../.claude/skills/anchor-feature-review/SKILL.md) run records
 changed journeys on three device profiles with deliberate presentation pacing;
 exclude those runs from performance comparisons. Normal headless tracing is off; `E2E_TRACE=1` enables local
 failure diagnostics and records every test, so exclude it from comparisons.
