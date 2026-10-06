@@ -7,6 +7,103 @@ import { expect, test } from "../../support/fixtures";
 import { selectProduct } from "../../support/ui";
 import { configureSMTP } from "./helpers";
 
+// Covers: EMAIL_TEMPLATE_BUILDER
+test("email examples wait for saved data before creation or saving", async ({
+	page,
+	world,
+}) => {
+	const template = await world.api.post<EmailTemplateResponse>(
+		`${world.productPath}/email/templates`,
+		{
+			slug: world.name("loading-examples"),
+			name: "Examples loading regression",
+			subject: "Hello",
+			body_html: "<p>{{ .name }}</p>",
+			variables: [{ name: "name", type: "STRING" }],
+		},
+	);
+	const examplesPath = `${world.productPath}/email/templates/${template.id}/examples`;
+	await world.api.put(examplesPath, {
+		examples: [
+			{
+				id: "saved-example",
+				name: "Saved example",
+				variables: { name: "Existing value" },
+			},
+		],
+	});
+	let releaseResponse!: () => void;
+	let responseHeld!: () => void;
+	const release = new Promise<void>((resolve) => {
+		releaseResponse = resolve;
+	});
+	const held = new Promise<void>((resolve) => {
+		responseHeld = resolve;
+	});
+	await page.route(`**${examplesPath}`, async (route) => {
+		if (route.request().method() !== "GET") {
+			await route.continue();
+			return;
+		}
+		const response = await route.fetch();
+		responseHeld();
+		await release;
+		await route.fulfill({ response });
+	});
+	try {
+		await selectProduct(page, world.product);
+		await page.goto(`/products/email/templates/${template.id}`);
+		await page.getByRole("tab", { name: "Examples", exact: true }).click();
+		await held;
+		const examples = page.getByRole("tabpanel", {
+			name: "Examples",
+			exact: true,
+		});
+		await expect(
+			examples.getByRole("button", { name: "New Example", exact: true }),
+		).toBeDisabled();
+		await expect(
+			examples.getByRole("button", { name: "Save Examples", exact: true }),
+		).toBeDisabled();
+		await expect(
+			examples.getByText("Loading examples…", { exact: true }),
+		).toBeVisible();
+		releaseResponse();
+		await expect(
+			examples.getByPlaceholder("Example name", { exact: true }),
+		).toHaveValue("Saved example");
+		await expect(
+			examples.getByPlaceholder("value for .name", { exact: true }),
+		).toHaveValue("Existing value");
+		await examples
+			.getByRole("button", { name: "New Example", exact: true })
+			.click();
+		await examples
+			.getByPlaceholder("Example name", { exact: true })
+			.fill("New example");
+		await examples
+			.getByPlaceholder("value for .name", { exact: true })
+			.fill("New value");
+		await examples
+			.getByRole("button", { name: "Save Examples", exact: true })
+			.click();
+		await expect
+			.poll(async () =>
+				(
+					await world.api.get<{
+						examples: { name: string; variables: object }[];
+					}>(examplesPath)
+				).examples.map(({ name, variables }) => ({ name, variables })),
+			)
+			.toEqual([
+				{ name: "Saved example", variables: { name: "Existing value" } },
+				{ name: "New example", variables: { name: "New value" } },
+			]);
+	} finally {
+		releaseResponse();
+	}
+});
+
 // Covers: EMAIL_TEMPLATES, EMAIL_TEMPLATE_BUILDER, EMAIL_SENDS
 test("email builder saves content, variables and examples, then publishes and sends through SMTP", async ({
 	page,
