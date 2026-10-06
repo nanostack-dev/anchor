@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, rmdirSync } from "node:fs";
 import path from "node:path";
-import { test as base, expect } from "playwright/test";
+import { type Page, test as base, expect } from "playwright/test";
 import { request } from "playwright/test";
 import type {
 	AuthTokenResponse,
@@ -14,6 +14,7 @@ import type {
 import { AnchorAPI } from "./api";
 import { createAPI } from "./api";
 import { frontendFingerprint } from "./fingerprint";
+import { captureReviewCheckpoint } from "./review";
 import { owner, runtime } from "./runtime";
 import { login } from "./ui";
 
@@ -37,7 +38,10 @@ export interface World {
 }
 export const unique = (prefix: string) =>
 	`${prefix}-${randomUUID().slice(0, 8)}`;
-export const test = base.extend<{ world: World }, { session: Session }>({
+export const test = base.extend<
+	{ world: World; guestPage: Page },
+	{ session: Session }
+>({
 	session: [
 		async ({ browser }, use, workerInfo) => {
 			const local = runtime();
@@ -164,6 +168,88 @@ export const test = base.extend<{ world: World }, { session: Session }>({
 		{ scope: "worker", timeout: 60_000 },
 	],
 	storageState: async ({ session }, use) => use(session.storageState),
+	guestPage: async (
+		{
+			browser,
+			contextOptions,
+			acceptDownloads,
+			bypassCSP,
+			clientCertificates,
+			colorScheme,
+			deviceScaleFactor,
+			extraHTTPHeaders,
+			geolocation,
+			hasTouch,
+			httpCredentials,
+			ignoreHTTPSErrors,
+			isMobile,
+			javaScriptEnabled,
+			locale,
+			offline,
+			permissions,
+			proxy,
+			viewport,
+			timezoneId,
+			userAgent,
+			baseURL,
+			serviceWorkers,
+			actionTimeout,
+			navigationTimeout,
+		},
+		use,
+		testInfo,
+	) => {
+		const review = testInfo.project.metadata.reviewEvidence === true;
+		if (review && !viewport)
+			throw new Error("Guest review recording requires a configured viewport");
+		const context = await browser.newContext({
+			...contextOptions,
+			acceptDownloads,
+			bypassCSP,
+			clientCertificates,
+			colorScheme,
+			deviceScaleFactor,
+			extraHTTPHeaders,
+			geolocation,
+			hasTouch,
+			httpCredentials,
+			ignoreHTTPSErrors,
+			isMobile,
+			javaScriptEnabled,
+			locale,
+			offline,
+			permissions,
+			proxy,
+			viewport,
+			timezoneId,
+			userAgent,
+			baseURL,
+			serviceWorkers,
+			storageState: { cookies: [], origins: [] },
+			recordVideo:
+				review && viewport
+					? { dir: testInfo.outputPath("guest-video"), size: viewport }
+					: undefined,
+		});
+		context.setDefaultTimeout(actionTimeout);
+		context.setDefaultNavigationTimeout(navigationTimeout);
+		let video: ReturnType<Page["video"]> = null;
+		try {
+			const page = await context.newPage();
+			video = page.video();
+			const errors: string[] = [];
+			page.on("pageerror", (error) => errors.push(error.message));
+			await use(page);
+			expect(errors, "uncaught guest application errors").toEqual([]);
+		} finally {
+			await context.close();
+			if (video)
+				await testInfo.attach("guest-video", {
+					path: await video.path(),
+					contentType: "video/webm",
+				});
+		}
+	},
 	world: async ({ session }, use) => {
 		const product = await session.api.post<ProductResponse>("/v1/products", {
 			name: unique("e2e-product"),
@@ -229,11 +315,13 @@ export const test = base.extend<{ world: World }, { session: Session }>({
 			}
 		}
 	},
-	page: async ({ page }, use) => {
+	page: async ({ page }, use, testInfo) => {
 		const errors: string[] = [];
 		page.on("pageerror", (error) => errors.push(error.message));
 		await use(page);
 		expect(errors, "uncaught application errors").toEqual([]);
+		if (testInfo.status === "passed")
+			await captureReviewCheckpoint(page, testInfo, "final-state");
 	},
 });
 export { expect };

@@ -26,8 +26,9 @@ test(
 			.getByLabel("Confirm Password", { exact: true })
 			.fill(account.password);
 		await page.getByRole("button", { name: "Launch Anchor" }).click();
+		await expect(page).toHaveURL("http://127.0.0.1:3015/");
 		await expect(
-			page.getByRole("link", { name: "Products", exact: true }),
+			page.getByRole("heading", { name: "Dashboard", exact: true }),
 		).toBeVisible();
 		const initialized = await request.get(`${local.apiURL}/health`);
 		expect((await initialized.json()).tenant_initialized).toBe(true);

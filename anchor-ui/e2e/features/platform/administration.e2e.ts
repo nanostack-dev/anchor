@@ -5,22 +5,19 @@ import type {
 } from "../../../src/client";
 import { createAPI } from "../../support/api";
 import { expect, test, unique } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { owner, runtime } from "../../support/runtime";
-import { bulkDelete, searchTable } from "../../support/ui";
+import { bulkDelete, revealAccountButton, searchTable } from "../../support/ui";
 
 // Covers: PLATFORM_INVITATIONS, REGISTER
 test(
 	"create an invitation, copy its link, validate signup and automatically sign in",
 	{ tag: "@platform" },
-	async ({ page, browser, session }) => {
+	async ({ page, guestPage: guest, session }, testInfo) => {
 		const email = `${unique("browser-invite")}@example.test`;
 		let invitation: PlatformInvitationResponse | undefined;
 		let registeredID: string | undefined;
 		const publicAPI = await createAPI(runtime().apiURL);
-		const context = await browser.newContext({
-			baseURL: "http://127.0.0.1:3015",
-			permissions: ["clipboard-read", "clipboard-write"],
-		});
 		try {
 			await page.goto("/platform/users/invitations");
 			await page
@@ -54,7 +51,6 @@ test(
 			expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
 				link,
 			);
-			const guest = await context.newPage();
 			await guest.goto(link);
 			await expect(guest.getByLabel("Email", { exact: true })).toHaveValue(
 				email,
@@ -69,6 +65,7 @@ test(
 			await expect(
 				guest.getByText("Passwords do not match", { exact: true }),
 			).toBeVisible();
+			await captureReviewCheckpoint(guest, testInfo, "signup-validation");
 			await guest
 				.getByLabel("Confirm Password", { exact: true })
 				.fill("LocalA1!invite-password");
@@ -86,13 +83,16 @@ test(
 			const registeredAPI = await createAPI(runtime().apiURL, auth.accessToken);
 			registeredID = (await registeredAPI.get<UserResponse>("/v1/me")).id;
 			await registeredAPI.context.dispose();
+			await expect(guest).toHaveURL("http://127.0.0.1:3015/");
 			await expect(
-				guest.getByRole("link", { name: "Products", exact: true }),
+				guest.getByRole("heading", { name: "Dashboard", exact: true }),
 			).toBeVisible();
 			await guest.reload();
 			await expect(
-				guest.getByRole("button").filter({ hasText: email }),
+				guest.getByRole("heading", { name: "Dashboard", exact: true }),
 			).toBeVisible();
+			await captureReviewCheckpoint(guest, testInfo, "signup-complete");
+			await revealAccountButton(guest, email);
 		} finally {
 			if (registeredID)
 				await session.ownerAPI.remove(`/v1/platform-users/${registeredID}`);
@@ -100,7 +100,6 @@ test(
 				await session.ownerAPI.remove(
 					`/v1/platform-invitations/${invitation.id}`,
 				);
-			await context.close();
 			await publicAPI.context.dispose();
 		}
 	},
