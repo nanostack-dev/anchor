@@ -14,7 +14,7 @@ export default defineConfig({
 	testMatch: "**/*.e2e.ts",
 	fullyParallel: true,
 	workers,
-	forbidOnly: Boolean(process.env.CI),
+	forbidOnly: Boolean(process.env.CI) || process.env.E2E_COMPLETE === "1",
 	retries: 0,
 	timeout: 30_000,
 	expect: { timeout: 8_000 },

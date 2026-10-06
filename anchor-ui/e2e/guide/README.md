@@ -48,6 +48,9 @@ webhook fixtures rather than a live vendor account.
 The [research](research.md) records ten articles and primary-doc checks behind
 these decisions. [Coverage](coverage.md), [performance](performance.md) and
 [troubleshooting](troubleshooting.md) carry evidence and maintenance work.
+The [selective testing guide](selective-testing.md) describes changed-file
+selection, dependency-map maintenance and the complete CI gate. Its
+[research](selective-testing-research.md) records the sources and tradeoffs.
 
 ## Parallel agent ownership
 

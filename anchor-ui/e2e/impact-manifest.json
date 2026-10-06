@@ -1,0 +1,508 @@
+{
+	"version": 1,
+	"domains": {
+		"auth": [
+			"anchor-ui/e2e/features/auth/bootstrap.e2e.ts",
+			"anchor-ui/e2e/features/auth/session.e2e.ts"
+		],
+		"platform": [
+			"anchor-ui/e2e/features/platform/administration.e2e.ts",
+			"anchor-ui/e2e/features/platform/api-keys.e2e.ts",
+			"anchor-ui/e2e/features/platform/products.e2e.ts"
+		],
+		"access": [
+			"anchor-ui/e2e/features/access/permissions.e2e.ts",
+			"anchor-ui/e2e/features/access/roles.e2e.ts",
+			"anchor-ui/e2e/features/access/tenancy.e2e.ts"
+		],
+		"licensing": [
+			"anchor-ui/e2e/features/licensing/migrations.e2e.ts",
+			"anchor-ui/e2e/features/licensing/organizations.e2e.ts",
+			"anchor-ui/e2e/features/licensing/schema.e2e.ts",
+			"anchor-ui/e2e/features/licensing/templates.e2e.ts"
+		],
+		"integrations": [
+			"anchor-ui/e2e/features/integrations/email.e2e.ts",
+			"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+		]
+	},
+	"always": [
+		"anchor-ui/e2e/features/auth/bootstrap.e2e.ts",
+		"anchor-ui/e2e/features/auth/session.e2e.ts",
+		"anchor-ui/e2e/features/platform/products.e2e.ts"
+	],
+	"docs": [
+		"README.md",
+		"AGENTS.md",
+		"CLAUDE.md",
+		"CONTEXT.md",
+		"CHANGELOG.md",
+		"anchor-ui/README.md",
+		"anchor-ui/AGENTS.md",
+		"anchor-ui/CLAUDE.md",
+		"anchor-ui/docs/**",
+		"anchor-ui/e2e/README.md",
+		"anchor-ui/e2e/guide/**",
+		"docs/**"
+	],
+	"full": [
+		{
+			"id": "shared-browser-state",
+			"paths": [
+				"anchor-ui/src/context/**",
+				"anchor-ui/src/components/auth/**",
+				"anchor-ui/src/components/layout/**",
+				"anchor-ui/src/components/sidebar/**",
+				"anchor-ui/src/components/common/**",
+				"anchor-ui/src/lib/**",
+				"anchor-ui/src/client/**",
+				"anchor-ui/src/hooks/**",
+				"anchor-ui/src/styles.css",
+				"anchor-ui/src/main.tsx",
+				"anchor-ui/src/App.tsx",
+				"anchor-ui/src/routeTree.gen.ts",
+				"anchor-ui/src/routes/__root.tsx",
+				"anchor-ui/src/routes/routePaths.ts"
+			],
+			"reason": "Session, product context, navigation, shared controls and generated contracts are consumed across every browser domain."
+		},
+		{
+			"id": "shared-runtime-and-tooling",
+			"paths": [
+				"anchor-ui/e2e/support/**",
+				"anchor-ui/e2e/runtime/**",
+				"anchor-ui/e2e/impact-manifest.json",
+				"anchor-ui/scripts/**",
+				"anchor-ui/.storybook/**",
+				".github/**",
+				"anchor-ui/package.json",
+				"package.json",
+				"pnpm-lock.yaml",
+				"pnpm-workspace.yaml",
+				"anchor-ui/index.html",
+				"anchor-ui/vite.config.js",
+				"anchor-ui/vite.config.ts",
+				"anchor-ui/playwright.app.config.ts",
+				"anchor-ui/playwright.config.ts",
+				"anchor-ui/playwright.smoke.config.ts",
+				"anchor-ui/vitest.workspace.ts",
+				"anchor-ui/tsconfig.json",
+				"anchor-ui/tsconfig.node.json",
+				"anchor-ui/biome.json",
+				"anchor-ui/openapi-ts.config.ts"
+			],
+			"reason": "Runtime, selector policy, dependencies, configuration and browser fixture changes invalidate feature isolation."
+		},
+		{
+			"id": "shared-backend-contract-and-infrastructure",
+			"paths": [
+				"apps/anchor/cmd/**",
+				"apps/anchor/migrations/**",
+				"apps/anchor/go.mod",
+				"apps/anchor/go.sum",
+				"apps/anchor/internal/db/**",
+				"apps/anchor/internal/security/**",
+				"apps/anchor/internal/middleware/**",
+				"apps/anchor/internal/tenant/**",
+				"apps/anchor/internal/session/**",
+				"apps/anchor/internal/api/gen.go",
+				"apps/anchor/internal/api/impl.go",
+				"apps/anchor/internal/api/module.go",
+				"apps/anchor/internal/api/api_utils.go",
+				"apps/anchor/internal/api/errors.go",
+				"apps/anchor/internal/api/logout_context.go",
+				"apps/anchor/internal/api/webhook_context.go",
+				"apps/anchor/internal/service/auth_service.go",
+				"apps/anchor/internal/service/jwt_helper.go",
+				"apps/anchor/internal/service/permission_base.go",
+				"apps/anchor/internal/service/permission_service.go",
+				"apps/anchor/internal/service/tenant_service.go",
+				"apps/anchor/internal/service/product_service.go",
+				"apps/anchor/internal/service/config/**",
+				"apps/anchor/internal/domain/auth/**",
+				"apps/anchor/internal/domain/session/**",
+				"apps/anchor/internal/domain/tenant/**",
+				"apps/anchor/internal/repository/user_repository.go",
+				"apps/anchor/internal/repository/tenant_repository.go",
+				"apps/anchor/internal/repository/product_repository.go",
+				"apps/anchor/internal/api/auth_api.go",
+				"apps/anchor/internal/api/tenant_api.go",
+				"apps/anchor/internal/api/product_api.go",
+				"apps/anchor/internal/api/product_api_key_api.go",
+				"apps/anchor/internal/service/product_api_key_service.go",
+				"apps/anchor/internal/repository/product_api_key_repository.go",
+				"apps/anchor/internal/domain/product/apikey/**",
+				"apps/anchor/internal/domain/permission/**"
+			],
+			"reason": "Authentication, tenant/product scope, database schema and shared HTTP contracts can affect every feature."
+		},
+		{
+			"id": "shared-provider-registry",
+			"paths": [
+				"apps/anchor/internal/integration/module.go",
+				"apps/anchor/internal/integration/provider/module.go",
+				"apps/anchor/internal/integration/provider/provider.go",
+				"apps/anchor/internal/integration/provider/registry.go",
+				"apps/anchor/internal/integration/provider/commands.go",
+				"apps/anchor/internal/integration/provider/audit.go"
+			],
+			"reason": "The provider registry/contract is shared infrastructure; provider-local mappings must not narrow a registry change."
+		}
+	],
+	"rules": [
+		{
+			"id": "tests-auth",
+			"paths": ["anchor-ui/e2e/features/auth/**"],
+			"domains": ["auth"],
+			"reason": "Feature-local auth test helpers and fixtures select their owning suite.",
+			"provenance": [
+				"anchor-ui/e2e/features/auth/bootstrap.e2e.ts",
+				"anchor-ui/e2e/features/auth/session.e2e.ts"
+			]
+		},
+		{
+			"id": "tests-platform",
+			"paths": ["anchor-ui/e2e/features/platform/**"],
+			"domains": ["platform"],
+			"reason": "Feature-local platform test helpers and fixtures select their owning suite.",
+			"provenance": [
+				"anchor-ui/e2e/features/platform/administration.e2e.ts",
+				"anchor-ui/e2e/features/platform/api-keys.e2e.ts",
+				"anchor-ui/e2e/features/platform/products.e2e.ts"
+			]
+		},
+		{
+			"id": "tests-access",
+			"paths": ["anchor-ui/e2e/features/access/**"],
+			"domains": ["access"],
+			"reason": "Feature-local access test helpers and fixtures select their owning suite.",
+			"provenance": [
+				"anchor-ui/e2e/features/access/permissions.e2e.ts",
+				"anchor-ui/e2e/features/access/roles.e2e.ts",
+				"anchor-ui/e2e/features/access/tenancy.e2e.ts"
+			]
+		},
+		{
+			"id": "tests-licensing",
+			"paths": ["anchor-ui/e2e/features/licensing/**"],
+			"domains": ["licensing"],
+			"reason": "Feature-local licensing test helpers and fixtures select their owning suite.",
+			"provenance": [
+				"anchor-ui/e2e/features/licensing/migrations.e2e.ts",
+				"anchor-ui/e2e/features/licensing/organizations.e2e.ts",
+				"anchor-ui/e2e/features/licensing/schema.e2e.ts",
+				"anchor-ui/e2e/features/licensing/templates.e2e.ts"
+			]
+		},
+		{
+			"id": "tests-integrations",
+			"paths": ["anchor-ui/e2e/features/integrations/**"],
+			"domains": ["integrations"],
+			"reason": "Feature-local integrations test helpers and fixtures select their owning suite.",
+			"provenance": [
+				"anchor-ui/e2e/features/integrations/email.e2e.ts",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "license-ui",
+			"paths": [
+				"anchor-ui/src/components/license/**",
+				"anchor-ui/src/pages/license-schema.tsx",
+				"anchor-ui/src/pages/license-template.tsx",
+				"anchor-ui/src/pages/license-template.stories.tsx",
+				"anchor-ui/src/pages/license-templates.tsx",
+				"anchor-ui/src/pages/organization-license.tsx",
+				"anchor-ui/src/pages/organization-license-detail.tsx",
+				"anchor-ui/src/pages/organization-license-detail.stories.tsx",
+				"anchor-ui/src/pages/organization-license-values.tsx",
+				"anchor-ui/src/pages/organization-license-usage.tsx",
+				"anchor-ui/src/pages/organization-license-changes.tsx",
+				"anchor-ui/src/routes/products/license-schema.tsx",
+				"anchor-ui/src/routes/products/license-template.tsx",
+				"anchor-ui/src/routes/products/license-templates.tsx",
+				"anchor-ui/src/routes/organizations/organization-license.tsx",
+				"anchor-ui/src/routes/organizations/organization-license.$organizationId.tsx"
+			],
+			"domains": ["licensing", "access"],
+			"reason": "License authoring and organization license views share creation and tenant organization journeys.",
+			"provenance": [
+				"anchor-ui/src/components/organization/OrganizationDatatable.tsx",
+				"anchor-ui/src/pages/organization-license-detail.tsx"
+			]
+		},
+		{
+			"id": "license-backend",
+			"paths": [
+				"apps/anchor/internal/license/**",
+				"apps/anchor/internal/domain/license/**",
+				"apps/anchor/internal/api/license_mappers.go",
+				"apps/anchor/internal/api/license_migration_api.go",
+				"apps/anchor/internal/api/license_schema_api.go",
+				"apps/anchor/internal/api/license_template_api.go",
+				"apps/anchor/internal/api/organization_license_api.go",
+				"apps/anchor/internal/api/organization_license_search_api.go",
+				"apps/anchor/internal/api/usage_api.go",
+				"apps/anchor/internal/mapper/license_schema_mapper.go",
+				"apps/anchor/internal/mapper/license_template_mapper.go"
+			],
+			"domains": ["licensing", "access", "integrations"],
+			"reason": "License service changes affect licensed organization creation, tenancy lists, migration and emitted webhook events.",
+			"provenance": [
+				"apps/anchor/internal/service/organization_service.go",
+				"apps/anchor/internal/license/event_registration.go",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "access-ui",
+			"paths": [
+				"anchor-ui/src/components/organization/**",
+				"anchor-ui/src/components/product/permissions/**",
+				"anchor-ui/src/components/product/roles/**",
+				"anchor-ui/src/components/product/user/**",
+				"anchor-ui/src/components/product/common/steps/**",
+				"anchor-ui/src/pages/app-roles.tsx",
+				"anchor-ui/src/pages/permissions.tsx",
+				"anchor-ui/src/pages/resource-permissions.tsx",
+				"anchor-ui/src/pages/product-resource-permission-detail.tsx",
+				"anchor-ui/src/pages/product-resource-permission-detail.stories.tsx",
+				"anchor-ui/src/pages/product-role-detail.tsx",
+				"anchor-ui/src/pages/product-role-detail.stories.tsx",
+				"anchor-ui/src/pages/product-roles.tsx",
+				"anchor-ui/src/pages/product-users.tsx",
+				"anchor-ui/src/pages/organizations.tsx",
+				"anchor-ui/src/pages/organization-memberships.tsx",
+				"anchor-ui/src/pages/organization-api-keys.tsx",
+				"anchor-ui/src/pages/workspaces.tsx",
+				"anchor-ui/src/pages/workspace-memberships.tsx",
+				"anchor-ui/src/routes/products/permissions.tsx",
+				"anchor-ui/src/routes/products/product-resource-details.tsx",
+				"anchor-ui/src/routes/products/product-resource-permissions.tsx",
+				"anchor-ui/src/routes/products/product-roles-route.tsx",
+				"anchor-ui/src/routes/products/product-users.tsx",
+				"anchor-ui/src/routes/organizations/organization-api-keys.tsx",
+				"anchor-ui/src/routes/organizations/organization-memberships.tsx",
+				"anchor-ui/src/routes/organizations/organizations.tsx",
+				"anchor-ui/src/routes/organizations/workspace-memberships.tsx",
+				"anchor-ui/src/routes/organizations/workspaces.tsx"
+			],
+			"domains": ["access", "licensing"],
+			"reason": "Organization controls include licensed creation. RBAC and product-user pages are exercised alongside tenancy views; backend permission consumers are mapped separately.",
+			"provenance": [
+				"anchor-ui/src/components/organization/OrganizationDatatable.tsx",
+				"anchor-ui/e2e/features/access/tenancy.e2e.ts",
+				"anchor-ui/e2e/features/licensing/organizations.e2e.ts"
+			]
+		},
+		{
+			"id": "access-backend",
+			"paths": [
+				"apps/anchor/internal/domain/organization/**",
+				"apps/anchor/internal/domain/organizationinvitation/**",
+				"apps/anchor/internal/domain/product/role/**",
+				"apps/anchor/internal/domain/product/resource_permission/**",
+				"apps/anchor/internal/domain/product/user/**",
+				"apps/anchor/internal/domain/workspace/**",
+				"apps/anchor/internal/api/organization_api.go",
+				"apps/anchor/internal/api/organization_api_key_api.go",
+				"apps/anchor/internal/api/organization_invitation_api.go",
+				"apps/anchor/internal/api/organization_membership_api.go",
+				"apps/anchor/internal/api/product_permission_api.go",
+				"apps/anchor/internal/api/product_resource_permission_api.go",
+				"apps/anchor/internal/api/product_role_api.go",
+				"apps/anchor/internal/api/workspace_api.go",
+				"apps/anchor/internal/repository/organization_api_key_repository.go",
+				"apps/anchor/internal/repository/organization_membership_repository.go",
+				"apps/anchor/internal/repository/organization_repository.go",
+				"apps/anchor/internal/repository/product_permission_repository.go",
+				"apps/anchor/internal/repository/product_resource_permission_repository.go",
+				"apps/anchor/internal/repository/product_role_repository.go",
+				"apps/anchor/internal/repository/product_user_repository.go",
+				"apps/anchor/internal/repository/workspace_repository.go",
+				"apps/anchor/internal/service/organization_api_key_service.go",
+				"apps/anchor/internal/service/organization_membership_service.go",
+				"apps/anchor/internal/service/organization_service.go",
+				"apps/anchor/internal/service/product_role_service.go",
+				"apps/anchor/internal/service/product_user_service.go",
+				"apps/anchor/internal/service/resource_permission_service.go",
+				"apps/anchor/internal/service/workspace_service.go",
+				"apps/anchor/internal/service/permission_name_helpers.go"
+			],
+			"domains": ["access", "licensing", "integrations", "platform"],
+			"reason": "RBAC and tenancy changes affect licensed organization creation, Clerk product users, key permission consumers and catalog events.",
+			"provenance": [
+				"apps/anchor/internal/service/organization_service.go",
+				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
+				"apps/anchor/internal/service/product_api_key_service.go",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "email-ui",
+			"paths": [
+				"anchor-ui/src/components/email/**",
+				"anchor-ui/src/pages/email-sends.tsx",
+				"anchor-ui/src/pages/email-template-builder.tsx",
+				"anchor-ui/src/pages/email-templates.tsx",
+				"anchor-ui/src/routes/products/email-sends.tsx",
+				"anchor-ui/src/routes/products/email-template-builder.tsx",
+				"anchor-ui/src/routes/products/email-templates.tsx"
+			],
+			"domains": ["integrations"],
+			"reason": "Template editing and send history are covered by the SMTP/email browser lifecycle.",
+			"provenance": ["anchor-ui/e2e/features/integrations/email.e2e.ts"]
+		},
+		{
+			"id": "email-backend",
+			"paths": [
+				"apps/anchor/internal/email/**",
+				"apps/anchor/internal/domain/email/**",
+				"apps/anchor/internal/api/email_api.go",
+				"apps/anchor/internal/api/email_mappers.go",
+				"apps/anchor/internal/mapper/email_send_record_mapper.go",
+				"apps/anchor/internal/mapper/email_template_mapper.go",
+				"apps/anchor/internal/integration/provider/smtp/**"
+			],
+			"domains": ["integrations"],
+			"reason": "Email templates, rendering, send history and the local SMTP provider serve the email lifecycle. Anchor invitation services store invitations without dispatching mail.",
+			"provenance": [
+				"apps/anchor/internal/email/service/service.go",
+				"apps/anchor/internal/integration/provider/smtp/provider.go",
+				"anchor-ui/e2e/features/integrations/email.e2e.ts"
+			]
+		},
+		{
+			"id": "integration-ui",
+			"paths": [
+				"anchor-ui/src/components/integration/**",
+				"anchor-ui/src/pages/integration-clerk.tsx",
+				"anchor-ui/src/pages/integration-smtp.tsx",
+				"anchor-ui/src/pages/platform-integrations.tsx",
+				"anchor-ui/src/routes/platform/$productId.integration-clerk.tsx",
+				"anchor-ui/src/routes/platform/$productId.integration-smtp.tsx",
+				"anchor-ui/src/routes/platform/$productId.integrations.tsx",
+				"anchor-ui/src/routes/platform/integration-clerk.tsx",
+				"anchor-ui/src/routes/platform/integrations.tsx"
+			],
+			"domains": ["integrations", "access"],
+			"reason": "Clerk configuration and integration detail pages include product-user and tenant views.",
+			"provenance": [
+				"anchor-ui/src/components/integration/ClerkIntegration.tsx",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "integration-backend",
+			"paths": [
+				"apps/anchor/internal/domain/integration/**",
+				"apps/anchor/internal/integration/provider/clerk/**",
+				"apps/anchor/internal/api/integration_api.go",
+				"apps/anchor/internal/mapper/integration_audit_log_mapper.go",
+				"apps/anchor/internal/mapper/integration_event_mapper.go",
+				"apps/anchor/internal/mapper/integration_instance_mapper.go",
+				"apps/anchor/internal/repository/integration_audit_log_repository.go",
+				"apps/anchor/internal/repository/integration_event_repository.go",
+				"apps/anchor/internal/repository/integration_instance_repository.go",
+				"apps/anchor/internal/service/integration_service.go",
+				"apps/anchor/internal/service/integration_event_worker.go",
+				"apps/anchor/internal/service/integration_queue.go"
+			],
+			"domains": ["integrations", "access"],
+			"reason": "Clerk processing mutates product users; the integration lifecycle also covers SMTP setup, audit and signed webhook ingestion.",
+			"provenance": [
+				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "invitation-backend",
+			"paths": [
+				"apps/anchor/internal/invitation/**",
+				"apps/anchor/internal/domain/invitation/**",
+				"apps/anchor/internal/service/invitation_service.go"
+			],
+			"domains": ["auth", "platform", "access", "integrations"],
+			"reason": "Platform invitations are consumed by registration; organization invitations are consumed by membership and role assignment and emit catalog events. These services do not dispatch SMTP mail.",
+			"provenance": [
+				"apps/anchor/internal/invitation/service/service.go",
+				"apps/anchor/internal/api/platform_invitation_api.go",
+				"apps/anchor/internal/api/organization_invitation_api.go"
+			]
+		},
+		{
+			"id": "platform-ui",
+			"paths": [
+				"anchor-ui/src/components/platform/**",
+				"anchor-ui/src/components/product/apikey/**",
+				"anchor-ui/src/components/product/ProductCreateDialog.tsx",
+				"anchor-ui/src/components/product/ProductDatatable.tsx",
+				"anchor-ui/src/components/product/ProductDeleteDialog.tsx",
+				"anchor-ui/src/components/product/ProductDeleteDialog.stories.tsx",
+				"anchor-ui/src/components/product/ProductEditForm.tsx",
+				"anchor-ui/src/components/product/ProductEditForm.stories.tsx",
+				"anchor-ui/src/components/product/ProductEventsForm.tsx",
+				"anchor-ui/src/components/product/ProductEventsForm.stories.tsx",
+				"anchor-ui/src/pages/products.tsx",
+				"anchor-ui/src/pages/product-edit.tsx",
+				"anchor-ui/src/pages/product-events.tsx",
+				"anchor-ui/src/pages/product-api-key-form.tsx",
+				"anchor-ui/src/pages/product-api-keys.tsx",
+				"anchor-ui/src/pages/platform-users/**",
+				"anchor-ui/src/pages/settings/**",
+				"anchor-ui/src/routes/products/products.tsx",
+				"anchor-ui/src/routes/products/$productId.edit.tsx",
+				"anchor-ui/src/routes/products/product-events.tsx",
+				"anchor-ui/src/routes/products/product-api-keys.tsx",
+				"anchor-ui/src/routes/products/product-api-key-edit.tsx",
+				"anchor-ui/src/routes/products/product-api-key-new.tsx",
+				"anchor-ui/src/routes/platform/invitations.tsx",
+				"anchor-ui/src/routes/platform/platform-users.tsx",
+				"anchor-ui/src/routes/settings/**"
+			],
+			"domains": ["platform", "access", "integrations"],
+			"reason": "Platform administration and management keys consume permission selectors, invitations and product webhook configuration.",
+			"provenance": [
+				"anchor-ui/src/components/product/apikey/ProductApiKeyForm.tsx",
+				"anchor-ui/src/components/product/ProductEventsForm.tsx",
+				"anchor-ui/e2e/features/platform/administration.e2e.ts"
+			]
+		},
+		{
+			"id": "platform-backend",
+			"paths": [
+				"apps/anchor/internal/domain/platform/**",
+				"apps/anchor/internal/domain/organization/apikey/**",
+				"apps/anchor/internal/api/platform_invitation_api.go",
+				"apps/anchor/internal/api/platform_user_api.go",
+				"apps/anchor/internal/repository/platform_invitation_repository.go",
+				"apps/anchor/internal/repository/platform_tenant_user_repository.go",
+				"apps/anchor/internal/service/platform_user_service.go"
+			],
+			"domains": ["platform", "access", "integrations"],
+			"reason": "Platform user/key changes affect invitations, permission consumers and product webhook configuration.",
+			"provenance": [
+				"apps/anchor/internal/service/product_api_key_service.go",
+				"apps/anchor/internal/invitation/service/service.go",
+				"anchor-ui/e2e/features/platform/api-keys.e2e.ts"
+			]
+		},
+		{
+			"id": "product-events",
+			"paths": [
+				"apps/anchor/internal/events/**",
+				"apps/anchor/internal/service/event_registration.go",
+				"apps/anchor/internal/service/api_key_event_service.go",
+				"apps/anchor/internal/service/api_key_event_worker.go"
+			],
+			"domains": ["platform", "access", "licensing", "integrations"],
+			"reason": "Catalog emission is consumed by product endpoint configuration, RBAC/tenancy, licensing and Clerk event processing.",
+			"provenance": [
+				"apps/anchor/internal/events/catalog.go",
+				"apps/anchor/internal/license/event_registration.go",
+				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		}
+	]
+}

@@ -247,6 +247,7 @@ export async function stopRuntime(metadata) {
 
 export async function startRuntime({
 	reuse = true,
+	requireFresh = false,
 	frontendURL = "http://127.0.0.1:3015",
 	signal,
 } = {}) {
@@ -283,6 +284,10 @@ export async function startRuntime({
 	try {
 		signal?.throwIfAborted();
 		const pending = await readMetadata(pendingMetadataPath);
+		if (requireFresh && (pending || (await readMetadata())))
+			throw new Error(
+				"An Anchor E2E runtime already exists; fresh verification cannot reuse or stop another owner.",
+			);
 		if (pending) await stopRuntime(pending);
 		const fingerprint = await sourceFingerprint();
 		const existing = await statusRuntime();
