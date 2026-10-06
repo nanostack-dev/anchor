@@ -221,3 +221,13 @@ original leftover metadata before cleanup. To recover, use the existing owned
 `stop` command, then repeat the full managed run and cleanup verification. It
 does not stop another worktree's services. Benchmark timings above excluded
 teardown; this configuration repair does not change their scenario assertions.
+
+## Selective runner cancellation
+
+Playwright 1.60 watches SIGINT for cancellation and web-server cleanup. Forwarding
+SIGTERM directly from the new wrapper would terminate the CLI before that path
+ran. The wrapper now converts both signals to SIGINT and waits for the child to
+close. A real SIGTERM sent after owned startup metadata appeared exited 130;
+`node scripts/e2e-runtime.mjs verify-stopped` confirmed no metadata, startup lock
+or owned containers remained. Evidence: ignored `.ui-craft/affected-interrupted.log`.
+Do not change this to immediate `process.exit()` or forward SIGTERM to the CLI.

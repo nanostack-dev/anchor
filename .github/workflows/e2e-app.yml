@@ -28,6 +28,8 @@ jobs:
         working-directory: anchor-ui
     steps:
       - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6.0.6
         with:
           version: 11.1.0
@@ -52,8 +54,12 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Check browser feature inventory
         run: pnpm check:e2e
+      - name: Test browser selection and completion checks
+        run: pnpm test:e2e:selection
       - name: Test the isolated app
-        run: GOCACHE="$(go env GOCACHE)" pnpm test:e2e:app
+        env:
+          E2E_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: GOCACHE="$(go env GOCACHE)" pnpm test:e2e:verify --base "$E2E_BASE_REF"
       - name: Verify disposable runtime cleanup
         if: always()
         run: node scripts/e2e-runtime.mjs verify-stopped
@@ -66,4 +72,6 @@ jobs:
           if-no-files-found: ignore
           path: |
             anchor-ui/test-results/app/results.json
+            anchor-ui/test-results/selection.json
+            anchor-ui/test-results/completion.json
             anchor-ui/test-results/app/**/test-failed-*.png

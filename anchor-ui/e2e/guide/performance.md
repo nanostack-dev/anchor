@@ -36,6 +36,13 @@ every browser scenario; they avoid recompiling or downloading unrelated work.
 
 ## Keeping coverage while reducing work
 
+Use [changed-file selection](selective-testing.md) for focused feedback. The
+complete command schedules affected suites first and the remainder afterward
+within one runtime, preserving every scenario and one bootstrap. This avoids
+duplicated app startup and duplicate critical journeys that separate focused
+and full invocations would require. The phase boundary may add idle worker time;
+measure total latency independently rather than assuming a full run is faster.
+
 Record fresh backend/build startup separately from browser execution. Compare
 three repeated runs at each chosen worker count on the same machine/backend.
 Preserve test count and assertions. Keep wall time, setup time, test durations,

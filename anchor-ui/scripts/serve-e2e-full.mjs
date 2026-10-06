@@ -38,6 +38,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 const startup = startRuntime({
 	reuse: true,
+	requireFresh: process.env.E2E_REQUIRE_FRESH === "1",
 	frontendURL,
 	signal: cancellation.signal,
 });
