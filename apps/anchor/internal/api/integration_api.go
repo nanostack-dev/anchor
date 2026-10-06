@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -343,11 +344,9 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 func (s *AnchorAPI) IngestWebhook(
 	ctx context.Context, request IngestWebhookRequestObject,
 ) (IngestWebhookResponseObject, error) {
-	// Re-marshal the decoded body back to raw bytes for signature validation.
-	payload, err := json.Marshal(request.Body)
-	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to marshal webhook body")
-		return nil, err
+	payload, ok := webhookPayloadFromContext(ctx)
+	if !ok {
+		return nil, errors.New("webhook payload middleware is missing")
 	}
 
 	// Extract HTTP headers from context (injected by WebhookHeadersMiddleware).

@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -88,19 +89,23 @@ func (r *templateRepositoryImpl) FindBySlugInternal(
 
 func (r *templateRepositoryImpl) List(
 	ctx context.Context, tenantID string, productID string, limit int64, offset int64,
-) ([]email.Template, error) {
+) (search.Result[email.Template], error) {
 	if limit <= 0 {
 		limit = 50
 	}
+	where := table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID)).
+		AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID)))
+	countStmt := postgres.SELECT(postgres.COUNT(postgres.STAR).AS("count_result.count")).
+		FROM(table.EmailTemplates).WHERE(where)
+	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
+	if err != nil {
+		return search.Result[email.Template]{}, err
+	}
 	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
-		FROM(table.EmailTemplates).
-		WHERE(
-			table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID)).
-				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
-		).
-		ORDER_BY(table.EmailTemplates.CreatedAt.DESC()).
-		LIMIT(limit).OFFSET(offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+		FROM(table.EmailTemplates).WHERE(where).
+		ORDER_BY(table.EmailTemplates.CreatedAt.DESC()).LIMIT(limit).OFFSET(offset)
+	items, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	return search.Result[email.Template]{Items: items, Total: total, Count: len(items)}, err
 }
 
 func (r *templateRepositoryImpl) Create(

@@ -21,6 +21,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 )
@@ -133,7 +134,7 @@ type EmailService interface {
 	GetTemplateDraft(ctx context.Context, in email.GetTemplateDraftInput) (*email.TemplateVersion, error)
 	PublishTemplate(ctx context.Context, in email.PublishTemplateInput) (email.TemplateVersion, error)
 	GetTemplate(ctx context.Context, in email.GetTemplateInput) (*email.Template, error)
-	ListTemplates(ctx context.Context, in email.ListTemplatesInput) ([]email.Template, error)
+	ListTemplates(ctx context.Context, in email.ListTemplatesInput) (search.Result[email.Template], error)
 	DeleteTemplate(ctx context.Context, in email.DeleteTemplateInput) error
 
 	SaveTemplateExamples(ctx context.Context, in email.SaveTemplateExamplesInput) ([]email.TemplateExample, error)
@@ -142,7 +143,7 @@ type EmailService interface {
 	Send(ctx context.Context, in email.SendInput) (email.SendRecord, error)
 	TestSend(ctx context.Context, in email.TestSendInput) (email.SendRecord, error)
 
-	ListSends(ctx context.Context, in email.ListSendsInput) ([]email.SendRecord, error)
+	ListSends(ctx context.Context, in email.ListSendsInput) (search.Result[email.SendRecord], error)
 }
 
 type emailService struct {
@@ -590,7 +591,10 @@ func (s *emailService) GetTemplate(
 
 func (s *emailService) ListTemplates(
 	ctx context.Context, in email.ListTemplatesInput,
-) ([]email.Template, error) {
+) (search.Result[email.Template], error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return search.Result[email.Template]{}, err
+	}
 	return s.templateRepo.List(ctx, in.TenantID, in.ProductID, in.Limit, in.Offset)
 }
 
@@ -885,6 +889,9 @@ func (s *emailService) TestSend(
 
 func (s *emailService) ListSends(
 	ctx context.Context, in email.ListSendsInput,
-) ([]email.SendRecord, error) {
+) (search.Result[email.SendRecord], error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return search.Result[email.SendRecord]{}, err
+	}
 	return s.sendRepo.List(ctx, in)
 }

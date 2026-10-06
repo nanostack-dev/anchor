@@ -1,12 +1,41 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"strings"
 )
 
 type webhookHeadersKey struct{}
+type webhookPayloadKey struct{}
+
+const maxWebhookPayloadBytes = 1 << 20
+
+func WebhookPayloadMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost ||
+			!strings.HasPrefix(r.URL.Path, "/v1/products/") ||
+			!strings.Contains(r.URL.Path, "/integrations/webhooks/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		defer r.Body.Close()
+		payload, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookPayloadBytes))
+		if err != nil {
+			http.Error(w, "Cannot read webhook body", http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(payload))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), webhookPayloadKey{}, payload)))
+	})
+}
+
+func webhookPayloadFromContext(ctx context.Context) ([]byte, bool) {
+	payload, ok := ctx.Value(webhookPayloadKey{}).([]byte)
+	return payload, ok
+}
 
 // WebhookHeadersFromContext retrieves HTTP headers stored in context by the
 // webhook headers middleware. Returns an empty map if no headers are present.

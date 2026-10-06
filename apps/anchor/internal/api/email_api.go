@@ -76,8 +76,8 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
-	items := functional.Slice(templates).Map(mapTemplateToResponse)
-	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: len(items)}), nil
+	items := functional.Slice(templates.Items).Map(mapTemplateToResponse)
+	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: int(templates.Total)}), nil
 }
 
 func (s *AnchorAPI) GetEmailTemplate(
@@ -369,10 +369,12 @@ func (s *AnchorAPI) ListEmailSends(
 	}
 
 	in := email.ListSendsInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Limit:     limit,
-		Offset:    offset,
+		TenantID:   tenantID,
+		ProductID:  request.ProductId,
+		TemplateID: request.Params.TemplateId,
+		Status:     request.Params.Status,
+		Limit:      limit,
+		Offset:     offset,
 	}
 
 	records, err := s.EmailService.ListSends(ctx, in)
@@ -381,6 +383,6 @@ func (s *AnchorAPI) ListEmailSends(
 		return nil, err
 	}
 
-	items := functional.Slice(records).Map(mapSendRecordToResponse)
-	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: len(items)}), nil
+	items := functional.Slice(records.Items).Map(mapSendRecordToResponse)
+	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: int(records.Total)}), nil
 }

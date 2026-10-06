@@ -10,8 +10,12 @@ import {
 } from "@/client";
 import {
 	getEmailTemplateDraftOptions,
+	getEmailTemplateDraftQueryKey,
 	getEmailTemplateExamplesOptions,
+	getEmailTemplateExamplesQueryKey,
 	getEmailTemplateOptions,
+	getEmailTemplateQueryKey,
+	listEmailTemplatesQueryKey,
 	listIntegrationInstancesOptions,
 	previewEmailTemplateMutation,
 	publishEmailTemplateMutation,
@@ -23,7 +27,6 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTE_PATHS } from "@/routes/routePaths";
-import Editor from "@monaco-editor/react";
 import { CopyButton } from "@nanostackorg/design-system/blocks/copy-button";
 import {
 	Button,
@@ -75,6 +78,7 @@ import {
 	TrashIcon as Trash2,
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Editor from "./LocalEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -149,12 +153,10 @@ function stringifyExampleValues(
 // Extracts all .ident references from a template fragment.
 function extractRefs(src: string): string[] {
 	const seen = new Set<string>();
-	const re = /\{\{-?\s*[^}]*?\.(\w+)/g;
-	let match = re.exec(src);
-
-	while (match !== null) {
-		seen.add(match[1]);
-		match = re.exec(src);
+	for (const action of src.matchAll(/\{\{([\s\S]*?)\}\}/g)) {
+		const expression = action[1].replace(/"(?:\\.|[^"\\])*"|`[^`]*`/g, "");
+		for (const reference of expression.matchAll(/(?<![\w.])\.([a-zA-Z_]\w*)/g))
+			seen.add(reference[1]);
 	}
 
 	return Array.from(seen);
@@ -908,7 +910,11 @@ function ExampleManager({
 		onMutate: () => setSaveStatus("saving"),
 		onSuccess: () => {
 			setSaveStatus("saved");
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplateExamples"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateExamplesQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
 			setTimeout(() => setSaveStatus("idle"), 2000);
 		},
 		onError: () => setSaveStatus("error"),
@@ -1377,12 +1383,14 @@ function buildVarsPayload(
 	for (const [k, v] of Object.entries(values)) {
 		if (v === "") continue;
 		const schema = schemas.find((s) => s.name === k);
-		const isComplex =
+		const isTyped =
 			schema?.type === EmailVariableType.LIST ||
-			schema?.type === EmailVariableType.OBJECT;
+			schema?.type === EmailVariableType.OBJECT ||
+			schema?.type === EmailVariableType.NUMBER ||
+			schema?.type === EmailVariableType.BOOL;
 		const trimmed = v.trimStart();
 		const looksLikeJson = trimmed.startsWith("[") || trimmed.startsWith("{");
-		if (isComplex || looksLikeJson) {
+		if (isTyped || looksLikeJson) {
 			try {
 				vars[k] = JSON.parse(v);
 			} catch {
@@ -1631,8 +1639,16 @@ export function EmailTemplateBuilder({
 	const { mutate: saveMeta } = useMutation({
 		...updateEmailTemplateMutation(),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplate"] });
-			queryClient.invalidateQueries({ queryKey: ["listEmailTemplates"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
+			queryClient.invalidateQueries({
+				queryKey: listEmailTemplatesQueryKey({
+					path: { product_id: productId },
+				}),
+			});
 		},
 	});
 
@@ -1652,7 +1668,11 @@ export function EmailTemplateBuilder({
 		onMutate: () => setSaveState("saving"),
 		onSuccess: () => {
 			setSaveState("saved");
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplateDraft"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateDraftQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
 			setTimeout(() => setSaveState("idle"), 2000);
 		},
 		onError: () => setSaveState("error"),
@@ -1688,8 +1708,16 @@ export function EmailTemplateBuilder({
 		...publishEmailTemplateMutation(),
 		onSuccess: () => {
 			setPublishError(null);
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplate"] });
-			queryClient.invalidateQueries({ queryKey: ["listEmailTemplates"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
+			queryClient.invalidateQueries({
+				queryKey: listEmailTemplatesQueryKey({
+					path: { product_id: productId },
+				}),
+			});
 		},
 		onError: (err) => {
 			setPublishError(getApiErrorMessage(err, "Publish failed"));
