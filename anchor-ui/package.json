@@ -17,7 +17,7 @@
     "test:e2e:plan": "node scripts/e2e-impact.mjs",
     "test:e2e:affected": "node scripts/run-e2e-affected.mjs",
     "test:e2e:verify": "node scripts/run-e2e-affected.mjs --complete",
-    "test:e2e:selection": "node --test scripts/e2e-impact.node-test.mjs scripts/e2e-completion.node-test.mjs",
+    "test:e2e:selection": "pnpm test:e2e:tooling",
     "test:e2e:ui": "node scripts/open-e2e-ui.mjs",
     "check:e2e": "node scripts/check-e2e.mjs",
     "test-storybook": "vitest --config vitest.workspace.ts run",
@@ -28,7 +28,11 @@
     "build-storybook": "storybook build",
     "check:ui": "node scripts/check-ui-contract.mjs",
     "ui-shot": "node scripts/ui-shot.mjs",
-    "benchmark:e2e": "node scripts/benchmark-e2e.mjs"
+    "benchmark:e2e": "node scripts/benchmark-e2e.mjs",
+    "test:e2e:tooling": "node --test scripts/*.node-test.mjs",
+    "test:e2e:status": "node scripts/e2e-doctor.mjs",
+    "check:e2e:coverage": "node scripts/e2e-coverage.mjs --check",
+    "update:e2e:coverage": "node scripts/e2e-coverage.mjs --update"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

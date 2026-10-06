@@ -20,8 +20,10 @@ pnpm test:e2e:app
 pnpm test:e2e:ui
 ```
 
-The app preview uses `http://127.0.0.1:3015`; Playwright UI uses
-`http://127.0.0.1:9351`. The UI launcher starts and verifies one managed preview
+The app preview uses `http://127.0.0.1:3015`; Playwright UI uses the canonical
+root URL `http://127.0.0.1:9351`. Open that root URL after restarting the launcher;
+an old bookmarked websocket URL can refer to the previous process.
+The UI launcher starts and verifies one managed preview
 before opening Playwright, so Reload can reconnect without starting it again.
 It accepts an existing preview only when its live backend belongs to this
 worktree and its run ID, API URL and frontend fingerprint match. It runs the
@@ -36,6 +38,30 @@ disposable services. The runtime refuses foreign
 processes and records ownership under ignored `e2e/runtime/.local/`.
 After a managed run, `node scripts/e2e-runtime.mjs verify-stopped` checks that
 its metadata, startup lock and containers are gone. PR CI enforces this too.
+
+For a visible demonstration, keep prerequisite setup fast and pace only the
+tests you launch in the UI:
+
+```sh
+pnpm test:e2e:ui --headed --workers 1 --slow-mo 250
+```
+
+`--headed` shows Chromium during execution, `--workers` sets interactive
+parallelism and `--slow-mo` paces browser actions in milliseconds. Numeric
+values must be positive integers. The default retains normal browser speed
+and configured worker count. `pnpm test:e2e:ui --help` and
+`pnpm test:e2e:ui --print-config --headed --workers 1 --slow-mo 250` inspect
+options and the launch plan without opening ports or starting services.
+
+Before handing over the UI, verify the browser state:
+
+1. Open `http://127.0.0.1:9351` and clear text, status and changed-test filters.
+2. In Testing Options, select both `bootstrap` and `chromium` projects.
+   Playwright remembers filters in the browser; the launcher cannot reset them.
+3. Confirm all feature folders and scenarios are visible against the current
+   discovered inventory. Bootstrap alone shows only the prerequisite login case.
+4. Leave the run idle with Run all enabled when the user will launch it.
+   Keep the launcher process running; close it with Ctrl-C after the demonstration.
 
 Run one feature with `pnpm test:e2e:app e2e/features/licensing/schema.e2e.ts`.
 For repeated local iterations, keep `node scripts/serve-e2e-full.mjs` running and

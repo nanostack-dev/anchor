@@ -4,6 +4,10 @@ Read this before adding, repairing or tuning browser tests. The suite exercises
 Anchor's real browser and local API. Feature coverage and runnable tests are the
 completion criteria, not the number of test files.
 
+Showing tests: follow the [UI handoff](../README.md). Use `pnpm test:e2e:status`
+for read-only worktree, runtime and inventory diagnostics. Reviewing changes:
+use the [review criteria](review.md).
+
 1. Identify the shipped route and visible action in [coverage.md](coverage.md).
    Read that UI source and its public API contract. Preserve read-only and
    placeholder boundaries; API fixture creation does not cover a creation UI.

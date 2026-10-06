@@ -8,6 +8,9 @@ const workers = process.env.E2E_WORKERS
 		: Math.min(4, availableParallelism());
 if (!Number.isInteger(workers) || workers < 1)
 	throw new Error("E2E_WORKERS must be a positive integer");
+const slowMo = process.env.E2E_SLOW_MO ? Number(process.env.E2E_SLOW_MO) : 0;
+if (process.env.E2E_SLOW_MO && (!Number.isSafeInteger(slowMo) || slowMo < 1))
+	throw new Error("E2E_SLOW_MO must be a positive safe integer");
 
 export default defineConfig({
 	testDir: "./e2e/features",
@@ -31,6 +34,7 @@ export default defineConfig({
 	],
 	use: {
 		baseURL: "http://127.0.0.1:3015",
+		launchOptions: { slowMo },
 		actionTimeout: 8_000,
 		navigationTimeout: 15_000,
 		trace: process.env.E2E_TRACE === "1" ? "retain-on-failure" : "off",
