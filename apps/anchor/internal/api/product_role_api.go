@@ -17,14 +17,14 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description: &productRole.Description,
 		CreatedAt:   productRole.CreatedAt,
 		UpdatedAt:   productRole.UpdatedAt,
-		Permissions: functional.Slice(productRole.Permissions).Map(
+		Permissions: append([]ProductRolePermissionResponse{}, functional.Slice(productRole.Permissions).Map(
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
 					PermissionName: perm.PermissionName,
 					ProductId:      perm.ProductID,
 					ProductRoleId:  perm.ProductRoleID,
 				}
-			}),
+			})...),
 	}
 }
 

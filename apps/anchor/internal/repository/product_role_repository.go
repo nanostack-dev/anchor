@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -336,6 +337,13 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 ) (search.Result[role.ProductRole], error) {
 	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID))
+	if input.FullTextSearch != nil {
+		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
+		whereStmt = whereStmt.AND(
+			postgres.LOWER(table.ProductRoles.Name).LIKE(pattern).
+				OR(postgres.LOWER(table.ProductRoles.Description).LIKE(pattern)),
+		)
+	}
 
 	if input.Filter != nil {
 		if len(input.Filter.ProductRoleIDs) > 0 {

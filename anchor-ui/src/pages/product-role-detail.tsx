@@ -2,6 +2,7 @@ import { getProductRoleOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { ProductRoleDetailView } from "@/components/product/roles/ProductRoleDetailView";
 import { useProduct } from "@/hooks/useProduct";
+import { apiErrorHasCode } from "@/lib/api-error";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import { Button } from "@nanostackorg/design-system/components/button";
@@ -21,6 +22,8 @@ export default function ProductRoleDetailPage({
 	const productId = currentProduct?.id ?? "";
 	const navigate = useNavigate();
 	const roleQuery = useQuery({
+		retry: (failureCount, error) =>
+			failureCount < 3 && !apiErrorHasCode(error, "ROLE_NOT_FOUND"),
 		...getProductRoleOptions({
 			path: { product_id: productId, role_id: roleId },
 		}),
