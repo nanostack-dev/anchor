@@ -13,8 +13,8 @@
 			".vscode/*",
 			"index.html",
 			"vite.config.js",
-			"playwright.config.ts",
-			"e2e/*",
+			"playwright*.config.ts",
+			"e2e/**",
 			".storybook/**",
 			"vitest.workspace.ts",
 			"scripts/*.mjs"

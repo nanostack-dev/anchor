@@ -109,8 +109,8 @@ jobs:
       typecheck_command: pnpm typecheck
       test_command: pnpm test
       build_command: pnpm build
-      # Story tests run on every PR — they are the component-level gate for
-      # anchor-ui, which has no e2e suite.
+      # Story tests run on every PR; real dev login smoke is a separate manual
+      # workflow so normal PR verification does not require dev credentials.
       storybook_test_command: pnpm test-storybook
       # The production Storybook build is push-only. Story tests already exercise
       # the stories through Vite in dev mode, so this only adds coverage of

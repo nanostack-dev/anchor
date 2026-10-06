@@ -4,6 +4,7 @@ dist
 dist-ssr
 storybook-static
 *.local
+.env.e2e.local
 .kiro
 
 .impeccable/
