@@ -20,7 +20,9 @@
     "storybook": "storybook dev -p 6007 --ci",
     "build-storybook": "storybook build",
     "check:ui": "node scripts/check-ui-contract.mjs",
-    "ui-shot": "node scripts/ui-shot.mjs"
+    "ui-shot": "node scripts/ui-shot.mjs",
+    "test:e2e:app": "playwright test --config playwright.app.config.ts",
+    "test:e2e:ui": "playwright test --config playwright.app.config.ts --ui --ui-host=127.0.0.1 --ui-port=9351"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",
