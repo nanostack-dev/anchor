@@ -31,6 +31,13 @@ export default defineConfig({
 					process.env.E2E_JSON_REPORT ?? "test-results/app/results.json",
 			},
 		],
+		[
+			"html",
+			{
+				outputFolder: process.env.E2E_HTML_REPORT ?? "test-results/report",
+				open: "never",
+			},
+		],
 	],
 	use: {
 		baseURL: "http://127.0.0.1:3015",
