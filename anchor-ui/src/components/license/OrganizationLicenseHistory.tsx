@@ -1,11 +1,14 @@
-import { getOrganizationLicenseHistory } from "@/client";
+import {
+	type OrganizationLicenseHistoryResponse,
+	getOrganizationLicenseHistory,
+} from "@/client";
 import {
 	getOrganizationLicenseHistoryQueryKey,
 	listLicenseTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { OrganizationLicenseHistoryView } from "./OrganizationLicenseHistoryView";
 
@@ -30,16 +33,28 @@ export function OrganizationLicenseHistory({
 		[templatesQuery.data],
 	);
 
-	const historyQuery = useQuery({
+	const historyQuery = useInfiniteQuery({
 		queryKey: getOrganizationLicenseHistoryQueryKey({
 			path: { product_id: productId, organization_id: organizationId },
 			query: { limit: historyPageSize, offset: 0 },
 		}),
-		queryFn: () =>
+		initialPageParam: 0,
+		getNextPageParam: (
+			lastPage: OrganizationLicenseHistoryResponse,
+			pages: OrganizationLicenseHistoryResponse[],
+		): number | undefined => {
+			const loaded = pages.reduce(
+				(count, page) => count + page.items.length,
+				0,
+			);
+			return loaded < lastPage.total ? loaded : undefined;
+		},
+		queryFn: ({ pageParam, signal }) =>
 			unwrapQuery(
 				getOrganizationLicenseHistory({
 					path: { product_id: productId, organization_id: organizationId },
-					query: { limit: historyPageSize, offset: 0 },
+					query: { limit: historyPageSize, offset: pageParam },
+					signal,
 				}),
 			),
 		retry: false,
@@ -65,11 +80,17 @@ export function OrganizationLicenseHistory({
 
 	return (
 		<OrganizationLicenseHistoryView
-			items={historyQuery.data?.items ?? []}
+			items={historyQuery.data?.pages.flatMap((page) => page.items) ?? []}
 			templateName={templateName}
-			total={historyQuery.data?.total ?? 0}
+			total={historyQuery.data?.pages[0]?.total ?? 0}
 			isLoading={historyQuery.isLoading}
 			onRetry={() => void historyQuery.refetch()}
+			onLoadMore={
+				historyQuery.hasNextPage
+					? () => void historyQuery.fetchNextPage()
+					: undefined
+			}
+			isLoadingMore={historyQuery.isFetchingNextPage}
 		/>
 	);
 }

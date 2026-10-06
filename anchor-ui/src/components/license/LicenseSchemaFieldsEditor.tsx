@@ -227,7 +227,10 @@ export function LicenseSchemaFieldsEditor({
 								 * of the tab order and out of the accessibility tree.
 								 */}
 								<Box
+									as="fieldset"
 									id={`${field.uiKey}-detail`}
+									aria-label={`Field ${name || "New field"}`}
+									aria-hidden={!expanded}
 									inert={!expanded}
 									style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
 									className="grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"

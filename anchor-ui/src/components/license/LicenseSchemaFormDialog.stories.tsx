@@ -214,13 +214,14 @@ export const RenamePreservesUsageShapesInRequest: Story = {
 			await userEvent.clear(name);
 			await userEvent.type(name, "max_flows2");
 			await expect(
-				screen
-					.getAllByRole("combobox", { name: "Usage shape" })
-					.map((control) => control.textContent),
-			).toEqual([
-				expect.stringContaining("Gauge"),
-				expect.stringContaining("Windowed counter"),
-			]);
+				screen.getByRole("combobox", { name: "Usage shape" }),
+			).toHaveTextContent("Gauge");
+			await userEvent.click(
+				screen.getByRole("button", { name: /^monthly_runs/ }),
+			);
+			await expect(
+				screen.getByRole("combobox", { name: "Usage shape" }),
+			).toHaveTextContent("Windowed counter");
 			await userEvent.click(screen.getByRole("button", { name: "Text" }));
 			const source = screen.getByLabelText<HTMLTextAreaElement>("Fields");
 			const editedSource = `${source.value}\n# Keep both usage shapes`;
