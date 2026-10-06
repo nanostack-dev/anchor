@@ -7,6 +7,7 @@ import { useProduct } from "@/context/product/ProductContext";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { Heading } from "@nanostackorg/design-system/components/heading";
 import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -33,15 +34,40 @@ const products: ProductResponse[] = ["Echopoint", "Anchor"].map((name) => ({
 	updated_at: "2026-10-03T12:00:00Z",
 }));
 
+const worstCaseProducts: ProductResponse[] = [
+	{
+		...products[0],
+		id: "prd_northwind",
+		name: "NorthwindEnterpriseCustomerIdentityAndAccessManagementProductionPlatformForEuropeanFinancialServices",
+		description:
+			"Production identity and access management for European financial services teams, customer onboarding, regional compliance operations and partner integrations across multiple organizations.",
+	},
+	{ ...products[1], id: "prd_ai", name: "AI", description: undefined },
+	{
+		...products[0],
+		id: "prd_tokyo",
+		name: "日本市場の顧客認証基盤 🛡️",
+		description: "Customer authentication for the Japanese market.",
+	},
+	{
+		...products[1],
+		id: "prd_zurich",
+		name: "Zürich Enterprise Operations – Customer Identity & Partner Access",
+		description: "",
+	},
+];
+
 function ShellDestination({ section }: { section: string }) {
 	const { currentProduct } = useProduct();
 	return (
-		<Stack space="md">
-			<Heading level={1}>
-				{section} for {currentProduct?.name ?? "no selected product"}
-			</Heading>
-			<Text>Content follows the current route and selected product.</Text>
-		</Stack>
+		<Box className="min-w-0 wrap-anywhere">
+			<Stack space="md">
+				<Heading level={1}>
+					{section} for {currentProduct?.name ?? "no selected product"}
+				</Heading>
+				<Text>Content follows the current route and selected product.</Text>
+			</Stack>
+		</Box>
 	);
 }
 
@@ -117,6 +143,18 @@ const meta = {
 		viewport: {
 			options: {
 				phone: { name: "Phone", styles: { width: "390px", height: "844px" } },
+				smallPhone: {
+					name: "Small phone",
+					styles: { width: "320px", height: "851px" },
+				},
+				reviewPhone: {
+					name: "Review phone",
+					styles: { width: "393px", height: "851px" },
+				},
+				tablet: {
+					name: "Tablet",
+					styles: { width: "768px", height: "1024px" },
+				},
 				desktop: {
 					name: "Desktop",
 					styles: { width: "1200px", height: "900px" },
@@ -156,6 +194,113 @@ function sidebarTrigger(canvasElement: HTMLElement) {
 		throw new Error("The keyboard-accessible sidebar trigger is missing");
 	return trigger;
 }
+
+export const WorstCase: Story = {
+	args: { availableProducts: worstCaseProducts },
+};
+
+export const One: Story = {
+	args: { availableProducts: [worstCaseProducts[1]] },
+};
+
+export const Empty: Story = {
+	args: { availableProducts: [] },
+};
+
+function expectInsideViewport(element: HTMLElement) {
+	const bounds = element.getBoundingClientRect();
+	expect(bounds.width).toBeGreaterThan(0);
+	expect(bounds.left).toBeGreaterThanOrEqual(0);
+	expect(bounds.right).toBeLessThanOrEqual(
+		document.documentElement.clientWidth,
+	);
+}
+
+async function verifyProductHeader(
+	canvasElement: HTMLElement,
+	showPrefix: boolean,
+) {
+	const canvas = within(canvasElement);
+	const selectedProduct = worstCaseProducts[0];
+	await canvas.findByRole("heading", {
+		name: `Overview for ${selectedProduct.name}`,
+	});
+	const selector = canvas.getByRole("button", {
+		name: `Working on: ${selectedProduct.name}`,
+	});
+	const refresh = canvas.getByRole("button", { name: "Refresh products" });
+	const prefix = within(selector).getByText("Working on:", { exact: true });
+	await waitFor(() => {
+		expectInsideViewport(selector);
+		expectInsideViewport(refresh);
+		if (showPrefix) {
+			expect(prefix).toBeVisible();
+			const range = document.createRange();
+			range.selectNodeContents(prefix);
+			const text = range.getBoundingClientRect();
+			const bounds = prefix.getBoundingClientRect();
+			expect(text.left).toBeGreaterThanOrEqual(bounds.left);
+			expect(text.right).toBeLessThanOrEqual(bounds.right);
+		} else {
+			expect(prefix).not.toBeVisible();
+		}
+		expect(
+			within(selector)
+				.getByText(selectedProduct.name, { exact: true })
+				.getBoundingClientRect().width,
+		).toBeGreaterThan(16);
+	});
+	await expect(selector).toHaveAttribute("title", selectedProduct.name);
+	await userEvent.click(selector);
+	const menu = await screen.findByRole("menu");
+	await waitFor(() => {
+		expectInsideViewport(menu);
+		const bounds = menu.getBoundingClientRect();
+		for (const product of worstCaseProducts) {
+			const name = within(menu).getByText(product.name, { exact: true });
+			const range = document.createRange();
+			range.selectNodeContents(name);
+			const text = range.getBoundingClientRect();
+			expect(text.left).toBeGreaterThanOrEqual(bounds.left);
+			expect(text.right).toBeLessThanOrEqual(bounds.right);
+		}
+	});
+	await userEvent.keyboard("{Escape}");
+	await waitFor(() => expect(menu).not.toBeInTheDocument());
+	await expect(selector).toHaveFocus();
+}
+
+export const SmallPhoneProductHeader: Story = {
+	args: { availableProducts: worstCaseProducts },
+	globals: { viewport: { value: "smallPhone", isRotated: false } },
+	play: async ({ canvasElement }) => verifyProductHeader(canvasElement, false),
+};
+
+export const MobileProductHeader: Story = {
+	args: { availableProducts: worstCaseProducts },
+	globals: { viewport: { value: "reviewPhone", isRotated: false } },
+	play: async ({ canvasElement }) => verifyProductHeader(canvasElement, false),
+};
+
+export const TabletProductHeader: Story = {
+	args: { availableProducts: worstCaseProducts },
+	globals: { viewport: { value: "tablet", isRotated: false } },
+	play: async ({ canvasElement }) => verifyProductHeader(canvasElement, true),
+};
+
+export const LargeTextProductHeader: Story = {
+	args: { availableProducts: worstCaseProducts },
+	globals: { viewport: { value: "smallPhone", isRotated: false } },
+	play: async ({ canvasElement }) => {
+		const previousSize = document.documentElement.style.fontSize;
+		try {
+			document.documentElement.style.fontSize = "32px";
+			await verifyProductHeader(canvasElement, false);
+		} finally {
+			document.documentElement.style.fontSize = previousSize;
+		}
+	},
+};
 
 export const DesktopNavigationAndProductSwitch: Story = {
 	play: async ({ canvasElement }) => {

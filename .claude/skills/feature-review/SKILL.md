@@ -100,6 +100,8 @@ increase pacing if important transitions still pass too quickly. Keep text
 readable and trim unrelated setup when useful. Preserve the important action,
 feedback and final outcome, at normal speed. Ordinary regression tests retain
 assertion-based waits; deliberate holds exist only for presentation captures.
+Keep action captions disabled: Playwright expands filled values into captions,
+including password inputs. Use named states and checkpoints to explain the clip.
 
 Playwright saves videos after browser contexts close. If the installed `gh`
 requires a supported upload format, convert the selected WebM to MP4 without

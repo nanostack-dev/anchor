@@ -82,6 +82,7 @@ an explicitly started preview, stop that preview before checking teardown.
 
 ## Domain and component incidents
 
+- [Responsive review](troubleshooting/responsive.md)
 - [Component tests](troubleshooting/components.md)
 - [Access control and tenancy](troubleshooting/access.md)
 - [Licensing](troubleshooting/licensing.md)

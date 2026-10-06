@@ -92,6 +92,19 @@ test(
 			await expect(
 				page.getByRole("switch", { name: "Protected product" }),
 			).toBeChecked();
+			const viewport = page.viewportSize();
+			if (!viewport) throw new Error("Product header requires a viewport");
+			const refreshProducts = page.getByRole("button", {
+				name: "Refresh products",
+				exact: true,
+			});
+			await expect(refreshProducts).toBeVisible();
+			await expect
+				.poll(async () => {
+					const box = await refreshProducts.boundingBox();
+					return box ? Math.ceil(box.x + box.width) : Number.POSITIVE_INFINITY;
+				})
+				.toBeLessThanOrEqual(viewport.width);
 			await captureReviewCheckpoint(page, testInfo, "saved-product-config");
 			await page.getByRole("switch", { name: "Protected product" }).uncheck();
 			await page
