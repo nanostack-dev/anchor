@@ -271,6 +271,15 @@ test("event subscriptions filter, persist and deliver a verifiable signed webhoo
 		await expect(
 			page.getByText("New Signing Secret Minted", { exact: true }),
 		).toBeVisible();
+		const secretToast = page.getByRole("dialog", {
+			name: "Store the event signing secret now. It is not shown again.",
+			exact: true,
+		});
+		await expect(secretToast).toBeVisible();
+		await secretToast
+			.getByRole("button", { name: "Close toast", exact: true })
+			.press("Enter");
+		await expect(secretToast).toHaveCount(0);
 		await page
 			.getByLabel("Event endpoint URL", { exact: true })
 			.fill(`${receiver.url}/discard`);
