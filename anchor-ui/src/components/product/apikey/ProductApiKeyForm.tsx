@@ -8,6 +8,7 @@ import {
 	getProductApiKeyOptions,
 	updateProductApiKeyMutation,
 } from "@/client/@tanstack/react-query.gen";
+import { apiErrorHasCode } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { Badge } from "@nanostackorg/design-system/components/badge";
@@ -86,6 +87,8 @@ export function ProductApiKeyForm({
 		isLoading: isLoadingExisting,
 		isError: existingError,
 	} = useQuery({
+		retry: (failureCount, error) =>
+			failureCount < 3 && !apiErrorHasCode(error, "PRODUCT_API_KEY_NOT_FOUND"),
 		...getProductApiKeyOptions({
 			path: { product_id: productId, api_key_id: apiKeyId ?? "" },
 		}),
