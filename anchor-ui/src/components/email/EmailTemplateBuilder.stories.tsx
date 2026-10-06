@@ -3,6 +3,7 @@ import {
 	type EmailTemplateVersionResponse,
 	EmailTemplateVersionStatus,
 	EmailVariableType,
+	type TemplateExample,
 	client,
 } from "@/client";
 import { StoryRouter } from "@/lib/storybook/story-router";
@@ -39,6 +40,23 @@ const draft: EmailTemplateVersionResponse = {
 	],
 };
 const saveRequest = fn();
+const saveExamplesRequest = fn();
+const examplesRequest = fn();
+const releaseExamples = fn<() => void>();
+const savedExample = {
+	id: "ex_saved",
+	name: "Welcome for Aleksandra Wiśniewska-Kowalczyk",
+	variables: { name: "Aleksandra Wiśniewska-Kowalczyk" },
+} satisfies TemplateExample;
+const worstCaseExamples = [
+	savedExample,
+	{ id: "ex_short", name: "Jo", variables: { name: "Jo" } },
+	{
+		id: "ex_cjk",
+		name: "王秀英 — 国際請求書のプレビュー",
+		variables: { name: "王秀英" },
+	},
+] satisfies TemplateExample[];
 
 function BuilderHarness() {
 	const [queryClient] = useState(
@@ -62,8 +80,18 @@ const meta = {
 	title: "Email/EmailTemplateBuilder",
 	component: BuilderHarness,
 	parameters: { layout: "fullscreen" },
-	beforeEach: () => {
+	beforeEach: ({ parameters }) => {
 		saveRequest.mockClear();
+		saveExamplesRequest.mockClear();
+		examplesRequest.mockClear();
+		releaseExamples.mockReset();
+		let examples: TemplateExample[] = parameters.initialExamples ?? [];
+		let exampleFailures = parameters.failExamplesOnce ? 1 : 0;
+		const examplesReady = parameters.deferExamples
+			? new Promise<void>((resolve) =>
+					releaseExamples.mockImplementation(resolve),
+				)
+			: Promise.resolve();
 		const previous = client.getConfig();
 		client.setConfig({
 			baseUrl: window.location.origin,
@@ -82,18 +110,229 @@ const meta = {
 						body_html: "<h1>Hello</h1>",
 						warnings: [],
 					});
-				if (url.pathname.endsWith("/examples"))
-					return Response.json({ examples: [] });
+				if (url.pathname.endsWith("/examples")) {
+					if (request.method === "PUT") {
+						const payload: { examples: TemplateExample[] } =
+							await request.json();
+						saveExamplesRequest(payload);
+						examples = payload.examples;
+					} else {
+						examplesRequest();
+						if (exampleFailures > 0) {
+							exampleFailures -= 1;
+							return Response.json(
+								{
+									errors: [
+										{
+											code: "INTERNAL_ERROR",
+											message: "Examples storage unavailable",
+										},
+									],
+								},
+								{ status: 503 },
+							);
+						}
+						await examplesReady;
+					}
+					return Response.json({ examples });
+				}
 				if (url.pathname.endsWith(`/templates/${template.id}`))
 					return Response.json(template);
 				throw new Error(`Unexpected request ${request.method} ${url.pathname}`);
 			},
 		});
-		return () => client.setConfig(previous);
+		return () => {
+			releaseExamples();
+			client.setConfig(previous);
+		};
 	},
 } satisfies Meta<typeof BuilderHarness>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const ExamplesLoading: Story = {
+	parameters: { deferExamples: true, initialExamples: [savedExample] },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		await waitFor(() => expect(examplesRequest).toHaveBeenCalledTimes(1));
+	},
+};
+
+export const FailedExamplesRetryWithoutReplacingSavedData: Story = {
+	parameters: { failExamplesOnce: true, initialExamples: [savedExample] },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		const panel = within(canvas.getByRole("tabpanel", { name: "Examples" }));
+		await expect(
+			await panel.findByText("Could not load examples.", { exact: true }),
+		).toBeVisible();
+		await expect(
+			panel.getByRole("button", { name: "New Example" }),
+		).toBeDisabled();
+		await expect(
+			panel.getByRole("button", { name: "Save Examples" }),
+		).toBeDisabled();
+		await expect(
+			panel.queryByText("No examples yet", { exact: true }),
+		).not.toBeInTheDocument();
+		await userEvent.click(panel.getByRole("button", { name: "Retry" }));
+		await waitFor(() => expect(examplesRequest).toHaveBeenCalledTimes(2));
+		await waitFor(() =>
+			expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+				savedExample.name,
+			),
+		);
+		await expect(panel.getByPlaceholderText("value for .name")).toHaveValue(
+			"Aleksandra Wiśniewska-Kowalczyk",
+		);
+		await expect(
+			panel.getByRole("button", { name: "New Example" }),
+		).toBeEnabled();
+		await expect(
+			panel.getByRole("button", { name: "Save Examples" }),
+		).toBeEnabled();
+		await expect(
+			panel.queryByText("Could not load examples.", { exact: true }),
+		).not.toBeInTheDocument();
+	},
+};
+
+export const Empty: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		const panel = within(canvas.getByRole("tabpanel", { name: "Examples" }));
+		await waitFor(() =>
+			expect(panel.getByRole("button", { name: "New Example" })).toBeEnabled(),
+		);
+		await expect(
+			panel.getByText("No examples yet", { exact: true }),
+		).toBeVisible();
+		await expect(
+			panel.getByRole("button", { name: "Save Examples" }),
+		).toBeEnabled();
+	},
+};
+
+export const One: Story = {
+	parameters: { initialExamples: [savedExample] },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		const panel = within(canvas.getByRole("tabpanel", { name: "Examples" }));
+		await waitFor(() =>
+			expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+				savedExample.name,
+			),
+		);
+		await expect(
+			panel.getByText("Examples (1)", { exact: true }),
+		).toBeVisible();
+		await expect(panel.getByPlaceholderText("value for .name")).toHaveValue(
+			"Aleksandra Wiśniewska-Kowalczyk",
+		);
+	},
+};
+
+export const WorstCase: Story = {
+	parameters: { initialExamples: worstCaseExamples },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		const panel = within(canvas.getByRole("tabpanel", { name: "Examples" }));
+		await waitFor(() =>
+			expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+				savedExample.name,
+			),
+		);
+		await expect(
+			panel.getByText("Examples (3)", { exact: true }),
+		).toBeVisible();
+		for (const example of worstCaseExamples) {
+			await userEvent.click(panel.getByRole("button", { name: example.name }));
+			await expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+				example.name,
+			);
+			await expect(panel.getByPlaceholderText("value for .name")).toHaveValue(
+				example.variables.name,
+			);
+		}
+		await userEvent.click(panel.getByRole("button", { name: "Save Examples" }));
+		await waitFor(() =>
+			expect(saveExamplesRequest).toHaveBeenCalledWith({
+				examples: worstCaseExamples,
+			}),
+		);
+	},
+};
+
+export const DelayedExamplesPreserveSavedAndNew: Story = {
+	parameters: { deferExamples: true, initialExamples: [savedExample] },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("textbox", { name: "Subject" });
+		await userEvent.click(canvas.getByRole("tab", { name: "Examples" }));
+		const panel = within(canvas.getByRole("tabpanel", { name: "Examples" }));
+		await waitFor(() => expect(examplesRequest).toHaveBeenCalledTimes(1));
+		await expect(
+			panel.getByRole("button", { name: "New Example" }),
+		).toBeDisabled();
+		await expect(
+			panel.getByRole("button", { name: "Save Examples" }),
+		).toBeDisabled();
+		await expect(
+			panel.getByText("Loading examples…", { exact: true }),
+		).toBeVisible();
+		await expect(
+			panel.queryByText("No examples yet", { exact: true }),
+		).not.toBeInTheDocument();
+		releaseExamples();
+		await waitFor(() =>
+			expect(panel.getByRole("button", { name: "New Example" })).toBeEnabled(),
+		);
+		await expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+			savedExample.name,
+		);
+		await expect(panel.getByPlaceholderText("value for .name")).toHaveValue(
+			"Aleksandra Wiśniewska-Kowalczyk",
+		);
+		await userEvent.click(panel.getByRole("button", { name: "New Example" }));
+		const name = panel.getByPlaceholderText("Example name");
+		await userEvent.clear(name);
+		await userEvent.click(name);
+		await userEvent.paste("Invoice preview for 王秀英");
+		const value = panel.getByPlaceholderText("value for .name");
+		await userEvent.clear(value);
+		await userEvent.click(value);
+		await userEvent.paste("王秀英");
+		await userEvent.click(panel.getByRole("button", { name: "Save Examples" }));
+		await waitFor(() =>
+			expect(saveExamplesRequest).toHaveBeenCalledWith({
+				examples: [
+					savedExample,
+					{
+						id: expect.any(String),
+						name: "Invoice preview for 王秀英",
+						variables: { name: "王秀英" },
+					},
+				],
+			}),
+		);
+		await expect(
+			panel.getByRole("button", { name: savedExample.name }),
+		).toBeVisible();
+		await expect(panel.getByPlaceholderText("Example name")).toHaveValue(
+			"Invoice preview for 王秀英",
+		);
+	},
+};
 
 export const BoundedEditorAndDraftSurviveTabSwitch: Story = {
 	play: async ({ canvasElement }) => {

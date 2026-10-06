@@ -64,7 +64,7 @@ Before starting, the complete command lists the ordinary full configuration as
 the independent scenario inventory. After success it compares every file and
 full nested test title against the JSON result. Missing, unexpected or duplicated
 scenarios, skipped tests, global errors, expected failures, flaky results and
-retries fail the gate. Counts are discovered rather than fixed at today's 56.
+retries fail the gate. Counts are discovered rather than hard-coded.
 Filtering flags (`--grep`, `--project`, `--shard`, `--last-failed`) are unsupported
 by these commands. An interrupted run fails. The runtime refuses to reuse or
 stop an existing owner's environment, including a concurrent startup detected

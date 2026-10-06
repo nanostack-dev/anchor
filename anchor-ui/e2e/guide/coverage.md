@@ -1,6 +1,6 @@
 # Anchor browser coverage inventory
 
-The managed app suite declares **56 scenarios in 14 spec files** for the
+The managed app suite declares **57 scenarios in 14 spec files** for the
 **39 keys in `src/routes/routePaths.ts`**, plus the three organization-license
 child pages registered separately. It drives the real local Anchor browser and
 API in desktop Chromium. This is a behavior inventory, not a claim of 100% code,
@@ -8,7 +8,7 @@ branch, device, browser or API coverage.
 
 The tables describe assertions present in the scenarios. A route annotation
 detects inventory drift; it does not prove that its controls were exercised or
-that a run passed. Before reporting verified coverage, run `pnpm test:e2e:app`
+that a run passed. Before reporting verified coverage, run `pnpm test:e2e:verify`
 and inspect `test-results/app/results.json` for every scenario. A stale-runtime
 failure, failed assertion, skipped scenario or bootstrap reused against an
 initialized database does not establish fresh-install coverage. See
@@ -114,12 +114,12 @@ Spec: [integrations](../features/integrations/integrations.e2e.ts), four scenari
 
 ## Email
 
-Spec: [email](../features/integrations/email.e2e.ts), four scenarios.
+Spec: [email](../features/integrations/email.e2e.ts), five scenarios.
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
 | `EMAIL_TEMPLATES` — `/products/email/templates` | Empty list, New Template navigation, page size/Next/Previous pagination, single/bulk deletion leaving the unselected template. | API templates prepare pagination/deletion cases; builder lifecycle begins with UI creation. | email |
-| `EMAIL_TEMPLATE_BUILDER` — `/products/email/templates/$templateId` | Name/subject/Monaco HTML autosave and Copy HTML; inferred STRING variable/required flag; NUMBER/BOOL/OBJECT/LIST schema editing, nested object/list fields and field/variable removal; form/raw examples, list rows, remove/save/reload; rendered iframe/subject, manual Refresh Preview; publish/reload; Send Test. All editor assets must stay on app origin. | API configures SMTP, prepares the independent typed-variable template and checks persisted drafts/examples. Mailpit receives the real addressed/rendered message; rendered preview verifies number/boolean/nested-value coercion. | email |
+| `EMAIL_TEMPLATE_BUILDER` — `/products/email/templates/$templateId` | Name/subject/Monaco HTML autosave and Copy HTML; inferred STRING variable/required flag; NUMBER/BOOL/OBJECT/LIST schema editing, nested object/list fields and field/variable removal; form/raw examples, list rows, remove/save/reload; delayed initial Examples response blocks creation/save until saved values load, then preserves saved and new examples together; rendered iframe/subject, manual Refresh Preview; publish/reload; Send Test. All editor assets must stay on app origin. | API configures SMTP, prepares the independent typed-variable template and checks persisted drafts/examples. Mailpit receives the real addressed/rendered message; rendered preview verifies number/boolean/nested-value coercion. | email |
 | `EMAIL_SENDS` — `/products/email/sends` | Recipient/subject/SENT record, Failed status no-results, Clear all recovery and page size/Next/Previous pagination. | UI test-send creates a real record; API sends prepare the smallest eleven-record pagination boundary through real local SMTP. Mailpit independently confirms delivery in the send journey. Read-only delivery history. | email |
 
 ## Remaining behavior boundaries

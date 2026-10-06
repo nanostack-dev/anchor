@@ -168,9 +168,80 @@ repository query. The browser's Failed facet must hide the successful delivery
 and Clear all must restore it. Keep this UI assertion even when API filter tests
 also exist.
 
-The eight scenarios in this folder passed together in the Chromium app run on
+Before the loading regression was added, the eight scenarios in this folder passed together in the Chromium app run on
 2026-10-05 with two workers and zero retries. That verifies the local integration
 configuration, signed Clerk ingestion and event delivery, SMTP email journey,
 typed forms, removals, filters and pagination described above. Hosted vendor
 reconciliation remains outside these fixtures. A domain pass is not a pass for
 the entire app; use the current whole-suite report before making that claim.
+
+### Initial Examples hydration
+
+The first full run after the earlier fixes merged passed 55 of 56 scenarios.
+The typed-form journey clicked **New Example**, then timed out waiting for
+**Example name**. Its snapshot still showed the Examples tab selected, the
+clicked New Example button active, and **No examples yet**. The examples GET
+starts when that panel mounts. Its editor initially held `[]`, exposed both
+write actions, and then replaced local state with the late first response.
+A fast creation was lost; saving before that response could replace existing
+server examples with the editor's initial empty list.
+
+Keep **New Example** and **Save Examples** disabled until the initial server
+examples, active selection and rendered hydration state have been set together.
+Query completion alone does not mean local hydration has completed. Pending
+data shows **Loading examples…**, not the empty state. A failed initial GET
+shows **Could not load examples.** and **Retry**, with writes still blocked;
+Retry must load the saved examples before enabling editing. Marking the editor
+initialized when the user creates a new example would discard any saved sets
+in the delayed response.
+
+The browser regression **email examples wait for saved data before creation or
+saving** in `e2e/features/integrations/email.e2e.ts` fetches the real local GET,
+holds its response behind a controlled promise, asserts the loading/write
+boundary, then releases the unchanged response. It adds a new set through the
+UI and verifies that the real examples endpoint retains both saved and new
+sets. Do not replace the response with invented data, wait for the GET in the
+ordinary scenario to hide the defect, or add a fixed delay.
+
+`src/components/email/EmailTemplateBuilder.stories.tsx` independently holds the
+initial response in **Delayed Examples Preserve Saved And New**. Its first
+assertion failed before the repair because New Example was enabled. **Failed
+Examples Retry Without Replacing Saved Data** failed before the error repair
+because its visible failure state was absent. **Examples Loading** keeps the
+response pending for matched visual captures; **Empty**, **One** and **Worst
+Case** cover empty data, a saved set, and realistic long, short and CJK names.
+The form retains full selected names and values even when sidebar text is
+truncated.
+
+Rendering a loaded example also exposed the STRING type badge's 3.02:1 contrast
+ratio. The badge uses the full semantic muted-foreground token; applying `/70`
+opacity to it failed the required 4.5:1 ratio. Keep Storybook accessibility
+checks enabled rather than omitting the loaded example state.
+
+With the managed runtime already running, reproduce the focused browser checks:
+
+```sh
+E2E_REUSE_SERVER=1 pnpm exec playwright test --config playwright.app.config.ts \
+  --project chromium e2e/features/integrations/email.e2e.ts \
+  --grep 'email examples wait|email variable schemas' --workers=1 --retries=0
+pnpm exec vitest --config vitest.workspace.ts run \
+  src/components/email/EmailTemplateBuilder.stories.tsx
+```
+
+On 2026-10-05, the held-response browser regression and the original typed-form
+journey passed with bootstrap (3 checks, 38.8 seconds). All seven builder stories
+passed, including accessibility checks (8.88 seconds). Matched pending-state
+images used `pnpm ui-shot`, the same fixture, a 1200×800 viewport and light mode.
+Local evidence remains in `.ui-craft/merged-complete.log`,
+`.ui-craft/examples-regression-red.log`,
+`.ui-craft/examples-regression-green.log`, `.ui-craft/examples-story-red.log`,
+`.ui-craft/examples-error-story-red.log` and `.ui-craft/examples-story-all.log`.
+These focused results do not replace the next complete-suite verification.
+
+The Examples contract has no explicit limits on names, variable-object size or
+the number of sets. This remains a **Fragile** boundary for very large input;
+the realistic fixtures verify retained data without claiming an unbounded-list
+performance guarantee or adding unrelated limits.
+
+
+The complete affected-first verification then passed all 57 app scenarios, including the new held-response regression, with zero skips, retries or flakes. Its report gate verified every scenario exactly once. Evidence: `.ui-craft/examples-full-verify.log` and the current `test-results/app/results.json`.

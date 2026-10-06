@@ -817,7 +817,7 @@ function ExampleVarInput({
 				{typeLabel() && (
 					<Box
 						as="span"
-						className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 rounded"
+						className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded"
 					>
 						{typeLabel()}
 					</Box>
@@ -880,7 +880,9 @@ function ExampleManager({
 		path: { product_id: productId, email_template_id: templateId },
 	};
 
-	const { data } = useQuery(getEmailTemplateExamplesOptions(queryOptions));
+	const { data, isError, refetch } = useQuery(
+		getEmailTemplateExamplesOptions(queryOptions),
+	);
 
 	const [examples, setExamples] = useState<TemplateExample[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -890,20 +892,20 @@ function ExampleManager({
 	const [rawMode, setRawMode] = useState(false);
 	const [rawText, setRawText] = useState("");
 	const [rawError, setRawError] = useState<string | null>(null);
-	const initialized = useRef(false);
+	const [hydrated, setHydrated] = useState(false);
 	const schemaNames = useMemo(() => variables.map((v) => v.name), [variables]);
 
 	useEffect(() => {
-		if (data && !initialized.current) {
+		if (data && !hydrated) {
 			setExamples(data.examples ?? []);
 			if ((data.examples ?? []).length > 0) {
 				const first = data.examples[0];
 				setActiveId(first.id);
 				onActiveChange(stringifyExampleValues(first.variables ?? {}));
 			}
-			initialized.current = true;
+			setHydrated(true);
 		}
-	}, [data, onActiveChange]);
+	}, [data, hydrated, onActiveChange]);
 
 	const { mutate: saveExamples } = useMutation({
 		...saveEmailTemplateExamplesMutation(),
@@ -1014,7 +1016,7 @@ function ExampleManager({
 	}
 
 	useEffect(() => {
-		if (!initialized.current) return;
+		if (!hydrated) return;
 		let activePatched: Record<string, unknown> | null = null;
 		setExamples((prev) => {
 			let didPatch = false;
@@ -1031,7 +1033,7 @@ function ExampleManager({
 			return didPatch ? nextExamples : prev;
 		});
 		if (activePatched) onActiveChange(stringifyExampleValues(activePatched));
-	}, [activeId, onActiveChange, schemaNames]);
+	}, [activeId, hydrated, onActiveChange, schemaNames]);
 
 	return (
 		<Stack space="lg">
@@ -1048,20 +1050,40 @@ function ExampleManager({
 					variant="outline"
 					size="sm"
 					onClick={handleNewExample}
+					disabled={!hydrated}
 				>
 					New Example
 				</Button>
 			</Spread>
 
-			{examples.length === 0 ? (
+			{!hydrated || examples.length === 0 ? (
 				<Box className="border rounded-lg p-8 text-center">
 					<FileText className="size-8 text-muted-foreground mx-auto mb-3" />
 					<Box as="p" className="text-sm text-muted-foreground mb-1">
-						No examples yet
+						{hydrated
+							? "No examples yet"
+							: isError
+								? "Could not load examples."
+								: "Loading examples…"}
 					</Box>
 					<Text size="xs" tone="muted">
-						Create an example to pre-fill variables for preview and test sends
+						{hydrated
+							? "Create an example to pre-fill variables for preview and test sends"
+							: isError
+								? "Retry to load your saved examples before editing"
+								: "Saved examples will be available once loading completes"}
 					</Text>
+					{!hydrated && isError && (
+						<Box className="mt-3">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => void refetch()}
+							>
+								Retry
+							</Button>
+						</Box>
+					)}
 				</Box>
 			) : (
 				<Box className="flex flex-col gap-3 sm:flex-row">
@@ -1177,7 +1199,7 @@ function ExampleManager({
 					icon={Save}
 					size="sm"
 					onClick={handleSave}
-					disabled={saveStatus === "saving"}
+					disabled={!hydrated || saveStatus === "saving"}
 				>
 					{saveStatus === "saving" ? "Saving…" : "Save Examples"}
 				</Button>
