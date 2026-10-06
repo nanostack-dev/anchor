@@ -65,6 +65,6 @@ Follow [the UI system and design-system consumer rule](docs/ui-system.md), share
 Read current design-system source and tokens (`src/styles.css`) from the sibling repo's `origin/main`, not `node_modules`. Primary path from `anchor-ui` is `../../nanostack-design-system`; inside `anchor/worktrees/<topic>/anchor-ui` it is `../../../../nanostack-design-system`.
 
 
-Load the `anchor-ui-design` skill before adding or reshaping components — surface/elevation rules, semantic tokens, and feedback states live there. Light mode only: never author `dark:` classes.
+Surface/elevation rules, semantic tokens and feedback states live in `docs/ui-system.md`. Light mode only: never author `dark:` classes.
 
 For editable resource lists, open a dedicated detail page for View and Edit. Use one resource detail component for both modes; row clicks and Edit actions open edit mode, while View actions open read-only mode. Keep other row controls independent.
