@@ -11,6 +11,7 @@ services:
       - "127.0.0.1::5432"
     labels:
       dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+      dev.nanostack.anchor.e2e.worktree: ${ANCHOR_E2E_WORKTREE}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U anchor_e2e -d anchor_e2e"]
       interval: 1s
@@ -23,6 +24,7 @@ services:
       - "127.0.0.1::6379"
     labels:
       dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+      dev.nanostack.anchor.e2e.worktree: ${ANCHOR_E2E_WORKTREE}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 1s
@@ -39,6 +41,13 @@ services:
       - "127.0.0.1::8025"
     labels:
       dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+      dev.nanostack.anchor.e2e.worktree: ${ANCHOR_E2E_WORKTREE}
+
+networks:
+  default:
+    labels:
+      dev.nanostack.anchor.e2e.run: ${ANCHOR_E2E_RUN_ID}
+      dev.nanostack.anchor.e2e.worktree: ${ANCHOR_E2E_WORKTREE}
 
 secrets:
   postgres_password:
