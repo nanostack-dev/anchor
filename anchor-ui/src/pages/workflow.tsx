@@ -185,7 +185,9 @@ export default function WorkflowPage({
 							Runs{runsQuery.data ? ` (${runsQuery.data.count})` : ""}
 						</TabsTrigger>
 					</TabsList>
-					<TabsContent value="build">{builder}</TabsContent>
+					<TabsContent value="build" keepMounted>
+						{builder}
+					</TabsContent>
 					<TabsContent value="runs">
 						<WorkflowRunHistory
 							runs={runsQuery.data?.items ?? []}
