@@ -554,9 +554,9 @@ func decodeMetadata(raw json.RawMessage) map[string]any {
 }
 
 func emailDomain(address string) string {
-	at := strings.LastIndex(address, "@")
-	if at < 0 {
+	_, domain, found := strings.CutLast(address, "@")
+	if !found {
 		return ""
 	}
-	return strings.ToLower(address[at+1:])
+	return strings.ToLower(domain)
 }
