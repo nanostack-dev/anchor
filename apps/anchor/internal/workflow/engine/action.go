@@ -19,6 +19,8 @@ const (
 	ParamRole            ParamType = "role"
 	ParamLicenseTemplate ParamType = "license_template"
 	ParamEmailTemplate   ParamType = "email_template"
+	ParamURL             ParamType = "url"
+	ParamCustomEvent     ParamType = "custom_event"
 )
 
 type ParamSpec struct {
@@ -27,6 +29,11 @@ type ParamSpec struct {
 	Description string
 	Type        ParamType
 	Required    bool
+	// Options lists the only values the parameter accepts. Empty means any.
+	Options []string
+	// Literal parameters cannot hold {{ }} references, because Anchor must
+	// know their value when the workflow is saved.
+	Literal bool
 }
 
 type OutputSpec struct {
@@ -42,6 +49,9 @@ type ActionSpec struct {
 	Writes      bool
 	Params      []ParamSpec
 	Outputs     []OutputSpec
+	// MayEmit lists every event type the action can emit. Emits narrows it
+	// to what one step emits given its saved parameters.
+	MayEmit []string
 }
 
 func (a ActionSpec) Param(name string) (ParamSpec, bool) {
@@ -56,10 +66,14 @@ func (a ActionSpec) Param(name string) (ParamSpec, bool) {
 // Env is what every action runs as: the Product the workflow belongs to.
 // Nothing a template resolves can move an action to another Product.
 type Env struct {
-	TenantID  string
-	ProductID string
-	RunID     string
-	StepID    string
+	TenantID   string
+	ProductID  string
+	WorkflowID string
+	RunID      string
+	StepID     string
+	EventID    string
+	EventType  string
+	EventData  map[string]string
 }
 
 type Params map[string]any
@@ -97,7 +111,17 @@ func (p Params) Object(name string) (map[string]any, bool, error) {
 
 type runFunc func(ctx context.Context, env Env, params Params) (map[string]any, error)
 
+type emitsFunc func(params map[string]string) []string
+
 type action struct {
-	spec ActionSpec
-	run  runFunc
+	spec  ActionSpec
+	run   runFunc
+	emits emitsFunc
+}
+
+func (a action) emitted(params map[string]string) []string {
+	if a.emits != nil {
+		return a.emits(params)
+	}
+	return a.spec.MayEmit
 }

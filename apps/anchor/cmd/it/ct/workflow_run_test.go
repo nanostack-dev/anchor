@@ -4,14 +4,12 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	itshared "anchor/cmd/it/shared"
-	"anchor/internal/domain/workflow"
 )
 
 func TestWorkflow_RunsItsStepsWhenTheTriggerEventHappens(t *testing.T) {
@@ -129,32 +127,6 @@ func TestWorkflow_AFailedStepFailsTheRunAndStopsIt(t *testing.T) {
 	assert.Equal(t, ct.WorkflowStepStatusFailed, runs[0].Steps[0].Status)
 	assert.NotEmpty(t, runs[0].Steps[0].Error)
 	assert.Empty(t, w.workspaceNames(organizationID))
-}
-
-func TestWorkflow_ChainOfItsOwnEventsStopsAtTheMaximumDepth(t *testing.T) {
-	t.Parallel()
-	w := newWorkflowWorld(t)
-	created := w.createWorkflow(workflowBody("workspace.created",
-		step("again", "workspace.create", map[string]string{
-			"organization_id": "{{event.data.organization_id}}",
-			"name":            "copy of {{event.data.workspace_id}}",
-		}),
-	))
-
-	resp, err := w.client.CreateOrganizationWorkspaceWithResponse(
-		context.Background(), w.product.ProductID, w.organizationID,
-		ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "seed"},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
-
-	w.waitForRuns(created.Id, workflow.MaxCausationDepth)
-	require.Eventually(t, func() bool {
-		return len(w.workspaceNames(w.organizationID)) == workflow.MaxCausationDepth+1
-	}, workflowWaitTimeout, workflowWaitTick)
-	assert.Never(t, func() bool {
-		return len(w.runs(created.Id)) > workflow.MaxCausationDepth
-	}, 2*time.Second, 200*time.Millisecond)
 }
 
 func TestRunWorkflow_RunsNowAgainstTheGivenEventData(t *testing.T) {

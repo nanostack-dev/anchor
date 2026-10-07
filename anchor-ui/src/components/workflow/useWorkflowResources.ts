@@ -17,7 +17,10 @@ export type WorkflowResources = Partial<
 
 const LOOKUP_LIMIT = 100;
 
-export function useWorkflowResources(productId: string): WorkflowResources {
+export function useWorkflowResources(
+	productId: string,
+	customEvents: ResourceOption[] = [],
+): WorkflowResources {
 	const path = { product_id: productId };
 	const roles = useQuery({
 		...searchProductRolesOptions({
@@ -47,5 +50,6 @@ export function useWorkflowResources(productId: string): WorkflowResources {
 		[WorkflowParamType.EMAIL_TEMPLATE]: (emailTemplates.data?.items ?? []).map(
 			(template) => ({ value: template.slug, label: template.name }),
 		),
+		[WorkflowParamType.CUSTOM_EVENT]: customEvents,
 	};
 }

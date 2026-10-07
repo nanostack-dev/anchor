@@ -6,6 +6,7 @@ import {
 	Mail,
 	UserRound,
 	Users,
+	Webhook,
 	Zap,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ const groupIcons: Record<string, LucideIcon> = {
 	Users: UserRound,
 	Licensing: Award,
 	Email: Mail,
+	Custom: Webhook,
 };
 
 export function actionGroupIcon(group: string | undefined): LucideIcon {

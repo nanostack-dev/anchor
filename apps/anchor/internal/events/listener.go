@@ -24,13 +24,47 @@ func AsListener(fn any) any {
 
 // QueuedEvent is the job payload of every product event queue. Depth counts
 // how many workflow runs led to the event: zero for a write made by a caller,
-// one for a write a workflow made in reaction to it, and so on.
+// one for a write a workflow made in reaction to it, and so on. Chain names
+// those workflows, oldest first.
 type QueuedEvent struct {
 	EventID   string          `json:"event_id"`
 	ProductID string          `json:"product_id"`
 	Type      Type            `json:"type"`
 	Body      json.RawMessage `json:"body"`
 	Depth     int             `json:"depth,omitempty"`
+	Chain     []string        `json:"chain,omitempty"`
+}
+
+// EncodeEvent builds the queue payload of an event, carrying the causation
+// found in ctx.
+func EncodeEvent(
+	ctx context.Context,
+	eventID, productID string,
+	eventType Type,
+	data Data,
+	at time.Time,
+) ([]byte, error) {
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(Envelope{
+		Type:      eventType,
+		Timestamp: at.UTC().Format(time.RFC3339Nano),
+		Data:      dataJSON,
+	})
+	if err != nil {
+		return nil, err
+	}
+	causation := CausationFrom(ctx)
+	return json.Marshal(QueuedEvent{
+		EventID:   eventID,
+		ProductID: productID,
+		Type:      eventType,
+		Body:      body,
+		Depth:     causation.Depth,
+		Chain:     causation.WorkflowIDs,
+	})
 }
 
 func DecodeQueuedEvent(payload []byte) (QueuedEvent, error) {
@@ -71,13 +105,21 @@ func (e QueuedEvent) Data() (Data, error) {
 	return data, nil
 }
 
-type causationDepthKey struct{}
-
-func WithCausationDepth(ctx context.Context, depth int) context.Context {
-	return context.WithValue(ctx, causationDepthKey{}, depth)
+// Causation is what led to the writes made under a context: how many
+// workflow runs, and which workflows, oldest first. Every event emitted under
+// it carries it, so a workflow can refuse to run twice in one chain.
+type Causation struct {
+	Depth       int      `json:"depth"`
+	WorkflowIDs []string `json:"workflow_ids"`
 }
 
-func CausationDepth(ctx context.Context) int {
-	depth, _ := ctx.Value(causationDepthKey{}).(int)
-	return depth
+type causationKey struct{}
+
+func WithCausation(ctx context.Context, causation Causation) context.Context {
+	return context.WithValue(ctx, causationKey{}, causation)
+}
+
+func CausationFrom(ctx context.Context) Causation {
+	causation, _ := ctx.Value(causationKey{}).(Causation)
+	return causation
 }

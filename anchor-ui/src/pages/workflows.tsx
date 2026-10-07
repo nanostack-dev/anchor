@@ -1,3 +1,4 @@
+import { WorkflowInclude } from "@/client";
 import {
 	getWorkflowCatalogOptions,
 	listProductWorkflowRunsOptions,
@@ -10,6 +11,7 @@ import { ROUTE_PATHS } from "@/routes/routePaths";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
@@ -31,8 +33,12 @@ export default function WorkflowsPage() {
 		enabled,
 	});
 	const workflowsQuery = useQuery({
-		...listWorkflowsOptions({ path }),
+		...listWorkflowsOptions({
+			path,
+			query: { include: [WorkflowInclude.LAST_RUN] },
+		}),
 		enabled,
+		refetchInterval: RUNS_REFRESH_MS,
 	});
 	const runsQuery = useQuery({
 		...listProductWorkflowRunsOptions({ path, query: { limit: 50 } }),
@@ -74,6 +80,23 @@ export default function WorkflowsPage() {
 				</Empty>
 			) : workflowsQuery.isPending ? (
 				<Skeleton />
+			) : workflowsQuery.isError ? (
+				<Empty variant="outline">
+					<EmptyHeader>
+						<EmptyTitle>Workflows could not be loaded</EmptyTitle>
+						<EmptyDescription>
+							The request failed. Your workflows are unchanged.
+						</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<Button
+							variant="outline"
+							onClick={() => void workflowsQuery.refetch()}
+						>
+							Try again
+						</Button>
+					</EmptyContent>
+				</Empty>
 			) : (
 				<WorkflowList
 					workflows={workflowsQuery.data?.items ?? []}

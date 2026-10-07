@@ -2,7 +2,9 @@ import type { Page } from "playwright/test";
 import type {
 	ProductOrganizationResponse,
 	ProductWorkspaceListResponse,
+	WorkflowResponse,
 	WorkflowRunListResponse,
+	WorkflowWriteRequest,
 } from "../../../src/client";
 import { type World, expect } from "../../support/fixtures";
 import { selectProduct } from "../../support/ui";
@@ -45,4 +47,18 @@ export function workflowIdFrom(page: Page) {
 	);
 	expect(match, "the saved workflow opens on its own route").not.toBeNull();
 	return match?.[1] ?? "";
+}
+
+export async function createWorkflowViaAPI(
+	world: World,
+	body: WorkflowWriteRequest,
+) {
+	return world.api.post<WorkflowResponse>(
+		`${world.productPath}/workflows`,
+		body,
+	);
+}
+
+export async function latestRun(world: World, workflowId: string) {
+	return (await workflowRuns(world, workflowId)).items[0];
 }

@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 
+	"anchor/internal/domain/workflow"
 	"anchor/internal/events"
 )
 
@@ -35,6 +37,64 @@ func dataFieldsOf(eventType events.Type) []string {
 		return []string{events.FieldPermissionName}
 	}
 	return []string{}
+}
+
+func (e *Engine) customTriggers(workflows []workflow.Workflow) []Trigger {
+	fields := map[string][]string{}
+	var order []string
+	for _, wf := range workflows {
+		for _, step := range wf.Definition.Steps {
+			if step.Action != ActionWorkflowEmit {
+				continue
+			}
+			eventType := workflow.CustomEventType(step.Params[keyEvent])
+			if _, seen := fields[eventType]; !seen {
+				order = append(order, eventType)
+				fields[eventType] = []string{}
+			}
+			for _, key := range declaredKeys(step.Params[keyData]) {
+				if !slices.Contains(fields[eventType], key) {
+					fields[eventType] = append(fields[eventType], key)
+				}
+			}
+		}
+		if workflow.IsCustomEvent(wf.TriggerEventType) {
+			if _, seen := fields[wf.TriggerEventType]; !seen {
+				order = append(order, wf.TriggerEventType)
+				fields[wf.TriggerEventType] = []string{}
+			}
+		}
+	}
+	slices.Sort(order)
+	triggers := make([]Trigger, 0, len(order))
+	for _, eventType := range order {
+		slices.Sort(fields[eventType])
+		triggers = append(triggers, Trigger{
+			Type:        events.Type(eventType),
+			Name:        strings.TrimPrefix(eventType, workflow.CustomEventPrefix),
+			Description: "Custom event emitted by a workflow step.",
+			GroupType:   events.GroupTypeCustom,
+			GroupName:   GroupCustom,
+			DataFields:  fields[eventType],
+		})
+	}
+	return triggers
+}
+
+// declaredKeys reads the top-level keys of a JSON object parameter whose
+// values may still hold {{ }} references.
+func declaredKeys(raw string) []string {
+	neutral := referencePattern.ReplaceAllString(raw, "null")
+	var object map[string]any
+	if json.Unmarshal([]byte(neutral), &object) != nil {
+		return nil
+	}
+	keys := make([]string, 0, len(object))
+	for key := range object {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 func triggersOf(catalog events.Catalog) []Trigger {

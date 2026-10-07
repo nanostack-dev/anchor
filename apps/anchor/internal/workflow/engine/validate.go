@@ -16,7 +16,13 @@ var stepIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,39}$`)
 // payload: every action and operator is known, every required parameter is
 // set, and every reference names a value that exists by the time it is read.
 func (e *Engine) Validate(triggerType string, definition workflow.Definition) error {
-	if !e.catalog.IsKnown(events.Type(triggerType)) {
+	custom := workflow.IsCustomEvent(triggerType)
+	if custom && !workflow.ValidCustomEvent(triggerType) {
+		return InvalidDefinitionError("trigger_event_type", fmt.Sprintf(
+			"%q is not a valid custom event: use custom. followed by lowercase words joined by dots, "+
+				"such as custom.onboarding.completed.", triggerType))
+	}
+	if !custom && !e.catalog.IsKnown(events.Type(triggerType)) {
 		return InvalidDefinitionError("trigger_event_type",
 			fmt.Sprintf("%q is not an event in the product event catalog.", triggerType))
 	}
@@ -26,7 +32,11 @@ func (e *Engine) Validate(triggerType string, definition workflow.Definition) er
 	if len(definition.Steps) > workflow.MaxSteps {
 		return InvalidDefinitionError("steps", fmt.Sprintf("A workflow has at most %d steps.", workflow.MaxSteps))
 	}
-	known := referenceRoots{dataFields: dataFieldsOf(events.Type(triggerType)), steps: map[string]ActionSpec{}}
+	known := referenceRoots{
+		dataFields:   dataFieldsOf(events.Type(triggerType)),
+		anyDataField: custom,
+		steps:        map[string]ActionSpec{},
+	}
 	if err := validateConditions("conditions", definition.Conditions, known); err != nil {
 		return err
 	}
@@ -64,6 +74,9 @@ func (e *Engine) validateStep(location string, step workflow.Step, known referen
 			return InvalidDefinitionError(location+".params."+param.Name,
 				fmt.Sprintf("Parameter %q of action %s is required.", param.Name, step.Action))
 		}
+		if err := validateParamValue(location+".params."+param.Name, param, raw); err != nil {
+			return err
+		}
 		if err := known.check(location+".params."+param.Name, raw); err != nil {
 			return err
 		}
@@ -96,9 +109,32 @@ func validateConditions(location string, conditions []workflow.Condition, known 
 	return nil
 }
 
+func validateParamValue(location string, param ParamSpec, raw string) error {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return nil
+	}
+	if param.Literal && len(References(value)) > 0 {
+		return InvalidDefinitionError(location,
+			fmt.Sprintf("Parameter %q must be written out: it cannot hold {{ }} references.", param.Name))
+	}
+	if param.Type == ParamCustomEvent && !workflow.ValidCustomEvent(workflow.CustomEventType(value)) {
+		return InvalidDefinitionError(location, fmt.Sprintf(
+			"%q is not a valid custom event name: use lowercase words joined by dots, such as onboarding.completed.",
+			value))
+	}
+	if len(param.Options) > 0 && len(References(value)) == 0 &&
+		!slices.ContainsFunc(param.Options, func(option string) bool { return strings.EqualFold(option, value) }) {
+		return InvalidDefinitionError(location, fmt.Sprintf(
+			"Parameter %q accepts %s.", param.Name, strings.Join(param.Options, ", ")))
+	}
+	return nil
+}
+
 type referenceRoots struct {
-	dataFields []string
-	steps      map[string]ActionSpec
+	dataFields   []string
+	anyDataField bool
+	steps        map[string]ActionSpec
 }
 
 func (r referenceRoots) check(location, raw string) error {
@@ -115,8 +151,8 @@ func (r referenceRoots) checkPath(location, path string) error {
 	switch {
 	case path == "event.id", path == "event.type", path == "workflow.id", path == "workflow.name":
 		return nil
-	case len(segments) == 3 && segments[0] == "event" && segments[1] == "data":
-		if slices.Contains(r.dataFields, segments[2]) {
+	case len(segments) == 3 && segments[0] == keyEvent && segments[1] == "data":
+		if r.anyDataField || slices.Contains(r.dataFields, segments[2]) {
 			return nil
 		}
 		return InvalidDefinitionError(location, fmt.Sprintf(

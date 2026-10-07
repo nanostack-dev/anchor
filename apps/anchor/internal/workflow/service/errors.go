@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+
+	"anchor/internal/workflow/engine"
 )
 
 var errWorkflowNotFound = fault.NotFound(
@@ -11,4 +13,24 @@ var errWorkflowNotFound = fault.NotFound(
 	"This product has no workflow with that identifier.",
 )
 
+var errRunWouldLoop = fault.Conflict(
+	"WORKFLOW_LOOP",
+	"This request comes from a run of this workflow; running it again would start a loop.",
+)
+
 var errFinishRun = errors.New("workflow: record finished run")
+
+func loopError(path []engine.LoopHop) error {
+	hops := make([]map[string]any, 0, len(path))
+	for _, hop := range path {
+		hops = append(hops, map[string]any{
+			"workflow_id": hop.WorkflowID, "workflow_name": hop.WorkflowName,
+			"trigger": hop.Trigger, "emits": hop.Emits,
+		})
+	}
+	return fault.BadRequest(
+		"WORKFLOW_LOOP",
+		"Saving this would let the workflow start itself again: "+engine.DescribeLoop(path)+
+			". Change a trigger or a step, or disable one of these workflows.",
+	).Metadata(map[string]any{"loop": hops})
+}

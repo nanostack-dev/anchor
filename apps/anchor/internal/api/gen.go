@@ -1869,7 +1869,7 @@ type ProductEventDefinitionResponse struct {
 // ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
 type ProductEventDeliveryStatus string
 
-// ProductEventGroupType defines model for ProductEventGroupType.
+// ProductEventGroupType `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
 type ProductEventGroupType = events.GroupType
 
 // ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
@@ -2770,8 +2770,14 @@ type WorkflowActionOutputResponse struct {
 type WorkflowActionParamResponse struct {
 	Description *string `json:"description,omitempty"`
 	Label       string  `json:"label"`
-	Name        string  `json:"name"`
-	Required    bool    `json:"required"`
+
+	// Literal The value must be written out and cannot hold `{{ }}` references, because Anchor reads it when the workflow is saved.
+	Literal bool   `json:"literal"`
+	Name    string `json:"name"`
+
+	// Options The only values the parameter accepts. Absent means any value.
+	Options  *[]string `json:"options,omitempty"`
+	Required bool      `json:"required"`
 
 	// Type What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
 	Type WorkflowParamType `json:"type"`
@@ -2779,16 +2785,19 @@ type WorkflowActionParamResponse struct {
 
 // WorkflowActionResponse defines model for WorkflowActionResponse.
 type WorkflowActionResponse struct {
-	Description string                         `json:"description"`
-	Group       string                         `json:"group"`
-	Name        string                         `json:"name"`
-	Outputs     []WorkflowActionOutputResponse `json:"outputs"`
-	Params      []WorkflowActionParamResponse  `json:"params"`
+	Description string `json:"description"`
+
+	// Emits Every event type the action can emit. `workflow.emit` lists none here: its event is the one its step names.
+	Emits   []string                       `json:"emits"`
+	Group   string                         `json:"group"`
+	Name    string                         `json:"name"`
+	Outputs []WorkflowActionOutputResponse `json:"outputs"`
+	Params  []WorkflowActionParamResponse  `json:"params"`
 
 	// Type Examples: workspace.create
 	Type string `json:"type"`
 
-	// Writes The action changes a resource. A dry run only resolves it.
+	// Writes The action changes a resource or calls out. A dry run only resolves it.
 	Writes bool `json:"writes"`
 }
 
@@ -2830,6 +2839,9 @@ type WorkflowDryRunRequest struct {
 	Workflow  WorkflowWriteRequest `json:"workflow"`
 }
 
+// WorkflowInclude A related resource a workflow read can ask for.
+type WorkflowInclude = workflow.Include
+
 // WorkflowListResponse defines model for WorkflowListResponse.
 type WorkflowListResponse struct {
 	Count int                `json:"count"`
@@ -2847,15 +2859,21 @@ type WorkflowResponse struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	Definition  WorkflowDefinition `json:"definition"`
 	Description *string            `json:"description,omitempty"`
-	Enabled     bool               `json:"enabled"`
+
+	// Emits Every event type the steps can emit, product or custom. A workflow triggered by one of them runs after this one.
+	Emits   []string `json:"emits"`
+	Enabled bool     `json:"enabled"`
 
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
 	// Examples: wf_2iABC...
-	Id               Ksuid     `json:"id"`
-	Name             string    `json:"name"`
-	TriggerEventType string    `json:"trigger_event_type"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	Id Ksuid `json:"id"`
+
+	// LastRun The latest run. Present only on a read passing `include=last_run`, and then absent when the workflow never ran.
+	LastRun          *WorkflowRunResponse `json:"last_run,omitempty"`
+	Name             string               `json:"name"`
+	TriggerEventType string               `json:"trigger_event_type"`
+	UpdatedAt        time.Time            `json:"updated_at"`
 }
 
 // WorkflowRunListResponse defines model for WorkflowRunListResponse.
@@ -2959,11 +2977,13 @@ type WorkflowTriggerResponse struct {
 	// DataFields Keys the event carries under `event.data`.
 	//
 	// Examples: ["organization_id"]
-	DataFields  []string              `json:"data_fields"`
-	Description string                `json:"description"`
-	GroupName   string                `json:"group_name"`
-	GroupType   ProductEventGroupType `json:"group_type"`
-	Name        string                `json:"name"`
+	DataFields  []string `json:"data_fields"`
+	Description string   `json:"description"`
+	GroupName   string   `json:"group_name"`
+
+	// GroupType `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+	GroupType ProductEventGroupType `json:"group_type"`
+	Name      string                `json:"name"`
 
 	// Type Examples: organization.created
 	Type string `json:"type"`
@@ -2980,7 +3000,7 @@ type WorkflowWriteRequest struct {
 	// Name Examples: Auto-join company domain
 	Name string `json:"name"`
 
-	// TriggerEventType The product event that starts a run, from the workflow catalog.
+	// TriggerEventType The event that starts a run: a product event from the workflow catalog, or a custom event (`custom.` followed by lowercase words joined by dots) that another workflow emits.
 	//
 	// Examples: product_user.created
 	TriggerEventType string `json:"trigger_event_type"`
@@ -3079,6 +3099,9 @@ type ResourcePermissionNameParameter = string
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 type WorkflowIdParameter = Ksuid
+
+// WorkflowIncludeParameter defines model for WorkflowIncludeParameter.
+type WorkflowIncludeParameter = []WorkflowInclude
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
@@ -3210,6 +3233,12 @@ type GetUserOrganizationParams struct {
 // ListProductWorkflowRunsParams defines parameters for ListProductWorkflowRuns.
 type ListProductWorkflowRunsParams struct {
 	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListWorkflowsParams defines parameters for ListWorkflows.
+type ListWorkflowsParams struct {
+	// Include Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+	Include *WorkflowIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // ListWorkflowRunsParams defines parameters for ListWorkflowRuns.
@@ -3948,7 +3977,7 @@ type ServerInterface interface {
 	ListProductWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListProductWorkflowRunsParams)
 	// ListWorkflows List Workflows
 	// (GET /v1/products/{product_id}/workflows)
-	ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams)
 	// CreateWorkflow Create Workflow
 	// (POST /v1/products/{product_id}/workflows)
 	CreateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -4659,7 +4688,7 @@ func (_ Unimplemented) ListProductWorkflowRuns(w http.ResponseWriter, r *http.Re
 
 // ListWorkflows List Workflows
 // (GET /v1/products/{product_id}/workflows)
-func (_ Unimplemented) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+func (_ Unimplemented) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8623,8 +8652,24 @@ func (siw *ServerInterfaceWrapper) ListWorkflows(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorkflowsParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListWorkflows(w, r, productId)
+		siw.Handler.ListWorkflows(w, r, productId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -18661,6 +18706,7 @@ func (response ListProductWorkflowRuns404JSONResponse) VisitListProductWorkflowR
 
 type ListWorkflowsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
+	Params    ListWorkflowsParams
 }
 
 type ListWorkflowsResponseObject interface {
@@ -19162,6 +19208,20 @@ func (response RunWorkflow404JSONResponse) VisitRunWorkflowResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RunWorkflow409JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -23024,10 +23084,11 @@ func (sh *strictHandler) ListProductWorkflowRuns(w http.ResponseWriter, r *http.
 }
 
 // ListWorkflows operation middleware
-func (sh *strictHandler) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+func (sh *strictHandler) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams) {
 	var request ListWorkflowsRequestObject
 
 	request.ProductId = productId
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListWorkflows(ctx, request.(ListWorkflowsRequestObject))

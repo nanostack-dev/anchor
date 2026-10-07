@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -9,10 +11,36 @@ import (
 const (
 	MaxSteps      = 20
 	MaxConditions = 20
-	// MaxCausationDepth stops a chain of workflows reacting to each other's
-	// writes. An event a workflow caused at this depth starts no further run.
-	MaxCausationDepth = 3
+	// MaxCausationDepth is the backstop behind the loop guards: an event
+	// caused by this many chained runs starts no further run.
+	MaxCausationDepth = 5
+	// EventQueueName is the queue of events that start workflow runs.
+	EventQueueName = "product-workflows"
+	// CustomEventPrefix starts the type of every event a workflow emits for
+	// other workflows. Custom events never leave Anchor.
+	CustomEventPrefix   = "custom."
+	maxCustomEventBytes = 100
 )
+
+var customEventPattern = regexp.MustCompile(`^custom\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`)
+
+func IsCustomEvent(eventType string) bool {
+	return strings.HasPrefix(eventType, CustomEventPrefix)
+}
+
+func ValidCustomEvent(eventType string) bool {
+	return len(eventType) <= maxCustomEventBytes && customEventPattern.MatchString(eventType)
+}
+
+// CustomEventType names the custom event a step emits, accepting the name
+// with or without its prefix.
+func CustomEventType(name string) string {
+	name = strings.TrimSpace(name)
+	if IsCustomEvent(name) {
+		return name
+	}
+	return CustomEventPrefix + name
+}
 
 // Workflow is a Product's own automation: when an event of the trigger type
 // happens and every condition holds, its steps run in order against the
@@ -26,8 +54,11 @@ type Workflow struct {
 	Enabled          bool
 	TriggerEventType string
 	Definition       Definition
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// LastRun is set only on a read that included it, and stays nil when the
+	// workflow never ran.
+	LastRun   *Run
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (w *Workflow) GenerateID() {

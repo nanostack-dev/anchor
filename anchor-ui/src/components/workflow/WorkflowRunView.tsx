@@ -156,10 +156,13 @@ export function WorkflowRunView({
 						{triggerLabels[run.trigger]}
 					</Text>
 				</Inline>
-				<Text as="span" size="xs" tone="muted" tabular>
+				<Box
+					as="span"
+					className="whitespace-nowrap text-xs text-muted-foreground tabular-nums"
+				>
 					{formatTime(run.started_at)}
 					{duration ? ` · ${duration}` : ""}
-				</Text>
+				</Box>
 			</Spread>
 			{run.error ? (
 				<Box className="[overflow-wrap:anywhere]">

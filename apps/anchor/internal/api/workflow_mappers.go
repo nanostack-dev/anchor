@@ -40,8 +40,8 @@ func mapWorkflowStepRequest(step WorkflowStep) workflow.Step {
 	}
 }
 
-func mapWorkflowToResponse(wf workflow.Workflow) WorkflowResponse {
-	return WorkflowResponse{
+func (s *AnchorAPI) mapWorkflowToResponse(wf workflow.Workflow) WorkflowResponse {
+	response := WorkflowResponse{
 		Id:               wf.ID,
 		Name:             wf.Name,
 		Description:      wf.Description,
@@ -51,9 +51,18 @@ func mapWorkflowToResponse(wf workflow.Workflow) WorkflowResponse {
 			Conditions: functional.Slice(wf.Definition.Conditions).Map(mapWorkflowConditionToResponse),
 			Steps:      functional.Slice(wf.Definition.Steps).Map(mapWorkflowStepToResponse),
 		},
+		Emits:     s.WorkflowService.Emits(wf),
 		CreatedAt: wf.CreatedAt,
 		UpdatedAt: wf.UpdatedAt,
 	}
+	if response.Emits == nil {
+		response.Emits = []string{}
+	}
+	if wf.LastRun != nil {
+		lastRun := mapWorkflowRunToResponse(*wf.LastRun)
+		response.LastRun = &lastRun
+	}
+	return response
 }
 
 func mapWorkflowConditionToResponse(condition workflow.Condition) WorkflowCondition {
@@ -162,12 +171,18 @@ func mapWorkflowAction(spec engine.ActionSpec) WorkflowActionResponse {
 		Description: spec.Description,
 		Group:       spec.Group,
 		Writes:      spec.Writes,
+		Emits:       append([]string{}, spec.MayEmit...),
 		Params: functional.Slice(spec.Params).Map(func(param engine.ParamSpec) WorkflowActionParamResponse {
 			response := WorkflowActionParamResponse{
 				Name: param.Name, Label: param.Label, Type: param.Type, Required: param.Required,
+				Literal: param.Literal,
 			}
 			if param.Description != "" {
 				response.Description = &param.Description
+			}
+			if len(param.Options) > 0 {
+				options := append([]string{}, param.Options...)
+				response.Options = &options
 			}
 			return response
 		}),

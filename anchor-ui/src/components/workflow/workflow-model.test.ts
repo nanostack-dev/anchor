@@ -6,12 +6,18 @@ import {
 import { describe, expect, it } from "vitest";
 import { workflowRecipes } from "./recipes";
 import {
+	customEventType,
+	describeLocation,
 	draftToRequest,
 	emptyDraft,
+	findLoop,
+	isValidCustomEvent,
 	moveItem,
 	newStep,
 	nextStepId,
+	stepEmits,
 	variablesBeforeStep,
+	workflowLinks,
 } from "./workflow-model";
 
 const catalog: WorkflowCatalogResponse = {
@@ -33,18 +39,21 @@ const catalog: WorkflowCatalogResponse = {
 			description: "",
 			group: "Workspaces",
 			writes: true,
+			emits: ["workspace.created"],
 			params: [
 				{
 					name: "organization_id",
 					label: "Organization",
 					type: WorkflowParamType.ORGANIZATION,
 					required: true,
+					literal: false,
 				},
 				{
 					name: "name",
 					label: "Name",
 					type: WorkflowParamType.TEXT,
 					required: true,
+					literal: false,
 				},
 			],
 			outputs: [{ name: "workspace_id", description: "" }],
@@ -123,5 +132,87 @@ describe("workflow model", () => {
 			const ids = recipe.draft.definition.steps.map((step) => step.id);
 			expect(new Set(ids).size).toBe(ids.length);
 		}
+	});
+});
+
+describe("loops", () => {
+	const node = (
+		id: string,
+		trigger: string,
+		emits: string[],
+		enabled = true,
+	) => ({ id, name: id, enabled, trigger_event_type: trigger, emits });
+
+	it("sees a workflow that starts itself", () => {
+		expect(
+			findLoop(node("a", "workspace.created", ["workspace.created"]), []),
+		).toHaveLength(1);
+	});
+
+	it("follows other enabled workflows and ignores disabled ones", () => {
+		const candidate = node("a", "custom.ping", ["custom.pong"]);
+		expect(
+			findLoop(candidate, [node("b", "custom.pong", ["custom.ping"])]),
+		).toHaveLength(2);
+		expect(
+			findLoop(candidate, [node("b", "custom.pong", ["custom.ping"], false)]),
+		).toBeNull();
+	});
+
+	it("links a workflow to the ones its events start", () => {
+		const links = workflowLinks([
+			node("a", "organization.created", ["custom.onboarding"]),
+			node("b", "custom.onboarding", []),
+		]);
+		expect(links.map((link) => `${link.from.id}>${link.to.id}`)).toEqual([
+			"a>b",
+		]);
+	});
+
+	it("names a custom event with or without its prefix", () => {
+		expect(customEventType("onboarding.done")).toBe("custom.onboarding.done");
+		expect(customEventType("custom.onboarding.done")).toBe(
+			"custom.onboarding.done",
+		);
+		expect(isValidCustomEvent("custom.Bad Name")).toBe(false);
+	});
+
+	it("narrows organization.create to what its parameters write", () => {
+		const step = {
+			id: "org",
+			action: "organization.create",
+			params: {
+				name: "x",
+				owner_product_user_id: "{{event.data.product_user_id}}",
+			},
+		};
+		const withEmits = {
+			...catalog,
+			actions: [
+				{
+					...catalog.actions[0],
+					type: "organization.create",
+					emits: [
+						"organization.created",
+						"organization.membership.created",
+						"organization.license.updated",
+					],
+				},
+			],
+		};
+		expect(stepEmits(withEmits, step)).toEqual([
+			"organization.created",
+			"organization.membership.created",
+		]);
+	});
+
+	it("names the step a server error points at", () => {
+		const draft = emptyDraft("organization.created");
+		draft.definition.steps = [
+			{ id: "ws", action: "workspace.create", params: {} },
+		];
+		expect(
+			describeLocation("steps[0].params.organization_id", catalog, draft),
+		).toEqual({ stepIndex: 0, label: "Step 1 · Organization" });
 	});
 });

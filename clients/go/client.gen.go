@@ -1605,7 +1605,7 @@ type ClientInterface interface {
 
 	// GetWorkflowCatalog Get Workflow Catalog
 	//
-	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
 	//
 	// Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
 	GetWorkflowCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1640,11 +1640,11 @@ type ClientInterface interface {
 	// Lists every workflow of the product, by name.
 	//
 	// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
-	ListWorkflows(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListWorkflows(ctx context.Context, productId ProductIdParameter, params *ListWorkflowsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWorkflowWithBody Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1653,7 +1653,7 @@ type ClientInterface interface {
 
 	// CreateWorkflow Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1674,7 +1674,7 @@ type ClientInterface interface {
 
 	// UpdateWorkflowWithBody Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1683,7 +1683,7 @@ type ClientInterface interface {
 
 	// UpdateWorkflow Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1699,7 +1699,7 @@ type ClientInterface interface {
 
 	// RunWorkflowWithBody Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1708,7 +1708,7 @@ type ClientInterface interface {
 
 	// RunWorkflow Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -4921,7 +4921,7 @@ func (c *Client) UnassignPermissionFromProductRole(ctx context.Context, productI
 
 // GetWorkflowCatalog Get Workflow Catalog
 //
-// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
 //
 // Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
 func (c *Client) GetWorkflowCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4996,8 +4996,8 @@ func (c *Client) ListProductWorkflowRuns(ctx context.Context, productId ProductI
 // Lists every workflow of the product, by name.
 //
 // Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
-func (c *Client) ListWorkflows(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListWorkflowsRequest(c.Server, productId)
+func (c *Client) ListWorkflows(ctx context.Context, productId ProductIdParameter, params *ListWorkflowsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowsRequest(c.Server, productId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5010,7 +5010,7 @@ func (c *Client) ListWorkflows(ctx context.Context, productId ProductIdParameter
 
 // CreateWorkflowWithBody Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5029,7 +5029,7 @@ func (c *Client) CreateWorkflowWithBody(ctx context.Context, productId ProductId
 
 // CreateWorkflow Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5080,7 +5080,7 @@ func (c *Client) GetWorkflow(ctx context.Context, productId ProductIdParameter, 
 
 // UpdateWorkflowWithBody Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5099,7 +5099,7 @@ func (c *Client) UpdateWorkflowWithBody(ctx context.Context, productId ProductId
 
 // UpdateWorkflow Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5135,7 +5135,7 @@ func (c *Client) ListWorkflowRuns(ctx context.Context, productId ProductIdParame
 
 // RunWorkflowWithBody Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5154,7 +5154,7 @@ func (c *Client) RunWorkflowWithBody(ctx context.Context, productId ProductIdPar
 
 // RunWorkflow Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -10734,7 +10734,7 @@ func NewListProductWorkflowRunsRequest(server string, productId ProductIdParamet
 }
 
 // NewListWorkflowsRequest constructs an http.Request for the ListWorkflows method
-func NewListWorkflowsRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+func NewListWorkflowsRequest(server string, productId ProductIdParameter, params *ListWorkflowsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10757,6 +10757,33 @@ func NewListWorkflowsRequest(server string, productId ProductIdParameter) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -12737,7 +12764,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetWorkflowCatalogWithResponse Get Workflow Catalog
 	//
-	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12778,11 +12805,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
-	ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error)
+	ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListWorkflowsParams, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error)
 
 	// CreateWorkflowWithBodyWithResponse Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12791,7 +12818,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateWorkflowWithResponse Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12816,7 +12843,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateWorkflowWithBodyWithResponse Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12825,7 +12852,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateWorkflowWithResponse Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12843,7 +12870,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunWorkflowWithBodyWithResponse Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12852,7 +12879,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunWorkflowWithResponse Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -21181,6 +21208,8 @@ type RunWorkflowResponse struct {
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -21206,6 +21235,11 @@ func (r RunWorkflowResponse) GetJSON403() *Forbidden {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r RunWorkflowResponse) GetJSON404() *NotFound {
 	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RunWorkflowResponse) GetJSON409() *Conflict {
+	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
@@ -23872,7 +23906,7 @@ func (c *ClientWithResponses) UnassignPermissionFromProductRoleWithResponse(ctx 
 
 // GetWorkflowCatalogWithResponse Get Workflow Catalog
 //
-// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -23937,8 +23971,8 @@ func (c *ClientWithResponses) ListProductWorkflowRunsWithResponse(ctx context.Co
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
-func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error) {
-	rsp, err := c.ListWorkflows(ctx, productId, reqEditors...)
+func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListWorkflowsParams, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error) {
+	rsp, err := c.ListWorkflows(ctx, productId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23947,7 +23981,7 @@ func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, pro
 
 // CreateWorkflowWithBodyWithResponse Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23962,7 +23996,7 @@ func (c *ClientWithResponses) CreateWorkflowWithBodyWithResponse(ctx context.Con
 
 // CreateWorkflowWithResponse Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24005,7 +24039,7 @@ func (c *ClientWithResponses) GetWorkflowWithResponse(ctx context.Context, produ
 
 // UpdateWorkflowWithBodyWithResponse Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24020,7 +24054,7 @@ func (c *ClientWithResponses) UpdateWorkflowWithBodyWithResponse(ctx context.Con
 
 // UpdateWorkflowWithResponse Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24050,7 +24084,7 @@ func (c *ClientWithResponses) ListWorkflowRunsWithResponse(ctx context.Context, 
 
 // RunWorkflowWithBodyWithResponse Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24065,7 +24099,7 @@ func (c *ClientWithResponses) RunWorkflowWithBodyWithResponse(ctx context.Contex
 
 // RunWorkflowWithResponse Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -30724,6 +30758,13 @@ func ParseRunWorkflowResponse(rsp *http.Response) (*RunWorkflowResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

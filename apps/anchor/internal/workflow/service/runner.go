@@ -24,6 +24,35 @@ func NewRunner(repo repository.Repository, eng *engine.Engine, logger zerolog.Lo
 	return &Runner{repo: repo, engine: eng, logger: logger.With().Str("component", "workflow_runner").Logger()}
 }
 
+// Prevent records, without running a step, a run the loop guard refused.
+func (r *Runner) Prevent(ctx context.Context, execution engine.Execution, reason string) error {
+	now := time.Now().UTC()
+	prevented := workflow.Run{
+		WorkflowID: execution.Workflow.ID,
+		ProductID:  execution.Workflow.ProductID,
+		EventID:    execution.EventID,
+		EventType:  execution.EventType,
+		EventData:  execution.EventData,
+		Trigger:    execution.Trigger,
+		Status:     workflow.RunStatusSkipped,
+		Steps:      []workflow.StepResult{},
+		Error:      &reason,
+		StartedAt:  now,
+		FinishedAt: &now,
+	}
+	prevented.GenerateID()
+	started, err := r.repo.StartRun(ctx, prevented)
+	if err != nil || !started {
+		return err
+	}
+	r.logger.Warn().
+		Str("product_id", prevented.ProductID).
+		Str("workflow_id", prevented.WorkflowID).
+		Str("event_id", prevented.EventID).
+		Msg("workflow run prevented by the loop guard")
+	return nil
+}
+
 // Start reports false, with no error, when the workflow already ran for the
 // event. A run starts at most once per event: a step that wrote is never
 // repeated by a redelivery.

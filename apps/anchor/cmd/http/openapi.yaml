@@ -149,6 +149,21 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
       example: "ws_6jKLM..."
+    WorkflowIncludeParameter:
+      name: include
+      in: query
+      required: false
+      description: >-
+        Related resources to read alongside each workflow, comma separated —
+        `?include=last_run`. A resource not named is left out of the response.
+        Each named resource costs one statement for the whole response.
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/WorkflowInclude"
+      style: form
+      explode: false
+      example: ["last_run"]
     WorkflowIdParameter:
       name: workflow_id
       in: path
@@ -784,7 +799,11 @@ components:
       - items
     ProductEventGroupType:
       type: string
-      enum: [internal, integration]
+      description: >-
+        `custom` names an event a Product's workflows emit for each other with
+        the `workflow.emit` action. Custom events appear only as workflow
+        triggers; they are never delivered to the event endpoint.
+      enum: [internal, integration, custom]
       x-go-type: events.GroupType
       x-go-type-import:
         path: anchor/internal/events
@@ -4204,6 +4223,13 @@ components:
       x-go-type: workflow.Operator
       x-go-type-import:
         path: anchor/internal/domain/workflow
+    WorkflowInclude:
+      type: string
+      description: A related resource a workflow read can ask for.
+      enum: [last_run]
+      x-go-type: workflow.Include
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
     WorkflowRunStatus:
       type: string
       description: >-
@@ -4240,7 +4266,7 @@ components:
         What a parameter holds, so a client can offer the right picker. Every
         parameter is sent as a string; `json` parameters hold a JSON object
         after their references are resolved.
-      enum: [text, email, json, organization, product_user, role, license_template, email_template]
+      enum: [text, email, json, organization, product_user, role, license_template, email_template, url, custom_event]
       x-go-type: engine.ParamType
       x-go-type-import:
         path: anchor/internal/workflow/engine
@@ -4332,7 +4358,10 @@ components:
           description: A disabled workflow keeps its definition and starts no run on events.
         trigger_event_type:
           type: string
-          description: The product event that starts a run, from the workflow catalog.
+          description: >-
+            The event that starts a run: a product event from the workflow
+            catalog, or a custom event (`custom.` followed by lowercase words
+            joined by dots) that another workflow emits.
           examples: ["product_user.created"]
         definition:
           $ref: "#/components/schemas/WorkflowDefinition"
@@ -4357,13 +4386,25 @@ components:
           type: string
         definition:
           $ref: "#/components/schemas/WorkflowDefinition"
+        emits:
+          type: array
+          items:
+            type: string
+          description: >-
+            Every event type the steps can emit, product or custom. A workflow
+            triggered by one of them runs after this one.
+        last_run:
+          $ref: "#/components/schemas/WorkflowRunResponse"
+          description: >-
+            The latest run. Present only on a read passing `include=last_run`,
+            and then absent when the workflow never ran.
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-      required: [id, name, enabled, trigger_event_type, definition, created_at, updated_at]
+      required: [id, name, enabled, trigger_event_type, definition, emits, created_at, updated_at]
     WorkflowListResponse:
       type: object
       properties:
@@ -4494,7 +4535,17 @@ components:
           $ref: "#/components/schemas/WorkflowParamType"
         required:
           type: boolean
-      required: [name, label, type, required]
+        options:
+          type: array
+          items:
+            type: string
+          description: The only values the parameter accepts. Absent means any value.
+        literal:
+          type: boolean
+          description: >-
+            The value must be written out and cannot hold `{{ }}` references,
+            because Anchor reads it when the workflow is saved.
+      required: [name, label, type, required, literal]
     WorkflowActionOutputResponse:
       type: object
       properties:
@@ -4517,7 +4568,14 @@ components:
           type: string
         writes:
           type: boolean
-          description: The action changes a resource. A dry run only resolves it.
+          description: The action changes a resource or calls out. A dry run only resolves it.
+        emits:
+          type: array
+          items:
+            type: string
+          description: >-
+            Every event type the action can emit. `workflow.emit` lists none
+            here: its event is the one its step names.
         params:
           type: array
           items:
@@ -4526,7 +4584,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WorkflowActionOutputResponse"
-      required: [type, name, description, group, writes, params, outputs]
+      required: [type, name, description, group, writes, emits, params, outputs]
     WorkflowCatalogResponse:
       type: object
       properties:
@@ -8443,8 +8501,10 @@ paths:
       summary: Get Workflow Catalog
       description: >-
         Lists what a workflow can be built from: every trigger event with the
-        keys of its `data`, every action with its parameters and outputs, and
-        every condition operator.
+        keys of its `data`, every action with its parameters, outputs and the
+        events it can emit, and every condition operator. Triggers include the
+        custom events this product's workflows emit, with the data keys their
+        steps declare.
       operationId: getWorkflowCatalog
       tags: [Workflow]
       security:
@@ -8471,6 +8531,8 @@ paths:
       summary: List Workflows
       description: Lists every workflow of the product, by name.
       operationId: listWorkflows
+      parameters:
+      - $ref: '#/components/parameters/WorkflowIncludeParameter'
       tags: [Workflow]
       security:
       - platformBearerAuth: []
@@ -8495,9 +8557,11 @@ paths:
         Creates a workflow. The definition is checked against the catalog:
         every action, parameter and operator must exist, every required
         parameter must be set, and every `{{ }}` reference must name a key of
-        the trigger event or an output of an earlier step. A workflow runs as
-        the Product, so `workflow:create` lets a key act on everything its
-        steps can reach.
+        the trigger event or an output of an earlier step. An enabled workflow
+        is refused when it could start itself again, through its own writes or
+        through other enabled workflows: the error names the loop. A workflow
+        runs as the Product, so `workflow:create` lets a key act on everything
+        its steps can reach.
       operationId: createWorkflow
       tags: [Workflow]
       security:
@@ -8555,7 +8619,8 @@ paths:
       description: >-
         Replaces the workflow's name, description, trigger, definition and
         enabled flag. Runs already started keep the definition they started
-        with.
+        with. Enabling or changing a workflow is refused when it would close a
+        loop, as on create.
       operationId: updateWorkflow
       tags: [Workflow]
       security:
@@ -8643,7 +8708,9 @@ paths:
       description: >-
         Runs the workflow now against the given event data, as if its trigger
         event had happened, and stores the run. The steps write for real. A
-        disabled workflow runs too.
+        disabled workflow runs too. A request carrying an
+        `Anchor-Workflow-Causation` header from a run of this same workflow is
+        refused with a conflict.
       operationId: runWorkflow
       tags: [Workflow]
       security:
@@ -8671,6 +8738,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/workflow-dry-runs:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

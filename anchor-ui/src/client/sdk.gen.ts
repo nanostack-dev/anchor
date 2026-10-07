@@ -2460,7 +2460,7 @@ export const getOrganizationUsageSeries = <ThrowOnError extends boolean = false>
 
 /**
  * Get Workflow Catalog
- * Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+ * Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
  */
 export const getWorkflowCatalog = <ThrowOnError extends boolean = false>(options: Options<GetWorkflowCatalogData, ThrowOnError>) => {
     return (options.client ?? client).get<GetWorkflowCatalogResponses, GetWorkflowCatalogErrors, ThrowOnError>({
@@ -2485,6 +2485,12 @@ export const getWorkflowCatalog = <ThrowOnError extends boolean = false>(options
  */
 export const listWorkflows = <ThrowOnError extends boolean = false>(options: Options<ListWorkflowsData, ThrowOnError>) => {
     return (options.client ?? client).get<ListWorkflowsResponses, ListWorkflowsErrors, ThrowOnError>({
+        querySerializer: {
+            array: {
+                explode: false,
+                style: 'form'
+            }
+        },
         security: [
             {
                 scheme: 'bearer',
@@ -2502,7 +2508,7 @@ export const listWorkflows = <ThrowOnError extends boolean = false>(options: Opt
 
 /**
  * Create Workflow
- * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+ * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
  */
 export const createWorkflow = <ThrowOnError extends boolean = false>(options: Options<CreateWorkflowData, ThrowOnError>) => {
     return (options.client ?? client).post<CreateWorkflowResponses, CreateWorkflowErrors, ThrowOnError>({
@@ -2568,7 +2574,7 @@ export const getWorkflow = <ThrowOnError extends boolean = false>(options: Optio
 
 /**
  * Update Workflow
- * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+ * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
  */
 export const updateWorkflow = <ThrowOnError extends boolean = false>(options: Options<UpdateWorkflowData, ThrowOnError>) => {
     return (options.client ?? client).put<UpdateWorkflowResponses, UpdateWorkflowErrors, ThrowOnError>({
@@ -2614,7 +2620,7 @@ export const listWorkflowRuns = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * Run Workflow
- * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+ * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
  */
 export const runWorkflow = <ThrowOnError extends boolean = false>(options: Options<RunWorkflowData, ThrowOnError>) => {
     return (options.client ?? client).post<RunWorkflowResponses, RunWorkflowErrors, ThrowOnError>({

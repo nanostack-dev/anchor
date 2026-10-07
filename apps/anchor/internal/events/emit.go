@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -49,26 +48,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 		return errEmitRequiresTx
 	}
 
-	dataJSON, err := json.Marshal(event.Data)
-	if err != nil {
-		return err
-	}
-	envelope := Envelope{
-		Type:      event.Type,
-		Timestamp: e.now().UTC().Format(time.RFC3339Nano),
-		Data:      dataJSON,
-	}
-	body, err := json.Marshal(envelope)
-	if err != nil {
-		return err
-	}
-	payload, err := json.Marshal(QueuedEvent{
-		EventID:   ids.MustNew(eventIDPrefix),
-		ProductID: event.ProductID,
-		Type:      event.Type,
-		Body:      body,
-		Depth:     CausationDepth(ctx),
-	})
+	payload, err := EncodeEvent(ctx, ids.MustNew(eventIDPrefix), event.ProductID, event.Type, event.Data, e.now())
 	if err != nil {
 		return err
 	}

@@ -11,9 +11,18 @@ import (
 )
 
 func (s *AnchorAPI) GetWorkflowCatalog(
-	ctx context.Context, _ GetWorkflowCatalogRequestObject,
+	ctx context.Context, request GetWorkflowCatalogRequestObject,
 ) (GetWorkflowCatalogResponseObject, error) {
-	return GetWorkflowCatalog200JSONResponse(mapWorkflowCatalog(s.WorkflowService.Catalog(ctx))), nil
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	catalog, err := s.WorkflowService.Catalog(ctx, workflow.ListInput{TenantID: tenantID, ProductID: request.ProductId})
+	if err != nil {
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to read workflow catalog")
+		return nil, err
+	}
+	return GetWorkflowCatalog200JSONResponse(mapWorkflowCatalog(catalog)), nil
 }
 
 func (s *AnchorAPI) ListWorkflows(
@@ -23,13 +32,17 @@ func (s *AnchorAPI) ListWorkflows(
 	if err != nil {
 		return nil, err
 	}
-	workflows, err := s.WorkflowService.List(ctx, workflow.ListInput{TenantID: tenantID, ProductID: request.ProductId})
+	workflows, err := s.WorkflowService.List(ctx, workflow.ListInput{
+		TenantID:  tenantID,
+		ProductID: request.ProductId,
+		Include:   functional.FromPtr(request.Params.Include).OrElse(nil),
+	})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list workflows")
 		return nil, err
 	}
 	return ListWorkflows200JSONResponse(WorkflowListResponse{
-		Items: functional.Slice(workflows).Map(mapWorkflowToResponse),
+		Items: functional.Slice(workflows).Map(s.mapWorkflowToResponse),
 		Count: len(workflows),
 	}), nil
 }
@@ -53,7 +66,7 @@ func (s *AnchorAPI) CreateWorkflow(
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create workflow")
 		return nil, err
 	}
-	return CreateWorkflow201JSONResponse(mapWorkflowToResponse(created)), nil
+	return CreateWorkflow201JSONResponse(s.mapWorkflowToResponse(created)), nil
 }
 
 func (s *AnchorAPI) GetWorkflow(
@@ -73,7 +86,7 @@ func (s *AnchorAPI) GetWorkflow(
 			Msg("failed to get workflow")
 		return nil, err
 	}
-	return GetWorkflow200JSONResponse(mapWorkflowToResponse(found)), nil
+	return GetWorkflow200JSONResponse(s.mapWorkflowToResponse(found)), nil
 }
 
 func (s *AnchorAPI) UpdateWorkflow(
@@ -99,7 +112,7 @@ func (s *AnchorAPI) UpdateWorkflow(
 			Msg("failed to update workflow")
 		return nil, err
 	}
-	return UpdateWorkflow200JSONResponse(mapWorkflowToResponse(updated)), nil
+	return UpdateWorkflow200JSONResponse(s.mapWorkflowToResponse(updated)), nil
 }
 
 func (s *AnchorAPI) DeleteWorkflow(

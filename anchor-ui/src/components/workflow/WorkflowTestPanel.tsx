@@ -11,6 +11,10 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { ConfirmDialog } from "@nanostackorg/design-system/blocks/confirm-dialog";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Card,
@@ -30,7 +34,7 @@ import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, Play } from "lucide-react";
+import { CircleAlert, FlaskConical, Play } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { WorkflowRunView } from "./WorkflowRunView";
 import {
@@ -182,9 +186,11 @@ export function WorkflowTestPanel({
 						</Text>
 					) : null}
 					{error ? (
-						<Text size="sm" tone="critical">
-							{error}
-						</Text>
+						<Alert tone="critical" icon={CircleAlert}>
+							<AlertDescription>
+								<Box className="[overflow-wrap:anywhere]">{error}</Box>
+							</AlertDescription>
+						</Alert>
 					) : null}
 					{result ? (
 						<Box as="section" aria-label="Run result">

@@ -15,6 +15,7 @@ import (
 	"anchor/internal/domain/workflow"
 	"anchor/internal/domain/workspace"
 	emailsvc "anchor/internal/email/service"
+	"anchor/internal/events"
 	invitationsvc "anchor/internal/invitation/service"
 	licensesvc "anchor/internal/license/service"
 	anchorservice "anchor/internal/service"
@@ -27,6 +28,7 @@ const (
 	GroupUsers         = "Users"
 	GroupLicensing     = "Licensing"
 	GroupEmail         = "Email"
+	GroupCustom        = "Custom"
 )
 
 const (
@@ -43,6 +45,8 @@ const (
 	ActionLicenseMigrate     workflow.ActionType = "license.migrate"
 	ActionLicenseAdjust      workflow.ActionType = "license.adjust"
 	ActionEmailSend          workflow.ActionType = "email.send"
+	ActionHTTPRequest        workflow.ActionType = "http.request"
+	ActionWorkflowEmit       workflow.ActionType = "workflow.emit"
 )
 
 const (
@@ -56,6 +60,7 @@ const (
 	keyMetadata       = "metadata"
 	keyEmail          = "email"
 	keyStatus         = "status"
+	keyEvent          = "event"
 
 	labelName            = "Name"
 	labelDescription     = "Description"
@@ -73,6 +78,8 @@ type Services struct {
 	Licenses      licensesvc.OrganizationLicenseService
 	Migrations    licensesvc.LicenseMigrationService
 	Email         emailsvc.EmailService
+	CustomEvents  CustomEventSender
+	Caller        *HTTPCaller
 }
 
 func buildActions(s Services) []action {
@@ -117,7 +124,15 @@ func buildActions(s Services) []action {
 		},
 		{
 			spec: ActionSpec{
-				Type: ActionOrganizationCreate, Group: GroupOrganizations, Name: "Create organization", Writes: true,
+				Type:   ActionOrganizationCreate,
+				Group:  GroupOrganizations,
+				Name:   "Create organization",
+				Writes: true,
+				MayEmit: []string{
+					string(events.OrganizationCreated),
+					string(events.MembershipCreated),
+					string(events.OrganizationLicenseUpdated),
+				},
 				Description: "Creates an organization. With an owner, the product user becomes its first member; " +
 					"with a license template, the organization is licensed in the same write.",
 				Params: []ParamSpec{
@@ -164,6 +179,16 @@ func buildActions(s Services) []action {
 				}
 				return organizationOutput(result.Organization), nil
 			},
+			emits: func(params map[string]string) []string {
+				emitted := []string{string(events.OrganizationCreated)}
+				if strings.TrimSpace(params["owner_product_user_id"]) != "" {
+					emitted = append(emitted, string(events.MembershipCreated))
+				}
+				if strings.TrimSpace(params["license_template_id"]) != "" {
+					emitted = append(emitted, string(events.OrganizationLicenseUpdated))
+				}
+				return emitted
+			},
 		},
 		{
 			spec: ActionSpec{
@@ -171,6 +196,7 @@ func buildActions(s Services) []action {
 				Group:       GroupOrganizations,
 				Name:        "Update organization",
 				Writes:      true,
+				MayEmit:     []string{string(events.OrganizationUpdated)},
 				Description: "Renames an organization, or merges keys into its metadata. A field left empty keeps its value.",
 				Params: []ParamSpec{
 					organizationIDParam,
@@ -216,6 +242,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionWorkspaceCreate, Group: GroupWorkspaces, Name: "Create workspace", Writes: true,
+				MayEmit:     []string{string(events.WorkspaceCreated)},
 				Description: "Creates a workspace inside an organization.",
 				Params: []ParamSpec{
 					organizationIDParam,
@@ -241,6 +268,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionMemberAdd, Group: GroupMembers, Name: "Add member", Writes: true,
+				MayEmit:     []string{string(events.MembershipCreated)},
 				Description: "Makes a product user a member of an organization with a role.",
 				Params:      []ParamSpec{organizationIDParam, productUserIDParam, roleIDParam},
 				Outputs:     membershipOutputs,
@@ -259,6 +287,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionMemberUpdateRole, Group: GroupMembers, Name: "Change member role", Writes: true,
+				MayEmit:     []string{string(events.MembershipUpdated)},
 				Description: "Gives a member of an organization another role.",
 				Params:      []ParamSpec{organizationIDParam, productUserIDParam, roleIDParam},
 				Outputs:     membershipOutputs,
@@ -277,6 +306,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionMemberRemove, Group: GroupMembers, Name: "Remove member", Writes: true,
+				MayEmit:     []string{string(events.MembershipDeleted)},
 				Description: "Removes a product user from an organization.",
 				Params:      []ParamSpec{organizationIDParam, productUserIDParam},
 				Outputs: []OutputSpec{
@@ -300,6 +330,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionInvitationCreate, Group: GroupMembers, Name: "Invite to organization", Writes: true,
+				MayEmit: []string{string(events.OrganizationInvitationCreated)},
 				Description: "Creates a pending invitation for an email address. Anchor sends no email: " +
 					"follow with a Send email step to tell the person.",
 				Params: []ParamSpec{
@@ -361,6 +392,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionLicenseInstantiate, Group: GroupLicensing, Name: "License organization", Writes: true,
+				MayEmit:     []string{string(events.OrganizationLicenseUpdated)},
 				Description: "Gives an organization that holds no license its first one, copied from a template.",
 				Params: []ParamSpec{
 					organizationIDParam,
@@ -385,6 +417,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionLicenseMigrate, Group: GroupLicensing, Name: "Move to license template", Writes: true,
+				MayEmit:     []string{string(events.OrganizationLicenseUpdated)},
 				Description: "Migrates one organization onto a license template. Adjusted fields carry forward.",
 				Params: []ParamSpec{
 					organizationIDParam,
@@ -423,6 +456,7 @@ func buildActions(s Services) []action {
 		{
 			spec: ActionSpec{
 				Type: ActionLicenseAdjust, Group: GroupLicensing, Name: "Adjust license", Writes: true,
+				MayEmit:     []string{string(events.OrganizationLicenseUpdated)},
 				Description: "Sets license field values on one organization's license without touching its template.",
 				Params: []ParamSpec{
 					organizationIDParam,
@@ -485,6 +519,8 @@ func buildActions(s Services) []action {
 				return map[string]any{"send_id": sent.ID, keyStatus: string(sent.Status)}, nil
 			},
 		},
+		httpRequestAction(s.Caller),
+		workflowEmitAction(s.CustomEvents),
 	}
 }
 

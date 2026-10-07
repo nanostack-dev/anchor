@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,8 +33,36 @@ func (e *Engine) Actions() []ActionSpec {
 	return e.specs
 }
 
-func (e *Engine) Triggers() []Trigger {
-	return triggersOf(e.catalog)
+// Triggers lists the catalog events, then the custom events emitted by the
+// given workflows.
+func (e *Engine) Triggers(workflows []workflow.Workflow) []Trigger {
+	return append(triggersOf(e.catalog), e.customTriggers(workflows)...)
+}
+
+// Emits lists the event types a workflow's steps can emit, each once.
+func (e *Engine) Emits(wf workflow.Workflow) []string {
+	var emitted []string
+	for _, step := range wf.Definition.Steps {
+		selected, ok := e.actions[step.Action]
+		if !ok {
+			continue
+		}
+		for _, eventType := range selected.emitted(step.Params) {
+			if !slices.Contains(emitted, eventType) {
+				emitted = append(emitted, eventType)
+			}
+		}
+	}
+	return emitted
+}
+
+// StepEmits lists the event types one step can emit.
+func (e *Engine) StepEmits(step workflow.Step) []string {
+	selected, ok := e.actions[step.Action]
+	if !ok {
+		return nil
+	}
+	return selected.emitted(step.Params)
 }
 
 // Execution is one event delivered to one workflow.
@@ -44,9 +73,10 @@ type Execution struct {
 	EventType string
 	EventData map[string]string
 	Trigger   workflow.RunTrigger
-	// Depth is the causation depth of the event. Every write the run makes
-	// emits its events one level deeper.
+	// Depth and Chain are the causation of the event. Every write the run
+	// makes emits its events one level deeper, with this workflow appended.
 	Depth int
+	Chain []string
 }
 
 // Execute runs the workflow's steps in order and reports what each did. A
@@ -72,12 +102,23 @@ func (e *Engine) execute(ctx context.Context, execution Execution) workflow.Run 
 		Steps:      []workflow.StepResult{},
 		StartedAt:  e.now(),
 	}
-	ctx = events.WithCausationDepth(ctx, execution.Depth+1)
+	ctx = events.WithCausation(ctx, events.Causation{
+		Depth:       execution.Depth + 1,
+		WorkflowIDs: append(slices.Clone(execution.Chain), execution.Workflow.ID),
+	})
 	scope := NewScope(
 		execution.Workflow.ID, execution.Workflow.Name,
 		execution.EventID, execution.EventType, execution.EventData,
 	)
-	env := Env{TenantID: execution.Workflow.PlatformTenantID, ProductID: execution.Workflow.ProductID, RunID: run.ID}
+	env := Env{
+		TenantID:   execution.Workflow.PlatformTenantID,
+		ProductID:  execution.Workflow.ProductID,
+		WorkflowID: execution.Workflow.ID,
+		RunID:      run.ID,
+		EventID:    execution.EventID,
+		EventType:  execution.EventType,
+		EventData:  execution.EventData,
+	}
 
 	matched, err := scope.Holds(execution.Workflow.Definition.Conditions)
 	if err != nil {

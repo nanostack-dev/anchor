@@ -1,4 +1,8 @@
 import type { WorkflowCatalogResponse, WorkflowStep } from "@/client";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { IconButton } from "@nanostackorg/design-system/components/button";
 import {
@@ -13,13 +17,27 @@ import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
-import { ArrowDown, ArrowUp, ChevronRight, Filter, Trash2 } from "lucide-react";
+import {
+	ArrowDown,
+	ArrowRight,
+	ArrowUp,
+	ChevronRight,
+	CircleAlert,
+	Filter,
+	Trash2,
+	Zap,
+} from "lucide-react";
 import { useId } from "react";
 import { ConditionEditor } from "./ConditionEditor";
 import { ParamInput } from "./ParamInput";
 import { actionGroupIcon } from "./action-icons";
 import type { WorkflowResources } from "./useWorkflowResources";
 import { type WorkflowVariable, findAction } from "./workflow-model";
+
+export interface StepStart {
+	event: string;
+	workflowNames: string[];
+}
 
 export function StepEditor({
 	step,
@@ -28,6 +46,8 @@ export function StepEditor({
 	catalog,
 	variables,
 	resources,
+	errors = {},
+	starts = [],
 	onChange,
 	onMove,
 	onRemove,
@@ -38,6 +58,8 @@ export function StepEditor({
 	catalog: WorkflowCatalogResponse;
 	variables: WorkflowVariable[];
 	resources: WorkflowResources;
+	errors?: Record<string, string>;
+	starts?: StepStart[];
 	onChange: (step: WorkflowStep) => void;
 	onMove: (to: number) => void;
 	onRemove: () => void;
@@ -114,6 +136,11 @@ export function StepEditor({
 
 			<Stack space="lg">
 				<Box className="space-y-4 px-4 py-4">
+					{errors[""] ? (
+						<Alert tone="critical" icon={CircleAlert}>
+							<AlertDescription>{errors[""]}</AlertDescription>
+						</Alert>
+					) : null}
 					{action ? (
 						<Text size="sm" tone="muted">
 							{action.description}
@@ -134,6 +161,7 @@ export function StepEditor({
 									value={step.params[param.name] ?? ""}
 									variables={variables}
 									resources={resources}
+									error={errors[param.name]}
 									onChange={(value) => setParam(param.name, value)}
 								/>
 							</Box>
@@ -161,6 +189,7 @@ export function StepEditor({
 						<CollapsibleContent>
 							<Box className="mt-3 rounded-lg bg-muted/50 p-3">
 								<ConditionEditor
+									label={`Step ${index + 1} condition`}
 									conditions={when}
 									variables={variables}
 									onChange={(next) => onChange({ ...step, when: next })}
@@ -169,6 +198,42 @@ export function StepEditor({
 							</Box>
 						</CollapsibleContent>
 					</Collapsible>
+
+					{starts.length > 0 ? (
+						<Box
+							as="ul"
+							aria-label={`Events step ${index + 1} emits`}
+							className="space-y-1 rounded-lg border border-dashed border-border px-3 py-2"
+						>
+							{starts.map((start) => (
+								<Box
+									as="li"
+									key={start.event}
+									className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+								>
+									<Zap className="size-3 shrink-0" aria-hidden />
+									<Box as="span">Emits</Box>
+									<Box
+										as="span"
+										className="break-all font-mono text-foreground"
+									>
+										{start.event}
+									</Box>
+									{start.workflowNames.length > 0 ? (
+										<>
+											<ArrowRight className="size-3 shrink-0" aria-hidden />
+											<Box as="span" className="break-words">
+												starts{" "}
+												{start.workflowNames
+													.map((name) => `“${name}”`)
+													.join(", ")}
+											</Box>
+										</>
+									) : null}
+								</Box>
+							))}
+						</Box>
+					) : null}
 
 					<Box className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
 						<Inline space="sm" alignY="center">

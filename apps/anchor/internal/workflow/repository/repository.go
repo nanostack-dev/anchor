@@ -33,14 +33,17 @@ type Repository interface {
 	// product starts on the event type. Emit reads it for every event.
 	HasEnabledForTriggerInternal(ctx context.Context, productID, eventType string) (bool, error)
 
-	// StartRun stores the run as running and reports false when the
-	// workflow already has a run for the event, which makes a redelivered
-	// event start nothing.
+	// StartRun stores the run, as running or already finished, and reports
+	// false when the workflow already has a run for the event, which makes a
+	// redelivered event start nothing.
 	StartRun(ctx context.Context, run workflow.Run) (bool, error)
 	FinishRun(ctx context.Context, run workflow.Run) error
 	ListRuns(
 		ctx context.Context, tenantID, productID string, workflowID functional.Option[string], limit int,
 	) ([]workflow.Run, error)
+	// LatestRuns reads the latest run of every workflow of the product that
+	// ran, keyed by workflow, in one statement.
+	LatestRuns(ctx context.Context, tenantID, productID string) (map[string]workflow.Run, error)
 }
 
 type repositoryImpl struct {
@@ -177,7 +180,9 @@ func (r *repositoryImpl) StartRun(ctx context.Context, run workflow.Run) (bool, 
 		table.ProductWorkflowRuns.Trigger,
 		table.ProductWorkflowRuns.Status,
 		table.ProductWorkflowRuns.Steps,
+		table.ProductWorkflowRuns.Error,
 		table.ProductWorkflowRuns.StartedAt,
+		table.ProductWorkflowRuns.FinishedAt,
 	).MODEL(entity).
 		ON_CONFLICT(table.ProductWorkflowRuns.WorkflowID, table.ProductWorkflowRuns.EventID).
 		DO_NOTHING().
@@ -244,6 +249,41 @@ func (r *repositoryImpl) ListRuns(
 		runs = append(runs, run)
 	}
 	return runs, nil
+}
+
+func (r *repositoryImpl) LatestRuns(
+	ctx context.Context, tenantID, productID string,
+) (map[string]workflow.Run, error) {
+	stmt := postgres.SELECT(
+		table.ProductWorkflowRuns.AllColumns,
+		table.ProductWorkflows.ID,
+		table.ProductWorkflows.Name,
+	).DISTINCT(table.ProductWorkflowRuns.WorkflowID).
+		FROM(
+			table.ProductWorkflowRuns.INNER_JOIN(
+				table.ProductWorkflows, table.ProductWorkflows.ID.EQ(table.ProductWorkflowRuns.WorkflowID),
+			),
+		).
+		WHERE(workflowScope(tenantID, productID)).
+		ORDER_BY(
+			table.ProductWorkflowRuns.WorkflowID.ASC(),
+			table.ProductWorkflowRuns.StartedAt.DESC(),
+			table.ProductWorkflowRuns.ID.DESC(),
+		)
+	rows, err := transactor.Query[[]runRow](ctx, r.db, stmt).Value()
+	if err != nil {
+		return nil, err
+	}
+	latest := make(map[string]workflow.Run, len(rows))
+	for _, row := range rows {
+		run, decodeErr := runToDomain(row.ProductWorkflowRuns)
+		if decodeErr != nil {
+			return nil, decodeErr
+		}
+		run.WorkflowName = row.Workflow.Name
+		latest[run.WorkflowID] = run
+	}
+	return latest, nil
 }
 
 func (r *repositoryImpl) optional(

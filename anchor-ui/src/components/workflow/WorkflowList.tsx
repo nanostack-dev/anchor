@@ -12,6 +12,7 @@ import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import {
 	ArrowRight,
+	Link2,
 	Plus,
 	Sparkles,
 	Workflow as WorkflowIcon,
@@ -20,7 +21,7 @@ import { WorkflowRunHistory } from "./WorkflowRunHistory";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { actionGroupIcon } from "./action-icons";
 import { type WorkflowRecipe, workflowRecipes } from "./recipes";
-import { findAction, findTrigger } from "./workflow-model";
+import { findAction, findTrigger, workflowLinks } from "./workflow-model";
 
 const VISIBLE_STEPS = 6;
 
@@ -28,7 +29,7 @@ function StepIcons({
 	workflow,
 	catalog,
 }: {
-	workflow: WorkflowResponse;
+	workflow: Pick<WorkflowResponse, "definition">;
 	catalog?: WorkflowCatalogResponse;
 }) {
 	const steps = workflow.definition.steps;
@@ -82,8 +83,9 @@ export function WorkflowList({
 	onOpen: (workflowId: string) => void;
 	onCreate: (recipe?: WorkflowRecipe) => void;
 }) {
-	const lastRunOf = (workflowId: string) =>
-		runs.find((run) => run.workflow_id === workflowId);
+	const lastRunOf = (workflow: WorkflowResponse) =>
+		workflow.last_run ?? runs.find((run) => run.workflow_id === workflow.id);
+	const links = workflowLinks(workflows);
 
 	return (
 		<Stack space="xxl">
@@ -116,7 +118,7 @@ export function WorkflowList({
 					>
 						{workflows.map((workflow) => {
 							const trigger = findTrigger(catalog, workflow.trigger_event_type);
-							const lastRun = lastRunOf(workflow.id);
+							const lastRun = lastRunOf(workflow);
 							return (
 								<Box as="li" key={workflow.id}>
 									<button
@@ -171,6 +173,61 @@ export function WorkflowList({
 				)}
 			</Stack>
 
+			{links.length > 0 ? (
+				<Stack space="md">
+					<Inline space="sm" alignY="center">
+						<Link2 className="size-4 text-primary" aria-hidden />
+						<Heading level={2}>How they connect</Heading>
+					</Inline>
+					<Text size="sm" tone="muted">
+						A workflow whose step emits an event starts every enabled workflow
+						triggered by it. Anchor refuses any link that would close a loop.
+					</Text>
+					<Box
+						as="ul"
+						aria-label="Workflow links"
+						className="divide-y divide-border rounded-xl border border-border bg-card"
+					>
+						{links.map((link) => (
+							<Box
+								as="li"
+								key={`${link.from.id}-${link.event}-${link.to.id}`}
+								className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 text-sm"
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => onOpen(link.from.id)}
+								>
+									{link.from.name}
+								</Button>
+								<ArrowRight
+									className="size-3.5 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+								<Box
+									as="span"
+									className="break-all rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
+								>
+									{link.event}
+								</Box>
+								<ArrowRight
+									className="size-3.5 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => onOpen(link.to.id)}
+								>
+									{link.to.name}
+								</Button>
+							</Box>
+						))}
+					</Box>
+				</Stack>
+			) : null}
+
 			<Stack space="md">
 				<Inline space="sm" alignY="center">
 					<Sparkles className="size-4 text-primary" aria-hidden />
@@ -194,15 +251,7 @@ export function WorkflowList({
 									{recipe.summary}
 								</Text>
 								<Box as="span" className="mt-auto pt-1">
-									<StepIcons
-										workflow={{
-											...recipe.draft,
-											id: recipe.id,
-											created_at: "",
-											updated_at: "",
-										}}
-										catalog={catalog}
-									/>
+									<StepIcons workflow={recipe.draft} catalog={catalog} />
 								</Box>
 							</button>
 						</Box>

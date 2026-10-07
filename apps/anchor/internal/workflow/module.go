@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/pgkit/queue"
 	"go.uber.org/fx"
 
 	emailsvc "anchor/internal/email/service"
@@ -8,6 +10,7 @@ import (
 	invitationsvc "anchor/internal/invitation/service"
 	licensesvc "anchor/internal/license/service"
 	anchorservice "anchor/internal/service"
+	serviceconfig "anchor/internal/service/config"
 	"anchor/internal/workflow/engine"
 	"anchor/internal/workflow/repository"
 	"anchor/internal/workflow/service"
@@ -41,6 +44,10 @@ type engineParams struct {
 	Licenses      licensesvc.OrganizationLicenseService
 	Migrations    licensesvc.LicenseMigrationService
 	Email         emailsvc.EmailService
+	Endpoints     events.EndpointService
+	Queue         *queue.Client
+	Transactor    transactor.Transactor
+	Core          *serviceconfig.CoreConfig
 }
 
 func newEngine(p engineParams) *engine.Engine {
@@ -53,5 +60,7 @@ func newEngine(p engineParams) *engine.Engine {
 		Licenses:      p.Licenses,
 		Migrations:    p.Migrations,
 		Email:         p.Email,
+		CustomEvents:  engine.NewCustomEventSender(p.Queue, p.Transactor),
+		Caller:        engine.NewHTTPCaller(p.Endpoints, p.Core.IsProduction()),
 	}, p.Catalog)
 }

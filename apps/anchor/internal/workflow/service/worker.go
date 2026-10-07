@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/pgkit/queue"
@@ -17,7 +20,7 @@ import (
 )
 
 const (
-	QueueName             = "product-workflows"
+	QueueName             = workflow.EventQueueName
 	workerID              = "anchor-product-workflows-worker"
 	workerPollInterval    = 2 * time.Second
 	workerPollIntervalDev = 100 * time.Millisecond
@@ -115,14 +118,6 @@ func (h *eventHandler) handleJob(ctx context.Context, job queue.Job) error {
 	if err != nil {
 		return err
 	}
-	if event.Depth >= workflow.MaxCausationDepth {
-		h.logger.Warn().
-			Str("product_id", event.ProductID).
-			Str("event_id", event.EventID).
-			Int("depth", event.Depth).
-			Msg("workflow chain stopped at its maximum depth")
-		return nil
-	}
 	workflows, err := h.repo.FindEnabledByTriggerInternal(ctx, event.ProductID, string(event.Type))
 	if err != nil || len(workflows) == 0 {
 		return err
@@ -140,16 +135,39 @@ func (h *eventHandler) handleJob(ctx context.Context, job queue.Job) error {
 		if occurredAt.Before(wf.CreatedAt) {
 			continue
 		}
-		if _, _, startErr := h.runner.Start(ctx, engine.Execution{
+		execution := engine.Execution{
 			Workflow:  wf,
 			EventID:   event.EventID,
 			EventType: string(event.Type),
 			EventData: data,
 			Trigger:   workflow.RunTriggerEvent,
 			Depth:     event.Depth,
-		}); startErr != nil {
-			failures = append(failures, startErr)
+			Chain:     event.Chain,
+		}
+		var runErr error
+		if reason := loopGuard(wf, event); reason != "" {
+			runErr = h.runner.Prevent(ctx, execution, reason)
+		} else {
+			_, _, runErr = h.runner.Start(ctx, execution)
+		}
+		if runErr != nil {
+			failures = append(failures, runErr)
 		}
 	}
 	return errors.Join(failures...)
+}
+
+// loopGuard names why an event must not start the workflow: the workflow
+// already ran earlier in the chain that produced the event, or the chain
+// reached the maximum depth.
+func loopGuard(wf workflow.Workflow, event events.QueuedEvent) string {
+	if slices.Contains(event.Chain, wf.ID) {
+		return "Loop prevented: this workflow already ran earlier in the chain that produced this event (" +
+			strings.Join(append(slices.Clone(event.Chain), wf.ID), " → ") + ")."
+	}
+	if event.Depth >= workflow.MaxCausationDepth {
+		return fmt.Sprintf("Chain stopped: %d workflow runs led to this event, the most one chain may hold.",
+			event.Depth)
+	}
+	return ""
 }

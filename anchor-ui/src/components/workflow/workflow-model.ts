@@ -209,3 +209,148 @@ export function groupBy<T>(
 	}
 	return [...groups.entries()];
 }
+
+export const CUSTOM_EVENT_PREFIX = "custom.";
+const customEventPattern = /^custom\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
+
+export function customEventType(name: string): string {
+	const trimmed = name.trim();
+	return trimmed.startsWith(CUSTOM_EVENT_PREFIX)
+		? trimmed
+		: `${CUSTOM_EVENT_PREFIX}${trimmed}`;
+}
+
+export function isValidCustomEvent(eventType: string): boolean {
+	return eventType.length <= 100 && customEventPattern.test(eventType);
+}
+
+export function stepEmits(
+	catalog: WorkflowCatalogResponse | undefined,
+	step: WorkflowStep,
+): string[] {
+	if (step.action === "workflow.emit") {
+		const name = step.params.event?.trim();
+		return name ? [customEventType(name)] : [];
+	}
+	const emits = findAction(catalog, step.action)?.emits ?? [];
+	if (step.action !== "organization.create") return emits;
+	return emits.filter(
+		(eventType) =>
+			eventType === "organization.created" ||
+			(eventType === "organization.membership.created" &&
+				Boolean(step.params.owner_product_user_id?.trim())) ||
+			(eventType === "organization.license.updated" &&
+				Boolean(step.params.license_template_id?.trim())),
+	);
+}
+
+export function draftEmits(
+	catalog: WorkflowCatalogResponse | undefined,
+	draft: WorkflowDraft,
+): string[] {
+	return [
+		...new Set(
+			draft.definition.steps.flatMap((step) => stepEmits(catalog, step)),
+		),
+	];
+}
+
+export interface ChainWorkflow {
+	id: string;
+	name: string;
+	enabled: boolean;
+	trigger_event_type: string;
+	emits: string[];
+}
+
+export interface LoopHop {
+	workflowName: string;
+	trigger: string;
+	emits: string;
+}
+
+export function findLoop(
+	candidate: ChainWorkflow,
+	others: ChainWorkflow[],
+): LoopHop[] | null {
+	if (!candidate.enabled) return null;
+	const enabled = others.filter(
+		(other) => other.enabled && other.id !== candidate.id,
+	);
+	const hop = (workflow: ChainWorkflow, emits: string): LoopHop => ({
+		workflowName: workflow.name || "This workflow",
+		trigger: workflow.trigger_event_type,
+		emits,
+	});
+	const queue = candidate.emits.map((emits) => ({
+		event: emits,
+		path: [hop(candidate, emits)],
+	}));
+	const visited = new Set<string>();
+	while (queue.length > 0) {
+		const current = queue.shift();
+		if (!current) break;
+		if (current.event === candidate.trigger_event_type) return current.path;
+		if (visited.has(current.event)) continue;
+		visited.add(current.event);
+		for (const next of enabled.filter(
+			(other) => other.trigger_event_type === current.event,
+		)) {
+			for (const emits of next.emits) {
+				queue.push({ event: emits, path: [...current.path, hop(next, emits)] });
+			}
+		}
+	}
+	return null;
+}
+
+export function describeLoop(path: LoopHop[]): string {
+	return `${path
+		.map(
+			(hop) => `“${hop.workflowName}” (on ${hop.trigger}) emits ${hop.emits}`,
+		)
+		.join(" → ")} → back to the start`;
+}
+
+export interface WorkflowLink {
+	from: ChainWorkflow;
+	event: string;
+	to: ChainWorkflow;
+}
+
+export function workflowLinks(workflows: ChainWorkflow[]): WorkflowLink[] {
+	return workflows.flatMap((from) =>
+		from.emits.flatMap((event) =>
+			workflows
+				.filter((to) => to.trigger_event_type === event && to.enabled)
+				.map((to) => ({ from, event, to })),
+		),
+	);
+}
+
+export function describeLocation(
+	location: string,
+	catalog: WorkflowCatalogResponse | undefined,
+	draft: WorkflowDraft,
+): { stepIndex?: number; label: string } {
+	const stepMatch = location.match(/^steps\[(\d+)\](?:\.(\w+)(?:\.(\w+))?)?/);
+	if (stepMatch) {
+		const stepIndex = Number(stepMatch[1]);
+		const step = draft.definition.steps[stepIndex];
+		const action = findAction(catalog, step?.action ?? "");
+		const param = action?.params.find((item) => item.name === stepMatch[3]);
+		const part =
+			stepMatch[2] === "params"
+				? (param?.label ?? stepMatch[3])
+				: stepMatch[2] === "when"
+					? "its conditions"
+					: undefined;
+		return {
+			stepIndex,
+			label: `Step ${stepIndex + 1}${part ? ` · ${part}` : ""}`,
+		};
+	}
+	if (location.startsWith("conditions")) return { label: "Conditions" };
+	if (location.startsWith("trigger_event_type")) return { label: "Trigger" };
+	return { label: location };
+}

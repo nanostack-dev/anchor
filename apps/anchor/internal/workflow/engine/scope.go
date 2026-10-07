@@ -21,7 +21,7 @@ func NewScope(workflowID, workflowName, eventID, eventType string, eventData map
 	}
 	return Scope{
 		"workflow": map[string]any{"id": workflowID, keyName: workflowName},
-		"event":    map[string]any{"id": eventID, "type": eventType, "data": data},
+		keyEvent:   map[string]any{"id": eventID, "type": eventType, "data": data},
 		"steps":    map[string]any{},
 	}
 }

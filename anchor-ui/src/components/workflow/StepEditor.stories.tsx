@@ -2,11 +2,19 @@ import type { WorkflowStep } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, fn, within } from "storybook/test";
-import { StepEditor } from "./StepEditor";
+import { StepEditor, type StepStart } from "./StepEditor";
 import { fixtureCatalog, worstCaseStep } from "./workflow-fixtures";
 import { variablesBeforeStep } from "./workflow-model";
 
-function StatefulStepEditor({ initial }: { initial: WorkflowStep }) {
+function StatefulStepEditor({
+	initial,
+	errors,
+	starts,
+}: {
+	initial: WorkflowStep;
+	errors?: Record<string, string>;
+	starts?: StepStart[];
+}) {
 	const [step, setStep] = useState(initial);
 	const draft = {
 		name: "",
@@ -32,6 +40,8 @@ function StatefulStepEditor({ initial }: { initial: WorkflowStep }) {
 			catalog={fixtureCatalog}
 			variables={variablesBeforeStep(fixtureCatalog, draft, 1)}
 			resources={{}}
+			errors={errors}
+			starts={starts}
 			onChange={setStep}
 			onMove={fn()}
 			onRemove={fn()}
@@ -90,5 +100,44 @@ export const UnknownAction: Story = {
 		await expect(
 			canvas.getByText("This action is not in the catalog any more."),
 		).toBeInTheDocument();
+	},
+};
+
+/**
+ * A server error pinned to its parameter, and the workflows the step's event
+ * starts, with names long enough to wrap.
+ */
+export const ErrorsAndStarts: Story = {
+	args: {
+		initial: {
+			id: "workspace",
+			action: "workspace.create",
+			params: { name: "General" },
+			when: [],
+		},
+		errors: {
+			organization_id:
+				'Step 2 · Organization: Parameter "organization_id" of action workspace.create is required.',
+		},
+		starts: [
+			{
+				event: "workspace.created",
+				workflowNames: [
+					"Provision enterprise onboarding: workspace, license, owner membership and welcome email for EMEA",
+					"Jo",
+				],
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByText(
+				/Parameter "organization_id" of action workspace.create is required/,
+			),
+		).toBeInTheDocument();
+		await expect(
+			canvas.getByRole("list", { name: "Events step 2 emits" }),
+		).toHaveTextContent("“Jo”");
 	},
 };

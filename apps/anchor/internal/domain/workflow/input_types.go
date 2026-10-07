@@ -32,6 +32,7 @@ type DeleteInput = GetInput
 type ListInput struct {
 	TenantID  string `validate:"required,notblank"`
 	ProductID string `validate:"required,notblank"`
+	Include   []Include
 }
 
 type ListRunsInput struct {
@@ -65,3 +66,8 @@ type ListProductRunsInput struct {
 	ProductID string `validate:"required,notblank"`
 	Limit     int    `validate:"omitempty,min=1,max=100"`
 }
+
+// Include names a related resource a workflow read can ask for.
+type Include string
+
+const IncludeLastRun Include = "last_run"

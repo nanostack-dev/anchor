@@ -42,7 +42,11 @@ func TestListWorkflows_ReturnsTheProductsWorkflows(t *testing.T) {
 	first := w.createWorkflow(workflowBody("organization.created", generalWorkspaceStep()))
 	second := w.createWorkflow(workflowBody("organization.created", generalWorkspaceStep()))
 
-	resp, err := w.client.ListWorkflowsWithResponse(context.Background(), w.product.ProductID)
+	resp, err := w.client.ListWorkflowsWithResponse(
+		context.Background(),
+		w.product.ProductID,
+		&ct.ListWorkflowsParams{},
+	)
 
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
@@ -130,7 +134,7 @@ func TestListWorkflows_NeedsTheWorkflowReadScope(t *testing.T) {
 	w := newWorkflowWorld(t)
 	client, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization:read"})
 
-	resp, err := client.ListWorkflowsWithResponse(context.Background(), w.product.ProductID)
+	resp, err := client.ListWorkflowsWithResponse(context.Background(), w.product.ProductID, &ct.ListWorkflowsParams{})
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))

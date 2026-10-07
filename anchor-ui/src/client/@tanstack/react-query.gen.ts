@@ -2415,7 +2415,7 @@ export const getWorkflowCatalogQueryKey = (options: Options<GetWorkflowCatalogDa
 
 /**
  * Get Workflow Catalog
- * Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+ * Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters, outputs and the events it can emit, and every condition operator. Triggers include the custom events this product's workflows emit, with the data keys their steps declare.
  */
 export const getWorkflowCatalogOptions = (options: Options<GetWorkflowCatalogData>) => {
     return queryOptions({
@@ -2455,7 +2455,7 @@ export const listWorkflowsOptions = (options: Options<ListWorkflowsData>) => {
 
 /**
  * Create Workflow
- * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+ * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
  */
 export const createWorkflowMutation = (options?: Partial<Options<CreateWorkflowData>>): UseMutationOptions<CreateWorkflowResponse, CreateWorkflowError, Options<CreateWorkflowData>> => {
     const mutationOptions: UseMutationOptions<CreateWorkflowResponse, CreateWorkflowError, Options<CreateWorkflowData>> = {
@@ -2511,7 +2511,7 @@ export const getWorkflowOptions = (options: Options<GetWorkflowData>) => {
 
 /**
  * Update Workflow
- * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+ * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
  */
 export const updateWorkflowMutation = (options?: Partial<Options<UpdateWorkflowData>>): UseMutationOptions<UpdateWorkflowResponse, UpdateWorkflowError, Options<UpdateWorkflowData>> => {
     const mutationOptions: UseMutationOptions<UpdateWorkflowResponse, UpdateWorkflowError, Options<UpdateWorkflowData>> = {
@@ -2550,7 +2550,7 @@ export const listWorkflowRunsOptions = (options: Options<ListWorkflowRunsData>) 
 
 /**
  * Run Workflow
- * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+ * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
  */
 export const runWorkflowMutation = (options?: Partial<Options<RunWorkflowData>>): UseMutationOptions<RunWorkflowResponse, RunWorkflowError, Options<RunWorkflowData>> => {
     const mutationOptions: UseMutationOptions<RunWorkflowResponse, RunWorkflowError, Options<RunWorkflowData>> = {

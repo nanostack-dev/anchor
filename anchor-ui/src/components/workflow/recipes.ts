@@ -194,6 +194,70 @@ export const workflowRecipes: WorkflowRecipe[] = [
 			},
 		},
 	},
+	{
+		id: "backend-handoff",
+		title: "Hand new organizations to your backend",
+		summary:
+			"When an organization is created, call your backend, then start every workflow listening to onboarding.started with its answer.",
+		draft: {
+			name: "Hand off to the backend",
+			description: "",
+			enabled: false,
+			trigger_event_type: "organization.created",
+			definition: {
+				conditions: [],
+				steps: [
+					{
+						id: "backend",
+						name: "Ask the backend for the plan",
+						action: "http.request",
+						params: {
+							url: "https://api.example.com/hooks/anchor",
+							method: "POST",
+						},
+						when: [],
+					},
+					{
+						id: "handoff",
+						name: "Start the onboarding workflows",
+						action: "workflow.emit",
+						params: {
+							event: "onboarding.started",
+							data: '{"organization_id": "{{event.data.organization_id}}", "plan": "{{steps.backend.body.plan}}"}',
+						},
+						when: [],
+					},
+				],
+			},
+		},
+	},
+	{
+		id: "onboarding-follow-up",
+		title: "Continue onboarding after a hand-off",
+		summary:
+			"When another workflow emits onboarding.started, create a kickoff workspace named after the plan it carries.",
+		draft: {
+			name: "Onboarding follow-up",
+			description: "",
+			enabled: true,
+			trigger_event_type: "custom.onboarding.started",
+			definition: {
+				conditions: [],
+				steps: [
+					{
+						id: "kickoff",
+						name: "Create the kickoff workspace",
+						action: "workspace.create",
+						params: {
+							organization_id: "{{event.data.organization_id}}",
+							name: "Kickoff",
+						},
+						when: [],
+					},
+				],
+			},
+		},
+	},
 ];
 
 export function findRecipe(id: string | undefined): WorkflowRecipe | undefined {

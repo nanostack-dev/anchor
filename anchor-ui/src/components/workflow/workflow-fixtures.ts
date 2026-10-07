@@ -17,6 +17,7 @@ const organizationParam = {
 	label: "Organization",
 	type: WorkflowParamType.ORGANIZATION,
 	required: true,
+	literal: false,
 };
 
 const actions: WorkflowActionResponse[] = [
@@ -26,6 +27,7 @@ const actions: WorkflowActionResponse[] = [
 		description: "Creates a workspace inside an organization.",
 		group: "Workspaces",
 		writes: true,
+		emits: ["workspace.created"],
 		params: [
 			organizationParam,
 			{
@@ -33,12 +35,14 @@ const actions: WorkflowActionResponse[] = [
 				label: "Name",
 				type: WorkflowParamType.TEXT,
 				required: true,
+				literal: false,
 			},
 			{
 				name: "description",
 				label: "Description",
 				type: WorkflowParamType.TEXT,
 				required: false,
+				literal: false,
 			},
 		],
 		outputs: [
@@ -52,6 +56,7 @@ const actions: WorkflowActionResponse[] = [
 		description: "Renames an organization, or merges keys into its metadata.",
 		group: "Organizations",
 		writes: true,
+		emits: ["organization.updated"],
 		params: [
 			organizationParam,
 			{
@@ -59,12 +64,14 @@ const actions: WorkflowActionResponse[] = [
 				label: "Name",
 				type: WorkflowParamType.TEXT,
 				required: false,
+				literal: false,
 			},
 			{
 				name: "metadata",
 				label: "Metadata to merge",
 				type: WorkflowParamType.JSON,
 				required: false,
+				literal: false,
 				description: "JSON object merged key by key into the stored metadata.",
 			},
 		],
@@ -83,12 +90,14 @@ const actions: WorkflowActionResponse[] = [
 			"Loads a product user, for conditions on their email or for an email step.",
 		group: "Users",
 		writes: false,
+		emits: [],
 		params: [
 			{
 				name: "product_user_id",
 				label: "Product user",
 				type: WorkflowParamType.PRODUCT_USER,
 				required: true,
+				literal: false,
 			},
 		],
 		outputs: [
@@ -107,6 +116,7 @@ const actions: WorkflowActionResponse[] = [
 			"Makes a product user a member of an organization with a role.",
 		group: "Members",
 		writes: true,
+		emits: ["organization.membership.created"],
 		params: [
 			organizationParam,
 			{
@@ -114,12 +124,14 @@ const actions: WorkflowActionResponse[] = [
 				label: "Product user",
 				type: WorkflowParamType.PRODUCT_USER,
 				required: true,
+				literal: false,
 			},
 			{
 				name: "role_id",
 				label: "Role",
 				type: WorkflowParamType.ROLE,
 				required: true,
+				literal: false,
 			},
 		],
 		outputs: [{ name: "role_name", description: "Name of the member's role." }],
@@ -131,24 +143,28 @@ const actions: WorkflowActionResponse[] = [
 			"Sends a published email template. One run sends a step's email at most once.",
 		group: "Email",
 		writes: true,
+		emits: [],
 		params: [
 			{
 				name: "template_slug",
 				label: "Email template",
 				type: WorkflowParamType.EMAIL_TEMPLATE,
 				required: true,
+				literal: false,
 			},
 			{
 				name: "to",
 				label: "To",
 				type: WorkflowParamType.EMAIL,
 				required: true,
+				literal: false,
 			},
 			{
 				name: "variables",
 				label: "Variables",
 				type: WorkflowParamType.JSON,
 				required: false,
+				literal: false,
 			},
 		],
 		outputs: [
@@ -183,6 +199,7 @@ export const fixtureCatalog: WorkflowCatalogResponse = {
 const timestamps = {
 	created_at: "2026-10-01T09:00:00Z",
 	updated_at: "2026-10-06T09:00:00Z",
+	emits: [] as string[],
 };
 
 export const demoWorkflows: WorkflowResponse[] = [

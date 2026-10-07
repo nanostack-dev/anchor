@@ -22,12 +22,14 @@ import {
 } from "./workflow-model";
 
 export function ConditionEditor({
+	label,
 	conditions,
 	variables,
 	onChange,
 	emptyLabel,
 	addLabel = "Add condition",
 }: {
+	label: string;
 	conditions: WorkflowCondition[];
 	variables: WorkflowVariable[];
 	onChange: (conditions: WorkflowCondition[]) => void;
@@ -77,14 +79,14 @@ export function ConditionEditor({
 						size="sm"
 						font="mono"
 						list={listId}
-						aria-label="Value to test"
+						aria-label={`${label} ${index + 1}: value to test`}
 						placeholder="event.data.organization_id"
 						value={condition.field}
 						onChange={(event) => update(index, { field: event.target.value })}
 					/>
 					<NativeSelect
 						size="sm"
-						aria-label="Comparison"
+						aria-label={`${label} ${index + 1}: comparison`}
 						value={condition.operator}
 						onChange={(event) =>
 							update(index, {
@@ -103,7 +105,7 @@ export function ConditionEditor({
 							<Box className="min-w-0 flex-1">
 								<Input
 									size="sm"
-									aria-label="Compared with"
+									aria-label={`${label} ${index + 1}: compared with`}
 									placeholder={
 										condition.operator === WorkflowOperator.IN
 											? "a, b, c"
@@ -116,6 +118,7 @@ export function ConditionEditor({
 								/>
 							</Box>
 							<VariableMenu
+								label={`Insert a value into ${label.toLowerCase()} ${index + 1}`}
 								variables={variables}
 								onPick={(path) =>
 									update(index, {
@@ -131,7 +134,7 @@ export function ConditionEditor({
 						variant="ghost"
 						size="sm"
 						icon={X}
-						label="Remove condition"
+						label={`Remove ${label.toLowerCase()} ${index + 1}`}
 						onClick={() => remove(index)}
 					/>
 				</Box>

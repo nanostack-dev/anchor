@@ -2,6 +2,7 @@ import {
 	getWorkflowCatalogOptions,
 	getWorkflowOptions,
 	listWorkflowRunsOptions,
+	listWorkflowsOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
@@ -13,8 +14,10 @@ import {
 } from "@/components/workflow/workflow-model";
 import { useProduct } from "@/context/product/ProductContext";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyTitle,
@@ -52,6 +55,10 @@ export default function WorkflowPage({
 		...getWorkflowOptions({ path: workflowPath }),
 		enabled: enabled && Boolean(workflowId),
 		retry: false,
+	});
+	const workflowsQuery = useQuery({
+		...listWorkflowsOptions({ path: { product_id: productId } }),
+		enabled,
 	});
 	const runsQuery = useQuery({
 		...listWorkflowRunsOptions({ path: workflowPath, query: { limit: 50 } }),
@@ -98,9 +105,35 @@ export default function WorkflowPage({
 		);
 	}
 
+	if (catalogQuery.isError || workflowsQuery.isError) {
+		return (
+			<Page title={workflowId ? "Workflow" : "New workflow"}>
+				<Empty variant="outline">
+					<EmptyHeader>
+						<EmptyTitle>The workflow builder could not load</EmptyTitle>
+						<EmptyDescription>
+							The action catalog or your other workflows did not load.
+						</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<Button
+							variant="outline"
+							onClick={() => {
+								void catalogQuery.refetch();
+								void workflowsQuery.refetch();
+							}}
+						>
+							Try again
+						</Button>
+					</EmptyContent>
+				</Empty>
+			</Page>
+		);
+	}
+
 	const catalog = catalogQuery.data;
 	const workflow = workflowQuery.data;
-	if (!catalog || (workflowId && !workflow)) {
+	if (!catalog || !workflowsQuery.data || (workflowId && !workflow)) {
 		return (
 			<Page title={workflowId ? "Workflow" : "New workflow"}>
 				<Stack space="md">
@@ -122,6 +155,7 @@ export default function WorkflowPage({
 			catalog={catalog}
 			initialDraft={initialDraft}
 			workflow={workflow}
+			workflows={workflowsQuery.data.items}
 			onSaved={(saved) => openSaved(saved.id)}
 			onDeleted={backToList}
 		/>

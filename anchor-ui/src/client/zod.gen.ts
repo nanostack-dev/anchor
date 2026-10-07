@@ -189,9 +189,13 @@ export const zProductEventsConfigResponse = z.object({
     consecutive_failed_calls: z.int()
 });
 
+/**
+ * `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+ */
 export const zProductEventGroupType = z.enum([
     'internal',
-    'integration'
+    'integration',
+    'custom'
 ]);
 
 export const zProductEventDefinitionResponse = z.object({
@@ -1679,6 +1683,13 @@ export const zWorkflowOperator = z.enum([
 ]);
 
 /**
+ * A related resource a workflow read can ask for.
+ */
+export const zWorkflowInclude = z.enum([
+    'last_run'
+]);
+
+/**
  * `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
  */
 export const zWorkflowRunStatus = z.enum([
@@ -1718,7 +1729,9 @@ export const zWorkflowParamType = z.enum([
     'product_user',
     'role',
     'license_template',
-    'email_template'
+    'email_template',
+    'url',
+    'custom_event'
 ]);
 
 export const zWorkflowCondition = z.object({
@@ -1749,25 +1762,6 @@ export const zWorkflowWriteRequest = z.object({
     definition: zWorkflowDefinition
 });
 
-/**
- * A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
- */
-export const zWorkflowResponse = z.object({
-    id: zKsuid,
-    name: z.string(),
-    description: z.optional(z.string()),
-    enabled: z.boolean(),
-    trigger_event_type: z.string(),
-    definition: zWorkflowDefinition,
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
-});
-
-export const zWorkflowListResponse = z.object({
-    items: z.array(zWorkflowResponse),
-    count: z.int()
-});
-
 export const zWorkflowStepResultResponse = z.object({
     step_id: z.string(),
     action: z.string(),
@@ -1790,6 +1784,27 @@ export const zWorkflowRunResponse = z.object({
     error: z.optional(z.string()),
     started_at: z.iso.datetime(),
     finished_at: z.optional(z.iso.datetime())
+});
+
+/**
+ * A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
+ */
+export const zWorkflowResponse = z.object({
+    id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.string()),
+    enabled: z.boolean(),
+    trigger_event_type: z.string(),
+    definition: zWorkflowDefinition,
+    emits: z.array(z.string()),
+    last_run: z.optional(zWorkflowRunResponse),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zWorkflowListResponse = z.object({
+    items: z.array(zWorkflowResponse),
+    count: z.int()
 });
 
 export const zWorkflowRunListResponse = z.object({
@@ -1820,7 +1835,9 @@ export const zWorkflowActionParamResponse = z.object({
     label: z.string(),
     description: z.optional(z.string()),
     type: zWorkflowParamType,
-    required: z.boolean()
+    required: z.boolean(),
+    options: z.optional(z.array(z.string())),
+    literal: z.boolean()
 });
 
 export const zWorkflowActionOutputResponse = z.object({
@@ -1834,6 +1851,7 @@ export const zWorkflowActionResponse = z.object({
     description: z.string(),
     group: z.string(),
     writes: z.boolean(),
+    emits: z.array(z.string()),
     params: z.array(zWorkflowActionParamResponse),
     outputs: z.array(zWorkflowActionOutputResponse)
 });
@@ -1883,6 +1901,11 @@ export const zOrganizationIdParameter = zKsuid;
  * The KSUID of the workspace.
  */
 export const zWorkspaceIdParameter = zKsuid;
+
+/**
+ * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+ */
+export const zWorkflowIncludeParameter = z.array(zWorkflowInclude);
 
 /**
  * The KSUID of the workflow.
@@ -3500,7 +3523,9 @@ export const zListWorkflowsData = z.object({
     path: z.object({
         product_id: zKsuid
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        include: z.optional(z.array(zWorkflowInclude))
+    }))
 });
 
 /**

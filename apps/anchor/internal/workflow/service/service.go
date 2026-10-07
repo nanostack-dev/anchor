@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -10,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/workflow"
+	"anchor/internal/events"
 	"anchor/internal/workflow/engine"
 	"anchor/internal/workflow/repository"
 )
@@ -27,7 +29,7 @@ type Catalog struct {
 }
 
 type WorkflowService interface {
-	Catalog(ctx context.Context) Catalog
+	Catalog(ctx context.Context, input workflow.ListInput) (Catalog, error)
 	Create(ctx context.Context, input workflow.CreateInput) (workflow.Workflow, error)
 	Get(ctx context.Context, input workflow.GetInput) (workflow.Workflow, error)
 	List(ctx context.Context, input workflow.ListInput) ([]workflow.Workflow, error)
@@ -37,6 +39,7 @@ type WorkflowService interface {
 	ListProductRuns(ctx context.Context, input workflow.ListProductRunsInput) ([]workflow.Run, error)
 	Run(ctx context.Context, input workflow.RunInput) (workflow.Run, error)
 	DryRun(ctx context.Context, input workflow.DryRunInput) (workflow.Run, error)
+	Emits(wf workflow.Workflow) []string
 }
 
 type workflowService struct {
@@ -57,12 +60,35 @@ func NewWorkflowService(
 	}
 }
 
-func (s *workflowService) Catalog(_ context.Context) Catalog {
+func (s *workflowService) Catalog(ctx context.Context, input workflow.ListInput) (Catalog, error) {
+	if err := validate.ValidateStruct(input); err != nil {
+		return Catalog{}, err
+	}
+	workflows, err := s.repo.List(ctx, input.TenantID, input.ProductID)
+	if err != nil {
+		return Catalog{}, err
+	}
 	return Catalog{
-		Triggers:  s.engine.Triggers(),
+		Triggers:  s.engine.Triggers(workflows),
 		Actions:   s.engine.Actions(),
 		Operators: workflow.AllOperators(),
+	}, nil
+}
+
+// checkLoop refuses a workflow that, enabled, would start itself again
+// through its own writes or through other enabled workflows of the product.
+func (s *workflowService) checkLoop(ctx context.Context, candidate workflow.Workflow) error {
+	if !candidate.Enabled {
+		return nil
 	}
+	others, err := s.repo.List(ctx, candidate.PlatformTenantID, candidate.ProductID)
+	if err != nil {
+		return err
+	}
+	if path := s.engine.FindLoop(candidate, others); path != nil {
+		return loopError(path)
+	}
+	return nil
 }
 
 func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput) (workflow.Workflow, error) {
@@ -75,6 +101,9 @@ func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.GenerateID()
 	wf.CreatedAt = time.Now().UTC()
+	if err := s.checkLoop(ctx, wf); err != nil {
+		return workflow.Workflow{}, err
+	}
 	created, err := s.repo.Create(ctx, wf)
 	if err != nil {
 		return workflow.Workflow{}, err
@@ -94,7 +123,25 @@ func (s *workflowService) List(ctx context.Context, input workflow.ListInput) ([
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
-	return s.repo.List(ctx, input.TenantID, input.ProductID)
+	workflows, err := s.repo.List(ctx, input.TenantID, input.ProductID)
+	if err != nil || !slices.Contains(input.Include, workflow.IncludeLastRun) {
+		return workflows, err
+	}
+	latest, err := s.repo.LatestRuns(ctx, input.TenantID, input.ProductID)
+	if err != nil {
+		return nil, err
+	}
+	for index := range workflows {
+		if run, ran := latest[workflows[index].ID]; ran {
+			workflows[index].LastRun = &run
+		}
+	}
+	return workflows, nil
+}
+
+// Emits lists the event types a workflow's steps can emit.
+func (s *workflowService) Emits(wf workflow.Workflow) []string {
+	return s.engine.Emits(wf)
 }
 
 func (s *workflowService) Update(ctx context.Context, input workflow.UpdateInput) (workflow.Workflow, error) {
@@ -106,6 +153,9 @@ func (s *workflowService) Update(ctx context.Context, input workflow.UpdateInput
 	}
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.ID = input.WorkflowID
+	if err := s.checkLoop(ctx, wf); err != nil {
+		return workflow.Workflow{}, err
+	}
 	updated, err := s.repo.Update(ctx, wf)
 	if err != nil {
 		return workflow.Workflow{}, err
@@ -163,12 +213,18 @@ func (s *workflowService) Run(ctx context.Context, input workflow.RunInput) (wor
 	if err != nil {
 		return workflow.Run{}, err
 	}
+	causation := events.CausationFrom(ctx)
+	if slices.Contains(causation.WorkflowIDs, wf.ID) {
+		return workflow.Run{}, errRunWouldLoop
+	}
 	run, _, err := s.runner.Start(ctx, engine.Execution{
 		Workflow:  wf,
 		EventID:   ids.MustNew(manualEventIDPrefix),
 		EventType: wf.TriggerEventType,
 		EventData: nonNil(input.EventData),
 		Trigger:   workflow.RunTriggerManual,
+		Depth:     causation.Depth,
+		Chain:     causation.WorkflowIDs,
 	})
 	return run, err
 }

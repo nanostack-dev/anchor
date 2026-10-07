@@ -341,9 +341,13 @@ export type ProductEventsCatalogResponse = {
     items: Array<ProductEventDefinitionResponse>;
 };
 
+/**
+ * `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+ */
 export enum ProductEventGroupType {
     INTERNAL = 'internal',
-    INTEGRATION = 'integration'
+    INTEGRATION = 'integration',
+    CUSTOM = 'custom'
 }
 
 export type ProductEventDefinitionResponse = {
@@ -2579,6 +2583,13 @@ export enum WorkflowOperator {
 }
 
 /**
+ * A related resource a workflow read can ask for.
+ */
+export enum WorkflowInclude {
+    LAST_RUN = 'last_run'
+}
+
+/**
  * `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
  */
 export enum WorkflowRunStatus {
@@ -2618,7 +2629,9 @@ export enum WorkflowParamType {
     PRODUCT_USER = 'product_user',
     ROLE = 'role',
     LICENSE_TEMPLATE = 'license_template',
-    EMAIL_TEMPLATE = 'email_template'
+    EMAIL_TEMPLATE = 'email_template',
+    URL = 'url',
+    CUSTOM_EVENT = 'custom_event'
 }
 
 export type WorkflowCondition = {
@@ -2681,7 +2694,7 @@ export type WorkflowWriteRequest = {
      */
     enabled: boolean;
     /**
-     * The product event that starts a run, from the workflow catalog.
+     * The event that starts a run: a product event from the workflow catalog, or a custom event (`custom.` followed by lowercase words joined by dots) that another workflow emits.
      */
     trigger_event_type: string;
     definition: WorkflowDefinition;
@@ -2697,6 +2710,14 @@ export type WorkflowResponse = {
     enabled: boolean;
     trigger_event_type: string;
     definition: WorkflowDefinition;
+    /**
+     * Every event type the steps can emit, product or custom. A workflow triggered by one of them runs after this one.
+     */
+    emits: Array<string>;
+    /**
+     * The latest run. Present only on a read passing `include=last_run`, and then absent when the workflow never ran.
+     */
+    last_run?: WorkflowRunResponse;
     created_at: string;
     updated_at: string;
 };
@@ -2784,6 +2805,14 @@ export type WorkflowActionParamResponse = {
     description?: string;
     type: WorkflowParamType;
     required: boolean;
+    /**
+     * The only values the parameter accepts. Absent means any value.
+     */
+    options?: Array<string>;
+    /**
+     * The value must be written out and cannot hold `{{ }}` references, because Anchor reads it when the workflow is saved.
+     */
+    literal: boolean;
 };
 
 export type WorkflowActionOutputResponse = {
@@ -2797,9 +2826,13 @@ export type WorkflowActionResponse = {
     description: string;
     group: string;
     /**
-     * The action changes a resource. A dry run only resolves it.
+     * The action changes a resource or calls out. A dry run only resolves it.
      */
     writes: boolean;
+    /**
+     * Every event type the action can emit. `workflow.emit` lists none here: its event is the one its step names.
+     */
+    emits: Array<string>;
     params: Array<WorkflowActionParamResponse>;
     outputs: Array<WorkflowActionOutputResponse>;
 };
@@ -2849,6 +2882,11 @@ export type OrganizationIdParameter = Ksuid;
  * The KSUID of the workspace.
  */
 export type WorkspaceIdParameter = Ksuid;
+
+/**
+ * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+ */
+export type WorkflowIncludeParameter = Array<WorkflowInclude>;
 
 /**
  * The KSUID of the workflow.
@@ -8141,7 +8179,12 @@ export type ListWorkflowsData = {
          */
         product_id: Ksuid;
     };
-    query?: never;
+    query?: {
+        /**
+         * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+         */
+        include?: Array<WorkflowInclude>;
+    };
     url: '/v1/products/{product_id}/workflows';
 };
 
@@ -8424,6 +8467,10 @@ export type RunWorkflowErrors = {
      * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
      */
     404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
 };
 
 export type RunWorkflowError = RunWorkflowErrors[keyof RunWorkflowErrors];
