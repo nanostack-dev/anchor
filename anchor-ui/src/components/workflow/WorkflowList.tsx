@@ -205,6 +205,9 @@ export function WorkflowList({
 									className="size-3.5 shrink-0 text-muted-foreground"
 									aria-hidden
 								/>
+								<Box as="span" className="sr-only">
+									emits
+								</Box>
 								<Box
 									as="span"
 									className="break-all rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
@@ -215,6 +218,9 @@ export function WorkflowList({
 									className="size-3.5 shrink-0 text-muted-foreground"
 									aria-hidden
 								/>
+								<Box as="span" className="sr-only">
+									which starts
+								</Box>
 								<Button
 									variant="ghost"
 									size="sm"

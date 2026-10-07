@@ -18,6 +18,11 @@ var errRunWouldLoop = fault.Conflict(
 	"This request comes from a run of this workflow; running it again would start a loop.",
 )
 
+var errChainTooDeep = fault.Conflict(
+	"WORKFLOW_CHAIN_TOO_DEEP",
+	"This request comes from a chain of workflow runs that already holds the most runs one chain may hold.",
+)
+
 var errFinishRun = errors.New("workflow: record finished run")
 
 func loopError(path []engine.LoopHop) error {

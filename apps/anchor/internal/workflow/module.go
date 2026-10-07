@@ -61,6 +61,6 @@ func newEngine(p engineParams) *engine.Engine {
 		Migrations:    p.Migrations,
 		Email:         p.Email,
 		CustomEvents:  engine.NewCustomEventSender(p.Queue, p.Transactor),
-		Caller:        engine.NewHTTPCaller(p.Endpoints, p.Core.IsProduction()),
+		Caller:        engine.NewHTTPCaller(p.Endpoints, p.Core.Workflow.AllowPrivateTargets),
 	}, p.Catalog)
 }

@@ -208,10 +208,21 @@ export function WorkflowBuilder({
 	const startsOf = (step: WorkflowStep): StepStart[] =>
 		stepEmits(catalog, step).map((event) => ({
 			event,
-			workflowNames: others
-				.filter((other) => other.enabled && other.trigger_event_type === event)
-				.map((other) => other.name),
+			workflowNames: [
+				...(draft.enabled && draft.trigger_event_type === event
+					? ["this workflow"]
+					: []),
+				...others
+					.filter(
+						(other) => other.enabled && other.trigger_event_type === event,
+					)
+					.map((other) => other.name),
+			],
 		}));
+	const loopWarningFor = (step: WorkflowStep) =>
+		loop && stepEmits(catalog, step).includes(loop[0].emits)
+			? `${describeLoop(loop)}. Change this step, the trigger, or disable a workflow in the loop: Anchor will not save it.`
+			: undefined;
 	const startedBy = others.filter(
 		(other) => other.enabled && other.emits.includes(draft.trigger_event_type),
 	);
@@ -526,13 +537,23 @@ export function WorkflowBuilder({
 								resources={resources}
 								errors={stepErrors(index)}
 								starts={startsOf(step)}
-								onChange={(next) =>
+								loopWarning={loopWarningFor(step)}
+								onChange={(next) => {
+									setProblems((current) =>
+										current.filter(
+											(problem) =>
+												problem.stepIndex !== index ||
+												(problem.param !== undefined &&
+													next.params[problem.param] ===
+														step.params[problem.param]),
+										),
+									);
 									setSteps(
 										draft.definition.steps.map((current, position) =>
 											position === index ? next : current,
 										),
-									)
-								}
+									);
+								}}
 								onMove={(to) =>
 									setSteps(moveItem(draft.definition.steps, index, to))
 								}

@@ -26,7 +26,9 @@ func invalidJSONParamError(name string, err error) error {
 
 // InvalidDefinitionError is the 400 every definition check returns, naming
 // the part of the workflow that is wrong.
+const invalidDefinitionCode = "INVALID_WORKFLOW_DEFINITION"
+
 func InvalidDefinitionError(location, message string) error {
-	return fault.BadRequest("INVALID_WORKFLOW_DEFINITION", message).
+	return fault.BadRequest(invalidDefinitionCode, message).
 		Metadata(map[string]any{"location": location})
 }

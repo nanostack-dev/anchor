@@ -2,6 +2,7 @@ import type { WorkflowCatalogResponse, WorkflowStep } from "@/client";
 import {
 	Alert,
 	AlertDescription,
+	AlertTitle,
 } from "@nanostackorg/design-system/components/alert";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { IconButton } from "@nanostackorg/design-system/components/button";
@@ -24,6 +25,7 @@ import {
 	ChevronRight,
 	CircleAlert,
 	Filter,
+	Repeat,
 	Trash2,
 	Zap,
 } from "lucide-react";
@@ -48,6 +50,7 @@ export function StepEditor({
 	resources,
 	errors = {},
 	starts = [],
+	loopWarning,
 	onChange,
 	onMove,
 	onRemove,
@@ -60,6 +63,7 @@ export function StepEditor({
 	resources: WorkflowResources;
 	errors?: Record<string, string>;
 	starts?: StepStart[];
+	loopWarning?: string;
 	onChange: (step: WorkflowStep) => void;
 	onMove: (to: number) => void;
 	onRemove: () => void;
@@ -136,6 +140,14 @@ export function StepEditor({
 
 			<Stack space="lg">
 				<Box className="space-y-4 px-4 py-4">
+					{loopWarning ? (
+						<Alert tone="warning" icon={Repeat}>
+							<AlertTitle>This step would start a loop</AlertTitle>
+							<AlertDescription>
+								<Box className="[overflow-wrap:anywhere]">{loopWarning}</Box>
+							</AlertDescription>
+						</Alert>
+					) : null}
 					{errors[""] ? (
 						<Alert tone="critical" icon={CircleAlert}>
 							<AlertDescription>{errors[""]}</AlertDescription>

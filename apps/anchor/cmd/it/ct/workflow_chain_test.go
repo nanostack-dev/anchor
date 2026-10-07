@@ -360,3 +360,45 @@ func TestCreateWorkflow_RefusesAComputedCustomEventName(t *testing.T) {
 
 	assertErrorCode(t, resp.StatusCode(), resp.Body, http.StatusBadRequest, "INVALID_WORKFLOW_DEFINITION")
 }
+
+func TestRunWorkflow_RefusesARequestFromAChainAtItsMaximumDepth(t *testing.T) {
+	t.Parallel()
+	w := newWorkflowWorld(t)
+	created := w.createWorkflow(workflowBody("organization.created", generalWorkspaceStep()))
+	header := events.EncodeCausationHeader(events.Causation{
+		Depth: workflow.MaxCausationDepth, WorkflowIDs: []string{"wf_other"},
+	})
+
+	resp, err := w.client.RunWorkflowWithResponse(context.Background(), w.product.ProductID, created.Id,
+		ct.RunWorkflowJSONRequestBody{EventData: map[string]string{"organization_id": w.organizationID}},
+		func(_ context.Context, outgoing *http.Request) error {
+			outgoing.Header.Set(events.CausationHeader, header)
+			return nil
+		},
+	)
+
+	require.NoError(t, err)
+	assertErrorCode(t, resp.StatusCode(), resp.Body, http.StatusConflict, "WORKFLOW_CHAIN_TOO_DEEP")
+}
+
+func TestCreateWorkflow_ReportsEveryMissingParameter(t *testing.T) {
+	t.Parallel()
+	w := newWorkflowWorld(t)
+
+	resp := w.createWorkflowRaw(workflowBody("organization.created",
+		step("invite", "invitation.create", map[string]string{"email": "a@example.com"})))
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	var envelope struct {
+		Errors []ct.ApiError `json:"errors"`
+	}
+	require.NoError(t, json.Unmarshal(resp.Body, &envelope))
+	messages := []string{}
+	for _, apiError := range envelope.Errors {
+		messages = append(messages, apiError.Message)
+	}
+	assert.Equal(t, []string{
+		"Organization is required for “Invite to organization”.",
+		"Role is required for “Invite to organization”.",
+	}, messages)
+}

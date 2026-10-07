@@ -37,25 +37,59 @@ type SigningSecrets interface {
 	DeliveryTarget(ctx context.Context, productID string) (events.DeliveryTarget, bool, error)
 }
 
-// HTTPCaller performs the requests of http.request steps. In production it
-// refuses plain HTTP and any address that is not public, checked on the
-// address actually dialed so a DNS answer cannot redirect the call inward.
+// HTTPCaller performs the requests of http.request steps. Unless private
+// targets are allowed, it refuses plain HTTP and any address that is not
+// public, checked on the address actually dialed so a DNS answer cannot
+// redirect the call inward.
 type HTTPCaller struct {
-	client     *http.Client
-	secrets    SigningSecrets
-	production bool
-	now        func() time.Time
+	client       *http.Client
+	secrets      SigningSecrets
+	allowPrivate bool
+	now          func() time.Time
 }
 
-func NewHTTPCaller(secrets SigningSecrets, production bool) *HTTPCaller {
+//nolint:gochecknoglobals // fixed list of non-public ranges
+var nonPublicRanges = mustParseCIDRs(
+	"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15",
+	"198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4", "64:ff9b::/96", "64:ff9b:1::/48",
+	"2001:db8::/32",
+)
+
+func mustParseCIDRs(cidrs ...string) []*net.IPNet {
+	parsed := make([]*net.IPNet, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(err)
+		}
+		parsed = append(parsed, network)
+	}
+	return parsed
+}
+
+// IsPublicAddress reports whether a workflow step may call the address.
+func IsPublicAddress(ip net.IP) bool {
+	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
+		ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
+		return false
+	}
+	for _, network := range nonPublicRanges {
+		if network.Contains(ip) {
+			return false
+		}
+	}
+	return true
+}
+
+func NewHTTPCaller(secrets SigningSecrets, allowPrivate bool) *HTTPCaller {
 	dialer := &net.Dialer{Timeout: httpActionTimeout}
-	if production {
+	if !allowPrivate {
 		dialer.Control = func(_, address string, _ syscall.RawConn) error {
 			host, _, err := net.SplitHostPort(address)
 			if err != nil {
 				return err
 			}
-			if ip := net.ParseIP(host); ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() {
+			if !IsPublicAddress(net.ParseIP(host)) {
 				return errPrivateAddress
 			}
 			return nil
@@ -70,9 +104,9 @@ func NewHTTPCaller(secrets SigningSecrets, production bool) *HTTPCaller {
 				return http.ErrUseLastResponse
 			},
 		},
-		secrets:    secrets,
-		production: production,
-		now:        time.Now,
+		secrets:      secrets,
+		allowPrivate: allowPrivate,
+		now:          time.Now,
 	}
 }
 
@@ -81,7 +115,7 @@ func (c *HTTPCaller) checkURL(raw string) (*url.URL, error) {
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
 		return nil, fmt.Errorf("%q is not an absolute HTTP or HTTPS URL", raw)
 	}
-	if c.production && parsed.Scheme != "https" {
+	if !c.allowPrivate && parsed.Scheme != "https" {
 		return nil, fmt.Errorf("%q must use HTTPS", raw)
 	}
 	return parsed, nil

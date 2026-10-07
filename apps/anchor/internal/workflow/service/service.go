@@ -217,6 +217,9 @@ func (s *workflowService) Run(ctx context.Context, input workflow.RunInput) (wor
 	if slices.Contains(causation.WorkflowIDs, wf.ID) {
 		return workflow.Run{}, errRunWouldLoop
 	}
+	if causation.Depth >= workflow.MaxCausationDepth {
+		return workflow.Run{}, errChainTooDeep
+	}
 	run, _, err := s.runner.Start(ctx, engine.Execution{
 		Workflow:  wf,
 		EventID:   ids.MustNew(manualEventIDPrefix),

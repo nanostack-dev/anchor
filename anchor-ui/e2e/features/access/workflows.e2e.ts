@@ -1,6 +1,7 @@
 import { expect, test } from "../../support/fixtures";
 import { captureReviewCheckpoint } from "../../support/review";
 import {
+	configureEventEndpoint,
 	createOrganization,
 	createWorkflowViaAPI,
 	latestRun,
@@ -8,6 +9,7 @@ import {
 	workflowIdFrom,
 	workflowRuns,
 	workspaceNames,
+	writingBackend,
 } from "./workflow-helpers";
 
 // Covers: PRODUCT_WORKFLOWS, PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
@@ -142,13 +144,22 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		.getByRole("button", { name: "Create workflow", exact: true })
 		.click();
 	await expect(
-		invite.getByText(
-			/^Parameter "organization_id" of action invitation.create is required/,
-		),
+		invite.getByText("Organization is required for “Invite to organization”.", {
+			exact: true,
+		}),
+	).toBeVisible();
+	await expect(
+		invite.getByRole("textbox", { name: "Organization *", exact: true }),
+	).toHaveAttribute("aria-invalid", "true");
+	await expect(
+		invite.getByText("Role is required for “Invite to organization”.", {
+			exact: true,
+		}),
 	).toBeVisible();
 	await expect(
 		page.getByText(
-			/^Step 2 · Organization: Parameter "organization_id" of action invitation.create is required/,
+			"Step 2 · Organization: Organization is required for “Invite to organization”.",
+			{ exact: true },
 		),
 	).toBeVisible();
 	await invite.scrollIntoViewIfNeeded();
@@ -157,6 +168,14 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await invite
 		.getByRole("textbox", { name: "Organization *", exact: true })
 		.fill("org_example");
+	await expect(
+		invite.getByRole("textbox", { name: "Organization *", exact: true }),
+	).not.toHaveAttribute("aria-invalid", "true");
+	await expect(
+		invite.getByText("Organization is required for “Invite to organization”.", {
+			exact: true,
+		}),
+	).toHaveCount(0);
 	await invite
 		.getByRole("textbox", { name: "Role *", exact: true })
 		.fill("role_example");
@@ -287,6 +306,15 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 		.click();
 	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 	const followUpId = workflowIdFrom(page);
+	const savedToast = page.getByRole("dialog", {
+		name: `Workflow “${name}” saved.`,
+		exact: true,
+	});
+	await savedToast.hover();
+	await savedToast
+		.getByRole("button", { name: "Close toast", exact: true })
+		.press("Enter");
+	await expect(savedToast).toHaveCount(0);
 
 	const organization = await createOrganization(
 		world,
@@ -314,6 +342,14 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 		page.getByText("This would loop", { exact: true }),
 	).toBeVisible();
 	await expect(
+		emit.getByText("This step would start a loop", { exact: true }),
+	).toBeVisible();
+	await expect(
+		emit.getByRole("list", { name: "Events step 2 emits" }),
+	).toContainText("starts “this workflow”");
+	await emit.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "loop-warning");
+	await expect(
 		emit.getByRole("list", { name: "Events step 2 emits" }),
 	).toContainText("custom.onboarding.started");
 	await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -329,9 +365,68 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 
 	await page.goto("/products/workflows");
 	const links = page.getByRole("list", { name: "Workflow links" });
-	await expect(links).toContainText(handoff.name);
-	await expect(links).toContainText("custom.onboarding.started");
-	await expect(links).toContainText(name);
+	await expect(links.getByRole("listitem")).toHaveCount(1);
+	await expect(links.getByRole("listitem")).toHaveText(
+		`${handoff.name}emitscustom.onboarding.startedwhich starts${name}`,
+	);
 	await links.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "workflow-links");
+});
+
+// Covers: PRODUCT_WORKFLOW_DETAIL
+test("a backend that writes back during a step cannot restart its workflow, and the run history says so", async ({
+	page,
+	world,
+}, testInfo) => {
+	const backend = await writingBackend(world);
+	try {
+		await configureEventEndpoint(world, backend.eventsURL);
+		const workflow = await createWorkflowViaAPI(world, {
+			name: world.name("backend-round-trip"),
+			enabled: true,
+			trigger_event_type: "organization.created",
+			definition: {
+				conditions: [],
+				steps: [
+					{
+						id: "call",
+						action: "http.request",
+						params: { url: backend.backendURL },
+					},
+				],
+			},
+		});
+
+		await createOrganization(world, world.name("first-org"));
+		await expect
+			.poll(
+				async () =>
+					(await workflowRuns(world, workflow.id)).items
+						.map((run) => run.status)
+						.sort(),
+				{ message: "the write-back is refused by the loop guard" },
+			)
+			.toEqual(["skipped", "succeeded"]);
+		expect(backend.calls).toHaveLength(1);
+
+		await openWorkflows(page, world);
+		await page
+			.getByRole("list", { name: "Your workflows", exact: true })
+			.getByRole("button", { name: new RegExp(workflow.name) })
+			.click();
+		await expect(
+			page.getByRole("heading", { name: workflow.name, exact: true }),
+		).toBeVisible();
+		await page.getByRole("tab", { name: "Runs (2)", exact: true }).click();
+		const runs = page.getByRole("list", { name: "Runs" });
+		await runs.getByRole("button").filter({ hasText: "Skipped" }).click();
+		await expect(
+			page
+				.getByRole("tabpanel")
+				.getByText(/^Loop prevented: this workflow already ran/),
+		).toBeVisible();
+		await captureReviewCheckpoint(page, testInfo, "loop-prevented-run");
+	} finally {
+		await backend.close();
+	}
 });

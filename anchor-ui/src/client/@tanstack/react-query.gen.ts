@@ -2550,7 +2550,7 @@ export const listWorkflowRunsOptions = (options: Options<ListWorkflowRunsData>) 
 
 /**
  * Run Workflow
- * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+ * Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
  */
 export const runWorkflowMutation = (options?: Partial<Options<RunWorkflowData>>): UseMutationOptions<RunWorkflowResponse, RunWorkflowError, Options<RunWorkflowData>> => {
     const mutationOptions: UseMutationOptions<RunWorkflowResponse, RunWorkflowError, Options<RunWorkflowData>> = {

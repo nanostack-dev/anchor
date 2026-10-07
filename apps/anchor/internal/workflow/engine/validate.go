@@ -2,9 +2,13 @@ package engine
 
 import (
 	"fmt"
+	"maps"
+	"net/http"
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"anchor/internal/domain/workflow"
 	"anchor/internal/events"
@@ -37,20 +41,47 @@ func (e *Engine) Validate(triggerType string, definition workflow.Definition) er
 		anyDataField: custom,
 		steps:        map[string]ActionSpec{},
 	}
-	if err := validateConditions("conditions", definition.Conditions, known); err != nil {
-		return err
-	}
+	problems := &problemList{}
+	problems.add(validateConditions("conditions", definition.Conditions, known))
 	for index, step := range definition.Steps {
 		location := fmt.Sprintf("steps[%d]", index)
-		if err := e.validateStep(location, step, known); err != nil {
+		if err := e.validateStep(location, step, known, problems); err != nil {
 			return err
 		}
 		known.steps[step.ID] = e.actions[step.Action].spec
 	}
-	return nil
+	return problems.err()
 }
 
-func (e *Engine) validateStep(location string, step workflow.Step, known referenceRoots) error {
+// problemList gathers the problems of every step's parameters and
+// conditions, so one save reports all of them.
+type problemList struct {
+	details []fault.Detail
+}
+
+func (p *problemList) add(err error) {
+	if err == nil {
+		return
+	}
+	if found, ok := fault.As(err); ok {
+		p.details = append(p.details, found.Details...)
+		return
+	}
+	p.details = append(p.details, fault.Detail{Code: invalidDefinitionCode, Message: err.Error()})
+}
+
+func (p *problemList) err() error {
+	if len(p.details) == 0 {
+		return nil
+	}
+	return fault.NewWithDetails(p.details, http.StatusBadRequest)
+}
+
+// validateStep fails fast on what makes the step unreadable (its id or its
+// action), and adds every parameter and condition problem to problems.
+func (e *Engine) validateStep(
+	location string, step workflow.Step, known referenceRoots, problems *problemList,
+) error {
 	if !stepIDPattern.MatchString(step.ID) {
 		return InvalidDefinitionError(location+".id",
 			"A step id starts with a lowercase letter and holds only lowercase letters, digits and underscores.")
@@ -62,26 +93,28 @@ func (e *Engine) validateStep(location string, step workflow.Step, known referen
 	if !ok {
 		return InvalidDefinitionError(location+".action", fmt.Sprintf("%q is not a workflow action.", step.Action))
 	}
-	for name := range step.Params {
+	for _, name := range slices.Sorted(maps.Keys(step.Params)) {
 		if _, declared := found.spec.Param(name); !declared {
-			return InvalidDefinitionError(location+".params."+name,
-				fmt.Sprintf("Action %s has no parameter %q.", step.Action, name))
+			problems.add(InvalidDefinitionError(location+".params."+name,
+				fmt.Sprintf("“%s” has no parameter %q.", found.spec.Name, name)))
 		}
 	}
 	for _, param := range found.spec.Params {
+		paramLocation := location + ".params." + param.Name
 		raw := step.Params[param.Name]
 		if param.Required && strings.TrimSpace(raw) == "" {
-			return InvalidDefinitionError(location+".params."+param.Name,
-				fmt.Sprintf("Parameter %q of action %s is required.", param.Name, step.Action))
+			problems.add(InvalidDefinitionError(paramLocation,
+				fmt.Sprintf("%s is required for “%s”.", param.Label, found.spec.Name)))
+			continue
 		}
-		if err := validateParamValue(location+".params."+param.Name, param, raw); err != nil {
-			return err
+		if err := validateParamValue(paramLocation, param, raw); err != nil {
+			problems.add(err)
+			continue
 		}
-		if err := known.check(location+".params."+param.Name, raw); err != nil {
-			return err
-		}
+		problems.add(known.check(paramLocation, raw))
 	}
-	return validateConditions(location+".when", step.When, known)
+	problems.add(validateConditions(location+".when", step.When, known))
+	return nil
 }
 
 func validateConditions(location string, conditions []workflow.Condition, known referenceRoots) error {
@@ -116,7 +149,7 @@ func validateParamValue(location string, param ParamSpec, raw string) error {
 	}
 	if param.Literal && len(References(value)) > 0 {
 		return InvalidDefinitionError(location,
-			fmt.Sprintf("Parameter %q must be written out: it cannot hold {{ }} references.", param.Name))
+			fmt.Sprintf("%s must be written out: it cannot hold {{ }} references.", param.Label))
 	}
 	if param.Type == ParamCustomEvent && !workflow.ValidCustomEvent(workflow.CustomEventType(value)) {
 		return InvalidDefinitionError(location, fmt.Sprintf(
@@ -126,7 +159,7 @@ func validateParamValue(location string, param ParamSpec, raw string) error {
 	if len(param.Options) > 0 && len(References(value)) == 0 &&
 		!slices.ContainsFunc(param.Options, func(option string) bool { return strings.EqualFold(option, value) }) {
 		return InvalidDefinitionError(location, fmt.Sprintf(
-			"Parameter %q accepts %s.", param.Name, strings.Join(param.Options, ", ")))
+			"%s accepts %s.", param.Label, strings.Join(param.Options, ", ")))
 	}
 	return nil
 }

@@ -3,7 +3,7 @@ import type {
 	WorkflowRunResponse,
 	WorkflowStepResultResponse,
 } from "@/client";
-import { WorkflowRunTrigger } from "@/client";
+import { WorkflowRunStatus, WorkflowRunTrigger } from "@/client";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -188,9 +188,11 @@ export function WorkflowRunView({
 						/>
 					))}
 				</Box>
-			) : (
+			) : run.error ? null : (
 				<Text size="sm" tone="muted">
-					The workflow's conditions did not hold, so no step ran.
+					{run.status === WorkflowRunStatus.RUNNING
+						? "No step has finished yet."
+						: "The workflow's conditions did not hold, so no step ran."}
 				</Text>
 			)}
 		</Stack>

@@ -183,7 +183,7 @@ func TestValidate_RejectsAMissingRequiredParameter(t *testing.T) {
 			"organization_id": "{{event.data.organization_id}}",
 		}}},
 	})
-	assert.Contains(t, validationLocation(t, err), `"name"`)
+	assert.Contains(t, validationLocation(t, err), "Name is required for “Create workspace”")
 }
 
 func TestValidate_RejectsAnUndeclaredParameter(t *testing.T) {
@@ -345,4 +345,26 @@ func TestExecute_StopsAtAFailedStepUnlessItContinues(t *testing.T) {
 	assert.Equal(t, workflow.RunStatusFailed, continued.Status)
 	require.Len(t, continued.Steps, 2)
 	assert.Equal(t, workflow.StepStatusSimulated, continued.Steps[1].Status)
+}
+
+func TestValidate_ReportsEveryMissingParameterAtOnce(t *testing.T) {
+	err := newEngine(t).Validate(string(events.OrganizationCreated), workflow.Definition{
+		Steps: []workflow.Step{
+			{ID: "ws", Action: engine.ActionWorkspaceCreate, Params: map[string]string{}},
+			{ID: "join", Action: engine.ActionMemberAdd, Params: map[string]string{
+				"organization_id": "{{event.data.organization_id}}",
+			}},
+		},
+	})
+
+	faultErr, ok := fault.As(err)
+	require.True(t, ok)
+	locations := []string{}
+	for _, detail := range faultErr.Details {
+		locations = append(locations, detail.Metadata["location"].(string))
+	}
+	assert.Equal(t, []string{
+		"steps[0].params.organization_id", "steps[0].params.name",
+		"steps[1].params.product_user_id", "steps[1].params.role_id",
+	}, locations)
 }

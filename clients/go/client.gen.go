@@ -1699,7 +1699,7 @@ type ClientInterface interface {
 
 	// RunWorkflowWithBody Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1708,7 +1708,7 @@ type ClientInterface interface {
 
 	// RunWorkflow Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5135,7 +5135,7 @@ func (c *Client) ListWorkflowRuns(ctx context.Context, productId ProductIdParame
 
 // RunWorkflowWithBody Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5154,7 +5154,7 @@ func (c *Client) RunWorkflowWithBody(ctx context.Context, productId ProductIdPar
 
 // RunWorkflow Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12870,7 +12870,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunWorkflowWithBodyWithResponse Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12879,7 +12879,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunWorkflowWithResponse Run Workflow
 	//
-	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24084,7 +24084,7 @@ func (c *ClientWithResponses) ListWorkflowRunsWithResponse(ctx context.Context, 
 
 // RunWorkflowWithBodyWithResponse Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24099,7 +24099,7 @@ func (c *ClientWithResponses) RunWorkflowWithBodyWithResponse(ctx context.Contex
 
 // RunWorkflowWithResponse Run Workflow
 //
-// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow is refused with a conflict.
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too. A request carrying an `Anchor-Workflow-Causation` header from a run of this same workflow, or from a chain already at its maximum length, is refused with a conflict.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

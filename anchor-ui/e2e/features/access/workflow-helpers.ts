@@ -1,6 +1,8 @@
+import { createServer } from "node:http";
 import type { Page } from "playwright/test";
 import type {
 	ProductOrganizationResponse,
+	ProductResponse,
 	ProductWorkspaceListResponse,
 	WorkflowResponse,
 	WorkflowRunListResponse,
@@ -61,4 +63,62 @@ export async function createWorkflowViaAPI(
 
 export async function latestRun(world: World, workflowId: string) {
 	return (await workflowRuns(world, workflowId)).items[0];
+}
+
+export async function configureEventEndpoint(world: World, url: string) {
+	await world.api.put<ProductResponse>(world.productPath, {
+		name: world.product.name,
+		description: world.product.description,
+		config: { events: { endpoint_url: url, events: ["organization.deleted"] } },
+	});
+}
+
+// A Product backend that, while answering a workflow step, creates an
+// organization in Anchor and sends the causation header back.
+export async function writingBackend(world: World) {
+	const api = await world.productAPI();
+	const calls: string[] = [];
+	const server = createServer(async (request, response) => {
+		for await (const _chunk of request) {
+			/* drain */
+		}
+		if (request.url !== "/backend") {
+			response.writeHead(204).end();
+			return;
+		}
+		const causation = String(
+			request.headers["anchor-workflow-causation"] ?? "",
+		);
+		calls.push(causation);
+		const created = await api.context.post(
+			`${world.productPath}/organizations`,
+			{
+				data: { name: `backend-${calls.length}-${Date.now()}` },
+				headers: { "Anchor-Workflow-Causation": causation },
+			},
+		);
+		response
+			.writeHead(created.status() === 201 ? 200 : 500, {
+				"Content-Type": "application/json",
+			})
+			.end(JSON.stringify({ created: created.status() }));
+	});
+	await new Promise<void>((ready, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", ready);
+	});
+	const address = server.address();
+	if (!address || typeof address === "string")
+		throw new Error("Backend did not bind TCP.");
+	const origin = `http://127.0.0.1:${address.port}`;
+	return {
+		backendURL: `${origin}/backend`,
+		eventsURL: `${origin}/events`,
+		calls,
+		async close() {
+			await new Promise<void>((closed, reject) =>
+				server.close((error) => (error ? reject(error) : closed())),
+			);
+		},
+	};
 }

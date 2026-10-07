@@ -31,6 +31,8 @@ core:
     global_key_version: "v1"
   integration:
     reconcile_schedule_interval: "15m"
+  workflow:
+    allow_private_targets: true
 
 cache:
   address: ${REDIS_ADDRESS}
