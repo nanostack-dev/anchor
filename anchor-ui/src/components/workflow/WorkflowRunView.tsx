@@ -112,7 +112,7 @@ function StepResult({
 					</Box>
 				</CollapsibleTrigger>
 				<CollapsibleContent>
-					<Box className="space-y-3 border-t border-border px-3 py-3">
+					<Box className="space-y-3 border-t border-border px-3 py-3 [overflow-wrap:anywhere]">
 						{result.error ? (
 							<Text size="sm" tone="critical">
 								{result.error}
@@ -162,9 +162,11 @@ export function WorkflowRunView({
 				</Text>
 			</Spread>
 			{run.error ? (
-				<Text size="sm" tone="critical">
-					{run.error}
-				</Text>
+				<Box className="[overflow-wrap:anywhere]">
+					<Text size="sm" tone="critical">
+						{run.error}
+					</Text>
+				</Box>
 			) : null}
 			<Stack space="xs">
 				<Text size="xs" weight="semibold" tone="muted">

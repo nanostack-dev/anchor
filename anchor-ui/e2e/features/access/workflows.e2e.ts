@@ -39,8 +39,10 @@ test("a recipe becomes a workflow that dry-runs, saves and reacts to the next or
 		.getByLabel("event.data.organization_id", { exact: true })
 		.fill(existing.id);
 	await page.getByRole("button", { name: "Dry run", exact: true }).click();
-	await expect(page.getByText("Dry run", { exact: true })).toBeVisible();
-	await expect(page.getByText("Simulated", { exact: true })).toHaveCount(2);
+	const dryRun = page.getByRole("region", { name: "Run result", exact: true });
+	await expect(dryRun).toContainText("Dry run");
+	await expect(dryRun.getByText("Succeeded", { exact: true })).toBeVisible();
+	await expect(dryRun.getByText("Simulated", { exact: true })).toHaveCount(2);
 	await captureReviewCheckpoint(page, testInfo, "dry-run-result");
 	expect(await workspaceNames(world, existing.id)).toEqual([]);
 

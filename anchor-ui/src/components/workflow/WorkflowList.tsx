@@ -125,24 +125,33 @@ export function WorkflowList({
 										className="flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-4"
 									>
 										<Box as="span" className="min-w-0 flex-1 space-y-1">
-											<Inline space="xs" alignY="center" wrap>
-												<Text as="span" size="sm" weight="semibold" truncate>
+											<Box
+												as="span"
+												className="flex flex-wrap items-center gap-2"
+											>
+												<Box
+													as="span"
+													className="min-w-0 break-words text-sm font-semibold"
+												>
 													{workflow.name}
-												</Text>
+												</Box>
 												{workflow.enabled ? null : (
 													<Badge variant="outline" tone="neutral">
 														Disabled
 													</Badge>
 												)}
-											</Inline>
-											<Text as="span" size="xs" tone="muted" truncate>
+											</Box>
+											<Box
+												as="span"
+												className="block truncate text-xs text-muted-foreground"
+											>
 												When{" "}
 												{trigger?.name.toLowerCase() ??
 													workflow.trigger_event_type}
 												{workflow.definition.conditions.length > 0
 													? ` · ${workflow.definition.conditions.length} condition${workflow.definition.conditions.length > 1 ? "s" : ""}`
 													: ""}
-											</Text>
+											</Box>
 											<StepIcons workflow={workflow} catalog={catalog} />
 										</Box>
 										<Box as="span" className="shrink-0">

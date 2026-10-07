@@ -42,7 +42,6 @@ import { Text } from "@nanostackorg/design-system/components/text";
 import { Textarea } from "@nanostackorg/design-system/components/textarea";
 import { toast } from "@nanostackorg/design-system/components/toast";
 import { Box } from "@nanostackorg/design-system/layout/box";
-import { Column, Columns } from "@nanostackorg/design-system/layout/columns";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -95,12 +94,12 @@ function FlowNode({
 					<Icon className="size-4" aria-hidden />
 				</Box>
 				<Box className="min-w-0">
-					<Text as="span" size="xs" tone="muted">
+					<Box as="span" className="block text-xs text-muted-foreground">
 						{eyebrow}
-					</Text>
-					<Text as="span" size="sm" weight="semibold">
+					</Box>
+					<Box as="span" className="block truncate text-sm font-semibold">
 						{title}
-					</Text>
+					</Box>
 				</Box>
 			</Box>
 			<Box className="px-4 py-4">{children}</Box>
@@ -208,8 +207,8 @@ export function WorkflowBuilder({
 	const triggerGroups = groupBy(catalog.triggers, (item) => item.group_name);
 
 	return (
-		<Columns space="xl" collapseBelow="lg" alignY="start">
-			<Column width="2/3">
+		<Box className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+			<Box className="order-2 lg:order-none">
 				<Stack space="none">
 					<Card>
 						<CardContent>
@@ -359,10 +358,10 @@ export function WorkflowBuilder({
 						}
 					/>
 				</Stack>
-			</Column>
+			</Box>
 
-			<Column width="1/3">
-				<Box className="space-y-6 lg:sticky lg:top-6">
+			<Box className="contents lg:sticky lg:top-6 lg:block lg:space-y-6">
+				<Box className="order-1 lg:order-none">
 					<Card>
 						<CardHeader>
 							<CardTitle>{workflow ? "Workflow" : "New workflow"}</CardTitle>
@@ -391,7 +390,10 @@ export function WorkflowBuilder({
 									<Alert tone="critical" icon={CircleAlert}>
 										<AlertTitle>Not saved</AlertTitle>
 										<AlertDescription>
-											<Box as="ul" className="list-disc space-y-1 pl-4">
+											<Box
+												as="ul"
+												className="list-disc space-y-1 pl-4 [overflow-wrap:anywhere]"
+											>
 												{saveErrors.map((message) => (
 													<Box as="li" key={message}>
 														{message}
@@ -441,6 +443,8 @@ export function WorkflowBuilder({
 							</Stack>
 						</CardContent>
 					</Card>
+				</Box>
+				<Box className="order-3 lg:order-none">
 					<WorkflowTestPanel
 						productId={productId}
 						workflowId={workflow?.id}
@@ -450,7 +454,7 @@ export function WorkflowBuilder({
 						dirty={dirty}
 					/>
 				</Box>
-			</Column>
-		</Columns>
+			</Box>
+		</Box>
 	);
 }

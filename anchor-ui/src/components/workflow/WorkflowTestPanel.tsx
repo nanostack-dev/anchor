@@ -26,6 +26,7 @@ import {
 } from "@nanostackorg/design-system/components/field";
 import { Input } from "@nanostackorg/design-system/components/input";
 import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -185,7 +186,11 @@ export function WorkflowTestPanel({
 							{error}
 						</Text>
 					) : null}
-					{result ? <WorkflowRunView run={result} catalog={catalog} /> : null}
+					{result ? (
+						<Box as="section" aria-label="Run result">
+							<WorkflowRunView run={result} catalog={catalog} />
+						</Box>
+					) : null}
 				</Stack>
 			</CardContent>
 		</Card>
