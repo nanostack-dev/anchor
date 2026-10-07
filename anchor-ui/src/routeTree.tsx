@@ -46,6 +46,11 @@ import { productResourcePermissionsRoute } from "@/routes/products/product-resou
 import { productRolesRoute } from "@/routes/products/product-roles-route";
 import { productUsersRoute } from "@/routes/products/product-users";
 import { productsRoute } from "@/routes/products/products";
+import {
+	workflowDetailRoute,
+	workflowNewRoute,
+	workflowsRoute,
+} from "@/routes/products/workflows";
 import { settingsAppRoute } from "@/routes/settings/app";
 import { settingsUserRoute } from "@/routes/settings/user";
 import { createRouter } from "@tanstack/react-router";
@@ -58,6 +63,9 @@ const routeTree = rootRoute.addChildren([
 	productsRoute,
 	productEditRoute,
 	productEventsRoute,
+	workflowsRoute,
+	workflowNewRoute,
+	workflowDetailRoute,
 	productApiKeysRoute,
 	productApiKeyNewRoute,
 	productApiKeyEditRoute,

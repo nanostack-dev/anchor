@@ -20,6 +20,7 @@ import {
 	Users,
 	Users2,
 	Webhook,
+	Workflow,
 } from "lucide-react";
 
 export interface SubMenuItem {
@@ -167,6 +168,11 @@ export const sidebarConfig: SidebarGroup[] = [
 				title: "Events",
 				path: ROUTE_PATHS.PRODUCT_EVENTS,
 				icon: Webhook,
+			},
+			{
+				title: "Workflows",
+				path: ROUTE_PATHS.PRODUCT_WORKFLOWS,
+				icon: Workflow,
 			},
 		],
 	},
