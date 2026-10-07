@@ -5196,7 +5196,7 @@ export type CreateProductOrganizationErrors = {
      */
     403: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -6943,7 +6943,7 @@ export type DeleteLicenseSchemaErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7031,7 +7031,7 @@ export type CreateLicenseSchemaErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7077,7 +7077,7 @@ export type UpdateLicenseSchemaErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7170,7 +7170,7 @@ export type CreateLicenseTemplateErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7220,7 +7220,7 @@ export type DeleteLicenseTemplateErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7316,7 +7316,7 @@ export type UpdateLicenseTemplateErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7366,7 +7366,7 @@ export type ArchiveLicenseTemplateErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7458,7 +7458,7 @@ export type MigrateOrganizationLicensesErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7558,7 +7558,7 @@ export type AdjustOrganizationLicenseErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };
@@ -7608,7 +7608,7 @@ export type InstantiateOrganizationLicenseErrors = {
      */
     404: ApiErrorResponse;
     /**
-     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction.
+     * Current state refuses this write. When another licensing write or template sync is running for this product, returns LICENSING_WRITE_IN_PROGRESS: "Another licensing update is in progress for this product. Please try again shortly." The competing request is rejected without changing state; retry after the current operation finishes. Other products, reads and usage reports are unaffected. A migration holds the lock for its entire run while keeping each organization's write in its own transaction. Instantiating a license, including creating an organization with one, does not take this lock: it holds the template it copies until it commits, so a write to that template waits for it instead.
      */
     409: ApiErrorResponse;
 };

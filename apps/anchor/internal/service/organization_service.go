@@ -155,7 +155,7 @@ func (s *organizationService) resolveLicenseTemplate(
 		return nil, nil //nolint:nilnil // no license asked for is not an error
 	}
 
-	template, err := s.licenseTemplates.GetTemplate(ctx, license.GetTemplateInput{
+	template, err := s.licenseTemplates.GetTemplate(transactor.ForShare(ctx), license.GetTemplateInput{
 		TenantID:   tenantID,
 		ProductID:  productID,
 		TemplateID: *templateID,
