@@ -217,10 +217,21 @@ function Canvas({
 	const [paneReady, setPaneReady] = useState(false);
 	const fittedFor = useRef<string | null>(null);
 	const focusRef = useRef(focusNodeId);
-	focusRef.current = focusNodeId;
+	if (focusNodeId) focusRef.current = focusNodeId;
 	const [fitted, setFitted] = useState(false);
+	const [shown, setShown] = useState(true);
 	useEffect(() => {
-		if (!paneReady || !measured || fittedFor.current === fitKey) return;
+		const element = container.current;
+		if (!element) return;
+		const observer = new ResizeObserver(() =>
+			setShown(element.clientWidth > 0 && element.clientHeight > 0),
+		);
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, []);
+	useEffect(() => {
+		if (!shown || !paneReady || !measured || fittedFor.current === fitKey)
+			return;
 		const firstFit = fittedFor.current === null;
 		const timer = window.setTimeout(
 			() => {
@@ -234,13 +245,21 @@ function Canvas({
 			firstFit ? 0 : 50,
 		);
 		return () => window.clearTimeout(timer);
-	}, [fitKey, fit, measured, paneReady, reduceMotion]);
+	}, [fitKey, fit, measured, paneReady, reduceMotion, shown]);
 
 	const panToKeyboardFocus = useCallback(
 		(event: React.FocusEvent<HTMLDivElement>) => {
 			const element = container.current;
 			const target = event.target;
 			if (!element || !target.matches(":focus-visible")) return;
+			for (
+				let ancestor = target.parentElement;
+				ancestor && ancestor !== element;
+				ancestor = ancestor.parentElement
+			) {
+				ancestor.scrollTop = 0;
+				ancestor.scrollLeft = 0;
+			}
 			const view = element.getBoundingClientRect();
 			const box = target.getBoundingClientRect();
 			const shift = (start: number, end: number, min: number, max: number) =>
