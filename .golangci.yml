@@ -282,9 +282,9 @@ linters:
       # The list of supported checkers can be found at https://go-critic.com/overview.
       settings:
         ruleguard:
-          # Project rules for the functional.Seq chain idioms. The path is
-          # relative to the module the linter runs in.
-          rules: "gorules/functional.go"
+          # Project rules for the functional.Seq chain idioms and for row-locked
+          # contexts. The paths are relative to the module the linter runs in.
+          rules: "gorules/functional.go,gorules/transactor.go"
           failOn: all
         captLocal:
           # Whether to restrict checker to params only.

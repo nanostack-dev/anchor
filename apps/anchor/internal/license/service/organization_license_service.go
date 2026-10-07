@@ -134,10 +134,9 @@ func (s *organizationLicenseService) Instantiate(
 
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
-			return err
-		}
-		template, templateErr := s.templates.GetTemplate(txCtx, license.GetTemplateInput{
+		// Locked so a template write waits for this copy to commit, and the sync it
+		// starts then finds this license.
+		template, templateErr := s.templates.GetTemplate(transactor.ForShare(txCtx), license.GetTemplateInput{
 			TenantID:   in.TenantID,
 			ProductID:  in.ProductID,
 			TemplateID: in.TemplateID,

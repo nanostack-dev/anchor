@@ -4236,7 +4236,10 @@ components:
         The competing request is rejected without changing state; retry after the
         current operation finishes. Other products, reads and usage reports are
         unaffected. A migration holds the lock for its entire run while keeping
-        each organization's write in its own transaction.
+        each organization's write in its own transaction. Instantiating a license,
+        including creating an organization with one, does not take this lock: it
+        holds the template it copies until it commits, so a write to that template
+        waits for it instead.
       content:
         application/json:
           schema:
