@@ -158,6 +158,12 @@ export default function WorkflowPage({
 			workflows={workflowsQuery.data.items}
 			onSaved={(saved) => openSaved(saved.id)}
 			onDeleted={backToList}
+			onOpenWorkflow={(id) =>
+				void navigate({
+					to: ROUTE_PATHS.PRODUCT_WORKFLOW_DETAIL,
+					params: { workflowId: id },
+				})
+			}
 		/>
 	);
 

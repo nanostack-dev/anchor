@@ -50,6 +50,8 @@ export function WorkflowTestPanel({
 	trigger,
 	catalog,
 	dirty,
+	onResult,
+	embedded = false,
 }: {
 	productId: string;
 	workflowId?: string;
@@ -57,6 +59,8 @@ export function WorkflowTestPanel({
 	trigger: WorkflowTriggerResponse | undefined;
 	catalog: WorkflowCatalogResponse;
 	dirty: boolean;
+	onResult?: (run: WorkflowRunResponse | null) => void;
+	embedded?: boolean;
 }) {
 	const queryClient = useQueryClient();
 	const fieldPrefix = useId();
@@ -72,6 +76,7 @@ export function WorkflowTestPanel({
 
 	const settle = (run: WorkflowRunResponse | null, failure?: unknown) => {
 		setResult(run);
+		onResult?.(run);
 		setError(
 			failure
 				? (getApiErrorMessage(failure) ?? "The run could not start.")
@@ -102,7 +107,7 @@ export function WorkflowTestPanel({
 	});
 
 	return (
-		<Card>
+		<Card variant={embedded ? "soft" : undefined}>
 			<CardHeader>
 				<CardTitle icon={FlaskConical}>Try it</CardTitle>
 				<CardDescription>

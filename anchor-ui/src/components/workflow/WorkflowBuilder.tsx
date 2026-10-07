@@ -1,6 +1,8 @@
 import type {
+	WorkflowActionResponse,
 	WorkflowCatalogResponse,
 	WorkflowResponse,
+	WorkflowRunResponse,
 	WorkflowStep,
 } from "@/client";
 import { ProductEventGroupType } from "@/client";
@@ -12,6 +14,7 @@ import {
 	listWorkflowsQueryKey,
 	updateWorkflowMutation,
 } from "@/client/@tanstack/react-query.gen";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getApiErrors } from "@/lib/api-error";
 import { ConfirmDialog } from "@nanostackorg/design-system/blocks/confirm-dialog";
 import {
@@ -19,14 +22,8 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@nanostackorg/design-system/components/alert";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@nanostackorg/design-system/components/card";
 import {
 	Field,
 	FieldDescription,
@@ -50,19 +47,35 @@ import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+	ArrowLeft,
 	CircleAlert,
 	Filter,
 	Repeat,
 	Save,
 	Trash2,
-	TriangleAlert,
+	X,
 	Zap,
 } from "lucide-react";
-import { type ReactNode, useId, useMemo, useState } from "react";
-import { AddStepMenu } from "./AddStepMenu";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { ConditionEditor } from "./ConditionEditor";
 import { StepEditor, type StepStart } from "./StepEditor";
 import { WorkflowTestPanel } from "./WorkflowTestPanel";
+import { WorkflowCanvas } from "./canvas/WorkflowCanvas";
+import { easeOut } from "./canvas/motion";
+import {
+	type RunStatusByStep,
+	type Selection,
+	buildWorkflowGraph,
+} from "./canvas/workflow-graph";
 import { useWorkflowResources } from "./useWorkflowResources";
 import {
 	CUSTOM_EVENT_PREFIX,
@@ -73,6 +86,7 @@ import {
 	describeLoop,
 	draftEmits,
 	draftToRequest,
+	findAction,
 	findLoop,
 	findTrigger,
 	groupBy,
@@ -85,50 +99,8 @@ import {
 } from "./workflow-model";
 
 const NEW_CUSTOM_EVENT = "__new_custom_event__";
-
-function FlowConnector() {
-	return (
-		<Box
-			aria-hidden
-			className="ml-8 h-6 w-px border-l-2 border-dashed border-border"
-		/>
-	);
-}
-
-function FlowNode({
-	icon: Icon,
-	eyebrow,
-	title,
-	children,
-}: {
-	icon: typeof Zap;
-	eyebrow: string;
-	title: string;
-	children: ReactNode;
-}) {
-	return (
-		<Box
-			as="section"
-			aria-label={title}
-			className="rounded-xl border border-border bg-card shadow-xs"
-		>
-			<Box className="flex items-center gap-3 border-b border-border px-4 py-3">
-				<Box className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-					<Icon className="size-4" aria-hidden />
-				</Box>
-				<Box className="min-w-0">
-					<Box as="span" className="block text-xs text-muted-foreground">
-						{eyebrow}
-					</Box>
-					<Box as="span" className="block truncate text-sm font-semibold">
-						{title}
-					</Box>
-				</Box>
-			</Box>
-			<Box className="px-4 py-4">{children}</Box>
-		</Box>
-	);
-}
+const PLAYBACK_STEP_MS = 220;
+const SIDE_BY_SIDE = "(min-width: 64rem)";
 
 interface SaveProblem {
 	message: string;
@@ -147,6 +119,84 @@ function chainOf(workflow: WorkflowResponse): ChainWorkflow {
 	};
 }
 
+function selectionKey(selection: Selection) {
+	return selection.kind === "step"
+		? `step:${selection.stepId}`
+		: selection.kind;
+}
+
+function InspectorHeader({
+	eyebrow,
+	title,
+	icon: Icon,
+	onClose,
+	closeLabel,
+}: {
+	eyebrow: string;
+	title: string;
+	icon: typeof Zap;
+	onClose: () => void;
+	closeLabel: string;
+}) {
+	return (
+		<Box className="flex items-center gap-3 border-b border-border px-4 py-3">
+			<Box className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+				<Icon className="size-4" aria-hidden />
+			</Box>
+			<Box className="min-w-0 flex-1">
+				<Box
+					as="span"
+					className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+				>
+					{eyebrow}
+				</Box>
+				<Box as="span" className="block truncate text-sm font-semibold">
+					{title}
+				</Box>
+			</Box>
+			<Button
+				variant="ghost"
+				size="sm"
+				icon={closeLabel === "Back to flow" ? ArrowLeft : X}
+				onClick={onClose}
+			>
+				{closeLabel}
+			</Button>
+		</Box>
+	);
+}
+
+function InspectorTransition({
+	selection,
+	children,
+}: {
+	selection: Selection;
+	children: ReactNode;
+}) {
+	const reduceMotion = useReducedMotion();
+	return (
+		<AnimatePresence mode="wait" initial={false}>
+			<motion.div
+				key={selectionKey(selection)}
+				initial={
+					reduceMotion
+						? { opacity: 0 }
+						: { opacity: 0, transform: "translateX(6px)", filter: "blur(2px)" }
+				}
+				animate={
+					reduceMotion
+						? { opacity: 1 }
+						: { opacity: 1, transform: "translateX(0px)", filter: "blur(0px)" }
+				}
+				exit={{ opacity: 0, transition: { duration: 0.08 } }}
+				transition={{ duration: 0.16, ease: easeOut }}
+			>
+				{children}
+			</motion.div>
+		</AnimatePresence>
+	);
+}
+
 export function WorkflowBuilder({
 	productId,
 	catalog,
@@ -155,6 +205,7 @@ export function WorkflowBuilder({
 	workflows,
 	onSaved,
 	onDeleted,
+	onOpenWorkflow,
 }: {
 	productId: string;
 	catalog: WorkflowCatalogResponse;
@@ -163,8 +214,11 @@ export function WorkflowBuilder({
 	workflows: WorkflowResponse[];
 	onSaved: (workflow: WorkflowResponse) => void;
 	onDeleted?: () => void;
+	onOpenWorkflow?: (workflowId: string) => void;
 }) {
 	const queryClient = useQueryClient();
+	const isMobile = useIsMobile();
+	const reduceMotion = useReducedMotion();
 	const ids = {
 		name: useId(),
 		description: useId(),
@@ -176,6 +230,31 @@ export function WorkflowBuilder({
 	const [savedDraft, setSavedDraft] = useState<WorkflowDraft>(initialDraft);
 	const [problems, setProblems] = useState<SaveProblem[]>([]);
 	const [attempted, setAttempted] = useState(false);
+	const [selection, setSelection] = useState<Selection>({ kind: "workflow" });
+	const canvasRef = useRef<HTMLDivElement>(null);
+	const inspectorRef = useRef<HTMLDivElement>(null);
+	const [reveal, setReveal] = useState<{
+		target: "canvas" | "inspector";
+	} | null>(null);
+	const inspect = useCallback((next: Selection) => {
+		setSelection(next);
+		setReveal({ target: "inspector" });
+	}, []);
+	useEffect(() => {
+		if (!reveal || window.matchMedia(SIDE_BY_SIDE).matches) return;
+		const element =
+			reveal.target === "canvas" ? canvasRef.current : inspectorRef.current;
+		element?.scrollIntoView({
+			block: "nearest",
+			behavior: reduceMotion ? "auto" : "smooth",
+		});
+	}, [reveal, reduceMotion]);
+	const [playback, setPlayback] = useState<{
+		statuses: RunStatusByStep;
+		revealed: number;
+	} | null>(null);
+	const playbackTimer = useRef<number | null>(null);
+
 	const customTriggers = catalog.triggers.filter(
 		(item) => item.group_type === ProductEventGroupType.CUSTOM,
 	);
@@ -204,7 +283,113 @@ export function WorkflowBuilder({
 		trigger_event_type: draft.trigger_event_type,
 		emits: draftEmits(catalog, draft),
 	};
-	const loop = findLoop(candidate, others.map(chainOf));
+	const otherChains = others.map(chainOf);
+	const loop = findLoop(candidate, otherChains);
+
+	const nameMissing = draft.name.trim().length < 2;
+	const triggerMissing = draft.trigger_event_type === "";
+	const customTriggerInvalid =
+		newCustomTrigger && !isValidCustomEvent(draft.trigger_event_type);
+
+	const problemsByStep = useMemo(() => {
+		const counts: Record<number, number> = {};
+		for (const problem of problems) {
+			if (problem.stepIndex !== undefined)
+				counts[problem.stepIndex] = (counts[problem.stepIndex] ?? 0) + 1;
+		}
+		return counts;
+	}, [problems]);
+
+	const stopPlayback = useCallback(() => {
+		if (playbackTimer.current !== null)
+			window.clearInterval(playbackTimer.current);
+		playbackTimer.current = null;
+	}, []);
+	useEffect(() => stopPlayback, [stopPlayback]);
+
+	const changeDraft = (next: WorkflowDraft) => {
+		stopPlayback();
+		setPlayback(null);
+		setDraft(next);
+	};
+
+	const playRun = (run: WorkflowRunResponse | null) => {
+		stopPlayback();
+		if (!run) {
+			setPlayback(null);
+			return;
+		}
+		const statuses = Object.fromEntries(
+			run.steps.map((step) => [step.step_id, step.status]),
+		);
+		const total = draft.definition.steps.length;
+		if (reduceMotion) {
+			setPlayback({ statuses, revealed: total });
+			return;
+		}
+		setPlayback({ statuses, revealed: 0 });
+		playbackTimer.current = window.setInterval(() => {
+			setPlayback((current) => {
+				if (!current) return current;
+				if (current.revealed >= total) {
+					stopPlayback();
+					return current;
+				}
+				return { ...current, revealed: current.revealed + 1 };
+			});
+		}, PLAYBACK_STEP_MS);
+	};
+
+	const graph = useMemo(
+		() =>
+			buildWorkflowGraph({
+				draft,
+				catalog,
+				selection,
+				others: otherChains,
+				loop,
+				problemsByStep,
+				triggerInvalid: attempted && (triggerMissing || customTriggerInvalid),
+				run: playback ?? undefined,
+			}),
+		[
+			draft,
+			catalog,
+			selection,
+			otherChains,
+			loop,
+			problemsByStep,
+			attempted,
+			triggerMissing,
+			customTriggerInvalid,
+			playback,
+		],
+	);
+
+	const setSteps = (steps: WorkflowStep[]) =>
+		changeDraft({ ...draft, definition: { ...draft.definition, steps } });
+
+	const insertStep = (index: number, action: WorkflowActionResponse) => {
+		const steps = draft.definition.steps;
+		const step = newStep(steps, action, trigger);
+		setSteps([...steps.slice(0, index), step, ...steps.slice(index)]);
+		inspect({ kind: "step", stepId: step.id });
+	};
+
+	const insertStepRef = useRef(insertStep);
+	insertStepRef.current = insertStep;
+	const canvasActions = useMemo(
+		() => ({
+			actions: catalog.actions,
+			select: (next: Selection) =>
+				next.kind === "workflow" ? setSelection(next) : inspect(next),
+			insertStep: (index: number, action: WorkflowActionResponse) =>
+				insertStepRef.current(index, action),
+			openWorkflow: onOpenWorkflow,
+		}),
+		[catalog.actions, inspect, onOpenWorkflow],
+	);
+
 	const startsOf = (step: WorkflowStep): StepStart[] =>
 		stepEmits(catalog, step).map((event) => ({
 			event,
@@ -226,14 +411,6 @@ export function WorkflowBuilder({
 	const startedBy = others.filter(
 		(other) => other.enabled && other.emits.includes(draft.trigger_event_type),
 	);
-
-	const nameMissing = draft.name.trim().length < 2;
-	const triggerMissing = draft.trigger_event_type === "";
-	const customTriggerInvalid =
-		newCustomTrigger && !isValidCustomEvent(draft.trigger_event_type);
-
-	const setSteps = (steps: WorkflowStep[]) =>
-		setDraft({ ...draft, definition: { ...draft.definition, steps } });
 
 	const stepErrors = (index: number) =>
 		Object.fromEntries(
@@ -270,11 +447,9 @@ export function WorkflowBuilder({
 			const location = String(
 				apiError.metadata?.location ?? apiError.field ?? "",
 			);
-			if (!location) {
+			if (!location)
 				return { message: apiError.message, detail: apiError.message };
-			}
 			const described = describeLocation(location, catalog, draft);
-			const param = location.match(/\.params\.(\w+)/)?.[1];
 			return {
 				message:
 					described.stepIndex === undefined
@@ -282,19 +457,24 @@ export function WorkflowBuilder({
 						: `${described.label}: ${apiError.message}`,
 				detail: apiError.message,
 				stepIndex: described.stepIndex,
-				param,
+				param: location.match(/\.params\.(\w+)/)?.[1],
 			};
 		});
-		setProblems(
-			found.length
-				? found
-				: [
-						{
-							message: "The workflow could not be saved.",
-							detail: "The workflow could not be saved.",
-						},
-					],
-		);
+		const next = found.length
+			? found
+			: [
+					{
+						message: "The workflow could not be saved.",
+						detail: "The workflow could not be saved.",
+					},
+				];
+		setProblems(next);
+		const firstStep = next.find((problem) => problem.stepIndex !== undefined);
+		const step =
+			firstStep?.stepIndex !== undefined
+				? draft.definition.steps[firstStep.stepIndex]
+				: undefined;
+		inspect(step ? { kind: "step", stepId: step.id } : { kind: "workflow" });
 	};
 	const create = useMutation({
 		...createWorkflowMutation(),
@@ -319,8 +499,14 @@ export function WorkflowBuilder({
 
 	const save = () => {
 		setAttempted(true);
-		if (nameMissing || triggerMissing || customTriggerInvalid) {
+		if (nameMissing || customTriggerInvalid) {
 			setProblems([]);
+			inspect({ kind: "workflow" });
+			return;
+		}
+		if (triggerMissing) {
+			setProblems([]);
+			inspect({ kind: "trigger" });
 			return;
 		}
 		const body = draftToRequest(draft);
@@ -334,371 +520,403 @@ export function WorkflowBuilder({
 		}
 	};
 
+	const closeLabel = isMobile ? "Back to flow" : "Close";
+	const backToWorkflow = () => {
+		setSelection({ kind: "workflow" });
+		setReveal({ target: "canvas" });
+	};
 	const catalogGroups = groupBy(
 		catalog.triggers.filter(
 			(item) => item.group_type !== ProductEventGroupType.CUSTOM,
 		),
 		(item) => item.group_name,
 	);
-	const triggerSelectValue = newCustomTrigger
-		? NEW_CUSTOM_EVENT
-		: draft.trigger_event_type;
 
-	return (
-		<Box className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-			<Box className="order-2 lg:order-none">
-				<Stack space="none">
-					<Card>
-						<CardContent>
-							<FieldGroup>
-								<Field invalid={attempted && nameMissing}>
-									<FieldLabel htmlFor={ids.name}>Name</FieldLabel>
-									<Input
-										id={ids.name}
-										placeholder="Default workspace for new organizations"
-										aria-invalid={(attempted && nameMissing) || undefined}
-										value={draft.name}
-										onChange={(event) =>
-											setDraft({ ...draft, name: event.target.value })
-										}
-									/>
-									{attempted && nameMissing ? (
-										<FieldError>
-											Give the workflow a name of at least 2 characters.
-										</FieldError>
-									) : null}
-								</Field>
-								<Field>
-									<FieldLabel htmlFor={ids.description}>Description</FieldLabel>
-									<Textarea
-										id={ids.description}
-										rows={2}
-										placeholder="Why this workflow exists, for the next person reading it"
-										value={draft.description ?? ""}
-										onChange={(event) =>
-											setDraft({ ...draft, description: event.target.value })
-										}
-									/>
-								</Field>
-							</FieldGroup>
-						</CardContent>
-					</Card>
+	const workflowPanel = (
+		<Stack space="none">
+			<Box className="space-y-4 px-4 py-4">
+				<FieldGroup>
+					<Field invalid={attempted && nameMissing}>
+						<FieldLabel htmlFor={ids.name}>Name</FieldLabel>
+						<Input
+							id={ids.name}
+							placeholder="Default workspace for new organizations"
+							aria-invalid={(attempted && nameMissing) || undefined}
+							value={draft.name}
+							onChange={(event) =>
+								changeDraft({ ...draft, name: event.target.value })
+							}
+						/>
+						{attempted && nameMissing ? (
+							<FieldError>
+								Give the workflow a name of at least 2 characters.
+							</FieldError>
+						) : null}
+					</Field>
+					<Field>
+						<FieldLabel htmlFor={ids.description}>Description</FieldLabel>
+						<Textarea
+							id={ids.description}
+							rows={2}
+							placeholder="Why this workflow exists, for the next person reading it"
+							value={draft.description ?? ""}
+							onChange={(event) =>
+								changeDraft({ ...draft, description: event.target.value })
+							}
+						/>
+					</Field>
+				</FieldGroup>
+				{problems.length > 0 ? (
+					<Alert tone="critical" icon={CircleAlert}>
+						<AlertTitle>Not saved</AlertTitle>
+						<AlertDescription>
+							<Box
+								as="ul"
+								className="list-disc space-y-1 pl-4 [overflow-wrap:anywhere]"
+							>
+								{problems.map((problem) => (
+									<Box as="li" key={problem.message}>
+										{problem.message}
+									</Box>
+								))}
+							</Box>
+						</AlertDescription>
+					</Alert>
+				) : null}
+				{loop && problems.length === 0 ? (
+					<Alert tone="warning" icon={Repeat}>
+						<AlertTitle>This would loop</AlertTitle>
+						<AlertDescription>
+							<Box className="[overflow-wrap:anywhere]">
+								{describeLoop(loop)}. Anchor refuses to save an enabled workflow
+								that can start itself again: change a trigger or a step, or
+								disable a workflow in the loop.
+							</Box>
+						</AlertDescription>
+					</Alert>
+				) : null}
+			</Box>
+			<Box className="border-t border-border px-4 py-4">
+				<WorkflowTestPanel
+					productId={productId}
+					workflowId={workflow?.id}
+					draft={draft}
+					trigger={trigger}
+					catalog={catalog}
+					dirty={dirty}
+					onResult={playRun}
+					embedded
+				/>
+			</Box>
+		</Stack>
+	);
 
-					<FlowConnector />
-
-					<FlowNode
-						icon={Zap}
-						eyebrow="When"
-						title={
-							trigger?.name ?? (draft.trigger_event_type || "Pick a trigger")
+	const triggerPanel = (
+		<Stack space="none">
+			<InspectorHeader
+				eyebrow="When"
+				title={trigger?.name ?? (draft.trigger_event_type || "Pick a trigger")}
+				icon={Zap}
+				onClose={backToWorkflow}
+				closeLabel={closeLabel}
+			/>
+			<Box className="space-y-3 px-4 py-4">
+				<Field invalid={attempted && triggerMissing}>
+					<FieldLabel htmlFor={ids.trigger} size="sm">
+						Event
+					</FieldLabel>
+					<NativeSelect
+						id={ids.trigger}
+						aria-invalid={(attempted && triggerMissing) || undefined}
+						value={
+							newCustomTrigger ? NEW_CUSTOM_EVENT : draft.trigger_event_type
 						}
+						onChange={(event) => {
+							const value = event.target.value;
+							setNewCustomTrigger(value === NEW_CUSTOM_EVENT);
+							changeDraft({
+								...draft,
+								trigger_event_type:
+									value === NEW_CUSTOM_EVENT ? CUSTOM_EVENT_PREFIX : value,
+							});
+						}}
 					>
-						<Stack space="sm">
-							<Field invalid={attempted && triggerMissing}>
-								<FieldLabel htmlFor={ids.trigger} size="sm">
-									Event
-								</FieldLabel>
-								<NativeSelect
-									id={ids.trigger}
-									aria-invalid={(attempted && triggerMissing) || undefined}
-									value={triggerSelectValue}
-									onChange={(event) => {
-										const value = event.target.value;
-										setNewCustomTrigger(value === NEW_CUSTOM_EVENT);
-										setDraft({
-											...draft,
-											trigger_event_type:
-												value === NEW_CUSTOM_EVENT
-													? CUSTOM_EVENT_PREFIX
-													: value,
-										});
-									}}
-								>
-									<NativeSelectOption value="" disabled>
-										Choose the event that starts this workflow
+						<NativeSelectOption value="" disabled>
+							Choose the event that starts this workflow
+						</NativeSelectOption>
+						{catalogGroups.map(([group, triggers]) => (
+							<NativeSelectOptGroup key={group} label={group}>
+								{triggers.map((item) => (
+									<NativeSelectOption key={item.type} value={item.type}>
+										{item.name} — {item.type}
 									</NativeSelectOption>
-									{catalogGroups.map(([group, triggers]) => (
-										<NativeSelectOptGroup key={group} label={group}>
-											{triggers.map((item) => (
-												<NativeSelectOption key={item.type} value={item.type}>
-													{item.name} — {item.type}
-												</NativeSelectOption>
-											))}
-										</NativeSelectOptGroup>
-									))}
-									<NativeSelectOptGroup label="Custom events from your workflows">
-										{customTriggers.map((item) => (
-											<NativeSelectOption key={item.type} value={item.type}>
-												{item.type}
-											</NativeSelectOption>
-										))}
-										<NativeSelectOption value={NEW_CUSTOM_EVENT}>
-											New custom event…
-										</NativeSelectOption>
-									</NativeSelectOptGroup>
-								</NativeSelect>
-								{attempted && triggerMissing ? (
-									<FieldError>
-										Pick the event that starts this workflow.
-									</FieldError>
-								) : null}
-							</Field>
-							{newCustomTrigger ? (
-								<Field invalid={attempted && customTriggerInvalid}>
-									<FieldLabel htmlFor={ids.customTrigger} size="sm">
-										Custom event name
-									</FieldLabel>
-									<Input
-										id={ids.customTrigger}
-										size="sm"
-										font="mono"
-										placeholder="onboarding.started"
-										aria-invalid={
-											(attempted && customTriggerInvalid) || undefined
-										}
-										value={draft.trigger_event_type.slice(
-											CUSTOM_EVENT_PREFIX.length,
-										)}
-										onChange={(event) =>
-											setDraft({
-												...draft,
-												trigger_event_type: customEventType(event.target.value),
-											})
-										}
-									/>
-									<FieldDescription>
-										Another workflow starts this one with a “Start other
-										workflows” step that emits this name.
-									</FieldDescription>
-									{attempted && customTriggerInvalid ? (
-										<FieldError>
-											Use lowercase words joined by dots, such as
-											onboarding.started.
-										</FieldError>
-									) : null}
-								</Field>
-							) : null}
-							{trigger && trigger.data_fields.length > 0 ? (
-								<Text size="sm" tone="muted">
-									{trigger.description} It carries{" "}
-									{trigger.data_fields.map((field, index) => (
-										<Box as="span" key={field}>
-											{index > 0 ? ", " : ""}
-											<Box
-												as="span"
-												className="rounded bg-muted px-1 font-mono text-xs"
-											>
-												event.data.{field}
-											</Box>
-										</Box>
-									))}
-									.
-								</Text>
-							) : null}
-							{startedBy.length > 0 ? (
-								<Text size="xs" tone="muted">
-									Started after{" "}
-									{startedBy.map((other) => `“${other.name}”`).join(", ")}.
-								</Text>
-							) : null}
-						</Stack>
-					</FlowNode>
-
-					<FlowConnector />
-
-					<FlowNode
-						icon={Filter}
-						eyebrow="Only if"
-						title="Conditions on the event"
-					>
-						<ConditionEditor
-							label="Event condition"
-							conditions={draft.definition.conditions}
-							variables={triggerVariables(trigger)}
-							onChange={(conditions) =>
-								setDraft({
+								))}
+							</NativeSelectOptGroup>
+						))}
+						<NativeSelectOptGroup label="Custom events from your workflows">
+							{customTriggers.map((item) => (
+								<NativeSelectOption key={item.type} value={item.type}>
+									{item.type}
+								</NativeSelectOption>
+							))}
+							<NativeSelectOption value={NEW_CUSTOM_EVENT}>
+								New custom event…
+							</NativeSelectOption>
+						</NativeSelectOptGroup>
+					</NativeSelect>
+					{attempted && triggerMissing ? (
+						<FieldError>Pick the event that starts this workflow.</FieldError>
+					) : null}
+				</Field>
+				{newCustomTrigger ? (
+					<Field invalid={attempted && customTriggerInvalid}>
+						<FieldLabel htmlFor={ids.customTrigger} size="sm">
+							Custom event name
+						</FieldLabel>
+						<Input
+							id={ids.customTrigger}
+							size="sm"
+							font="mono"
+							placeholder="onboarding.started"
+							aria-invalid={(attempted && customTriggerInvalid) || undefined}
+							value={draft.trigger_event_type.slice(CUSTOM_EVENT_PREFIX.length)}
+							onChange={(event) =>
+								changeDraft({
 									...draft,
-									definition: { ...draft.definition, conditions },
+									trigger_event_type: customEventType(event.target.value),
 								})
 							}
-							emptyLabel="Every event of this type starts a run. Add a condition to narrow it; a step can also carry its own."
 						/>
-					</FlowNode>
+						<FieldDescription>
+							Another workflow starts this one with a “Start other workflows”
+							step that emits this name.
+						</FieldDescription>
+						{attempted && customTriggerInvalid ? (
+							<FieldError>
+								Use lowercase words joined by dots, such as onboarding.started.
+							</FieldError>
+						) : null}
+					</Field>
+				) : null}
+				{trigger ? (
+					<Text size="sm" tone="muted">
+						{trigger.description}
+					</Text>
+				) : null}
+				{trigger && trigger.data_fields.length > 0 ? (
+					<Box className="flex flex-wrap gap-1">
+						{trigger.data_fields.map((field) => (
+							<Box
+								as="span"
+								key={field}
+								className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs"
+							>
+								event.data.{field}
+							</Box>
+						))}
+					</Box>
+				) : null}
+				{startedBy.length > 0 ? (
+					<Text size="xs" tone="muted">
+						Started after{" "}
+						{startedBy.map((other) => `“${other.name}”`).join(", ")}.
+					</Text>
+				) : null}
+			</Box>
+		</Stack>
+	);
 
-					{draft.definition.steps.map((step, index) => (
-						<Box key={step.id}>
-							<FlowConnector />
-							<StepEditor
-								step={step}
-								index={index}
-								count={draft.definition.steps.length}
-								catalog={catalog}
-								variables={variablesBeforeStep(catalog, draft, index)}
-								resources={resources}
-								errors={stepErrors(index)}
-								starts={startsOf(step)}
-								loopWarning={loopWarningFor(step)}
-								onChange={(next) => {
-									setProblems((current) =>
-										current.filter(
-											(problem) =>
-												problem.stepIndex !== index ||
-												(problem.param !== undefined &&
-													next.params[problem.param] ===
-														step.params[problem.param]),
-										),
-									);
-									setSteps(
-										draft.definition.steps.map((current, position) =>
-											position === index ? next : current,
-										),
-									);
-								}}
-								onMove={(to) =>
-									setSteps(moveItem(draft.definition.steps, index, to))
-								}
-								onRemove={() =>
-									setSteps(
-										draft.definition.steps.filter(
-											(_, position) => position !== index,
-										),
-									)
-								}
-							/>
-						</Box>
-					))}
+	const conditionsPanel = (
+		<Stack space="none">
+			<InspectorHeader
+				eyebrow="Only if"
+				title="Conditions on the event"
+				icon={Filter}
+				onClose={backToWorkflow}
+				closeLabel={closeLabel}
+			/>
+			<Box className="px-4 py-4">
+				<ConditionEditor
+					label="Event condition"
+					conditions={draft.definition.conditions}
+					variables={triggerVariables(trigger)}
+					onChange={(conditions) =>
+						changeDraft({
+							...draft,
+							definition: { ...draft.definition, conditions },
+						})
+					}
+					emptyLabel="Every event of this type starts a run. Add a condition to narrow it; a step can also carry its own."
+				/>
+			</Box>
+		</Stack>
+	);
 
-					<FlowConnector />
-					<AddStepMenu
-						actions={catalog.actions}
-						onPick={(action) =>
-							setSteps([
-								...draft.definition.steps,
-								newStep(draft.definition.steps, action, trigger),
-							])
-						}
+	const selectedIndex =
+		selection.kind === "step"
+			? draft.definition.steps.findIndex((step) => step.id === selection.stepId)
+			: -1;
+	const selectedStep =
+		selectedIndex >= 0 ? draft.definition.steps[selectedIndex] : undefined;
+	const stepPanel = selectedStep ? (
+		<Stack space="none">
+			<StepEditor
+				onClose={backToWorkflow}
+				closeLabel={closeLabel}
+				step={selectedStep}
+				index={selectedIndex}
+				count={draft.definition.steps.length}
+				catalog={catalog}
+				variables={variablesBeforeStep(catalog, draft, selectedIndex)}
+				resources={resources}
+				errors={stepErrors(selectedIndex)}
+				starts={startsOf(selectedStep)}
+				loopWarning={loopWarningFor(selectedStep)}
+				onChange={(next) => {
+					setProblems((current) =>
+						current.filter(
+							(problem) =>
+								problem.stepIndex !== selectedIndex ||
+								(problem.param !== undefined &&
+									next.params[problem.param] ===
+										selectedStep.params[problem.param]),
+						),
+					);
+					setSteps(
+						draft.definition.steps.map((current, position) =>
+							position === selectedIndex ? next : current,
+						),
+					);
+				}}
+				onMove={(to) =>
+					setSteps(moveItem(draft.definition.steps, selectedIndex, to))
+				}
+				onRemove={() => {
+					setSteps(
+						draft.definition.steps.filter(
+							(_, position) => position !== selectedIndex,
+						),
+					);
+					backToWorkflow();
+				}}
+			/>
+		</Stack>
+	) : (
+		workflowPanel
+	);
+
+	const inspector =
+		selection.kind === "trigger"
+			? triggerPanel
+			: selection.kind === "conditions"
+				? conditionsPanel
+				: selection.kind === "step"
+					? stepPanel
+					: workflowPanel;
+	const inspecting = selection.kind !== "workflow";
+	const inspectorTitle =
+		selection.kind === "workflow"
+			? "Workflow settings"
+			: selection.kind === "step" && selectedStep
+				? `Step ${selectedIndex + 1}: ${findAction(catalog, selectedStep.action)?.name ?? selectedStep.action}`
+				: selection.kind === "trigger"
+					? "Trigger settings"
+					: "Condition settings";
+
+	return (
+		<Stack space="md">
+			<Box
+				role="toolbar"
+				aria-label="Workflow actions"
+				className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-xs"
+			>
+				<Inline space="sm" alignY="center">
+					<Switch
+						id={ids.enabled}
+						checked={draft.enabled}
+						onCheckedChange={(enabled) => changeDraft({ ...draft, enabled })}
 					/>
-				</Stack>
+					<Label htmlFor={ids.enabled}>Enabled</Label>
+					<Box as="span" className="hidden sm:inline">
+						<Text as="span" size="xs" tone="muted">
+							{draft.enabled
+								? "Runs on every matching event."
+								: "Runs only by hand."}
+						</Text>
+					</Box>
+				</Inline>
+				{loop ? (
+					<Badge variant="soft" tone="critical" icon={Repeat}>
+						Loop
+					</Badge>
+				) : null}
+				<Box className="ml-auto flex flex-wrap items-center gap-2">
+					{dirty && workflow ? (
+						<Text as="span" size="xs" tone="warning">
+							Unsaved changes
+						</Text>
+					) : null}
+					{workflow ? (
+						<ConfirmDialog
+							tone="critical"
+							trigger={
+								<Button variant="ghost" tone="critical" size="sm" icon={Trash2}>
+									Delete
+								</Button>
+							}
+							title={`Delete “${workflow.name}”?`}
+							description="Its run history goes with it. Runs already started finish."
+							confirmLabel="Delete workflow"
+							onConfirm={() =>
+								remove.mutate({
+									path: { product_id: productId, workflow_id: workflow.id },
+								})
+							}
+						/>
+					) : null}
+					<Button
+						tone="brand"
+						size="sm"
+						icon={Save}
+						loading={create.isPending || update.isPending}
+						disabled={!dirty && !!workflow}
+						onClick={save}
+					>
+						{workflow ? "Save changes" : "Create workflow"}
+					</Button>
+				</Box>
+				{attempted &&
+				(nameMissing || triggerMissing || customTriggerInvalid) ? (
+					<Box className="w-full">
+						<Text size="xs" tone="critical">
+							Fix the highlighted fields before saving.
+						</Text>
+					</Box>
+				) : null}
 			</Box>
 
-			<Box className="contents lg:block lg:space-y-6">
-				<Box className="order-1 lg:order-none">
-					<Card>
-						<CardHeader>
-							<CardTitle>{workflow ? "Workflow" : "New workflow"}</CardTitle>
-							<CardDescription>
-								Runs as the product, after each matching event, at most once per
-								event.
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<Stack space="lg">
-								<Field orientation="horizontal">
-									<Switch
-										id={ids.enabled}
-										checked={draft.enabled}
-										onCheckedChange={(enabled) =>
-											setDraft({ ...draft, enabled })
-										}
-									/>
-									<Stack space="none">
-										<Label htmlFor={ids.enabled}>Enabled</Label>
-										<Text size="xs" tone="muted">
-											{draft.enabled
-												? "Runs on every matching event."
-												: "Runs only by hand."}
-										</Text>
-									</Stack>
-								</Field>
-								{loop && problems.length === 0 ? (
-									<Alert tone="warning" icon={Repeat}>
-										<AlertTitle>This would loop</AlertTitle>
-										<AlertDescription>
-											<Box className="[overflow-wrap:anywhere]">
-												{describeLoop(loop)}. Anchor refuses to save an enabled
-												workflow that can start itself again: change a trigger
-												or a step, or disable a workflow in the loop.
-											</Box>
-										</AlertDescription>
-									</Alert>
-								) : null}
-								{problems.length > 0 ? (
-									<Alert tone="critical" icon={CircleAlert}>
-										<AlertTitle>Not saved</AlertTitle>
-										<AlertDescription>
-											<Box
-												as="ul"
-												className="list-disc space-y-1 pl-4 [overflow-wrap:anywhere]"
-											>
-												{problems.map((problem) => (
-													<Box as="li" key={problem.message}>
-														{problem.message}
-													</Box>
-												))}
-											</Box>
-										</AlertDescription>
-									</Alert>
-								) : null}
-								{attempted &&
-								(nameMissing || triggerMissing || customTriggerInvalid) ? (
-									<Alert tone="critical" icon={TriangleAlert}>
-										<AlertDescription>
-											Fix the highlighted fields before saving.
-										</AlertDescription>
-									</Alert>
-								) : null}
-								<Inline space="sm" wrap>
-									<Button
-										tone="brand"
-										icon={Save}
-										loading={create.isPending || update.isPending}
-										disabled={!dirty && !!workflow}
-										onClick={save}
-									>
-										{workflow ? "Save changes" : "Create workflow"}
-									</Button>
-									{workflow ? (
-										<ConfirmDialog
-											tone="critical"
-											trigger={
-												<Button variant="ghost" tone="critical" icon={Trash2}>
-													Delete
-												</Button>
-											}
-											title={`Delete “${workflow.name}”?`}
-											description="Its run history goes with it. Runs already started finish."
-											confirmLabel="Delete workflow"
-											onConfirm={() =>
-												remove.mutate({
-													path: {
-														product_id: productId,
-														workflow_id: workflow.id,
-													},
-												})
-											}
-										/>
-									) : null}
-								</Inline>
-								{dirty && workflow ? (
-									<Text size="xs" tone="warning">
-										You have unsaved changes.
-									</Text>
-								) : null}
-							</Stack>
-						</CardContent>
-					</Card>
-				</Box>
-				<Box className="order-3 lg:order-none">
-					<WorkflowTestPanel
-						productId={productId}
-						workflowId={workflow?.id}
-						draft={draft}
-						trigger={trigger}
-						catalog={catalog}
-						dirty={dirty}
-					/>
+			<Box className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
+				{isMobile && inspecting ? null : (
+					<Box ref={canvasRef} className="h-[58vh] lg:h-[min(76vh,820px)]">
+						<WorkflowCanvas
+							nodes={graph.nodes}
+							edges={graph.edges}
+							fitKey={`${draft.definition.steps.length}:${draft.trigger_event_type}`}
+							actions={canvasActions}
+						/>
+					</Box>
+				)}
+				<Box
+					ref={inspectorRef}
+					as="section"
+					aria-label={inspectorTitle}
+					className="overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:max-h-[min(76vh,820px)] lg:overflow-y-auto"
+				>
+					<InspectorTransition selection={selection}>
+						{inspector}
+					</InspectorTransition>
 				</Box>
 			</Box>
-		</Box>
+		</Stack>
 	);
 }
