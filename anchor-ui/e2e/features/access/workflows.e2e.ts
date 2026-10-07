@@ -19,6 +19,9 @@ async function backToFlow(page: Page) {
 		.first()
 		.click();
 	await expect(
+		page.getByRole("region", { name: "Workflow settings" }),
+	).toBeVisible();
+	await expect(
 		page.getByRole("button", { name: "Add a step", exact: true }),
 	).toBeVisible();
 }
@@ -251,6 +254,24 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await saved.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "saved-workflow");
 
+	await backToFlow(page);
+	await page
+		.getByRole("button", { name: "Insert a step before step 2" })
+		.click();
+	await page
+		.getByRole("menuitem", { name: "Read product user", exact: true })
+		.click();
+	await expect(
+		page.getByRole("article", { name: "Step 2: Read product user" }),
+	).toBeVisible();
+	await backToFlow(page);
+	await expect(
+		page.getByRole("button", { name: "Step 2: Read product user" }),
+	).toBeInViewport();
+	await expect(
+		page.getByRole("button", { name: "Step 3: Invite to organization" }),
+	).toBeAttached();
+
 	await page.getByRole("button", { name: "Delete", exact: true }).click();
 	await page
 		.getByRole("alertdialog")
@@ -400,6 +421,29 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 		page.getByText(/Saving this would let the workflow start itself again/),
 	).toBeVisible();
 	await captureReviewCheckpoint(page, testInfo, "loop-refused");
+
+	await page
+		.getByRole("application", { name: "Workflow canvas" })
+		.scrollIntoViewIfNeeded();
+	await page.getByRole("button", { name: "Fit the workflow" }).click();
+	const openHandoff = page.getByRole("button", {
+		name: `Open “${handoff.name}”`,
+	});
+	await expect(openHandoff).toBeInViewport();
+	await openHandoff.click();
+	const leave = page.getByRole("alertdialog");
+	await expect(leave).toContainText("Leave without saving?");
+	await leave.getByRole("button", { name: "Stay", exact: true }).click();
+	await expect(leave).toHaveCount(0);
+	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+	await openHandoff.click();
+	await page
+		.getByRole("alertdialog")
+		.getByRole("button", { name: "Discard and leave", exact: true })
+		.click();
+	await expect(
+		page.getByRole("heading", { name: handoff.name, exact: true }),
+	).toBeVisible();
 	const unchanged = await world.api.get<{ definition: { steps: unknown[] } }>(
 		`${world.productPath}/workflows/${followUpId}`,
 	);

@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { Maximize, Minus, Plus } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,47 +41,75 @@ const FIT_PADDING = 32;
 const FIT_MIN_ZOOM = 0.85;
 const FIT_MIN_ZOOM_NARROW = 0.65;
 const FIT_MAX_ZOOM = 1;
+const LOOP_ROOM = 80;
 
 /**
- * Fits the column without shrinking it past legibility. When it is still too
- * tall, the top stays in view so the trigger is the first thing read.
+ * Fits the workflow without shrinking it past legibility. When the chained
+ * workflows beside the column do not fit, only the column (and its loop edge)
+ * is fitted to the width. A column still too tall keeps the focused step, or
+ * else the trigger, in view.
  */
 function useReadableFit(
 	container: React.RefObject<HTMLDivElement | null>,
-	narrow: boolean,
+	hasLoop: boolean,
 ) {
 	const flow = useReactFlow();
 	return useCallback(
-		(duration: number) => {
+		(duration: number, focusId?: string) => {
 			const element = container.current;
 			const nodes = flow.getNodes();
 			if (!element || nodes.length === 0) return;
-			const bounds = flow.getNodesBounds(nodes);
-			const width = element.clientWidth;
-			const height = element.clientHeight;
-			const zoom = Math.min(
-				FIT_MAX_ZOOM,
-				Math.max(
-					narrow ? FIT_MIN_ZOOM_NARROW : FIT_MIN_ZOOM,
-					Math.min(
-						(width - FIT_PADDING * 2) / bounds.width,
-						(height - FIT_PADDING * 2) / bounds.height,
-					),
+			const all = flow.getNodesBounds(nodes);
+			const column = flow.getNodesBounds(
+				nodes.filter((node) => node.type !== "workflowRef"),
+			);
+			const columnRight = column.x + column.width + (hasLoop ? LOOP_ROOM : 0);
+			const width = element.clientWidth - FIT_PADDING * 2;
+			const height = element.clientHeight - FIT_PADDING * 2;
+			const wide = {
+				left: all.x,
+				right: Math.max(all.x + all.width, columnRight),
+			};
+			const box =
+				width / (wide.right - wide.left) >= FIT_MIN_ZOOM
+					? wide
+					: { left: column.x, right: columnRight };
+			const zoom = Math.max(
+				FIT_MIN_ZOOM_NARROW,
+				Math.min(
+					FIT_MAX_ZOOM,
+					width / (box.right - box.left),
+					Math.max(height / all.height, FIT_MIN_ZOOM),
 				),
 			);
-			const fitsVertically = bounds.height * zoom + FIT_PADDING * 2 <= height;
+			const top = FIT_PADDING - all.y * zoom;
+			const bottom =
+				element.clientHeight - FIT_PADDING - (all.y + all.height) * zoom;
+			const focus = focusId ? flow.getNode(focusId) : undefined;
+			const y =
+				all.height * zoom <= height
+					? element.clientHeight / 2 - (all.y + all.height / 2) * zoom
+					: focus
+						? Math.min(
+								top,
+								Math.max(
+									bottom,
+									element.clientHeight / 2 -
+										(focus.position.y + (focus.measured?.height ?? 0) / 2) *
+											zoom,
+								),
+							)
+						: top;
 			void flow.setViewport(
 				{
-					x: width / 2 - (bounds.x + bounds.width / 2) * zoom,
-					y: fitsVertically
-						? height / 2 - (bounds.y + bounds.height / 2) * zoom
-						: FIT_PADDING - bounds.y * zoom,
+					x: element.clientWidth / 2 - ((box.left + box.right) / 2) * zoom,
+					y,
 					zoom,
 				},
 				{ duration },
 			);
 		},
-		[container, flow, narrow],
+		[container, flow, hasLoop],
 	);
 }
 
@@ -89,7 +118,7 @@ function ZoomControls({ fit }: { fit: (duration: number) => void }) {
 	const reduceMotion = useReducedMotion();
 	const duration = reduceMotion ? 0 : 200;
 	return (
-		<Box className="absolute right-3 bottom-3 z-10 flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<Box className="absolute bottom-3 left-3 z-10 flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 			<IconButton
 				variant="ghost"
 				size="sm"
@@ -115,20 +144,26 @@ function ZoomControls({ fit }: { fit: (duration: number) => void }) {
 	);
 }
 
+interface WorkflowCanvasProps {
+	nodes: WorkflowGraphNode[];
+	edges: WorkflowGraphEdge[];
+	fitKey: string;
+	focusNodeId?: string;
+	actions: Omit<WorkflowCanvasActions, "entranceDelay">;
+}
+
 function Canvas({
 	nodes,
 	edges,
 	fitKey,
+	focusNodeId,
 	actions,
-}: {
-	nodes: WorkflowGraphNode[];
-	edges: WorkflowGraphEdge[];
-	fitKey: string;
-	actions: Omit<WorkflowCanvasActions, "entranceDelay">;
-}) {
+}: WorkflowCanvasProps) {
 	const container = useRef<HTMLDivElement>(null);
+	const flow = useReactFlow();
 	const isMobile = useIsMobile();
-	const fit = useReadableFit(container, isMobile);
+	const hasLoop = edges.some((edge) => edge.data?.tone === "loop");
+	const fit = useReadableFit(container, hasLoop);
 	const reduceMotion = useReducedMotion();
 	const mountedAt = useRef(Date.now());
 	const entranceDelay = useCallback(
@@ -181,20 +216,61 @@ function Canvas({
 	const measured = useNodesInitialized();
 	const [paneReady, setPaneReady] = useState(false);
 	const fittedFor = useRef<string | null>(null);
+	const focusRef = useRef(focusNodeId);
+	focusRef.current = focusNodeId;
+	const [fitted, setFitted] = useState(false);
 	useEffect(() => {
 		if (!paneReady || !measured || fittedFor.current === fitKey) return;
 		const firstFit = fittedFor.current === null;
-		fittedFor.current = fitKey;
 		const timer = window.setTimeout(
-			() => fit(firstFit || reduceMotion ? 0 : 280),
+			() => {
+				fittedFor.current = fitKey;
+				fit(
+					firstFit || reduceMotion ? 0 : 280,
+					firstFit ? undefined : focusRef.current,
+				);
+				setFitted(true);
+			},
 			firstFit ? 0 : 50,
 		);
 		return () => window.clearTimeout(timer);
 	}, [fitKey, fit, measured, paneReady, reduceMotion]);
 
+	const panToKeyboardFocus = useCallback(
+		(event: React.FocusEvent<HTMLDivElement>) => {
+			const element = container.current;
+			const target = event.target;
+			if (!element || !target.matches(":focus-visible")) return;
+			const view = element.getBoundingClientRect();
+			const box = target.getBoundingClientRect();
+			const shift = (start: number, end: number, min: number, max: number) =>
+				start < min + FIT_PADDING
+					? min + FIT_PADDING - start
+					: end > max - FIT_PADDING
+						? max - FIT_PADDING - end
+						: 0;
+			const dx = shift(box.left, box.right, view.left, view.right);
+			const dy = shift(box.top, box.bottom, view.top, view.bottom);
+			if (dx === 0 && dy === 0) return;
+			const viewport = flow.getViewport();
+			void flow.setViewport(
+				{ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom },
+				{ duration: reduceMotion ? 0 : 200 },
+			);
+		},
+		[flow, reduceMotion],
+	);
+
 	return (
 		<WorkflowCanvasContext.Provider value={context}>
-			<Box ref={container} className="h-full w-full">
+			<Box
+				ref={container}
+				onFocus={panToKeyboardFocus}
+				className={cn(
+					"h-full w-full transition-opacity duration-150 ease-out",
+					!fitted && "opacity-0",
+				)}
+			>
 				<ReactFlow
 					aria-label="Workflow canvas"
 					nodes={flowNodes}
@@ -231,12 +307,7 @@ function Canvas({
 	);
 }
 
-export function WorkflowCanvas(props: {
-	nodes: WorkflowGraphNode[];
-	edges: WorkflowGraphEdge[];
-	fitKey: string;
-	actions: Omit<WorkflowCanvasActions, "entranceDelay">;
-}) {
+export function WorkflowCanvas(props: WorkflowCanvasProps) {
 	return (
 		<Box className="relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border bg-surface-subtle">
 			<ReactFlowProvider>

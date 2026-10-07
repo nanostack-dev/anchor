@@ -46,6 +46,7 @@ import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useBlocker } from "@tanstack/react-router";
 import {
 	ArrowLeft,
 	CircleAlert,
@@ -75,6 +76,7 @@ import {
 	type RunStatusByStep,
 	type Selection,
 	buildWorkflowGraph,
+	selectionNodeId,
 } from "./canvas/workflow-graph";
 import { useWorkflowResources } from "./useWorkflowResources";
 import {
@@ -105,7 +107,7 @@ const SIDE_BY_SIDE = "(min-width: 64rem)";
 interface SaveProblem {
 	message: string;
 	detail: string;
-	stepIndex?: number;
+	stepId?: string;
 	param?: string;
 }
 
@@ -233,21 +235,30 @@ export function WorkflowBuilder({
 	const [selection, setSelection] = useState<Selection>({ kind: "workflow" });
 	const canvasRef = useRef<HTMLDivElement>(null);
 	const inspectorRef = useRef<HTMLDivElement>(null);
-	const [reveal, setReveal] = useState<{
-		target: "canvas" | "inspector";
-	} | null>(null);
+	const [reveal, setReveal] = useState<
+		{ target: "inspector" } | { target: "canvas"; nodeId?: string } | null
+	>(null);
 	const inspect = useCallback((next: Selection) => {
 		setSelection(next);
 		setReveal({ target: "inspector" });
 	}, []);
 	useEffect(() => {
-		if (!reveal || window.matchMedia(SIDE_BY_SIDE).matches) return;
-		const element =
+		if (!reveal) return;
+		const area =
 			reveal.target === "canvas" ? canvasRef.current : inspectorRef.current;
-		element?.scrollIntoView({
-			block: "nearest",
-			behavior: reduceMotion ? "auto" : "smooth",
-		});
+		if (!window.matchMedia(SIDE_BY_SIDE).matches) {
+			area?.scrollIntoView({
+				block: "nearest",
+				behavior: reduceMotion ? "auto" : "smooth",
+			});
+		}
+		const focusTarget =
+			reveal.target === "canvas"
+				? area?.querySelector<HTMLElement>(
+						`[data-workflow-node="${reveal.nodeId}"]`,
+					)
+				: area;
+		focusTarget?.focus({ preventScroll: true });
 	}, [reveal, reduceMotion]);
 	const [playback, setPlayback] = useState<{
 		statuses: RunStatusByStep;
@@ -274,17 +285,43 @@ export function WorkflowBuilder({
 		() => JSON.stringify(draft) !== JSON.stringify(savedDraft),
 		[draft, savedDraft],
 	);
+	const dirtyRef = useRef(dirty);
+	dirtyRef.current = dirty;
+	const leaveGuard = useBlocker({
+		shouldBlockFn: ({ current, next }) =>
+			dirtyRef.current && current.pathname !== next.pathname,
+		enableBeforeUnload: false,
+		withResolver: true,
+	});
 
-	const others = workflows.filter((other) => other.id !== workflow?.id);
-	const candidate: ChainWorkflow = {
-		id: workflow?.id ?? "new",
-		name: draft.name.trim() || "This workflow",
-		enabled: draft.enabled,
-		trigger_event_type: draft.trigger_event_type,
-		emits: draftEmits(catalog, draft),
-	};
-	const otherChains = others.map(chainOf);
-	const loop = findLoop(candidate, otherChains);
+	const others = useMemo(
+		() => workflows.filter((other) => other.id !== workflow?.id),
+		[workflows, workflow?.id],
+	);
+	const otherChains = useMemo(() => others.map(chainOf), [others]);
+	const draftName = draft.name.trim() || "This workflow";
+	const emitted = draftEmits(catalog, draft).join("\n");
+	const loop = useMemo(
+		() =>
+			findLoop(
+				{
+					id: workflow?.id ?? "new",
+					name: draftName,
+					enabled: draft.enabled,
+					trigger_event_type: draft.trigger_event_type,
+					emits: emitted ? emitted.split("\n") : [],
+				},
+				otherChains,
+			),
+		[
+			workflow?.id,
+			draftName,
+			draft.enabled,
+			draft.trigger_event_type,
+			emitted,
+			otherChains,
+		],
+	);
 
 	const nameMissing = draft.name.trim().length < 2;
 	const triggerMissing = draft.trigger_event_type === "";
@@ -292,10 +329,10 @@ export function WorkflowBuilder({
 		newCustomTrigger && !isValidCustomEvent(draft.trigger_event_type);
 
 	const problemsByStep = useMemo(() => {
-		const counts: Record<number, number> = {};
+		const counts: Record<string, number> = {};
 		for (const problem of problems) {
-			if (problem.stepIndex !== undefined)
-				counts[problem.stepIndex] = (counts[problem.stepIndex] ?? 0) + 1;
+			if (problem.stepId !== undefined)
+				counts[problem.stepId] = (counts[problem.stepId] ?? 0) + 1;
 		}
 		return counts;
 	}, [problems]);
@@ -412,10 +449,10 @@ export function WorkflowBuilder({
 		(other) => other.enabled && other.emits.includes(draft.trigger_event_type),
 	);
 
-	const stepErrors = (index: number) =>
+	const stepErrors = (stepId: string) =>
 		Object.fromEntries(
 			problems
-				.filter((problem) => problem.stepIndex === index)
+				.filter((problem) => problem.stepId === stepId)
 				.map((problem) => [problem.param ?? "", problem.detail]),
 		);
 
@@ -440,6 +477,7 @@ export function WorkflowBuilder({
 		setSavedDraft(draft);
 		invalidate(saved);
 		toast.add({ type: "success", title: `Workflow “${saved.name}” saved.` });
+		dirtyRef.current = false;
 		onSaved(saved);
 	};
 	const onSaveError = (error: unknown) => {
@@ -456,7 +494,10 @@ export function WorkflowBuilder({
 						? apiError.message
 						: `${described.label}: ${apiError.message}`,
 				detail: apiError.message,
-				stepIndex: described.stepIndex,
+				stepId:
+					described.stepIndex === undefined
+						? undefined
+						: draft.definition.steps[described.stepIndex]?.id,
 				param: location.match(/\.params\.(\w+)/)?.[1],
 			};
 		});
@@ -469,12 +510,14 @@ export function WorkflowBuilder({
 					},
 				];
 		setProblems(next);
-		const firstStep = next.find((problem) => problem.stepIndex !== undefined);
-		const step =
-			firstStep?.stepIndex !== undefined
-				? draft.definition.steps[firstStep.stepIndex]
-				: undefined;
-		inspect(step ? { kind: "step", stepId: step.id } : { kind: "workflow" });
+		const firstStepId = next.find(
+			(problem) => problem.stepId !== undefined,
+		)?.stepId;
+		inspect(
+			firstStepId
+				? { kind: "step", stepId: firstStepId }
+				: { kind: "workflow" },
+		);
 	};
 	const create = useMutation({
 		...createWorkflowMutation(),
@@ -491,6 +534,7 @@ export function WorkflowBuilder({
 		onSuccess: () => {
 			invalidate();
 			toast.add({ type: "success", title: "Workflow deleted." });
+			dirtyRef.current = false;
 			onDeleted?.();
 		},
 		onError: () =>
@@ -523,7 +567,7 @@ export function WorkflowBuilder({
 	const closeLabel = isMobile ? "Back to flow" : "Close";
 	const backToWorkflow = () => {
 		setSelection({ kind: "workflow" });
-		setReveal({ target: "canvas" });
+		setReveal({ target: "canvas", nodeId: selectionNodeId(selection) });
 	};
 	const catalogGroups = groupBy(
 		catalog.triggers.filter(
@@ -769,14 +813,14 @@ export function WorkflowBuilder({
 				catalog={catalog}
 				variables={variablesBeforeStep(catalog, draft, selectedIndex)}
 				resources={resources}
-				errors={stepErrors(selectedIndex)}
+				errors={stepErrors(selectedStep.id)}
 				starts={startsOf(selectedStep)}
 				loopWarning={loopWarningFor(selectedStep)}
 				onChange={(next) => {
 					setProblems((current) =>
 						current.filter(
 							(problem) =>
-								problem.stepIndex !== selectedIndex ||
+								problem.stepId !== selectedStep.id ||
 								(problem.param !== undefined &&
 									next.params[problem.param] ===
 										selectedStep.params[problem.param]),
@@ -856,6 +900,18 @@ export function WorkflowBuilder({
 							Unsaved changes
 						</Text>
 					) : null}
+					<ConfirmDialog
+						open={leaveGuard.status === "blocked"}
+						onOpenChange={(open) => {
+							if (!open) leaveGuard.reset?.();
+						}}
+						tone="critical"
+						title="Leave without saving?"
+						description="Your changes to this workflow are not saved. Leaving discards them."
+						confirmLabel="Discard and leave"
+						cancelLabel="Stay"
+						onConfirm={() => leaveGuard.proceed?.()}
+					/>
 					{workflow ? (
 						<ConfirmDialog
 							tone="critical"
@@ -896,21 +952,28 @@ export function WorkflowBuilder({
 			</Box>
 
 			<Box className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
-				{isMobile && inspecting ? null : (
-					<Box ref={canvasRef} className="h-[58vh] lg:h-[min(76vh,820px)]">
-						<WorkflowCanvas
-							nodes={graph.nodes}
-							edges={graph.edges}
-							fitKey={`${draft.definition.steps.length}:${draft.trigger_event_type}`}
-							actions={canvasActions}
-						/>
-					</Box>
-				)}
+				<Box
+					ref={canvasRef}
+					className={
+						isMobile && inspecting
+							? "hidden"
+							: "h-[58vh] lg:h-[min(76vh,820px)]"
+					}
+				>
+					<WorkflowCanvas
+						nodes={graph.nodes}
+						edges={graph.edges}
+						fitKey={`${draft.definition.steps.length}:${draft.trigger_event_type}`}
+						focusNodeId={selectionNodeId(selection)}
+						actions={canvasActions}
+					/>
+				</Box>
 				<Box
 					ref={inspectorRef}
 					as="section"
+					tabIndex={-1}
 					aria-label={inspectorTitle}
-					className="overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:max-h-[min(76vh,820px)] lg:overflow-y-auto"
+					className="outline-none overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:max-h-[min(76vh,820px)] lg:overflow-y-auto"
 				>
 					<InspectorTransition selection={selection}>
 						{inspector}

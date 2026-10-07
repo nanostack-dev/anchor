@@ -15,13 +15,14 @@ import {
 	Zap,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { AddStepMenu } from "../AddStepMenu";
 import { actionGroupIcon } from "../action-icons";
 import { useWorkflowCanvas } from "./canvas-context";
 import { easeOut } from "./motion";
 import {
 	type AddNodeData,
+	COLUMN_GAP,
 	type ConditionsNodeData,
 	NODE_WIDTH,
 	type StepNodeData,
@@ -104,6 +105,7 @@ function Entrance({ order, children }: { order: number; children: ReactNode }) {
 				ease: easeOut,
 				delay: entranceDelay(order),
 			}}
+			className="relative"
 			style={{ width: NODE_WIDTH }}
 		>
 			{children}
@@ -188,13 +190,17 @@ function Tile({
 	);
 }
 
-export function TriggerNode({ data }: NodeProps & { data: TriggerNodeData }) {
+export function TriggerNode({
+	id,
+	data,
+}: NodeProps & { data: TriggerNodeData }) {
 	const { select } = useWorkflowCanvas();
 	return (
 		<Entrance order={data.order}>
 			<Handles bottom top right="target" />
 			<button
 				type="button"
+				data-workflow-node={id}
 				aria-label={`Trigger: ${data.title}`}
 				aria-pressed={data.selected}
 				onClick={() => select({ kind: "trigger" })}
@@ -234,6 +240,7 @@ export function TriggerNode({ data }: NodeProps & { data: TriggerNodeData }) {
 }
 
 export function ConditionsNode({
+	id,
 	data,
 }: NodeProps & { data: ConditionsNodeData }) {
 	const { select } = useWorkflowCanvas();
@@ -242,6 +249,7 @@ export function ConditionsNode({
 			<Handles top bottom />
 			<button
 				type="button"
+				data-workflow-node={id}
 				aria-label="Conditions on the event"
 				aria-pressed={data.selected}
 				onClick={() => select({ kind: "conditions" })}
@@ -299,16 +307,62 @@ function StatusBadge({ status }: { status: WorkflowStepStatus }) {
 	);
 }
 
-export function StepNode({ data }: NodeProps & { data: StepNodeData }) {
+function InsertBefore({ index }: { index: number }) {
+	const { actions, insertStep } = useWorkflowCanvas();
+	return (
+		<Box
+			as="span"
+			className="absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+			style={{ top: -COLUMN_GAP / 2 }}
+		>
+			<AddStepMenu
+				actions={actions}
+				onPick={(action) => insertStep(index, action)}
+				trigger={
+					<button
+						type="button"
+						aria-label={`Insert a step before step ${index + 1}`}
+						className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs outline-none transition-[transform,color,border-color] duration-150 ease-out hover:border-primary/60 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.94] motion-reduce:active:scale-100"
+					>
+						<Plus className="size-3.5" aria-hidden />
+					</button>
+				}
+			/>
+		</Box>
+	);
+}
+
+function stepDescription(data: StepNodeData) {
+	return [
+		data.status ? statusBadge[data.status].label : undefined,
+		data.problemCount > 0
+			? `${data.problemCount} ${data.problemCount === 1 ? "problem" : "problems"} to fix`
+			: undefined,
+		data.summary,
+		data.writes ? undefined : "Read only",
+		data.conditionCount > 0
+			? `${data.conditionCount} ${data.conditionCount === 1 ? "condition" : "conditions"}`
+			: undefined,
+		data.step.continue_on_error ? "Keeps going on failure" : undefined,
+	]
+		.filter(Boolean)
+		.join(". ");
+}
+
+export function StepNode({ id, data }: NodeProps & { data: StepNodeData }) {
 	const { select } = useWorkflowCanvas();
+	const descriptionId = useId();
 	const Icon = actionGroupIcon(data.group);
 	const invalid = data.problemCount > 0;
 	return (
 		<Entrance order={data.order}>
 			<Handles top bottom right="source" />
+			<InsertBefore index={data.index} />
 			<button
 				type="button"
+				data-workflow-node={id}
 				aria-label={`Step ${data.index + 1}: ${data.title}`}
+				aria-describedby={descriptionId}
 				aria-pressed={data.selected}
 				onClick={() => select({ kind: "step", stepId: data.step.id })}
 				className={cn(
@@ -365,6 +419,9 @@ export function StepNode({ data }: NodeProps & { data: StepNodeData }) {
 						) : null}
 					</Box>
 				) : null}
+				<Box as="span" id={descriptionId} className="sr-only">
+					{stepDescription(data)}
+				</Box>
 			</button>
 		</Entrance>
 	);

@@ -15,7 +15,7 @@ import {
 
 export const NODE_WIDTH = 288;
 const ROW_GAP = 132;
-const COLUMN_GAP = 44;
+export const COLUMN_GAP = 44;
 const GHOST_ROW_GAP = 80;
 const GHOST_OFFSET_X = NODE_WIDTH + 96;
 
@@ -75,7 +75,6 @@ export type FlowEdgeTone = "default" | "active" | "done" | "chain" | "loop";
 export interface FlowEdgeData extends Record<string, unknown> {
 	tone: FlowEdgeTone;
 	label?: string;
-	insertAt?: number;
 }
 
 export type WorkflowGraphNode =
@@ -90,6 +89,13 @@ export type WorkflowGraphEdge = Edge<FlowEdgeData, "flow">;
 export const stepNodeId = (stepId: string) => `step:${stepId}`;
 const TRIGGER_ID = "trigger";
 const CONDITIONS_ID = "conditions";
+
+export function selectionNodeId(selection: Selection): string | undefined {
+	if (selection.kind === "trigger") return TRIGGER_ID;
+	if (selection.kind === "conditions") return CONDITIONS_ID;
+	if (selection.kind === "step") return stepNodeId(selection.stepId);
+	return undefined;
+}
 const ADD_ID = "add";
 
 function summarize(step: WorkflowStep, catalog?: WorkflowCatalogResponse) {
@@ -119,7 +125,7 @@ export interface GraphInput {
 	selection: Selection;
 	others: ChainWorkflow[];
 	loop: LoopHop[] | null;
-	problemsByStep: Record<number, number>;
+	problemsByStep: Record<string, number>;
 	triggerInvalid: boolean;
 	run?: { statuses: RunStatusByStep; revealed: number };
 }
@@ -225,7 +231,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 				summary: summarize(step, catalog),
 				conditionCount: step.when?.length ?? 0,
 				selected: selection.kind === "step" && selection.stepId === step.id,
-				problemCount: input.problemsByStep[index] ?? 0,
+				problemCount: input.problemsByStep[step.id] ?? 0,
 				status,
 				order: order++,
 			},
@@ -235,7 +241,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 			source: previous,
 			target: id,
 			type: "flow",
-			data: { tone: edgeTone(index), insertAt: index },
+			data: { tone: edgeTone(index) },
 		});
 		previous = id;
 

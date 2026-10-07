@@ -120,7 +120,7 @@ export const WorstCase: Story = {
 				emits: "organization.updated",
 			},
 		],
-		problemsByStep: { 2: 3 },
+		problemsByStep: { step_2: 3 },
 		run: {
 			statuses: {
 				[worstCaseStep.id]: WorkflowStepStatus.FAILED,
