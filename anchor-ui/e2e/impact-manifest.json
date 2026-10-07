@@ -34,12 +34,10 @@
 	"docs": [
 		"README.md",
 		"AGENTS.md",
-		"CLAUDE.md",
 		"CONTEXT.md",
 		"CHANGELOG.md",
 		"anchor-ui/README.md",
 		"anchor-ui/AGENTS.md",
-		"anchor-ui/CLAUDE.md",
 		"anchor-ui/docs/**",
 		"anchor-ui/e2e/README.md",
 		"anchor-ui/e2e/guide/**",
