@@ -95,6 +95,9 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@tanstack/react-table",
 	"@uidotdev/usehooks",
 
+	// Workflow canvas
+	"@xyflow/react",
+
 	// UI primitives and utilities reached from owned components
 	"clsx",
 	"date-fns",

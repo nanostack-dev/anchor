@@ -1,3 +1,4 @@
+import type { Page } from "playwright/test";
 import { expect, test } from "../../support/fixtures";
 import { captureReviewCheckpoint } from "../../support/review";
 import {
@@ -11,6 +12,16 @@ import {
 	workspaceNames,
 	writingBackend,
 } from "./workflow-helpers";
+
+async function backToFlow(page: Page) {
+	await page
+		.getByRole("button", { name: /^(Close|Back to flow)$/ })
+		.first()
+		.click();
+	await expect(
+		page.getByRole("button", { name: "Add a step", exact: true }),
+	).toBeVisible();
+}
 
 // Covers: PRODUCT_WORKFLOWS, PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
 test("a recipe becomes a workflow that dry-runs, saves and reacts to the next organization", async ({
@@ -29,15 +40,17 @@ test("a recipe becomes a workflow that dry-runs, saves and reacts to the next or
 	await expect(page).toHaveURL(
 		/\/products\/workflows\/new\?recipe=default-workspace$/,
 	);
-	await expect(page.getByLabel("Event", { exact: true })).toHaveValue(
-		"organization.created",
-	);
 	await expect(
-		page.getByRole("article", { name: "Step 1: Create workspace" }),
+		page.getByRole("button", { name: "Trigger: Organization created" }),
 	).toBeVisible();
-	await expect(
-		page.getByRole("article", { name: "Step 2: Update organization" }),
-	).toBeVisible();
+	const firstStep = page.getByRole("button", {
+		name: "Step 1: Create General workspace",
+	});
+	const secondStep = page.getByRole("button", {
+		name: "Step 2: Remember it on the organization",
+	});
+	await expect(firstStep).toBeVisible();
+	await expect(secondStep).toBeVisible();
 
 	await page
 		.getByLabel("event.data.organization_id", { exact: true })
@@ -47,6 +60,8 @@ test("a recipe becomes a workflow that dry-runs, saves and reacts to the next or
 	await expect(dryRun).toContainText("Dry run");
 	await expect(dryRun.getByText("Succeeded", { exact: true })).toBeVisible();
 	await expect(dryRun.getByText("Simulated", { exact: true })).toHaveCount(2);
+	await expect(firstStep).toContainText("Simulated");
+	await expect(secondStep).toContainText("Simulated");
 	await dryRun.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "dry-run-result");
 	expect(await workspaceNames(world, existing.id)).toEqual([]);
@@ -110,15 +125,22 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await expect(
 		page.getByText("Give the workflow a name of at least 2 characters."),
 	).toBeVisible();
-	await expect(
-		page.getByText("Pick the event that starts this workflow."),
-	).toBeVisible();
 
 	const name = world.name("domain-join");
 	await page.getByLabel("Name", { exact: true }).fill(name);
 	await page
+		.getByRole("button", { name: "Create workflow", exact: true })
+		.click();
+	await expect(
+		page.getByText("Pick the event that starts this workflow."),
+	).toBeVisible();
+	await page
 		.getByLabel("Event", { exact: true })
 		.selectOption("product_user.created");
+	await backToFlow(page);
+	await expect(
+		page.getByRole("button", { name: "Trigger: Product user created" }),
+	).toBeVisible();
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Read product user", exact: true })
@@ -127,6 +149,7 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		page.getByRole("textbox", { name: "Product user *", exact: true }),
 	).toHaveValue("{{event.data.product_user_id}}");
 
+	await backToFlow(page);
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Invite to organization", exact: true })
@@ -155,12 +178,6 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		invite.getByText("Role is required for “Invite to organization”.", {
 			exact: true,
 		}),
-	).toBeVisible();
-	await expect(
-		page.getByText(
-			"Step 2 · Organization: Organization is required for “Invite to organization”.",
-			{ exact: true },
-		),
 	).toBeVisible();
 	await invite.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "server-validation");
@@ -203,9 +220,13 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 
 	await page.reload();
 	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+	await page
+		.getByRole("button", { name: "Step 2: Invite to organization" })
+		.click();
 	const saved = page.getByRole("article", {
 		name: "Step 2: Invite to organization",
 	});
+	await expect(saved).toBeInViewport({ ratio: 0.2 });
 	await expect(
 		saved.getByRole("combobox", { name: "Step 2 condition 1: value to test" }),
 	).toHaveValue("steps.product_user.email_domain");
@@ -277,16 +298,25 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 
 	const name = world.name("follow-up");
 	await page.getByLabel("Name", { exact: true }).fill(name);
+	await page.getByRole("button", { name: "Trigger: Pick a trigger" }).click();
 	await page
 		.getByLabel("Event", { exact: true })
 		.selectOption("custom.onboarding.started");
+	const triggerSettings = page.getByRole("region", {
+		name: "Trigger settings",
+		exact: true,
+	});
 	await expect(
-		page.getByText(`Started after “${handoff.name}”.`, { exact: true }),
+		triggerSettings.getByText(`Started after “${handoff.name}”.`, {
+			exact: true,
+		}),
 	).toBeVisible();
 	await expect(
-		page
-			.getByRole("region", { name: "onboarding.started", exact: true })
-			.getByText("event.data.organization_id", { exact: true }),
+		triggerSettings.getByText("event.data.organization_id", { exact: true }),
+	).toBeVisible();
+	await backToFlow(page);
+	await expect(
+		page.getByRole("button", { name: `Open “${handoff.name}”` }),
 	).toBeVisible();
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
@@ -328,6 +358,9 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 	expect(await workspaceNames(world, organization.id)).toEqual(["Kickoff pro"]);
 
 	await page.getByRole("tab", { name: "Build", exact: true }).click();
+	await expect(
+		page.getByRole("button", { name: "Step 1: Create workspace" }),
+	).toBeVisible();
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Start other workflows", exact: true })
@@ -339,7 +372,9 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 		.getByRole("combobox", { name: "Custom event *", exact: true })
 		.fill("onboarding.started");
 	await expect(
-		page.getByText("This would loop", { exact: true }),
+		page
+			.getByRole("toolbar", { name: "Workflow actions" })
+			.getByText("Loop", { exact: true }),
 	).toBeVisible();
 	await expect(
 		emit.getByText("This step would start a loop", { exact: true }),
@@ -352,6 +387,13 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 	await expect(
 		emit.getByRole("list", { name: "Events step 2 emits" }),
 	).toContainText("custom.onboarding.started");
+	await backToFlow(page);
+	await expect(
+		page
+			.getByRole("application", { name: "Workflow canvas" })
+			.getByText("Loop", { exact: true }),
+	).toBeVisible();
+	await captureReviewCheckpoint(page, testInfo, "loop-on-canvas");
 	await page.getByRole("button", { name: "Save changes", exact: true }).click();
 	await expect(page.getByText("Not saved", { exact: true })).toBeVisible();
 	await expect(

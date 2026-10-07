@@ -20,6 +20,7 @@ import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import {
 	ArrowDown,
+	ArrowLeft,
 	ArrowRight,
 	ArrowUp,
 	ChevronRight,
@@ -27,6 +28,7 @@ import {
 	Filter,
 	Repeat,
 	Trash2,
+	X,
 	Zap,
 } from "lucide-react";
 import { useId } from "react";
@@ -54,6 +56,8 @@ export function StepEditor({
 	onChange,
 	onMove,
 	onRemove,
+	onClose,
+	closeLabel = "Close",
 }: {
 	step: WorkflowStep;
 	index: number;
@@ -67,6 +71,8 @@ export function StepEditor({
 	onChange: (step: WorkflowStep) => void;
 	onMove: (to: number) => void;
 	onRemove: () => void;
+	onClose?: () => void;
+	closeLabel?: string;
 }) {
 	const continueId = useId();
 	const action = findAction(catalog, step.action);
@@ -79,7 +85,7 @@ export function StepEditor({
 		<Box
 			as="article"
 			aria-label={`Step ${index + 1}: ${action?.name ?? step.action}`}
-			className="relative rounded-xl border border-border bg-card shadow-xs"
+			className="relative"
 		>
 			<Box className="flex items-start gap-3 border-b border-border px-4 py-3">
 				<Box className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -135,6 +141,15 @@ export function StepEditor({
 						label="Remove step"
 						onClick={onRemove}
 					/>
+					{onClose ? (
+						<IconButton
+							variant="ghost"
+							size="sm"
+							icon={closeLabel === "Back to flow" ? ArrowLeft : X}
+							label={closeLabel}
+							onClick={onClose}
+						/>
+					) : null}
 				</Inline>
 			</Box>
 

@@ -10,24 +10,30 @@ import {
 	DropdownMenuTrigger,
 } from "@nanostackorg/design-system/components/dropdown-menu";
 import { Plus } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, type ReactElement } from "react";
 import { groupBy } from "./workflow-model";
 
 export function AddStepMenu({
 	actions,
 	onPick,
+	trigger,
 }: {
 	actions: WorkflowActionResponse[];
 	onPick: (action: WorkflowActionResponse) => void;
+	trigger?: ReactElement;
 }) {
 	const groups = groupBy(actions, (action) => action.group);
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={<Button variant="outline" icon={Plus} width="fill" />}
-			>
-				Add a step
-			</DropdownMenuTrigger>
+			{trigger ? (
+				<DropdownMenuTrigger render={trigger} />
+			) : (
+				<DropdownMenuTrigger
+					render={<Button variant="outline" icon={Plus} width="fill" />}
+				>
+					Add a step
+				</DropdownMenuTrigger>
+			)}
 			<DropdownMenuContent width="md" align="center">
 				{groups.map(([group, items], index) => (
 					<Fragment key={group}>
