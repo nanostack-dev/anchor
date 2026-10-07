@@ -4,7 +4,16 @@ type CoreConfig struct {
 	Auth        AuthConfig        `yaml:"auth"`
 	Encryption  EncryptionConfig  `yaml:"encryption"`
 	Integration IntegrationConfig `yaml:"integration"`
+	Workflow    WorkflowConfig    `yaml:"workflow"`
 	Environment string            `yaml:"environment"`
+}
+
+// WorkflowConfig tunes workflow steps that call out. AllowPrivateTargets lets
+// a step reach plain HTTP and private, loopback and link-local addresses; it
+// exists for the test suites, whose stub backends listen on loopback, and
+// stays off in every deployed environment.
+type WorkflowConfig struct {
+	AllowPrivateTargets bool `yaml:"allow_private_targets"`
 }
 
 type AuthConfig struct {

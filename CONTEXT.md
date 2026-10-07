@@ -102,6 +102,23 @@ Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standa
 
 Membership events are `created` (AddMember), `updated` (role change), and `deleted` (RemoveMember). Invitation events are `created`, `updated`, `deleted` (delete, or a role delete that removes an accepted or expired invitation) and `accepted`. Accept also emits the membership `created` event.
 
+## Workflows
+
+A Product automates its own resources with **workflows**. See [ADR-0020](docs/adr/0020-product-workflows-react-to-product-events.md).
+
+| term | means | not |
+| --- | --- | --- |
+| **workflow** | A Product's own automation: a trigger, conditions, and ordered steps that run as the Product after each matching event. | Not "flow" — that is Echopoint's word for an API test graph. Not "rule". |
+| **trigger** | The event type that starts a run of a workflow. | Not "hook". |
+| **step** | One action of a workflow, with its parameters and its own optional conditions. Its output is readable by later steps as `steps.<id>.*`. | |
+| **action** | What a step does to a Product resource, from a fixed catalog (`workspace.create`, `member.add`…). | Not "task". |
+| **run** | One execution of a workflow against one event, recorded with every step's result. At most one run per workflow and event. | Not "job" — that is the queue entry. |
+| **dry run** | A run of an unsaved workflow against sample event data that reads for real and writes nothing. It is not stored. | Not "test run". |
+| **custom event** | An event a workflow step emits (`custom.<name>`) to start other workflows. It never leaves Anchor. | Not a catalog event: it is never delivered to the endpoint. |
+| **custom action** | A step that calls the Product's own backend, signed like an event delivery, and passes the answer to later steps. | Not "webhook" — the call is a step, and its answer matters. |
+| **causation** | The chain of workflows that led to an event. A workflow already in it does not run again, and a chain stops after 5 runs. | Not "trace". |
+| **loop** | A set of enabled workflows through which one can start itself again. Anchor refuses to save one, and refuses to run one. | |
+
 ## Decisions
 
 Hard-to-reverse decisions live in [`docs/adr/`](docs/adr/). Read the ones touching the area before working in it.

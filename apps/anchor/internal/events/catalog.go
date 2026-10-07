@@ -12,6 +12,9 @@ type GroupType string
 const (
 	GroupTypeInternal    GroupType = "internal"
 	GroupTypeIntegration GroupType = "integration"
+	// GroupTypeCustom names events a Product's workflows emit for each other.
+	// They are never in the catalog and never delivered to an endpoint.
+	GroupTypeCustom GroupType = "custom"
 )
 
 const (

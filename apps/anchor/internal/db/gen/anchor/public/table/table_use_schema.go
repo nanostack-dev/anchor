@@ -40,6 +40,8 @@ func UseSchema(schema string) {
 	ProductRoleResourcePermissions = ProductRoleResourcePermissions.FromSchema(schema)
 	ProductRoles = ProductRoles.FromSchema(schema)
 	ProductUsers = ProductUsers.FromSchema(schema)
+	ProductWorkflowRuns = ProductWorkflowRuns.FromSchema(schema)
+	ProductWorkflows = ProductWorkflows.FromSchema(schema)
 	Products = Products.FromSchema(schema)
 	SchemaMigrations = SchemaMigrations.FromSchema(schema)
 	UsageObservations = UsageObservations.FromSchema(schema)

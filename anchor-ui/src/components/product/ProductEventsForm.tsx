@@ -1,7 +1,8 @@
-import type {
-	ProductEventDefinitionResponse,
-	ProductRequest,
-	ProductResponse,
+import {
+	type ProductEventDefinitionResponse,
+	ProductEventGroupType,
+	type ProductRequest,
+	type ProductResponse,
 } from "@/client";
 import {
 	getProductEventsCatalogOptions,
@@ -251,7 +252,10 @@ export function ProductEventsForm({
 			let group = map.get(key);
 			if (!group) {
 				group = {
-					type: item.group_type,
+					type:
+						item.group_type === ProductEventGroupType.INTEGRATION
+							? "integration"
+							: "internal",
 					name: item.group_name,
 					events: [],
 				};
