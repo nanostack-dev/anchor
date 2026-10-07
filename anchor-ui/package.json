@@ -32,6 +32,7 @@
     "benchmark:e2e": "node scripts/benchmark-e2e.mjs",
     "test:e2e:tooling": "node --test scripts/*.node-test.mjs",
     "test:e2e:status": "node scripts/e2e-doctor.mjs",
+    "test:e2e:clean": "node scripts/e2e-runtime.mjs prune",
     "test:e2e:artifacts": "node scripts/verify-e2e-artifacts.mjs",
     "check:e2e:coverage": "node scripts/e2e-coverage.mjs --check",
     "update:e2e:coverage": "node scripts/e2e-coverage.mjs --update"
