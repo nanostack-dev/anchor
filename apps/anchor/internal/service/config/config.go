@@ -13,7 +13,7 @@ type CoreConfig struct {
 // exists for the test suites, whose stub backends listen on loopback, and
 // stays off in every deployed environment.
 type WorkflowConfig struct {
-	AllowPrivateTargets bool `yaml:"allow_private_targets"`
+	AllowPrivateTargets bool `yaml:"allow_private_targets" optional:"true"`
 }
 
 type AuthConfig struct {
