@@ -252,13 +252,21 @@ export function WorkflowBuilder({
 				behavior: reduceMotion ? "auto" : "smooth",
 			});
 		}
-		const focusTarget =
-			reveal.target === "canvas"
-				? area?.querySelector<HTMLElement>(
-						`[data-workflow-node="${reveal.nodeId}"]`,
-					)
-				: area;
-		focusTarget?.focus({ preventScroll: true });
+		let frame = 0;
+		let attempts = 0;
+		const focusWhenRendered = () => {
+			const target =
+				reveal.target === "canvas"
+					? area?.querySelector<HTMLElement>(
+							`[data-workflow-node="${reveal.nodeId}"]`,
+						)
+					: area;
+			target?.focus({ preventScroll: true });
+			if (document.activeElement !== target && attempts++ < 30)
+				frame = requestAnimationFrame(focusWhenRendered);
+		};
+		focusWhenRendered();
+		return () => cancelAnimationFrame(frame);
 	}, [reveal, reduceMotion]);
 	const [playback, setPlayback] = useState<{
 		statuses: RunStatusByStep;

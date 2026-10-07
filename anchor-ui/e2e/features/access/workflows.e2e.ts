@@ -143,7 +143,7 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await backToFlow(page);
 	await expect(
 		page.getByRole("button", { name: "Trigger: Product user created" }),
-	).toBeVisible();
+	).toBeInViewport();
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Read product user", exact: true })
@@ -265,9 +265,11 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		page.getByRole("article", { name: "Step 2: Read product user" }),
 	).toBeVisible();
 	await backToFlow(page);
-	await expect(
-		page.getByRole("button", { name: "Step 2: Read product user" }),
-	).toBeInViewport();
+	const inserted = page.getByRole("button", {
+		name: "Step 2: Read product user",
+	});
+	await expect(inserted).toBeInViewport();
+	await expect(inserted).toBeFocused();
 	await expect(
 		page.getByRole("button", { name: "Step 3: Invite to organization" }),
 	).toBeAttached();
