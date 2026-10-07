@@ -9,13 +9,14 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **57 scenarios in 14 spec files**.
+The managed app suite declares **59 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
 | [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 5 |
 | [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
+| [access/workflows.e2e.ts](../features/access/workflows.e2e.ts) | 2 |
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
@@ -102,6 +103,19 @@ coverage of a browser create/assign flow.
 | `ORGANIZATION_MEMBERSHIPS` — `/organization-memberships` | Organization picker, twelve-member pagination, email/name search, role display and empty recovery. Invitations tab: Status facet, cancel, single/bulk delete and organization isolation. | API users, roles, memberships and invitations; invitation create/accept are not browser controls here. | tenancy |
 | `WORKSPACES` — `/workspaces` | Organization picker, search/Name facet, description, scope switch and empty recovery. | API organizations/workspaces; read-only browser view. | tenancy |
 | `WORKSPACE_MEMBERSHIPS` — `/workspace-memberships` | Direct navigation and placeholder heading. | Hidden from sidebar; no membership management UI is implemented. | tenancy |
+
+## Workflows
+
+Spec: [workflows](../features/access/workflows.e2e.ts). Organizations are
+prepared through the tenancy API; the workflow itself is built, tested, saved,
+edited and deleted through the browser. The run it starts is triggered by an
+API organization create and read back both through the Runs tab and the API.
+
+| Route key and path | Browser actions asserted | Preparation or boundary | Spec |
+| --- | --- | --- | --- |
+| `PRODUCT_WORKFLOWS` — `/products/workflows` | Empty state, recipe card opens a prefilled builder, saved workflow listed with its last run status, deleted workflow gone. | API organizations; runs come from real product events. | workflows |
+| `PRODUCT_WORKFLOW_NEW` — `/products/workflows/new` | Recipe prefill (trigger and two steps), dry run against a real organization with simulated writes and no workspace written, server validation of an empty and of an incomplete workflow, trigger select, add steps from the action menu, event-field prefill, insert a step output into a parameter, step condition, disable, create. | Role and organization ids are free text; no live member is added. | workflows |
+| `PRODUCT_WORKFLOW_DETAIL` — `/products/workflows/$workflowId` | Run triggered by the next organization only (an earlier one is ignored), Runs tab status and event data, reload persistence of steps, condition and disabled state, delete confirmation. | "Run for real" on a saved workflow is covered by component tests, not clicked here. | workflows |
 
 ## Licensing
 

@@ -13,7 +13,8 @@
 		"access": [
 			"anchor-ui/e2e/features/access/permissions.e2e.ts",
 			"anchor-ui/e2e/features/access/roles.e2e.ts",
-			"anchor-ui/e2e/features/access/tenancy.e2e.ts"
+			"anchor-ui/e2e/features/access/tenancy.e2e.ts",
+			"anchor-ui/e2e/features/access/workflows.e2e.ts"
 		],
 		"licensing": [
 			"anchor-ui/e2e/features/licensing/migrations.e2e.ts",
@@ -177,7 +178,8 @@
 			"provenance": [
 				"anchor-ui/e2e/features/access/permissions.e2e.ts",
 				"anchor-ui/e2e/features/access/roles.e2e.ts",
-				"anchor-ui/e2e/features/access/tenancy.e2e.ts"
+				"anchor-ui/e2e/features/access/tenancy.e2e.ts",
+				"anchor-ui/e2e/features/access/workflows.e2e.ts"
 			]
 		},
 		{
@@ -500,6 +502,37 @@
 				"apps/anchor/internal/license/event_registration.go",
 				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
 				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "workflow-ui",
+			"paths": [
+				"anchor-ui/src/components/workflow/**",
+				"anchor-ui/src/pages/workflows.tsx",
+				"anchor-ui/src/pages/workflow.tsx",
+				"anchor-ui/src/routes/products/workflows.tsx"
+			],
+			"domains": ["access"],
+			"reason": "The workflow list, builder, dry run and run history are exercised by the workflow journeys, which prepare organizations through the tenancy API.",
+			"provenance": [
+				"anchor-ui/src/components/workflow/WorkflowBuilder.tsx",
+				"anchor-ui/e2e/features/access/workflows.e2e.ts"
+			]
+		},
+		{
+			"id": "workflow-backend",
+			"paths": [
+				"apps/anchor/internal/workflow/**",
+				"apps/anchor/internal/domain/workflow/**",
+				"apps/anchor/internal/api/workflow_api.go",
+				"apps/anchor/internal/api/workflow_mappers.go"
+			],
+			"domains": ["access"],
+			"reason": "Workflow storage, the event worker and every action write organizations, workspaces, members and invitations that the tenancy journeys read.",
+			"provenance": [
+				"apps/anchor/internal/workflow/engine/actions.go",
+				"apps/anchor/internal/workflow/service/worker.go",
+				"anchor-ui/e2e/features/access/workflows.e2e.ts"
 			]
 		}
 	]

@@ -605,19 +605,19 @@ func (e ProductAPIKeyStatus) Valid() bool {
 
 // Defines values for ProductEventDeliveryStatus.
 const (
-	Failed         ProductEventDeliveryStatus = "failed"
-	NeverAttempted ProductEventDeliveryStatus = "never_attempted"
-	Succeeded      ProductEventDeliveryStatus = "succeeded"
+	ProductEventDeliveryStatusFailed         ProductEventDeliveryStatus = "failed"
+	ProductEventDeliveryStatusNeverAttempted ProductEventDeliveryStatus = "never_attempted"
+	ProductEventDeliveryStatusSucceeded      ProductEventDeliveryStatus = "succeeded"
 )
 
 // Valid indicates whether the value is a known member of the ProductEventDeliveryStatus enum.
 func (e ProductEventDeliveryStatus) Valid() bool {
 	switch e {
-	case Failed:
+	case ProductEventDeliveryStatusFailed:
 		return true
-	case NeverAttempted:
+	case ProductEventDeliveryStatusNeverAttempted:
 		return true
-	case Succeeded:
+	case ProductEventDeliveryStatusSucceeded:
 		return true
 	default:
 		return false
@@ -978,6 +978,150 @@ const (
 func (e UserOrganizationInclude) Valid() bool {
 	switch e {
 	case UserOrganizationIncludeRolePermissions:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowOperator.
+const (
+	Contains    WorkflowOperator = "contains"
+	EndsWith    WorkflowOperator = "ends_with"
+	Equals      WorkflowOperator = "equals"
+	Exists      WorkflowOperator = "exists"
+	In          WorkflowOperator = "in"
+	NotContains WorkflowOperator = "not_contains"
+	NotEquals   WorkflowOperator = "not_equals"
+	NotExists   WorkflowOperator = "not_exists"
+	StartsWith  WorkflowOperator = "starts_with"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowOperator enum.
+func (e WorkflowOperator) Valid() bool {
+	switch e {
+	case Contains:
+		return true
+	case EndsWith:
+		return true
+	case Equals:
+		return true
+	case Exists:
+		return true
+	case In:
+		return true
+	case NotContains:
+		return true
+	case NotEquals:
+		return true
+	case NotExists:
+		return true
+	case StartsWith:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowParamType.
+const (
+	WorkflowParamTypeEmail           WorkflowParamType = "email"
+	WorkflowParamTypeEmailTemplate   WorkflowParamType = "email_template"
+	WorkflowParamTypeJson            WorkflowParamType = "json"
+	WorkflowParamTypeLicenseTemplate WorkflowParamType = "license_template"
+	WorkflowParamTypeOrganization    WorkflowParamType = "organization"
+	WorkflowParamTypeProductUser     WorkflowParamType = "product_user"
+	WorkflowParamTypeRole            WorkflowParamType = "role"
+	WorkflowParamTypeText            WorkflowParamType = "text"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowParamType enum.
+func (e WorkflowParamType) Valid() bool {
+	switch e {
+	case WorkflowParamTypeEmail:
+		return true
+	case WorkflowParamTypeEmailTemplate:
+		return true
+	case WorkflowParamTypeJson:
+		return true
+	case WorkflowParamTypeLicenseTemplate:
+		return true
+	case WorkflowParamTypeOrganization:
+		return true
+	case WorkflowParamTypeProductUser:
+		return true
+	case WorkflowParamTypeRole:
+		return true
+	case WorkflowParamTypeText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowRunStatus.
+const (
+	WorkflowRunStatusFailed    WorkflowRunStatus = "failed"
+	WorkflowRunStatusRunning   WorkflowRunStatus = "running"
+	WorkflowRunStatusSkipped   WorkflowRunStatus = "skipped"
+	WorkflowRunStatusSucceeded WorkflowRunStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowRunStatus enum.
+func (e WorkflowRunStatus) Valid() bool {
+	switch e {
+	case WorkflowRunStatusFailed:
+		return true
+	case WorkflowRunStatusRunning:
+		return true
+	case WorkflowRunStatusSkipped:
+		return true
+	case WorkflowRunStatusSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowRunTrigger.
+const (
+	DryRun WorkflowRunTrigger = "dry_run"
+	Event  WorkflowRunTrigger = "event"
+	Manual WorkflowRunTrigger = "manual"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowRunTrigger enum.
+func (e WorkflowRunTrigger) Valid() bool {
+	switch e {
+	case DryRun:
+		return true
+	case Event:
+		return true
+	case Manual:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowStepStatus.
+const (
+	WorkflowStepStatusFailed    WorkflowStepStatus = "failed"
+	WorkflowStepStatusSimulated WorkflowStepStatus = "simulated"
+	WorkflowStepStatusSkipped   WorkflowStepStatus = "skipped"
+	WorkflowStepStatusSucceeded WorkflowStepStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowStepStatus enum.
+func (e WorkflowStepStatus) Valid() bool {
+	switch e {
+	case WorkflowStepStatusFailed:
+		return true
+	case WorkflowStepStatusSimulated:
+		return true
+	case WorkflowStepStatusSkipped:
+		return true
+	case WorkflowStepStatusSucceeded:
 		return true
 	default:
 		return false
@@ -3611,6 +3755,232 @@ type UserResponse struct {
 	Role  string `json:"role"`
 }
 
+// WorkflowActionOutputResponse defines model for WorkflowActionOutputResponse.
+type WorkflowActionOutputResponse struct {
+	Description string `json:"description"`
+	Name        string `json:"name"`
+}
+
+// WorkflowActionParamResponse defines model for WorkflowActionParamResponse.
+type WorkflowActionParamResponse struct {
+	Description *string `json:"description,omitempty"`
+	Label       string  `json:"label"`
+	Name        string  `json:"name"`
+	Required    bool    `json:"required"`
+
+	// Type What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+	Type WorkflowParamType `json:"type"`
+}
+
+// WorkflowActionResponse defines model for WorkflowActionResponse.
+type WorkflowActionResponse struct {
+	Description string                         `json:"description"`
+	Group       string                         `json:"group"`
+	Name        string                         `json:"name"`
+	Outputs     []WorkflowActionOutputResponse `json:"outputs"`
+	Params      []WorkflowActionParamResponse  `json:"params"`
+
+	// Type Examples: workspace.create
+	Type string `json:"type"`
+
+	// Writes The action changes a resource. A dry run only resolves it.
+	Writes bool `json:"writes"`
+}
+
+// WorkflowCatalogResponse defines model for WorkflowCatalogResponse.
+type WorkflowCatalogResponse struct {
+	Actions   []WorkflowActionResponse  `json:"actions"`
+	Operators []WorkflowOperator        `json:"operators"`
+	Triggers  []WorkflowTriggerResponse `json:"triggers"`
+}
+
+// WorkflowCondition defines model for WorkflowCondition.
+type WorkflowCondition struct {
+	// Field Path of the value to test: `event.data.<field>`, `steps.<step id>.<output>` (deeper for objects such as `steps.org.metadata.plan`), `event.type` or `workflow.id`.
+	//
+	// Examples: steps.user.email_domain
+	Field string `json:"field"`
+
+	// Operator How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+	Operator WorkflowOperator `json:"operator"`
+
+	// Value Value to compare with. May hold `{{ path }}` references.
+	//
+	// Examples: acme.com
+	Value *string `json:"value,omitempty"`
+}
+
+// WorkflowDefinition defines model for WorkflowDefinition.
+type WorkflowDefinition struct {
+	// Conditions Conditions on the trigger event that must all hold for the workflow to run. They can read only `event.*` and `workflow.*`.
+	Conditions []WorkflowCondition `json:"conditions"`
+
+	// Steps Steps run one after the other, in order.
+	Steps []WorkflowStep `json:"steps"`
+}
+
+// WorkflowDryRunRequest defines model for WorkflowDryRunRequest.
+type WorkflowDryRunRequest struct {
+	EventData map[string]string    `json:"event_data"`
+	Workflow  WorkflowWriteRequest `json:"workflow"`
+}
+
+// WorkflowListResponse defines model for WorkflowListResponse.
+type WorkflowListResponse struct {
+	Count int                `json:"count"`
+	Items []WorkflowResponse `json:"items"`
+}
+
+// WorkflowOperator How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+type WorkflowOperator string
+
+// WorkflowParamType What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+type WorkflowParamType string
+
+// WorkflowResponse A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
+type WorkflowResponse struct {
+	CreatedAt   time.Time          `json:"created_at"`
+	Definition  WorkflowDefinition `json:"definition"`
+	Description *string            `json:"description,omitempty"`
+	Enabled     bool               `json:"enabled"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: wf_2iABC...
+	Id               Ksuid     `json:"id"`
+	Name             string    `json:"name"`
+	TriggerEventType string    `json:"trigger_event_type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// WorkflowRunListResponse defines model for WorkflowRunListResponse.
+type WorkflowRunListResponse struct {
+	Count int                   `json:"count"`
+	Items []WorkflowRunResponse `json:"items"`
+}
+
+// WorkflowRunRequest defines model for WorkflowRunRequest.
+type WorkflowRunRequest struct {
+	// EventData The `data` of the event to run against, as the trigger event would carry it.
+	//
+	// Examples: {"product_user_id":"pusr_2iABC..."}
+	EventData map[string]string `json:"event_data"`
+}
+
+// WorkflowRunResponse defines model for WorkflowRunResponse.
+type WorkflowRunResponse struct {
+	Error     *string           `json:"error,omitempty"`
+	EventData map[string]string `json:"event_data"`
+
+	// EventId The product event the run reacted to, or a generated id for a manual or dry run.
+	EventId    string     `json:"event_id"`
+	EventType  string     `json:"event_type"`
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: wfrun_2iABC...
+	Id        Ksuid     `json:"id"`
+	StartedAt time.Time `json:"started_at"`
+
+	// Status `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+	Status WorkflowRunStatus            `json:"status"`
+	Steps  []WorkflowStepResultResponse `json:"steps"`
+
+	// Trigger `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+	Trigger WorkflowRunTrigger `json:"trigger"`
+
+	// WorkflowId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	WorkflowId   Ksuid   `json:"workflow_id"`
+	WorkflowName *string `json:"workflow_name,omitempty"`
+}
+
+// WorkflowRunStatus `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+type WorkflowRunStatus string
+
+// WorkflowRunTrigger `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+type WorkflowRunTrigger string
+
+// WorkflowStep defines model for WorkflowStep.
+type WorkflowStep struct {
+	// Action An action type from the workflow catalog.
+	//
+	// Examples: member.add
+	Action string `json:"action"`
+
+	// ContinueOnError Keep running the next steps when this one fails. The run still reads `failed`.
+	ContinueOnError *bool `json:"continue_on_error,omitempty"`
+
+	// Id Identifier unique in the workflow. Later steps read this step's output as `steps.<id>.<output>`.
+	//
+	// Examples: user
+	Id string `json:"id"`
+
+	// Name Display name of the step.
+	Name *string `json:"name,omitempty"`
+
+	// Params Parameter values by name. Each may hold `{{ path }}` references to the trigger event or an earlier step's output.
+	//
+	// Examples: {"name":"General","organization_id":"{{event.data.organization_id}}"}
+	Params map[string]string `json:"params"`
+
+	// When Conditions that must all hold for this step to run. Absent means always.
+	When *[]WorkflowCondition `json:"when,omitempty"`
+}
+
+// WorkflowStepResultResponse defines model for WorkflowStepResultResponse.
+type WorkflowStepResultResponse struct {
+	Action string  `json:"action"`
+	Error  *string `json:"error,omitempty"`
+
+	// Output What the step produced, readable by later steps as `steps.<id>.*`.
+	Output *map[string]interface{} `json:"output,omitempty"`
+
+	// Params Parameters after their references were resolved.
+	Params *map[string]interface{} `json:"params,omitempty"`
+
+	// Status `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+	Status WorkflowStepStatus `json:"status"`
+	StepId string             `json:"step_id"`
+}
+
+// WorkflowStepStatus `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+type WorkflowStepStatus string
+
+// WorkflowTriggerResponse defines model for WorkflowTriggerResponse.
+type WorkflowTriggerResponse struct {
+	// DataFields Keys the event carries under `event.data`.
+	//
+	// Examples: ["organization_id"]
+	DataFields  []string              `json:"data_fields"`
+	Description string                `json:"description"`
+	GroupName   string                `json:"group_name"`
+	GroupType   ProductEventGroupType `json:"group_type"`
+	Name        string                `json:"name"`
+
+	// Type Examples: organization.created
+	Type string `json:"type"`
+}
+
+// WorkflowWriteRequest defines model for WorkflowWriteRequest.
+type WorkflowWriteRequest struct {
+	Definition  WorkflowDefinition `json:"definition"`
+	Description *string            `json:"description,omitempty"`
+
+	// Enabled A disabled workflow keeps its definition and starts no run on events.
+	Enabled bool `json:"enabled"`
+
+	// Name Examples: Auto-join company domain
+	Name string `json:"name"`
+
+	// TriggerEventType The product event that starts a run, from the workflow catalog.
+	//
+	// Examples: product_user.created
+	TriggerEventType string `json:"trigger_event_type"`
+}
+
 // WorkspaceFilter defines model for WorkspaceFilter.
 type WorkspaceFilter struct {
 	// Ids Filter by specific workspace IDs.
@@ -3699,6 +4069,11 @@ type ProviderTypeParameter = IntegrationProviderType
 
 // ResourcePermissionNameParameter Examples: file:read
 type ResourcePermissionNameParameter = string
+
+// WorkflowIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+type WorkflowIdParameter = Ksuid
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
@@ -3825,6 +4200,16 @@ type ListUserOrganizationsParams struct {
 type GetUserOrganizationParams struct {
 	// Include Comma-separated list of additional fields to include.
 	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// ListProductWorkflowRunsParams defines parameters for ListProductWorkflowRuns.
+type ListProductWorkflowRunsParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListWorkflowRunsParams defines parameters for ListWorkflowRuns.
+type ListWorkflowRunsParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -4000,6 +4385,18 @@ type UpdateProductRoleJSONRequestBody = ProductRoleUpdateRequest
 
 // AssignPermissionToProductRoleJSONRequestBody defines body for AssignPermissionToProductRole for application/json ContentType.
 type AssignPermissionToProductRoleJSONRequestBody = AssignPermissionRequest
+
+// DryRunWorkflowJSONRequestBody defines body for DryRunWorkflow for application/json ContentType.
+type DryRunWorkflowJSONRequestBody = WorkflowDryRunRequest
+
+// CreateWorkflowJSONRequestBody defines body for CreateWorkflow for application/json ContentType.
+type CreateWorkflowJSONRequestBody = WorkflowWriteRequest
+
+// UpdateWorkflowJSONRequestBody defines body for UpdateWorkflow for application/json ContentType.
+type UpdateWorkflowJSONRequestBody = WorkflowWriteRequest
+
+// RunWorkflowJSONRequestBody defines body for RunWorkflow for application/json ContentType.
+type RunWorkflowJSONRequestBody = WorkflowRunRequest
 
 // AsClerkIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a ClerkIntegrationInstanceCreateRequest
 func (t IntegrationInstanceCreateRequest) AsClerkIntegrationInstanceCreateRequest() (ClerkIntegrationInstanceCreateRequest, error) {

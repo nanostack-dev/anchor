@@ -1602,6 +1602,118 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id} (the `UnassignPermissionFromProductRole` operationId).
 	UnassignPermissionFromProductRole(ctx context.Context, productId ProductIdParameter, roleId ProductRoleIdParameter, permissionId ProductPermissionIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkflowCatalog Get Workflow Catalog
+	//
+	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
+	GetWorkflowCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DryRunWorkflowWithBody Dry Run Workflow
+	//
+	// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+	DryRunWorkflowWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DryRunWorkflow Dry Run Workflow
+	//
+	// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+	DryRunWorkflow(ctx context.Context, productId ProductIdParameter, body DryRunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListProductWorkflowRuns List Product Workflow Runs
+	//
+	// Lists the latest runs of every workflow of the product, newest first.
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflow-runs (the `ListProductWorkflowRuns` operationId).
+	ListProductWorkflowRuns(ctx context.Context, productId ProductIdParameter, params *ListProductWorkflowRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflows List Workflows
+	//
+	// Lists every workflow of the product, by name.
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
+	ListWorkflows(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkflowWithBody Create Workflow
+	//
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+	CreateWorkflowWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkflow Create Workflow
+	//
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+	CreateWorkflow(ctx context.Context, productId ProductIdParameter, body CreateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteWorkflow Delete Workflow
+	//
+	// Deletes the workflow and its run history.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/workflows/{workflow_id} (the `DeleteWorkflow` operationId).
+	DeleteWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkflow Get Workflow
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id} (the `GetWorkflow` operationId).
+	GetWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWorkflowWithBody Update Workflow
+	//
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+	UpdateWorkflowWithBody(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWorkflow Update Workflow
+	//
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+	UpdateWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflowRuns List Workflow Runs
+	//
+	// Lists the latest runs of the workflow, newest first.
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id}/runs (the `ListWorkflowRuns` operationId).
+	ListWorkflowRuns(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, params *ListWorkflowRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunWorkflowWithBody Run Workflow
+	//
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+	RunWorkflowWithBody(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunWorkflow Run Workflow
+	//
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+	RunWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body RunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // LoginWithBody User login
@@ -4797,6 +4909,258 @@ func (c *Client) AssignPermissionToProductRole(ctx context.Context, productId Pr
 // Corresponds with DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id} (the `UnassignPermissionFromProductRole` operationId).
 func (c *Client) UnassignPermissionFromProductRole(ctx context.Context, productId ProductIdParameter, roleId ProductRoleIdParameter, permissionId ProductPermissionIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUnassignPermissionFromProductRoleRequest(c.Server, productId, roleId, permissionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkflowCatalog Get Workflow Catalog
+//
+// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+//
+// Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
+func (c *Client) GetWorkflowCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkflowCatalogRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DryRunWorkflowWithBody Dry Run Workflow
+//
+// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+func (c *Client) DryRunWorkflowWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDryRunWorkflowRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DryRunWorkflow Dry Run Workflow
+//
+// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+func (c *Client) DryRunWorkflow(ctx context.Context, productId ProductIdParameter, body DryRunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDryRunWorkflowRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProductWorkflowRuns List Product Workflow Runs
+//
+// Lists the latest runs of every workflow of the product, newest first.
+//
+// Corresponds with GET /v1/products/{product_id}/workflow-runs (the `ListProductWorkflowRuns` operationId).
+func (c *Client) ListProductWorkflowRuns(ctx context.Context, productId ProductIdParameter, params *ListProductWorkflowRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProductWorkflowRunsRequest(c.Server, productId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflows List Workflows
+//
+// Lists every workflow of the product, by name.
+//
+// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
+func (c *Client) ListWorkflows(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowsRequest(c.Server, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateWorkflowWithBody Create Workflow
+//
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+func (c *Client) CreateWorkflowWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkflowRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateWorkflow Create Workflow
+//
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+func (c *Client) CreateWorkflow(ctx context.Context, productId ProductIdParameter, body CreateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkflowRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteWorkflow Delete Workflow
+//
+// Deletes the workflow and its run history.
+//
+// Corresponds with DELETE /v1/products/{product_id}/workflows/{workflow_id} (the `DeleteWorkflow` operationId).
+func (c *Client) DeleteWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteWorkflowRequest(c.Server, productId, workflowId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkflow Get Workflow
+//
+// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id} (the `GetWorkflow` operationId).
+func (c *Client) GetWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkflowRequest(c.Server, productId, workflowId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWorkflowWithBody Update Workflow
+//
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+func (c *Client) UpdateWorkflowWithBody(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWorkflowRequestWithBody(c.Server, productId, workflowId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWorkflow Update Workflow
+//
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+func (c *Client) UpdateWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWorkflowRequest(c.Server, productId, workflowId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflowRuns List Workflow Runs
+//
+// Lists the latest runs of the workflow, newest first.
+//
+// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id}/runs (the `ListWorkflowRuns` operationId).
+func (c *Client) ListWorkflowRuns(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, params *ListWorkflowRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowRunsRequest(c.Server, productId, workflowId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunWorkflowWithBody Run Workflow
+//
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+func (c *Client) RunWorkflowWithBody(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunWorkflowRequestWithBody(c.Server, productId, workflowId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunWorkflow Run Workflow
+//
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+func (c *Client) RunWorkflow(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body RunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunWorkflowRequest(c.Server, productId, workflowId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10227,6 +10591,487 @@ func NewUnassignPermissionFromProductRoleRequest(server string, productId Produc
 	return req, nil
 }
 
+// NewGetWorkflowCatalogRequest constructs an http.Request for the GetWorkflowCatalog method
+func NewGetWorkflowCatalogRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflow-catalog", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDryRunWorkflowRequest calls the generic DryRunWorkflow builder with application/json body
+func NewDryRunWorkflowRequest(server string, productId ProductIdParameter, body DryRunWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDryRunWorkflowRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewDryRunWorkflowRequestWithBody constructs an http.Request for the DryRunWorkflow method, with any body, and a specified content type
+func NewDryRunWorkflowRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflow-dry-runs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListProductWorkflowRunsRequest constructs an http.Request for the ListProductWorkflowRuns method
+func NewListProductWorkflowRunsRequest(server string, productId ProductIdParameter, params *ListProductWorkflowRunsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflow-runs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListWorkflowsRequest constructs an http.Request for the ListWorkflows method
+func NewListWorkflowsRequest(server string, productId ProductIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateWorkflowRequest calls the generic CreateWorkflow builder with application/json body
+func NewCreateWorkflowRequest(server string, productId ProductIdParameter, body CreateWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWorkflowRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewCreateWorkflowRequestWithBody constructs an http.Request for the CreateWorkflow method, with any body, and a specified content type
+func NewCreateWorkflowRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteWorkflowRequest constructs an http.Request for the DeleteWorkflow method
+func NewDeleteWorkflowRequest(server string, productId ProductIdParameter, workflowId WorkflowIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workflow_id", workflowId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkflowRequest constructs an http.Request for the GetWorkflow method
+func NewGetWorkflowRequest(server string, productId ProductIdParameter, workflowId WorkflowIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workflow_id", workflowId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateWorkflowRequest calls the generic UpdateWorkflow builder with application/json body
+func NewUpdateWorkflowRequest(server string, productId ProductIdParameter, workflowId WorkflowIdParameter, body UpdateWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateWorkflowRequestWithBody(server, productId, workflowId, "application/json", bodyReader)
+}
+
+// NewUpdateWorkflowRequestWithBody constructs an http.Request for the UpdateWorkflow method, with any body, and a specified content type
+func NewUpdateWorkflowRequestWithBody(server string, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workflow_id", workflowId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListWorkflowRunsRequest constructs an http.Request for the ListWorkflowRuns method
+func NewListWorkflowRunsRequest(server string, productId ProductIdParameter, workflowId WorkflowIdParameter, params *ListWorkflowRunsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workflow_id", workflowId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows/%s/runs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunWorkflowRequest calls the generic RunWorkflow builder with application/json body
+func NewRunWorkflowRequest(server string, productId ProductIdParameter, workflowId WorkflowIdParameter, body RunWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunWorkflowRequestWithBody(server, productId, workflowId, "application/json", bodyReader)
+}
+
+// NewRunWorkflowRequestWithBody constructs an http.Request for the RunWorkflow method, with any body, and a specified content type
+func NewRunWorkflowRequestWithBody(server string, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workflow_id", workflowId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/workflows/%s/runs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -11889,6 +12734,130 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id} (the `UnassignPermissionFromProductRole` operationId).
 	UnassignPermissionFromProductRoleWithResponse(ctx context.Context, productId ProductIdParameter, roleId ProductRoleIdParameter, permissionId ProductPermissionIdParameter, reqEditors ...RequestEditorFn) (*UnassignPermissionFromProductRoleResponse, error)
+
+	// GetWorkflowCatalogWithResponse Get Workflow Catalog
+	//
+	// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
+	GetWorkflowCatalogWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetWorkflowCatalogResponse, error)
+
+	// DryRunWorkflowWithBodyWithResponse Dry Run Workflow
+	//
+	// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+	DryRunWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DryRunWorkflowResponse, error)
+
+	// DryRunWorkflowWithResponse Dry Run Workflow
+	//
+	// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+	DryRunWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, body DryRunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DryRunWorkflowResponse, error)
+
+	// ListProductWorkflowRunsWithResponse List Product Workflow Runs
+	//
+	// Lists the latest runs of every workflow of the product, newest first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflow-runs (the `ListProductWorkflowRuns` operationId).
+	ListProductWorkflowRunsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListProductWorkflowRunsParams, reqEditors ...RequestEditorFn) (*ListProductWorkflowRunsResponse, error)
+
+	// ListWorkflowsWithResponse List Workflows
+	//
+	// Lists every workflow of the product, by name.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
+	ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error)
+
+	// CreateWorkflowWithBodyWithResponse Create Workflow
+	//
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+	CreateWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkflowResponse, error)
+
+	// CreateWorkflowWithResponse Create Workflow
+	//
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+	CreateWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, body CreateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkflowResponse, error)
+
+	// DeleteWorkflowWithResponse Delete Workflow
+	//
+	// Deletes the workflow and its run history.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/workflows/{workflow_id} (the `DeleteWorkflow` operationId).
+	DeleteWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*DeleteWorkflowResponse, error)
+
+	// GetWorkflowWithResponse Get Workflow
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id} (the `GetWorkflow` operationId).
+	GetWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*GetWorkflowResponse, error)
+
+	// UpdateWorkflowWithBodyWithResponse Update Workflow
+	//
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+	UpdateWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error)
+
+	// UpdateWorkflowWithResponse Update Workflow
+	//
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+	UpdateWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error)
+
+	// ListWorkflowRunsWithResponse List Workflow Runs
+	//
+	// Lists the latest runs of the workflow, newest first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id}/runs (the `ListWorkflowRuns` operationId).
+	ListWorkflowRunsWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, params *ListWorkflowRunsParams, reqEditors ...RequestEditorFn) (*ListWorkflowRunsResponse, error)
+
+	// RunWorkflowWithBodyWithResponse Run Workflow
+	//
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+	RunWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunWorkflowResponse, error)
+
+	// RunWorkflowWithResponse Run Workflow
+	//
+	// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+	RunWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body RunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*RunWorkflowResponse, error)
 }
 
 // LoginResponse200Headers the declared response headers of an HTTP 200 response for Login
@@ -19613,6 +20582,661 @@ func (r UnassignPermissionFromProductRoleResponse) ContentType() string {
 	return ""
 }
 
+type GetWorkflowCatalogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowCatalogResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkflowCatalogResponse) GetJSON200() *WorkflowCatalogResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkflowCatalogResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkflowCatalogResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkflowCatalogResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkflowCatalogResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkflowCatalogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkflowCatalogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkflowCatalogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DryRunWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRunResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DryRunWorkflowResponse) GetJSON200() *WorkflowRunResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DryRunWorkflowResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DryRunWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DryRunWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DryRunWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DryRunWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DryRunWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DryRunWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DryRunWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListProductWorkflowRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRunListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListProductWorkflowRunsResponse) GetJSON200() *WorkflowRunListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListProductWorkflowRunsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListProductWorkflowRunsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListProductWorkflowRunsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListProductWorkflowRunsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListProductWorkflowRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProductWorkflowRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProductWorkflowRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProductWorkflowRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkflowsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowListResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowsResponse) GetJSON200() *WorkflowListResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *WorkflowResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateWorkflowResponse) GetJSON201() *WorkflowResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateWorkflowResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkflowResponse) GetJSON200() *WorkflowResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateWorkflowResponse) GetJSON200() *WorkflowResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateWorkflowResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkflowRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRunListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON200() *WorkflowRunListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RunWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRunResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunWorkflowResponse) GetJSON200() *WorkflowRunResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RunWorkflowResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RunWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RunWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RunWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r RunWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunWorkflowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // LoginWithBodyWithResponse User login
 //
 // Allows users to login to the system and receive an authentication token.
@@ -22244,6 +23868,214 @@ func (c *ClientWithResponses) UnassignPermissionFromProductRoleWithResponse(ctx 
 		return nil, err
 	}
 	return ParseUnassignPermissionFromProductRoleResponse(rsp)
+}
+
+// GetWorkflowCatalogWithResponse Get Workflow Catalog
+//
+// Lists what a workflow can be built from: every trigger event with the keys of its `data`, every action with its parameters and outputs, and every condition operator.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/workflow-catalog (the `GetWorkflowCatalog` operationId).
+func (c *ClientWithResponses) GetWorkflowCatalogWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*GetWorkflowCatalogResponse, error) {
+	rsp, err := c.GetWorkflowCatalog(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkflowCatalogResponse(rsp)
+}
+
+// DryRunWorkflowWithBodyWithResponse Dry Run Workflow
+//
+// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+func (c *ClientWithResponses) DryRunWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DryRunWorkflowResponse, error) {
+	rsp, err := c.DryRunWorkflowWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDryRunWorkflowResponse(rsp)
+}
+
+// DryRunWorkflowWithResponse Dry Run Workflow
+//
+// Runs an unsaved workflow against sample event data without writing. Read actions run for real, so later conditions see real values. Write actions only resolve their parameters and report placeholder outputs such as `<ws.workspace_id>`. Nothing is stored.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflow-dry-runs (the `DryRunWorkflow` operationId).
+func (c *ClientWithResponses) DryRunWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, body DryRunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DryRunWorkflowResponse, error) {
+	rsp, err := c.DryRunWorkflow(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDryRunWorkflowResponse(rsp)
+}
+
+// ListProductWorkflowRunsWithResponse List Product Workflow Runs
+//
+// Lists the latest runs of every workflow of the product, newest first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/workflow-runs (the `ListProductWorkflowRuns` operationId).
+func (c *ClientWithResponses) ListProductWorkflowRunsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListProductWorkflowRunsParams, reqEditors ...RequestEditorFn) (*ListProductWorkflowRunsResponse, error) {
+	rsp, err := c.ListProductWorkflowRuns(ctx, productId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProductWorkflowRunsResponse(rsp)
+}
+
+// ListWorkflowsWithResponse List Workflows
+//
+// Lists every workflow of the product, by name.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/workflows (the `ListWorkflows` operationId).
+func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error) {
+	rsp, err := c.ListWorkflows(ctx, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowsResponse(rsp)
+}
+
+// CreateWorkflowWithBodyWithResponse Create Workflow
+//
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+func (c *ClientWithResponses) CreateWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkflowResponse, error) {
+	rsp, err := c.CreateWorkflowWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkflowResponse(rsp)
+}
+
+// CreateWorkflowWithResponse Create Workflow
+//
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflows (the `CreateWorkflow` operationId).
+func (c *ClientWithResponses) CreateWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, body CreateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkflowResponse, error) {
+	rsp, err := c.CreateWorkflow(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkflowResponse(rsp)
+}
+
+// DeleteWorkflowWithResponse Delete Workflow
+//
+// Deletes the workflow and its run history.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/workflows/{workflow_id} (the `DeleteWorkflow` operationId).
+func (c *ClientWithResponses) DeleteWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*DeleteWorkflowResponse, error) {
+	rsp, err := c.DeleteWorkflow(ctx, productId, workflowId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteWorkflowResponse(rsp)
+}
+
+// GetWorkflowWithResponse Get Workflow
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id} (the `GetWorkflow` operationId).
+func (c *ClientWithResponses) GetWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, reqEditors ...RequestEditorFn) (*GetWorkflowResponse, error) {
+	rsp, err := c.GetWorkflow(ctx, productId, workflowId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkflowResponse(rsp)
+}
+
+// UpdateWorkflowWithBodyWithResponse Update Workflow
+//
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+func (c *ClientWithResponses) UpdateWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error) {
+	rsp, err := c.UpdateWorkflowWithBody(ctx, productId, workflowId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWorkflowResponse(rsp)
+}
+
+// UpdateWorkflowWithResponse Update Workflow
+//
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/workflows/{workflow_id} (the `UpdateWorkflow` operationId).
+func (c *ClientWithResponses) UpdateWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error) {
+	rsp, err := c.UpdateWorkflow(ctx, productId, workflowId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWorkflowResponse(rsp)
+}
+
+// ListWorkflowRunsWithResponse List Workflow Runs
+//
+// Lists the latest runs of the workflow, newest first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/workflows/{workflow_id}/runs (the `ListWorkflowRuns` operationId).
+func (c *ClientWithResponses) ListWorkflowRunsWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, params *ListWorkflowRunsParams, reqEditors ...RequestEditorFn) (*ListWorkflowRunsResponse, error) {
+	rsp, err := c.ListWorkflowRuns(ctx, productId, workflowId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowRunsResponse(rsp)
+}
+
+// RunWorkflowWithBodyWithResponse Run Workflow
+//
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+func (c *ClientWithResponses) RunWorkflowWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunWorkflowResponse, error) {
+	rsp, err := c.RunWorkflowWithBody(ctx, productId, workflowId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunWorkflowResponse(rsp)
+}
+
+// RunWorkflowWithResponse Run Workflow
+//
+// Runs the workflow now against the given event data, as if its trigger event had happened, and stores the run. The steps write for real. A disabled workflow runs too.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/workflows/{workflow_id}/runs (the `RunWorkflow` operationId).
+func (c *ClientWithResponses) RunWorkflowWithResponse(ctx context.Context, productId ProductIdParameter, workflowId WorkflowIdParameter, body RunWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*RunWorkflowResponse, error) {
+	rsp, err := c.RunWorkflow(ctx, productId, workflowId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunWorkflowResponse(rsp)
 }
 
 // ParseLoginResponse parses an HTTP response from a LoginWithResponse call
@@ -28384,6 +30216,514 @@ func ParseUnassignPermissionFromProductRoleResponse(rsp *http.Response) (*Unassi
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkflowCatalogResponse parses an HTTP response from a GetWorkflowCatalogWithResponse call
+func ParseGetWorkflowCatalogResponse(rsp *http.Response) (*GetWorkflowCatalogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkflowCatalogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowCatalogResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDryRunWorkflowResponse parses an HTTP response from a DryRunWorkflowWithResponse call
+func ParseDryRunWorkflowResponse(rsp *http.Response) (*DryRunWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DryRunWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRunResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListProductWorkflowRunsResponse parses an HTTP response from a ListProductWorkflowRunsWithResponse call
+func ParseListProductWorkflowRunsResponse(rsp *http.Response) (*ListProductWorkflowRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProductWorkflowRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRunListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowsResponse parses an HTTP response from a ListWorkflowsWithResponse call
+func ParseListWorkflowsResponse(rsp *http.Response) (*ListWorkflowsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWorkflowResponse parses an HTTP response from a CreateWorkflowWithResponse call
+func ParseCreateWorkflowResponse(rsp *http.Response) (*CreateWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteWorkflowResponse parses an HTTP response from a DeleteWorkflowWithResponse call
+func ParseDeleteWorkflowResponse(rsp *http.Response) (*DeleteWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkflowResponse parses an HTTP response from a GetWorkflowWithResponse call
+func ParseGetWorkflowResponse(rsp *http.Response) (*GetWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateWorkflowResponse parses an HTTP response from a UpdateWorkflowWithResponse call
+func ParseUpdateWorkflowResponse(rsp *http.Response) (*UpdateWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowRunsResponse parses an HTTP response from a ListWorkflowRunsWithResponse call
+func ParseListWorkflowRunsResponse(rsp *http.Response) (*ListWorkflowRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRunListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRunWorkflowResponse parses an HTTP response from a RunWorkflowWithResponse call
+func ParseRunWorkflowResponse(rsp *http.Response) (*RunWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRunResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
