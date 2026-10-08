@@ -6,7 +6,7 @@ Start with [AGENTS.md](../AGENTS.md) for task-specific pointers and [CONTEXT.md]
 | --- | --- |
 | Current system and dependency boundaries | [Architecture](technical/architecture.md), [dependency ownership](technical/dependencies.md) |
 | Consequential decisions and rationale | [Existing ADR history](adr/) |
-| Local prerequisites/runtime | [Setup](development/setup.md) |
+| Local prerequisites/runtime and native agent discovery | [Setup](development/setup.md) |
 | Test selection, generators and CI | [Testing](development/testing.md), [deployed flow suites](development/flow-suite-testing.md) |
 | Engineering and delivery requirements | [Implementation rules](development/agent-rules.md), [Go conventions](development/go-conventions.md), [engineering practices](engineering-best-practices.md), [agent workflow](development/agent-workflow.md) |
 | Verified developer repairs | [Troubleshooting](development/troubleshooting.md) |

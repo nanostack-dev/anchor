@@ -2,6 +2,12 @@
 
 Clone Anchor alone and read [AGENTS.md](../../AGENTS.md). No shared workspace, external skill pack or sibling repository is required. For implementation, fetch `origin` and create an isolated worktree from `origin/main`.
 
+## Agent harness discovery
+
+Codex, OpenCode and Grok Build read this repository's `AGENTS.md` directly. Claude Code's repo-owned [.claude/settings.json](../../.claude/settings.json) adds a read-only `SessionStart` hook: Git resolves the current project's root, then the hook prints that root's `AGENTS.md` as session context. It works from nested directories and does not call workspace bootstrap or require Python/Node. Existing hooks/preferences remain additive; developer overrides belong in ignored `.claude/settings.local.json`.
+
+Approve the repository through the client's normal one-time trust flow before project hooks run. After pulling a changed hook or guide, start/reload the session so the current instructions are loaded. Login, trust and personal/global settings remain developer-controlled.
+
 ## Prerequisites and install
 
 Use Go 1.27 (`apps/anchor/go.mod`), Node 24 and pnpm 11.1.0 (`anchor-ui/package.json` and the [application E2E workflow](../../.github/workflows/e2e-app.yml)). Docker with Compose and an accessible daemon are required for integration/browser runtime. API/database generation also requires `migrate` and `openssl` on PATH.

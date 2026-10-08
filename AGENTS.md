@@ -1,6 +1,6 @@
 # Anchor Agent Guide
 
-This repository owns its agent rules and documentation and works as a standalone clone. A Nanostack workspace and installed shared skills are optional helpers; do not require their files, sibling checkouts or bootstrap to implement a task here. All paths below are repository-relative.
+This repository owns its agent rules and documentation and works as a standalone clone. A Nanostack workspace and installed shared skills are optional helpers; do not require their files, sibling checkouts or bootstrap to implement a task here. All paths below are repository-relative. Claude Code loads this guide through the repo-owned SessionStart hook; native discovery/trust details are in [setup](docs/development/setup.md).
 
 ## Read when
 
