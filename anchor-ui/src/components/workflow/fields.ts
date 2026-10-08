@@ -1,4 +1,8 @@
-import { WorkflowFieldType, WorkflowParamType } from "@/client";
+import {
+	WorkflowFieldType,
+	WorkflowOperator,
+	WorkflowParamType,
+} from "@/client";
 import type { WorkflowVariable } from "./workflow-model";
 
 export const FIELD_DRAG_TYPE = "application/x-anchor-workflow-field";
@@ -204,3 +208,85 @@ export function serializeEventData(rows: EventDataRow[]): {
 }
 
 export const eventDataKeyPattern = /^[a-z][a-z0-9_]*$/;
+
+const identifierTypes = new Set<WorkflowFieldType>([
+	WorkflowFieldType.ORGANIZATION,
+	WorkflowFieldType.WORKSPACE,
+	WorkflowFieldType.PRODUCT_USER,
+	WorkflowFieldType.INVITATION,
+	WorkflowFieldType.API_KEY,
+	WorkflowFieldType.ROLE,
+	WorkflowFieldType.PERMISSION,
+	WorkflowFieldType.LICENSE,
+	WorkflowFieldType.LICENSE_TEMPLATE,
+]);
+
+/** The comparisons that make sense for a field of this type. */
+export function operatorsFor(type?: WorkflowFieldType): WorkflowOperator[] {
+	if (
+		!type ||
+		type === WorkflowFieldType.TEXT ||
+		type === WorkflowFieldType.EMAIL ||
+		type === WorkflowFieldType.URL
+	) {
+		return Object.values(WorkflowOperator);
+	}
+	if (type === WorkflowFieldType.JSON) {
+		return [
+			WorkflowOperator.CONTAINS,
+			WorkflowOperator.NOT_CONTAINS,
+			WorkflowOperator.EXISTS,
+			WorkflowOperator.NOT_EXISTS,
+		];
+	}
+	if (type === WorkflowFieldType.BOOLEAN) {
+		return [
+			WorkflowOperator.EQUALS,
+			WorkflowOperator.NOT_EQUALS,
+			WorkflowOperator.EXISTS,
+			WorkflowOperator.NOT_EXISTS,
+		];
+	}
+	return [
+		WorkflowOperator.EQUALS,
+		WorkflowOperator.NOT_EQUALS,
+		WorkflowOperator.IN,
+		WorkflowOperator.EXISTS,
+		WorkflowOperator.NOT_EXISTS,
+	];
+}
+
+export function isIdentifier(type?: WorkflowFieldType): boolean {
+	return type !== undefined && identifierTypes.has(type);
+}
+
+/** What to type when comparing a field of this type. */
+export function comparedValueHint(
+	type: WorkflowFieldType | undefined,
+	operator: WorkflowOperator,
+): string {
+	if (operator === WorkflowOperator.IN) {
+		return type === WorkflowFieldType.NUMBER ? "1, 5, 10" : "a, b, c";
+	}
+	if (isIdentifier(type) && type) {
+		return `${fieldTypeLabels[type]} or a field`;
+	}
+	switch (type) {
+		case WorkflowFieldType.EMAIL:
+			return operator === WorkflowOperator.ENDS_WITH
+				? "@example.com"
+				: "someone@example.com";
+		case WorkflowFieldType.NUMBER:
+			return "25";
+		case WorkflowFieldType.TIMESTAMP:
+			return "2026-10-08T09:00:00Z";
+		case WorkflowFieldType.URL:
+			return "https://example.com";
+		default:
+			return "value";
+	}
+}
+
+/** Paths a person may type that no listed field names, such as a metadata key. */
+export const fieldPathPattern =
+	/^(event\.(data\.[a-z0-9_]+|type|id)|steps\.[a-z][a-z0-9_]*\.[a-zA-Z0-9_.]+|workflow\.(id|name))$/;

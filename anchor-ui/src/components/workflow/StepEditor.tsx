@@ -271,6 +271,7 @@ export function StepEditor({
 										label={`Step ${index + 1} condition`}
 										conditions={when}
 										variables={variables}
+										resources={resources}
 										onChange={(next) => onChange({ ...step, when: next })}
 										emptyLabel="The step always runs."
 									/>

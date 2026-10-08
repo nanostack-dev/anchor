@@ -1,4 +1,10 @@
-import { type WorkflowCondition, WorkflowOperator } from "@/client";
+import {
+	type WorkflowCondition,
+	WorkflowFieldType,
+	type WorkflowOperator,
+	WorkflowParamType,
+} from "@/client";
+import { cn } from "@/lib/utils";
 import {
 	Button,
 	IconButton,
@@ -11,10 +17,19 @@ import {
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
-import { Plus, X } from "lucide-react";
-import { useId } from "react";
+import { Braces, ChevronDown, Plus, X } from "lucide-react";
+import { useId, useState } from "react";
 import { FieldPicker } from "./FieldPicker";
-import { FIELD_DRAG_TYPE, fieldTypeLabels } from "./fields";
+import { fieldTypeIcons } from "./field-icons";
+import {
+	FIELD_DRAG_TYPE,
+	comparedValueHint,
+	fieldAt,
+	fieldTypeLabels,
+	isIdentifier,
+	operatorsFor,
+} from "./fields";
+import type { WorkflowResources } from "./useWorkflowResources";
 import {
 	type WorkflowVariable,
 	operatorLabels,
@@ -22,10 +37,229 @@ import {
 	reference,
 } from "./workflow-model";
 
+const resourceTypes: Partial<Record<WorkflowFieldType, WorkflowParamType>> = {
+	[WorkflowFieldType.ROLE]: WorkflowParamType.ROLE,
+	[WorkflowFieldType.LICENSE_TEMPLATE]: WorkflowParamType.LICENSE_TEMPLATE,
+};
+
+function ConditionRow({
+	name,
+	condition,
+	variables,
+	resources,
+	onChange,
+	onRemove,
+}: {
+	name: string;
+	condition: WorkflowCondition;
+	variables: WorkflowVariable[];
+	resources: WorkflowResources;
+	onChange: (patch: Partial<WorkflowCondition>) => void;
+	onRemove: () => void;
+}) {
+	const listId = useId();
+	const [dropping, setDropping] = useState(false);
+	const path = condition.field.trim();
+	const field = path ? fieldAt(variables, path) : undefined;
+	const type = field?.type;
+	const operators = operatorsFor(type);
+	const needsValue = operatorNeedsValue(condition.operator);
+	const FieldIcon = field ? fieldTypeIcons[field.type] : Braces;
+	const resourceType = type ? resourceTypes[type] : undefined;
+	const options = resourceType ? (resources[resourceType] ?? []) : [];
+
+	const chooseField = (next: string) => {
+		const nextType = fieldAt(variables, next)?.type;
+		const allowed = operatorsFor(nextType);
+		const operator = allowed.includes(condition.operator)
+			? condition.operator
+			: allowed[0];
+		const keepsValue =
+			nextType !== WorkflowFieldType.BOOLEAN ||
+			condition.value === "true" ||
+			condition.value === "false";
+		onChange({
+			field: next,
+			operator,
+			value: keepsValue ? condition.value : "",
+		});
+	};
+
+	const fieldDescription = field
+		? `${field.label} from ${field.source}, ${fieldTypeLabels[field.type]}`
+		: path
+			? `${path}, a custom path`
+			: "pick a field";
+
+	return (
+		<Box
+			as="fieldset"
+			aria-label={name}
+			className="@container space-y-2 border-border border-b pb-3 last:border-b-0 last:pb-0"
+		>
+			<Box className="flex items-center gap-2">
+				<Box
+					className={cn(
+						"min-w-0 flex-1 rounded-3xl transition-[box-shadow] duration-150 ease-out",
+						dropping && "ring-2 ring-primary/50",
+					)}
+					onDragOver={(event) => {
+						if (!event.dataTransfer.types.includes(FIELD_DRAG_TYPE)) return;
+						event.preventDefault();
+						event.dataTransfer.dropEffect = "copy";
+						setDropping(true);
+					}}
+					onDragLeave={() => setDropping(false)}
+					onDrop={(event) => {
+						setDropping(false);
+						const dropped = event.dataTransfer.getData(FIELD_DRAG_TYPE);
+						if (!dropped) return;
+						event.preventDefault();
+						chooseField(dropped);
+					}}
+				>
+					<FieldPicker
+						fields={variables}
+						allowPath
+						label={`${name}: value to test`}
+						onPick={chooseField}
+						trigger={
+							<button
+								type="button"
+								aria-label={`${name}: value to test: ${fieldDescription}`}
+								title={field?.description ?? path}
+								className="flex h-8 w-full min-w-0 items-center gap-2 rounded-3xl border border-transparent bg-input/50 px-3 text-left text-sm outline-none transition-[transform,box-shadow] duration-150 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:scale-[0.99] motion-reduce:active:scale-100"
+							>
+								<FieldIcon
+									className="size-3.5 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+								<Box
+									as="span"
+									className={cn(
+										"max-w-[60%] shrink-0 truncate font-mono text-xs",
+										!path && "text-muted-foreground",
+									)}
+								>
+									{field?.label ?? (path || "Pick a field")}
+								</Box>
+								<Box
+									as="span"
+									className="ml-auto hidden min-w-0 truncate text-muted-foreground text-xs @xs:inline"
+								>
+									{field
+										? `${field.source} · ${fieldTypeLabels[field.type]}`
+										: path
+											? "Custom path"
+											: ""}
+								</Box>
+								<ChevronDown
+									className="size-3.5 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+							</button>
+						}
+					/>
+				</Box>
+				<IconButton
+					variant="ghost"
+					size="sm"
+					icon={X}
+					label={`Remove ${name.toLowerCase()}`}
+					onClick={onRemove}
+				/>
+			</Box>
+			<Box className="grid grid-cols-1 gap-2 @sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)]">
+				<NativeSelect
+					size="sm"
+					aria-label={`${name}: comparison`}
+					value={condition.operator}
+					onChange={(event) =>
+						onChange({ operator: event.target.value as WorkflowOperator })
+					}
+				>
+					{operators.map((operator) => (
+						<NativeSelectOption key={operator} value={operator}>
+							{operatorLabels[operator]}
+						</NativeSelectOption>
+					))}
+				</NativeSelect>
+				{needsValue ? (
+					<Box className="flex min-w-0 items-center gap-1">
+						<Box className="min-w-0 flex-1">
+							{type === WorkflowFieldType.BOOLEAN ? (
+								<NativeSelect
+									size="sm"
+									aria-label={`${name}: compared with`}
+									value={condition.value ?? ""}
+									onChange={(event) => onChange({ value: event.target.value })}
+								>
+									<NativeSelectOption value="">
+										Pick yes or no
+									</NativeSelectOption>
+									<NativeSelectOption value="true">Yes</NativeSelectOption>
+									<NativeSelectOption value="false">No</NativeSelectOption>
+								</NativeSelect>
+							) : (
+								<>
+									<Input
+										size="sm"
+										font={
+											isIdentifier(type) || type === WorkflowFieldType.NUMBER
+												? "mono"
+												: "sans"
+										}
+										inputMode={
+											type === WorkflowFieldType.NUMBER ? "decimal" : undefined
+										}
+										list={options.length > 0 ? listId : undefined}
+										aria-label={`${name}: compared with`}
+										placeholder={comparedValueHint(type, condition.operator)}
+										value={condition.value ?? ""}
+										onChange={(event) =>
+											onChange({ value: event.target.value })
+										}
+									/>
+									{options.length > 0 ? (
+										<datalist id={listId}>
+											{options.map((option) => (
+												<option key={option.value} value={option.value}>
+													{option.label}
+												</option>
+											))}
+										</datalist>
+									) : null}
+								</>
+							)}
+						</Box>
+						{type === WorkflowFieldType.BOOLEAN ? null : (
+							<FieldPicker
+								label={`Insert a value into ${name.toLowerCase()}`}
+								fields={variables}
+								fitType={type}
+								onPick={(picked) =>
+									onChange({
+										value: `${condition.value ?? ""}${reference(picked)}`,
+									})
+								}
+							/>
+						)}
+					</Box>
+				) : null}
+			</Box>
+		</Box>
+	);
+}
+
+/**
+ * Conditions on typed fields: the field comes from a picker, the comparisons
+ * fit its type, and the value input takes the shape the type expects.
+ */
 export function ConditionEditor({
 	label,
 	conditions,
 	variables,
+	resources = {},
 	onChange,
 	emptyLabel,
 	addLabel = "Add condition",
@@ -33,11 +267,11 @@ export function ConditionEditor({
 	label: string;
 	conditions: WorkflowCondition[];
 	variables: WorkflowVariable[];
+	resources?: WorkflowResources;
 	onChange: (conditions: WorkflowCondition[]) => void;
 	emptyLabel: string;
 	addLabel?: string;
 }) {
-	const listId = useId();
 	const update = (index: number, patch: Partial<WorkflowCondition>) =>
 		onChange(
 			conditions.map((condition, position) =>
@@ -46,114 +280,36 @@ export function ConditionEditor({
 		);
 	const remove = (index: number) =>
 		onChange(conditions.filter((_, position) => position !== index));
-	const add = () =>
+	const add = () => {
+		const first = variables[0];
 		onChange([
 			...conditions,
 			{
-				field: variables[0]?.path ?? "",
-				operator: WorkflowOperator.EQUALS,
+				field: first?.path ?? "",
+				operator: operatorsFor(first?.type)[0],
 				value: "",
 			},
 		]);
+	};
 
 	return (
 		<Stack space="sm">
-			<datalist id={listId}>
-				{variables.map((variable) => (
-					<option key={variable.path} value={variable.path}>
-						{variable.source} · {variable.label} (
-						{fieldTypeLabels[variable.type]})
-					</option>
-				))}
-			</datalist>
 			{conditions.length === 0 ? (
 				<Text size="sm" tone="muted">
 					{emptyLabel}
 				</Text>
 			) : null}
 			{conditions.map((condition, index) => (
-				<Box
+				<ConditionRow
 					// biome-ignore lint/suspicious/noArrayIndexKey: conditions have no identity of their own
 					key={index}
-					className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]"
-				>
-					<Box
-						onDragOver={(event) => {
-							if (!event.dataTransfer.types.includes(FIELD_DRAG_TYPE)) return;
-							event.preventDefault();
-							event.dataTransfer.dropEffect = "copy";
-						}}
-						onDrop={(event) => {
-							const path = event.dataTransfer.getData(FIELD_DRAG_TYPE);
-							if (!path) return;
-							event.preventDefault();
-							update(index, { field: path });
-						}}
-					>
-						<Input
-							size="sm"
-							font="mono"
-							list={listId}
-							aria-label={`${label} ${index + 1}: value to test`}
-							placeholder="event.data.organization_id"
-							value={condition.field}
-							onChange={(event) => update(index, { field: event.target.value })}
-						/>
-					</Box>
-					<NativeSelect
-						size="sm"
-						aria-label={`${label} ${index + 1}: comparison`}
-						value={condition.operator}
-						onChange={(event) =>
-							update(index, {
-								operator: event.target.value as WorkflowOperator,
-							})
-						}
-					>
-						{Object.values(WorkflowOperator).map((operator) => (
-							<NativeSelectOption key={operator} value={operator}>
-								{operatorLabels[operator]}
-							</NativeSelectOption>
-						))}
-					</NativeSelect>
-					{operatorNeedsValue(condition.operator) ? (
-						<Box className="flex min-w-0 items-center gap-1">
-							<Box className="min-w-0 flex-1">
-								<Input
-									size="sm"
-									aria-label={`${label} ${index + 1}: compared with`}
-									placeholder={
-										condition.operator === WorkflowOperator.IN
-											? "a, b, c"
-											: "value"
-									}
-									value={condition.value ?? ""}
-									onChange={(event) =>
-										update(index, { value: event.target.value })
-									}
-								/>
-							</Box>
-							<FieldPicker
-								label={`Insert a value into ${label.toLowerCase()} ${index + 1}`}
-								fields={variables}
-								onPick={(path) =>
-									update(index, {
-										value: `${condition.value ?? ""}${reference(path)}`,
-									})
-								}
-							/>
-						</Box>
-					) : (
-						<Box />
-					)}
-					<IconButton
-						variant="ghost"
-						size="sm"
-						icon={X}
-						label={`Remove ${label.toLowerCase()} ${index + 1}`}
-						onClick={() => remove(index)}
-					/>
-				</Box>
+					name={`${label} ${index + 1}`}
+					condition={condition}
+					variables={variables}
+					resources={resources}
+					onChange={(patch) => update(index, patch)}
+					onRemove={() => remove(index)}
+				/>
 			))}
 			<Box>
 				<Button variant="ghost" size="sm" icon={Plus} onClick={add}>
