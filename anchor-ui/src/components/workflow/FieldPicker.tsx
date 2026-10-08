@@ -1,4 +1,4 @@
-import type { WorkflowParamType } from "@/client";
+import type { WorkflowFieldType, WorkflowParamType } from "@/client";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Command,
@@ -15,9 +15,14 @@ import {
 } from "@nanostackorg/design-system/components/popover";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Braces } from "lucide-react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 import { fieldTypeIcons } from "./field-icons";
-import { expectedTypeLabel, fieldTypeLabels, fits } from "./fields";
+import {
+	expectedTypeLabel,
+	fieldPathPattern,
+	fieldTypeLabels,
+	fits,
+} from "./fields";
 import { type WorkflowVariable, groupBy } from "./workflow-model";
 
 function FieldOption({
@@ -47,29 +52,50 @@ function FieldOption({
 }
 
 /**
- * A searchable list of the fields a value can use. For a parameter that
- * expects one kind of value, the fields that fit come first.
+ * A searchable list of the fields a value can use. Fields that fit a
+ * parameter, or share a type, come first. With `allowPath`, a typed path
+ * that no listed field names (a metadata key) can be used as is.
  */
 export function FieldPicker({
 	fields,
 	paramType,
+	fitType,
+	allowPath = false,
 	label,
+	trigger,
 	onPick,
 }: {
 	fields: WorkflowVariable[];
 	paramType?: WorkflowParamType;
+	fitType?: WorkflowFieldType;
+	allowPath?: boolean;
 	label: string;
+	trigger?: ReactElement;
 	onPick: (path: string) => void;
 }) {
 	const [open, setOpen] = useState(false);
-	const expected = paramType ? expectedTypeLabel(paramType) : undefined;
-	const fitting =
-		paramType && expected
+	const [query, setQuery] = useState("");
+	const expected = paramType
+		? expectedTypeLabel(paramType)
+		: fitType
+			? fieldTypeLabels[fitType]
+			: undefined;
+	const fitting = paramType
+		? expected
 			? fields.filter((field) => fits(paramType, field.type))
+			: []
+		: fitType
+			? fields.filter((field) => field.type === fitType)
 			: [];
 	const others = fields.filter((field) => !fitting.includes(field));
-	const pick = (path: string) => {
-		onPick(path);
+	const path = query.trim();
+	const offerPath =
+		allowPath &&
+		fieldPathPattern.test(path) &&
+		!fields.some((field) => field.path === path);
+	const pick = (picked: string) => {
+		onPick(picked);
+		setQuery("");
 		setOpen(false);
 	};
 
@@ -77,26 +103,51 @@ export function FieldPicker({
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger
 				render={
-					<Button
-						variant="ghost"
-						size="xs"
-						icon={Braces}
-						aria-label={label}
-						disabled={fields.length === 0}
-					/>
+					trigger ?? (
+						<Button
+							variant="ghost"
+							size="xs"
+							icon={Braces}
+							aria-label={label}
+							disabled={fields.length === 0}
+						/>
+					)
 				}
 			/>
-			<PopoverContent align="end" aria-label={label}>
+			<PopoverContent align={trigger ? "start" : "end"} aria-label={label}>
 				<Command>
 					<CommandInput
-						placeholder="Search fields"
+						placeholder={allowPath ? "Search or type a path" : "Search fields"}
 						aria-label="Search fields"
+						value={query}
+						onValueChange={setQuery}
 						autoFocus
 					/>
 					<CommandList>
-						<CommandEmpty>No field matches.</CommandEmpty>
+						{offerPath ? (
+							<CommandGroup heading="Path">
+								<CommandItem value={`path ${path}`} onSelect={() => pick(path)}>
+									<Braces aria-hidden />
+									<Box
+										as="span"
+										className="min-w-0 flex-1 truncate font-mono text-xs"
+									>
+										Use {path}
+									</Box>
+								</CommandItem>
+							</CommandGroup>
+						) : null}
+						<CommandEmpty>
+							{allowPath
+								? "No field matches. Type a full path such as steps.org.metadata.plan."
+								: "No field matches."}
+						</CommandEmpty>
 						{fitting.length > 0 ? (
-							<CommandGroup heading={`Fits: ${expected}`}>
+							<CommandGroup
+								heading={
+									paramType ? `Fits: ${expected}` : `Same type: ${expected}`
+								}
+							>
 								{fitting.map((field) => (
 									<FieldOption
 										key={field.path}

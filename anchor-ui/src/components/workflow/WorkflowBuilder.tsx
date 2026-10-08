@@ -38,6 +38,7 @@ import {
 	NativeSelectOptGroup,
 	NativeSelectOption,
 } from "@nanostackorg/design-system/components/native-select";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import { Switch } from "@nanostackorg/design-system/components/switch";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Textarea } from "@nanostackorg/design-system/components/textarea";
@@ -832,6 +833,7 @@ export function WorkflowBuilder({
 					label="Event condition"
 					conditions={draft.definition.conditions}
 					variables={triggerVariables(trigger)}
+					resources={resources}
 					onChange={(conditions) =>
 						changeDraft({
 							...draft,
@@ -1022,11 +1024,13 @@ export function WorkflowBuilder({
 					as="section"
 					tabIndex={-1}
 					aria-label={inspectorTitle}
-					className="outline-none overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:max-h-[min(76vh,820px)] lg:overflow-y-auto"
+					className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs outline-none lg:h-[min(76vh,820px)]"
 				>
-					<InspectorTransition selection={selection}>
-						{inspector}
-					</InspectorTransition>
+					<ScrollArea height="fill">
+						<InspectorTransition selection={selection}>
+							{inspector}
+						</InspectorTransition>
+					</ScrollArea>
 				</Box>
 			</Box>
 		</Stack>

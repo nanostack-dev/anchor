@@ -253,8 +253,9 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		.getByRole("button", { name: "Add condition", exact: true })
 		.click();
 	await invite
-		.getByRole("combobox", { name: "Step 2 condition 1: value to test" })
-		.fill("steps.product_user.email_domain");
+		.getByRole("button", { name: /^Step 2 condition 1: value to test/ })
+		.click();
+	await page.getByRole("option", { name: /^email_domain/ }).click();
 	await invite
 		.getByRole("combobox", { name: "Step 2 condition 1: comparison" })
 		.selectOption("ends_with");
@@ -280,8 +281,10 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	});
 	await expect(saved).toBeInViewport({ ratio: 0.2 });
 	await expect(
-		saved.getByRole("combobox", { name: "Step 2 condition 1: value to test" }),
-	).toHaveValue("steps.product_user.email_domain");
+		saved.getByRole("button", {
+			name: "Step 2 condition 1: value to test: email_domain from Read product user, Text",
+		}),
+	).toBeVisible();
 	await expect(
 		saved.getByRole("combobox", { name: "Step 2 condition 1: comparison" }),
 	).toHaveValue("ends_with");

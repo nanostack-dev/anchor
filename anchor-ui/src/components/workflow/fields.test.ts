@@ -1,11 +1,18 @@
-import { WorkflowFieldType, WorkflowParamType } from "@/client";
+import {
+	WorkflowFieldType,
+	WorkflowOperator,
+	WorkflowParamType,
+} from "@/client";
 import { describe, expect, it } from "vitest";
 import {
+	comparedValueHint,
 	completeReference,
+	fieldPathPattern,
 	fits,
 	inferFieldType,
 	insertReference,
 	openReference,
+	operatorsFor,
 	parseEventData,
 	serializeEventData,
 	singleReference,
@@ -116,5 +123,46 @@ describe("event data", () => {
 				{ key: " ", value: "x", type: WorkflowFieldType.TEXT },
 			]),
 		).toEqual({ data: "", types: "" });
+	});
+});
+
+describe("typed conditions", () => {
+	it("offers an identifier equality, membership and presence only", () => {
+		expect(operatorsFor(WorkflowFieldType.ORGANIZATION)).toEqual([
+			WorkflowOperator.EQUALS,
+			WorkflowOperator.NOT_EQUALS,
+			WorkflowOperator.IN,
+			WorkflowOperator.EXISTS,
+			WorkflowOperator.NOT_EXISTS,
+		]);
+	});
+
+	it("offers a yes or no field no text comparison", () => {
+		expect(operatorsFor(WorkflowFieldType.BOOLEAN)).not.toContain(
+			WorkflowOperator.CONTAINS,
+		);
+	});
+
+	it("offers every comparison on text and on an unknown path", () => {
+		expect(operatorsFor(WorkflowFieldType.EMAIL)).toHaveLength(9);
+		expect(operatorsFor(undefined)).toHaveLength(9);
+	});
+
+	it("hints the value a comparison expects", () => {
+		expect(
+			comparedValueHint(WorkflowFieldType.EMAIL, WorkflowOperator.ENDS_WITH),
+		).toBe("@example.com");
+		expect(
+			comparedValueHint(
+				WorkflowFieldType.ORGANIZATION,
+				WorkflowOperator.EQUALS,
+			),
+		).toBe("Organization ID or a field");
+	});
+
+	it("accepts a path into a step's object output", () => {
+		expect(fieldPathPattern.test("steps.org.metadata.plan")).toBe(true);
+		expect(fieldPathPattern.test("event.data.plan")).toBe(true);
+		expect(fieldPathPattern.test("plan")).toBe(false);
 	});
 });

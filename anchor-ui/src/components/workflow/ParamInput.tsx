@@ -343,45 +343,50 @@ export function ParamInput({
 			>
 				{body}
 				{typed && suggestions.length > 0 ? (
-					// biome-ignore lint/a11y/useSemanticElements: the list of an ARIA combobox, which a native select cannot be
-					<Box
-						role="listbox"
-						id={suggestionsId}
-						aria-label={`Fields for ${param.label}`}
-						className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
-					>
-						{suggestions.map((field, index) => {
-							const Icon = fieldTypeIcons[field.type];
-							return (
-								<Box
-									key={field.path}
-									// biome-ignore lint/a11y/useSemanticElements: an option of the ARIA combobox list above
-									id={`${suggestionsId}-${index}`}
-									role="option"
-									aria-selected={index === active}
-									onMouseDown={(event) => {
-										event.preventDefault();
-										choose(field);
-									}}
-									onMouseEnter={() => setActive(index)}
-									className={cn(
-										"flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs",
-										index === active && "bg-accent text-accent-foreground",
-									)}
-								>
-									<Icon
-										className="size-3.5 shrink-0 text-muted-foreground"
-										aria-hidden
-									/>
-									<Box as="span" className="min-w-0 flex-1 truncate font-mono">
-										{field.label}
+					<Box className="absolute inset-x-0 top-full z-30 mt-1 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg">
+						<Box
+							// biome-ignore lint/a11y/useSemanticElements: the list of an ARIA combobox, which a native select cannot be
+							role="listbox"
+							id={suggestionsId}
+							aria-label={`Fields for ${param.label}`}
+							className="p-1"
+						>
+							{suggestions.map((field, index) => {
+								const Icon = fieldTypeIcons[field.type];
+								return (
+									<Box
+										key={field.path}
+										// biome-ignore lint/a11y/useSemanticElements: an option of the ARIA combobox list above
+										id={`${suggestionsId}-${index}`}
+										role="option"
+										aria-selected={index === active}
+										onMouseDown={(event) => {
+											event.preventDefault();
+											choose(field);
+										}}
+										onMouseEnter={() => setActive(index)}
+										className={cn(
+											"flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs",
+											index === active && "bg-accent text-accent-foreground",
+										)}
+									>
+										<Icon
+											className="size-3.5 shrink-0 text-muted-foreground"
+											aria-hidden
+										/>
+										<Box
+											as="span"
+											className="min-w-0 flex-1 truncate font-mono"
+										>
+											{field.label}
+										</Box>
+										<Box as="span" className="shrink-0 text-muted-foreground">
+											{field.source} · {fieldTypeLabels[field.type]}
+										</Box>
 									</Box>
-									<Box as="span" className="shrink-0 text-muted-foreground">
-										{field.source} · {fieldTypeLabels[field.type]}
-									</Box>
-								</Box>
-							);
-						})}
+								);
+							})}
+						</Box>
 					</Box>
 				) : null}
 			</Box>
