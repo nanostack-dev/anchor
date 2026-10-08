@@ -7,6 +7,7 @@ import {
 	type SmtpIntegrationConfig,
 	type UpdateIntegrationInstanceData,
 	zSmtpIntegrationConfig,
+	zSmtpIntegrationPublicConfig,
 } from "@/client";
 import {
 	createIntegrationInstanceMutation,
@@ -171,7 +172,10 @@ export default function SmtpIntegrationPage() {
 	// Populate form on first load from server state. Password is never returned.
 	useEffect(() => {
 		if (smtpInstance && !enabledInitialized.current) {
-			const pc = smtpInstance.public_config;
+			const parsedConfig = zSmtpIntegrationPublicConfig.safeParse(
+				smtpInstance.public_config,
+			);
+			const pc = parsedConfig.success ? parsedConfig.data : undefined;
 			setForm((prev) => ({
 				...prev,
 				enabled: smtpInstance.is_enabled,
