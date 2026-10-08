@@ -1731,8 +1731,40 @@ export const zWorkflowParamType = z.enum([
     'license_template',
     'email_template',
     'url',
-    'custom_event'
+    'custom_event',
+    'field_types'
 ]);
+
+/**
+ * What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+ */
+export const zWorkflowFieldType = z.enum([
+    'text',
+    'email',
+    'number',
+    'boolean',
+    'timestamp',
+    'url',
+    'json',
+    'organization',
+    'workspace',
+    'product_user',
+    'invitation',
+    'api_key',
+    'role',
+    'permission',
+    'license',
+    'license_template'
+]);
+
+/**
+ * One value an event carries under `event.data`.
+ */
+export const zWorkflowEventFieldResponse = z.object({
+    name: z.string(),
+    type: zWorkflowFieldType,
+    description: z.string()
+});
 
 export const zWorkflowCondition = z.object({
     field: z.string(),
@@ -1827,6 +1859,7 @@ export const zWorkflowTriggerResponse = z.object({
     description: z.string(),
     group_type: zProductEventGroupType,
     group_name: z.string(),
+    fields: z.array(zWorkflowEventFieldResponse),
     data_fields: z.array(z.string())
 });
 
@@ -1837,11 +1870,13 @@ export const zWorkflowActionParamResponse = z.object({
     type: zWorkflowParamType,
     required: z.boolean(),
     options: z.optional(z.array(z.string())),
-    literal: z.boolean()
+    literal: z.boolean(),
+    types: z.optional(z.string())
 });
 
 export const zWorkflowActionOutputResponse = z.object({
     name: z.string(),
+    type: zWorkflowFieldType,
     description: z.string()
 });
 

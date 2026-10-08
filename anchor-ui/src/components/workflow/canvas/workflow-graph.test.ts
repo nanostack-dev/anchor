@@ -1,6 +1,7 @@
 import {
 	ProductEventGroupType,
 	type WorkflowCatalogResponse,
+	WorkflowFieldType,
 	WorkflowParamType,
 	WorkflowStepStatus,
 } from "@/client";
@@ -17,6 +18,13 @@ const catalog: WorkflowCatalogResponse = {
 			description: "",
 			group_type: ProductEventGroupType.INTERNAL,
 			group_name: "Organizations",
+			fields: [
+				{
+					name: "organization_id",
+					type: WorkflowFieldType.ORGANIZATION,
+					description: "",
+				},
+			],
 			data_fields: ["organization_id"],
 		},
 	],

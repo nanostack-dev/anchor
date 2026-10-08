@@ -1,5 +1,6 @@
 import {
 	type WorkflowCatalogResponse,
+	WorkflowFieldType,
 	WorkflowOperator,
 	WorkflowParamType,
 } from "@/client";
@@ -29,6 +30,13 @@ const catalog: WorkflowCatalogResponse = {
 			description: "",
 			group_name: "Organizations",
 			group_type: "internal" as never,
+			fields: [
+				{
+					name: "organization_id",
+					type: WorkflowFieldType.ORGANIZATION,
+					description: "",
+				},
+			],
 			data_fields: ["organization_id"],
 		},
 	],
@@ -56,7 +64,13 @@ const catalog: WorkflowCatalogResponse = {
 					literal: false,
 				},
 			],
-			outputs: [{ name: "workspace_id", description: "" }],
+			outputs: [
+				{
+					name: "workspace_id",
+					type: WorkflowFieldType.WORKSPACE,
+					description: "",
+				},
+			],
 		},
 	],
 };

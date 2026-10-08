@@ -227,8 +227,8 @@ func httpRequestAction(caller *HTTPCaller) action {
 				},
 			},
 			Outputs: []OutputSpec{
-				{Name: keyStatus, Description: "HTTP status of the answer."},
-				{Name: keyBody, Description: "JSON answer; read a field with body.<key>."},
+				{Name: keyStatus, Type: FieldNumber, Description: "HTTP status of the answer."},
+				{Name: keyBody, Type: FieldJSON, Description: "JSON answer; read a field with body.<key>."},
 			},
 		},
 		run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
