@@ -11,20 +11,22 @@ import {
 	CircleX,
 	Filter,
 	FlaskConical,
+	GripVertical,
 	Plus,
 	Zap,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { AddStepMenu } from "../AddStepMenu";
-import { actionGroupIcon } from "../action-icons";
-import { useWorkflowCanvas } from "./canvas-context";
-import { easeOut } from "./motion";
+import { actionGroupIcon, actionGroupTone } from "../action-icons";
+import { carriesAction, useWorkflowCanvas } from "./canvas-context";
+import { EASE_OUT_CLASS, easeOut } from "./motion";
 import {
 	type AddNodeData,
 	COLUMN_GAP,
 	type ConditionsNodeData,
 	NODE_WIDTH,
+	STEP_DRAG_HANDLE,
 	type StepNodeData,
 	type TriggerNodeData,
 	type WorkflowRefNodeData,
@@ -147,18 +149,8 @@ const statusBadge: Record<
 	},
 };
 
-const groupTone: Record<string, string> = {
-	Organizations: "bg-primary/10 text-primary",
-	Workspaces: "bg-info/12 text-info-on-tint",
-	Members: "bg-success/12 text-success-on-tint",
-	Users: "bg-info/12 text-info-on-tint",
-	Licensing: "bg-warning/15 text-warning-on-tint",
-	Email: "bg-success/12 text-success-on-tint",
-	Custom: "bg-foreground/[0.06] text-foreground",
-};
-
 const cardBase =
-	"nodrag nopan group relative flex w-full flex-col gap-2 rounded-xl border bg-card px-3.5 py-3 text-left shadow-xs outline-none " +
+	"nodrag nopan group relative flex w-full cursor-pointer flex-col gap-2 rounded-xl border bg-card px-3.5 py-3 text-left shadow-xs outline-none " +
 	"transition-[transform,box-shadow,border-color] duration-150 ease-out active:scale-[0.98] " +
 	"hover:border-border-strong hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:active:scale-100";
 
@@ -307,12 +299,48 @@ function StatusBadge({ status }: { status: WorkflowStepStatus }) {
 	);
 }
 
-function InsertBefore({ index }: { index: number }) {
+/**
+ * While a palette step is dragged, an insert button doubles as the drop slot
+ * for its position.
+ */
+function useDropSlot(index: number) {
+	const { draggingAction, dropAction } = useWorkflowCanvas();
+	const [over, setOver] = useState(false);
+	return {
+		active: draggingAction,
+		over: draggingAction && over,
+		handlers: {
+			onDragOver: (event: React.DragEvent) => {
+				if (!carriesAction(event)) return;
+				event.preventDefault();
+				event.dataTransfer.dropEffect = "copy";
+				setOver(true);
+			},
+			onDragLeave: (event: React.DragEvent) => {
+				if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+					setOver(false);
+			},
+			onDrop: (event: React.DragEvent) => {
+				if (!carriesAction(event)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				setOver(false);
+				dropAction(index, event);
+			},
+		},
+	};
+}
+
+function InsertBefore({ index, hidden }: { index: number; hidden: boolean }) {
 	const { actions, insertStep } = useWorkflowCanvas();
+	const slot = useDropSlot(index);
 	return (
 		<Box
 			as="span"
-			className="absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+			className={cn(
+				"absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150",
+				hidden && "pointer-events-none opacity-0",
+			)}
 			style={{ top: -COLUMN_GAP / 2 }}
 		>
 			<AddStepMenu
@@ -322,7 +350,17 @@ function InsertBefore({ index }: { index: number }) {
 					<button
 						type="button"
 						aria-label={`Insert a step before step ${index + 1}`}
-						className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs outline-none transition-[transform,color,border-color] duration-150 ease-out hover:border-primary/60 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.94] motion-reduce:active:scale-100"
+						{...slot.handlers}
+						className={cn(
+							"nodrag nopan flex size-6 items-center justify-center rounded-full border bg-card shadow-xs outline-none",
+							"transition-[scale,color,border-color,background-color,box-shadow] duration-150 hover:border-primary/60 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.94] motion-reduce:active:scale-100",
+							EASE_OUT_CLASS,
+							slot.active
+								? "scale-[1.34] border-primary/60 bg-primary/10 text-primary motion-reduce:scale-100"
+								: "border-border text-muted-foreground",
+							slot.over &&
+								"border-primary bg-primary text-primary-foreground ring-4 ring-primary/25 hover:text-primary-foreground",
+						)}
 					>
 						<Plus className="size-3.5" aria-hidden />
 					</button>
@@ -349,80 +387,132 @@ function stepDescription(data: StepNodeData) {
 		.join(". ");
 }
 
-export function StepNode({ id, data }: NodeProps & { data: StepNodeData }) {
+function DragHandle({ data }: { data: StepNodeData }) {
+	const { moveStep, reveal } = useWorkflowCanvas();
+	return (
+		<button
+			type="button"
+			data-workflow-handle={data.step.id}
+			aria-label={`Reorder step ${data.index + 1}`}
+			aria-keyshortcuts="ArrowUp ArrowDown"
+			onKeyDown={(event) => {
+				const offset =
+					event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+				if (offset === 0) return;
+				event.preventDefault();
+				const handle = event.currentTarget;
+				moveStep(data.index, data.index + offset);
+				requestAnimationFrame(() =>
+					requestAnimationFrame(() => {
+						if (document.activeElement !== handle)
+							handle.focus({ preventScroll: true });
+						reveal(handle);
+					}),
+				);
+			}}
+			className={cn(
+				STEP_DRAG_HANDLE,
+				"nopan absolute inset-y-2 left-1 z-10 flex w-6 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none",
+				"transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 active:cursor-grabbing",
+			)}
+		>
+			<GripVertical className="size-4" aria-hidden />
+		</button>
+	);
+}
+
+export function StepNode({
+	id,
+	data,
+	dragging,
+}: NodeProps & { data: StepNodeData }) {
 	const { select } = useWorkflowCanvas();
+	const reduceMotion = useReducedMotion();
 	const descriptionId = useId();
 	const Icon = actionGroupIcon(data.group);
 	const invalid = data.problemCount > 0;
 	return (
 		<Entrance order={data.order}>
 			<Handles top bottom right="source" />
-			<InsertBefore index={data.index} />
-			<button
-				type="button"
-				data-workflow-node={id}
-				aria-label={`Step ${data.index + 1}: ${data.title}`}
-				aria-describedby={descriptionId}
-				aria-pressed={data.selected}
-				onClick={() => select({ kind: "step", stepId: data.step.id })}
-				className={cn(
-					cardBase,
-					data.status ? statusTone[data.status] : "border-border",
-					data.selected && "border-primary shadow-md ring-2 ring-primary/25",
-					invalid && "border-destructive ring-2 ring-destructive/20",
-				)}
+			<InsertBefore index={data.index} hidden={dragging} />
+			<motion.div
+				className="relative"
+				animate={
+					reduceMotion
+						? { opacity: dragging ? 0.8 : 1 }
+						: { scale: dragging ? 1.02 : 1 }
+				}
+				transition={{ duration: 0.15, ease: easeOut }}
 			>
-				<Box as="span" className="flex items-center gap-3">
-					<Tile
-						icon={Icon}
-						className={groupTone[data.group] ?? "bg-muted text-foreground"}
-					/>
-					<Box as="span" className="min-w-0 flex-1">
-						<Box as="span" className="flex items-center justify-between gap-2">
-							<Eyebrow>Step {data.index + 1}</Eyebrow>
-							{invalid ? (
-								<Box
-									as="span"
-									className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive-on-tint"
-								>
-									<CircleAlert className="size-3" aria-hidden />
-									{data.problemCount}
-								</Box>
-							) : data.status ? (
-								<StatusBadge status={data.status} />
+				<button
+					type="button"
+					data-workflow-node={id}
+					aria-label={`Step ${data.index + 1}: ${data.title}`}
+					aria-describedby={descriptionId}
+					aria-pressed={data.selected}
+					onClick={() => select({ kind: "step", stepId: data.step.id })}
+					className={cn(
+						cardBase,
+						"pl-9",
+						data.status ? statusTone[data.status] : "border-border",
+						data.selected && "border-primary shadow-md ring-2 ring-primary/25",
+						invalid && "border-destructive ring-2 ring-destructive/20",
+						dragging && "shadow-lg",
+					)}
+				>
+					<Box as="span" className="flex items-center gap-3">
+						<Tile icon={Icon} className={actionGroupTone(data.group)} />
+						<Box as="span" className="min-w-0 flex-1">
+							<Box
+								as="span"
+								className="flex items-center justify-between gap-2"
+							>
+								<Eyebrow>Step {data.index + 1}</Eyebrow>
+								{invalid ? (
+									<Box
+										as="span"
+										className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive-on-tint"
+									>
+										<CircleAlert className="size-3" aria-hidden />
+										{data.problemCount}
+									</Box>
+								) : data.status ? (
+									<StatusBadge status={data.status} />
+								) : null}
+							</Box>
+							<Box as="span" className="block truncate text-sm font-semibold">
+								{data.title}
+							</Box>
+						</Box>
+					</Box>
+					<Box
+						as="span"
+						className="block truncate font-mono text-xs text-muted-foreground"
+					>
+						{data.summary}
+					</Box>
+					{data.conditionCount > 0 ||
+					!data.writes ||
+					data.step.continue_on_error ? (
+						<Box as="span" className="flex flex-wrap gap-1">
+							{!data.writes ? <Chip>Read only</Chip> : null}
+							{data.conditionCount > 0 ? (
+								<Chip>
+									{data.conditionCount} condition
+									{data.conditionCount > 1 ? "s" : ""}
+								</Chip>
+							) : null}
+							{data.step.continue_on_error ? (
+								<Chip>Keeps going on failure</Chip>
 							) : null}
 						</Box>
-						<Box as="span" className="block truncate text-sm font-semibold">
-							{data.title}
-						</Box>
+					) : null}
+					<Box as="span" id={descriptionId} className="sr-only">
+						{stepDescription(data)}
 					</Box>
-				</Box>
-				<Box
-					as="span"
-					className="block truncate font-mono text-xs text-muted-foreground"
-				>
-					{data.summary}
-				</Box>
-				{data.conditionCount > 0 ||
-				!data.writes ||
-				data.step.continue_on_error ? (
-					<Box as="span" className="flex flex-wrap gap-1">
-						{!data.writes ? <Chip>Read only</Chip> : null}
-						{data.conditionCount > 0 ? (
-							<Chip>
-								{data.conditionCount} condition
-								{data.conditionCount > 1 ? "s" : ""}
-							</Chip>
-						) : null}
-						{data.step.continue_on_error ? (
-							<Chip>Keeps going on failure</Chip>
-						) : null}
-					</Box>
-				) : null}
-				<Box as="span" id={descriptionId} className="sr-only">
-					{stepDescription(data)}
-				</Box>
-			</button>
+				</button>
+				<DragHandle data={data} />
+			</motion.div>
 		</Entrance>
 	);
 }
@@ -440,6 +530,7 @@ function Chip({ children }: { children: ReactNode }) {
 
 export function AddNode({ data }: NodeProps & { data: AddNodeData }) {
 	const { actions, insertStep } = useWorkflowCanvas();
+	const slot = useDropSlot(data.index);
 	return (
 		<Entrance order={data.order}>
 			<Handles top />
@@ -449,7 +540,17 @@ export function AddNode({ data }: NodeProps & { data: AddNodeData }) {
 				trigger={
 					<button
 						type="button"
-						className="nodrag nopan flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong bg-card/60 px-3 py-3 text-sm font-medium text-muted-foreground outline-none transition-[transform,color,border-color,background-color] duration-150 ease-out hover:border-primary/50 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.98] motion-reduce:active:scale-100"
+						{...slot.handlers}
+						className={cn(
+							"nodrag nopan flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-3 text-sm font-medium outline-none",
+							"transition-[scale,color,border-color,background-color,box-shadow] duration-150 hover:border-primary/50 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.98] motion-reduce:active:scale-100",
+							EASE_OUT_CLASS,
+							slot.active
+								? "scale-[1.02] border-primary/60 bg-primary/5 text-primary motion-reduce:scale-100"
+								: "border-border-strong bg-card/60 text-muted-foreground",
+							slot.over &&
+								"border-primary bg-primary/10 ring-4 ring-primary/20",
+						)}
 					>
 						<Plus className="size-4" aria-hidden />
 						Add a step

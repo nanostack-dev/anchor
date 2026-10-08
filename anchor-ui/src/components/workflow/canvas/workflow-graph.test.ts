@@ -7,7 +7,13 @@ import {
 } from "@/client";
 import { describe, expect, it } from "vitest";
 import { emptyDraft } from "../workflow-model";
-import { buildWorkflowGraph, stackColumn, stepNodeId } from "./workflow-graph";
+import {
+	buildWorkflowGraph,
+	slotIndexAt,
+	slotLineY,
+	stackColumn,
+	stepNodeId,
+} from "./workflow-graph";
 
 const catalog: WorkflowCatalogResponse = {
 	operators: [],
@@ -207,6 +213,78 @@ describe("workflow graph", () => {
 			[stepNodeId("emit")]: 198,
 			"ref-out:emit:wf_follow": 198,
 			add: 362,
+		});
+	});
+
+	describe("drop slots", () => {
+		const draft = emptyDraft("organization.created");
+		draft.definition.steps = ["first", "second", "third"].map((id) => ({
+			id,
+			action: "workflow.emit",
+			params: { event: id },
+		}));
+		const column = stackColumn(
+			buildWorkflowGraph({ ...base, draft, others: [] }).nodes.map((node) => ({
+				...node,
+				measured: { width: 288, height: 56 },
+			})),
+		);
+		const top = (stepId: string) =>
+			column.find((node) => node.id === stepNodeId(stepId))?.position.y ?? 0;
+
+		it("lays the steps out 100 apart below the trigger and conditions", () => {
+			expect([top("first"), top("second"), top("third")]).toEqual([
+				200, 300, 400,
+			]);
+		});
+
+		it("drops above the first step before it", () => {
+			expect(slotIndexAt(column, 0)).toBe(0);
+			expect(slotIndexAt(column, top("first") + 27)).toBe(0);
+		});
+
+		it("drops between two steps before the lower one", () => {
+			expect(slotIndexAt(column, top("first") + 29)).toBe(1);
+			expect(slotIndexAt(column, top("second") - 22)).toBe(1);
+			expect(slotIndexAt(column, top("third") + 10)).toBe(2);
+		});
+
+		it("drops below the last step at the end", () => {
+			expect(slotIndexAt(column, top("third") + 29)).toBe(3);
+			expect(slotIndexAt(column, 5_000)).toBe(3);
+		});
+
+		it("ignores the dragged step, so the index is where it moves to", () => {
+			const first = stepNodeId("first");
+			expect(slotIndexAt(column, top("second") + 40, first)).toBe(1);
+			expect(slotIndexAt(column, top("third") + 40, first)).toBe(2);
+			expect(slotIndexAt(column, top("first") + 10, first)).toBe(0);
+			expect(slotIndexAt(column, top("first") + 10, stepNodeId("third"))).toBe(
+				0,
+			);
+		});
+
+		it("draws the drop line in the middle of the gap the step fills", () => {
+			expect(slotLineY(column, 0)).toBe(top("first") - 22);
+			expect(slotLineY(column, 3)).toBe(top("third") + 56 + 22);
+			expect(slotLineY(column, 2, stepNodeId("third"))).toBe(
+				top("second") + 56 + 22,
+			);
+		});
+
+		it("draws the drop line under the conditions when there is no step", () => {
+			const empty = stackColumn(
+				buildWorkflowGraph({
+					...base,
+					draft: emptyDraft("organization.created"),
+					others: [],
+				}).nodes.map((node) => ({
+					...node,
+					measured: { width: 288, height: 56 },
+				})),
+			);
+			expect(slotIndexAt(empty, 1_000)).toBe(0);
+			expect(slotLineY(empty, 0)).toBe(100 + 56 + 22);
 		});
 	});
 });

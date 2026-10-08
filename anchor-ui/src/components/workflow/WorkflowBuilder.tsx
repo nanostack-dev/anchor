@@ -423,15 +423,25 @@ export function WorkflowBuilder({
 		inspect({ kind: "step", stepId: step.id });
 	};
 
-	const insertStepRef = useRef(insertStep);
-	insertStepRef.current = insertStep;
+	const moveStep = (from: number, to: number) => {
+		const steps = draft.definition.steps;
+		const moved = steps[from];
+		if (!moved) return;
+		setSteps(moveItem(steps, from, to));
+		if (!isMobile) setSelection({ kind: "step", stepId: moved.id });
+	};
+
+	const latestStepEdits = useRef({ insertStep, moveStep });
+	latestStepEdits.current = { insertStep, moveStep };
 	const canvasActions = useMemo(
 		() => ({
 			actions: catalog.actions,
 			select: (next: Selection) =>
 				next.kind === "workflow" ? setSelection(next) : inspect(next),
 			insertStep: (index: number, action: WorkflowActionResponse) =>
-				insertStepRef.current(index, action),
+				latestStepEdits.current.insertStep(index, action),
+			moveStep: (from: number, to: number) =>
+				latestStepEdits.current.moveStep(from, to),
 			openWorkflow: onOpenWorkflow,
 		}),
 		[catalog.actions, inspect, onOpenWorkflow],
