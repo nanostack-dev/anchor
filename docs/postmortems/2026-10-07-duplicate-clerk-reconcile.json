@@ -192,8 +192,8 @@
       "due": "2026-10-10",
       "status": "open",
       "ticket": {
-        "label": "anchor fix PR",
-        "url": "https://github.com/nanostack-dev/anchor/pulls"
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
       },
       "fixes": [
         "R1"
@@ -207,8 +207,8 @@
       "due": "2026-10-10",
       "status": "open",
       "ticket": {
-        "label": "anchor fix PR",
-        "url": "https://github.com/nanostack-dev/anchor/pulls"
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
       },
       "fixes": [
         "R2"
