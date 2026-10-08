@@ -35,6 +35,8 @@ core:
     global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
   integration:
     reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
+  workflow:
+    allow_private_targets: true
   environment: "${ENVIRONMENT:test}"
 
 

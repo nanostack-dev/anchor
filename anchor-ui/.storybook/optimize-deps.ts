@@ -31,6 +31,7 @@
  */
 export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/blocks/app-shell",
+	"@nanostackorg/design-system/blocks/confirm-dialog",
 	"@nanostackorg/design-system/blocks/copy-button",
 	"@nanostackorg/design-system/blocks/empty-state",
 	"@nanostackorg/design-system/blocks/page-header",
@@ -45,6 +46,7 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/components/card",
 	"@nanostackorg/design-system/components/chart",
 	"@nanostackorg/design-system/components/checkbox",
+	"@nanostackorg/design-system/components/collapsible",
 	"@nanostackorg/design-system/components/command",
 	"@nanostackorg/design-system/components/dialog",
 	"@nanostackorg/design-system/components/dropdown-menu",
@@ -54,6 +56,7 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/components/input",
 	"@nanostackorg/design-system/components/input-group",
 	"@nanostackorg/design-system/components/label",
+	"@nanostackorg/design-system/components/native-select",
 	"@nanostackorg/design-system/components/popover",
 	"@nanostackorg/design-system/components/progress",
 	"@nanostackorg/design-system/components/scroll-area",
@@ -94,6 +97,9 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@tanstack/react-router",
 	"@tanstack/react-table",
 	"@uidotdev/usehooks",
+
+	// Workflow canvas
+	"@xyflow/react",
 
 	// UI primitives and utilities reached from owned components
 	"clsx",

@@ -1,0 +1,31 @@
+/*
+ * Kept as CSS for two reasons: an SVG stroke-dashoffset loop has no Tailwind
+ * utility, and React Flow renders its attribution link with no class hook and
+ * a #999 colour that fails contrast. Everything else is a utility class.
+ */
+@keyframes workflow-edge-flow {
+	to {
+		stroke-dashoffset: -16;
+	}
+}
+
+.workflow-edge-flowing {
+	stroke-dasharray: 6 10;
+	animation: workflow-edge-flow 640ms linear infinite;
+}
+
+.workflow-edge-loop {
+	stroke-dasharray: 4 6;
+	animation: workflow-edge-flow 1400ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.workflow-edge-flowing,
+	.workflow-edge-loop {
+		animation: none;
+	}
+}
+
+.react-flow__attribution a {
+	color: var(--color-muted-foreground);
+}

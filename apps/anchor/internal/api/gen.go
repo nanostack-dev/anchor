@@ -26,8 +26,10 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/domain/workflow"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
+	"anchor/internal/workflow/engine"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -1867,7 +1869,7 @@ type ProductEventDefinitionResponse struct {
 // ProductEventDeliveryStatus Result of the most recent HTTP delivery attempt to this endpoint.
 type ProductEventDeliveryStatus string
 
-// ProductEventGroupType defines model for ProductEventGroupType.
+// ProductEventGroupType `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
 type ProductEventGroupType = events.GroupType
 
 // ProductEventsCatalogResponse defines model for ProductEventsCatalogResponse.
@@ -2758,6 +2760,277 @@ type UserResponse struct {
 	Role  string `json:"role"`
 }
 
+// WorkflowActionOutputResponse defines model for WorkflowActionOutputResponse.
+type WorkflowActionOutputResponse struct {
+	Description string `json:"description"`
+	Name        string `json:"name"`
+
+	// Type What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+	Type WorkflowFieldType `json:"type"`
+}
+
+// WorkflowActionParamResponse defines model for WorkflowActionParamResponse.
+type WorkflowActionParamResponse struct {
+	Description *string `json:"description,omitempty"`
+	Label       string  `json:"label"`
+
+	// Literal The value must be written out and cannot hold `{{ }}` references, because Anchor reads it when the workflow is saved.
+	Literal bool   `json:"literal"`
+	Name    string `json:"name"`
+
+	// Options The only values the parameter accepts. Absent means any value.
+	Options  *[]string `json:"options,omitempty"`
+	Required bool      `json:"required"`
+
+	// Type What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+	Type WorkflowParamType `json:"type"`
+
+	// Types For a `field_types` parameter: the JSON parameter whose keys it types, such as `data`.
+	//
+	// Examples: data
+	Types *string `json:"types,omitempty"`
+}
+
+// WorkflowActionResponse defines model for WorkflowActionResponse.
+type WorkflowActionResponse struct {
+	Description string `json:"description"`
+
+	// Emits Every event type the action can emit. `workflow.emit` lists none here: its event is the one its step names.
+	Emits   []string                       `json:"emits"`
+	Group   string                         `json:"group"`
+	Name    string                         `json:"name"`
+	Outputs []WorkflowActionOutputResponse `json:"outputs"`
+	Params  []WorkflowActionParamResponse  `json:"params"`
+
+	// Type Examples: workspace.create
+	Type string `json:"type"`
+
+	// Writes The action changes a resource or calls out. A dry run only resolves it.
+	Writes bool `json:"writes"`
+}
+
+// WorkflowCatalogResponse defines model for WorkflowCatalogResponse.
+type WorkflowCatalogResponse struct {
+	Actions   []WorkflowActionResponse  `json:"actions"`
+	Operators []WorkflowOperator        `json:"operators"`
+	Triggers  []WorkflowTriggerResponse `json:"triggers"`
+}
+
+// WorkflowCondition defines model for WorkflowCondition.
+type WorkflowCondition struct {
+	// Field Path of the value to test: `event.data.<field>`, `steps.<step id>.<output>` (deeper for objects such as `steps.org.metadata.plan`), `event.type` or `workflow.id`.
+	//
+	// Examples: steps.user.email_domain
+	Field string `json:"field"`
+
+	// Operator How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+	Operator WorkflowOperator `json:"operator"`
+
+	// Value Value to compare with. May hold `{{ path }}` references.
+	//
+	// Examples: acme.com
+	Value *string `json:"value,omitempty"`
+}
+
+// WorkflowDefinition defines model for WorkflowDefinition.
+type WorkflowDefinition struct {
+	// Conditions Conditions on the trigger event that must all hold for the workflow to run. They can read only `event.*` and `workflow.*`.
+	Conditions []WorkflowCondition `json:"conditions"`
+
+	// Steps Steps run one after the other, in order.
+	Steps []WorkflowStep `json:"steps"`
+}
+
+// WorkflowDryRunRequest defines model for WorkflowDryRunRequest.
+type WorkflowDryRunRequest struct {
+	EventData map[string]string    `json:"event_data"`
+	Workflow  WorkflowWriteRequest `json:"workflow"`
+}
+
+// WorkflowEventFieldResponse One value an event carries under `event.data`.
+type WorkflowEventFieldResponse struct {
+	Description string `json:"description"`
+
+	// Name Examples: organization_id
+	Name string `json:"name"`
+
+	// Type What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+	Type WorkflowFieldType `json:"type"`
+}
+
+// WorkflowFieldType What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+type WorkflowFieldType = engine.FieldType
+
+// WorkflowInclude A related resource a workflow read can ask for.
+type WorkflowInclude = workflow.Include
+
+// WorkflowListResponse defines model for WorkflowListResponse.
+type WorkflowListResponse struct {
+	Count int                `json:"count"`
+	Items []WorkflowResponse `json:"items"`
+}
+
+// WorkflowOperator How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+type WorkflowOperator = workflow.Operator
+
+// WorkflowParamType What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+type WorkflowParamType = engine.ParamType
+
+// WorkflowResponse A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
+type WorkflowResponse struct {
+	CreatedAt   time.Time          `json:"created_at"`
+	Definition  WorkflowDefinition `json:"definition"`
+	Description *string            `json:"description,omitempty"`
+
+	// Emits Every event type the steps can emit, product or custom. A workflow triggered by one of them runs after this one.
+	Emits   []string `json:"emits"`
+	Enabled bool     `json:"enabled"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: wf_2iABC...
+	Id Ksuid `json:"id"`
+
+	// LastRun The latest run. Present only on a read passing `include=last_run`, and then absent when the workflow never ran.
+	LastRun          *WorkflowRunResponse `json:"last_run,omitempty"`
+	Name             string               `json:"name"`
+	TriggerEventType string               `json:"trigger_event_type"`
+	UpdatedAt        time.Time            `json:"updated_at"`
+}
+
+// WorkflowRunListResponse defines model for WorkflowRunListResponse.
+type WorkflowRunListResponse struct {
+	Count int                   `json:"count"`
+	Items []WorkflowRunResponse `json:"items"`
+}
+
+// WorkflowRunRequest defines model for WorkflowRunRequest.
+type WorkflowRunRequest struct {
+	// EventData The `data` of the event to run against, as the trigger event would carry it.
+	//
+	// Examples: {"product_user_id":"pusr_2iABC..."}
+	EventData map[string]string `json:"event_data"`
+}
+
+// WorkflowRunResponse defines model for WorkflowRunResponse.
+type WorkflowRunResponse struct {
+	Error     *string           `json:"error,omitempty"`
+	EventData map[string]string `json:"event_data"`
+
+	// EventId The product event the run reacted to, or a generated id for a manual or dry run.
+	EventId    string     `json:"event_id"`
+	EventType  string     `json:"event_type"`
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: wfrun_2iABC...
+	Id        Ksuid     `json:"id"`
+	StartedAt time.Time `json:"started_at"`
+
+	// Status `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+	Status WorkflowRunStatus            `json:"status"`
+	Steps  []WorkflowStepResultResponse `json:"steps"`
+
+	// Trigger `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+	Trigger WorkflowRunTrigger `json:"trigger"`
+
+	// WorkflowId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	WorkflowId   Ksuid   `json:"workflow_id"`
+	WorkflowName *string `json:"workflow_name,omitempty"`
+}
+
+// WorkflowRunStatus `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+type WorkflowRunStatus = workflow.RunStatus
+
+// WorkflowRunTrigger `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+type WorkflowRunTrigger = workflow.RunTrigger
+
+// WorkflowStep defines model for WorkflowStep.
+type WorkflowStep struct {
+	// Action An action type from the workflow catalog.
+	//
+	// Examples: member.add
+	Action string `json:"action"`
+
+	// ContinueOnError Keep running the next steps when this one fails. The run still reads `failed`.
+	ContinueOnError *bool `json:"continue_on_error,omitempty"`
+
+	// Id Identifier unique in the workflow. Later steps read this step's output as `steps.<id>.<output>`.
+	//
+	// Examples: user
+	Id string `json:"id"`
+
+	// Name Display name of the step.
+	Name *string `json:"name,omitempty"`
+
+	// Params Parameter values by name. Each may hold `{{ path }}` references to the trigger event or an earlier step's output.
+	//
+	// Examples: {"name":"General","organization_id":"{{event.data.organization_id}}"}
+	Params map[string]string `json:"params"`
+
+	// When Conditions that must all hold for this step to run. Absent means always.
+	When *[]WorkflowCondition `json:"when,omitempty"`
+}
+
+// WorkflowStepResultResponse defines model for WorkflowStepResultResponse.
+type WorkflowStepResultResponse struct {
+	Action string  `json:"action"`
+	Error  *string `json:"error,omitempty"`
+
+	// Output What the step produced, readable by later steps as `steps.<id>.*`.
+	Output *map[string]interface{} `json:"output,omitempty"`
+
+	// Params Parameters after their references were resolved.
+	Params *map[string]interface{} `json:"params,omitempty"`
+
+	// Status `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+	Status WorkflowStepStatus `json:"status"`
+	StepId string             `json:"step_id"`
+}
+
+// WorkflowStepStatus `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+type WorkflowStepStatus = workflow.StepStatus
+
+// WorkflowTriggerResponse defines model for WorkflowTriggerResponse.
+type WorkflowTriggerResponse struct {
+	// DataFields Names of `fields`, kept for clients that read names only.
+	//
+	// Examples: ["organization_id"]
+	DataFields  []string `json:"data_fields"`
+	Description string   `json:"description"`
+
+	// Fields Typed keys the event carries under `event.data`. A custom event's fields come from the steps that send it: the keys of their `data` parameter, typed by their `data_types` parameter (text when left out).
+	Fields    []WorkflowEventFieldResponse `json:"fields"`
+	GroupName string                       `json:"group_name"`
+
+	// GroupType `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+	GroupType ProductEventGroupType `json:"group_type"`
+	Name      string                `json:"name"`
+
+	// Type Examples: organization.created
+	Type string `json:"type"`
+}
+
+// WorkflowWriteRequest defines model for WorkflowWriteRequest.
+type WorkflowWriteRequest struct {
+	Definition  WorkflowDefinition `json:"definition"`
+	Description *string            `json:"description,omitempty"`
+
+	// Enabled A disabled workflow keeps its definition and starts no run on events.
+	Enabled bool `json:"enabled"`
+
+	// Name Examples: Auto-join company domain
+	Name string `json:"name"`
+
+	// TriggerEventType The event that starts a run: a product event from the workflow catalog, or a custom event (`custom.` followed by lowercase words joined by dots) that another workflow emits.
+	//
+	// Examples: product_user.created
+	TriggerEventType string `json:"trigger_event_type"`
+}
+
 // WorkspaceFilter defines model for WorkspaceFilter.
 type WorkspaceFilter struct {
 	// Ids Filter by specific workspace IDs.
@@ -2846,6 +3119,14 @@ type ProviderTypeParameter = IntegrationProviderType
 
 // ResourcePermissionNameParameter Examples: file:read
 type ResourcePermissionNameParameter = string
+
+// WorkflowIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+type WorkflowIdParameter = Ksuid
+
+// WorkflowIncludeParameter defines model for WorkflowIncludeParameter.
+type WorkflowIncludeParameter = []WorkflowInclude
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
@@ -2972,6 +3253,22 @@ type ListUserOrganizationsParams struct {
 type GetUserOrganizationParams struct {
 	// Include Comma-separated list of additional fields to include.
 	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// ListProductWorkflowRunsParams defines parameters for ListProductWorkflowRuns.
+type ListProductWorkflowRunsParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListWorkflowsParams defines parameters for ListWorkflows.
+type ListWorkflowsParams struct {
+	// Include Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+	Include *WorkflowIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// ListWorkflowRunsParams defines parameters for ListWorkflowRuns.
+type ListWorkflowRunsParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -3147,6 +3444,18 @@ type UpdateProductRoleJSONRequestBody = ProductRoleUpdateRequest
 
 // AssignPermissionToProductRoleJSONRequestBody defines body for AssignPermissionToProductRole for application/json ContentType.
 type AssignPermissionToProductRoleJSONRequestBody = AssignPermissionRequest
+
+// DryRunWorkflowJSONRequestBody defines body for DryRunWorkflow for application/json ContentType.
+type DryRunWorkflowJSONRequestBody = WorkflowDryRunRequest
+
+// CreateWorkflowJSONRequestBody defines body for CreateWorkflow for application/json ContentType.
+type CreateWorkflowJSONRequestBody = WorkflowWriteRequest
+
+// UpdateWorkflowJSONRequestBody defines body for UpdateWorkflow for application/json ContentType.
+type UpdateWorkflowJSONRequestBody = WorkflowWriteRequest
+
+// RunWorkflowJSONRequestBody defines body for RunWorkflow for application/json ContentType.
+type RunWorkflowJSONRequestBody = WorkflowRunRequest
 
 // AsClerkIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a ClerkIntegrationInstanceCreateRequest
 func (t IntegrationInstanceCreateRequest) AsClerkIntegrationInstanceCreateRequest() (ClerkIntegrationInstanceCreateRequest, error) {
@@ -3682,6 +3991,36 @@ type ServerInterface interface {
 	// UnassignPermissionFromProductRole Unassign Resource Permission from ProductRole
 	// (DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id})
 	UnassignPermissionFromProductRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, roleId ProductRoleIdParameter, permissionId ProductPermissionIdParameter)
+	// GetWorkflowCatalog Get Workflow Catalog
+	// (GET /v1/products/{product_id}/workflow-catalog)
+	GetWorkflowCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// DryRunWorkflow Dry Run Workflow
+	// (POST /v1/products/{product_id}/workflow-dry-runs)
+	DryRunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// ListProductWorkflowRuns List Product Workflow Runs
+	// (GET /v1/products/{product_id}/workflow-runs)
+	ListProductWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListProductWorkflowRunsParams)
+	// ListWorkflows List Workflows
+	// (GET /v1/products/{product_id}/workflows)
+	ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams)
+	// CreateWorkflow Create Workflow
+	// (POST /v1/products/{product_id}/workflows)
+	CreateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// DeleteWorkflow Delete Workflow
+	// (DELETE /v1/products/{product_id}/workflows/{workflow_id})
+	DeleteWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter)
+	// GetWorkflow Get Workflow
+	// (GET /v1/products/{product_id}/workflows/{workflow_id})
+	GetWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter)
+	// UpdateWorkflow Update Workflow
+	// (PUT /v1/products/{product_id}/workflows/{workflow_id})
+	UpdateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter)
+	// ListWorkflowRuns List Workflow Runs
+	// (GET /v1/products/{product_id}/workflows/{workflow_id}/runs)
+	ListWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter, params ListWorkflowRunsParams)
+	// RunWorkflow Run Workflow
+	// (POST /v1/products/{product_id}/workflows/{workflow_id}/runs)
+	RunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -4351,6 +4690,66 @@ func (_ Unimplemented) AssignPermissionToProductRole(w http.ResponseWriter, r *h
 // UnassignPermissionFromProductRole Unassign Resource Permission from ProductRole
 // (DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id})
 func (_ Unimplemented) UnassignPermissionFromProductRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, roleId ProductRoleIdParameter, permissionId ProductPermissionIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetWorkflowCatalog Get Workflow Catalog
+// (GET /v1/products/{product_id}/workflow-catalog)
+func (_ Unimplemented) GetWorkflowCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DryRunWorkflow Dry Run Workflow
+// (POST /v1/products/{product_id}/workflow-dry-runs)
+func (_ Unimplemented) DryRunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListProductWorkflowRuns List Product Workflow Runs
+// (GET /v1/products/{product_id}/workflow-runs)
+func (_ Unimplemented) ListProductWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListProductWorkflowRunsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListWorkflows List Workflows
+// (GET /v1/products/{product_id}/workflows)
+func (_ Unimplemented) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateWorkflow Create Workflow
+// (POST /v1/products/{product_id}/workflows)
+func (_ Unimplemented) CreateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteWorkflow Delete Workflow
+// (DELETE /v1/products/{product_id}/workflows/{workflow_id})
+func (_ Unimplemented) DeleteWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetWorkflow Get Workflow
+// (GET /v1/products/{product_id}/workflows/{workflow_id})
+func (_ Unimplemented) GetWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateWorkflow Update Workflow
+// (PUT /v1/products/{product_id}/workflows/{workflow_id})
+func (_ Unimplemented) UpdateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListWorkflowRuns List Workflow Runs
+// (GET /v1/products/{product_id}/workflows/{workflow_id}/runs)
+func (_ Unimplemented) ListWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter, params ListWorkflowRunsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RunWorkflow Run Workflow
+// (POST /v1/products/{product_id}/workflows/{workflow_id}/runs)
+func (_ Unimplemented) RunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8169,6 +8568,359 @@ func (siw *ServerInterfaceWrapper) UnassignPermissionFromProductRole(w http.Resp
 	handler.ServeHTTP(w, r)
 }
 
+// GetWorkflowCatalog operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkflowCatalog(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkflowCatalog(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DryRunWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) DryRunWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DryRunWorkflow(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListProductWorkflowRuns operation middleware
+func (siw *ServerInterfaceWrapper) ListProductWorkflowRuns(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListProductWorkflowRunsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProductWorkflowRuns(w, r, productId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkflows operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkflows(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorkflowsParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkflows(w, r, productId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) CreateWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateWorkflow(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) DeleteWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow_id" -------------
+	var workflowId WorkflowIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow_id", chi.URLParam(r, "workflow_id"), &workflowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteWorkflow(w, r, productId, workflowId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow_id" -------------
+	var workflowId WorkflowIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow_id", chi.URLParam(r, "workflow_id"), &workflowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkflow(w, r, productId, workflowId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) UpdateWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow_id" -------------
+	var workflowId WorkflowIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow_id", chi.URLParam(r, "workflow_id"), &workflowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateWorkflow(w, r, productId, workflowId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkflowRuns operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkflowRuns(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow_id" -------------
+	var workflowId WorkflowIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow_id", chi.URLParam(r, "workflow_id"), &workflowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorkflowRunsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkflowRuns(w, r, productId, workflowId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RunWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) RunWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow_id" -------------
+	var workflowId WorkflowIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow_id", chi.URLParam(r, "workflow_id"), &workflowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RunWorkflow(w, r, productId, workflowId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -8614,6 +9366,36 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage/series", wrapper.GetOrganizationUsageSeries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/workflow-catalog", wrapper.GetWorkflowCatalog)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/workflows", wrapper.ListWorkflows)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/workflows", wrapper.CreateWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/workflows/{workflow_id}", wrapper.DeleteWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/workflows/{workflow_id}", wrapper.GetWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/workflows/{workflow_id}", wrapper.UpdateWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/workflows/{workflow_id}/runs", wrapper.ListWorkflowRuns)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/workflows/{workflow_id}/runs", wrapper.RunWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/workflow-dry-runs", wrapper.DryRunWorkflow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/workflow-runs", wrapper.ListProductWorkflowRuns)
 	})
 
 	return r
@@ -17725,6 +18507,750 @@ func (response UnassignPermissionFromProductRole409JSONResponse) VisitUnassignPe
 	return err
 }
 
+type GetWorkflowCatalogRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type GetWorkflowCatalogResponseObject interface {
+	VisitGetWorkflowCatalogResponse(w http.ResponseWriter) error
+}
+
+type GetWorkflowCatalog200JSONResponse WorkflowCatalogResponse
+
+func (response GetWorkflowCatalog200JSONResponse) VisitGetWorkflowCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflowCatalog401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetWorkflowCatalog401JSONResponse) VisitGetWorkflowCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflowCatalog403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetWorkflowCatalog403JSONResponse) VisitGetWorkflowCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflowCatalog404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWorkflowCatalog404JSONResponse) VisitGetWorkflowCatalogResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DryRunWorkflowRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *DryRunWorkflowJSONRequestBody
+}
+
+type DryRunWorkflowResponseObject interface {
+	VisitDryRunWorkflowResponse(w http.ResponseWriter) error
+}
+
+type DryRunWorkflow200JSONResponse WorkflowRunResponse
+
+func (response DryRunWorkflow200JSONResponse) VisitDryRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DryRunWorkflow400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DryRunWorkflow400JSONResponse) VisitDryRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DryRunWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DryRunWorkflow401JSONResponse) VisitDryRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DryRunWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DryRunWorkflow403JSONResponse) VisitDryRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DryRunWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DryRunWorkflow404JSONResponse) VisitDryRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProductWorkflowRunsRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Params    ListProductWorkflowRunsParams
+}
+
+type ListProductWorkflowRunsResponseObject interface {
+	VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error
+}
+
+type ListProductWorkflowRuns200JSONResponse WorkflowRunListResponse
+
+func (response ListProductWorkflowRuns200JSONResponse) VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProductWorkflowRuns400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListProductWorkflowRuns400JSONResponse) VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProductWorkflowRuns401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListProductWorkflowRuns401JSONResponse) VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProductWorkflowRuns403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListProductWorkflowRuns403JSONResponse) VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProductWorkflowRuns404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListProductWorkflowRuns404JSONResponse) VisitListProductWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowsRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Params    ListWorkflowsParams
+}
+
+type ListWorkflowsResponseObject interface {
+	VisitListWorkflowsResponse(w http.ResponseWriter) error
+}
+
+type ListWorkflows200JSONResponse WorkflowListResponse
+
+func (response ListWorkflows200JSONResponse) VisitListWorkflowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflows401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListWorkflows401JSONResponse) VisitListWorkflowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflows403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListWorkflows403JSONResponse) VisitListWorkflowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflows404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListWorkflows404JSONResponse) VisitListWorkflowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkflowRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreateWorkflowJSONRequestBody
+}
+
+type CreateWorkflowResponseObject interface {
+	VisitCreateWorkflowResponse(w http.ResponseWriter) error
+}
+
+type CreateWorkflow201JSONResponse WorkflowResponse
+
+func (response CreateWorkflow201JSONResponse) VisitCreateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkflow400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateWorkflow400JSONResponse) VisitCreateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateWorkflow401JSONResponse) VisitCreateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateWorkflow403JSONResponse) VisitCreateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateWorkflow404JSONResponse) VisitCreateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteWorkflowRequestObject struct {
+	ProductId  ProductIdParameter  `json:"product_id"`
+	WorkflowId WorkflowIdParameter `json:"workflow_id"`
+}
+
+type DeleteWorkflowResponseObject interface {
+	VisitDeleteWorkflowResponse(w http.ResponseWriter) error
+}
+
+type DeleteWorkflow204Response struct {
+}
+
+func (response DeleteWorkflow204Response) VisitDeleteWorkflowResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteWorkflow401JSONResponse) VisitDeleteWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteWorkflow403JSONResponse) VisitDeleteWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteWorkflow404JSONResponse) VisitDeleteWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflowRequestObject struct {
+	ProductId  ProductIdParameter  `json:"product_id"`
+	WorkflowId WorkflowIdParameter `json:"workflow_id"`
+}
+
+type GetWorkflowResponseObject interface {
+	VisitGetWorkflowResponse(w http.ResponseWriter) error
+}
+
+type GetWorkflow200JSONResponse WorkflowResponse
+
+func (response GetWorkflow200JSONResponse) VisitGetWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetWorkflow401JSONResponse) VisitGetWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetWorkflow403JSONResponse) VisitGetWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWorkflow404JSONResponse) VisitGetWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkflowRequestObject struct {
+	ProductId  ProductIdParameter  `json:"product_id"`
+	WorkflowId WorkflowIdParameter `json:"workflow_id"`
+	Body       *UpdateWorkflowJSONRequestBody
+}
+
+type UpdateWorkflowResponseObject interface {
+	VisitUpdateWorkflowResponse(w http.ResponseWriter) error
+}
+
+type UpdateWorkflow200JSONResponse WorkflowResponse
+
+func (response UpdateWorkflow200JSONResponse) VisitUpdateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkflow400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateWorkflow400JSONResponse) VisitUpdateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateWorkflow401JSONResponse) VisitUpdateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateWorkflow403JSONResponse) VisitUpdateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateWorkflow404JSONResponse) VisitUpdateWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowRunsRequestObject struct {
+	ProductId  ProductIdParameter  `json:"product_id"`
+	WorkflowId WorkflowIdParameter `json:"workflow_id"`
+	Params     ListWorkflowRunsParams
+}
+
+type ListWorkflowRunsResponseObject interface {
+	VisitListWorkflowRunsResponse(w http.ResponseWriter) error
+}
+
+type ListWorkflowRuns200JSONResponse WorkflowRunListResponse
+
+func (response ListWorkflowRuns200JSONResponse) VisitListWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowRuns400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListWorkflowRuns400JSONResponse) VisitListWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowRuns401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListWorkflowRuns401JSONResponse) VisitListWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowRuns403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListWorkflowRuns403JSONResponse) VisitListWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkflowRuns404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListWorkflowRuns404JSONResponse) VisitListWorkflowRunsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflowRequestObject struct {
+	ProductId  ProductIdParameter  `json:"product_id"`
+	WorkflowId WorkflowIdParameter `json:"workflow_id"`
+	Body       *RunWorkflowJSONRequestBody
+}
+
+type RunWorkflowResponseObject interface {
+	VisitRunWorkflowResponse(w http.ResponseWriter) error
+}
+
+type RunWorkflow200JSONResponse WorkflowRunResponse
+
+func (response RunWorkflow200JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response RunWorkflow400JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RunWorkflow401JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RunWorkflow403JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RunWorkflow404JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunWorkflow409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RunWorkflow409JSONResponse) VisitRunWorkflowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Login User login
@@ -18060,6 +19586,36 @@ type StrictServerInterface interface {
 	// UnassignPermissionFromProductRole Unassign Resource Permission from ProductRole
 	// (DELETE /v1/products/{product_id}/roles/{role_id}/permissions/{permission_id})
 	UnassignPermissionFromProductRole(ctx context.Context, request UnassignPermissionFromProductRoleRequestObject) (UnassignPermissionFromProductRoleResponseObject, error)
+	// GetWorkflowCatalog Get Workflow Catalog
+	// (GET /v1/products/{product_id}/workflow-catalog)
+	GetWorkflowCatalog(ctx context.Context, request GetWorkflowCatalogRequestObject) (GetWorkflowCatalogResponseObject, error)
+	// DryRunWorkflow Dry Run Workflow
+	// (POST /v1/products/{product_id}/workflow-dry-runs)
+	DryRunWorkflow(ctx context.Context, request DryRunWorkflowRequestObject) (DryRunWorkflowResponseObject, error)
+	// ListProductWorkflowRuns List Product Workflow Runs
+	// (GET /v1/products/{product_id}/workflow-runs)
+	ListProductWorkflowRuns(ctx context.Context, request ListProductWorkflowRunsRequestObject) (ListProductWorkflowRunsResponseObject, error)
+	// ListWorkflows List Workflows
+	// (GET /v1/products/{product_id}/workflows)
+	ListWorkflows(ctx context.Context, request ListWorkflowsRequestObject) (ListWorkflowsResponseObject, error)
+	// CreateWorkflow Create Workflow
+	// (POST /v1/products/{product_id}/workflows)
+	CreateWorkflow(ctx context.Context, request CreateWorkflowRequestObject) (CreateWorkflowResponseObject, error)
+	// DeleteWorkflow Delete Workflow
+	// (DELETE /v1/products/{product_id}/workflows/{workflow_id})
+	DeleteWorkflow(ctx context.Context, request DeleteWorkflowRequestObject) (DeleteWorkflowResponseObject, error)
+	// GetWorkflow Get Workflow
+	// (GET /v1/products/{product_id}/workflows/{workflow_id})
+	GetWorkflow(ctx context.Context, request GetWorkflowRequestObject) (GetWorkflowResponseObject, error)
+	// UpdateWorkflow Update Workflow
+	// (PUT /v1/products/{product_id}/workflows/{workflow_id})
+	UpdateWorkflow(ctx context.Context, request UpdateWorkflowRequestObject) (UpdateWorkflowResponseObject, error)
+	// ListWorkflowRuns List Workflow Runs
+	// (GET /v1/products/{product_id}/workflows/{workflow_id}/runs)
+	ListWorkflowRuns(ctx context.Context, request ListWorkflowRunsRequestObject) (ListWorkflowRunsResponseObject, error)
+	// RunWorkflow Run Workflow
+	// (POST /v1/products/{product_id}/workflows/{workflow_id}/runs)
+	RunWorkflow(ctx context.Context, request RunWorkflowRequestObject) (RunWorkflowResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -21459,6 +23015,302 @@ func (sh *strictHandler) UnassignPermissionFromProductRole(w http.ResponseWriter
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UnassignPermissionFromProductRoleResponseObject); ok {
 		if err := validResponse.VisitUnassignPermissionFromProductRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetWorkflowCatalog operation middleware
+func (sh *strictHandler) GetWorkflowCatalog(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request GetWorkflowCatalogRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkflowCatalog(ctx, request.(GetWorkflowCatalogRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkflowCatalog")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWorkflowCatalogResponseObject); ok {
+		if err := validResponse.VisitGetWorkflowCatalogResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DryRunWorkflow operation middleware
+func (sh *strictHandler) DryRunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request DryRunWorkflowRequestObject
+
+	request.ProductId = productId
+
+	var body DryRunWorkflowJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DryRunWorkflow(ctx, request.(DryRunWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DryRunWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DryRunWorkflowResponseObject); ok {
+		if err := validResponse.VisitDryRunWorkflowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListProductWorkflowRuns operation middleware
+func (sh *strictHandler) ListProductWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListProductWorkflowRunsParams) {
+	var request ListProductWorkflowRunsRequestObject
+
+	request.ProductId = productId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListProductWorkflowRuns(ctx, request.(ListProductWorkflowRunsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListProductWorkflowRuns")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListProductWorkflowRunsResponseObject); ok {
+		if err := validResponse.VisitListProductWorkflowRunsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWorkflows operation middleware
+func (sh *strictHandler) ListWorkflows(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListWorkflowsParams) {
+	var request ListWorkflowsRequestObject
+
+	request.ProductId = productId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkflows(ctx, request.(ListWorkflowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkflows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkflowsResponseObject); ok {
+		if err := validResponse.VisitListWorkflowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateWorkflow operation middleware
+func (sh *strictHandler) CreateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreateWorkflowRequestObject
+
+	request.ProductId = productId
+
+	var body CreateWorkflowJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateWorkflow(ctx, request.(CreateWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateWorkflowResponseObject); ok {
+		if err := validResponse.VisitCreateWorkflowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteWorkflow operation middleware
+func (sh *strictHandler) DeleteWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	var request DeleteWorkflowRequestObject
+
+	request.ProductId = productId
+	request.WorkflowId = workflowId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteWorkflow(ctx, request.(DeleteWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteWorkflowResponseObject); ok {
+		if err := validResponse.VisitDeleteWorkflowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetWorkflow operation middleware
+func (sh *strictHandler) GetWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	var request GetWorkflowRequestObject
+
+	request.ProductId = productId
+	request.WorkflowId = workflowId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkflow(ctx, request.(GetWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWorkflowResponseObject); ok {
+		if err := validResponse.VisitGetWorkflowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateWorkflow operation middleware
+func (sh *strictHandler) UpdateWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	var request UpdateWorkflowRequestObject
+
+	request.ProductId = productId
+	request.WorkflowId = workflowId
+
+	var body UpdateWorkflowJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateWorkflow(ctx, request.(UpdateWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateWorkflowResponseObject); ok {
+		if err := validResponse.VisitUpdateWorkflowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWorkflowRuns operation middleware
+func (sh *strictHandler) ListWorkflowRuns(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter, params ListWorkflowRunsParams) {
+	var request ListWorkflowRunsRequestObject
+
+	request.ProductId = productId
+	request.WorkflowId = workflowId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkflowRuns(ctx, request.(ListWorkflowRunsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkflowRuns")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkflowRunsResponseObject); ok {
+		if err := validResponse.VisitListWorkflowRunsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RunWorkflow operation middleware
+func (sh *strictHandler) RunWorkflow(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, workflowId WorkflowIdParameter) {
+	var request RunWorkflowRequestObject
+
+	request.ProductId = productId
+	request.WorkflowId = workflowId
+
+	var body RunWorkflowJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RunWorkflow(ctx, request.(RunWorkflowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RunWorkflow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RunWorkflowResponseObject); ok {
+		if err := validResponse.VisitRunWorkflowResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

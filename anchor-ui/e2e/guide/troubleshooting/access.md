@@ -159,3 +159,32 @@ test; clients rely on the declared shape.
 Verification: `access.permission-impact` deletes the granted permission in the
 browser, checks the affected-role warning and polls the persisted role until
 its permissions equal `[]`.
+
+## Workflow saved toast cannot be closed
+
+Failing scenario: `workflows chain through a custom event, and a loop is flagged
+then refused` timed out on `locator.press` for the **Close toast** button inside
+the dialog **Workflow “…” saved.**
+
+Cause: the design-system toast is Base UI's. Its close button carries
+`aria-hidden` until the toast stack is expanded, which happens on hover
+(`ToastClose`: `aria-hidden: !expanded && !hasFocus`). Focusing the toast dialog
+does not expand it, so the role query finds no button. The workflow builder
+navigates to the saved workflow right after the toast appears, so nothing
+hovers the stack.
+
+Repair: scope to the named dialog, `hover()` it, then press **Close toast** with
+Enter and assert the dialog is gone. No forced click, DOM removal or fixed wait.
+
+Verification: the chain scenario passed on Chromium with the managed runtime,
+then on mobile, tablet and desktop in the review configuration.
+
+## Workflow Call your backend steps in the browser
+
+The backend round-trip scenario starts a loopback Node server as the Product
+backend. `http.request` refuses plain HTTP and non-public addresses unless
+`core.workflow.allow_private_targets` is on; the e2e runtime
+(`e2e/runtime/application.yaml`) and the CT suite enable it, deployed
+environments never do. The step signs with the product's event endpoint
+secret, so the scenario first configures an event endpoint on the same
+server.

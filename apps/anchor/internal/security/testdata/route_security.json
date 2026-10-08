@@ -82,6 +82,12 @@
       "product_role:update"
     ]
   },
+  "DELETE /v1/products/{product_id}/workflows/{workflow_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:delete"
+    ]
+  },
   "GET /v1/me": {
     "platformBearerAuth": []
   },
@@ -232,6 +238,36 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "product_role:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/workflow-catalog": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/workflow-runs": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/workflows": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/workflows/{workflow_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/workflows/{workflow_id}/runs": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
     ]
   },
   "PATCH /v1/products/{product_id}/organizations/{organization_id}/license": {
@@ -469,6 +505,24 @@
       "product_role:update"
     ]
   },
+  "POST /v1/products/{product_id}/workflow-dry-runs": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/workflows": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/workflows/{workflow_id}/runs": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:update"
+    ]
+  },
   "PUT /v1/products/{product_id}": {
     "platformBearerAuth": []
   },
@@ -542,6 +596,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "product_role:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/workflows/{workflow_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "workflow:update"
     ]
   }
 }
