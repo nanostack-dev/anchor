@@ -37,6 +37,8 @@ const (
 	// lockKeyReconcileSchedulerSeed is the advisory lock key used to ensure only one
 	// replica seeds the initial reconcile scheduler job at startup.
 	lockKeyReconcileSchedulerSeed = "integration.reconcile_scheduler.seed"
+
+	lockKeyInstanceReconcilePrefix = "integration.reconcile.instance:"
 )
 
 // IntegrationEventWorkerParams groups the dependencies for the async event worker.

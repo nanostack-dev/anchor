@@ -1,0 +1,292 @@
+{
+  "title": "Dev Clerk user sync failed: six reconcile scheduler chains raced on the same new user",
+  "short": "Duplicate Clerk reconcile",
+  "service": "anchor",
+  "date": "2026-10-07",
+  "severity": "SEV4",
+  "status": "resolved",
+  "authors": [
+    "Nanostack routine (posthog-error-watch)"
+  ],
+  "summary": "On 2026-10-07 between 18:10Z and 18:25Z the dev Anchor logged 5 failed Clerk user upserts (`23505 product_users_product_id_email_key`). Dev runs **six** copies of the self-rescheduling reconcile scheduler job, so every 15 minutes it reconciles each keyed Clerk instance six times in parallel across two replicas. When a new Clerk user appeared, two runs inserted it at once and the loser hit the email unique index, which the upsert's `ON CONFLICT (product_id, external_id)` does not cover. A sibling run committed the user within a second, so no data was lost. The fix makes the scheduler collapse duplicate chains to one and serialises reconciliation per instance with an advisory lock.",
+  "impact": {
+    "text": "Dev only, no customer impact. Five reconcile batches rolled back and were redone by a sibling run within about 1 s. Their failure audit rows were lost. Dev has also called the Clerk list-users API six times per instance every 15 minutes since at least 2026-09-24. Prod runs one chain and was not affected, but runs the same unguarded code.",
+    "numbers": [
+      {
+        "value": "5",
+        "label": "failed reconcile batches (dev)"
+      },
+      {
+        "value": "6x",
+        "label": "reconciles per instance per cycle in dev"
+      },
+      {
+        "value": "14+ days",
+        "label": "duplication went unnoticed"
+      },
+      {
+        "value": "0",
+        "label": "prod errors"
+      }
+    ]
+  },
+  "trigger": "A new Clerk user was listed by two concurrent reconcile runs of the same instance; both inserted it, and the second insert hit `product_users_product_id_email_key`.",
+  "detection": "The daily PostHog error-watch routine found the 5 error rows the next morning. No alert fires on dev error logs from background jobs, and nothing counts scheduler chains; the duplication had been visible only as 6 identical info lines per cycle.",
+  "resolution": "Each failing batch was redone by a sibling run that found the user already present. The permanent fix (anchor PR) removes duplicate pending scheduler jobs on every scheduler run, keeping the lowest id, and takes a per-instance advisory lock around reconciliation.",
+  "timeline": {
+    "events": [
+      {
+        "t": "2026-09-24T12:00:00Z",
+        "approx": true,
+        "kind": "change",
+        "label": "Dev already runs 6 scheduler chains (earliest logs)",
+        "detail": "`reconcile scheduler completed` counts 288 per 12 h in dev (6 per 15-min cycle) from the start of log retention; prod counts 1 per cycle."
+      },
+      {
+        "t": "2026-10-07T18:10:38Z",
+        "kind": "note",
+        "label": "Six scheduler runs in 84 ms each enqueue the same instance",
+        "detail": "Tasks `qnu5ok` and `q5tw87` then reconcile the instance concurrently."
+      },
+      {
+        "t": "2026-10-07T18:10:38.528Z",
+        "kind": "trigger",
+        "label": "First upsert fails: 23505 on product_id+email",
+        "detail": "`failed to upsert product user` for a new Clerk user; the batch rolls back and its failure audit row fails with `25P02`."
+      },
+      {
+        "t": "2026-10-07T18:10:39.181Z",
+        "kind": "mitigate",
+        "label": "A sibling run commits the same user"
+      },
+      {
+        "t": "2026-10-07T18:25:40.287Z",
+        "kind": "note",
+        "label": "Next cycle: one more new user fails on both replicas"
+      },
+      {
+        "t": "2026-10-07T18:25:42.387Z",
+        "kind": "resolve",
+        "label": "All batches committed; no further upsert errors"
+      },
+      {
+        "t": "2026-10-08T11:08:53Z",
+        "kind": "detect",
+        "label": "Daily PostHog error watch finds the 5 rows"
+      },
+      {
+        "t": "2026-10-08T11:40:00Z",
+        "approx": true,
+        "kind": "followup",
+        "label": "Fix opened: scheduler dedupe + per-instance lock"
+      }
+    ]
+  },
+  "whys": {
+    "problem": "Dev Anchor failed to sync new Clerk users in 5 reconcile batches on 2026-10-07",
+    "because": [
+      {
+        "text": "Two reconcile runs of the same instance inserted the same new user at once; the second hit the email unique index",
+        "evidence": "dev logs 18:10:38-39Z: `failed to upsert product user` on task `qnu5ok` while task `q5tw87` commits batches for the same instance; the user is created at 18:10:39.181",
+        "because": [
+          {
+            "text": "Six scheduler chains run in dev, so each instance gets six reconcile jobs every 15 minutes",
+            "evidence": "6 `reconcile scheduler completed` per cycle in dev (288 per 12 h since 2026-09-24), 1 per cycle in prod",
+            "because": [
+              {
+                "text": "Each scheduler run re-enqueues itself without checking for siblings; only the seed path checks for an existing job",
+                "evidence": "`runReconcileScheduler` calls `enqueueReconcileSchedulerJob` unconditionally; `hasSchedulerJob` runs only in the seed and start paths",
+                "because": [
+                  {
+                    "id": "R1",
+                    "root": true,
+                    "text": "The recurring scheduler had no singleton guarantee, so any fork of the chain lived forever"
+                  }
+                ]
+              },
+              {
+                "text": "How the five extra chains forked is not confirmed (reaped rerun after a DB restart, or the seed's 1000-row job window)",
+                "open": true
+              }
+            ]
+          },
+          {
+            "text": "Nothing stops two workers from reconciling the same instance at the same time",
+            "evidence": "`runInstanceReconcile` takes no lock; the 2-minute visibility timeout also re-runs a slow reconcile while it is still running",
+            "because": [
+              {
+                "text": "The upsert merges only on (product_id, external_id); a concurrent insert that collides on email raises instead",
+                "evidence": "`UpsertByExternalID` uses `ON_CONFLICT(ProductID, ExternalID)`; error is `23505 product_users_product_id_email_key`",
+                "because": [
+                  {
+                    "id": "R2",
+                    "root": true,
+                    "text": "Per-instance reconciliation assumed one run at a time, but nothing enforced it"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "The duplication ran for 14+ days before anyone noticed",
+        "evidence": "scheduler counts flat at 6 per cycle since 2026-09-24; first upsert error in 30 days on 2026-10-07",
+        "because": [
+          {
+            "text": "Duplicate chains are harmless until a new user lands mid-cycle, and they log only identical info lines",
+            "because": [
+              {
+                "id": "R3",
+                "root": true,
+                "text": "No signal flags more than one scheduler chain; duplication was visible only by counting info logs"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "The integration audit log shows nothing for the failed batches",
+        "evidence": "every failure is paired with `failed to create integration audit log ... (25P02)`",
+        "because": [
+          {
+            "text": "The failure audit row is written inside the batch transaction that the failed insert already aborted",
+            "because": [
+              {
+                "id": "R4",
+                "root": true,
+                "text": "Failure audit rows share the transaction of the work they record"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "contributing": [
+    "Dev flow suites create and delete Clerk users every few minutes, so new users often appear mid-cycle in dev and rarely in prod.",
+    "The integration queue's 2-minute visibility timeout can re-run a slow reconcile while the first run is still working."
+  ],
+  "lessons": {
+    "well": [
+      "The daily log scan caught a dev-only error the alerts ignore, and the 6x duplication behind it.",
+      "Sibling runs repaired each failed batch within a second, so no user stayed unsynced."
+    ],
+    "wrong": [
+      "A self-rescheduling queue job had liveness but no uniqueness; nobody checked how many chains existed.",
+      "Failure audit rows vanished silently, so the integration audit log could not show the failures."
+    ],
+    "lucky": [
+      "Prod runs a single chain. One fork in prod would have caused the same failures for customer Clerk instances.",
+      "Every collision was an insert of the same user; a run that updated a user with stale data while another inserted could have overwritten fresher fields."
+    ]
+  },
+  "actions": [
+    {
+      "id": "A1",
+      "what": "Scheduler run removes duplicate pending scheduler jobs, keeping the lowest id; CT proves duplicates collapse to one",
+      "type": "prevent",
+      "owner": "anchor",
+      "due": "2026-10-10",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      },
+      "fixes": [
+        "R1"
+      ]
+    },
+    {
+      "id": "A2",
+      "what": "Per-instance advisory lock around reconciliation; a second run skips",
+      "type": "prevent",
+      "owner": "anchor",
+      "due": "2026-10-10",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      },
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A3",
+      "what": "Log `removed duplicate reconcile scheduler jobs` at warn so any new fork shows in the warn-spike alert",
+      "type": "detect",
+      "owner": "anchor",
+      "due": "2026-10-10",
+      "status": "done",
+      "fixes": [
+        "R3"
+      ],
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      }
+    },
+    {
+      "id": "A4",
+      "what": "Persist failure audit rows outside the aborted batch transaction",
+      "type": "mitigate",
+      "owner": "anchor",
+      "due": "2026-10-24",
+      "status": "open",
+      "ticket": {
+        "label": "anchor#210",
+        "url": "https://github.com/nanostack-dev/anchor/issues/210"
+      },
+      "fixes": [
+        "R4"
+      ]
+    },
+    {
+      "id": "A5",
+      "what": "Rule in anchor `docs/development/agent-rules.md`: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock",
+      "type": "process",
+      "owner": "anchor",
+      "due": "2026-10-10",
+      "status": "done",
+      "fixes": [
+        "R1",
+        "R2"
+      ],
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      }
+    }
+  ],
+  "responders": [
+    {
+      "role": "Investigation",
+      "name": "Nanostack routine (posthog-error-watch)"
+    }
+  ],
+  "messaging": {
+    "internal": "Dev Anchor: 5 Clerk user upserts failed on 10-07 because dev runs 6 copies of the reconcile scheduler and two raced on a new user. No data loss, prod unaffected (1 chain). Fix PR collapses duplicate chains and locks reconcile per instance; awaiting review.",
+    "external": "None: dev only."
+  },
+  "links": [
+    {
+      "label": "Postmortem report",
+      "url": "https://claude.ai/artifact/J26PXvbhmHEuTjcqF5tBZV"
+    },
+    {
+      "label": "Follow-up: lost failure audit rows (anchor#210)",
+      "url": "https://github.com/nanostack-dev/anchor/issues/210"
+    },
+    {
+      "label": "Clerk reconcile scheduler (current behavior)",
+      "url": "https://github.com/nanostack-dev/anchor/blob/main/docs/technical/clerk-reconcile-scheduler.md"
+    },
+    {
+      "label": "ADR-0020: self-rescheduling jobs collapse duplicates",
+      "url": "https://github.com/nanostack-dev/anchor/blob/main/docs/adr/0020-self-rescheduling-jobs-collapse-duplicates.md"
+    }
+  ]
+}

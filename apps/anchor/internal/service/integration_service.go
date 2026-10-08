@@ -915,6 +915,8 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 		return reEnqueueErr
 	}
 
+	s.collapseDuplicateSchedulerJobs(ctx, logger)
+
 	if firstErr != nil {
 		logger.Warn().Err(firstErr).Msg("scheduler completed with some enqueue errors (swallowed to avoid fork bomb)")
 	}
@@ -922,8 +924,72 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 	return nil
 }
 
-// runInstanceReconcile reconciles a single integration instance.
+// collapseDuplicateSchedulerJobs keeps only the oldest pending scheduler job. Every
+// replica that runs it keeps the same lowest id, so concurrent runs converge on one
+// chain and the oldest job always survives.
+func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context, logger zerolog.Logger) {
+	const maxSchedulerJobsToInspect = 1000
+	jobs, err := s.queue.ListJobs(ctx, queue.ListJobsParams{
+		QueueName: integrationReconcileQueueName,
+		Status:    queue.StatusPending,
+		Search:    "is_scheduler",
+		Limit:     maxSchedulerJobsToInspect,
+	})
+	if err != nil {
+		logger.Warn().Err(err).Msg("failed to list pending scheduler jobs for deduplication")
+		return
+	}
+
+	duplicates := functional.Slice(jobs).
+		Filter(isSchedulerJob).
+		SortedBy(func(job queue.Job) int64 { return job.ID }).
+		Drop(1)
+
+	duplicates.ForEach(func(job queue.Job) {
+		if delErr := s.queue.DeleteJob(ctx, job.ID); delErr != nil {
+			logger.Debug().Err(delErr).Int64("job_id", job.ID).Msg("duplicate scheduler job already gone")
+		}
+	})
+
+	if !duplicates.IsEmpty() {
+		logger.Warn().
+			Int("scheduler_jobs_removed", duplicates.Count()).
+			Msg("removed duplicate reconcile scheduler jobs")
+	}
+}
+
+func isSchedulerJob(job queue.Job) bool {
+	var payload integrationReconcileQueuePayload
+	return json.Unmarshal(job.Payload, &payload) == nil && payload.IsScheduler
+}
+
+// runInstanceReconcile reconciles a single integration instance. A per-instance
+// advisory lock skips the job when another replica is already reconciling the same
+// instance: two concurrent runs would insert the same new users and one would fail.
 func (s *integrationService) runInstanceReconcile(
+	ctx context.Context,
+	logger zerolog.Logger,
+	instanceID string,
+) error {
+	acquired, err := s.lock.TryWithLock(
+		ctx,
+		lockKeyInstanceReconcilePrefix+instanceID,
+		func(lockCtx context.Context, _ *sql.Tx) error {
+			return s.reconcileInstance(lockCtx, logger, instanceID)
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if !acquired {
+		logger.Info().
+			Str("integration_instance_id", instanceID).
+			Msg("instance reconcile already running on another worker, skipping")
+	}
+	return nil
+}
+
+func (s *integrationService) reconcileInstance(
 	ctx context.Context,
 	logger zerolog.Logger,
 	instanceID string,

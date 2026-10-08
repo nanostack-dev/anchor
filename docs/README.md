@@ -19,6 +19,7 @@ Start with [AGENTS.md](../AGENTS.md) for task-specific pointers and [CONTEXT.md]
 Existing authoritative paths remain valid; new current-behavior documents belong in `technical/`. Some older specs contain proposals as well as shipped behavior, so check their status and owning source before asserting that a feature exists.
 
 - [api key permission cache](api-key-permission-cache.md)
+- [Clerk reconcile scheduler](technical/clerk-reconcile-scheduler.md): one self-rescheduling chain, duplicate collapse and the per-instance lock
 - [api key prefix config](api-key-prefix-config.md)
 - [case insensitive identifiers](case-insensitive-identifiers.md)
 - [engineering best practices](engineering-best-practices.md)
