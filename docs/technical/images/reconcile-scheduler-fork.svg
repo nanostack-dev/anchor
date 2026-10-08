@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="270" viewBox="0 0 680 270" role="img">
+<title>How a second reconcile scheduler chain forks</title>
+<desc>Job 100 runs at 12:00 and inserts job 101, but its ack is lost. After the 2-minute visibility timeout the reaper runs job 100 again, which inserts job 102. Without a singleton guard, two chains then reschedule themselves every 15 minutes.</desc>
+<style>
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .bg { fill: #FAF9F5; stroke: #E5E3DA; }
+  .t { fill: #2C2C2A; font-size: 14px; font-weight: 600; }
+  .s { fill: #5F5E5A; font-size: 12px; }
+  .ln { stroke: #73726C; stroke-width: 1.2; fill: none; }
+  .axis { stroke: #B4B2A9; stroke-width: 0.8; }
+  .head { fill: none; stroke: #73726C; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .teal rect { fill: #E1F5EE; stroke: #0F6E56; }
+  .teal text { fill: #085041; }
+  .coral rect { fill: #FAECE7; stroke: #993C1D; }
+  .coral text { fill: #712B13; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1F1E1D; stroke: #3A3936; }
+    .t { fill: #F1EFE8; }
+    .s { fill: #B4B2A9; }
+    .ln, .head { stroke: #9C9A92; }
+    .axis { stroke: #5F5E5A; }
+    .teal rect { fill: #085041; stroke: #5DCAA5; }
+    .teal text { fill: #E1F5EE; }
+    .coral rect { fill: #712B13; stroke: #F0997B; }
+    .coral text { fill: #FAECE7; }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="bg" x="0.5" y="0.5" width="679" height="269" rx="12"/>
+<text class="t" x="32" y="80" dominant-baseline="central">Chain 1</text>
+<text class="t" x="32" y="164" dominant-baseline="central">Chain 2</text>
+<text class="s" x="32" y="184" dominant-baseline="central">duplicate</text>
+<text class="s" x="160" y="48" text-anchor="middle" dominant-baseline="central">ack lost</text>
+<g class="teal"><rect x="132" y="65" width="56" height="30" rx="4"/><text class="t" x="160" y="80" text-anchor="middle" dominant-baseline="central">#100</text></g>
+<g class="teal"><rect x="272" y="65" width="56" height="30" rx="4"/><text class="t" x="300" y="80" text-anchor="middle" dominant-baseline="central">#101</text></g>
+<g class="teal"><rect x="412" y="65" width="56" height="30" rx="4"/><text class="t" x="440" y="80" text-anchor="middle" dominant-baseline="central">#103</text></g>
+<g class="teal"><rect x="552" y="65" width="56" height="30" rx="4"/><text class="t" x="580" y="80" text-anchor="middle" dominant-baseline="central">#105</text></g>
+<line class="ln" x1="190" y1="80" x2="264" y2="80" marker-end="url(#a)"/>
+<line class="ln" x1="330" y1="80" x2="404" y2="80" marker-end="url(#a)"/>
+<line class="ln" x1="470" y1="80" x2="544" y2="80" marker-end="url(#a)"/>
+<line class="ln" x1="610" y1="80" x2="644" y2="80" marker-end="url(#a)"/>
+<path class="ln" d="M160 97 V170 H184" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<text class="s" x="172" y="125" dominant-baseline="central">reaper reruns #100</text>
+<g class="coral"><rect x="192" y="155" width="56" height="30" rx="4"/><text class="t" x="220" y="170" text-anchor="middle" dominant-baseline="central">#100</text></g>
+<g class="coral"><rect x="332" y="155" width="56" height="30" rx="4"/><text class="t" x="360" y="170" text-anchor="middle" dominant-baseline="central">#102</text></g>
+<g class="coral"><rect x="472" y="155" width="56" height="30" rx="4"/><text class="t" x="500" y="170" text-anchor="middle" dominant-baseline="central">#104</text></g>
+<line class="ln" x1="250" y1="170" x2="324" y2="170" marker-end="url(#a)"/>
+<line class="ln" x1="390" y1="170" x2="464" y2="170" marker-end="url(#a)"/>
+<line class="ln" x1="530" y1="170" x2="610" y2="170" marker-end="url(#a)"/>
+<line class="axis" x1="120" y1="215" x2="650" y2="215"/>
+<text class="s" x="160" y="236" text-anchor="middle" dominant-baseline="central">12:00</text>
+<text class="s" x="220" y="236" text-anchor="middle" dominant-baseline="central">12:02</text>
+<text class="s" x="300" y="236" text-anchor="middle" dominant-baseline="central">12:15</text>
+<text class="s" x="360" y="236" text-anchor="middle" dominant-baseline="central">12:17</text>
+<text class="s" x="440" y="236" text-anchor="middle" dominant-baseline="central">12:30</text>
+<text class="s" x="500" y="236" text-anchor="middle" dominant-baseline="central">12:32</text>
+<text class="s" x="580" y="236" text-anchor="middle" dominant-baseline="central">12:45</text>
+</svg>

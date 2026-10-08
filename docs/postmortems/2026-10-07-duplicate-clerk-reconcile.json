@@ -4,7 +4,7 @@
   "service": "anchor",
   "date": "2026-10-07",
   "severity": "SEV4",
-  "status": "in review",
+  "status": "resolved",
   "authors": [
     "Nanostack routine (posthog-error-watch)"
   ],
@@ -190,7 +190,7 @@
       "type": "prevent",
       "owner": "anchor",
       "due": "2026-10-10",
-      "status": "open",
+      "status": "done",
       "ticket": {
         "label": "anchor#211",
         "url": "https://github.com/nanostack-dev/anchor/pull/211"
@@ -205,7 +205,7 @@
       "type": "prevent",
       "owner": "anchor",
       "due": "2026-10-10",
-      "status": "open",
+      "status": "done",
       "ticket": {
         "label": "anchor#211",
         "url": "https://github.com/nanostack-dev/anchor/pull/211"
@@ -220,7 +220,7 @@
       "type": "detect",
       "owner": "anchor",
       "due": "2026-10-10",
-      "status": "open",
+      "status": "done",
       "fixes": [
         "R3"
       ],
@@ -246,11 +246,11 @@
     },
     {
       "id": "A5",
-      "what": "Guide line in anchor AGENTS.md: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock",
+      "what": "Rule in anchor `docs/development/agent-rules.md`: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock",
       "type": "process",
       "owner": "anchor",
       "due": "2026-10-10",
-      "status": "open",
+      "status": "done",
       "fixes": [
         "R1",
         "R2"
@@ -279,6 +279,14 @@
     {
       "label": "Follow-up: lost failure audit rows (anchor#210)",
       "url": "https://github.com/nanostack-dev/anchor/issues/210"
+    },
+    {
+      "label": "Clerk reconcile scheduler (current behavior)",
+      "url": "https://github.com/nanostack-dev/anchor/blob/main/docs/technical/clerk-reconcile-scheduler.md"
+    },
+    {
+      "label": "ADR-0020: self-rescheduling jobs collapse duplicates",
+      "url": "https://github.com/nanostack-dev/anchor/blob/main/docs/adr/0020-self-rescheduling-jobs-collapse-duplicates.md"
     }
   ]
 }
