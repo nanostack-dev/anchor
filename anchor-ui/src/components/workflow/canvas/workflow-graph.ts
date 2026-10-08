@@ -91,6 +91,7 @@ export type WorkflowGraphNode =
 export type WorkflowGraphEdge = Edge<FlowEdgeData, "flow">;
 
 export const stepNodeId = (stepId: string) => `step:${stepId}`;
+export const STEP_DRAG_HANDLE = "workflow-drag-handle";
 const TRIGGER_ID = "trigger";
 const CONDITIONS_ID = "conditions";
 
@@ -172,6 +173,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 				order: order++,
 			},
 			selectable: false,
+			draggable: false,
 		});
 		edges.push({
 			id: `${id}->${TRIGGER_ID}`,
@@ -194,6 +196,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 			invalid: input.triggerInvalid,
 			order: order++,
 		},
+		draggable: false,
 	});
 	nodes.push({
 		id: CONDITIONS_ID,
@@ -205,6 +208,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 			selected: selection.kind === "conditions",
 			order: order++,
 		},
+		draggable: false,
 	});
 
 	const revealed = run?.revealed ?? 0;
@@ -246,6 +250,8 @@ export function buildWorkflowGraph(input: GraphInput): {
 				status,
 				order: order++,
 			},
+			draggable: true,
+			dragHandle: `.${STEP_DRAG_HANDLE}`,
 		});
 		edges.push({
 			id: `${previous}->${id}`,
@@ -276,6 +282,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 						order: order++,
 					},
 					selectable: false,
+					draggable: false,
 				});
 				edges.push({
 					id: `${id}->${ghostId}`,
@@ -309,6 +316,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 		position: { x: 0, y: ROW_GAP * (steps.length + 2) },
 		data: { index: steps.length, order: order++ },
 		selectable: false,
+		draggable: false,
 	});
 	edges.push({
 		id: `${previous}->${ADD_ID}`,
@@ -319,6 +327,46 @@ export function buildWorkflowGraph(input: GraphInput): {
 	});
 
 	return { nodes, edges };
+}
+
+const UNMEASURED_HEIGHT = ROW_GAP - COLUMN_GAP;
+const heightOf = (node: WorkflowGraphNode) =>
+	node.measured?.height ?? UNMEASURED_HEIGHT;
+
+const stepsExcept = (nodes: WorkflowGraphNode[], ignoreId?: string) =>
+	nodes.filter((node) => node.type === "step" && node.id !== ignoreId);
+
+/**
+ * Where a step dropped at `flowY` lands: before the first step whose vertical
+ * centre is below it, else after the last. Ignoring the dragged step makes the
+ * index the one `moveItem` expects.
+ */
+export function slotIndexAt(
+	nodes: WorkflowGraphNode[],
+	flowY: number,
+	ignoreId?: string,
+): number {
+	const steps = stepsExcept(nodes, ignoreId);
+	const index = steps.findIndex(
+		(node) => node.position.y + heightOf(node) / 2 > flowY,
+	);
+	return index === -1 ? steps.length : index;
+}
+
+/** The vertical middle of the gap a step dropped at `index` would fill. */
+export function slotLineY(
+	nodes: WorkflowGraphNode[],
+	index: number,
+	ignoreId?: string,
+): number {
+	const steps = stepsExcept(nodes, ignoreId);
+	const next = steps[index];
+	if (next) return next.position.y - COLUMN_GAP / 2;
+	const previous =
+		steps[steps.length - 1] ?? nodes.find((node) => node.id === CONDITIONS_ID);
+	return previous
+		? previous.position.y + heightOf(previous) + COLUMN_GAP / 2
+		: 0;
 }
 
 const withY = (node: WorkflowGraphNode, y: number): WorkflowGraphNode =>
@@ -338,7 +386,7 @@ export function stackColumn(nodes: WorkflowGraphNode[]): WorkflowGraphNode[] {
 			return withY(node, anchor.placed + node.position.y - anchor.built);
 		}
 		anchor = { built: node.position.y, placed: nextY };
-		nextY += (node.measured?.height ?? ROW_GAP - COLUMN_GAP) + COLUMN_GAP;
+		nextY += heightOf(node) + COLUMN_GAP;
 		return withY(node, anchor.placed);
 	});
 }

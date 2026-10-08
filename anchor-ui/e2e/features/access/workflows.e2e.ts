@@ -1,4 +1,4 @@
-import type { Page } from "playwright/test";
+import type { Locator, Page } from "playwright/test";
 import { expect, test } from "../../support/fixtures";
 import { captureReviewCheckpoint } from "../../support/review";
 import {
@@ -24,6 +24,40 @@ async function backToFlow(page: Page) {
 	await expect(
 		page.getByRole("button", { name: "Add a step", exact: true }),
 	).toBeVisible();
+}
+
+/** The palette starts open only where it floats beside the steps. */
+async function openStepPalette(page: Page) {
+	const toggle = page.getByRole("button", { name: "Steps", exact: true });
+	if ((await toggle.getAttribute("aria-expanded")) !== "true")
+		await toggle.click();
+	await expect(toggle).toHaveAttribute("aria-expanded", "true");
+	await expect(
+		page.getByRole("region", { name: "Steps to add", exact: true }),
+	).toBeVisible();
+}
+
+/**
+ * The box of a canvas element once the canvas has stopped moving. A hover
+ * would scroll the canvas wrapper, which React Flow scrolls straight back, and
+ * leave the mouse on stale coordinates.
+ */
+async function settledBox(locator: Locator) {
+	let previous = "";
+	await expect
+		.poll(
+			async () => {
+				const box = JSON.stringify(await locator.boundingBox());
+				const settled = box === previous && box !== "null";
+				previous = box;
+				return settled;
+			},
+			{ message: "the canvas stops moving", intervals: [100] },
+		)
+		.toBe(true);
+	const box = await locator.boundingBox();
+	if (!box) throw new Error("the canvas element has no box");
+	return box;
 }
 
 // Covers: PRODUCT_WORKFLOWS, PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
@@ -366,6 +400,72 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	).toBeVisible();
 	await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 	await world.api.get(`${world.productPath}/workflows/${workflowId}`, 404);
+});
+
+// Covers: PRODUCT_WORKFLOW_NEW
+test("a step dragged from the palette lands where it is dropped, and steps reorder by handle and keyboard", async ({
+	page,
+	world,
+}, testInfo) => {
+	await openWorkflows(page, world);
+	await page
+		.getByRole("button", { name: /Give every new organization a workspace/ })
+		.click();
+	const canvas = page.getByRole("application", { name: "Workflow canvas" });
+	const step = (position: number, name: string) =>
+		canvas.getByRole("button", {
+			name: `Step ${position}: ${name}`,
+			exact: true,
+		});
+	await expect(step(1, "Create General workspace")).toBeVisible();
+	await expect(step(2, "Remember it on the organization")).toBeVisible();
+
+	await openStepPalette(page);
+	await page
+		.getByRole("button", { name: "Add step: Read product user", exact: true })
+		.dragTo(
+			canvas.getByRole("button", {
+				name: "Insert a step before step 1",
+				exact: true,
+			}),
+		);
+	await expect(
+		page.getByRole("article", { name: "Step 1: Read product user" }),
+	).toBeVisible();
+	await backToFlow(page);
+	await expect(step(1, "Read product user")).toBeVisible();
+	await expect(step(2, "Create General workspace")).toBeAttached();
+	await expect(step(3, "Remember it on the organization")).toBeAttached();
+	await captureReviewCheckpoint(page, testInfo, "step-dropped-from-palette");
+
+	const grip = await settledBox(
+		canvas.getByRole("button", { name: "Reorder step 1", exact: true }),
+	);
+	const next = await settledBox(step(2, "Create General workspace"));
+	const x = grip.x + grip.width / 2;
+	const y = grip.y + grip.height / 2;
+	await page.mouse.move(x, y);
+	await page.mouse.down();
+	await page.mouse.move(x, y + 4);
+	await page.mouse.move(x, next.y + next.height * 0.75, { steps: 10 });
+	await page.mouse.up();
+	await expect(step(1, "Create General workspace")).toBeVisible();
+	await expect(step(2, "Read product user")).toBeVisible();
+	await expect(step(3, "Remember it on the organization")).toBeAttached();
+	await captureReviewCheckpoint(page, testInfo, "step-reordered-by-handle");
+
+	await canvas
+		.getByRole("button", { name: "Reorder step 2", exact: true })
+		.press("ArrowUp");
+	await expect(step(1, "Read product user")).toBeVisible();
+	await expect(step(2, "Create General workspace")).toBeAttached();
+	await expect(
+		canvas.getByRole("button", { name: "Reorder step 1", exact: true }),
+	).toBeFocused();
+	await expect(
+		page.getByText("Step moved to position 1", { exact: true }),
+	).toBeAttached();
+	await captureReviewCheckpoint(page, testInfo, "step-moved-by-keyboard");
 });
 
 // Covers: PRODUCT_WORKFLOWS, PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
