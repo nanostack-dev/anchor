@@ -1,87 +1,21 @@
 # Anchor Agent Guide
 
-Go OaaS core for hierarchy, identity, RBAC, and tenancy.
+This repository owns its agent rules and documentation and works as a standalone clone. A Nanostack workspace and installed shared skills are optional helpers; do not require their files, sibling checkouts or bootstrap to implement a task here. All paths below are repository-relative.
 
-Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (source of truth, kept identical with echopoint).
+## Read when
 
-## Layout and commands
+- Exploring domain behavior or naming a concept: read [CONTEXT.md](CONTEXT.md), relevant [ADRs](docs/adr/) and [architecture](docs/technical/architecture.md).
+- Setting up this checkout or an isolated runtime: read [setup](docs/development/setup.md); selecting validation or changing API assertions: read [testing](docs/development/testing.md).
+- Before implementation: read [implementation rules](docs/development/agent-rules.md), [engineering practices](docs/engineering-best-practices.md), [Go conventions](docs/development/go-conventions.md) and [delivery workflow](docs/development/agent-workflow.md). They own contract-first generation, tenant scope, background durability, test conventions and completion gates.
+- Browser-visible work (including a backend change affecting a UI journey): read [anchor-ui/AGENTS.md](anchor-ui/AGENTS.md), the app browser guide and [.claude/skills/anchor-feature-review/SKILL.md](.claude/skills/anchor-feature-review/SKILL.md). The adapter and required review procedure are repo-owned.
+- Changing a shared library, generated client or deployment input: read [dependency ownership](docs/technical/dependencies.md), then the owning repository's current guide and source. Links work without sibling clones; use published module/package pins for normal builds.
+- Diagnosing setup/test problems: read [troubleshooting](docs/development/troubleshooting.md). Releasing or recovering a release: read [deployment](docs/runbooks/deployment.md) or [rollback](docs/runbooks/rollback.md).
+- Finding capability, component, issue-tracker or triage guides: start at [docs/README.md](docs/README.md).
 
-- Go module: `apps/anchor`. The repo root is not a Go module; run every `go` and `golangci-lint` command from `apps/anchor`.
-- UI: `anchor-ui/` (pnpm workspace member; the lockfile is the root `pnpm-lock.yaml`). Go SDK: `clients/go/`.
-- Contract: `apps/anchor/cmd/http/openapi.yaml`.
-- Regenerate the oapi server, go-jet models, and the `anchor-ui/src/client` client: `cd apps/anchor && ./generate_anchor.sh`.
-  - Needs `docker`, `migrate`, `go`, `pnpm`, and `openssl` on PATH.
-  - Starts a throwaway `timescale/timescaledb` container on port 25895, migrates `apps/anchor/migrations` into it, runs `dbgen.go`, then `pnpm run openapi-ts` in `anchor-ui`. Stops the container on exit.
-  - Run it from `apps/anchor`: every path in it is relative to that directory.
-- Regenerate the Go SDK in `clients/go`: `make generate-client` from the repo root.
-- Component tests (CTs): `cd apps/anchor && go test ./cmd/it/ct/... -count=1`. Needs Docker (testcontainers). Add `-run <TestName>` to narrow.
-- CI runs `gotestsum --format github-actions -- ./...` in `apps/anchor/cmd/it/ct`, `apps/anchor/cmd/it/service`, and `apps/anchor/internal`. A new or changed CT also needs the shuffle and race commands under Invariants.
-- Route security golden: `cd apps/anchor && UPDATE_ROUTE_SECURITY=1 go test ./internal/security/ -run TestContractSecurityIsUnchanged`. Run it only for a deliberate route-security change, and review the diff in `internal/security/testdata`.
-- Lint: `cd apps/anchor && golangci-lint run --config ../../.golangci.yml --timeout 5m`. From the repo root it prints a false `0 issues` because the root has no Go module. `./lint-fix.sh` at the root is the `--fix` variant.
-- UI checks, from `anchor-ui`: `pnpm check`, `pnpm typecheck`, `pnpm test`.
-- Raw SQL in a CT: `testDB` (`*sql.DB`), declared in `apps/anchor/cmd/it/ct/license_shared_test.go` and wired in `shared_test.go`. Scope every statement to your own IDs.
+## Work and documentation
 
-## Invariants
+Fetch this repository and implement in an isolated worktree from `origin/main`; preserve primary-checkout changes. Run Go commands in `apps/anchor` and frontend commands in `anchor-ui`. Generated files change only through their owning generators.
 
-- Every exported service method validates its input via `nanostack-framework/pkg/validate` before any repository or transaction call.
-- Business rules live in the service layer, never in SQL. New migrations must not add `CHECK` constraints or business triggers — the DB keeps PK/FK/UNIQUE/NOT NULL/defaults and the `updated_at` trigger only. One exception: time-series aggregation is delegated to TimescaleDB (`time_bucket`, continuous aggregates, retention and compression policies) — see `docs/adr/0005-timescaledb-for-usage-history.md`. Interpreting a series is still service-layer work.
-- New subsystems get their own package tree with an fx module (`internal/email/`, `internal/license/`), not another file in the flat `internal/service` and `internal/repository` packages. API handler methods stay in `internal/api` because the generated `StrictServerInterface` is implemented by one struct. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
-- Tenant-facing paths stay tenant-scoped at the repository/service boundary. Methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers.
-- Public IDs are KSUIDs.
-- `Create`/`Update` repository methods return domain values, not pointers — re-query after update.
-- OpenAPI enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
-- A read that offers a related resource uses `?include=` — one shared enum parameter per aggregate, absent never means empty, one statement per included resource, and no derived data. See `docs/engineering-best-practices.md`.
-- Product API keys are Anchor *management* credentials and keep the fixed `anchor_prd_apikey_` prefix. Configurable product-level prefixes apply only to organization API keys (`*_org_apikey_`).
-- Contract first: update `openapi.yaml`, then regenerate (see "Layout and commands"). Generated files are never hand-edited.
-- HTTP error statuses follow `docs/engineering-best-practices.md`. Changing one is a client-visible change with no compile-time check: the anchor API suite is a set of echopoint flows in the database, so a status change passes build, lint, and every Go test and then fails the post-deploy `Echopoint flow suite (anchor)` job. In the same change, update the flow assertions and re-run `echopoint flows run --tag anchor --environment dev` against both the `prod` profile (the CI organization) and `dev`. The flows exist once per organization with different ids.
-- New CTs go in the root `apps/anchor/cmd/it/ct` package, never a sub-folder, because each Go package pays a full container and app setup.
-- CTs run in parallel. Every CT shares one app server, one database, and one Redis with the others, so write each CT so that it cannot see or change the data of another CT:
-  - Call `t.Parallel()` as the first statement. Code before it runs in the serial phase.
-  - Build your own fixtures (`createTestProductContext`, `itdsl.Given(t)`, `newLicenseWorld`). The default tenant behind `testOwnerClient` is shared: add to it, but never change or delete its tenant or owner.
-  - Make every name, email, and slug unique (`ids.MustNew`, `itshared.Faker.UUID()`). A fixed value such as `invitee@example.com` collides with the same test in another run or with a copy of it.
-  - Scope every read to your own IDs. Do not assert an exact total, or a before/after delta, on a list or table that other CTs also write. Filter by your product or IDs, or use `GreaterOrEqual`.
-  - Scope every `testDB` statement with a `WHERE` on your own IDs. Never run an unscoped `UPDATE`, `DELETE`, or `TRUNCATE`.
-  - Do not change process state: no `os.Setenv`/`t.Setenv`, `os.Stdout`, package variables, or clock overrides.
-  - Wait for a result with `require.Eventually` or `EventSink.WaitFor` on your own row or event. Do not use a fixed `time.Sleep` for a positive result.
-  - A CT stays serial only when it touches process-wide state: the shared mailpit inbox, the Clerk reconcile queue (any keyed Clerk instance), a full-range continuous-aggregate refresh or chunk drop, or a lock-timing assertion. Leave out `t.Parallel()` and put a `// Not parallel: <reason>.` line on the function. Go runs all serial CTs before the parallel ones start.
-  - Subtests run in order by default. Add `t.Parallel()` to a subtest only when the subtest builds its own world and the parent has no shared setup. Then use `t.Cleanup`, not `defer`, in the parent.
-  - Before you push a new or changed CT, run `go test ./cmd/it/ct/... -count=1 -shuffle=on` and `go test ./cmd/it/ct/... -count=1 -race -parallel 32` from `apps/anchor`.
-- Avoid comments — name variables and functions clearly instead. Comment only a genuinely complex algorithm.
-- Product-scoped writes that change a catalogued resource must `events.Emit` inside the same `transactor.InTx` as the write. Catalogued resources: organization, membership, organization invitation, workspace, organization API key, product user, organization license, product role, product resource permission. Add the type to `internal/events` first. Clerk ingest is a product write: emit the matching product-user event. Cover the emit with a CT that configures an endpoint (`ProductContext.CaptureEvents`) and waits with `WaitFor`. `CaptureEvents` asserts Standard Webhooks on every captured delivery (signature, headers, envelope). No endpoint configured is not an error: the worker completes with an empty fan-out. Assign and unassign of a resource permission on a role emit `product.role.updated` only when the assignment actually changes.
+Update authoritative docs in the same PR for changed behavior, a verified reusable fix, resolved vocabulary or a consequential architectural choice. Preserve ADR history and component-local docs, link new documents from the index, and verify links/command provenance. Record evidence rather than hypotheses or sensitive logs. The [delivery workflow](docs/development/agent-workflow.md) supplies the local procedure even when no skill is installed.
 
-## Pull requests
-
-- Before implementing a browser-visible feature or behavior change (including backend changes that affect a UI journey), read `.claude/skills/anchor-feature-review/SKILL.md`; it loads the shared Nanostack `feature-review` procedure and binds it to Anchor's Playwright setup.
-- Follow `.github/pull_request_template.md`. `gh pr create` starts from it. Keep every section, and fill each one in.
-- The preview checkbox controls the preview environment. Select it to deploy a preview for the pull request. Clear it to destroy the preview.
-- Never delete the `<!-- preview-deploy -->` marker on that line. CI finds the checkbox with the marker, not with the label text.
-- CI reads the checkbox live on each build, so select it before you push. A checkbox selected later makes `preview-toggle.yml` re-run the full build, because the preview image is tagged from the merge commit of the build.
-- A cleared checkbox starts the cleanup as soon as you save the description. A closed pull request always destroys the preview.
-- `main` has no branch protection and auto-merge is disabled: wait with `gh pr checks <n> --watch`, then `gh pr merge <n> --squash --delete-branch`.
-- A merge that touches `clients/go/**` auto-tags `clients/go/vX` through `release-client.yml`. Find your tag with `git tag --contains <merge-sha> 'clients/go/*'` after `git fetch --tags`, not by guessing the next version.
-
-## Agent skills
-
-### Agent workflow
-
-Before implementing a feature or behavioral fix, read and follow the shared
-[agent-workflow skill](https://raw.githubusercontent.com/nanostack-dev/skills/main/agent-workflow/SKILL.md)
-for affected-area local E2E before pushing, complete CI verification, and the
-documented cloud exception. Use this repository's guides and scripts for setup
-and scenario selection.
-
-### Issue tracker
-
-GitHub Issues on `nanostack-dev/anchor`, driven through the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context — one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
-
-### Coding style
-
-Anchor-specific Go/testing practices learned during review — reuse before building, verifying behavior before swapping in a replacement, comment discipline, test fixtures. Not synced with echopoint. See `docs/agents/coding-style.md`.
+Follow [.github/pull_request_template.md](.github/pull_request_template.md), preserving every section and the preview marker. Commit/push from an isolated worktree are allowed; complete current-head CI and applicable review before calling work ready. A merged PR alone does not establish deployment.

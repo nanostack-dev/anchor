@@ -10,7 +10,7 @@ use the [review criteria](review.md). Inspecting CI failures: use
 [CI failure evidence](ci-failures.md).
 Before implementing a browser-visible feature or behavior change, load
 [Anchor feature review](../../../.claude/skills/anchor-feature-review/SKILL.md).
-It links the shared Nanostack procedure and maps it to this project's commands,
+It links the repo-owned delivery procedure and maps it to this project's commands,
 fixtures and evidence; keep verified Anchor troubleshooting in this guide.
 
 1. Identify the shipped route and visible action in [coverage.md](coverage.md).
