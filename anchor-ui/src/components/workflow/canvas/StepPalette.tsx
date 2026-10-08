@@ -1,6 +1,7 @@
 import type { WorkflowActionResponse } from "@/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { GripVertical, ListPlus } from "lucide-react";
@@ -134,8 +135,8 @@ export function StepPalette({
 						className={cn(
 							"absolute z-20 flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-md",
 							tray
-								? "inset-x-3 bottom-3 max-h-[40%] origin-bottom"
-								: "top-14 left-3 max-h-[calc(100%-11rem)] origin-top-left",
+								? "inset-x-3 bottom-3 h-[40%] origin-bottom"
+								: "top-14 left-3 h-[calc(100%-11rem)] origin-top-left",
 							steppingAside && "pointer-events-none",
 						)}
 						style={tray ? undefined : { width: PALETTE_PANEL_WIDTH }}
@@ -145,65 +146,67 @@ export function StepPalette({
 								Drag onto the flow, or click to add at the end.
 							</Text>
 						</Box>
-						<Box className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
-							{groups.length === 0 ? (
-								<Box className="px-1.5 py-2">
-									<Text size="sm" tone="muted">
-										No steps are available to add.
-									</Text>
-								</Box>
-							) : (
-								groups.map(([group, items], index) => {
-									const Icon = actionGroupIcon(group);
-									const headingId = `${panelId}-group-${index}`;
-									return (
-										<Box key={group} className="pb-1">
-											<Box
-												id={headingId}
-												className="flex items-center gap-2 px-2 pt-1.5 pb-1"
-											>
+						<ScrollArea height="fill" overscroll="contain">
+							<Box className="p-1.5">
+								{groups.length === 0 ? (
+									<Box className="px-1.5 py-2">
+										<Text size="sm" tone="muted">
+											No steps are available to add.
+										</Text>
+									</Box>
+								) : (
+									groups.map(([group, items], index) => {
+										const Icon = actionGroupIcon(group);
+										const headingId = `${panelId}-group-${index}`;
+										return (
+											<Box key={group} className="pb-1">
 												<Box
-													as="span"
+													id={headingId}
+													className="flex items-center gap-2 px-2 pt-1.5 pb-1"
+												>
+													<Box
+														as="span"
+														className={cn(
+															"flex size-5 shrink-0 items-center justify-center rounded-md",
+															actionGroupTone(group),
+														)}
+													>
+														<Icon className="size-3" aria-hidden />
+													</Box>
+													<Box
+														as="span"
+														title={group}
+														className="min-w-0 truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+													>
+														{group}
+													</Box>
+												</Box>
+												<Box
+													as="ul"
+													aria-labelledby={headingId}
 													className={cn(
-														"flex size-5 shrink-0 items-center justify-center rounded-md",
-														actionGroupTone(group),
+														tray
+															? "grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-x-1"
+															: "flex flex-col",
 													)}
 												>
-													<Icon className="size-3" aria-hidden />
-												</Box>
-												<Box
-													as="span"
-													title={group}
-													className="min-w-0 truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
-												>
-													{group}
+													{items.map((action) => (
+														<Box as="li" key={action.type}>
+															<PaletteItem
+																action={action}
+																indented={!tray}
+																onAdd={onAdd}
+																onDragChange={onDragChange}
+															/>
+														</Box>
+													))}
 												</Box>
 											</Box>
-											<Box
-												as="ul"
-												aria-labelledby={headingId}
-												className={cn(
-													tray
-														? "grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-x-1"
-														: "flex flex-col",
-												)}
-											>
-												{items.map((action) => (
-													<Box as="li" key={action.type}>
-														<PaletteItem
-															action={action}
-															indented={!tray}
-															onAdd={onAdd}
-															onDragChange={onDragChange}
-														/>
-													</Box>
-												))}
-											</Box>
-										</Box>
-									);
-								})
-							)}
-						</Box>
+										);
+									})
+								)}
+							</Box>
+						</ScrollArea>
 					</motion.section>
 				) : null}
 			</AnimatePresence>
