@@ -135,8 +135,9 @@ export function StepPalette({
 						className={cn(
 							"absolute z-20 flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-md",
 							tray
-								? "inset-x-3 bottom-3 h-[40%] origin-bottom"
-								: "top-14 left-3 h-[calc(100%-11rem)] origin-top-left",
+								? "inset-x-3 bottom-3 origin-bottom"
+								: "top-14 left-3 origin-top-left",
+							groups.length > 0 && (tray ? "h-[40%]" : "h-[calc(100%-11rem)]"),
 							steppingAside && "pointer-events-none",
 						)}
 						style={tray ? undefined : { width: PALETTE_PANEL_WIDTH }}
@@ -146,16 +147,16 @@ export function StepPalette({
 								Drag onto the flow, or click to add at the end.
 							</Text>
 						</Box>
-						<ScrollArea height="fill" overscroll="contain">
-							<Box className="p-1.5">
-								{groups.length === 0 ? (
-									<Box className="px-1.5 py-2">
-										<Text size="sm" tone="muted">
-											No steps are available to add.
-										</Text>
-									</Box>
-								) : (
-									groups.map(([group, items], index) => {
+						{groups.length === 0 ? (
+							<Box className="px-3 py-3">
+								<Text size="sm" tone="muted">
+									No steps are available to add.
+								</Text>
+							</Box>
+						) : (
+							<ScrollArea height="fill" overscroll="contain">
+								<Box className="p-1.5">
+									{groups.map(([group, items], index) => {
 										const Icon = actionGroupIcon(group);
 										const headingId = `${panelId}-group-${index}`;
 										return (
@@ -203,10 +204,10 @@ export function StepPalette({
 												</Box>
 											</Box>
 										);
-									})
-								)}
-							</Box>
-						</ScrollArea>
+									})}
+								</Box>
+							</ScrollArea>
+						)}
 					</motion.section>
 				) : null}
 			</AnimatePresence>
