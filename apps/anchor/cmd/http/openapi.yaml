@@ -255,6 +255,281 @@ components:
       in: header
       name: X-Product-API-Key
   schemas:
+    StripeBillingIdentifier:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9_-]+$'
+    StripeBillingAccount:
+      x-go-type: billing.Account
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, name, mode]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [sandbox]
+    StripeBillingProduct:
+      x-go-type: billing.Product
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        name:
+          type: string
+    StripeBillingTemplate:
+      x-go-type: billing.Template
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, name, values, archived]
+      properties:
+        id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        name:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+        archived:
+          type: boolean
+    StripeBillingPrice:
+      x-go-type: billing.Price
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, name, template_id, amount, currency, interval, stripe_product_id, stripe_price_id, active]
+      properties:
+        id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        name:
+          type: string
+        template_id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        amount:
+          type: integer
+          x-go-type: int64
+          minimum: 1
+          maximum: 99999999
+          description: Recurring amount in the smallest unit of the currency
+        currency:
+          type: string
+          enum: [usd, cad, eur]
+        interval:
+          type: string
+          enum: [month, year]
+        stripe_product_id:
+          type: string
+        stripe_price_id:
+          type: string
+        active:
+          type: boolean
+    StripeBillingOrganization:
+      x-go-type: billing.Organization
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, name, template_id, license_values, customer_id, subscription_id, price_id, status, cancel_at_period_end, current_period_end, sync_state, last_synced_at, sync_error, pending_update]
+      properties:
+        id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        name:
+          type: string
+        template_id:
+          type: string
+        license_values:
+          type: object
+          additionalProperties: true
+        customer_id:
+          type: string
+        subscription_id:
+          type: string
+        price_id:
+          type: string
+        status:
+          type: string
+        cancel_at_period_end:
+          type: boolean
+        current_period_end:
+          type: [string, 'null']
+          format: date-time
+        sync_state:
+          type: string
+        last_synced_at:
+          type: [string, 'null']
+          format: date-time
+        sync_error:
+          type: string
+        pending_update:
+          type: boolean
+    StripeBillingSettings:
+      x-go-type: billing.Settings
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [fallback_template_id]
+      properties:
+        fallback_template_id:
+          type: string
+    StripeBillingBillingEvent:
+      x-go-type: billing.BillingEvent
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [id, type, organization_id, status, received_at, last_error]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        organization_id:
+          type: string
+        status:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        last_error:
+          type: string
+    StripeBillingState:
+      x-go-type: billing.State
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [account, product, templates, prices, organizations, settings, events]
+      properties:
+        account:
+          $ref: '#/components/schemas/StripeBillingAccount'
+        product:
+          $ref: '#/components/schemas/StripeBillingProduct'
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StripeBillingTemplate'
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/StripeBillingPrice'
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/StripeBillingOrganization'
+        settings:
+          $ref: '#/components/schemas/StripeBillingSettings'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/StripeBillingBillingEvent'
+    StripeBillingCreatePriceRequest:
+      x-go-type: billing.CreatePriceRequest
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [name, template_id, amount, currency, interval]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        template_id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        amount:
+          type: integer
+          x-go-type: int64
+          minimum: 1
+          maximum: 99999999
+        currency:
+          type: string
+          enum: [usd, cad, eur]
+        interval:
+          type: string
+          enum: [month, year]
+    StripeBillingCheckoutRequest:
+      x-go-type: billing.CheckoutRequest
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [price_id]
+      properties:
+        price_id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+        trial_days:
+          type: integer
+          minimum: 0
+          maximum: 30
+    StripeBillingSubscriptionRequest:
+      x-go-type: billing.SubscriptionRequest
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [price_id]
+      properties:
+        price_id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+    StripeBillingUpdateSettingsRequest:
+      x-go-type: billing.UpdateSettingsRequest
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [fallback_template_id]
+      properties:
+        fallback_template_id:
+          $ref: '#/components/schemas/StripeBillingIdentifier'
+    StripeBillingURLResponse:
+      x-go-type: billing.URLResponse
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    StripeBillingWebhookResponse:
+      x-go-type: billing.WebhookResponse
+      x-go-type-import:
+        path: anchor/internal/stripebilling/billing
+      type: object
+      additionalProperties: false
+      required: [received]
+      properties:
+        received:
+          type: boolean
+    StripeBillingErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+    StripeBillingCancellationRequest:
+      type: object
+      additionalProperties: false
+      required: [cancel_at_period_end]
+      properties:
+        cancel_at_period_end:
+          type: boolean
     # Generic
     ksuid:
       type: string
@@ -2617,7 +2892,7 @@ components:
     # Integration Schemas
     IntegrationProviderType:
       type: string
-      enum: [CLERK, SMTP]
+      enum: [CLERK, SMTP, STRIPE]
       description: The type of integration provider.
       x-go-type: integration.ProviderType
       x-go-type-import:
@@ -2689,10 +2964,46 @@ components:
           type: string
           description: Optional Reply-To address
       additionalProperties: false
+    StripeIntegrationAuthMethod:
+      type: string
+      enum: [API_KEY, LOCAL_CLI]
+      default: API_KEY
+      description: >-
+        API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current
+        authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+    StripeIntegrationConfig:
+      type: object
+      description: >-
+        Stripe sandbox configuration. API key and webhook secret are write-only,
+        encrypted at rest, and preserved when omitted or blank during an update.
+        Live Stripe credentials are refused.
+      properties:
+        auth_method:
+          $ref: "#/components/schemas/StripeIntegrationAuthMethod"
+        account_id:
+          type: string
+          maxLength: 128
+          pattern: '^acct_[A-Za-z0-9]+$'
+          description: Stripe sandbox account identifier verified with the supplied API key.
+        api_key:
+          type: string
+          writeOnly: true
+          description: Stripe test secret or restricted API key. Never returned by the API.
+        webhook_secret:
+          type: string
+          writeOnly: true
+          description: Stripe webhook signing secret. Never returned by the API.
+        return_url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Anchor UI return URL. HTTPS is required except for loopback HTTP development URLs.
+      additionalProperties: false
     IntegrationProviderConfig:
       oneOf:
       - $ref: "#/components/schemas/ClerkIntegrationConfig"
       - $ref: "#/components/schemas/SmtpIntegrationConfig"
+      - $ref: "#/components/schemas/StripeIntegrationConfig"
       description: Provider-specific configuration payload.
     SmtpIntegrationPublicConfig:
       type: object
@@ -2724,9 +3035,29 @@ components:
           type: string
           description: Optional Reply-To address.
       additionalProperties: false
+    StripeIntegrationPublicConfig:
+      type: object
+      description: Non-sensitive Stripe configuration. Credentials are never included.
+      required: [auth_method, mode, api_key_configured, webhook_secret_configured]
+      properties:
+        auth_method:
+          $ref: "#/components/schemas/StripeIntegrationAuthMethod"
+        account_id:
+          type: string
+        mode:
+          type: string
+          enum: [sandbox]
+        api_key_configured:
+          type: boolean
+        webhook_secret_configured:
+          type: boolean
+        return_url:
+          type: string
+      additionalProperties: false
     IntegrationProviderPublicConfig:
       oneOf:
       - $ref: "#/components/schemas/SmtpIntegrationPublicConfig"
+      - $ref: "#/components/schemas/StripeIntegrationPublicConfig"
       description: Non-sensitive provider configuration returned in API responses.
     SmtpIntegrationInstanceCreateRequest:
       type: object
@@ -2759,15 +3090,28 @@ components:
       required:
       - provider_type
       additionalProperties: false
+    StripeIntegrationInstanceCreateRequest:
+      type: object
+      required: [provider_type]
+      additionalProperties: false
+      properties:
+        provider_type:
+          # Inline by necessity — see SmtpIntegrationInstanceCreateRequest.provider_type.
+          type: string
+          enum: [STRIPE]
+        config:
+          $ref: "#/components/schemas/StripeIntegrationConfig"
     IntegrationInstanceCreateRequest:
       oneOf:
       - $ref: "#/components/schemas/ClerkIntegrationInstanceCreateRequest"
       - $ref: "#/components/schemas/SmtpIntegrationInstanceCreateRequest"
+      - $ref: "#/components/schemas/StripeIntegrationInstanceCreateRequest"
       discriminator:
         propertyName: provider_type
         mapping:
           CLERK: "#/components/schemas/ClerkIntegrationInstanceCreateRequest"
           SMTP: "#/components/schemas/SmtpIntegrationInstanceCreateRequest"
+          STRIPE: "#/components/schemas/StripeIntegrationInstanceCreateRequest"
       description: Create request for a provider integration instance.
     IntegrationInstanceUpdateRequest:
       type: object
@@ -4263,6 +4607,340 @@ components:
             $ref: "#/components/schemas/ApiErrorResponse"
 
 paths:
+  /v1/products/{product_id}/billing/stripe:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    get:
+      operationId: getStripeBillingState
+      tags: [Integration]
+      summary: get Stripe Billing State
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/prices:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      operationId: createStripeBillingPrice
+      tags: [Integration]
+      summary: create Stripe Billing Price
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeBillingCreatePriceRequest'
+      responses:
+        '201':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingPrice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/prices/{price_id}/archive:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - name: price_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/StripeBillingIdentifier'
+    post:
+      operationId: archiveStripeBillingPrice
+      tags: [Integration]
+      summary: archive Stripe Billing Price
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingPrice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/settings:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    put:
+      operationId: updateStripeBillingSettings
+      tags: [Integration]
+      summary: update Stripe Billing Settings
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeBillingUpdateSettingsRequest'
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      operationId: createStripeBillingCheckout
+      tags: [Integration]
+      summary: create Stripe Billing Checkout
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeBillingCheckoutRequest'
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingURLResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      operationId: changeStripeBillingSubscription
+      tags: [Integration]
+      summary: change Stripe Billing Subscription
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeBillingSubscriptionRequest'
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingOrganization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    put:
+      operationId: setStripeBillingCancellation
+      tags: [Integration]
+      summary: set Stripe Billing Cancellation
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeBillingCancellationRequest'
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingOrganization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      operationId: createStripeBillingPortal
+      tags: [Integration]
+      summary: create Stripe Billing Portal
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingURLResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      operationId: syncStripeBillingOrganization
+      tags: [Integration]
+      summary: sync Stripe Billing Organization
+      security:
+      - platformBearerAuth: []
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingOrganization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/billing/stripe/webhook:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      operationId: ingestStripeBillingWebhook
+      tags: [Integration]
+      summary: ingest Stripe Billing Webhook
+      security: []
+      parameters:
+      - name: Stripe-Signature
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Stripe sandbox billing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeBillingWebhookResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   # --- Auth API for platform ---
   /v1/auth/logout:
     post:

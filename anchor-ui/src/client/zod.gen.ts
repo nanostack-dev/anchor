@@ -2,6 +2,137 @@
 
 import { z } from 'zod';
 
+export const zStripeBillingIdentifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
+
+export const zStripeBillingAccount = z.object({
+    id: z.string(),
+    name: z.string(),
+    mode: z.enum([
+        'sandbox'
+    ])
+});
+
+export const zStripeBillingProduct = z.object({
+    id: zStripeBillingIdentifier,
+    name: z.string()
+});
+
+export const zStripeBillingTemplate = z.object({
+    id: zStripeBillingIdentifier,
+    name: z.string(),
+    values: z.record(z.string(), z.unknown()),
+    archived: z.boolean()
+});
+
+export const zStripeBillingPrice = z.object({
+    id: zStripeBillingIdentifier,
+    name: z.string(),
+    template_id: zStripeBillingIdentifier,
+    amount: z.int().gte(1).lte(99999999),
+    currency: z.enum([
+        'usd',
+        'cad',
+        'eur'
+    ]),
+    interval: z.enum([
+        'month',
+        'year'
+    ]),
+    stripe_product_id: z.string(),
+    stripe_price_id: z.string(),
+    active: z.boolean()
+});
+
+export const zStripeBillingOrganization = z.object({
+    id: zStripeBillingIdentifier,
+    name: z.string(),
+    template_id: z.string(),
+    license_values: z.record(z.string(), z.unknown()),
+    customer_id: z.string(),
+    subscription_id: z.string(),
+    price_id: z.string(),
+    status: z.string(),
+    cancel_at_period_end: z.boolean(),
+    current_period_end: z.union([
+        z.iso.datetime(),
+        z.null()
+    ]),
+    sync_state: z.string(),
+    last_synced_at: z.union([
+        z.iso.datetime(),
+        z.null()
+    ]),
+    sync_error: z.string(),
+    pending_update: z.boolean()
+});
+
+export const zStripeBillingSettings = z.object({
+    fallback_template_id: z.string()
+});
+
+export const zStripeBillingBillingEvent = z.object({
+    id: z.string(),
+    type: z.string(),
+    organization_id: z.string(),
+    status: z.string(),
+    received_at: z.iso.datetime(),
+    last_error: z.string()
+});
+
+export const zStripeBillingState = z.object({
+    account: zStripeBillingAccount,
+    product: zStripeBillingProduct,
+    templates: z.array(zStripeBillingTemplate),
+    prices: z.array(zStripeBillingPrice),
+    organizations: z.array(zStripeBillingOrganization),
+    settings: zStripeBillingSettings,
+    events: z.array(zStripeBillingBillingEvent)
+});
+
+export const zStripeBillingCreatePriceRequest = z.object({
+    name: z.string().min(1).max(120),
+    template_id: zStripeBillingIdentifier,
+    amount: z.int().gte(1).lte(99999999),
+    currency: z.enum([
+        'usd',
+        'cad',
+        'eur'
+    ]),
+    interval: z.enum([
+        'month',
+        'year'
+    ])
+});
+
+export const zStripeBillingCheckoutRequest = z.object({
+    price_id: zStripeBillingIdentifier,
+    trial_days: z.optional(z.int().gte(0).lte(30))
+});
+
+export const zStripeBillingSubscriptionRequest = z.object({
+    price_id: zStripeBillingIdentifier
+});
+
+export const zStripeBillingUpdateSettingsRequest = z.object({
+    fallback_template_id: zStripeBillingIdentifier
+});
+
+export const zStripeBillingUrlResponse = z.object({
+    url: z.url()
+});
+
+export const zStripeBillingWebhookResponse = z.object({
+    received: z.boolean()
+});
+
+export const zStripeBillingErrorResponse = z.object({
+    error: z.string()
+});
+
+export const zStripeBillingCancellationRequest = z.object({
+    cancel_at_period_end: z.boolean()
+});
+
 /**
  * Unique identifier using KSUID format with a resource-specific prefix.
  */
@@ -995,7 +1126,8 @@ export const zOrganizationInvitationSearchRequest = zSearchRequest.and(z.object(
  */
 export const zIntegrationProviderType = z.enum([
     'CLERK',
-    'SMTP'
+    'SMTP',
+    'STRIPE'
 ]);
 
 /**
@@ -1052,11 +1184,29 @@ export const zSmtpIntegrationConfig = z.object({
 });
 
 /**
+ * API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+ */
+export const zStripeIntegrationAuthMethod = z.enum([
+    'API_KEY',
+    'LOCAL_CLI'
+]);
+
+/**
+ * Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+ */
+export const zStripeIntegrationConfig = z.object({
+    auth_method: z.optional(zStripeIntegrationAuthMethod),
+    account_id: z.optional(z.string().max(128).regex(/^acct_[A-Za-z0-9]+$/)),
+    return_url: z.optional(z.url().max(2048))
+});
+
+/**
  * Provider-specific configuration payload.
  */
 export const zIntegrationProviderConfig = z.union([
     zClerkIntegrationConfig,
-    zSmtpIntegrationConfig
+    zSmtpIntegrationConfig,
+    zStripeIntegrationConfig
 ]);
 
 /**
@@ -1081,9 +1231,26 @@ export const zSmtpIntegrationPublicConfig = z.object({
 });
 
 /**
+ * Non-sensitive Stripe configuration. Credentials are never included.
+ */
+export const zStripeIntegrationPublicConfig = z.object({
+    auth_method: zStripeIntegrationAuthMethod,
+    account_id: z.optional(z.string()),
+    mode: z.enum([
+        'sandbox'
+    ]),
+    api_key_configured: z.boolean(),
+    webhook_secret_configured: z.boolean(),
+    return_url: z.optional(z.string())
+});
+
+/**
  * Non-sensitive provider configuration returned in API responses.
  */
-export const zIntegrationProviderPublicConfig = zSmtpIntegrationPublicConfig;
+export const zIntegrationProviderPublicConfig = z.union([
+    zSmtpIntegrationPublicConfig,
+    zStripeIntegrationPublicConfig
+]);
 
 export const zSmtpIntegrationInstanceCreateRequest = z.object({
     provider_type: z.enum([
@@ -1099,6 +1266,13 @@ export const zClerkIntegrationInstanceCreateRequest = z.object({
     config: z.optional(zClerkIntegrationConfig)
 });
 
+export const zStripeIntegrationInstanceCreateRequest = z.object({
+    provider_type: z.enum([
+        'STRIPE'
+    ]),
+    config: z.optional(zStripeIntegrationConfig)
+});
+
 /**
  * Create request for a provider integration instance.
  */
@@ -1108,7 +1282,10 @@ export const zIntegrationInstanceCreateRequest = z.union([
     }).and(zClerkIntegrationInstanceCreateRequest),
     z.object({
         provider_type: z.literal('SMTP')
-    }).and(zSmtpIntegrationInstanceCreateRequest)
+    }).and(zSmtpIntegrationInstanceCreateRequest),
+    z.object({
+        provider_type: z.literal('STRIPE')
+    }).and(zStripeIntegrationInstanceCreateRequest)
 ]);
 
 export const zIntegrationInstanceUpdateRequest = z.object({
@@ -1664,6 +1841,17 @@ export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
+ * Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+ */
+export const zStripeIntegrationConfigWritable = z.object({
+    auth_method: z.optional(zStripeIntegrationAuthMethod),
+    account_id: z.optional(z.string().max(128).regex(/^acct_[A-Za-z0-9]+$/)),
+    api_key: z.optional(z.string()),
+    webhook_secret: z.optional(z.string()),
+    return_url: z.optional(z.url().max(2048))
+});
+
+/**
  * The KSUID of the platform invitation.
  */
 export const zPlatformInvitationIdParameter = zKsuid;
@@ -1752,6 +1940,145 @@ export const zEmailTemplateIdParameter = zKsuid;
  * The KSUID of the license template.
  */
 export const zLicenseTemplateIdParameter = zKsuid;
+
+export const zGetStripeBillingStateData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zGetStripeBillingStateResponse = zStripeBillingState;
+
+export const zCreateStripeBillingPriceData = z.object({
+    body: zStripeBillingCreatePriceRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zCreateStripeBillingPriceResponse = zStripeBillingPrice;
+
+export const zArchiveStripeBillingPriceData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        price_id: zStripeBillingIdentifier
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zArchiveStripeBillingPriceResponse = zStripeBillingPrice;
+
+export const zUpdateStripeBillingSettingsData = z.object({
+    body: zStripeBillingUpdateSettingsRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zUpdateStripeBillingSettingsResponse = zStripeBillingSettings;
+
+export const zCreateStripeBillingCheckoutData = z.object({
+    body: zStripeBillingCheckoutRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zCreateStripeBillingCheckoutResponse = zStripeBillingUrlResponse;
+
+export const zChangeStripeBillingSubscriptionData = z.object({
+    body: zStripeBillingSubscriptionRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zChangeStripeBillingSubscriptionResponse = zStripeBillingOrganization;
+
+export const zSetStripeBillingCancellationData = z.object({
+    body: zStripeBillingCancellationRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zSetStripeBillingCancellationResponse = zStripeBillingOrganization;
+
+export const zCreateStripeBillingPortalData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zCreateStripeBillingPortalResponse = zStripeBillingUrlResponse;
+
+export const zSyncStripeBillingOrganizationData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zSyncStripeBillingOrganizationResponse = zStripeBillingOrganization;
+
+export const zIngestStripeBillingWebhookData = z.object({
+    body: z.record(z.string(), z.unknown()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never()),
+    headers: z.object({
+        'Stripe-Signature': z.string().min(1).max(2048)
+    })
+});
+
+/**
+ * Stripe sandbox billing result
+ */
+export const zIngestStripeBillingWebhookResponse = zStripeBillingWebhookResponse;
 
 export const zLogoutData = z.object({
     body: z.optional(z.never()),

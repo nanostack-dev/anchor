@@ -28,6 +28,7 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
+	"anchor/internal/stripebilling/billing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -195,6 +196,54 @@ func (e SmtpIntegrationPublicConfigEncryption) Valid() bool {
 	case SmtpIntegrationPublicConfigEncryptionSTARTTLS:
 		return true
 	case SmtpIntegrationPublicConfigEncryptionTLS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationAuthMethod.
+const (
+	APIKEY   StripeIntegrationAuthMethod = "API_KEY"
+	LOCALCLI StripeIntegrationAuthMethod = "LOCAL_CLI"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationAuthMethod enum.
+func (e StripeIntegrationAuthMethod) Valid() bool {
+	switch e {
+	case APIKEY:
+		return true
+	case LOCALCLI:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationInstanceCreateRequestProviderType.
+const (
+	STRIPE StripeIntegrationInstanceCreateRequestProviderType = "STRIPE"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationInstanceCreateRequestProviderType enum.
+func (e StripeIntegrationInstanceCreateRequestProviderType) Valid() bool {
+	switch e {
+	case STRIPE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationPublicConfigMode.
+const (
+	Sandbox StripeIntegrationPublicConfigMode = "sandbox"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationPublicConfigMode enum.
+func (e StripeIntegrationPublicConfigMode) Valid() bool {
+	switch e {
+	case Sandbox:
 		return true
 	default:
 		return false
@@ -2589,6 +2638,102 @@ type SmtpIntegrationPublicConfigEncryption string
 // SortDirection defines model for SortDirection.
 type SortDirection = search.SortDirection
 
+// StripeBillingAccount defines model for StripeBillingAccount.
+type StripeBillingAccount = billing.Account
+
+// StripeBillingBillingEvent defines model for StripeBillingBillingEvent.
+type StripeBillingBillingEvent = billing.BillingEvent
+
+// StripeBillingCancellationRequest defines model for StripeBillingCancellationRequest.
+type StripeBillingCancellationRequest struct {
+	CancelAtPeriodEnd bool `json:"cancel_at_period_end"`
+}
+
+// StripeBillingCheckoutRequest defines model for StripeBillingCheckoutRequest.
+type StripeBillingCheckoutRequest = billing.CheckoutRequest
+
+// StripeBillingCreatePriceRequest defines model for StripeBillingCreatePriceRequest.
+type StripeBillingCreatePriceRequest = billing.CreatePriceRequest
+
+// StripeBillingIdentifier defines model for StripeBillingIdentifier.
+type StripeBillingIdentifier = string
+
+// StripeBillingOrganization defines model for StripeBillingOrganization.
+type StripeBillingOrganization = billing.Organization
+
+// StripeBillingPrice defines model for StripeBillingPrice.
+type StripeBillingPrice = billing.Price
+
+// StripeBillingProduct defines model for StripeBillingProduct.
+type StripeBillingProduct = billing.Product
+
+// StripeBillingSettings defines model for StripeBillingSettings.
+type StripeBillingSettings = billing.Settings
+
+// StripeBillingState defines model for StripeBillingState.
+type StripeBillingState = billing.State
+
+// StripeBillingSubscriptionRequest defines model for StripeBillingSubscriptionRequest.
+type StripeBillingSubscriptionRequest = billing.SubscriptionRequest
+
+// StripeBillingTemplate defines model for StripeBillingTemplate.
+type StripeBillingTemplate = billing.Template
+
+// StripeBillingURLResponse defines model for StripeBillingURLResponse.
+type StripeBillingURLResponse = billing.URLResponse
+
+// StripeBillingUpdateSettingsRequest defines model for StripeBillingUpdateSettingsRequest.
+type StripeBillingUpdateSettingsRequest = billing.UpdateSettingsRequest
+
+// StripeBillingWebhookResponse defines model for StripeBillingWebhookResponse.
+type StripeBillingWebhookResponse = billing.WebhookResponse
+
+// StripeIntegrationAuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+type StripeIntegrationAuthMethod string
+
+// StripeIntegrationConfig Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+type StripeIntegrationConfig struct {
+	// AccountId Stripe sandbox account identifier verified with the supplied API key.
+	AccountId *string `json:"account_id,omitempty"`
+
+	// ApiKey Stripe test secret or restricted API key. Never returned by the API.
+	ApiKey *string `json:"api_key,omitempty"`
+
+	// AuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+	AuthMethod *StripeIntegrationAuthMethod `json:"auth_method,omitempty"`
+
+	// ReturnUrl Anchor UI return URL. HTTPS is required except for loopback HTTP development URLs.
+	ReturnUrl *string `json:"return_url,omitempty"`
+
+	// WebhookSecret Stripe webhook signing secret. Never returned by the API.
+	WebhookSecret *string `json:"webhook_secret,omitempty"`
+}
+
+// StripeIntegrationInstanceCreateRequest defines model for StripeIntegrationInstanceCreateRequest.
+type StripeIntegrationInstanceCreateRequest struct {
+	// Config Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+	Config       *StripeIntegrationConfig                           `json:"config,omitempty"`
+	ProviderType StripeIntegrationInstanceCreateRequestProviderType `json:"provider_type"`
+}
+
+// StripeIntegrationInstanceCreateRequestProviderType defines model for StripeIntegrationInstanceCreateRequest.ProviderType.
+type StripeIntegrationInstanceCreateRequestProviderType string
+
+// StripeIntegrationPublicConfig Non-sensitive Stripe configuration. Credentials are never included.
+type StripeIntegrationPublicConfig struct {
+	AccountId        *string `json:"account_id,omitempty"`
+	ApiKeyConfigured bool    `json:"api_key_configured"`
+
+	// AuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+	AuthMethod              StripeIntegrationAuthMethod       `json:"auth_method"`
+	Mode                    StripeIntegrationPublicConfigMode `json:"mode"`
+	ReturnUrl               *string                           `json:"return_url,omitempty"`
+	WebhookSecretConfigured bool                              `json:"webhook_secret_configured"`
+}
+
+// StripeIntegrationPublicConfigMode defines model for StripeIntegrationPublicConfig.Mode.
+type StripeIntegrationPublicConfigMode string
+
 // TemplateExample defines model for TemplateExample.
 type TemplateExample struct {
 	// Id Client-generated UUID for this example set
@@ -2882,6 +3027,14 @@ type RefreshTokenParams struct {
 	RefreshToken *string `form:"refresh_token,omitempty" json:"refresh_token,omitempty"`
 }
 
+// IngestStripeBillingWebhookJSONBody defines parameters for IngestStripeBillingWebhook.
+type IngestStripeBillingWebhookJSONBody map[string]interface{}
+
+// IngestStripeBillingWebhookParams defines parameters for IngestStripeBillingWebhook.
+type IngestStripeBillingWebhookParams struct {
+	StripeSignature string `json:"Stripe-Signature"`
+}
+
 // ListEmailSendsParams defines parameters for ListEmailSends.
 type ListEmailSendsParams struct {
 	TemplateId *string          `form:"template_id,omitempty" json:"template_id,omitempty"`
@@ -3009,6 +3162,24 @@ type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
 
 // IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
 type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest
+
+// SetStripeBillingCancellationJSONRequestBody defines body for SetStripeBillingCancellation for application/json ContentType.
+type SetStripeBillingCancellationJSONRequestBody = StripeBillingCancellationRequest
+
+// CreateStripeBillingCheckoutJSONRequestBody defines body for CreateStripeBillingCheckout for application/json ContentType.
+type CreateStripeBillingCheckoutJSONRequestBody = StripeBillingCheckoutRequest
+
+// ChangeStripeBillingSubscriptionJSONRequestBody defines body for ChangeStripeBillingSubscription for application/json ContentType.
+type ChangeStripeBillingSubscriptionJSONRequestBody = StripeBillingSubscriptionRequest
+
+// CreateStripeBillingPriceJSONRequestBody defines body for CreateStripeBillingPrice for application/json ContentType.
+type CreateStripeBillingPriceJSONRequestBody = StripeBillingCreatePriceRequest
+
+// UpdateStripeBillingSettingsJSONRequestBody defines body for UpdateStripeBillingSettings for application/json ContentType.
+type UpdateStripeBillingSettingsJSONRequestBody = StripeBillingUpdateSettingsRequest
+
+// IngestStripeBillingWebhookJSONRequestBody defines body for IngestStripeBillingWebhook for application/json ContentType.
+type IngestStripeBillingWebhookJSONRequestBody IngestStripeBillingWebhookJSONBody
 
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest
@@ -3216,6 +3387,40 @@ func (t *IntegrationInstanceCreateRequest) MergeSmtpIntegrationInstanceCreateReq
 	return err
 }
 
+// AsStripeIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a StripeIntegrationInstanceCreateRequest
+func (t IntegrationInstanceCreateRequest) AsStripeIntegrationInstanceCreateRequest() (StripeIntegrationInstanceCreateRequest, error) {
+	var body StripeIntegrationInstanceCreateRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationInstanceCreateRequest overwrites any union data inside the IntegrationInstanceCreateRequest as the provided StripeIntegrationInstanceCreateRequest
+func (t *IntegrationInstanceCreateRequest) FromStripeIntegrationInstanceCreateRequest(v StripeIntegrationInstanceCreateRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"provider_type":"STRIPE"}`))
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationInstanceCreateRequest performs a merge with any union data inside the IntegrationInstanceCreateRequest, using the provided StripeIntegrationInstanceCreateRequest
+func (t *IntegrationInstanceCreateRequest) MergeStripeIntegrationInstanceCreateRequest(v StripeIntegrationInstanceCreateRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"provider_type":"STRIPE"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t IntegrationInstanceCreateRequest) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"provider_type"`
@@ -3234,6 +3439,8 @@ func (t IntegrationInstanceCreateRequest) ValueByDiscriminator() (interface{}, e
 		return t.AsClerkIntegrationInstanceCreateRequest()
 	case "SMTP":
 		return t.AsSmtpIntegrationInstanceCreateRequest()
+	case "STRIPE":
+		return t.AsStripeIntegrationInstanceCreateRequest()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
 	}
@@ -3301,6 +3508,32 @@ func (t *IntegrationProviderConfig) MergeSmtpIntegrationConfig(v SmtpIntegration
 	return err
 }
 
+// AsStripeIntegrationConfig returns the union data inside the IntegrationProviderConfig as a StripeIntegrationConfig
+func (t IntegrationProviderConfig) AsStripeIntegrationConfig() (StripeIntegrationConfig, error) {
+	var body StripeIntegrationConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationConfig overwrites any union data inside the IntegrationProviderConfig as the provided StripeIntegrationConfig
+func (t *IntegrationProviderConfig) FromStripeIntegrationConfig(v StripeIntegrationConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationConfig performs a merge with any union data inside the IntegrationProviderConfig, using the provided StripeIntegrationConfig
+func (t *IntegrationProviderConfig) MergeStripeIntegrationConfig(v StripeIntegrationConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t IntegrationProviderConfig) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -3327,6 +3560,32 @@ func (t *IntegrationProviderPublicConfig) FromSmtpIntegrationPublicConfig(v Smtp
 
 // MergeSmtpIntegrationPublicConfig performs a merge with any union data inside the IntegrationProviderPublicConfig, using the provided SmtpIntegrationPublicConfig
 func (t *IntegrationProviderPublicConfig) MergeSmtpIntegrationPublicConfig(v SmtpIntegrationPublicConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStripeIntegrationPublicConfig returns the union data inside the IntegrationProviderPublicConfig as a StripeIntegrationPublicConfig
+func (t IntegrationProviderPublicConfig) AsStripeIntegrationPublicConfig() (StripeIntegrationPublicConfig, error) {
+	var body StripeIntegrationPublicConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationPublicConfig overwrites any union data inside the IntegrationProviderPublicConfig as the provided StripeIntegrationPublicConfig
+func (t *IntegrationProviderPublicConfig) FromStripeIntegrationPublicConfig(v StripeIntegrationPublicConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationPublicConfig performs a merge with any union data inside the IntegrationProviderPublicConfig, using the provided StripeIntegrationPublicConfig
+func (t *IntegrationProviderPublicConfig) MergeStripeIntegrationPublicConfig(v StripeIntegrationPublicConfig) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -3418,6 +3677,36 @@ type ServerInterface interface {
 	// IntrospectOrganizationAPIKey Introspect Credential
 	// (POST /v1/products/{product_id}/auth/introspect)
 	IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// GetStripeBillingState get Stripe Billing State
+	// (GET /v1/products/{product_id}/billing/stripe)
+	GetStripeBillingState(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SetStripeBillingCancellation set Stripe Billing Cancellation
+	// (PUT /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation)
+	SetStripeBillingCancellation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// CreateStripeBillingCheckout create Stripe Billing Checkout
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout)
+	CreateStripeBillingCheckout(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// CreateStripeBillingPortal create Stripe Billing Portal
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal)
+	CreateStripeBillingPortal(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// ChangeStripeBillingSubscription change Stripe Billing Subscription
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription)
+	ChangeStripeBillingSubscription(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// SyncStripeBillingOrganization sync Stripe Billing Organization
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync)
+	SyncStripeBillingOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// CreateStripeBillingPrice create Stripe Billing Price
+	// (POST /v1/products/{product_id}/billing/stripe/prices)
+	CreateStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// ArchiveStripeBillingPrice archive Stripe Billing Price
+	// (POST /v1/products/{product_id}/billing/stripe/prices/{price_id}/archive)
+	ArchiveStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, priceId StripeBillingIdentifier)
+	// UpdateStripeBillingSettings update Stripe Billing Settings
+	// (PUT /v1/products/{product_id}/billing/stripe/settings)
+	UpdateStripeBillingSettings(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// IngestStripeBillingWebhook ingest Stripe Billing Webhook
+	// (POST /v1/products/{product_id}/billing/stripe/webhook)
+	IngestStripeBillingWebhook(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params IngestStripeBillingWebhookParams)
 	// ListEmailSends List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
 	ListEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailSendsParams)
@@ -3823,6 +4112,66 @@ func (_ Unimplemented) UpdateProductAPIKey(w http.ResponseWriter, r *http.Reques
 // IntrospectOrganizationAPIKey Introspect Credential
 // (POST /v1/products/{product_id}/auth/introspect)
 func (_ Unimplemented) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetStripeBillingState get Stripe Billing State
+// (GET /v1/products/{product_id}/billing/stripe)
+func (_ Unimplemented) GetStripeBillingState(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetStripeBillingCancellation set Stripe Billing Cancellation
+// (PUT /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation)
+func (_ Unimplemented) SetStripeBillingCancellation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateStripeBillingCheckout create Stripe Billing Checkout
+// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout)
+func (_ Unimplemented) CreateStripeBillingCheckout(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateStripeBillingPortal create Stripe Billing Portal
+// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal)
+func (_ Unimplemented) CreateStripeBillingPortal(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ChangeStripeBillingSubscription change Stripe Billing Subscription
+// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription)
+func (_ Unimplemented) ChangeStripeBillingSubscription(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SyncStripeBillingOrganization sync Stripe Billing Organization
+// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync)
+func (_ Unimplemented) SyncStripeBillingOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateStripeBillingPrice create Stripe Billing Price
+// (POST /v1/products/{product_id}/billing/stripe/prices)
+func (_ Unimplemented) CreateStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveStripeBillingPrice archive Stripe Billing Price
+// (POST /v1/products/{product_id}/billing/stripe/prices/{price_id}/archive)
+func (_ Unimplemented) ArchiveStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, priceId StripeBillingIdentifier) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateStripeBillingSettings update Stripe Billing Settings
+// (PUT /v1/products/{product_id}/billing/stripe/settings)
+func (_ Unimplemented) UpdateStripeBillingSettings(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// IngestStripeBillingWebhook ingest Stripe Billing Webhook
+// (POST /v1/products/{product_id}/billing/stripe/webhook)
+func (_ Unimplemented) IngestStripeBillingWebhook(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params IngestStripeBillingWebhookParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4880,6 +5229,348 @@ func (siw *ServerInterfaceWrapper) IntrospectOrganizationAPIKey(w http.ResponseW
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.IntrospectOrganizationAPIKey(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetStripeBillingState operation middleware
+func (siw *ServerInterfaceWrapper) GetStripeBillingState(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStripeBillingState(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetStripeBillingCancellation operation middleware
+func (siw *ServerInterfaceWrapper) SetStripeBillingCancellation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetStripeBillingCancellation(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateStripeBillingCheckout operation middleware
+func (siw *ServerInterfaceWrapper) CreateStripeBillingCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStripeBillingCheckout(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateStripeBillingPortal operation middleware
+func (siw *ServerInterfaceWrapper) CreateStripeBillingPortal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStripeBillingPortal(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeStripeBillingSubscription operation middleware
+func (siw *ServerInterfaceWrapper) ChangeStripeBillingSubscription(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeStripeBillingSubscription(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SyncStripeBillingOrganization operation middleware
+func (siw *ServerInterfaceWrapper) SyncStripeBillingOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SyncStripeBillingOrganization(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateStripeBillingPrice operation middleware
+func (siw *ServerInterfaceWrapper) CreateStripeBillingPrice(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStripeBillingPrice(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveStripeBillingPrice operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveStripeBillingPrice(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "price_id" -------------
+	var priceId StripeBillingIdentifier
+
+	err = runtime.BindStyledParameterWithOptions("simple", "price_id", chi.URLParam(r, "price_id"), &priceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "price_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveStripeBillingPrice(w, r, productId, priceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateStripeBillingSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateStripeBillingSettings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateStripeBillingSettings(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IngestStripeBillingWebhook operation middleware
+func (siw *ServerInterfaceWrapper) IngestStripeBillingWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params IngestStripeBillingWebhookParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Stripe-Signature" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Stripe-Signature")]; found {
+		var StripeSignature string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Stripe-Signature", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Stripe-Signature", valueList[0], &StripeSignature, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Stripe-Signature", Err: err})
+			return
+		}
+
+		params.StripeSignature = StripeSignature
+
+	} else {
+		err := fmt.Errorf("Header parameter Stripe-Signature is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Stripe-Signature", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IngestStripeBillingWebhook(w, r, productId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8283,6 +8974,36 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/billing/stripe", wrapper.GetStripeBillingState)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/prices", wrapper.CreateStripeBillingPrice)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/prices/{price_id}/archive", wrapper.ArchiveStripeBillingPrice)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/billing/stripe/settings", wrapper.UpdateStripeBillingSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout", wrapper.CreateStripeBillingCheckout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription", wrapper.ChangeStripeBillingSubscription)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation", wrapper.SetStripeBillingCancellation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal", wrapper.CreateStripeBillingPortal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync", wrapper.SyncStripeBillingOrganization)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/billing/stripe/webhook", wrapper.IngestStripeBillingWebhook)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/auth/logout", wrapper.Logout)
 	})
 	r.Group(func(r chi.Router) {
@@ -10259,6 +10980,1099 @@ func (response IntrospectOrganizationAPIKey404JSONResponse) VisitIntrospectOrgan
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingStateRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+}
+
+type GetStripeBillingStateResponseObject interface {
+	VisitGetStripeBillingStateResponse(w http.ResponseWriter) error
+}
+
+type GetStripeBillingState200JSONResponse StripeBillingState
+
+func (response GetStripeBillingState200JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetStripeBillingState400JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetStripeBillingState401JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetStripeBillingState403JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetStripeBillingState404JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState409JSONResponse struct{ ConflictJSONResponse }
+
+func (response GetStripeBillingState409JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStripeBillingState500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response GetStripeBillingState500JSONResponse) VisitGetStripeBillingStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellationRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *SetStripeBillingCancellationJSONRequestBody
+}
+
+type SetStripeBillingCancellationResponseObject interface {
+	VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error
+}
+
+type SetStripeBillingCancellation200JSONResponse StripeBillingOrganization
+
+func (response SetStripeBillingCancellation200JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetStripeBillingCancellation400JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetStripeBillingCancellation401JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SetStripeBillingCancellation403JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetStripeBillingCancellation404JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SetStripeBillingCancellation409JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStripeBillingCancellation500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response SetStripeBillingCancellation500JSONResponse) VisitSetStripeBillingCancellationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckoutRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *CreateStripeBillingCheckoutJSONRequestBody
+}
+
+type CreateStripeBillingCheckoutResponseObject interface {
+	VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error
+}
+
+type CreateStripeBillingCheckout200JSONResponse StripeBillingURLResponse
+
+func (response CreateStripeBillingCheckout200JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateStripeBillingCheckout400JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateStripeBillingCheckout401JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateStripeBillingCheckout403JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateStripeBillingCheckout404JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateStripeBillingCheckout409JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingCheckout500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateStripeBillingCheckout500JSONResponse) VisitCreateStripeBillingCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortalRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type CreateStripeBillingPortalResponseObject interface {
+	VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error
+}
+
+type CreateStripeBillingPortal200JSONResponse StripeBillingURLResponse
+
+func (response CreateStripeBillingPortal200JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateStripeBillingPortal400JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateStripeBillingPortal401JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateStripeBillingPortal403JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateStripeBillingPortal404JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateStripeBillingPortal409JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPortal500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateStripeBillingPortal500JSONResponse) VisitCreateStripeBillingPortalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscriptionRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *ChangeStripeBillingSubscriptionJSONRequestBody
+}
+
+type ChangeStripeBillingSubscriptionResponseObject interface {
+	VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error
+}
+
+type ChangeStripeBillingSubscription200JSONResponse StripeBillingOrganization
+
+func (response ChangeStripeBillingSubscription200JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ChangeStripeBillingSubscription400JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ChangeStripeBillingSubscription401JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ChangeStripeBillingSubscription403JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ChangeStripeBillingSubscription404JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ChangeStripeBillingSubscription409JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeStripeBillingSubscription500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ChangeStripeBillingSubscription500JSONResponse) VisitChangeStripeBillingSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganizationRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+}
+
+type SyncStripeBillingOrganizationResponseObject interface {
+	VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error
+}
+
+type SyncStripeBillingOrganization200JSONResponse StripeBillingOrganization
+
+func (response SyncStripeBillingOrganization200JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SyncStripeBillingOrganization400JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SyncStripeBillingOrganization401JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SyncStripeBillingOrganization403JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SyncStripeBillingOrganization404JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SyncStripeBillingOrganization409JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SyncStripeBillingOrganization500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response SyncStripeBillingOrganization500JSONResponse) VisitSyncStripeBillingOrganizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPriceRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreateStripeBillingPriceJSONRequestBody
+}
+
+type CreateStripeBillingPriceResponseObject interface {
+	VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error
+}
+
+type CreateStripeBillingPrice201JSONResponse StripeBillingPrice
+
+func (response CreateStripeBillingPrice201JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateStripeBillingPrice400JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateStripeBillingPrice401JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateStripeBillingPrice403JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateStripeBillingPrice404JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateStripeBillingPrice409JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStripeBillingPrice500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateStripeBillingPrice500JSONResponse) VisitCreateStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPriceRequestObject struct {
+	ProductId ProductIdParameter      `json:"product_id"`
+	PriceId   StripeBillingIdentifier `json:"price_id"`
+}
+
+type ArchiveStripeBillingPriceResponseObject interface {
+	VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error
+}
+
+type ArchiveStripeBillingPrice200JSONResponse StripeBillingPrice
+
+func (response ArchiveStripeBillingPrice200JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ArchiveStripeBillingPrice400JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveStripeBillingPrice401JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ArchiveStripeBillingPrice403JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveStripeBillingPrice404JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ArchiveStripeBillingPrice409JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveStripeBillingPrice500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ArchiveStripeBillingPrice500JSONResponse) VisitArchiveStripeBillingPriceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettingsRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *UpdateStripeBillingSettingsJSONRequestBody
+}
+
+type UpdateStripeBillingSettingsResponseObject interface {
+	VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error
+}
+
+type UpdateStripeBillingSettings200JSONResponse StripeBillingSettings
+
+func (response UpdateStripeBillingSettings200JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateStripeBillingSettings400JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateStripeBillingSettings401JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateStripeBillingSettings403JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateStripeBillingSettings404JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateStripeBillingSettings409JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStripeBillingSettings500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response UpdateStripeBillingSettings500JSONResponse) VisitUpdateStripeBillingSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhookRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Params    IngestStripeBillingWebhookParams
+	Body      *IngestStripeBillingWebhookJSONRequestBody
+}
+
+type IngestStripeBillingWebhookResponseObject interface {
+	VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error
+}
+
+type IngestStripeBillingWebhook200JSONResponse StripeBillingWebhookResponse
+
+func (response IngestStripeBillingWebhook200JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response IngestStripeBillingWebhook400JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response IngestStripeBillingWebhook401JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response IngestStripeBillingWebhook403JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response IngestStripeBillingWebhook404JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook409JSONResponse struct{ ConflictJSONResponse }
+
+func (response IngestStripeBillingWebhook409JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestStripeBillingWebhook500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response IngestStripeBillingWebhook500JSONResponse) VisitIngestStripeBillingWebhookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -17796,6 +19610,36 @@ type StrictServerInterface interface {
 	// IntrospectOrganizationAPIKey Introspect Credential
 	// (POST /v1/products/{product_id}/auth/introspect)
 	IntrospectOrganizationAPIKey(ctx context.Context, request IntrospectOrganizationAPIKeyRequestObject) (IntrospectOrganizationAPIKeyResponseObject, error)
+	// GetStripeBillingState get Stripe Billing State
+	// (GET /v1/products/{product_id}/billing/stripe)
+	GetStripeBillingState(ctx context.Context, request GetStripeBillingStateRequestObject) (GetStripeBillingStateResponseObject, error)
+	// SetStripeBillingCancellation set Stripe Billing Cancellation
+	// (PUT /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation)
+	SetStripeBillingCancellation(ctx context.Context, request SetStripeBillingCancellationRequestObject) (SetStripeBillingCancellationResponseObject, error)
+	// CreateStripeBillingCheckout create Stripe Billing Checkout
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout)
+	CreateStripeBillingCheckout(ctx context.Context, request CreateStripeBillingCheckoutRequestObject) (CreateStripeBillingCheckoutResponseObject, error)
+	// CreateStripeBillingPortal create Stripe Billing Portal
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal)
+	CreateStripeBillingPortal(ctx context.Context, request CreateStripeBillingPortalRequestObject) (CreateStripeBillingPortalResponseObject, error)
+	// ChangeStripeBillingSubscription change Stripe Billing Subscription
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription)
+	ChangeStripeBillingSubscription(ctx context.Context, request ChangeStripeBillingSubscriptionRequestObject) (ChangeStripeBillingSubscriptionResponseObject, error)
+	// SyncStripeBillingOrganization sync Stripe Billing Organization
+	// (POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync)
+	SyncStripeBillingOrganization(ctx context.Context, request SyncStripeBillingOrganizationRequestObject) (SyncStripeBillingOrganizationResponseObject, error)
+	// CreateStripeBillingPrice create Stripe Billing Price
+	// (POST /v1/products/{product_id}/billing/stripe/prices)
+	CreateStripeBillingPrice(ctx context.Context, request CreateStripeBillingPriceRequestObject) (CreateStripeBillingPriceResponseObject, error)
+	// ArchiveStripeBillingPrice archive Stripe Billing Price
+	// (POST /v1/products/{product_id}/billing/stripe/prices/{price_id}/archive)
+	ArchiveStripeBillingPrice(ctx context.Context, request ArchiveStripeBillingPriceRequestObject) (ArchiveStripeBillingPriceResponseObject, error)
+	// UpdateStripeBillingSettings update Stripe Billing Settings
+	// (PUT /v1/products/{product_id}/billing/stripe/settings)
+	UpdateStripeBillingSettings(ctx context.Context, request UpdateStripeBillingSettingsRequestObject) (UpdateStripeBillingSettingsResponseObject, error)
+	// IngestStripeBillingWebhook ingest Stripe Billing Webhook
+	// (POST /v1/products/{product_id}/billing/stripe/webhook)
+	IngestStripeBillingWebhook(ctx context.Context, request IngestStripeBillingWebhookRequestObject) (IngestStripeBillingWebhookResponseObject, error)
 	// ListEmailSends List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
 	ListEmailSends(ctx context.Context, request ListEmailSendsRequestObject) (ListEmailSendsResponseObject, error)
@@ -18761,6 +20605,315 @@ func (sh *strictHandler) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(IntrospectOrganizationAPIKeyResponseObject); ok {
 		if err := validResponse.VisitIntrospectOrganizationAPIKeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetStripeBillingState operation middleware
+func (sh *strictHandler) GetStripeBillingState(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request GetStripeBillingStateRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetStripeBillingState(ctx, request.(GetStripeBillingStateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStripeBillingState")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStripeBillingStateResponseObject); ok {
+		if err := validResponse.VisitGetStripeBillingStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetStripeBillingCancellation operation middleware
+func (sh *strictHandler) SetStripeBillingCancellation(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SetStripeBillingCancellationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body SetStripeBillingCancellationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetStripeBillingCancellation(ctx, request.(SetStripeBillingCancellationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetStripeBillingCancellation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetStripeBillingCancellationResponseObject); ok {
+		if err := validResponse.VisitSetStripeBillingCancellationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateStripeBillingCheckout operation middleware
+func (sh *strictHandler) CreateStripeBillingCheckout(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request CreateStripeBillingCheckoutRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body CreateStripeBillingCheckoutJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateStripeBillingCheckout(ctx, request.(CreateStripeBillingCheckoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateStripeBillingCheckout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateStripeBillingCheckoutResponseObject); ok {
+		if err := validResponse.VisitCreateStripeBillingCheckoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateStripeBillingPortal operation middleware
+func (sh *strictHandler) CreateStripeBillingPortal(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request CreateStripeBillingPortalRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateStripeBillingPortal(ctx, request.(CreateStripeBillingPortalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateStripeBillingPortal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateStripeBillingPortalResponseObject); ok {
+		if err := validResponse.VisitCreateStripeBillingPortalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeStripeBillingSubscription operation middleware
+func (sh *strictHandler) ChangeStripeBillingSubscription(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request ChangeStripeBillingSubscriptionRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body ChangeStripeBillingSubscriptionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangeStripeBillingSubscription(ctx, request.(ChangeStripeBillingSubscriptionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeStripeBillingSubscription")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeStripeBillingSubscriptionResponseObject); ok {
+		if err := validResponse.VisitChangeStripeBillingSubscriptionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SyncStripeBillingOrganization operation middleware
+func (sh *strictHandler) SyncStripeBillingOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SyncStripeBillingOrganizationRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SyncStripeBillingOrganization(ctx, request.(SyncStripeBillingOrganizationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SyncStripeBillingOrganization")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SyncStripeBillingOrganizationResponseObject); ok {
+		if err := validResponse.VisitSyncStripeBillingOrganizationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateStripeBillingPrice operation middleware
+func (sh *strictHandler) CreateStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreateStripeBillingPriceRequestObject
+
+	request.ProductId = productId
+
+	var body CreateStripeBillingPriceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateStripeBillingPrice(ctx, request.(CreateStripeBillingPriceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateStripeBillingPrice")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateStripeBillingPriceResponseObject); ok {
+		if err := validResponse.VisitCreateStripeBillingPriceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveStripeBillingPrice operation middleware
+func (sh *strictHandler) ArchiveStripeBillingPrice(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, priceId StripeBillingIdentifier) {
+	var request ArchiveStripeBillingPriceRequestObject
+
+	request.ProductId = productId
+	request.PriceId = priceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveStripeBillingPrice(ctx, request.(ArchiveStripeBillingPriceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveStripeBillingPrice")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveStripeBillingPriceResponseObject); ok {
+		if err := validResponse.VisitArchiveStripeBillingPriceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateStripeBillingSettings operation middleware
+func (sh *strictHandler) UpdateStripeBillingSettings(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request UpdateStripeBillingSettingsRequestObject
+
+	request.ProductId = productId
+
+	var body UpdateStripeBillingSettingsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateStripeBillingSettings(ctx, request.(UpdateStripeBillingSettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateStripeBillingSettings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateStripeBillingSettingsResponseObject); ok {
+		if err := validResponse.VisitUpdateStripeBillingSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IngestStripeBillingWebhook operation middleware
+func (sh *strictHandler) IngestStripeBillingWebhook(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params IngestStripeBillingWebhookParams) {
+	var request IngestStripeBillingWebhookRequestObject
+
+	request.ProductId = productId
+	request.Params = params
+
+	var body IngestStripeBillingWebhookJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IngestStripeBillingWebhook(ctx, request.(IngestStripeBillingWebhookRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IngestStripeBillingWebhook")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IngestStripeBillingWebhookResponseObject); ok {
+		if err := validResponse.VisitIngestStripeBillingWebhookResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

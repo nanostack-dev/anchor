@@ -97,6 +97,9 @@
   "GET /v1/products/{product_id}/api-keys/{api_key_id}": {
     "platformBearerAuth": []
   },
+  "GET /v1/products/{product_id}/billing/stripe": {
+    "platformBearerAuth": []
+  },
   "GET /v1/products/{product_id}/email/sends": {
     "platformBearerAuth": []
   },
@@ -278,6 +281,27 @@
     "productApiKeyAuth": [
       "organization_api_key:read"
     ]
+  },
+  "POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/checkout": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/portal": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/subscription": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/sync": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/prices": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/prices/{price_id}/archive": {
+    "platformBearerAuth": []
+  },
+  "POST /v1/products/{product_id}/billing/stripe/webhook": {
+    "\u003cpublic\u003e": []
   },
   "POST /v1/products/{product_id}/email/sends": {
     "platformBearerAuth": [],
@@ -473,6 +497,12 @@
     "platformBearerAuth": []
   },
   "PUT /v1/products/{product_id}/api-keys/{api_key_id}": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/billing/stripe/organizations/{organization_id}/cancellation": {
+    "platformBearerAuth": []
+  },
+  "PUT /v1/products/{product_id}/billing/stripe/settings": {
     "platformBearerAuth": []
   },
   "PUT /v1/products/{product_id}/email/templates/{email_template_id}": {

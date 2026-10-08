@@ -173,8 +173,9 @@ func (e IntegrationInstanceStatus) Valid() bool {
 
 // Defines values for IntegrationProviderType.
 const (
-	IntegrationProviderTypeCLERK IntegrationProviderType = "CLERK"
-	IntegrationProviderTypeSMTP  IntegrationProviderType = "SMTP"
+	IntegrationProviderTypeCLERK  IntegrationProviderType = "CLERK"
+	IntegrationProviderTypeSMTP   IntegrationProviderType = "SMTP"
+	IntegrationProviderTypeSTRIPE IntegrationProviderType = "STRIPE"
 )
 
 // Valid indicates whether the value is a known member of the IntegrationProviderType enum.
@@ -183,6 +184,8 @@ func (e IntegrationProviderType) Valid() bool {
 	case IntegrationProviderTypeCLERK:
 		return true
 	case IntegrationProviderTypeSMTP:
+		return true
+	case IntegrationProviderTypeSTRIPE:
 		return true
 	default:
 		return false
@@ -924,6 +927,147 @@ func (e SortDirection) Valid() bool {
 	case ASC:
 		return true
 	case DESC:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingAccountMode.
+const (
+	StripeBillingAccountModeSandbox StripeBillingAccountMode = "sandbox"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingAccountMode enum.
+func (e StripeBillingAccountMode) Valid() bool {
+	switch e {
+	case StripeBillingAccountModeSandbox:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingCreatePriceRequestCurrency.
+const (
+	StripeBillingCreatePriceRequestCurrencyCad StripeBillingCreatePriceRequestCurrency = "cad"
+	StripeBillingCreatePriceRequestCurrencyEur StripeBillingCreatePriceRequestCurrency = "eur"
+	StripeBillingCreatePriceRequestCurrencyUsd StripeBillingCreatePriceRequestCurrency = "usd"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingCreatePriceRequestCurrency enum.
+func (e StripeBillingCreatePriceRequestCurrency) Valid() bool {
+	switch e {
+	case StripeBillingCreatePriceRequestCurrencyCad:
+		return true
+	case StripeBillingCreatePriceRequestCurrencyEur:
+		return true
+	case StripeBillingCreatePriceRequestCurrencyUsd:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingCreatePriceRequestInterval.
+const (
+	StripeBillingCreatePriceRequestIntervalMonth StripeBillingCreatePriceRequestInterval = "month"
+	StripeBillingCreatePriceRequestIntervalYear  StripeBillingCreatePriceRequestInterval = "year"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingCreatePriceRequestInterval enum.
+func (e StripeBillingCreatePriceRequestInterval) Valid() bool {
+	switch e {
+	case StripeBillingCreatePriceRequestIntervalMonth:
+		return true
+	case StripeBillingCreatePriceRequestIntervalYear:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingPriceCurrency.
+const (
+	StripeBillingPriceCurrencyCad StripeBillingPriceCurrency = "cad"
+	StripeBillingPriceCurrencyEur StripeBillingPriceCurrency = "eur"
+	StripeBillingPriceCurrencyUsd StripeBillingPriceCurrency = "usd"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingPriceCurrency enum.
+func (e StripeBillingPriceCurrency) Valid() bool {
+	switch e {
+	case StripeBillingPriceCurrencyCad:
+		return true
+	case StripeBillingPriceCurrencyEur:
+		return true
+	case StripeBillingPriceCurrencyUsd:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingPriceInterval.
+const (
+	StripeBillingPriceIntervalMonth StripeBillingPriceInterval = "month"
+	StripeBillingPriceIntervalYear  StripeBillingPriceInterval = "year"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingPriceInterval enum.
+func (e StripeBillingPriceInterval) Valid() bool {
+	switch e {
+	case StripeBillingPriceIntervalMonth:
+		return true
+	case StripeBillingPriceIntervalYear:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationAuthMethod.
+const (
+	APIKEY   StripeIntegrationAuthMethod = "API_KEY"
+	LOCALCLI StripeIntegrationAuthMethod = "LOCAL_CLI"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationAuthMethod enum.
+func (e StripeIntegrationAuthMethod) Valid() bool {
+	switch e {
+	case APIKEY:
+		return true
+	case LOCALCLI:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationInstanceCreateRequestProviderType.
+const (
+	StripeIntegrationInstanceCreateRequestProviderTypeSTRIPE StripeIntegrationInstanceCreateRequestProviderType = "STRIPE"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationInstanceCreateRequestProviderType enum.
+func (e StripeIntegrationInstanceCreateRequestProviderType) Valid() bool {
+	switch e {
+	case StripeIntegrationInstanceCreateRequestProviderTypeSTRIPE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeIntegrationPublicConfigMode.
+const (
+	StripeIntegrationPublicConfigModeSandbox StripeIntegrationPublicConfigMode = "sandbox"
+)
+
+// Valid indicates whether the value is a known member of the StripeIntegrationPublicConfigMode enum.
+func (e StripeIntegrationPublicConfigMode) Valid() bool {
+	switch e {
+	case StripeIntegrationPublicConfigModeSandbox:
 		return true
 	default:
 		return false
@@ -3442,6 +3586,190 @@ type SmtpIntegrationPublicConfigEncryption string
 // SortDirection defines model for SortDirection.
 type SortDirection string
 
+// StripeBillingAccount defines model for StripeBillingAccount.
+type StripeBillingAccount struct {
+	Id   string                   `json:"id"`
+	Mode StripeBillingAccountMode `json:"mode"`
+	Name string                   `json:"name"`
+}
+
+// StripeBillingAccountMode defines model for StripeBillingAccount.Mode.
+type StripeBillingAccountMode string
+
+// StripeBillingBillingEvent defines model for StripeBillingBillingEvent.
+type StripeBillingBillingEvent struct {
+	Id             string    `json:"id"`
+	LastError      string    `json:"last_error"`
+	OrganizationId string    `json:"organization_id"`
+	ReceivedAt     time.Time `json:"received_at"`
+	Status         string    `json:"status"`
+	Type           string    `json:"type"`
+}
+
+// StripeBillingCancellationRequest defines model for StripeBillingCancellationRequest.
+type StripeBillingCancellationRequest struct {
+	CancelAtPeriodEnd bool `json:"cancel_at_period_end"`
+}
+
+// StripeBillingCheckoutRequest defines model for StripeBillingCheckoutRequest.
+type StripeBillingCheckoutRequest struct {
+	PriceId   StripeBillingIdentifier `json:"price_id"`
+	TrialDays *int                    `json:"trial_days,omitempty"`
+}
+
+// StripeBillingCreatePriceRequest defines model for StripeBillingCreatePriceRequest.
+type StripeBillingCreatePriceRequest struct {
+	Amount     int                                     `json:"amount"`
+	Currency   StripeBillingCreatePriceRequestCurrency `json:"currency"`
+	Interval   StripeBillingCreatePriceRequestInterval `json:"interval"`
+	Name       string                                  `json:"name"`
+	TemplateId StripeBillingIdentifier                 `json:"template_id"`
+}
+
+// StripeBillingCreatePriceRequestCurrency defines model for StripeBillingCreatePriceRequest.Currency.
+type StripeBillingCreatePriceRequestCurrency string
+
+// StripeBillingCreatePriceRequestInterval defines model for StripeBillingCreatePriceRequest.Interval.
+type StripeBillingCreatePriceRequestInterval string
+
+// StripeBillingIdentifier defines model for StripeBillingIdentifier.
+type StripeBillingIdentifier = string
+
+// StripeBillingOrganization defines model for StripeBillingOrganization.
+type StripeBillingOrganization struct {
+	CancelAtPeriodEnd bool                    `json:"cancel_at_period_end"`
+	CurrentPeriodEnd  *time.Time              `json:"current_period_end"`
+	CustomerId        string                  `json:"customer_id"`
+	Id                StripeBillingIdentifier `json:"id"`
+	LastSyncedAt      *time.Time              `json:"last_synced_at"`
+	LicenseValues     map[string]interface{}  `json:"license_values"`
+	Name              string                  `json:"name"`
+	PendingUpdate     bool                    `json:"pending_update"`
+	PriceId           string                  `json:"price_id"`
+	Status            string                  `json:"status"`
+	SubscriptionId    string                  `json:"subscription_id"`
+	SyncError         string                  `json:"sync_error"`
+	SyncState         string                  `json:"sync_state"`
+	TemplateId        string                  `json:"template_id"`
+}
+
+// StripeBillingPrice defines model for StripeBillingPrice.
+type StripeBillingPrice struct {
+	Active bool `json:"active"`
+
+	// Amount Recurring amount in the smallest unit of the currency
+	Amount          int                        `json:"amount"`
+	Currency        StripeBillingPriceCurrency `json:"currency"`
+	Id              StripeBillingIdentifier    `json:"id"`
+	Interval        StripeBillingPriceInterval `json:"interval"`
+	Name            string                     `json:"name"`
+	StripePriceId   string                     `json:"stripe_price_id"`
+	StripeProductId string                     `json:"stripe_product_id"`
+	TemplateId      StripeBillingIdentifier    `json:"template_id"`
+}
+
+// StripeBillingPriceCurrency defines model for StripeBillingPrice.Currency.
+type StripeBillingPriceCurrency string
+
+// StripeBillingPriceInterval defines model for StripeBillingPrice.Interval.
+type StripeBillingPriceInterval string
+
+// StripeBillingProduct defines model for StripeBillingProduct.
+type StripeBillingProduct struct {
+	Id   StripeBillingIdentifier `json:"id"`
+	Name string                  `json:"name"`
+}
+
+// StripeBillingSettings defines model for StripeBillingSettings.
+type StripeBillingSettings struct {
+	FallbackTemplateId string `json:"fallback_template_id"`
+}
+
+// StripeBillingState defines model for StripeBillingState.
+type StripeBillingState struct {
+	Account       StripeBillingAccount        `json:"account"`
+	Events        []StripeBillingBillingEvent `json:"events"`
+	Organizations []StripeBillingOrganization `json:"organizations"`
+	Prices        []StripeBillingPrice        `json:"prices"`
+	Product       StripeBillingProduct        `json:"product"`
+	Settings      StripeBillingSettings       `json:"settings"`
+	Templates     []StripeBillingTemplate     `json:"templates"`
+}
+
+// StripeBillingSubscriptionRequest defines model for StripeBillingSubscriptionRequest.
+type StripeBillingSubscriptionRequest struct {
+	PriceId StripeBillingIdentifier `json:"price_id"`
+}
+
+// StripeBillingTemplate defines model for StripeBillingTemplate.
+type StripeBillingTemplate struct {
+	Archived bool                    `json:"archived"`
+	Id       StripeBillingIdentifier `json:"id"`
+	Name     string                  `json:"name"`
+	Values   map[string]interface{}  `json:"values"`
+}
+
+// StripeBillingURLResponse defines model for StripeBillingURLResponse.
+type StripeBillingURLResponse struct {
+	Url string `json:"url"`
+}
+
+// StripeBillingUpdateSettingsRequest defines model for StripeBillingUpdateSettingsRequest.
+type StripeBillingUpdateSettingsRequest struct {
+	FallbackTemplateId StripeBillingIdentifier `json:"fallback_template_id"`
+}
+
+// StripeBillingWebhookResponse defines model for StripeBillingWebhookResponse.
+type StripeBillingWebhookResponse struct {
+	Received bool `json:"received"`
+}
+
+// StripeIntegrationAuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+type StripeIntegrationAuthMethod string
+
+// StripeIntegrationConfig Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+type StripeIntegrationConfig struct {
+	// AccountId Stripe sandbox account identifier verified with the supplied API key.
+	AccountId *string `json:"account_id,omitempty"`
+
+	// ApiKey Stripe test secret or restricted API key. Never returned by the API.
+	ApiKey *string `json:"api_key,omitempty"`
+
+	// AuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+	AuthMethod *StripeIntegrationAuthMethod `json:"auth_method,omitempty"`
+
+	// ReturnUrl Anchor UI return URL. HTTPS is required except for loopback HTTP development URLs.
+	ReturnUrl *string `json:"return_url,omitempty"`
+
+	// WebhookSecret Stripe webhook signing secret. Never returned by the API.
+	WebhookSecret *string `json:"webhook_secret,omitempty"`
+}
+
+// StripeIntegrationInstanceCreateRequest defines model for StripeIntegrationInstanceCreateRequest.
+type StripeIntegrationInstanceCreateRequest struct {
+	// Config Stripe sandbox configuration. API key and webhook secret are write-only, encrypted at rest, and preserved when omitted or blank during an update. Live Stripe credentials are refused.
+	Config       *StripeIntegrationConfig                           `json:"config,omitempty"`
+	ProviderType StripeIntegrationInstanceCreateRequestProviderType `json:"provider_type"`
+}
+
+// StripeIntegrationInstanceCreateRequestProviderType defines model for StripeIntegrationInstanceCreateRequest.ProviderType.
+type StripeIntegrationInstanceCreateRequestProviderType string
+
+// StripeIntegrationPublicConfig Non-sensitive Stripe configuration. Credentials are never included.
+type StripeIntegrationPublicConfig struct {
+	AccountId        *string `json:"account_id,omitempty"`
+	ApiKeyConfigured bool    `json:"api_key_configured"`
+
+	// AuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
+	AuthMethod              StripeIntegrationAuthMethod       `json:"auth_method"`
+	Mode                    StripeIntegrationPublicConfigMode `json:"mode"`
+	ReturnUrl               *string                           `json:"return_url,omitempty"`
+	WebhookSecretConfigured bool                              `json:"webhook_secret_configured"`
+}
+
+// StripeIntegrationPublicConfigMode defines model for StripeIntegrationPublicConfig.Mode.
+type StripeIntegrationPublicConfigMode string
+
 // TemplateExample defines model for TemplateExample.
 type TemplateExample struct {
 	// Id Client-generated UUID for this example set
@@ -3735,6 +4063,14 @@ type RefreshTokenParams struct {
 	RefreshToken *string `form:"refresh_token,omitempty" json:"refresh_token,omitempty"`
 }
 
+// IngestStripeBillingWebhookJSONBody defines parameters for IngestStripeBillingWebhook.
+type IngestStripeBillingWebhookJSONBody map[string]interface{}
+
+// IngestStripeBillingWebhookParams defines parameters for IngestStripeBillingWebhook.
+type IngestStripeBillingWebhookParams struct {
+	StripeSignature string `json:"Stripe-Signature"`
+}
+
 // ListEmailSendsParams defines parameters for ListEmailSends.
 type ListEmailSendsParams struct {
 	TemplateId *string          `form:"template_id,omitempty" json:"template_id,omitempty"`
@@ -3862,6 +4198,24 @@ type UpdateProductAPIKeyJSONRequestBody = ProductAPIKeyUpdateRequest
 
 // IntrospectOrganizationAPIKeyJSONRequestBody defines body for IntrospectOrganizationAPIKey for application/json ContentType.
 type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectRequest
+
+// SetStripeBillingCancellationJSONRequestBody defines body for SetStripeBillingCancellation for application/json ContentType.
+type SetStripeBillingCancellationJSONRequestBody = StripeBillingCancellationRequest
+
+// CreateStripeBillingCheckoutJSONRequestBody defines body for CreateStripeBillingCheckout for application/json ContentType.
+type CreateStripeBillingCheckoutJSONRequestBody = StripeBillingCheckoutRequest
+
+// ChangeStripeBillingSubscriptionJSONRequestBody defines body for ChangeStripeBillingSubscription for application/json ContentType.
+type ChangeStripeBillingSubscriptionJSONRequestBody = StripeBillingSubscriptionRequest
+
+// CreateStripeBillingPriceJSONRequestBody defines body for CreateStripeBillingPrice for application/json ContentType.
+type CreateStripeBillingPriceJSONRequestBody = StripeBillingCreatePriceRequest
+
+// UpdateStripeBillingSettingsJSONRequestBody defines body for UpdateStripeBillingSettings for application/json ContentType.
+type UpdateStripeBillingSettingsJSONRequestBody = StripeBillingUpdateSettingsRequest
+
+// IngestStripeBillingWebhookJSONRequestBody defines body for IngestStripeBillingWebhook for application/json ContentType.
+type IngestStripeBillingWebhookJSONRequestBody IngestStripeBillingWebhookJSONBody
 
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest
@@ -4069,6 +4423,40 @@ func (t *IntegrationInstanceCreateRequest) MergeSmtpIntegrationInstanceCreateReq
 	return err
 }
 
+// AsStripeIntegrationInstanceCreateRequest returns the union data inside the IntegrationInstanceCreateRequest as a StripeIntegrationInstanceCreateRequest
+func (t IntegrationInstanceCreateRequest) AsStripeIntegrationInstanceCreateRequest() (StripeIntegrationInstanceCreateRequest, error) {
+	var body StripeIntegrationInstanceCreateRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationInstanceCreateRequest overwrites any union data inside the IntegrationInstanceCreateRequest as the provided StripeIntegrationInstanceCreateRequest
+func (t *IntegrationInstanceCreateRequest) FromStripeIntegrationInstanceCreateRequest(v StripeIntegrationInstanceCreateRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"provider_type":"STRIPE"}`))
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationInstanceCreateRequest performs a merge with any union data inside the IntegrationInstanceCreateRequest, using the provided StripeIntegrationInstanceCreateRequest
+func (t *IntegrationInstanceCreateRequest) MergeStripeIntegrationInstanceCreateRequest(v StripeIntegrationInstanceCreateRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"provider_type":"STRIPE"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t IntegrationInstanceCreateRequest) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"provider_type"`
@@ -4087,6 +4475,8 @@ func (t IntegrationInstanceCreateRequest) ValueByDiscriminator() (interface{}, e
 		return t.AsClerkIntegrationInstanceCreateRequest()
 	case "SMTP":
 		return t.AsSmtpIntegrationInstanceCreateRequest()
+	case "STRIPE":
+		return t.AsStripeIntegrationInstanceCreateRequest()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
 	}
@@ -4154,6 +4544,32 @@ func (t *IntegrationProviderConfig) MergeSmtpIntegrationConfig(v SmtpIntegration
 	return err
 }
 
+// AsStripeIntegrationConfig returns the union data inside the IntegrationProviderConfig as a StripeIntegrationConfig
+func (t IntegrationProviderConfig) AsStripeIntegrationConfig() (StripeIntegrationConfig, error) {
+	var body StripeIntegrationConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationConfig overwrites any union data inside the IntegrationProviderConfig as the provided StripeIntegrationConfig
+func (t *IntegrationProviderConfig) FromStripeIntegrationConfig(v StripeIntegrationConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationConfig performs a merge with any union data inside the IntegrationProviderConfig, using the provided StripeIntegrationConfig
+func (t *IntegrationProviderConfig) MergeStripeIntegrationConfig(v StripeIntegrationConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t IntegrationProviderConfig) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -4180,6 +4596,32 @@ func (t *IntegrationProviderPublicConfig) FromSmtpIntegrationPublicConfig(v Smtp
 
 // MergeSmtpIntegrationPublicConfig performs a merge with any union data inside the IntegrationProviderPublicConfig, using the provided SmtpIntegrationPublicConfig
 func (t *IntegrationProviderPublicConfig) MergeSmtpIntegrationPublicConfig(v SmtpIntegrationPublicConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStripeIntegrationPublicConfig returns the union data inside the IntegrationProviderPublicConfig as a StripeIntegrationPublicConfig
+func (t IntegrationProviderPublicConfig) AsStripeIntegrationPublicConfig() (StripeIntegrationPublicConfig, error) {
+	var body StripeIntegrationPublicConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStripeIntegrationPublicConfig overwrites any union data inside the IntegrationProviderPublicConfig as the provided StripeIntegrationPublicConfig
+func (t *IntegrationProviderPublicConfig) FromStripeIntegrationPublicConfig(v StripeIntegrationPublicConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStripeIntegrationPublicConfig performs a merge with any union data inside the IntegrationProviderPublicConfig, using the provided StripeIntegrationPublicConfig
+func (t *IntegrationProviderPublicConfig) MergeStripeIntegrationPublicConfig(v StripeIntegrationPublicConfig) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

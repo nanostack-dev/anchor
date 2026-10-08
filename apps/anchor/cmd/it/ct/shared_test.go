@@ -5,6 +5,7 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	"anchor/cmd/it/shared/mailpit"
+	stripeprovider "anchor/internal/integration/provider/stripe"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
@@ -27,6 +28,7 @@ var (
 	OrgMemberRepo    repository.OrganizationMembershipRepository
 	EventQueue       *queue.Client
 	IntegrationRepo  repository.IntegrationInstanceRepository
+	StripeProvider   *stripeprovider.Provider
 )
 
 func TestMain(m *testing.M) {
@@ -48,6 +50,7 @@ func TestMain(m *testing.M) {
 				&authCfg,
 				&EventQueue,
 				&IntegrationRepo,
+				&StripeProvider,
 				&reconcileQueue,
 				&testDB,
 				&adjustmentBackfill,
