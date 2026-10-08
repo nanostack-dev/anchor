@@ -2631,8 +2631,40 @@ export enum WorkflowParamType {
     LICENSE_TEMPLATE = 'license_template',
     EMAIL_TEMPLATE = 'email_template',
     URL = 'url',
-    CUSTOM_EVENT = 'custom_event'
+    CUSTOM_EVENT = 'custom_event',
+    FIELD_TYPES = 'field_types'
 }
+
+/**
+ * What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+ */
+export enum WorkflowFieldType {
+    TEXT = 'text',
+    EMAIL = 'email',
+    NUMBER = 'number',
+    BOOLEAN = 'boolean',
+    TIMESTAMP = 'timestamp',
+    URL = 'url',
+    JSON = 'json',
+    ORGANIZATION = 'organization',
+    WORKSPACE = 'workspace',
+    PRODUCT_USER = 'product_user',
+    INVITATION = 'invitation',
+    API_KEY = 'api_key',
+    ROLE = 'role',
+    PERMISSION = 'permission',
+    LICENSE = 'license',
+    LICENSE_TEMPLATE = 'license_template'
+}
+
+/**
+ * One value an event carries under `event.data`.
+ */
+export type WorkflowEventFieldResponse = {
+    name: string;
+    type: WorkflowFieldType;
+    description: string;
+};
 
 export type WorkflowCondition = {
     /**
@@ -2794,7 +2826,11 @@ export type WorkflowTriggerResponse = {
     group_type: ProductEventGroupType;
     group_name: string;
     /**
-     * Keys the event carries under `event.data`.
+     * Typed keys the event carries under `event.data`. A custom event's fields come from the steps that send it: the keys of their `data` parameter, typed by their `data_types` parameter (text when left out).
+     */
+    fields: Array<WorkflowEventFieldResponse>;
+    /**
+     * Names of `fields`, kept for clients that read names only.
      */
     data_fields: Array<string>;
 };
@@ -2813,10 +2849,15 @@ export type WorkflowActionParamResponse = {
      * The value must be written out and cannot hold `{{ }}` references, because Anchor reads it when the workflow is saved.
      */
     literal: boolean;
+    /**
+     * For a `field_types` parameter: the JSON parameter whose keys it types, such as `data`.
+     */
+    types?: string;
 };
 
 export type WorkflowActionOutputResponse = {
     name: string;
+    type: WorkflowFieldType;
     description: string;
 };
 

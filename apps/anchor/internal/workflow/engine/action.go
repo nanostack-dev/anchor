@@ -21,6 +21,7 @@ const (
 	ParamEmailTemplate   ParamType = "email_template"
 	ParamURL             ParamType = "url"
 	ParamCustomEvent     ParamType = "custom_event"
+	ParamFieldTypes      ParamType = "field_types"
 )
 
 type ParamSpec struct {
@@ -34,10 +35,13 @@ type ParamSpec struct {
 	// Literal parameters cannot hold {{ }} references, because Anchor must
 	// know their value when the workflow is saved.
 	Literal bool
+	// Types names the JSON parameter whose keys a field_types parameter types.
+	Types string
 }
 
 type OutputSpec struct {
 	Name        string
+	Type        FieldType
 	Description string
 }
 

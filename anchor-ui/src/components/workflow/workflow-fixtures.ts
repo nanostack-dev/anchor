@@ -2,6 +2,7 @@ import {
 	ProductEventGroupType,
 	type WorkflowActionResponse,
 	type WorkflowCatalogResponse,
+	WorkflowFieldType,
 	WorkflowOperator,
 	WorkflowParamType,
 	type WorkflowResponse,
@@ -46,8 +47,16 @@ const actions: WorkflowActionResponse[] = [
 			},
 		],
 		outputs: [
-			{ name: "workspace_id", description: "Identifier of the new workspace." },
-			{ name: "name", description: "Name of the new workspace." },
+			{
+				name: "workspace_id",
+				type: WorkflowFieldType.WORKSPACE,
+				description: "Identifier of the new workspace.",
+			},
+			{
+				name: "name",
+				type: WorkflowFieldType.TEXT,
+				description: "Name of the new workspace.",
+			},
 		],
 	},
 	{
@@ -78,9 +87,14 @@ const actions: WorkflowActionResponse[] = [
 		outputs: [
 			{
 				name: "organization_id",
+				type: WorkflowFieldType.ORGANIZATION,
 				description: "Identifier of the organization.",
 			},
-			{ name: "metadata", description: "Metadata object." },
+			{
+				name: "metadata",
+				type: WorkflowFieldType.JSON,
+				description: "Metadata object.",
+			},
 		],
 	},
 	{
@@ -101,12 +115,21 @@ const actions: WorkflowActionResponse[] = [
 			},
 		],
 		outputs: [
-			{ name: "email", description: "Email address." },
+			{
+				name: "email",
+				type: WorkflowFieldType.EMAIL,
+				description: "Email address.",
+			},
 			{
 				name: "email_domain",
+				type: WorkflowFieldType.TEXT,
 				description: "Part of the email address after @.",
 			},
-			{ name: "name", description: "Display name." },
+			{
+				name: "name",
+				type: WorkflowFieldType.TEXT,
+				description: "Display name.",
+			},
 		],
 	},
 	{
@@ -134,7 +157,13 @@ const actions: WorkflowActionResponse[] = [
 				literal: false,
 			},
 		],
-		outputs: [{ name: "role_name", description: "Name of the member's role." }],
+		outputs: [
+			{
+				name: "role_name",
+				type: WorkflowFieldType.TEXT,
+				description: "Name of the member's role.",
+			},
+		],
 	},
 	{
 		type: "email.send",
@@ -168,7 +197,11 @@ const actions: WorkflowActionResponse[] = [
 			},
 		],
 		outputs: [
-			{ name: "send_id", description: "Identifier of the send record." },
+			{
+				name: "send_id",
+				type: WorkflowFieldType.TEXT,
+				description: "Identifier of the send record.",
+			},
 		],
 	},
 ];
@@ -182,6 +215,13 @@ export const fixtureCatalog: WorkflowCatalogResponse = {
 			description: "Emitted when a new organization is created.",
 			group_type: ProductEventGroupType.INTERNAL,
 			group_name: "Organizations",
+			fields: [
+				{
+					name: "organization_id",
+					type: WorkflowFieldType.ORGANIZATION,
+					description: "Identifier of the organization.",
+				},
+			],
 			data_fields: ["organization_id"],
 		},
 		{
@@ -190,6 +230,13 @@ export const fixtureCatalog: WorkflowCatalogResponse = {
 			description: "Emitted when a product user is created.",
 			group_type: ProductEventGroupType.INTERNAL,
 			group_name: "Users",
+			fields: [
+				{
+					name: "product_user_id",
+					type: WorkflowFieldType.PRODUCT_USER,
+					description: "Identifier of the product user.",
+				},
+			],
 			data_fields: ["product_user_id"],
 		},
 	],

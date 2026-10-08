@@ -93,16 +93,16 @@ func buildActions(s Services) []action {
 		Name: keyRoleID, Label: "Role", Type: ParamRole, Required: true,
 	}
 	organizationOutputs := []OutputSpec{
-		{Name: keyOrganizationID, Description: describeOrganizationID},
-		{Name: keyName, Description: "Name of the organization."},
-		{Name: keyDescription, Description: "Description of the organization."},
-		{Name: keyMetadata, Description: "Metadata object; read a key with metadata.<key>."},
+		{Name: keyOrganizationID, Type: FieldOrganization, Description: describeOrganizationID},
+		{Name: keyName, Type: FieldText, Description: "Name of the organization."},
+		{Name: keyDescription, Type: FieldText, Description: "Description of the organization."},
+		{Name: keyMetadata, Type: FieldJSON, Description: "Metadata object; read a key with metadata.<key>."},
 	}
 	membershipOutputs := []OutputSpec{
-		{Name: keyOrganizationID, Description: describeOrganizationID},
-		{Name: keyProductUserID, Description: "Identifier of the member."},
-		{Name: keyRoleID, Description: "Identifier of the member's role."},
-		{Name: "role_name", Description: "Name of the member's role."},
+		{Name: keyOrganizationID, Type: FieldOrganization, Description: describeOrganizationID},
+		{Name: keyProductUserID, Type: FieldProductUser, Description: "Identifier of the member."},
+		{Name: keyRoleID, Type: FieldRole, Description: "Identifier of the member's role."},
+		{Name: "role_name", Type: FieldText, Description: "Name of the member's role."},
 	}
 	return []action{
 		{
@@ -250,8 +250,8 @@ func buildActions(s Services) []action {
 					{Name: keyDescription, Label: labelDescription, Type: ParamText},
 				},
 				Outputs: []OutputSpec{
-					{Name: "workspace_id", Description: "Identifier of the new workspace."},
-					{Name: keyName, Description: "Name of the new workspace."},
+					{Name: "workspace_id", Type: FieldWorkspace, Description: "Identifier of the new workspace."},
+					{Name: keyName, Type: FieldText, Description: "Name of the new workspace."},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -310,8 +310,8 @@ func buildActions(s Services) []action {
 				Description: "Removes a product user from an organization.",
 				Params:      []ParamSpec{organizationIDParam, productUserIDParam},
 				Outputs: []OutputSpec{
-					{Name: keyOrganizationID, Description: describeOrganizationID},
-					{Name: keyProductUserID, Description: "Identifier of the removed member."},
+					{Name: keyOrganizationID, Type: FieldOrganization, Description: describeOrganizationID},
+					{Name: keyProductUserID, Type: FieldProductUser, Description: "Identifier of the removed member."},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -339,9 +339,9 @@ func buildActions(s Services) []action {
 					roleIDParam,
 				},
 				Outputs: []OutputSpec{
-					{Name: "invitation_id", Description: "Identifier of the invitation."},
-					{Name: keyEmail, Description: "Invited email address."},
-					{Name: "expires_at", Description: "When the invitation expires, RFC 3339."},
+					{Name: "invitation_id", Type: FieldInvitation, Description: "Identifier of the invitation."},
+					{Name: keyEmail, Type: FieldEmail, Description: "Invited email address."},
+					{Name: "expires_at", Type: FieldTimestamp, Description: "When the invitation expires, RFC 3339."},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -364,12 +364,12 @@ func buildActions(s Services) []action {
 				Description: "Loads a product user, for conditions on their email or for an email step.",
 				Params:      []ParamSpec{productUserIDParam},
 				Outputs: []OutputSpec{
-					{Name: keyProductUserID, Description: "Identifier of the product user."},
-					{Name: keyEmail, Description: "Email address."},
-					{Name: "email_domain", Description: "Part of the email address after @."},
-					{Name: keyName, Description: "Display name."},
-					{Name: "external_id", Description: "Identifier at the identity provider."},
-					{Name: keyStatus, Description: "ACTIVE or INACTIVE."},
+					{Name: keyProductUserID, Type: FieldProductUser, Description: "Identifier of the product user."},
+					{Name: keyEmail, Type: FieldEmail, Description: "Email address."},
+					{Name: "email_domain", Type: FieldText, Description: "Part of the email address after @."},
+					{Name: keyName, Type: FieldText, Description: "Display name."},
+					{Name: "external_id", Type: FieldText, Description: "Identifier at the identity provider."},
+					{Name: keyStatus, Type: FieldText, Description: "ACTIVE or INACTIVE."},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -399,8 +399,12 @@ func buildActions(s Services) []action {
 					{Name: keyTemplateID, Label: labelLicenseTemplate, Type: ParamLicenseTemplate, Required: true},
 				},
 				Outputs: []OutputSpec{
-					{Name: keyLicenseID, Description: "Identifier of the license."},
-					{Name: keyTemplateID, Description: "Template the license was copied from."},
+					{Name: keyLicenseID, Type: FieldLicense, Description: "Identifier of the license."},
+					{
+						Name:        keyTemplateID,
+						Type:        FieldLicenseTemplate,
+						Description: "Template the license was copied from.",
+					},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -424,8 +428,12 @@ func buildActions(s Services) []action {
 					{Name: keyTemplateID, Label: labelLicenseTemplate, Type: ParamLicenseTemplate, Required: true},
 				},
 				Outputs: []OutputSpec{
-					{Name: "outcome", Description: "CHANGED, UNCHANGED or FAILED."},
-					{Name: "previous_template_id", Description: "Template held before, when there was one."},
+					{Name: "outcome", Type: FieldText, Description: "CHANGED, UNCHANGED or FAILED."},
+					{
+						Name:        "previous_template_id",
+						Type:        FieldLicenseTemplate,
+						Description: "Template held before, when there was one.",
+					},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -464,8 +472,12 @@ func buildActions(s Services) []action {
 						Description: `JSON object of license field to value, e.g. {"seats": 25}.`},
 				},
 				Outputs: []OutputSpec{
-					{Name: keyLicenseID, Description: "Identifier of the license."},
-					{Name: "adjusted_fields", Description: "Every field now bespoke to the organization."},
+					{Name: keyLicenseID, Type: FieldLicense, Description: "Identifier of the license."},
+					{
+						Name:        "adjusted_fields",
+						Type:        FieldJSON,
+						Description: "Every field now bespoke to the organization.",
+					},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {
@@ -497,8 +509,8 @@ func buildActions(s Services) []action {
 						Description: "JSON object of template variables. Values may use {{ }} references."},
 				},
 				Outputs: []OutputSpec{
-					{Name: "send_id", Description: "Identifier of the send record."},
-					{Name: keyStatus, Description: "Status of the send when the step finished."},
+					{Name: "send_id", Type: FieldText, Description: "Identifier of the send record."},
+					{Name: keyStatus, Type: FieldText, Description: "Status of the send when the step finished."},
 				},
 			},
 			run: func(ctx context.Context, env Env, p Params) (map[string]any, error) {

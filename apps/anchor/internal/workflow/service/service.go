@@ -75,6 +75,25 @@ func (s *workflowService) Catalog(ctx context.Context, input workflow.ListInput)
 	}, nil
 }
 
+// checkFieldTypes refuses a workflow whose steps send a custom event field
+// with a type another step of the product already gives it differently.
+func (s *workflowService) checkFieldTypes(ctx context.Context, candidate workflow.Workflow) error {
+	sends := slices.ContainsFunc(candidate.Definition.Steps, func(step workflow.Step) bool {
+		return step.Action == engine.ActionWorkflowEmit
+	})
+	if !sends {
+		return nil
+	}
+	others, err := s.repo.List(ctx, candidate.PlatformTenantID, candidate.ProductID)
+	if err != nil {
+		return err
+	}
+	if conflict := s.engine.FieldTypeConflict(candidate, others); conflict != nil {
+		return fieldTypeConflictError(*conflict)
+	}
+	return nil
+}
+
 // checkLoop refuses a workflow that, enabled, would start itself again
 // through its own writes or through other enabled workflows of the product.
 func (s *workflowService) checkLoop(ctx context.Context, candidate workflow.Workflow) error {
@@ -101,6 +120,9 @@ func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.GenerateID()
 	wf.CreatedAt = time.Now().UTC()
+	if err := s.checkFieldTypes(ctx, wf); err != nil {
+		return workflow.Workflow{}, err
+	}
 	if err := s.checkLoop(ctx, wf); err != nil {
 		return workflow.Workflow{}, err
 	}
@@ -153,6 +175,9 @@ func (s *workflowService) Update(ctx context.Context, input workflow.UpdateInput
 	}
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.ID = input.WorkflowID
+	if err := s.checkFieldTypes(ctx, wf); err != nil {
+		return workflow.Workflow{}, err
+	}
 	if err := s.checkLoop(ctx, wf); err != nil {
 		return workflow.Workflow{}, err
 	}

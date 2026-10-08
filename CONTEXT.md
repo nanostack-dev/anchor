@@ -115,6 +115,7 @@ A Product automates its own resources with **workflows**. See [ADR-0020](docs/ad
 | **run** | One execution of a workflow against one event, recorded with every step's result. At most one run per workflow and event. | Not "job" — that is the queue entry. |
 | **dry run** | A run of an unsaved workflow against sample event data that reads for real and writes nothing. It is not stored. | Not "test run". |
 | **custom event** | An event a workflow step emits (`custom.<name>`) to start other workflows. It never leaves Anchor. | Not a catalog event: it is never delivered to the endpoint. |
+| **field type** | What an event field or a step output holds (`organization`, `email`, `number`…), so a parameter is offered the fields that fit it. A custom event's sender declares the types of its data; every sender gives a field the same type. | Not a validation rule: values are still strings at run time. |
 | **custom action** | A step that calls the Product's own backend, signed like an event delivery, and passes the answer to later steps. | Not "webhook" — the call is a step, and its answer matters. |
 | **causation** | The chain of workflows that led to an event. A workflow already in it does not run again, and a chain stops after 5 runs. | Not "trace". |
 | **loop** | A set of enabled workflows through which one can start itself again. Anchor refuses to save one, and refuses to run one. | |

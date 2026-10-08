@@ -18,6 +18,7 @@ const (
 	keyEventType          = "event_type"
 	keyEventID            = "event_id"
 	keyData               = "data"
+	keyDataTypes          = "data_types"
 )
 
 // CustomEventSender hands a custom event to the workflows of a Product. The
@@ -73,10 +74,15 @@ func workflowEmitAction(sender CustomEventSender) action {
 					Name: keyData, Label: "Data", Type: ParamJSON,
 					Description: "JSON object the event carries; later workflows read it as event.data.<key>.",
 				},
+				{
+					Name: keyDataTypes, Label: "Field types", Type: ParamFieldTypes, Literal: true, Types: keyData,
+					Description: `Type of each data key, such as {"plan": "text"}. A key left out is text. ` +
+						"Every step that sends the event gives a field the same type.",
+				},
 			},
 			Outputs: []OutputSpec{
-				{Name: keyEventType, Description: "Type of the emitted event."},
-				{Name: keyEventID, Description: "Identifier of the emitted event."},
+				{Name: keyEventType, Type: FieldText, Description: "Type of the emitted event."},
+				{Name: keyEventID, Type: FieldText, Description: "Identifier of the emitted event."},
 			},
 		},
 		emits: func(params map[string]string) []string {

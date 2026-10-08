@@ -4266,10 +4266,33 @@ components:
         What a parameter holds, so a client can offer the right picker. Every
         parameter is sent as a string; `json` parameters hold a JSON object
         after their references are resolved.
-      enum: [text, email, json, organization, product_user, role, license_template, email_template, url, custom_event]
+      enum: [text, email, json, organization, product_user, role, license_template, email_template, url, custom_event, field_types]
       x-go-type: engine.ParamType
       x-go-type-import:
         path: anchor/internal/workflow/engine
+    WorkflowFieldType:
+      type: string
+      description: >-
+        What a value an event carries or a step produces is, so a client can
+        offer a parameter only the fields that fit it. Every value is still sent
+        as a string. Identifier types (`organization`, `product_user`, ...) name
+        the resource the identifier points at.
+      enum: [text, email, number, boolean, timestamp, url, json, organization, workspace, product_user, invitation, api_key, role, permission, license, license_template]
+      x-go-type: engine.FieldType
+      x-go-type-import:
+        path: anchor/internal/workflow/engine
+    WorkflowEventFieldResponse:
+      type: object
+      description: One value an event carries under `event.data`.
+      properties:
+        name:
+          type: string
+          examples: ["organization_id"]
+        type:
+          $ref: "#/components/schemas/WorkflowFieldType"
+        description:
+          type: string
+      required: [name, type, description]
     WorkflowCondition:
       type: object
       properties:
@@ -4515,13 +4538,21 @@ components:
           $ref: "#/components/schemas/ProductEventGroupType"
         group_name:
           type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowEventFieldResponse"
+          description: >-
+            Typed keys the event carries under `event.data`. A custom event's
+            fields come from the steps that send it: the keys of their `data`
+            parameter, typed by their `data_types` parameter (text when left out).
         data_fields:
           type: array
           items:
             type: string
-          description: Keys the event carries under `event.data`.
+          description: Names of `fields`, kept for clients that read names only.
           examples: [["organization_id"]]
-      required: [type, name, description, group_type, group_name, data_fields]
+      required: [type, name, description, group_type, group_name, fields, data_fields]
     WorkflowActionParamResponse:
       type: object
       properties:
@@ -4545,15 +4576,23 @@ components:
           description: >-
             The value must be written out and cannot hold `{{ }}` references,
             because Anchor reads it when the workflow is saved.
+        types:
+          type: string
+          description: >-
+            For a `field_types` parameter: the JSON parameter whose keys it
+            types, such as `data`.
+          examples: ["data"]
       required: [name, label, type, required, literal]
     WorkflowActionOutputResponse:
       type: object
       properties:
         name:
           type: string
+        type:
+          $ref: "#/components/schemas/WorkflowFieldType"
         description:
           type: string
-      required: [name, description]
+      required: [name, type, description]
     WorkflowActionResponse:
       type: object
       properties:
@@ -8559,7 +8598,10 @@ paths:
         parameter must be set, and every `{{ }}` reference must name a key of
         the trigger event or an output of an earlier step. An enabled workflow
         is refused when it could start itself again, through its own writes or
-        through other enabled workflows: the error names the loop. A workflow
+        through other enabled workflows: the error names the loop. A step that
+        sends a custom event field with a type another step of the product
+        gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`;
+        `metadata.location` points at that step's `data_types`. A workflow
         runs as the Product, so `workflow:create` lets a key act on everything
         its steps can reach.
       operationId: createWorkflow
@@ -8620,7 +8662,7 @@ paths:
         Replaces the workflow's name, description, trigger, definition and
         enabled flag. Runs already started keep the definition they started
         with. Enabling or changing a workflow is refused when it would close a
-        loop, as on create.
+        loop, or give a custom event field a second type, as on create.
       operationId: updateWorkflow
       tags: [Workflow]
       security:
