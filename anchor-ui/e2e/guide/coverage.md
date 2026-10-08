@@ -9,7 +9,7 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **61 scenarios in 15 spec files**.
+The managed app suite declares **63 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
@@ -20,7 +20,7 @@ The managed app suite declares **61 scenarios in 15 spec files**.
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
 | [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 4 |
-| [integrations/stripe-billing.e2e.ts](../features/integrations/stripe-billing.e2e.ts) | 4 |
+| [integrations/stripe-billing.e2e.ts](../features/integrations/stripe-billing.e2e.ts) | 6 |
 | [licensing/migrations.e2e.ts](../features/licensing/migrations.e2e.ts) | 3 |
 | [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 6 |
 | [licensing/schema.e2e.ts](../features/licensing/schema.e2e.ts) | 4 |
@@ -140,8 +140,8 @@ Spec: [integrations](../features/integrations/integrations.e2e.ts).
 | `PRODUCT_INTEGRATIONS` — `/platform/$productId/integrations` | Redirect destination renders SMTP provider overview. | Provider actions are exercised on their dedicated routes; card navigation is not individually asserted. | integrations |
 | `PRODUCT_INTEGRATION_CLERK` — `/platform/$productId/integration-clerk` | Create/configure webhook secret, reset draft, pause/reload/resume, ingested user/activity visible and instance delete. | API posts invalid and correctly signed Clerk webhooks; real local ingestion is asserted. Live vendor API reconciliation is excluded. | integrations |
 | `PRODUCT_INTEGRATION_SMTP` — `/platform/$productId/integration-smtp` | Required host, local SMTP create/connect, metadata update/reload, blank password preservation, pause/resume and delete cancel/confirm. | Owned Mailpit SMTP; local PLAIN/NONE configuration. External delivery/TLS vendors are excluded. | integrations |
-| `PRODUCT_INTEGRATION_STRIPE` — `/platform/$productId/integration-stripe` | Hub navigation, required-account validation, LOCAL_CLI method, hidden API-key input, write-only signing-secret clearing, pause/reload/resume and return to Hub. | Real local product/session; native Stripe integration responses are contract fixtures, so no external account or key is required. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
-| `PRODUCT_PRICING` — `/products/pricing` | Required amount, recurring price creation/reload/archive, draft preservation during refresh, initial loading protection, missing integration, wrong-product state rejection and worst-case overflow checks. | Real local product/session; Stripe prices, templates and subscription state are contract fixtures. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
+| `PRODUCT_INTEGRATION_STRIPE` — `/platform/$productId/integration-stripe` | Hub navigation, required-account validation, LOCAL_CLI method, hidden API-key input, write-only signing-secret clearing, pause/reload/resume and return to Hub; opt-in fraud-refund validation/save/reload/disable, outcome labels, draft preservation during a held refresh and blocked writes on failed reads. | Real local product/session; native Stripe integration and billing responses are contract fixtures, so no external account or key is required. Backend tests own signed event ingestion and provider refund behavior. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
+| `PRODUCT_PRICING` — `/products/pricing` | Required amount, recurring price creation/reload/archive, draft preservation during refresh, initial loading protection, missing integration, wrong-product state rejection, worst-case overflow checks and fallback changes preserving the fraud-refund policy. | Real local product/session; Stripe prices, templates and subscription state are contract fixtures. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
 | `PRODUCT_EVENTS` — `/products/events` | Categories/filter/no-results, checkbox selection, endpoint save/discard/reload, signing secret shown once and endpoint clear. | API creates an organization; the real queue delivers a signed webhook to an owned loopback receiver, whose body/signature are verified. | integrations |
 
 ## Email

@@ -19,6 +19,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { BillingActivity } from "./billing-activity";
 import { type BillingAPI, billingError } from "./billing-api";
+import { FraudRefundActivity } from "./fraud-refund-activity";
 import { OrganizationBilling } from "./organization-workspace";
 import { PricingWorkspace, type RunBillingAction } from "./pricing-workspace";
 
@@ -193,6 +194,9 @@ export function BillingWorkspace({
 			)}
 			{state && (
 				<BillingActivity state={state} organizationId={organizationId} />
+			)}
+			{state && organizationId && (
+				<FraudRefundActivity state={state} organizationId={organizationId} />
 			)}
 		</Stack>
 	);

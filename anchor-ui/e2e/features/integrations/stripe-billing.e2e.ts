@@ -19,6 +19,7 @@ import type { State } from "../../../src/features/billing/billing-types";
 import {
 	createFixtureAPI,
 	fixtureState,
+	fraudEnabledFixtureState,
 	worstCaseFixtureState,
 } from "../../../src/features/billing/fixtures";
 import { expect, test } from "../../support/fixtures";
@@ -106,6 +107,211 @@ async function fixtureBilling(
 	});
 	return api;
 }
+
+async function fixtureStripeConnection(page: Page, productId: string) {
+	const prefix = `/v1/products/${productId}/integrations`;
+	await page.route(new RegExp(`${prefix}(?:/.*)?$`), async (route) => {
+		if (new URL(route.request().url()).pathname.endsWith("/audit-logs"))
+			return route.fulfill({ json: { items: [], count: 0, total: 0 } });
+		const timestamp = "2026-10-08T14:00:00Z";
+		const instance: IntegrationInstanceResponse = {
+			id: "iin_fraud_contractfixture",
+			product_id: productId,
+			provider_type: IntegrationProviderType.STRIPE,
+			config_version: 1,
+			is_enabled: true,
+			status: IntegrationInstanceStatus.ACTIVE,
+			created_at: timestamp,
+			updated_at: timestamp,
+			public_config: {
+				auth_method: StripeIntegrationAuthMethod.API_KEY,
+				account_id: "acct_fraud_contractfixture",
+				return_url: "https://anchor.example.com",
+				mode: "sandbox",
+				api_key_configured: true,
+				webhook_secret_configured: true,
+			},
+		};
+		await route.fulfill({ json: { items: [instance], count: 1 } });
+	});
+}
+
+// Covers: PRODUCT_INTEGRATION_STRIPE, PRODUCT_PRICING, ORGANIZATION_LICENSE_DETAIL
+test("fraud refund policy validates, persists, preserves fallback and presents contract fixture outcomes", async ({
+	page,
+	world,
+}, testInfo) => {
+	const state = structuredClone(fraudEnabledFixtureState);
+	state.product = { id: world.product.id, name: world.product.name };
+	state.settings.fraud_refund_policy.enabled = false;
+	state.settings.fraud_refund_policy.max_amount = 0;
+	await fixtureStripeConnection(page, world.product.id);
+	const api = await fixtureBilling(page, state);
+	await selectProduct(page, world.product);
+	const integrationURL = `/platform/${world.product.id}/integration-stripe`;
+	await page.goto(integrationURL);
+	const enabled = page.getByRole("switch", {
+		name: "Automatically refund fraud warnings",
+		exact: true,
+	});
+	const amount = page.getByLabel("Maximum payment amount (minor units)", {
+		exact: true,
+	});
+	await expect(enabled).not.toBeChecked();
+	await enabled.click();
+	await amount.fill("0");
+	await page
+		.getByRole("button", { name: "Save refund policy", exact: true })
+		.click();
+	await expect(enabled).toBeChecked();
+	await expect((await api.load()).settings.fraud_refund_policy.enabled).toBe(
+		false,
+	);
+	await expect(page.getByText(/Enter a whole amount/).first()).toBeVisible();
+	await amount.fill("1500");
+	await chooseOption(
+		page,
+		page.getByRole("combobox", { name: "Refund currency", exact: true }),
+		"CAD",
+	);
+	await page
+		.getByRole("button", { name: "Save refund policy", exact: true })
+		.click();
+	await expect(
+		page.getByText("Refund policy saved.", { exact: true }),
+	).toBeVisible();
+	await page.reload();
+	await expect(enabled).toBeChecked();
+	await expect(amount).toHaveValue("1500");
+	await expect(
+		page.getByRole("combobox", { name: "Refund currency", exact: true }),
+	).toContainText("CAD");
+	expect((await api.load()).settings.fallback_template_id).toBe("tpl_free");
+	const activity = page.getByRole("list", {
+		name: "Fraud refund activity",
+		exact: true,
+	});
+	for (const outcome of ["Refunded", "Skipped", "Pending", "Failed"])
+		await expect(
+			activity.getByText(outcome, { exact: true }).first(),
+		).toBeVisible();
+	await page
+		.getByRole("heading", { name: "Fraud warning refunds", exact: true })
+		.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "fraud-refund-policy-saved");
+	await activity.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "fraud-refund-activity");
+	await page.goto("/products/pricing");
+	await chooseOption(
+		page,
+		page.getByRole("combobox", {
+			name: "Fallback license template",
+			exact: true,
+		}),
+		"Enterprise",
+	);
+	await page
+		.getByRole("button", { name: "Save fallback", exact: true })
+		.click();
+	await expect(
+		page.getByText("Fallback template saved.", { exact: true }),
+	).toBeVisible();
+	await page.goto(integrationURL);
+	await expect(enabled).toBeChecked();
+	await expect(amount).toHaveValue("1500");
+	expect((await api.load()).settings.fallback_template_id).toBe(
+		"tpl_enterprise",
+	);
+	await enabled.click();
+	await page
+		.getByRole("button", { name: "Save refund policy", exact: true })
+		.click();
+	await expect(
+		page.getByText("Refund policy saved.", { exact: true }),
+	).toBeVisible();
+	await page.reload();
+	await expect(enabled).not.toBeChecked();
+	await expect(
+		activity.getByText("Refunded", { exact: true }).first(),
+	).toBeVisible();
+	await page
+		.getByRole("heading", { name: "Fraud warning refunds", exact: true })
+		.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "fraud-refund-policy-disabled");
+});
+
+// Covers: PRODUCT_INTEGRATION_STRIPE
+test("fraud refund draft survives held refresh and unavailable billing disables saving", async ({
+	page,
+	world,
+}, testInfo) => {
+	const state = structuredClone(fraudEnabledFixtureState);
+	state.product = { id: world.product.id, name: world.product.name };
+	let releaseRefresh = () => {};
+	let refreshRequested = () => {};
+	const refreshGate = new Promise<void>((resolve) => {
+		releaseRefresh = resolve;
+	});
+	const refreshRequest = new Promise<void>((resolve) => {
+		refreshRequested = resolve;
+	});
+	let loads = 0;
+	let unavailable = false;
+	await fixtureStripeConnection(page, world.product.id);
+	await fixtureBilling(page, state, async () => {
+		if (unavailable) throw new Error("Enable Stripe before managing billing.");
+		loads += 1;
+		if (loads === 2) {
+			refreshRequested();
+			await refreshGate;
+		}
+	});
+	await selectProduct(page, world.product);
+	await page.goto(`/platform/${world.product.id}/integration-stripe`);
+	const amount = page.getByLabel("Maximum payment amount (minor units)", {
+		exact: true,
+	});
+	await amount.fill("2500");
+	const reload = page.getByRole("button", {
+		name: "Reload refund policy",
+		exact: true,
+	});
+	await reload.click();
+	await refreshRequest;
+	await expect(amount).toHaveValue("2500");
+	const readBack = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname ===
+			`${world.productPath}/billing/stripe`,
+	);
+	releaseRefresh();
+	await readBack;
+	await expect(amount).toHaveValue("2500");
+	unavailable = true;
+	await reload.click();
+	await expect(
+		page.getByText("Enable Stripe before managing billing.", { exact: true }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Save refund policy", exact: true }),
+	).toBeDisabled();
+	await expect(reload).toBeEnabled();
+	await expect(amount).toHaveValue("2500");
+	await page
+		.getByRole("heading", { name: "Fraud warning refunds", exact: true })
+		.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(
+		page,
+		testInfo,
+		"fraud-refund-policy-unavailable",
+	);
+	unavailable = false;
+	await reload.click();
+	await expect(
+		page.getByRole("button", { name: "Save refund policy", exact: true }),
+	).toBeEnabled();
+	await expect(amount).toHaveValue("2500");
+});
 
 // Covers: PRODUCT_PRICING, ORGANIZATION_LICENSE_DETAIL
 test("native pricing and organization billing preserve edits and show contract fixture subscription changes", async ({
