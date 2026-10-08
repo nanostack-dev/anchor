@@ -38,6 +38,8 @@ function RowEditor({
 	row,
 	index,
 	duplicate,
+	typeProblem,
+	focusName,
 	variables,
 	onChange,
 	onRemove,
@@ -45,12 +47,15 @@ function RowEditor({
 	row: EventDataRow;
 	index: number;
 	duplicate: boolean;
+	typeProblem?: string;
+	focusName: boolean;
 	variables: WorkflowVariable[];
 	onChange: (row: EventDataRow) => void;
 	onRemove: () => void;
 }) {
 	const nameId = useId();
 	const typeId = useId();
+	const nameInput = useRef<HTMLInputElement | null>(null);
 	const name = row.key.trim();
 	const nameProblem = duplicate
 		? `Another field is already named “${name}”.`
@@ -64,18 +69,36 @@ function RowEditor({
 		required: false,
 		literal: false,
 	};
+
+	useEffect(() => {
+		if (focusName) nameInput.current?.focus();
+	}, [focusName]);
+
 	return (
 		<Box
 			as="fieldset"
 			aria-label={`Event field ${index + 1}`}
-			className="space-y-2 rounded-lg border border-border bg-card p-3"
+			className="@container space-y-2 rounded-lg border border-border bg-card p-3"
 		>
-			<Box className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_auto] items-end gap-2">
+			<Box className="flex items-center justify-between gap-2">
+				<Text as="span" size="xs" tone="muted">
+					Field {index + 1}
+				</Text>
+				<IconButton
+					variant="ghost"
+					size="sm"
+					icon={X}
+					label={`Remove event field ${name || index + 1}`}
+					onClick={onRemove}
+				/>
+			</Box>
+			<Box className="grid grid-cols-1 gap-2 @sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)]">
 				<Field invalid={Boolean(nameProblem)}>
 					<FieldLabel htmlFor={nameId} size="sm">
 						Name
 					</FieldLabel>
 					<Input
+						ref={nameInput}
 						id={nameId}
 						size="sm"
 						font="mono"
@@ -84,14 +107,16 @@ function RowEditor({
 						value={row.key}
 						onChange={(event) => onChange({ ...row, key: event.target.value })}
 					/>
+					{nameProblem ? <FieldError>{nameProblem}</FieldError> : null}
 				</Field>
-				<Field>
+				<Field invalid={Boolean(typeProblem)}>
 					<FieldLabel htmlFor={typeId} size="sm">
 						Type
 					</FieldLabel>
 					<NativeSelect
 						id={typeId}
 						size="sm"
+						aria-invalid={typeProblem ? true : undefined}
 						value={row.type}
 						onChange={(event) =>
 							onChange({
@@ -107,15 +132,8 @@ function RowEditor({
 						))}
 					</NativeSelect>
 				</Field>
-				<IconButton
-					variant="ghost"
-					size="sm"
-					icon={X}
-					label={`Remove event field ${name || index + 1}`}
-					onClick={onRemove}
-				/>
 			</Box>
-			{nameProblem ? <FieldError>{nameProblem}</FieldError> : null}
+			{typeProblem ? <FieldError>{typeProblem}</FieldError> : null}
 			<ParamInput
 				param={valueParam}
 				value={row.value}
@@ -146,6 +164,7 @@ export function EventDataEditor({
 	types,
 	variables,
 	errors,
+	fieldErrors = {},
 	onChange,
 }: {
 	dataParam: WorkflowActionParamResponse;
@@ -154,11 +173,13 @@ export function EventDataEditor({
 	types: string;
 	variables: WorkflowVariable[];
 	errors: Record<string, string>;
+	fieldErrors?: Record<string, string>;
 	onChange: (next: { data: string; types: string }) => void;
 }) {
 	const parsed = parseEventData(data, types);
 	const [asJSON, setAsJSON] = useState(parsed === undefined);
 	const [rows, setRows] = useState<EventDataRow[]>(parsed ?? []);
+	const [focusIndex, setFocusIndex] = useState<number>();
 	const sent = useRef(serializeEventData(rows));
 
 	useEffect(() => {
@@ -179,7 +200,12 @@ export function EventDataEditor({
 		onChange(sent.current);
 	};
 	const names = rows.map((row) => row.key.trim());
-	const problem = errors[dataParam.name] ?? errors[typesParam.name];
+	const pinnedOnARow = Object.keys(fieldErrors).some((key) =>
+		names.includes(key),
+	);
+	const problem =
+		errors[dataParam.name] ??
+		(pinnedOnARow && !asJSON ? undefined : errors[typesParam.name]);
 
 	return (
 		<Box
@@ -254,6 +280,8 @@ export function EventDataEditor({
 							duplicate={
 								row.key.trim() !== "" && names.indexOf(row.key.trim()) !== index
 							}
+							typeProblem={fieldErrors[row.key.trim()]}
+							focusName={index === focusIndex}
 							variables={variables}
 							onChange={(next) =>
 								update(
@@ -272,12 +300,13 @@ export function EventDataEditor({
 							variant="outline"
 							size="sm"
 							icon={Plus}
-							onClick={() =>
+							onClick={() => {
+								setFocusIndex(rows.length);
 								update([
 									...rows,
 									{ key: "", value: "", type: WorkflowFieldType.TEXT },
-								])
-							}
+								]);
+							}}
 						>
 							Add field
 						</Button>

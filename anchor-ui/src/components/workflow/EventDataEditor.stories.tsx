@@ -2,6 +2,7 @@ import { type WorkflowActionParamResponse, WorkflowParamType } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import { DataPanel } from "./DataPanel";
 import { EventDataEditor } from "./EventDataEditor";
 import { FieldTargetProvider } from "./field-target";
 import { demoFields } from "./workflow-fixtures";
@@ -27,10 +28,12 @@ function StatefulEventData({
 	data: initialData,
 	types: initialTypes,
 	errors = {},
+	fieldErrors = {},
 }: {
 	data: string;
 	types: string;
 	errors?: Record<string, string>;
+	fieldErrors?: Record<string, string>;
 }) {
 	const [value, setValue] = useState({
 		data: initialData,
@@ -39,6 +42,7 @@ function StatefulEventData({
 	return (
 		<FieldTargetProvider>
 			<div style={{ width: 460 }}>
+				<DataPanel fields={demoFields} />
 				<EventDataEditor
 					dataParam={dataParam}
 					typesParam={typesParam}
@@ -46,6 +50,7 @@ function StatefulEventData({
 					types={value.types}
 					variables={demoFields}
 					errors={errors}
+					fieldErrors={fieldErrors}
 					onChange={setValue}
 				/>
 				<output aria-label="Sent">{`${value.data} | ${value.types}`}</output>
@@ -168,5 +173,62 @@ export const Empty: Story = {
 		await expect(
 			canvas.getByText("The event carries no data yet."),
 		).toBeVisible();
+	},
+};
+
+export const ARemovedRowIsNoLongerATarget: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			canvas.getByRole("textbox", { name: "Value of plan" }),
+		);
+		await expect(
+			canvas.getByText(/Click to insert into Value of plan/),
+		).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Remove event field plan" }),
+		);
+		await expect(
+			canvas.getByText("Drag a field onto an input, or click an input first."),
+		).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", {
+				name: "email, Email, from Read product user",
+			}),
+		);
+		await expect(
+			canvas.getAllByRole("group", { name: /Event field/ }),
+		).toHaveLength(1);
+	},
+};
+
+export const AddingAFieldFocusesItsName: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Add field" }));
+		const third = canvas.getByRole("group", { name: "Event field 3" });
+		await expect(
+			within(third).getByRole("textbox", { name: "Name" }),
+		).toHaveFocus();
+	},
+};
+
+export const AConflictIsPinnedOnItsRow: Story = {
+	args: {
+		errors: {
+			data_types:
+				'custom.billing.upgraded carries "plan" as text here, but “Seat sync” sends it as number.',
+		},
+		fieldErrors: {
+			plan: 'custom.billing.upgraded carries "plan" as text here, but “Seat sync” sends it as number.',
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const row = canvas.getByRole("group", { name: "Event field 2" });
+		await expect(
+			within(row).getByRole("combobox", { name: "Type" }),
+		).toHaveAttribute("aria-invalid", "true");
+		await expect(canvas.getAllByText(/sends it as number/)).toHaveLength(1);
 	},
 };
