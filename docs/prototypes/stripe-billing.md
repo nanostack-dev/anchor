@@ -137,6 +137,64 @@ Reconciliation skips organizations already on the target template, so repeated
 events do not restamp licenses. Anchor's existing template sync continues to
 propagate unadjusted fields and maintain license history.
 
+## Refund early fraud warnings
+
+The product-scoped Stripe billing settings API accepts an optional
+`fraud_refund_policy` with `enabled`, `currency`, and `max_amount`. The policy
+starts **off**. Amounts use minor units: `1500` means USD, CAD, or EUR 15.00.
+The limit applies to the original payment amount; an eligible payment is
+refunded for its full remaining amount. Updating this policy preserves the
+fallback license template, and changing the fallback preserves the refund policy.
+The native policy controls and activity display ship in the companion UI layer.
+
+Anchor listens for `radar.early_fraud_warning.created`, retrieves current Stripe
+state, and verifies that the charge's invoice and subscription belong to this
+product, installation, and organization. It skips non-actionable warnings,
+foreign or ambiguous payments, unsupported currencies, and payments above the
+configured limit. Updated warnings and refund events reconcile the same action.
+Durable financial intents and a stable Stripe idempotency key prevent duplicate
+refunds across delivery retries and process restarts. An uncertain operation that
+cannot safely be retried appears as **Needs review**.
+Anchor permits replay of an uncertain submitted request only within 23 hours of
+its first persisted submission time, using the same payload and idempotency key.
+After that cutoff it searches for a matching Stripe receipt without submitting
+another refund; an unresolved action remains **Needs review**.
+Verified webhook intake persists its event and queue job in a short database
+transaction, independently of slow Stripe calls. Concurrent workers merge their
+updates against current state, preserving newly received warnings. Nonterminal
+refunds remain monitored. Known terminal refund receipts are refreshed for 31
+days from their original audit creation time, up to ten oldest-checked receipts
+per sweep; refreshing does not extend that window. Refund status events continue
+to refresh known receipts after the window. Terminal receipt checks never issue
+new refunds.
+
+Periodic reconciliation refreshes linked subscriptions and known refund actions;
+it does not discover a warning whose initial delivery never reached Anchor.
+Keep the local CLI listener and Anchor API running during sandbox verification.
+After downtime, inspect Stripe for missed warnings and investigate those payments;
+resend signed events through a configured Stripe webhook endpoint where available.
+
+The billing state API returns completed refunds, pending reimbursements,
+skipped decisions, and failures. Refunding does not cancel a subscription or
+change its license. A refund can reduce the chance of a dispute, but warnings may
+arrive late and reimbursement can fail; the policy cannot guarantee avoiding
+dispute fees. See [the source research](../research/stripe-fraud-refund-events.md)
+for the distinction between early fraud warnings, inquiries, and formal disputes.
+Turning the policy off stops new refunds while issued refunds remain monitored.
+Disconnecting Stripe is refused while financial actions still need resolution;
+pausing the connection preserves their records for reconciliation after resuming.
+**Needs review** requires an operator to investigate the payment in Stripe. This
+prototype can recover a matching Stripe refund receipt, but does not expose a
+force-clear action for an uncertain refund. If no receipt can be recovered, keep
+the integration paused with its audit records intact; an audited manual-resolution
+workflow is required before deleting that connection.
+
+For a disposable sandbox verification, use a payment below the configured limit
+with Stripe's `4000 0000 0000 5423` test card (future expiry and any three-digit
+CVC). Stripe documents this card as generating an issuer fraud warning after a
+successful payment. Check the resulting activity and refund in Stripe rather
+than treating a submitted refund request as a completed reimbursement.
+
 ## API and verification
 
 Native billing endpoints live under

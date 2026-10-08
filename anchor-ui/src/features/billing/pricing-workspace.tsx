@@ -253,7 +253,10 @@ function FallbackSettings({
 							});
 							if (
 								await run(
-									() => api.updateSettings(body),
+									() =>
+										api.updateSettings({
+											fallback_template_id: body.fallback_template_id,
+										}),
 									"Fallback template saved.",
 								)
 							)

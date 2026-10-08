@@ -84,6 +84,41 @@ func TestCLIRequestPinsSandboxAndKeepsParametersAsArguments(t *testing.T) {
 	assert.NotContains(t, runner.args[1], "--api-key")
 }
 
+func TestCLIRefundUsesOfficialSDKParametersAndStableIdempotency(t *testing.T) {
+	t.Parallel()
+	runner := &recordingRunner{results: []commandResult{
+		{output: `{"account_id":"acct_expected","mode":"test"}`},
+		{output: `{"id":"re_expected","charge":"ch_expected","amount":1500,"currency":"usd","status":"pending"}`},
+	}}
+	cli, err := NewCLI("acct_expected", runner)
+	require.NoError(t, err)
+	refund, err := cli.Client().V1Refunds.Create(t.Context(), &stripe.RefundCreateParams{
+		IdempotencyKey: new("saved-charge-intent"), Charge: new("ch_expected"), Amount: new(int64(1500)),
+		Metadata: map[string]string{refundActionMetadata: "action_expected"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, stripe.RefundStatusPending, refund.Status)
+	require.Equal(t, []string{
+		"post",
+		"/v1/refunds",
+		"--color",
+		"off",
+		"--stripe-version",
+		StripeVersion,
+		"--stripe-account",
+		"acct_expected",
+		"--confirm",
+		"--idempotency",
+		"saved-charge-intent",
+		"-d",
+		"amount=1500",
+		"-d",
+		"charge=ch_expected",
+		"-d",
+		"metadata[anchor_refund_action_id]=action_expected",
+	}, runner.args[1])
+}
+
 func TestCLIRequestRejectsErrorEnvelopesWithoutProcessFailure(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

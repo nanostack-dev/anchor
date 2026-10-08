@@ -1,5 +1,9 @@
 import type { BillingAPI } from "./billing-api";
-import type { Organization, State } from "./billing-types";
+import {
+	FraudRefundCurrency,
+	type Organization,
+	type State,
+} from "./billing-types";
 
 const timestamp = "2026-10-07T14:00:00Z";
 
@@ -84,7 +88,15 @@ export const fixtureState: State = {
 			pending_update: false,
 		},
 	],
-	settings: { fallback_template_id: "tpl_free" },
+	settings: {
+		fallback_template_id: "tpl_free",
+		fraud_refund_policy: {
+			enabled: false,
+			currency: FraudRefundCurrency.USD,
+			max_amount: 0,
+		},
+	},
+	fraud_refunds: [],
 	events: [
 		{
 			id: "evt_checkout",
@@ -192,8 +204,8 @@ export function createFixtureAPI(initial: State = fixtureState): BillingAPI {
 			return structuredClone(price);
 		},
 		updateSettings: async (body) => {
-			state.settings = body;
-			return structuredClone(body);
+			state.settings = { ...state.settings, ...body };
+			return structuredClone(state.settings);
 		},
 		checkout: async (id) => {
 			organization(id).customer_id = `cus_${id}`;
