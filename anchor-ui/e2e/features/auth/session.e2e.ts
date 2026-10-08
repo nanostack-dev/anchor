@@ -131,7 +131,7 @@ test(
 			.getByLabel("Password", { exact: true })
 			.fill(session.account.password);
 		await page.getByRole("button", { name: "Login", exact: true }).click();
-		await expect(page).toHaveURL("http://127.0.0.1:3015/");
+		await expect(page).toHaveURL(`${runtime().frontendURL}/`);
 		await expect(
 			page.getByRole("heading", { name: "Dashboard", exact: true }),
 		).toBeVisible();
