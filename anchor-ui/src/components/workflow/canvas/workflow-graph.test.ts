@@ -2,12 +2,18 @@ import {
 	ProductEventGroupType,
 	type WorkflowCatalogResponse,
 	WorkflowFieldType,
+	WorkflowOperator,
 	WorkflowParamType,
 	WorkflowStepStatus,
 } from "@/client";
 import { describe, expect, it } from "vitest";
 import { emptyDraft } from "../workflow-model";
-import { buildWorkflowGraph, stackColumn, stepNodeId } from "./workflow-graph";
+import {
+	buildWorkflowGraph,
+	conditionSummary,
+	stackColumn,
+	stepNodeId,
+} from "./workflow-graph";
 
 const catalog: WorkflowCatalogResponse = {
 	operators: [],
@@ -208,5 +214,57 @@ describe("workflow graph", () => {
 			"ref-out:emit:wf_follow": 198,
 			add: 362,
 		});
+	});
+});
+
+describe("conditionSummary", () => {
+	const withConditions = (
+		conditions: { field: string; operator: WorkflowOperator; value?: string }[],
+	) => {
+		const draft = emptyDraft("organization.created");
+		return { ...draft, definition: { ...draft.definition, conditions } };
+	};
+	const trigger = catalog.triggers[0];
+
+	it("names a lone condition's field and comparison, not its path", () => {
+		expect(
+			conditionSummary(
+				withConditions([
+					{
+						field: "event.data.organization_id",
+						operator: WorkflowOperator.EXISTS,
+						value: "stale",
+					},
+				]),
+				trigger,
+			),
+		).toBe("organization_id is set");
+	});
+
+	it("keeps the path of a field the trigger does not list", () => {
+		expect(
+			conditionSummary(
+				withConditions([
+					{
+						field: "steps.read.metadata.plan",
+						operator: WorkflowOperator.IN,
+						value: "pro, team",
+					},
+				]),
+				trigger,
+			),
+		).toBe("steps.read.metadata.plan is one of pro, team");
+	});
+
+	it("counts several conditions", () => {
+		expect(
+			conditionSummary(
+				withConditions([
+					{ field: "event.type", operator: WorkflowOperator.EXISTS },
+					{ field: "event.id", operator: WorkflowOperator.EXISTS },
+				]),
+				trigger,
+			),
+		).toBe("2 conditions must all hold");
 	});
 });
