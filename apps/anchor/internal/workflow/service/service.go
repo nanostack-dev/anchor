@@ -75,36 +75,26 @@ func (s *workflowService) Catalog(ctx context.Context, input workflow.ListInput)
 	}, nil
 }
 
-// checkFieldTypes refuses a workflow whose steps send a custom event field
-// with a type another step of the product already gives it differently.
-func (s *workflowService) checkFieldTypes(ctx context.Context, candidate workflow.Workflow) error {
+// checkChains refuses a workflow whose steps send a custom event field with
+// a type another step of the product already gives it differently, and an
+// enabled workflow that would start itself again through its own writes or
+// through other enabled workflows of the product. Both read the product's
+// workflows once.
+func (s *workflowService) checkChains(ctx context.Context, candidate workflow.Workflow) error {
 	sends := slices.ContainsFunc(candidate.Definition.Steps, func(step workflow.Step) bool {
 		return step.Action == engine.ActionWorkflowEmit
 	})
-	if !sends {
+	if !sends && !candidate.Enabled {
 		return nil
 	}
 	others, err := s.repo.List(ctx, candidate.PlatformTenantID, candidate.ProductID)
 	if err != nil {
 		return err
 	}
-	if conflict := s.engine.FieldTypeConflict(candidate, others); conflict != nil {
+	if conflict := s.engine.FieldTypeConflict(candidate, others); sends && conflict != nil {
 		return fieldTypeConflictError(*conflict)
 	}
-	return nil
-}
-
-// checkLoop refuses a workflow that, enabled, would start itself again
-// through its own writes or through other enabled workflows of the product.
-func (s *workflowService) checkLoop(ctx context.Context, candidate workflow.Workflow) error {
-	if !candidate.Enabled {
-		return nil
-	}
-	others, err := s.repo.List(ctx, candidate.PlatformTenantID, candidate.ProductID)
-	if err != nil {
-		return err
-	}
-	if path := s.engine.FindLoop(candidate, others); path != nil {
+	if path := s.engine.FindLoop(candidate, others); candidate.Enabled && path != nil {
 		return loopError(path)
 	}
 	return nil
@@ -120,10 +110,7 @@ func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.GenerateID()
 	wf.CreatedAt = time.Now().UTC()
-	if err := s.checkFieldTypes(ctx, wf); err != nil {
-		return workflow.Workflow{}, err
-	}
-	if err := s.checkLoop(ctx, wf); err != nil {
+	if err := s.checkChains(ctx, wf); err != nil {
 		return workflow.Workflow{}, err
 	}
 	created, err := s.repo.Create(ctx, wf)
@@ -175,10 +162,7 @@ func (s *workflowService) Update(ctx context.Context, input workflow.UpdateInput
 	}
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.ID = input.WorkflowID
-	if err := s.checkFieldTypes(ctx, wf); err != nil {
-		return workflow.Workflow{}, err
-	}
-	if err := s.checkLoop(ctx, wf); err != nil {
+	if err := s.checkChains(ctx, wf); err != nil {
 		return workflow.Workflow{}, err
 	}
 	updated, err := s.repo.Update(ctx, wf)
