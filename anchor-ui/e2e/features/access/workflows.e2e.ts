@@ -162,10 +162,20 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	const invite = page.getByRole("article", {
 		name: "Step 2: Invite to organization",
 	});
-	await invite
+	const emailInput = invite.getByRole("textbox", {
+		name: "Email *",
+		exact: true,
+	});
+	const emailChip = invite
 		.getByRole("region", { name: "Data you can use" })
-		.getByRole("button", { name: "email, Email, from Read product user" })
-		.dragTo(invite.getByRole("textbox", { name: "Email *", exact: true }));
+		.getByRole("button", { name: "email, Email, from Read product user" });
+	if ((testInfo.project.use.viewport?.width ?? 1280) < 640) {
+		// A phone inserts a field by tapping the input, then the chip.
+		await emailInput.click();
+		await emailChip.click();
+	} else {
+		await emailChip.dragTo(emailInput);
+	}
 	await expect(
 		invite.getByRole("button", {
 			name: "Email *: email from Read product user. Edit",
