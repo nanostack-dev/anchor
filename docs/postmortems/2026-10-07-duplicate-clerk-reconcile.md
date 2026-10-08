@@ -145,9 +145,9 @@ flowchart TD
 |---|---|---|---|---|---|---|---|
 | A1 | Scheduler run removes duplicate pending scheduler jobs, keeping the lowest id; CT proves duplicates collapse to one | prevent | anchor | 2026-10-10 | open | [anchor fix PR](https://github.com/nanostack-dev/anchor/pulls) | R1 |
 | A2 | Per-instance advisory lock around reconciliation; a second run skips | prevent | anchor | 2026-10-10 | open | [anchor fix PR](https://github.com/nanostack-dev/anchor/pulls) | R2 |
-| A3 | Log `removed duplicate reconcile scheduler jobs` at warn so any new fork shows in the warn-spike alert | detect | anchor | 2026-10-10 | open |  | R3 |
+| A3 | Log `removed duplicate reconcile scheduler jobs` at warn so any new fork shows in the warn-spike alert | detect | anchor | 2026-10-10 | open | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R3 |
 | A4 | Persist failure audit rows outside the aborted batch transaction | mitigate | anchor | 2026-10-24 | open | [anchor#210](https://github.com/nanostack-dev/anchor/issues/210) | R4 |
-| A5 | Guide line in anchor AGENTS.md: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock | process | anchor | 2026-10-10 | open |  | R1, R2 |
+| A5 | Guide line in anchor AGENTS.md: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock | process | anchor | 2026-10-10 | open | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R1, R2 |
 
 ## Responders
 

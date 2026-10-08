@@ -223,7 +223,11 @@
       "status": "open",
       "fixes": [
         "R3"
-      ]
+      ],
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      }
     },
     {
       "id": "A4",
@@ -250,7 +254,11 @@
       "fixes": [
         "R1",
         "R2"
-      ]
+      ],
+      "ticket": {
+        "label": "anchor#211",
+        "url": "https://github.com/nanostack-dev/anchor/pull/211"
+      }
     }
   ],
   "responders": [
