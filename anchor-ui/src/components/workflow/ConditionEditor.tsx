@@ -59,6 +59,7 @@ function ConditionRow({
 	onRemove: () => void;
 }) {
 	const listId = useId();
+	const warningId = useId();
 	const [dropping, setDropping] = useState(false);
 	const path = condition.field.trim();
 	const field = path ? fieldAt(variables, path) : undefined;
@@ -87,7 +88,7 @@ function ConditionRow({
 			operator: nextAllowed.includes(condition.operator)
 				? condition.operator
 				: nextAllowed[0],
-			value: nextType === type ? condition.value : "",
+			value: nextType === type || missing ? condition.value : "",
 		});
 	};
 
@@ -136,6 +137,7 @@ function ConditionRow({
 							<button
 								type="button"
 								aria-label={`${name}: value to test: ${fieldDescription}`}
+								aria-describedby={missing ? warningId : undefined}
 								title={field?.description ?? path}
 								className="flex h-8 w-full min-w-0 items-center gap-2 rounded-3xl border border-transparent bg-input/50 px-3 text-left text-sm outline-none transition-[transform,box-shadow] duration-150 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:scale-[0.99] motion-reduce:active:scale-100"
 							>
@@ -185,6 +187,7 @@ function ConditionRow({
 				<NativeSelect
 					size="sm"
 					aria-label={`${name}: comparison`}
+					aria-describedby={!operatorFits ? warningId : undefined}
 					value={condition.operator}
 					onChange={(event) =>
 						onChange({ operator: event.target.value as WorkflowOperator })
@@ -269,11 +272,11 @@ function ConditionRow({
 				) : null}
 			</Box>
 			{missing ? (
-				<Text size="xs" tone="warning">
+				<Text id={warningId} size="xs" tone="warning">
 					“{path}” is not something this condition can read here. Pick a field.
 				</Text>
 			) : !operatorFits && type ? (
-				<Text size="xs" tone="warning">
+				<Text id={warningId} size="xs" tone="warning">
 					{`${fieldTypeLabels[type]} fields cannot use “${operatorLabels[condition.operator]}”. Pick another comparison.`}
 				</Text>
 			) : null}

@@ -268,6 +268,9 @@ export const ASavedConditionThatNoLongerFits: Story = {
 			name: "Event condition 1: comparison",
 		});
 		await expect(comparison).toHaveValue("contains");
+		await expect(comparison).toHaveAccessibleDescription(
+			"Organization ID fields cannot use “contains”. Pick another comparison.",
+		);
 		await expect(
 			within(comparison).getByRole("option", {
 				name: "contains (does not fit)",
@@ -294,11 +297,21 @@ export const ASavedConditionThatNoLongerFits: Story = {
 				name: "Event condition 3: value to test: event.data.removed_field, not available here",
 			}),
 		).toBeVisible();
+		const missing = canvas.getByRole("button", {
+			name: "Event condition 3: value to test: event.data.removed_field, not available here",
+		});
+		await expect(missing).toHaveAccessibleDescription(
+			"“event.data.removed_field” is not something this condition can read here. Pick a field.",
+		);
+		await userEvent.click(missing);
+		await userEvent.click(
+			await within(canvasElement.ownerDocument.body).findByRole("option", {
+				name: /^email_domain/,
+			}),
+		);
 		await expect(
-			canvas.getByText(
-				"“event.data.removed_field” is not something this condition can read here. Pick a field.",
-			),
-		).toBeVisible();
+			canvas.getByRole("textbox", { name: "Event condition 3: compared with" }),
+		).toHaveValue("x");
 	},
 };
 
