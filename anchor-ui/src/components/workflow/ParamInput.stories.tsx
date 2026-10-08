@@ -183,3 +183,33 @@ export const Empty: Story = {
 		).toBeNull();
 	},
 };
+
+export const CompletingAWholeReferenceFocusesItsPill: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.type(
+			canvas.getByRole("textbox", { name: "Name" }),
+			"{{{{emai",
+		);
+		await canvas.findByRole("listbox", { name: "Fields for Name" });
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", {
+					name: "Name: email from Read product user. Edit",
+				}),
+			).toHaveFocus(),
+		);
+	},
+};
+
+export const ClearingAPillFocusesTheInput: Story = {
+	args: { initial: { name: "{{steps.product_user.email}}" } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Clear Name" }));
+		await waitFor(() =>
+			expect(canvas.getByRole("textbox", { name: "Name" })).toHaveFocus(),
+		);
+	},
+};

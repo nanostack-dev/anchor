@@ -111,6 +111,7 @@ interface SaveProblem {
 	detail: string;
 	stepId?: string;
 	param?: string;
+	field?: string;
 }
 
 function chainOf(workflow: WorkflowResponse): ChainWorkflow {
@@ -465,6 +466,12 @@ export function WorkflowBuilder({
 				.filter((problem) => problem.stepId === stepId)
 				.map((problem) => [problem.param ?? "", problem.detail]),
 		);
+	const stepFieldErrors = (stepId: string) =>
+		Object.fromEntries(
+			problems
+				.filter((problem) => problem.stepId === stepId && problem.field)
+				.map((problem) => [problem.field ?? "", problem.detail]),
+		);
 
 	const invalidate = (saved?: WorkflowResponse) => {
 		void queryClient.invalidateQueries({
@@ -509,6 +516,10 @@ export function WorkflowBuilder({
 						? undefined
 						: draft.definition.steps[described.stepIndex]?.id,
 				param: location.match(/\.params\.(\w+)/)?.[1],
+				field:
+					typeof apiError.metadata?.field === "string"
+						? apiError.metadata.field
+						: undefined,
 			};
 		});
 		const next = found.length
@@ -841,6 +852,7 @@ export function WorkflowBuilder({
 				variables={variablesBeforeStep(catalog, draft, selectedIndex)}
 				resources={resources}
 				errors={stepErrors(selectedStep.id)}
+				fieldErrors={stepFieldErrors(selectedStep.id)}
 				starts={startsOf(selectedStep)}
 				loopWarning={loopWarningFor(selectedStep)}
 				onChange={(next) => {

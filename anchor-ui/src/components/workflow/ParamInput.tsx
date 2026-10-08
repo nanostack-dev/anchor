@@ -74,6 +74,8 @@ export function ParamInput({
 	const listId = useId();
 	const suggestionsId = useId();
 	const control = useRef<TextControl | null>(null);
+	const pill = useRef<HTMLButtonElement | null>(null);
+	const hadFocus = useRef(false);
 	const caret = useRef<number | null>(null);
 	const latest = useRef({ value, onChange });
 	latest.current = { value, onChange };
@@ -110,6 +112,16 @@ export function ParamInput({
 	useEffect(() => {
 		if (editing) control.current?.focus();
 	}, [editing]);
+
+	useEffect(() => {
+		const lost =
+			!document.activeElement || document.activeElement === document.body;
+		if (showPill && hadFocus.current && lost) pill.current?.focus();
+	}, [showPill]);
+
+	const release = useRef(targets?.release);
+	release.current = targets?.release;
+	useEffect(() => () => release.current?.(insert), [insert]);
 
 	const remember = (element: TextControl) => {
 		caret.current = element.selectionStart;
@@ -232,6 +244,7 @@ export function ParamInput({
 			return (
 				<Box className="flex h-8 w-full min-w-0 items-center gap-1 rounded-3xl border border-transparent bg-input/50 px-1.5">
 					<button
+						ref={pill}
 						type="button"
 						id={inputId}
 						aria-label={`${label}: ${pillName} from ${pillSource}. Edit`}
@@ -258,7 +271,10 @@ export function ParamInput({
 							size="xs"
 							icon={X}
 							label={`Clear ${param.label}`}
-							onClick={() => onChange("")}
+							onClick={() => {
+								onChange("");
+								setEditing(true);
+							}}
 						/>
 					</Box>
 				</Box>
@@ -313,6 +329,13 @@ export function ParamInput({
 			</Box>
 			<Box
 				{...dropZone}
+				onFocus={() => {
+					hadFocus.current = true;
+				}}
+				onBlur={(event: React.FocusEvent<HTMLDivElement>) => {
+					if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+						hadFocus.current = false;
+				}}
 				className={cn(
 					"relative rounded-3xl transition-[box-shadow] duration-150 ease-out",
 					dropping && "ring-2 ring-primary/50",

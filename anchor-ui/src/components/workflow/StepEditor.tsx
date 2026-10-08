@@ -60,6 +60,7 @@ export function StepEditor({
 	variables,
 	resources,
 	errors = {},
+	fieldErrors = {},
 	starts = [],
 	loopWarning,
 	onChange,
@@ -75,6 +76,7 @@ export function StepEditor({
 	variables: WorkflowVariable[];
 	resources: WorkflowResources;
 	errors?: Record<string, string>;
+	fieldErrors?: Record<string, string>;
 	starts?: StepStart[];
 	loopWarning?: string;
 	onChange: (step: WorkflowStep) => void;
@@ -176,7 +178,7 @@ export function StepEditor({
 
 			<FieldTargetProvider>
 				<Stack space="lg">
-					<Box className="space-y-4 px-4 py-4">
+					<Box className="@container space-y-4 px-4 py-4">
 						{loopWarning ? (
 							<Alert tone="warning" icon={Repeat}>
 								<AlertTitle>This step would start a loop</AlertTitle>
@@ -202,12 +204,12 @@ export function StepEditor({
 						{readsFields || typesParam ? (
 							<DataPanel fields={variables} />
 						) : null}
-						<Box className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<Box className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
 							{plainParams.map((param) => (
 								<Box
 									key={param.name}
 									className={
-										param.type === "json" ? "md:col-span-2" : undefined
+										param.type === "json" ? "@xl:col-span-2" : undefined
 									}
 								>
 									<ParamInput
@@ -221,7 +223,7 @@ export function StepEditor({
 								</Box>
 							))}
 							{typesParam && typedParam ? (
-								<Box className="md:col-span-2">
+								<Box className="@xl:col-span-2">
 									<EventDataEditor
 										dataParam={typedParam}
 										typesParam={typesParam}
@@ -229,6 +231,7 @@ export function StepEditor({
 										types={step.params[typesParam.name] ?? ""}
 										variables={variables}
 										errors={errors}
+										fieldErrors={fieldErrors}
 										onChange={(next) =>
 											onChange({
 												...step,

@@ -14,6 +14,7 @@ export interface FieldTarget {
 interface FieldTargets {
 	active?: FieldTarget;
 	focus: (target: FieldTarget) => void;
+	release: (insert: FieldTarget["insert"]) => void;
 }
 
 const FieldTargetContext = createContext<FieldTargets | null>(null);
@@ -32,6 +33,10 @@ export function FieldTargetProvider({ children }: { children: ReactNode }) {
 					current?.label === target.label && current.insert === target.insert
 						? current
 						: target,
+				),
+			release: (insert) =>
+				setActive((current) =>
+					current?.insert === insert ? undefined : current,
 				),
 		}),
 		[active],
