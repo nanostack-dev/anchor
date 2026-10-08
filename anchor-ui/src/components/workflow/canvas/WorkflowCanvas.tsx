@@ -120,10 +120,14 @@ function useReadableFit(
 			const bottom =
 				element.clientHeight - FIT_PADDING - (all.y + all.height) * zoom;
 			const focus = focusId ? flow.getNode(focusId) : undefined;
+			const focusFitsFromTop =
+				focus &&
+				top + (focus.position.y + (focus.measured?.height ?? 0)) * zoom <=
+					element.clientHeight - FIT_PADDING;
 			const y =
 				all.height * zoom <= height
 					? middle - (all.y + all.height / 2) * zoom
-					: focus
+					: focus && !focusFitsFromTop
 						? Math.min(
 								top,
 								Math.max(

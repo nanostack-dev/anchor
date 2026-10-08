@@ -360,14 +360,21 @@ test("a step dragged from the palette lands where it is dropped, and steps reord
 	await expect(step(2, "Remember it on the organization")).toBeVisible();
 
 	await openStepPalette(page);
-	await page
-		.getByRole("button", { name: "Add step: Read product user", exact: true })
-		.dragTo(
-			canvas.getByRole("button", {
-				name: "Insert a step before step 1",
-				exact: true,
-			}),
-		);
+	const readProductUser = page.getByRole("button", {
+		name: "Add step: Read product user",
+		exact: true,
+	});
+	// The palette list scrolls; a drag that starts while it scrolls picks the item that slides under the pointer.
+	await readProductUser.evaluate((item) =>
+		item.scrollIntoView({ block: "center" }),
+	);
+	await settledBox(readProductUser);
+	await readProductUser.dragTo(
+		canvas.getByRole("button", {
+			name: "Insert a step before step 1",
+			exact: true,
+		}),
+	);
 	await expect(
 		page.getByRole("article", { name: "Step 1: Read product user" }),
 	).toBeVisible();
