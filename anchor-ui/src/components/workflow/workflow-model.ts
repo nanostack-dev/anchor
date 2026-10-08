@@ -2,6 +2,7 @@ import {
 	type WorkflowActionResponse,
 	type WorkflowCatalogResponse,
 	type WorkflowCondition,
+	WorkflowFieldType,
 	WorkflowOperator,
 	type WorkflowResponse,
 	type WorkflowStep,
@@ -9,12 +10,16 @@ import {
 	type WorkflowWriteRequest,
 } from "@/client";
 
+import { expectedTypeLabel, fits } from "./fields";
+
 export type WorkflowDraft = WorkflowWriteRequest;
 
 export interface WorkflowVariable {
 	path: string;
 	label: string;
 	source: string;
+	type: WorkflowFieldType;
+	description?: string;
 }
 
 export const operatorLabels: Record<WorkflowOperator, string> = {
@@ -112,14 +117,38 @@ export function triggerVariables(
 	trigger: WorkflowTriggerResponse | undefined,
 ): WorkflowVariable[] {
 	const base: WorkflowVariable[] = [
-		{ path: "event.type", label: "Event type", source: "Event" },
-		{ path: "workflow.id", label: "Workflow id", source: "Workflow" },
+		{
+			path: "event.type",
+			label: "Event type",
+			source: "Event",
+			type: WorkflowFieldType.TEXT,
+		},
+		{
+			path: "event.id",
+			label: "Event id",
+			source: "Event",
+			type: WorkflowFieldType.TEXT,
+		},
+		{
+			path: "workflow.id",
+			label: "Workflow id",
+			source: "Workflow",
+			type: WorkflowFieldType.TEXT,
+		},
+		{
+			path: "workflow.name",
+			label: "Workflow name",
+			source: "Workflow",
+			type: WorkflowFieldType.TEXT,
+		},
 	];
 	return [
-		...(trigger?.data_fields ?? []).map((field) => ({
-			path: `event.data.${field}`,
-			label: field,
+		...(trigger?.fields ?? []).map((field) => ({
+			path: `event.data.${field.name}`,
+			label: field.name,
 			source: "Event",
+			type: field.type,
+			description: field.description,
 		})),
 		...base,
 	];
@@ -139,6 +168,8 @@ export function variablesBeforeStep(
 				path: `steps.${step.id}.${output.name}`,
 				label: output.name,
 				source: step.name || action?.name || step.id,
+				type: output.type,
+				description: output.description,
 			}));
 		});
 	return [...triggerVariables(trigger), ...fromSteps];
@@ -166,12 +197,19 @@ export function newStep(
 	action: WorkflowActionResponse,
 	trigger: WorkflowTriggerResponse | undefined,
 ): WorkflowStep {
-	const dataFields = new Set(trigger?.data_fields ?? []);
+	const fields = trigger?.fields ?? [];
 	const params = Object.fromEntries(
-		action.params.map((param) => [
-			param.name,
-			dataFields.has(param.name) ? reference(`event.data.${param.name}`) : "",
-		]),
+		action.params.map((param) => {
+			const sameName = fields.find((field) => field.name === param.name);
+			const fitting = expectedTypeLabel(param.type)
+				? fields.filter((field) => fits(param.type, field.type))
+				: [];
+			const pick = sameName ?? (fitting.length === 1 ? fitting[0] : undefined);
+			return [
+				param.name,
+				pick && !param.literal ? reference(`event.data.${pick.name}`) : "",
+			];
+		}),
 	);
 	return {
 		id: nextStepId(steps, action.type),

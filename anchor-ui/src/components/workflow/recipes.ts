@@ -224,6 +224,7 @@ export const workflowRecipes: WorkflowRecipe[] = [
 						params: {
 							event: "onboarding.started",
 							data: '{"organization_id": "{{event.data.organization_id}}", "plan": "{{steps.backend.body.plan}}"}',
+							data_types: '{"organization_id": "organization", "plan": "text"}',
 						},
 						when: [],
 					},

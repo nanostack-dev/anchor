@@ -12,6 +12,7 @@ import {
 	type WorkflowStep,
 	WorkflowStepStatus,
 } from "@/client";
+import type { WorkflowVariable } from "./workflow-model";
 
 const organizationParam = {
 	name: "organization_id",
@@ -490,3 +491,68 @@ export const worstCaseStep: WorkflowStep = {
 	],
 	continue_on_error: true,
 };
+
+export const demoFields: WorkflowVariable[] = [
+	{
+		path: "event.data.organization_id",
+		label: "organization_id",
+		source: "Event",
+		type: WorkflowFieldType.ORGANIZATION,
+		description: "Identifier of the organization.",
+	},
+	{
+		path: "event.data.product_user_id",
+		label: "product_user_id",
+		source: "Event",
+		type: WorkflowFieldType.PRODUCT_USER,
+		description: "Identifier of the product user.",
+	},
+	{
+		path: "steps.product_user.email",
+		label: "email",
+		source: "Read product user",
+		type: WorkflowFieldType.EMAIL,
+		description: "Email address.",
+	},
+	{
+		path: "steps.product_user.email_domain",
+		label: "email_domain",
+		source: "Read product user",
+		type: WorkflowFieldType.TEXT,
+	},
+	{
+		path: "workflow.name",
+		label: "Workflow name",
+		source: "Workflow",
+		type: WorkflowFieldType.TEXT,
+	},
+];
+
+const worstCaseSources = [
+	"Event",
+	"Merge the partner programme, billing reference and onboarding link into the organization's metadata",
+	"Read product user",
+	"Jo",
+];
+
+/**
+ * Thirty fields over four sources, one named with a 100-character step name,
+ * and identifiers long enough to overflow a chip.
+ */
+export const worstCaseFields: WorkflowVariable[] = Array.from(
+	{ length: 30 },
+	(_, index) => {
+		const types = Object.values(WorkflowFieldType);
+		const source = worstCaseSources[index % worstCaseSources.length];
+		const label =
+			index % 3 === 0
+				? `previous_license_template_identifier_before_migration_${index}`
+				: `field_${index}`;
+		return {
+			path: `steps.source_${index % worstCaseSources.length}.${label}`,
+			label,
+			source,
+			type: types[index % types.length],
+		};
+	},
+);
