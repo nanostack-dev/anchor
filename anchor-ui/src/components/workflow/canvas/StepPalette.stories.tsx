@@ -157,7 +157,9 @@ export const WorstCase: Story = {
 			within(palette).getAllByRole("button", { name: /^Add step: / }),
 		).toHaveLength(everyAction.length);
 		await expect(within(palette).getAllByRole("list")).toHaveLength(8);
-		const list = palette.lastElementChild as HTMLElement;
+		const list = palette.querySelector(
+			'[data-slot="scroll-area-viewport"]',
+		) as HTMLElement;
 		await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
 		await expect(palette.getBoundingClientRect().bottom).toBeLessThanOrEqual(
 			canvasElement.getBoundingClientRect().bottom,
