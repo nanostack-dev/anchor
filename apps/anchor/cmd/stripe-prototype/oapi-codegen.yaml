@@ -1,0 +1,7 @@
+package: stripeprototype
+output: ../../internal/stripeprototype/contract.gen.go
+generate:
+  models: true
+output-options:
+  skip-prune: true
+  name-normalizer: ToCamelCaseWithInitialisms
