@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -17,28 +16,23 @@ const (
 	eventQueueMaxAttempts = 6
 )
 
-type queuePayload struct {
-	EventID   string          `json:"event_id"`
-	ProductID string          `json:"product_id"`
-	Type      Type            `json:"type"`
-	Body      json.RawMessage `json:"body"`
-}
-
 type Emitter interface {
 	Emit(ctx context.Context, event Event) error
 }
 
 type emitter struct {
-	queue   *queue.Client
-	catalog Catalog
-	now     func() time.Time
+	queue     *queue.Client
+	catalog   Catalog
+	listeners []Listener
+	now       func() time.Time
 }
 
-func NewEmitter(queueClient *queue.Client, catalog Catalog) Emitter {
+func NewEmitter(queueClient *queue.Client, catalog Catalog, listeners ...Listener) Emitter {
 	return &emitter{
-		queue:   queueClient,
-		catalog: catalog,
-		now:     time.Now,
+		queue:     queueClient,
+		catalog:   catalog,
+		listeners: listeners,
+		now:       time.Now,
 	}
 }
 
@@ -54,33 +48,33 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 		return errEmitRequiresTx
 	}
 
-	dataJSON, err := json.Marshal(event.Data)
-	if err != nil {
-		return err
-	}
-	envelope := Envelope{
-		Type:      event.Type,
-		Timestamp: e.now().UTC().Format(time.RFC3339Nano),
-		Data:      dataJSON,
-	}
-	body, err := json.Marshal(envelope)
-	if err != nil {
-		return err
-	}
-	payload, err := json.Marshal(queuePayload{
-		EventID:   ids.MustNew(eventIDPrefix),
-		ProductID: event.ProductID,
-		Type:      event.Type,
-		Body:      body,
-	})
+	payload, err := EncodeEvent(ctx, ids.MustNew(eventIDPrefix), event.ProductID, event.Type, event.Data, e.now())
 	if err != nil {
 		return err
 	}
 
-	_, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
+	if _, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 		QueueName:   queueName,
 		Payload:     payload,
 		MaxAttempts: eventQueueMaxAttempts,
-	})
-	return err
+	}); err != nil {
+		return err
+	}
+	for _, listener := range e.listeners {
+		accepted, acceptErr := listener.Accepts(ctx, event.ProductID, event.Type)
+		if acceptErr != nil {
+			return acceptErr
+		}
+		if !accepted {
+			continue
+		}
+		if _, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
+			QueueName:   listener.QueueName,
+			Payload:     payload,
+			MaxAttempts: eventQueueMaxAttempts,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

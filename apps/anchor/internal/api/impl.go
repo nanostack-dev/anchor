@@ -6,6 +6,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
+	workflowsvc "anchor/internal/workflow/service"
 
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
@@ -39,6 +40,7 @@ type AnchorAPI struct {
 	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
+	WorkflowService               workflowsvc.WorkflowService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
@@ -70,6 +72,7 @@ type Params struct {
 	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
+	WorkflowService               workflowsvc.WorkflowService
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
@@ -101,6 +104,7 @@ func NewAPI(params Params) *AnchorAPI {
 		LicenseMigrationService:       params.LicenseMigrationService,
 		UsageService:                  params.UsageService,
 		UsageSeriesService:            params.UsageSeriesService,
+		WorkflowService:               params.WorkflowService,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
 		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),

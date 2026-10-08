@@ -58,6 +58,12 @@ tags:
     Declare what a Product's licenses may contain. Anchor validates a license
     schema on write and never blocks an action on it — gating belongs to the
     consuming Product. (Admin + Product API Key operation)
+- name: Workflow
+  description: >-
+    Automate a Product's own resources: when a product event happens and its
+    conditions hold, a workflow runs steps that read and write organizations,
+    workspaces, members, invitations, product users, licenses and email.
+    (Admin + Product API Key operation)
 components:
   parameters:
     # --- Define Path Parameters for re-use ---
@@ -143,6 +149,29 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
       example: "ws_6jKLM..."
+    WorkflowIncludeParameter:
+      name: include
+      in: query
+      required: false
+      description: >-
+        Related resources to read alongside each workflow, comma separated —
+        `?include=last_run`. A resource not named is left out of the response.
+        Each named resource costs one statement for the whole response.
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/WorkflowInclude"
+      style: form
+      explode: false
+      example: ["last_run"]
+    WorkflowIdParameter:
+      name: workflow_id
+      in: path
+      required: true
+      description: The KSUID of the workflow.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+      example: "wf_6jKLM..."
     ProductUserIdParameter:
       name: product_user_id
       in: path
@@ -770,7 +799,11 @@ components:
       - items
     ProductEventGroupType:
       type: string
-      enum: [internal, integration]
+      description: >-
+        `custom` names an event a Product's workflows emit for each other with
+        the `workflow.emit` action. Custom events appear only as workflow
+        triggers; they are never delivered to the event endpoint.
+      enum: [internal, integration, custom]
       x-go-type: events.GroupType
       x-go-type-import:
         path: anchor/internal/events
@@ -4179,6 +4212,395 @@ components:
         required:
         - items
 
+    # --- Workflows ---
+    WorkflowOperator:
+      type: string
+      description: >-
+        How a condition compares the value at `field` with `value`. Every
+        comparison ignores letter case. `in` takes a comma-separated list.
+        `exists` and `not_exists` take no value; an empty string counts as absent.
+      enum: [equals, not_equals, contains, not_contains, starts_with, ends_with, in, exists, not_exists]
+      x-go-type: workflow.Operator
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
+    WorkflowInclude:
+      type: string
+      description: A related resource a workflow read can ask for.
+      enum: [last_run]
+      x-go-type: workflow.Include
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
+    WorkflowRunStatus:
+      type: string
+      description: >-
+        `skipped` is a run whose workflow conditions did not hold: no step ran.
+        `running` is a run still in progress, or one whose process stopped
+        before it finished; it is never retried.
+      enum: [running, succeeded, failed, skipped]
+      x-go-type: workflow.RunStatus
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
+    WorkflowRunTrigger:
+      type: string
+      description: >-
+        `event` is a run started by a product event, `manual` one started
+        through the run endpoint, `dry_run` one that wrote nothing and was not
+        stored.
+      enum: [event, manual, dry_run]
+      x-go-type: workflow.RunTrigger
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
+    WorkflowStepStatus:
+      type: string
+      description: >-
+        `skipped` is a step whose `when` conditions did not hold. `simulated`
+        is a write step in a dry run: its parameters were resolved and nothing
+        was written.
+      enum: [succeeded, failed, skipped, simulated]
+      x-go-type: workflow.StepStatus
+      x-go-type-import:
+        path: anchor/internal/domain/workflow
+    WorkflowParamType:
+      type: string
+      description: >-
+        What a parameter holds, so a client can offer the right picker. Every
+        parameter is sent as a string; `json` parameters hold a JSON object
+        after their references are resolved.
+      enum: [text, email, json, organization, product_user, role, license_template, email_template, url, custom_event]
+      x-go-type: engine.ParamType
+      x-go-type-import:
+        path: anchor/internal/workflow/engine
+    WorkflowCondition:
+      type: object
+      properties:
+        field:
+          type: string
+          description: >-
+            Path of the value to test: `event.data.<field>`,
+            `steps.<step id>.<output>` (deeper for objects such as
+            `steps.org.metadata.plan`), `event.type` or `workflow.id`.
+          examples: ["steps.user.email_domain"]
+        operator:
+          $ref: "#/components/schemas/WorkflowOperator"
+        value:
+          type: string
+          description: Value to compare with. May hold `{{ path }}` references.
+          examples: ["acme.com"]
+      required: [field, operator]
+    WorkflowStep:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,39}$"
+          description: >-
+            Identifier unique in the workflow. Later steps read this step's
+            output as `steps.<id>.<output>`.
+          examples: ["user"]
+        name:
+          type: string
+          maxLength: 100
+          description: Display name of the step.
+        action:
+          type: string
+          description: An action type from the workflow catalog.
+          examples: ["member.add"]
+        params:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Parameter values by name. Each may hold `{{ path }}` references to
+            the trigger event or an earlier step's output.
+          examples: [{"organization_id": "{{event.data.organization_id}}", "name": "General"}]
+        when:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/WorkflowCondition"
+          description: Conditions that must all hold for this step to run. Absent means always.
+        continue_on_error:
+          type: boolean
+          description: Keep running the next steps when this one fails. The run still reads `failed`.
+      required: [id, action, params]
+    WorkflowDefinition:
+      type: object
+      properties:
+        conditions:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/WorkflowCondition"
+          description: >-
+            Conditions on the trigger event that must all hold for the workflow
+            to run. They can read only `event.*` and `workflow.*`.
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/WorkflowStep"
+          description: Steps run one after the other, in order.
+      required: [conditions, steps]
+    WorkflowWriteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          examples: ["Auto-join company domain"]
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+          description: A disabled workflow keeps its definition and starts no run on events.
+        trigger_event_type:
+          type: string
+          description: >-
+            The event that starts a run: a product event from the workflow
+            catalog, or a custom event (`custom.` followed by lowercase words
+            joined by dots) that another workflow emits.
+          examples: ["product_user.created"]
+        definition:
+          $ref: "#/components/schemas/WorkflowDefinition"
+      required: [name, enabled, trigger_event_type, definition]
+    WorkflowResponse:
+      type: object
+      description: >-
+        A Product's own automation: when its trigger event happens and every
+        condition holds, its steps run in order against the Product's
+        resources, as the Product.
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          examples: ["wf_2iABC..."]
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        trigger_event_type:
+          type: string
+        definition:
+          $ref: "#/components/schemas/WorkflowDefinition"
+        emits:
+          type: array
+          items:
+            type: string
+          description: >-
+            Every event type the steps can emit, product or custom. A workflow
+            triggered by one of them runs after this one.
+        last_run:
+          $ref: "#/components/schemas/WorkflowRunResponse"
+          description: >-
+            The latest run. Present only on a read passing `include=last_run`,
+            and then absent when the workflow never ran.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, enabled, trigger_event_type, definition, emits, created_at, updated_at]
+    WorkflowListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowResponse"
+        count:
+          type: integer
+      required: [items, count]
+    WorkflowStepResultResponse:
+      type: object
+      properties:
+        step_id:
+          type: string
+        action:
+          type: string
+        status:
+          $ref: "#/components/schemas/WorkflowStepStatus"
+        params:
+          type: object
+          additionalProperties: true
+          description: Parameters after their references were resolved.
+        output:
+          type: object
+          additionalProperties: true
+          description: What the step produced, readable by later steps as `steps.<id>.*`.
+        error:
+          type: string
+      required: [step_id, action, status]
+    WorkflowRunResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          examples: ["wfrun_2iABC..."]
+        workflow_id:
+          $ref: "#/components/schemas/ksuid"
+        workflow_name:
+          type: string
+        event_id:
+          type: string
+          description: The product event the run reacted to, or a generated id for a manual or dry run.
+        event_type:
+          type: string
+        event_data:
+          type: object
+          additionalProperties:
+            type: string
+        trigger:
+          $ref: "#/components/schemas/WorkflowRunTrigger"
+        status:
+          $ref: "#/components/schemas/WorkflowRunStatus"
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStepResultResponse"
+        error:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+      required: [id, workflow_id, event_id, event_type, event_data, trigger, status, steps, started_at]
+    WorkflowRunListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowRunResponse"
+        count:
+          type: integer
+      required: [items, count]
+    WorkflowRunRequest:
+      type: object
+      properties:
+        event_data:
+          type: object
+          additionalProperties:
+            type: string
+          description: The `data` of the event to run against, as the trigger event would carry it.
+          examples: [{"product_user_id": "pusr_2iABC..."}]
+      required: [event_data]
+    WorkflowDryRunRequest:
+      type: object
+      properties:
+        workflow:
+          $ref: "#/components/schemas/WorkflowWriteRequest"
+        event_data:
+          type: object
+          additionalProperties:
+            type: string
+      required: [workflow, event_data]
+    WorkflowTriggerResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          examples: ["organization.created"]
+        name:
+          type: string
+        description:
+          type: string
+        group_type:
+          $ref: "#/components/schemas/ProductEventGroupType"
+        group_name:
+          type: string
+        data_fields:
+          type: array
+          items:
+            type: string
+          description: Keys the event carries under `event.data`.
+          examples: [["organization_id"]]
+      required: [type, name, description, group_type, group_name, data_fields]
+    WorkflowActionParamResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: "#/components/schemas/WorkflowParamType"
+        required:
+          type: boolean
+        options:
+          type: array
+          items:
+            type: string
+          description: The only values the parameter accepts. Absent means any value.
+        literal:
+          type: boolean
+          description: >-
+            The value must be written out and cannot hold `{{ }}` references,
+            because Anchor reads it when the workflow is saved.
+      required: [name, label, type, required, literal]
+    WorkflowActionOutputResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required: [name, description]
+    WorkflowActionResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          examples: ["workspace.create"]
+        name:
+          type: string
+        description:
+          type: string
+        group:
+          type: string
+        writes:
+          type: boolean
+          description: The action changes a resource or calls out. A dry run only resolves it.
+        emits:
+          type: array
+          items:
+            type: string
+          description: >-
+            Every event type the action can emit. `workflow.emit` lists none
+            here: its event is the one its step names.
+        params:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowActionParamResponse"
+        outputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowActionOutputResponse"
+      required: [type, name, description, group, writes, emits, params, outputs]
+    WorkflowCatalogResponse:
+      type: object
+      properties:
+        triggers:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowTriggerResponse"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowActionResponse"
+        operators:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowOperator"
+      required: [triggers, actions, operators]
   responses:
     BadRequest:
       description: >-
@@ -8072,3 +8494,323 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/workflow-catalog:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    get:
+      summary: Get Workflow Catalog
+      description: >-
+        Lists what a workflow can be built from: every trigger event with the
+        keys of its `data`, every action with its parameters, outputs and the
+        events it can emit, and every condition operator. Triggers include the
+        custom events this product's workflows emit, with the data keys their
+        steps declare.
+      operationId: getWorkflowCatalog
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowCatalogResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/workflows:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    get:
+      summary: List Workflows
+      description: Lists every workflow of the product, by name.
+      operationId: listWorkflows
+      parameters:
+      - $ref: '#/components/parameters/WorkflowIncludeParameter'
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Create Workflow
+      description: >-
+        Creates a workflow. The definition is checked against the catalog:
+        every action, parameter and operator must exist, every required
+        parameter must be set, and every `{{ }}` reference must name a key of
+        the trigger event or an output of an earlier step. An enabled workflow
+        is refused when it could start itself again, through its own writes or
+        through other enabled workflows: the error names the loop. A workflow
+        runs as the Product, so `workflow:create` lets a key act on everything
+        its steps can reach.
+      operationId: createWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowWriteRequest'
+      responses:
+        '201':
+          description: Workflow created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/workflows/{workflow_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/WorkflowIdParameter'
+    get:
+      summary: Get Workflow
+      operationId: getWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Workflow
+      description: >-
+        Replaces the workflow's name, description, trigger, definition and
+        enabled flag. Runs already started keep the definition they started
+        with. Enabling or changing a workflow is refused when it would close a
+        loop, as on create.
+      operationId: updateWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowWriteRequest'
+      responses:
+        '200':
+          description: Workflow updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete Workflow
+      description: Deletes the workflow and its run history.
+      operationId: deleteWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:delete
+      responses:
+        '204':
+          description: Workflow deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/workflows/{workflow_id}/runs:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/WorkflowIdParameter'
+    get:
+      summary: List Workflow Runs
+      description: Lists the latest runs of the workflow, newest first.
+      operationId: listWorkflowRuns
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 25
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Run Workflow
+      description: >-
+        Runs the workflow now against the given event data, as if its trigger
+        event had happened, and stores the run. The steps write for real. A
+        disabled workflow runs too. A request carrying an
+        `Anchor-Workflow-Causation` header from a run of this same workflow,
+        or from a chain already at its maximum length, is refused with a
+        conflict.
+      operationId: runWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRunRequest'
+      responses:
+        '200':
+          description: The finished run. A failed step is reported in the run, not as an error status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/workflow-dry-runs:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Dry Run Workflow
+      description: >-
+        Runs an unsaved workflow against sample event data without writing.
+        Read actions run for real, so later conditions see real values. Write
+        actions only resolve their parameters and report placeholder outputs
+        such as `<ws.workspace_id>`. Nothing is stored.
+      operationId: dryRunWorkflow
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowDryRunRequest'
+      responses:
+        '200':
+          description: The finished dry run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/workflow-runs:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    get:
+      summary: List Product Workflow Runs
+      description: Lists the latest runs of every workflow of the product, newest first.
+      operationId: listProductWorkflowRuns
+      tags: [Workflow]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - workflow:read
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 25
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'

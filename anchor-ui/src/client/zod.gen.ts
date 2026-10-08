@@ -189,9 +189,13 @@ export const zProductEventsConfigResponse = z.object({
     consecutive_failed_calls: z.int()
 });
 
+/**
+ * `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+ */
 export const zProductEventGroupType = z.enum([
     'internal',
-    'integration'
+    'integration',
+    'custom'
 ]);
 
 export const zProductEventDefinitionResponse = z.object({
@@ -1664,6 +1668,201 @@ export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
+ * How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+ */
+export const zWorkflowOperator = z.enum([
+    'equals',
+    'not_equals',
+    'contains',
+    'not_contains',
+    'starts_with',
+    'ends_with',
+    'in',
+    'exists',
+    'not_exists'
+]);
+
+/**
+ * A related resource a workflow read can ask for.
+ */
+export const zWorkflowInclude = z.enum([
+    'last_run'
+]);
+
+/**
+ * `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+ */
+export const zWorkflowRunStatus = z.enum([
+    'running',
+    'succeeded',
+    'failed',
+    'skipped'
+]);
+
+/**
+ * `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+ */
+export const zWorkflowRunTrigger = z.enum([
+    'event',
+    'manual',
+    'dry_run'
+]);
+
+/**
+ * `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+ */
+export const zWorkflowStepStatus = z.enum([
+    'succeeded',
+    'failed',
+    'skipped',
+    'simulated'
+]);
+
+/**
+ * What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+ */
+export const zWorkflowParamType = z.enum([
+    'text',
+    'email',
+    'json',
+    'organization',
+    'product_user',
+    'role',
+    'license_template',
+    'email_template',
+    'url',
+    'custom_event'
+]);
+
+export const zWorkflowCondition = z.object({
+    field: z.string(),
+    operator: zWorkflowOperator,
+    value: z.optional(z.string())
+});
+
+export const zWorkflowStep = z.object({
+    id: z.string().regex(/^[a-z][a-z0-9_]{0,39}$/),
+    name: z.optional(z.string().max(100)),
+    action: z.string(),
+    params: z.record(z.string(), z.string()),
+    when: z.optional(z.array(zWorkflowCondition).max(20)),
+    continue_on_error: z.optional(z.boolean())
+});
+
+export const zWorkflowDefinition = z.object({
+    conditions: z.array(zWorkflowCondition).max(20),
+    steps: z.array(zWorkflowStep).min(1).max(20)
+});
+
+export const zWorkflowWriteRequest = z.object({
+    name: z.string().min(2).max(100),
+    description: z.optional(z.string().max(500)),
+    enabled: z.boolean(),
+    trigger_event_type: z.string(),
+    definition: zWorkflowDefinition
+});
+
+export const zWorkflowStepResultResponse = z.object({
+    step_id: z.string(),
+    action: z.string(),
+    status: zWorkflowStepStatus,
+    params: z.optional(z.record(z.string(), z.unknown())),
+    output: z.optional(z.record(z.string(), z.unknown())),
+    error: z.optional(z.string())
+});
+
+export const zWorkflowRunResponse = z.object({
+    id: zKsuid,
+    workflow_id: zKsuid,
+    workflow_name: z.optional(z.string()),
+    event_id: z.string(),
+    event_type: z.string(),
+    event_data: z.record(z.string(), z.string()),
+    trigger: zWorkflowRunTrigger,
+    status: zWorkflowRunStatus,
+    steps: z.array(zWorkflowStepResultResponse),
+    error: z.optional(z.string()),
+    started_at: z.iso.datetime(),
+    finished_at: z.optional(z.iso.datetime())
+});
+
+/**
+ * A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
+ */
+export const zWorkflowResponse = z.object({
+    id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.string()),
+    enabled: z.boolean(),
+    trigger_event_type: z.string(),
+    definition: zWorkflowDefinition,
+    emits: z.array(z.string()),
+    last_run: z.optional(zWorkflowRunResponse),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zWorkflowListResponse = z.object({
+    items: z.array(zWorkflowResponse),
+    count: z.int()
+});
+
+export const zWorkflowRunListResponse = z.object({
+    items: z.array(zWorkflowRunResponse),
+    count: z.int()
+});
+
+export const zWorkflowRunRequest = z.object({
+    event_data: z.record(z.string(), z.string())
+});
+
+export const zWorkflowDryRunRequest = z.object({
+    workflow: zWorkflowWriteRequest,
+    event_data: z.record(z.string(), z.string())
+});
+
+export const zWorkflowTriggerResponse = z.object({
+    type: z.string(),
+    name: z.string(),
+    description: z.string(),
+    group_type: zProductEventGroupType,
+    group_name: z.string(),
+    data_fields: z.array(z.string())
+});
+
+export const zWorkflowActionParamResponse = z.object({
+    name: z.string(),
+    label: z.string(),
+    description: z.optional(z.string()),
+    type: zWorkflowParamType,
+    required: z.boolean(),
+    options: z.optional(z.array(z.string())),
+    literal: z.boolean()
+});
+
+export const zWorkflowActionOutputResponse = z.object({
+    name: z.string(),
+    description: z.string()
+});
+
+export const zWorkflowActionResponse = z.object({
+    type: z.string(),
+    name: z.string(),
+    description: z.string(),
+    group: z.string(),
+    writes: z.boolean(),
+    emits: z.array(z.string()),
+    params: z.array(zWorkflowActionParamResponse),
+    outputs: z.array(zWorkflowActionOutputResponse)
+});
+
+export const zWorkflowCatalogResponse = z.object({
+    triggers: z.array(zWorkflowTriggerResponse),
+    actions: z.array(zWorkflowActionResponse),
+    operators: z.array(zWorkflowOperator)
+});
+
+/**
  * The KSUID of the platform invitation.
  */
 export const zPlatformInvitationIdParameter = zKsuid;
@@ -1702,6 +1901,16 @@ export const zOrganizationIdParameter = zKsuid;
  * The KSUID of the workspace.
  */
 export const zWorkspaceIdParameter = zKsuid;
+
+/**
+ * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+ */
+export const zWorkflowIncludeParameter = z.array(zWorkflowInclude);
+
+/**
+ * The KSUID of the workflow.
+ */
+export const zWorkflowIdParameter = zKsuid;
 
 /**
  * The KSUID of the product Product User.
@@ -3295,3 +3504,144 @@ export const zGetOrganizationUsageSeriesData = z.object({
  * Success
  */
 export const zGetOrganizationUsageSeriesResponse = zUsageSeriesResponse;
+
+export const zGetWorkflowCatalogData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetWorkflowCatalogResponse = zWorkflowCatalogResponse;
+
+export const zListWorkflowsData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        include: z.optional(z.array(zWorkflowInclude))
+    }))
+});
+
+/**
+ * Success
+ */
+export const zListWorkflowsResponse = zWorkflowListResponse;
+
+export const zCreateWorkflowData = z.object({
+    body: zWorkflowWriteRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Workflow created
+ */
+export const zCreateWorkflowResponse = zWorkflowResponse;
+
+export const zDeleteWorkflowData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        workflow_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Workflow deleted
+ */
+export const zDeleteWorkflowResponse = z.void();
+
+export const zGetWorkflowData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        workflow_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zGetWorkflowResponse = zWorkflowResponse;
+
+export const zUpdateWorkflowData = z.object({
+    body: zWorkflowWriteRequest,
+    path: z.object({
+        product_id: zKsuid,
+        workflow_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Workflow updated
+ */
+export const zUpdateWorkflowResponse = zWorkflowResponse;
+
+export const zListWorkflowRunsData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid,
+        workflow_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        limit: z.optional(z.int().gte(1).lte(100)).default(25)
+    }))
+});
+
+/**
+ * Success
+ */
+export const zListWorkflowRunsResponse = zWorkflowRunListResponse;
+
+export const zRunWorkflowData = z.object({
+    body: zWorkflowRunRequest,
+    path: z.object({
+        product_id: zKsuid,
+        workflow_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * The finished run. A failed step is reported in the run, not as an error status.
+ */
+export const zRunWorkflowResponse = zWorkflowRunResponse;
+
+export const zDryRunWorkflowData = z.object({
+    body: zWorkflowDryRunRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * The finished dry run.
+ */
+export const zDryRunWorkflowResponse = zWorkflowRunResponse;
+
+export const zListProductWorkflowRunsData = z.object({
+    body: z.optional(z.never()),
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        limit: z.optional(z.int().gte(1).lte(100)).default(25)
+    }))
+});
+
+/**
+ * Success
+ */
+export const zListProductWorkflowRunsResponse = zWorkflowRunListResponse;
