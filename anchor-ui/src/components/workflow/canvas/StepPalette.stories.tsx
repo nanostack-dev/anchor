@@ -209,5 +209,7 @@ export const Empty: Story = {
 		await expect(
 			canvas.queryAllByRole("button", { name: /^Add step: / }),
 		).toHaveLength(0);
+		const palette = canvas.getByRole("region", { name: "Steps to add" });
+		await expect(palette.getBoundingClientRect().height).toBeLessThan(160);
 	},
 };
