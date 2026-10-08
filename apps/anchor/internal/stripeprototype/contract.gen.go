@@ -237,38 +237,3 @@ type UpdateSettingsRequest struct {
 type WebhookResponse struct {
 	Received bool `json:"received"`
 }
-
-// OrganizationID defines model for OrganizationID.
-type OrganizationID = Identifier
-
-// PriceID defines model for PriceID.
-type PriceID = Identifier
-
-// Error defines model for Error.
-type Error = ErrorResponse
-
-// URL defines model for URL.
-type URL = URLResponse
-
-// IngestStripeWebhookJSONBody defines parameters for IngestStripeWebhook.
-type IngestStripeWebhookJSONBody map[string]interface{}
-
-// IngestStripeWebhookParams defines parameters for IngestStripeWebhook.
-type IngestStripeWebhookParams struct {
-	StripeSignature string `json:"Stripe-Signature"`
-}
-
-// CreateCheckoutJSONRequestBody defines body for CreateCheckout for application/json ContentType.
-type CreateCheckoutJSONRequestBody = CheckoutRequest
-
-// ChangeSubscriptionJSONRequestBody defines body for ChangeSubscription for application/json ContentType.
-type ChangeSubscriptionJSONRequestBody = SubscriptionRequest
-
-// CreatePriceJSONRequestBody defines body for CreatePrice for application/json ContentType.
-type CreatePriceJSONRequestBody = CreatePriceRequest
-
-// UpdateSettingsJSONRequestBody defines body for UpdateSettings for application/json ContentType.
-type UpdateSettingsJSONRequestBody = UpdateSettingsRequest
-
-// IngestStripeWebhookJSONRequestBody defines body for IngestStripeWebhook for application/json ContentType.
-type IngestStripeWebhookJSONRequestBody IngestStripeWebhookJSONBody

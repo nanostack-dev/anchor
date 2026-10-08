@@ -1,5 +1,5 @@
 package: stripeprototype
-output: ../../internal/stripeprototype/contract.gen.go
+output: contract.gen.go
 generate:
   models: true
 output-options:

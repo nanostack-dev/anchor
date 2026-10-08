@@ -96,6 +96,11 @@ type IntegrationService interface {
 		input integration.IngestWebhookInput,
 	) (integration.Event, error)
 
+	// VerifyAndActivateInternal resumes a persisted CONFIGURING connection
+	// synchronously for trusted durable workers. Tenant-facing handlers must not
+	// expose this instance-ID-only entry point.
+	VerifyAndActivateInternal(ctx context.Context, instanceID string) error
+
 	// ProcessQueueJob processes a claimed pgkit queue job.
 	ProcessQueueJob(ctx context.Context, job queue.Job) error
 
@@ -1609,6 +1614,41 @@ func (s *integrationService) buildWebhookEvent(
 // Connection verification
 // ---------------------------------------------------------------------------
 
+// VerifyAndActivateInternal recovers configuration verification interrupted by
+// process shutdown. A current in-process run is left alone; saves supersede a
+// recovery through the same latest-wins registration used by initial verification.
+func (s *integrationService) VerifyAndActivateInternal(ctx context.Context, instanceID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	found, err := s.instanceRepo.FindByIDInternal(ctx, instanceID)
+	if err != nil || found.IsAbsent() {
+		return err
+	}
+	instance := found.Value()
+	if !instance.IsEnabled || instance.Status != integration.StatusConfiguring {
+		return nil
+	}
+	prov, err := s.registry.GetProvider(string(instance.ProviderType))
+	if err != nil {
+		return err
+	}
+	if _, verifies := prov.(provider.ConnectionVerifier); !verifies {
+		return nil
+	}
+	verifyCtx, cancel := context.WithTimeout(ctx, integrationVerificationTimeout)
+	run := &verificationRun{cancel: cancel}
+	s.verificationMu.Lock()
+	if s.verificationRuns[instanceID] != nil {
+		s.verificationMu.Unlock()
+		cancel()
+		return nil
+	}
+	s.verificationRuns[instanceID] = run
+	s.verificationMu.Unlock()
+	return s.verifyAndActivate(verifyCtx, s.logger, instance, prov, run)
+}
+
 func (s *integrationService) startVerifyAndActivate(
 	logger zerolog.Logger,
 	inst integration.Instance,
@@ -1628,7 +1668,12 @@ func (s *integrationService) startVerifyAndActivate(
 	s.verificationRuns[inst.ID] = run
 	s.verificationMu.Unlock()
 
-	go s.verifyAndActivate(ctx, logger, inst, prov, run)
+	go func() {
+		if err := s.verifyAndActivate(ctx, logger, inst, prov, run); err != nil {
+			logger.Warn().Err(err).Str("instance_id", inst.ID).
+				Msg("verifyAndActivate: verification did not complete")
+		}
+	}()
 }
 
 func (s *integrationService) isCurrentVerificationRun(instanceID string, run *verificationRun) bool {
@@ -1649,15 +1694,15 @@ func (s *integrationService) finishVerificationRun(instanceID string, run *verif
 
 // verifyAndActivate calls VerifyConnection on providers that implement
 // ConnectionVerifier, then updates the instance status to ACTIVE or ERROR.
-// Run in a goroutine — never blocks the HTTP response. Verification is latest-
-// wins per instance so repeated saves do not pile up stale verification writes.
+// Save runs it asynchronously, while the durable recovery worker runs it inline.
+// Verification is latest-wins per instance so repeated saves do not pile up stale writes.
 func (s *integrationService) verifyAndActivate(
 	ctx context.Context,
 	logger zerolog.Logger,
 	inst integration.Instance,
 	prov provider.Provider,
 	run *verificationRun,
-) {
+) error {
 	defer func() {
 		run.cancel()
 		s.finishVerificationRun(inst.ID, run)
@@ -1665,67 +1710,46 @@ func (s *integrationService) verifyAndActivate(
 
 	verifier, ok := prov.(provider.ConnectionVerifier)
 	if !ok {
-		return
+		return nil
 	}
 
 	verifyErr := verifier.VerifyConnection(ctx, &inst)
 	if !s.isCurrentVerificationRun(inst.ID, run) {
 		logger.Debug().Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: skipped superseded verification result")
-		return
+		return nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	persistCtx, cancel := context.WithTimeout(context.Background(), integrationVerificationPersistTimeout)
 	defer cancel()
-
-	// Re-fetch the live instance so we update current state, not a stale snapshot.
-	foundLive, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
-	if findErr != nil {
-		// Context deadline/cancellation here is a benign timeout, not a fault;
-		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
-		// and everything else stays at Error.
-		log.Event(&logger, findErr).Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: failed to re-fetch instance after verification")
-		return
-	}
-	if foundLive.IsAbsent() {
-		// The instance was removed between the save and this verification run
-		// (e.g. deleted by the tenant). This is an expected race, not an error.
-		logger.Warn().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
-		return
-	}
-	live := foundLive.ToPtr()
-	if !s.isCurrentVerificationRun(inst.ID, run) {
-		logger.Debug().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: skipped superseded verification update")
-		return
-	}
-
+	status := integration.StatusActive
+	var lastError *string
 	if verifyErr != nil {
-		errMsg := verifyErr.Error()
-		live.Status = integration.StatusError
-		live.LastError = &errMsg
-	} else {
-		live.Status = integration.StatusActive
-		live.LastError = nil
+		status = integration.StatusError
+		lastError = new(verifyErr.Error())
 	}
-
-	result, updateErr := s.instanceRepo.UpdateOptional(persistCtx, live.PlatformTenantID, *live)
+	// Only verification fields change, and only if the persisted configuration
+	// still matches. Concurrent saves, pauses and deletion cannot be overwritten.
+	s.verificationMu.Lock()
+	if s.verificationRuns[inst.ID] != run {
+		s.verificationMu.Unlock()
+		return nil
+	}
+	result, updateErr := s.instanceRepo.CompareAndSetVerificationStatusInternal(persistCtx, inst, status, lastError)
+	s.verificationMu.Unlock()
 	if updateErr != nil {
-		// As above: a persist-context timeout is benign and downgraded to Warn.
 		log.Event(&logger, updateErr).Str("instance_id", inst.ID).
 			Msg("verifyAndActivate: failed to persist verification result")
-		return
+		return updateErr
 	}
 	if result.IsAbsent() {
-		// The instance was deleted between the re-fetch above and this
-		// update — the same expected tenant-delete race as the live == nil
-		// branch. The UPDATE ... RETURNING matched no rows, so there is
-		// nothing to persist and nothing is wrong.
-		logger.Warn().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
+		logger.Debug().Str("instance_id", inst.ID).
+			Msg("verifyAndActivate: configuration changed or instance removed, skipping stale result")
 	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------

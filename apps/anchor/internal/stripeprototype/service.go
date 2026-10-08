@@ -22,10 +22,10 @@ import (
 var (
 	ErrInput    = errors.New("invalid request")
 	ErrConflict = errors.New("billing action cannot be completed")
+	ErrNotFound = errors.New("billing resource not found")
 )
 
 const (
-	loopbackAddress       = "127.0.0.1"
 	statusNone            = "none"
 	statusPending         = "pending"
 	statusError           = "error"
@@ -50,16 +50,22 @@ type Service struct {
 	config Config
 	stripe StripeGateway
 	anchor AnchorGateway
-	store  *Store
+	store  StateStore
 }
 
-func NewService(config Config, stripe StripeGateway, anchor AnchorGateway, store *Store) (*Service, error) {
+func NewService(config Config, stripe StripeGateway, anchor AnchorGateway, store StateStore) (*Service, error) {
 	if err := validate.ValidateStruct(config); err != nil {
 		return nil, err
 	}
 	callback, err := url.Parse(config.ReturnURL)
-	if err != nil || callback.Scheme != "http" || callback.Hostname() != loopbackAddress {
-		return nil, errors.New("the billing prototype return URL must use HTTP on 127.0.0.1")
+	if err != nil ||
+		(callback.Scheme != "https" && (callback.Scheme != "http" || !loopbackHost(callback.Hostname()))) ||
+		callback.User != nil ||
+		callback.RawQuery != "" ||
+		callback.Fragment != "" {
+		return nil, errors.New(
+			"the billing return URL must be HTTPS or an HTTP loopback origin without credentials, query or fragment",
+		)
 	}
 	if stripe == nil || anchor == nil || store == nil {
 		return nil, errors.New("stripe, Anchor and persistent state are required")
@@ -182,6 +188,9 @@ func (s *Service) ArchivePrice(ctx context.Context, priceID string) (Price, erro
 	defer s.mu.Unlock()
 	price, err := s.price(priceID, false)
 	if err != nil {
+		if errors.Is(err, ErrInput) {
+			return Price{}, fmt.Errorf("%w: this price does not belong to the product", ErrNotFound)
+		}
 		return Price{}, err
 	}
 	if err = s.stripe.Request(
@@ -280,8 +289,8 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 		"line_items[0][price]":                  price.StripePriceID,
 		"line_items[0][quantity]":               "1",
 		"client_reference_id":                   organizationID,
-		"success_url":                           s.config.ReturnURL + "?checkout=success#organizations/" + organizationID,
-		"cancel_url":                            s.config.ReturnURL + "?checkout=canceled#organizations/" + organizationID,
+		"success_url":                           s.organizationReturnURL(organizationID) + "?checkout=success",
+		"cancel_url":                            s.organizationReturnURL(organizationID) + "?checkout=canceled",
 		"subscription_data[billing_mode][type]": "classic",
 		"subscription_data[metadata][anchor_prototype_id]":    stored.InstallationID,
 		"subscription_data[metadata][anchor_organization_id]": organizationID,
@@ -309,14 +318,7 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 }
 
 func (s *Service) ensureCustomer(ctx context.Context, organizationID string) (organizationRecord, error) {
-	snapshot, err := s.anchor.Snapshot(ctx)
-	if err != nil {
-		return organizationRecord{}, err
-	}
-	source, err := functional.Slice(snapshot.Organizations).
-		FindFirst(func(organization AnchorOrganization) bool { return organization.ID == organizationID }).
-		ToResult(ErrInput).
-		Value()
+	source, err := s.organizationSource(ctx, organizationID)
 	if err != nil {
 		return organizationRecord{}, err
 	}
@@ -364,23 +366,16 @@ func (s *Service) SyncOrganization(ctx context.Context, organizationID string) (
 }
 
 func (s *Service) syncLocked(ctx context.Context, organizationID string) (Organization, error) {
+	source, err := s.organizationSource(ctx, organizationID)
+	if err != nil {
+		return Organization{}, err
+	}
 	stored, err := s.store.Snapshot()
 	if err != nil {
 		return Organization{}, err
 	}
 	organization, exists := stored.Organizations[organizationID]
 	if !exists || organization.CustomerID == "" {
-		snapshot, snapshotErr := s.anchor.Snapshot(ctx)
-		if snapshotErr != nil {
-			return Organization{}, snapshotErr
-		}
-		source, sourceErr := functional.Slice(snapshot.Organizations).
-			FindFirst(func(source AnchorOrganization) bool { return source.ID == organizationID }).
-			ToResult(ErrInput).
-			Value()
-		if sourceErr != nil {
-			return Organization{}, sourceErr
-		}
 		return Organization{
 			ID:            source.ID,
 			Name:          source.Name,
@@ -452,14 +447,7 @@ func (s *Service) syncLocked(ctx context.Context, organizationID string) (Organi
 	} else if current.Status != "past_due" && current.Status != "incomplete" {
 		return Organization{}, errors.New("configure a fallback license template before reconciling this subscription")
 	}
-	snapshot, err := s.anchor.Snapshot(ctx)
-	if err != nil {
-		return Organization{}, err
-	}
-	source, err := functional.Slice(snapshot.Organizations).
-		FindFirst(func(source AnchorOrganization) bool { return source.ID == organizationID }).
-		ToResult(ErrInput).
-		Value()
+	source, err = s.organizationSource(ctx, organizationID)
 	if err != nil {
 		return Organization{}, err
 	}
@@ -549,6 +537,9 @@ func (s *Service) Portal(ctx context.Context, organizationID string) (URLRespons
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, err := s.organizationSource(ctx, organizationID); err != nil {
+		return URLResponse{}, err
+	}
 	stored, err := s.store.Snapshot()
 	if err != nil {
 		return URLResponse{}, err
@@ -607,7 +598,7 @@ func (s *Service) Portal(ctx context.Context, organizationID string) (URLRespons
 	}
 	if err = s.stripe.Request(ctx, "post", "/v1/billing_portal/sessions", map[string]string{
 		stripeCustomer: organization.CustomerID, "configuration": configuration.ID,
-		"return_url": s.config.ReturnURL + "#organizations/" + organizationID,
+		"return_url": s.organizationReturnURL(organizationID),
 	}, "", &session); err != nil {
 		return URLResponse{}, err
 	}
@@ -716,6 +707,17 @@ func (s *Service) price(id string, requireActive bool) (Price, error) {
 	return price, nil
 }
 
+func (s *Service) organizationSource(ctx context.Context, id string) (AnchorOrganization, error) {
+	snapshot, err := s.anchor.Snapshot(ctx)
+	if err != nil {
+		return AnchorOrganization{}, err
+	}
+	return functional.Slice(snapshot.Organizations).
+		FindFirst(func(organization AnchorOrganization) bool { return organization.ID == id }).
+		ToResult(fmt.Errorf("%w: this organization does not belong to the product", ErrNotFound)).
+		Value()
+}
+
 func (s *Service) requireTemplate(ctx context.Context, id string) error {
 	snapshot, err := s.anchor.Snapshot(ctx)
 	if err != nil {
@@ -784,7 +786,7 @@ func (s *Service) recoverCheckout(
 	request CheckoutRequest,
 ) (functional.Option[URLResponse], error) {
 	var err error
-	var existing stripeObject
+	var existing checkoutSession
 	if err = s.stripe.Request(
 		ctx,
 		"get",
@@ -796,14 +798,9 @@ func (s *Service) recoverCheckout(
 		return functional.None[URLResponse](), err
 	}
 	if existing.Status == "complete" {
-		_, err = s.syncLocked(ctx, organization.ID)
-		if err != nil {
+		if err = s.retireCompletedCheckout(ctx, organization, existing); err != nil {
 			return functional.None[URLResponse](), err
 		}
-		return functional.None[URLResponse](), fmt.Errorf(
-			"%w: checkout is complete; reconcile the subscription before starting another",
-			ErrConflict,
-		)
 	}
 	if existing.Status == "open" {
 		if organization.CheckoutPrice == request.PriceID && organization.CheckoutTrial == request.TrialDays {
@@ -822,6 +819,44 @@ func (s *Service) recoverCheckout(
 	}
 	organization.CheckoutID, organization.CheckoutIntent = "", ""
 	return functional.None[URLResponse](), nil
+}
+
+func (s *Service) retireCompletedCheckout(
+	ctx context.Context,
+	organization *organizationRecord,
+	session checkoutSession,
+) error {
+	if _, err := s.syncLocked(ctx, organization.ID); err != nil {
+		return err
+	}
+	stored, err := s.store.Snapshot()
+	if err != nil {
+		return err
+	}
+	current := stored.Organizations[organization.ID]
+	if session.Live || session.ID != current.CheckoutID || string(session.Customer) != current.CustomerID ||
+		session.ClientReferenceID != current.ID || session.Subscription == "" ||
+		string(session.Subscription) != current.SubscriptionID || !terminal(current.Status) {
+		return fmt.Errorf(
+			"%w: completed checkout needs a reconciled terminal subscription before replacement",
+			ErrConflict,
+		)
+	}
+	var previous subscription
+	if err = s.stripe.Request(ctx, "get", "/v1/subscriptions/"+current.SubscriptionID, nil, "", &previous); err != nil {
+		return err
+	}
+	if previous.ID != current.SubscriptionID || !terminal(previous.Status) || previous.Live ||
+		previous.Customer != current.CustomerID || previous.Metadata["anchor_prototype_id"] != stored.InstallationID ||
+		previous.Metadata["anchor_organization_id"] != current.ID || previous.Metadata["anchor_product_id"] != s.config.ProductID {
+		return fmt.Errorf(
+			"%w: completed checkout subscription ownership or terminal state could not be verified",
+			ErrConflict,
+		)
+	}
+	// Reconciliation may have changed license receipts; never save the older record.
+	*organization = current
+	return nil
 }
 
 func (s *Service) ownedSubscriptions(
@@ -919,3 +954,10 @@ func canonicalSubscription(owned functional.Seq[subscription], savedID string) (
 		return latest
 	}), nil
 }
+
+func (s *Service) organizationReturnURL(organizationID string) string {
+	return strings.TrimRight(s.config.ReturnURL, "/") + "/organizations/license/" + organizationID + "/billing"
+}
+
+// QueueReconciliation records missed-event repair as durable work in the state store.
+func (s *Service) QueueReconciliation() error { return s.queueLinkedOrganizations() }

@@ -36,7 +36,7 @@ type stripeCommand struct{}
 
 func (stripeCommand) Run(ctx context.Context, args []string) ([]byte, error) {
 	// Arguments are passed directly to the fixed Stripe binary, without a shell.
-	command := exec.CommandContext( //nolint:gosec // Fixed executable and argv bypass the shell; parameter values are not commands.
+	command := exec.CommandContext(
 		ctx,
 		"stripe",
 		args...)
@@ -163,6 +163,32 @@ type stripeObject struct {
 	Status   string            `json:"status"`
 	Live     bool              `json:"livemode"`
 	Metadata map[string]string `json:"metadata"`
+}
+
+// Stripe expandable references can be returned as an ID or an expanded object.
+type stripeReference string
+
+func (reference *stripeReference) UnmarshalJSON(data []byte) error {
+	var id string
+	if err := json.Unmarshal(data, &id); err == nil {
+		*reference = stripeReference(id)
+		return nil
+	}
+	var object struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &object); err != nil {
+		return err
+	}
+	*reference = stripeReference(object.ID)
+	return nil
+}
+
+type checkoutSession struct {
+	stripeObject
+	Customer          stripeReference `json:"customer"`
+	Subscription      stripeReference `json:"subscription"`
+	ClientReferenceID string          `json:"client_reference_id"`
 }
 
 type subscription struct {

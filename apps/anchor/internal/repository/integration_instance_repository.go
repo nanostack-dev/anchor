@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
@@ -66,6 +67,13 @@ type IntegrationInstanceRepository interface {
 	// result.IsPresent() instead of matching a driver sentinel.
 	UpdateOptional(
 		ctx context.Context, tenantID string, instance integration.Instance,
+	) (functional.Option[integration.Instance], error)
+	// CompareAndSetVerificationStatusInternal changes only connection status for
+	// a trusted verification worker. The persisted tenant, product, configuration,
+	// version and enabled flag must still match the verified snapshot. Tenant-facing
+	// handlers must use the regular scoped update methods.
+	CompareAndSetVerificationStatusInternal(
+		ctx context.Context, verified integration.Instance, status integration.Status, lastError *string,
 	) (functional.Option[integration.Instance], error)
 	DeleteByID(
 		ctx context.Context, tenantID string, id string,
@@ -252,6 +260,23 @@ func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+}
+
+func (r *integrationInstanceRepositoryImpl) CompareAndSetVerificationStatusInternal(
+	ctx context.Context, verified integration.Instance, status integration.Status, lastError *string,
+) (functional.Option[integration.Instance], error) {
+	t := table.IntegrationInstances
+	stmt := t.UPDATE(t.Status, t.LastError).MODEL(model.IntegrationInstances{
+		Status: string(status), LastError: lastError,
+	}).WHERE(
+		t.ID.EQ(postgres.String(verified.ID)).
+			AND(t.PlatformTenantID.EQ(postgres.String(verified.PlatformTenantID))).
+			AND(t.ProductID.EQ(postgres.String(verified.ProductID))).
+			AND(t.ConfigVersion.EQ(postgres.Int32(verified.ConfigVersion))).
+			AND(t.IsEnabled.EQ(postgres.Bool(verified.IsEnabled))).
+			AND(postgres.CAST(t.ConfigJSON).AS_TEXT().EQ(postgres.String(string(verified.ConfigJSON)))),
+	).RETURNING(t.AllColumns)
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 

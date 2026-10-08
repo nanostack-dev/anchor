@@ -11,6 +11,7 @@ import (
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider/smtp"
+	stripeprovider "anchor/internal/integration/provider/stripe"
 	"anchor/internal/security"
 )
 
@@ -49,6 +50,27 @@ func buildPublicConfig(inst integration.Instance) *IntegrationProviderPublicConf
 	switch inst.ProviderType {
 	case integration.ProviderTypeClerk:
 		return nil
+	case integration.ProviderTypeStripe:
+		var cfg stripeprovider.Config
+		if err := json.Unmarshal(inst.ConfigJSON, &cfg); err != nil {
+			return nil
+		}
+		if cfg.AuthMethod == "" {
+			cfg.AuthMethod = stripeprovider.AuthMethodAPIKey
+		}
+		pub := StripeIntegrationPublicConfig{
+			AuthMethod:              StripeIntegrationAuthMethod(cfg.AuthMethod),
+			AccountId:               &cfg.AccountID,
+			Mode:                    Sandbox,
+			ApiKeyConfigured:        cfg.APIKey != "",
+			WebhookSecretConfigured: cfg.WebhookSecret != "",
+			ReturnUrl:               &cfg.ReturnURL,
+		}
+		wrapper := IntegrationProviderPublicConfig{}
+		if err := wrapper.FromStripeIntegrationPublicConfig(pub); err != nil {
+			return nil
+		}
+		return &wrapper
 	case integration.ProviderTypeSMTP:
 		var cfg smtp.Config
 		if err := json.Unmarshal(inst.ConfigJSON, &cfg); err != nil {
@@ -150,6 +172,20 @@ func (s *AnchorAPI) CreateIntegrationInstance(
 		) // #nosec G117 -- raw config is passed to service-layer encryption before storage
 		if err != nil {
 			return nil, err
+		}
+	case string(integration.ProviderTypeStripe):
+		providerType = integration.ProviderTypeStripe
+		payload, parseErr := request.Body.AsStripeIntegrationInstanceCreateRequest()
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		if payload.Config != nil {
+			configJSON, err = json.Marshal(
+				payload.Config,
+			) // #nosec G117 -- Provider encryption protects write-only credentials before storage.
+			if err != nil {
+				return nil, err
+			}
 		}
 	default:
 		return nil, fault.BadRequest(

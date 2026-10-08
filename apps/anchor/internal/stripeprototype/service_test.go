@@ -2,7 +2,6 @@
 package stripeprototype
 
 import (
-	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -10,9 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -238,7 +234,7 @@ func TestFirstRunStateSerializesEmptyCollectionsAsArrays(t *testing.T) {
 	}
 }
 
-func TestHTTPCheckoutAcceptsAnchorOrganizationPrefixAndRejectsPathInjection(t *testing.T) {
+func TestCheckoutAcceptsAnchorOrganizationPrefixAndRejectsPathInjection(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name     string
@@ -269,29 +265,18 @@ func TestHTTPCheckoutAcceptsAnchorOrganizationPrefixAndRejectsPathInjection(t *t
 					return nil, fmt.Errorf("unexpected request %s", path)
 				}
 			}
-			specification, err := os.ReadFile(filepath.Join("..", "..", "cmd", "stripe-prototype", "openapi.yaml"))
-			require.NoError(t, err)
-			handler, err := NewHTTPHandler(w.service, specification)
-			require.NoError(t, err)
-			body, err := json.Marshal(CheckoutRequest{PriceID: w.price.ID})
-			require.NoError(t, err)
-			target := w.config.ReturnURL + "/api/organizations/" + url.PathEscape(
+			result, err := w.service.Checkout(
+				context.Background(),
 				w.organization+test.injected,
-			) + "/checkout"
-			request := httptest.NewRequest(http.MethodPost, target, bytes.NewReader(body))
-			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("Origin", w.config.ReturnURL)
-			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, request)
+				CheckoutRequest{PriceID: w.price.ID},
+			)
 			if test.injected != "" {
-				assert.Contains(t, []int{http.StatusBadRequest, http.StatusNotFound}, response.Code)
+				require.ErrorIs(t, err, ErrInput)
 				assert.Empty(t, w.stripe.requests)
 				assert.Empty(t, w.anchor.applications)
 				return
 			}
-			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
-			var result URLResponse
-			require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+			require.NoError(t, err)
 			assert.Equal(t, "https://checkout.stripe.com/prefixed", result.URL)
 			require.Len(t, w.stripe.requests, 2)
 			checkout := w.stripe.requests[1]
@@ -453,6 +438,141 @@ func TestCheckoutCompletingDuringRecoveryCannotCreateAnotherSession(t *testing.T
 	assert.Equal(t, w.paidTemplate, state.Organizations[w.organization].TemplateID)
 	for _, request := range w.stripe.requests {
 		assert.False(t, request.method == "post" && request.path == "/v1/checkout/sessions")
+	}
+}
+
+func TestCompletedTerminalCheckoutAllowsResubscriptionAndPreservesReconciledRecord(t *testing.T) {
+	t.Parallel()
+	for _, status := range []string{"canceled", "incomplete_expired"} {
+		for _, expanded := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/expanded=%t", status, expanded), func(t *testing.T) {
+				t.Parallel()
+				w := newServiceWorld(t)
+				w.setSubscription(status, w.price.StripePriceID)
+				w.anchor.snapshot.Organizations[0].TemplateID = w.paidTemplate
+				require.NoError(t, w.store.Update(func(state *StoredState) error {
+					organization := state.Organizations[w.organization]
+					organization.TemplateID = w.paidTemplate
+					organization.CheckoutID, organization.CheckoutIntent = "cs_previous", "previous_intent"
+					organization.CheckoutPrice = w.price.ID
+					state.Organizations[w.organization] = organization
+					return nil
+				}))
+				var customer, subscriptionID any = "cus_expected", "sub_expected"
+				if expanded {
+					customer = map[string]any{"id": "cus_expected"}
+					subscriptionID = map[string]any{"id": "sub_expected"}
+				}
+				w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+					switch path {
+					case "/v1/subscriptions":
+						return map[string]any{"data": []any{w.stripe.current}}, nil
+					case "/v1/subscriptions/sub_expected":
+						return w.stripe.current, nil
+					case "/v1/checkout/sessions/cs_previous":
+						return map[string]any{"id": "cs_previous", "status": "complete", "customer": customer,
+							"subscription": subscriptionID, "client_reference_id": w.organization}, nil
+					case "/v1/checkout/sessions":
+						return map[string]any{
+							"id":  "cs_replacement",
+							"url": "https://checkout.stripe.com/replacement",
+						}, nil
+					default:
+						return nil, fmt.Errorf("unexpected request %s", path)
+					}
+				}
+				result, err := w.service.Checkout(
+					t.Context(),
+					w.organization,
+					CheckoutRequest{PriceID: w.price.ID, TrialDays: 7},
+				)
+				require.NoError(t, err)
+				assert.Equal(t, "https://checkout.stripe.com/replacement", result.URL)
+				stored, err := w.store.Snapshot()
+				require.NoError(t, err)
+				organization := stored.Organizations[w.organization]
+				assert.Equal(t, "cs_replacement", organization.CheckoutID)
+				assert.NotEqual(t, "previous_intent", organization.CheckoutIntent)
+				assert.Equal(t, "sub_expected", organization.SubscriptionID)
+				assert.Equal(t, status, organization.Status)
+				assert.Equal(t, w.freeTemplate, organization.TemplateID)
+				assert.NotNil(t, organization.LastSyncedAt)
+				assert.InDelta(t, 7, organization.LicenseValues["seat_limit"], 0.001)
+				for _, application := range w.anchor.applications {
+					assert.Equal(t, w.freeTemplate, application.templateID)
+				}
+			})
+		}
+	}
+}
+
+func TestCompletedCheckoutReplacementRefusesUnobservedOrForeignSubscription(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"unobserved", "new complete", "new active race", "foreign customer", "foreign installation", "foreign product", "foreign organization", "live", "nonterminal direct response", "foreign session customer"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			w.setSubscription("canceled", w.price.StripePriceID)
+			require.NoError(t, w.store.Update(func(state *StoredState) error {
+				organization := state.Organizations[w.organization]
+				organization.CheckoutID, organization.CheckoutIntent = "cs_previous", "previous_intent"
+				organization.CheckoutPrice = w.price.ID
+				if scenario == "unobserved" {
+					organization.SubscriptionID = ""
+				}
+				state.Organizations[w.organization] = organization
+				return nil
+			}))
+			lists := 0
+			w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+				switch path {
+				case "/v1/subscriptions":
+					lists++
+					if scenario == "unobserved" {
+						return map[string]any{"data": []any{}}, nil
+					}
+					if scenario == "new active race" && lists > 1 {
+						w.setSubscription("active", w.price.StripePriceID)
+						w.stripe.current["id"] = "sub_new"
+					}
+					return map[string]any{"data": []any{w.stripe.current}}, nil
+				case "/v1/checkout/sessions/cs_previous":
+					customer, subscriptionID := "cus_expected", "sub_expected"
+					if scenario == "new complete" || scenario == "new active race" {
+						subscriptionID = "sub_new"
+					}
+					if scenario == "foreign session customer" {
+						customer = "cus_foreign"
+					}
+					return map[string]any{"id": "cs_previous", "status": "complete", "customer": customer,
+						"subscription": subscriptionID, "client_reference_id": w.organization}, nil
+				case "/v1/subscriptions/sub_expected":
+					switch scenario {
+					case "foreign customer":
+						w.stripe.current["customer"] = "cus_foreign"
+					case "foreign installation", "foreign product", "foreign organization":
+						key := map[string]string{"foreign installation": "anchor_prototype_id", "foreign product": "anchor_product_id", "foreign organization": "anchor_organization_id"}[scenario]
+						w.stripe.current["metadata"].(map[string]string)[key] = "foreign"
+					case "live":
+						w.stripe.current["livemode"] = true
+					case "nonterminal direct response":
+						w.stripe.current["status"] = "active"
+					}
+					return w.stripe.current, nil
+				default:
+					return nil, fmt.Errorf("unexpected request %s", path)
+				}
+			}
+			_, err := w.service.Checkout(t.Context(), w.organization, CheckoutRequest{PriceID: w.price.ID})
+			require.ErrorIs(t, err, ErrConflict)
+			stored, err := w.store.Snapshot()
+			require.NoError(t, err)
+			assert.Equal(t, "cs_previous", stored.Organizations[w.organization].CheckoutID)
+			assert.Equal(t, "previous_intent", stored.Organizations[w.organization].CheckoutIntent)
+			for _, request := range w.stripe.requests {
+				assert.False(t, request.method == "post" && request.path == "/v1/checkout/sessions")
+			}
+		})
 	}
 }
 
@@ -729,4 +849,85 @@ func TestSyncRejectsOrganizationOutsideAnchorProduct(t *testing.T) {
 	require.Error(t, err)
 	assert.Empty(t, w.stripe.requests)
 	assert.Empty(t, w.anchor.applications)
+}
+
+func TestMissingPathResourcesReturnNotFoundBeforeStripeTraffic(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name   string
+		invoke func(context.Context, *serviceWorld, string) error
+	}{
+		{"archive price", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.ArchivePrice(ctx, id)
+			return err
+		}},
+		{"sync organization", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.SyncOrganization(ctx, id)
+			return err
+		}},
+		{"checkout organization", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.Checkout(ctx, id, CheckoutRequest{PriceID: w.price.ID})
+			return err
+		}},
+		{"change organization", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.ChangeSubscription(ctx, id, SubscriptionRequest{PriceID: w.price.ID})
+			return err
+		}},
+		{"cancel organization", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.SetCancellation(ctx, id, true)
+			return err
+		}},
+		{"portal organization", func(ctx context.Context, w *serviceWorld, id string) error {
+			_, err := w.service.Portal(ctx, id)
+			return err
+		}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			err := test.invoke(t.Context(), w, "org_"+ksuid.New().String())
+			require.ErrorIs(t, err, ErrNotFound)
+			assert.Empty(t, w.stripe.requests)
+			assert.Empty(t, w.anchor.applications)
+		})
+	}
+}
+
+func TestRemovedOrganizationCannotUseCachedBillingAssociation(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	w.anchor.snapshot.Organizations = []AnchorOrganization{}
+	_, err := w.service.SyncOrganization(t.Context(), w.organization)
+	require.ErrorIs(t, err, ErrNotFound)
+	_, err = w.service.Portal(t.Context(), w.organization)
+	require.ErrorIs(t, err, ErrNotFound)
+	assert.Empty(t, w.stripe.requests)
+	assert.Empty(t, w.anchor.applications)
+}
+
+func TestInvalidBodySelectionsStayBadRequestAndUnlinkedPortalStaysConflict(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	_, err := w.service.Checkout(t.Context(), w.organization, CheckoutRequest{PriceID: ksuid.New().String()})
+	require.ErrorIs(t, err, ErrInput)
+	require.NotErrorIs(t, err, ErrNotFound)
+	_, err = w.service.ChangeSubscription(
+		t.Context(),
+		w.organization,
+		SubscriptionRequest{PriceID: ksuid.New().String()},
+	)
+	require.ErrorIs(t, err, ErrInput)
+	_, err = w.service.UpdateSettings(
+		t.Context(),
+		UpdateSettingsRequest{FallbackTemplateID: "ltpl_" + ksuid.New().String()},
+	)
+	require.ErrorIs(t, err, ErrInput)
+	require.NoError(
+		t,
+		w.store.Update(func(state *StoredState) error { delete(state.Organizations, w.organization); return nil }),
+	)
+	_, err = w.service.Portal(t.Context(), w.organization)
+	require.ErrorIs(t, err, ErrConflict)
+	assert.Empty(t, w.stripe.requests)
 }

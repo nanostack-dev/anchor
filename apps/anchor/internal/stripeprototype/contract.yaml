@@ -1,0 +1,236 @@
+openapi: 3.0.3
+info:
+  title: Stripe billing engine DTOs
+  version: 0.1.0
+  description: Shared billing values. HTTP operations and authorization are defined in cmd/http/openapi.yaml.
+paths: {}
+components:
+  schemas:
+    Identifier:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9_-]+$'
+    Account:
+      type: object
+      additionalProperties: false
+      required: [id, name, mode]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [sandbox]
+    Product:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+    Template:
+      type: object
+      additionalProperties: false
+      required: [id, name, values, archived]
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+        archived:
+          type: boolean
+    Price:
+      type: object
+      additionalProperties: false
+      required: [id, name, template_id, amount, currency, interval, stripe_product_id, stripe_price_id, active]
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+        template_id:
+          $ref: '#/components/schemas/Identifier'
+        amount:
+          type: integer
+          x-go-type: int64
+          minimum: 1
+          maximum: 99999999
+          description: Recurring amount in the smallest unit of the currency
+        currency:
+          type: string
+          enum: [usd, cad, eur]
+        interval:
+          type: string
+          enum: [month, year]
+        stripe_product_id:
+          type: string
+        stripe_price_id:
+          type: string
+        active:
+          type: boolean
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [id, name, template_id, license_values, customer_id, subscription_id, price_id, status, cancel_at_period_end, current_period_end, sync_state, last_synced_at, sync_error, pending_update]
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+        template_id:
+          type: string
+        license_values:
+          type: object
+          additionalProperties: true
+        customer_id:
+          type: string
+        subscription_id:
+          type: string
+        price_id:
+          type: string
+        status:
+          type: string
+        cancel_at_period_end:
+          type: boolean
+        current_period_end:
+          type: string
+          format: date-time
+          nullable: true
+        sync_state:
+          type: string
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        sync_error:
+          type: string
+        pending_update:
+          type: boolean
+    Settings:
+      type: object
+      additionalProperties: false
+      required: [fallback_template_id]
+      properties:
+        fallback_template_id:
+          $ref: '#/components/schemas/Identifier'
+    BillingEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, organization_id, status, received_at, last_error]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        organization_id:
+          type: string
+        status:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        last_error:
+          type: string
+    State:
+      type: object
+      additionalProperties: false
+      required: [account, product, templates, prices, organizations, settings, events]
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+        product:
+          $ref: '#/components/schemas/Product'
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Template'
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Price'
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+        settings:
+          $ref: '#/components/schemas/Settings'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillingEvent'
+    CreatePriceRequest:
+      type: object
+      additionalProperties: false
+      required: [name, template_id, amount, currency, interval]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        template_id:
+          $ref: '#/components/schemas/Identifier'
+        amount:
+          type: integer
+          x-go-type: int64
+          minimum: 1
+          maximum: 99999999
+        currency:
+          type: string
+          enum: [usd, cad, eur]
+        interval:
+          type: string
+          enum: [month, year]
+    CheckoutRequest:
+      type: object
+      additionalProperties: false
+      required: [price_id, trial_days]
+      properties:
+        price_id:
+          $ref: '#/components/schemas/Identifier'
+        trial_days:
+          type: integer
+          minimum: 0
+          maximum: 30
+    SubscriptionRequest:
+      type: object
+      additionalProperties: false
+      required: [price_id]
+      properties:
+        price_id:
+          $ref: '#/components/schemas/Identifier'
+    UpdateSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [fallback_template_id]
+      properties:
+        fallback_template_id:
+          $ref: '#/components/schemas/Identifier'
+    URLResponse:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    WebhookResponse:
+      type: object
+      additionalProperties: false
+      required: [received]
+      properties:
+        received:
+          type: boolean
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
