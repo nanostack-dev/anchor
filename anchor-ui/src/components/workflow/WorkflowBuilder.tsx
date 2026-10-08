@@ -78,6 +78,8 @@ import {
 	buildWorkflowGraph,
 	selectionNodeId,
 } from "./canvas/workflow-graph";
+import { fieldTypeIcons } from "./field-icons";
+import { fieldTypeLabels } from "./fields";
 import { useWorkflowResources } from "./useWorkflowResources";
 import {
 	CUSTOM_EVENT_PREFIX,
@@ -755,17 +757,34 @@ export function WorkflowBuilder({
 						{trigger.description}
 					</Text>
 				) : null}
-				{trigger && trigger.data_fields.length > 0 ? (
-					<Box className="flex flex-wrap gap-1">
-						{trigger.data_fields.map((field) => (
-							<Box
-								as="span"
-								key={field}
-								className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs"
-							>
-								event.data.{field}
-							</Box>
-						))}
+				{trigger && trigger.fields.length > 0 ? (
+					<Box
+						as="ul"
+						aria-label="Fields the event carries"
+						className="space-y-1"
+					>
+						{trigger.fields.map((field) => {
+							const FieldIcon = fieldTypeIcons[field.type];
+							return (
+								<Box
+									as="li"
+									key={field.name}
+									title={field.description}
+									className="flex items-center gap-2 text-xs"
+								>
+									<FieldIcon
+										className="size-3.5 shrink-0 text-muted-foreground"
+										aria-hidden
+									/>
+									<Box as="span" className="break-all font-mono">
+										event.data.{field.name}
+									</Box>
+									<Box as="span" className="shrink-0 text-muted-foreground">
+										{fieldTypeLabels[field.type]}
+									</Box>
+								</Box>
+							);
+						})}
 					</Box>
 				) : null}
 				{startedBy.length > 0 ? (

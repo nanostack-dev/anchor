@@ -13,7 +13,8 @@ import { Box } from "@nanostackorg/design-system/layout/box";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { Plus, X } from "lucide-react";
 import { useId } from "react";
-import { VariableMenu } from "./VariableMenu";
+import { FieldPicker } from "./FieldPicker";
+import { FIELD_DRAG_TYPE, fieldTypeLabels } from "./fields";
 import {
 	type WorkflowVariable,
 	operatorLabels,
@@ -60,7 +61,8 @@ export function ConditionEditor({
 			<datalist id={listId}>
 				{variables.map((variable) => (
 					<option key={variable.path} value={variable.path}>
-						{variable.source} · {variable.label}
+						{variable.source} · {variable.label} (
+						{fieldTypeLabels[variable.type]})
 					</option>
 				))}
 			</datalist>
@@ -75,15 +77,29 @@ export function ConditionEditor({
 					key={index}
 					className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]"
 				>
-					<Input
-						size="sm"
-						font="mono"
-						list={listId}
-						aria-label={`${label} ${index + 1}: value to test`}
-						placeholder="event.data.organization_id"
-						value={condition.field}
-						onChange={(event) => update(index, { field: event.target.value })}
-					/>
+					<Box
+						onDragOver={(event) => {
+							if (!event.dataTransfer.types.includes(FIELD_DRAG_TYPE)) return;
+							event.preventDefault();
+							event.dataTransfer.dropEffect = "copy";
+						}}
+						onDrop={(event) => {
+							const path = event.dataTransfer.getData(FIELD_DRAG_TYPE);
+							if (!path) return;
+							event.preventDefault();
+							update(index, { field: path });
+						}}
+					>
+						<Input
+							size="sm"
+							font="mono"
+							list={listId}
+							aria-label={`${label} ${index + 1}: value to test`}
+							placeholder="event.data.organization_id"
+							value={condition.field}
+							onChange={(event) => update(index, { field: event.target.value })}
+						/>
+					</Box>
 					<NativeSelect
 						size="sm"
 						aria-label={`${label} ${index + 1}: comparison`}
@@ -117,9 +133,9 @@ export function ConditionEditor({
 									}
 								/>
 							</Box>
-							<VariableMenu
+							<FieldPicker
 								label={`Insert a value into ${label.toLowerCase()} ${index + 1}`}
-								variables={variables}
+								fields={variables}
 								onPick={(path) =>
 									update(index, {
 										value: `${condition.value ?? ""}${reference(path)}`,
