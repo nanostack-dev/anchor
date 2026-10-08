@@ -9,8 +9,8 @@ Admin dashboard for the Anchor OaaS platform (Vite + React + TanStack Router/Que
 Regenerate after **any** OpenAPI change, before writing frontend code:
 
 ```sh
-./apps/anchor/generate_anchor.sh   # from the anchor app root
-pnpm openapi-ts                    # then, inside anchor-ui
+(cd apps/anchor && ./generate_anchor.sh) # from the repository root; includes UI client
+(cd anchor-ui && pnpm openapi-ts)        # frontend-only regeneration from the same contract
 ```
 
 CI regenerates the client and fails if the result differs from the commit. Do not
@@ -28,13 +28,13 @@ leave `src/client/` stale.
 
 Writing, extending, diagnosing, tuning or showing browser tests: read `e2e/guide/README.md` first. Reviewing browser changes or asynchronously populated forms: read `e2e/guide/review.md`.
 
-Before implementing a browser-visible feature or behavior change, read `../.claude/skills/anchor-feature-review/SKILL.md`. It loads the shared Nanostack `feature-review` skill and Anchor bindings for responsive tests, screenshot inspection, independent validation and readable PR videos.
+Before implementing a browser-visible feature or behavior change, read `../.claude/skills/anchor-feature-review/SKILL.md`. It loads the repo-owned review procedure and Anchor bindings for responsive tests, screenshot inspection, independent validation and readable PR videos.
 
 anchor-ui is an **app**: Storybook component tests for reusable UI + Playwright e2e per feature (same pattern as `echopoint/apps/frontend/e2e/`). Run the mutating e2e suite against a local backend, never prod.
 
 Query by role/accessible name — no CSS/XPath selectors, no snapshot churn.
 
-Creating or changing a component: run the `break-ui` skill on it (not in your skills? WebFetch `https://raw.githubusercontent.com/emilkowalski/skills/main/skills/break-ui/SKILL.md`). Its worst-case data lands as stories beside the demo story (`WorstCase`, plus `Empty` and `One` where they apply) in place of the skill's dev toggle, so the story suite guards it. Fix every Broken and Ugly finding in the same PR; list the Fragile rows and open decisions in the PR body.
+Creating or changing a component: follow the worst-case story and review checks in the local [delivery workflow](../docs/development/agent-workflow.md). Installed `break-ui` can assist; skill availability does not change the requirement. Keep worst-case stories beside the feature story, fix broken or visibly poor outcomes in the same PR, and record remaining fragile cases.
 
 ## Verification
 
@@ -62,7 +62,7 @@ Capture before/after images with `pnpm ui-shot` (Storybook port 6007); attach vi
 
 Follow [the UI system and design-system consumer rule](docs/ui-system.md), shared with Echopoint. Import UI only from `@nanostackorg/design-system`; no local shadcn copies or styling props on shared components. Pages and routes compose closed components, blocks and layout; typed product visuals use `Box` with semantic tokens internally. Search the design system before adding UI. A neutral missing part goes back to the design system.
 
-Read current design-system source and tokens (`src/styles.css`) from the sibling repo's `origin/main`, not `node_modules`. Primary path from `anchor-ui` is `../../nanostack-design-system`; inside `anchor/worktrees/<topic>/anchor-ui` it is `../../../../nanostack-design-system`.
+Read current design-system source and tokens (`src/styles.css`) from [nanostack-design-system on GitHub](https://github.com/nanostack-dev/nanostack-design-system) or an optional local clone's `origin/main`, never `node_modules/.../dist`. Inspect the version pinned in `package.json` when reconciling an API difference. No sibling clone is required; [dependency ownership](../docs/technical/dependencies.md) explains the standalone path.
 
 
 Surface/elevation rules, semantic tokens and feedback states live in `docs/ui-system.md`. Light mode only: never author `dark:` classes.

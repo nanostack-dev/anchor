@@ -1,19 +1,13 @@
 ---
 name: anchor-feature-review
-description: Bind the shared Nanostack feature-review skill to Anchor's managed Playwright runtime, responsive projects, fixtures, screenshots and PR evidence. Read before implementing a browser-visible Anchor change.
+description: Bind the repo-owned browser review procedure to Anchor's managed Playwright runtime, responsive projects, fixtures, screenshots and PR evidence. Read before implementing a browser-visible Anchor change.
 ---
 
 # Anchor feature review
 
-Read the shared [feature-review skill](https://github.com/nanostack-dev/skills/blob/main/feature-review/SKILL.md)
-from the Nanostack skills plugin before implementing a browser-visible change,
-including a backend change that affects a UI journey. If that plugin is unavailable,
-fetch and read its [raw SKILL.md](https://raw.githubusercontent.com/nanostack-dev/skills/main/feature-review/SKILL.md).
-Report an unavailable shared source as an outstanding prerequisite.
+Read the repo-owned [agent delivery and browser review procedure](../../../docs/development/agent-workflow.md) before implementing a browser-visible change, including a backend change that affects a UI journey. It owns the completion criteria; this adapter supplies project commands and fixtures. Installed shared skills are optional assistance, and no workspace or remote skill download is required.
 
-The shared skill owns the review procedure and completion criteria. This file
-only binds it to Anchor; maintain verified project solutions in the browser guide.
-All paths below are repository-relative; run shell commands from `anchor-ui/`.
+All paths in the bindings below are repository-relative; run frontend commands from `anchor-ui/`.
 
 ## Project bindings
 
@@ -55,7 +49,7 @@ enabled. These profiles use Chromium emulation; inspect their current device
 settings in the review config. `guestPage` inherits those settings and records
 guest evidence. After a meaningful assertion, call
 `captureReviewCheckpoint(page, testInfo, "meaningful-state")`; it captures and
-holds that state only in review mode. The shared procedure governs inspection
+holds that state only in review mode. The local review procedure governs inspection
 and independent validation against the final source.
 
 Review JSON, HTML and captures live in ignored `.ui-craft/review/`. Adjust
@@ -67,7 +61,7 @@ convert finalized WebM recordings without changing their speed when necessary:
 ffmpeg -i .ui-craft/review/results/<case-profile>/video.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart -an .ui-craft/review/<profile>.mp4
 ```
 
-Fill the PR's Feature review section using the shared evidence requirements;
+Fill the PR's Feature review section using the local evidence requirements;
 preserve every template section and the `<!-- preview-deploy -->` marker. Upload
 with the installed CLI's `--attach` support and verify the saved media players.
 After shutting down owned services, verify managed cleanup:

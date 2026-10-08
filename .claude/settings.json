@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "nanostack_project_root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-$PWD}\" rev-parse --show-toplevel 2>/dev/null)\" || exit 0; if [ -f \"$nanostack_project_root/AGENTS.md\" ]; then cat \"$nanostack_project_root/AGENTS.md\"; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
