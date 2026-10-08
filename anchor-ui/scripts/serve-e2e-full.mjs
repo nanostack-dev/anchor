@@ -4,9 +4,11 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { preview } from "vite";
 import { frontendFingerprint } from "../e2e/support/fingerprint.ts";
+import { e2eFrontend } from "../e2e/support/frontend.ts";
 import { startRuntime, stopRuntime } from "./e2e-runtime.mjs";
 
-const frontendURL = "http://127.0.0.1:3015";
+const frontend = e2eFrontend();
+const frontendURL = frontend.url;
 const launchedAt = performance.now();
 const cancellation = new AbortController();
 let runtime;
@@ -104,7 +106,7 @@ try {
 		],
 		preview: {
 			host: "127.0.0.1",
-			port: 3015,
+			port: frontend.port,
 			strictPort: true,
 			proxy: {
 				"/health": { target: runtime.apiURL, changeOrigin: true },
