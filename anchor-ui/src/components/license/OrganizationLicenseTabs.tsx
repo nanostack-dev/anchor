@@ -7,6 +7,7 @@ const licenseTabs = [
 	{ segment: "usage", label: "Usage" },
 	{ segment: "changes", label: "Changes" },
 	{ segment: "values", label: "Values" },
+	{ segment: "billing", label: "Billing" },
 ] as const;
 
 export function OrganizationLicenseTabs({

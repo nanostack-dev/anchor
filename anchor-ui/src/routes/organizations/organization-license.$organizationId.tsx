@@ -1,4 +1,5 @@
 import { routeGuard } from "@/lib/route-auth";
+import OrganizationBillingPage from "@/pages/organization-billing";
 import OrganizationLicenseChangesPage from "@/pages/organization-license-changes";
 import OrganizationLicenseDetailPage from "@/pages/organization-license-detail";
 import OrganizationLicenseUsagePage from "@/pages/organization-license-usage";
@@ -38,6 +39,12 @@ export const organizationLicenseValuesRoute = createRoute({
 	getParentRoute: () => organizationLicenseDetailRoute,
 	path: "values",
 	component: OrganizationLicenseValuesPage,
+});
+
+export const organizationLicenseBillingRoute = createRoute({
+	getParentRoute: () => organizationLicenseDetailRoute,
+	path: "billing",
+	component: OrganizationBillingPage,
 });
 
 export const organizationLicenseDetailIndexRoute = createRoute({

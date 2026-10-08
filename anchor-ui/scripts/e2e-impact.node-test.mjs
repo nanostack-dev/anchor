@@ -496,6 +496,7 @@ test("the reviewed Anchor manifest narrows email but broadens licensing consumer
 		"anchor-ui/e2e/features/auth/session.e2e.ts",
 		"anchor-ui/e2e/features/integrations/email.e2e.ts",
 		"anchor-ui/e2e/features/integrations/integrations.e2e.ts",
+		"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts",
 		"anchor-ui/e2e/features/platform/products.e2e.ts",
 	]);
 	assert.deepEqual(
@@ -514,4 +515,18 @@ test("the reviewed Anchor manifest narrows email but broadens licensing consumer
 		plan("anchor-ui/src/context/product/ProductContext.tsx").mode,
 		"full",
 	);
+	for (const file of [
+		"anchor-ui/src/features/billing/api.ts",
+		"apps/anchor/internal/stripebilling/manager.go",
+	]) {
+		const billing = plan(file);
+		assert.equal(billing.mode, "selected");
+		assert.ok(
+			billing.testPaths.includes(
+				"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts",
+			),
+		);
+		assert.ok(billing.domains.includes("licensing"));
+		assert.ok(billing.domains.includes("access"));
+	}
 });

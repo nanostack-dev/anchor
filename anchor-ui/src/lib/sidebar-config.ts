@@ -3,6 +3,7 @@ import {
 	BadgeCheck,
 	BookOpen,
 	Building2,
+	CreditCard,
 	Home,
 	Key,
 	LayoutDashboard,
@@ -92,6 +93,11 @@ export const sidebarConfig: SidebarGroup[] = [
 		title: "Product Management",
 		type: "product",
 		items: [
+			{
+				title: "Pricing",
+				path: ROUTE_PATHS.PRODUCT_PRICING,
+				icon: CreditCard,
+			},
 			{
 				title: "Product API Keys",
 				path: ROUTE_PATHS.PRODUCT_API_KEYS,

@@ -52,14 +52,14 @@ test("organization license search distinguishes matched, customized and unlicens
 		page.getByRole("heading", { name: unlicensed.name, exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByText(
-			"This organization has not been instantiated onto a license template.",
-			{ exact: false },
-		),
+		page.getByText("This organization has no license yet.", { exact: false }),
 	).toBeVisible();
 	await expect(
 		page.getByRole("navigation", { name: "License sections", exact: true }),
-	).toHaveCount(0);
+	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: "Billing", exact: true }),
+	).toBeVisible();
 	await page.goto("/organizations/license/missing-organization");
 	await expect(
 		page.getByText("No such organization", { exact: true }),
