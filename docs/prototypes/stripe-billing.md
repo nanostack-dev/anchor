@@ -139,13 +139,12 @@ propagate unadjusted fields and maintain license history.
 
 ## Refund early fraud warnings
 
-The product-scoped Stripe billing settings API accepts an optional
-`fraud_refund_policy` with `enabled`, `currency`, and `max_amount`. The policy
-starts **off**. Amounts use minor units: `1500` means USD, CAD, or EUR 15.00.
-The limit applies to the original payment amount; an eligible payment is
-refunded for its full remaining amount. Updating this policy preserves the
-fallback license template, and changing the fallback preserves the refund policy.
-The native policy controls and activity display ship in the companion UI layer.
+In **Integrations → Stripe → Fraud warning refunds**, enable the policy and
+choose its currency and maximum payment amount. The policy starts **off**.
+Amounts use minor units: `1500` means USD, CAD, or EUR 15.00. The limit applies to
+the original payment amount; an eligible payment is refunded for its full
+remaining amount. Saving this policy preserves the fallback license template,
+and changing the fallback preserves the refund policy.
 
 Anchor listens for `radar.early_fraud_warning.created`, retrieves current Stripe
 state, and verifies that the charge's invoice and subscription belong to this
@@ -174,7 +173,7 @@ Keep the local CLI listener and Anchor API running during sandbox verification.
 After downtime, inspect Stripe for missed warnings and investigate those payments;
 resend signed events through a configured Stripe webhook endpoint where available.
 
-The billing state API returns completed refunds, pending reimbursements,
+**Fraud refund activity** shows completed refunds, pending reimbursements,
 skipped decisions, and failures. Refunding does not cancel a subscription or
 change its license. A refund can reduce the chance of a dispute, but warnings may
 arrive late and reimbursement can fail; the policy cannot guarantee avoiding

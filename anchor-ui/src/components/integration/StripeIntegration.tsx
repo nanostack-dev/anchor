@@ -1,4 +1,5 @@
 import {
+	IntegrationInstanceStatus,
 	IntegrationProviderType,
 	StripeIntegrationAuthMethod,
 	type StripeIntegrationConfigWritable,
@@ -14,7 +15,8 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { IntegrationDetailPage } from "@/components/integration/IntegrationDetailPage";
-import { billingError } from "@/features/billing/billing-api";
+import { billingError, createBillingAPI } from "@/features/billing/billing-api";
+import { FraudRefundSettings } from "@/features/billing/fraud-refund-settings";
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationStripeRoute } from "@/routes/platform/$productId.integration-stripe";
 import { ROUTE_PATHS } from "@/routes/routePaths";
@@ -51,7 +53,7 @@ import {
 } from "@nanostackorg/design-system";
 import { CopyIconButton } from "@nanostackorg/design-system/blocks/copy-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StripeConfigForm, type StripeFormState } from "./StripeConfigForm";
 
 const fieldNames: Record<string, keyof StripeFormState> = {
@@ -87,6 +89,7 @@ function StripeConnection() {
 		products.find((item) => item.id === productId) ??
 		(currentProduct?.id === productId ? currentProduct : null);
 	const queryClient = useQueryClient();
+	const billingAPI = useMemo(() => createBillingAPI(productId), [productId]);
 	const [form, setForm] = useState(emptyForm);
 	const [errors, setErrors] = useState<
 		Partial<Record<keyof StripeFormState, string>>
@@ -305,6 +308,7 @@ function StripeConnection() {
 								? "success"
 								: "info",
 			}))}
+			auditTitle="Integration activity"
 			auditIsLoading={!!instance && auditQuery.isPending}
 			auditErrorMessage={
 				auditQuery.error ? billingError(auditQuery.error) : null
@@ -381,12 +385,26 @@ function StripeConnection() {
 						</CardContent>
 					</Card>
 					{instance && (
+						<FraudRefundSettings
+							api={billingAPI}
+							productId={productId}
+							connectionAvailable={
+								instance.is_enabled &&
+								instance.status === IntegrationInstanceStatus.ACTIVE
+							}
+							disabled={saving || !!listQuery.error}
+							onSaved={() => {
+								void auditQuery.refetch();
+							}}
+						/>
+					)}
+					{instance && (
 						<Card variant="outline">
 							<CardHeader>
 								<Heading level={2}>Webhook connection</Heading>
 								<CardDescription>
-									Configure Stripe to send checkout, subscription and invoice
-									events to this address.
+									Configure Stripe to send checkout, subscription, invoice,
+									early fraud warning and refund events to this address.
 								</CardDescription>
 							</CardHeader>
 							<CardContent>

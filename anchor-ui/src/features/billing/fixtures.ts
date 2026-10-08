@@ -1,6 +1,7 @@
 import type { BillingAPI } from "./billing-api";
 import {
 	FraudRefundCurrency,
+	FraudRefundStatus,
 	type Organization,
 	type State,
 } from "./billing-types";
@@ -108,6 +109,113 @@ export const fixtureState: State = {
 		},
 	],
 };
+
+export const fraudEnabledFixtureState: State = {
+	...structuredClone(fixtureState),
+	settings: {
+		fallback_template_id: "tpl_free",
+		fraud_refund_policy: {
+			enabled: true,
+			currency: FraudRefundCurrency.CAD,
+			max_amount: 1500,
+		},
+	},
+	fraud_refunds: [
+		{
+			id: "fraud_refunded",
+			warning_id: "issfr_warning_refunded",
+			charge_id: "ch_payment_refunded",
+			invoice_id: "in_acme",
+			subscription_id: "sub_acme",
+			organization_id: "org_acme",
+			refund_id: "re_completed",
+			currency: "cad",
+			amount: 1200,
+			status: FraudRefundStatus.FRAUD_REFUND_SUCCEEDED,
+			reason: "refund_status_updated",
+			last_error: "",
+			created_at: timestamp,
+			updated_at: timestamp,
+		},
+		{
+			id: "fraud_skipped",
+			warning_id: "issfr_warning_skipped",
+			charge_id: "",
+			invoice_id: "",
+			subscription_id: "",
+			organization_id: "",
+			refund_id: "",
+			currency: "",
+			amount: 0,
+			status: FraudRefundStatus.FRAUD_REFUND_SKIPPED,
+			reason: "ownership_unverified",
+			last_error: "",
+			created_at: timestamp,
+			updated_at: timestamp,
+		},
+		{
+			id: "fraud_pending",
+			warning_id: "issfr_warning_pending",
+			charge_id: "ch_payment_pending",
+			invoice_id: "in_acme",
+			subscription_id: "sub_acme",
+			organization_id: "org_acme",
+			refund_id: "re_pending",
+			currency: "cad",
+			amount: 1499,
+			status: FraudRefundStatus.FRAUD_REFUND_PENDING,
+			reason: "refund_requested",
+			last_error: "",
+			created_at: timestamp,
+			updated_at: timestamp,
+		},
+		{
+			id: "fraud_failed",
+			warning_id: "issfr_warning_failed",
+			charge_id: "ch_payment_failed",
+			invoice_id: "in_acme",
+			subscription_id: "sub_acme",
+			organization_id: "org_acme",
+			refund_id: "re_failed",
+			currency: "cad",
+			amount: 100,
+			status: FraudRefundStatus.FRAUD_REFUND_FAILED,
+			reason: "refund_failed",
+			last_error:
+				"Stripe could not complete this refund. Review the payment in Stripe before taking another action.",
+			created_at: timestamp,
+			updated_at: timestamp,
+		},
+	],
+};
+
+export const fraudWorstCaseFixtureState: State = (() => {
+	const state = structuredClone(fraudEnabledFixtureState);
+	state.organizations[0].name =
+		"Aleksandra Wiśniewska-Kowalczyk — Northwind International Holdings 日本 🌍";
+	state.settings.fraud_refund_policy.max_amount = 99999999;
+	state.fraud_refunds[0].amount = 99999999;
+	state.fraud_refunds[0].currency = "eur";
+	state.fraud_refunds[3].last_error =
+		"The connected account’s available balance is insufficient to complete this refund. The refund remains failed until an operator reviews the payment and account balance in Stripe. No subscription was canceled and the organization’s adjusted license values remain unchanged.";
+	for (const status of [
+		FraudRefundStatus.FRAUD_REFUND_PROCESSING,
+		FraudRefundStatus.FRAUD_REFUND_REQUIRES_ACTION,
+		FraudRefundStatus.FRAUD_REFUND_CANCELED,
+		FraudRefundStatus.FRAUD_REFUND_REVIEW_REQUIRED,
+	]) {
+		state.fraud_refunds.push({
+			...state.fraud_refunds[2],
+			id: `fraud_${status}`,
+			status,
+			reason:
+				status === FraudRefundStatus.FRAUD_REFUND_REVIEW_REQUIRED
+					? "idempotency_window_expired"
+					: "refund_status_updated",
+		});
+	}
+	return state;
+})();
 
 export const emptyFixtureState: State = {
 	...structuredClone(fixtureState),
