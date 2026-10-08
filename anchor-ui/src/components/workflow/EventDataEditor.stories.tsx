@@ -232,3 +232,35 @@ export const AConflictIsPinnedOnItsRow: Story = {
 		await expect(canvas.getAllByText(/sends it as number/)).toHaveLength(1);
 	},
 };
+
+export const RemovingTheFocusedFirstRowDropsTheTarget: Story = {
+	args: {
+		data: '{"tier":"gold","plan":"pro","seats":"5"}',
+		types: '{"tier":"text","plan":"text","seats":"number"}',
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			canvas.getByRole("textbox", { name: "Value of tier" }),
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Remove event field tier" }),
+		);
+		await expect(
+			canvas.getByText("Drag a field onto an input, or click an input first."),
+		).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", {
+				name: "email, Email, from Read product user",
+			}),
+		);
+		await expect(
+			canvas.getByRole("textbox", { name: "Value of plan" }),
+		).toHaveValue("pro");
+		await expect(
+			canvas.getByRole("status", { name: "Sent" }),
+		).toHaveTextContent(
+			'{"plan":"pro","seats":"5"} | {"plan":"text","seats":"number"}',
+		);
+	},
+};
