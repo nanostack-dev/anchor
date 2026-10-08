@@ -1,5 +1,8 @@
 import { availableParallelism } from "node:os";
 import { defineConfig, devices } from "playwright/test";
+import { e2eFrontend } from "./e2e/support/frontend.ts";
+
+const frontend = e2eFrontend();
 
 const workers = process.env.E2E_WORKERS
 	? Number(process.env.E2E_WORKERS)
@@ -40,7 +43,7 @@ export default defineConfig({
 		],
 	],
 	use: {
-		baseURL: "http://127.0.0.1:3015",
+		baseURL: frontend.url,
 		launchOptions: { slowMo },
 		actionTimeout: 8_000,
 		navigationTimeout: 15_000,
@@ -63,14 +66,14 @@ export default defineConfig({
 	],
 	webServer: {
 		command: "node scripts/serve-e2e-full.mjs",
-		url: "http://127.0.0.1:3015/__e2e/ready",
+		url: `${frontend.url}/__e2e/ready`,
 		timeout: 180_000,
 		gracefulShutdown: { signal: "SIGTERM", timeout: 30_000 },
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
 		env: {
 			E2E_EMAIL: "",
 			E2E_PASSWORD: "",
-			VITE_API_BASE_URL: "http://127.0.0.1:3015",
+			VITE_API_BASE_URL: frontend.url,
 		},
 	},
 });

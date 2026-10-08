@@ -1,5 +1,6 @@
 import { type Page, expect } from "playwright/test";
 import type { ProductResponse } from "../../src/client";
+import { runtime } from "./runtime";
 
 export async function login(
 	page: Page,
@@ -9,7 +10,7 @@ export async function login(
 	await page.getByLabel("Email", { exact: true }).fill(account.email);
 	await page.getByLabel("Password", { exact: true }).fill(account.password);
 	await page.getByRole("button", { name: "Login", exact: true }).click();
-	await expect(page).toHaveURL("http://127.0.0.1:3015/");
+	await expect(page).toHaveURL(`${runtime().frontendURL}/`);
 	await expect(
 		page.getByRole("heading", { name: "Dashboard", exact: true }),
 	).toBeVisible();
