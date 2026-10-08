@@ -9,7 +9,7 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **57 scenarios in 14 spec files**.
+The managed app suite declares **61 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
@@ -20,6 +20,7 @@ The managed app suite declares **57 scenarios in 14 spec files**.
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
 | [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 4 |
+| [integrations/stripe-billing.e2e.ts](../features/integrations/stripe-billing.e2e.ts) | 4 |
 | [licensing/migrations.e2e.ts](../features/licensing/migrations.e2e.ts) | 3 |
 | [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 6 |
 | [licensing/schema.e2e.ts](../features/licensing/schema.e2e.ts) | 4 |
@@ -126,6 +127,7 @@ The detail route registers these child pages outside `ROUTE_PATHS`:
 | `/organizations/license/$organizationId/usage` | Gauge/windowed values; within/at/exceeded/never states; limit selection and field query URL/reload; empty history; 24h/7d/30d/90d requests and pressed range; custom/no-limit states. | Usage is reported through the real API. Browser history/chart controls read it; the UI does not report usage. |
 | `/organizations/license/$organizationId/values` | Omission and real server rule validation/error recovery, discard, minimal-diff adjustment, persisted custom values, tier comparison, unsaved navigation Stay/Discard choice and reverted-value navigation. | API schema/tier/license; some adjusted values prepare propagation/migration cases. |
 | `/organizations/license/$organizationId/changes` | Instantiation, customer adjustment, followed update and migration entries; old/new tier display; load beyond fifty records. | API adjustments generate the long history; reading/loading history remains a browser action. |
+| `/organizations/license/$organizationId/billing` | Native license-tab navigation, priced template change, scheduled cancellation/reload/resume and hosted portal link. | Real local organization and normal authentication; Stripe billing responses are contract fixtures. Covered by the native Stripe spec below. |
 
 ## Provider integrations and events
 
@@ -138,6 +140,8 @@ Spec: [integrations](../features/integrations/integrations.e2e.ts).
 | `PRODUCT_INTEGRATIONS` — `/platform/$productId/integrations` | Redirect destination renders SMTP provider overview. | Provider actions are exercised on their dedicated routes; card navigation is not individually asserted. | integrations |
 | `PRODUCT_INTEGRATION_CLERK` — `/platform/$productId/integration-clerk` | Create/configure webhook secret, reset draft, pause/reload/resume, ingested user/activity visible and instance delete. | API posts invalid and correctly signed Clerk webhooks; real local ingestion is asserted. Live vendor API reconciliation is excluded. | integrations |
 | `PRODUCT_INTEGRATION_SMTP` — `/platform/$productId/integration-smtp` | Required host, local SMTP create/connect, metadata update/reload, blank password preservation, pause/resume and delete cancel/confirm. | Owned Mailpit SMTP; local PLAIN/NONE configuration. External delivery/TLS vendors are excluded. | integrations |
+| `PRODUCT_INTEGRATION_STRIPE` — `/platform/$productId/integration-stripe` | Hub navigation, required-account validation, LOCAL_CLI method, hidden API-key input, write-only signing-secret clearing, pause/reload/resume and return to Hub. | Real local product/session; native Stripe integration responses are contract fixtures, so no external account or key is required. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
+| `PRODUCT_PRICING` — `/products/pricing` | Required amount, recurring price creation/reload/archive, draft preservation during refresh, initial loading protection, missing integration, wrong-product state rejection and worst-case overflow checks. | Real local product/session; Stripe prices, templates and subscription state are contract fixtures. | [native Stripe](../features/integrations/stripe-billing.e2e.ts) |
 | `PRODUCT_EVENTS` — `/products/events` | Categories/filter/no-results, checkbox selection, endpoint save/discard/reload, signing secret shown once and endpoint clear. | API creates an organization; the real queue delivers a signed webhook to an owned loopback receiver, whose body/signature are verified. | integrations |
 
 ## Email
@@ -175,6 +179,15 @@ provider transport/deliverability likewise needs its own controlled environment;
 the ordinary suite verifies real local SMTP and Mailpit delivery. Placeholder
 settings/workspace-membership pages and read-only tenant lists do not have
 missing browser CRUD coverage: those actions are absent from the implemented UI.
+
+Native Stripe browser scenarios use contract fixtures only for Stripe integration
+and billing responses; authentication, product selection, and organization
+prerequisites use the real managed Anchor API. They do not prove external Stripe
+payment processing, signed webhook reconciliation, encryption, or backend tenant
+authorization. Those boundaries need backend tests and a separate scoped sandbox
+journey. Use `ANCHOR_E2E_RUNTIME_NAMESPACE=native-verification` when running the
+managed suite alongside a live Stripe demo: its runtime metadata and Docker
+project remain separate from the default demo runtime.
 
 When adding a route or action, update the relevant row and scenario together,
 name the API prerequisites, and run that domain before the full suite. Add the

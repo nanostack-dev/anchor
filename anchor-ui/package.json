@@ -34,7 +34,9 @@
     "test:e2e:status": "node scripts/e2e-doctor.mjs",
     "test:e2e:artifacts": "node scripts/verify-e2e-artifacts.mjs",
     "check:e2e:coverage": "node scripts/e2e-coverage.mjs --check",
-    "update:e2e:coverage": "node scripts/e2e-coverage.mjs --update"
+    "update:e2e:coverage": "node scripts/e2e-coverage.mjs --update",
+    "stripe:prototype": "node scripts/stripe-prototype.mjs",
+    "stripe:prototype:test": "playwright test --config playwright.app.config.ts integrations/stripe-billing.e2e.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

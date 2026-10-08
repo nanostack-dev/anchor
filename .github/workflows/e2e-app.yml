@@ -55,6 +55,11 @@ jobs:
           docker compose version
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Verify generated Stripe billing engine types
+        working-directory: apps/anchor
+        run: |
+          go generate ./internal/stripebilling/billing
+          git diff --exit-code -- internal/stripebilling/billing/contract.gen.go
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Check browser feature inventory
@@ -78,6 +83,7 @@ jobs:
           name: anchor-browser-app-${{ github.run_attempt }}
           retention-days: 7
           if-no-files-found: ignore
+          include-hidden-files: true
           path: |
             anchor-ui/test-results/app/results.json
             anchor-ui/test-results/selection.json

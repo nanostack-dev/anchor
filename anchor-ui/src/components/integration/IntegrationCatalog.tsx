@@ -17,6 +17,7 @@ import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Badge, Box, Inline, Text } from "@nanostackorg/design-system";
 import { CopyIconButton } from "@nanostackorg/design-system/blocks/copy-button";
 import {
 	Button,
@@ -139,6 +140,11 @@ export default function PlatformIntegrationsPage() {
 		) ?? null;
 	const clerkState = getLiveState(clerkInstance);
 	const smtpState = getLiveState(smtpInstance);
+	const stripeInstance =
+		instances.find(
+			(item) => item.provider_type === IntegrationProviderType.STRIPE,
+		) ?? null;
+	const stripeState = getLiveState(stripeInstance);
 
 	const createMutation = useMutation({
 		...createIntegrationInstanceMutation(),
@@ -187,7 +193,7 @@ export default function PlatformIntegrationsPage() {
 		>
 			<div className="space-y-6 pb-6">
 				<section className="rounded-2xl border bg-card p-6">
-					<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+					<div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
 						<div className="space-y-2">
 							<h2 className="inline-flex items-center gap-2 text-xl font-semibold md:text-2xl">
 								<Sparkles className="size-5 text-warning-on-tint" />
@@ -198,13 +204,17 @@ export default function PlatformIntegrationsPage() {
 								configuration lives on the provider detail page.
 							</p>
 						</div>
-						<div className="grid grid-cols-2 gap-2 md:w-64">
+						<div className="grid grid-cols-2 gap-2 xl:w-64 xl:shrink-0">
 							<div className="rounded-xl border bg-card p-3">
 								<p className="text-xs uppercase tracking-wide text-muted-foreground">
 									Configured
 								</p>
 								<p className="text-2xl font-semibold">
-									{[clerkInstance, smtpInstance].filter(Boolean).length}
+									{
+										[clerkInstance, smtpInstance, stripeInstance].filter(
+											Boolean,
+										).length
+									}
 								</p>
 							</div>
 							<div className="rounded-xl border bg-card p-3">
@@ -213,7 +223,7 @@ export default function PlatformIntegrationsPage() {
 								</p>
 								<p className="text-2xl font-semibold text-success">
 									{
-										[clerkInstance, smtpInstance].filter(
+										[clerkInstance, smtpInstance, stripeInstance].filter(
 											(i) =>
 												i?.is_enabled &&
 												i?.status === IntegrationInstanceStatus.ACTIVE,
@@ -232,6 +242,62 @@ export default function PlatformIntegrationsPage() {
 				) : null}
 
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					<Card variant="outline">
+						<CardHeader>
+							<Inline>
+								<Badge tone="warning">Sandbox</Badge>
+								<StatusBadge tone={stripeState.tone}>
+									{stripeState.label}
+								</StatusBadge>
+							</Inline>
+							<CardTitle>Stripe</CardTitle>
+							<CardDescription>
+								Subscriptions, pricing and payment driven organization licenses.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<Stack space="md">
+								{isLoading ? (
+									<Inline>
+										<Spinner />
+										<Text tone="muted">Loading status…</Text>
+									</Inline>
+								) : (
+									<Text tone="muted">
+										{stripeInstance
+											? "Manage the connection, then link recurring prices to license templates."
+											: "Connect a Stripe sandbox to manage recurring prices and organization subscriptions."}
+									</Text>
+								)}
+								{stripeInstance?.last_error && (
+									<Box className="break-words [overflow-wrap:anywhere]">
+										<Text tone="critical" size="sm">
+											{stripeInstance.last_error}
+										</Text>
+									</Box>
+								)}
+								<Inline>
+									<ButtonLink
+										variant="solid"
+										tone="brand"
+										href={ROUTE_PATHS.PRODUCT_INTEGRATION_STRIPE.replace(
+											"$productId",
+											productId,
+										)}
+									>
+										{stripeInstance
+											? "Open Stripe details"
+											: "Configure Stripe"}
+									</ButtonLink>
+									{stripeInstance && (
+										<ButtonLink href={ROUTE_PATHS.PRODUCT_PRICING}>
+											Pricing
+										</ButtonLink>
+									)}
+								</Inline>
+							</Stack>
+						</CardContent>
+					</Card>
 					<Card variant="outline">
 						<CardHeader>
 							<div className="flex items-start justify-between gap-3">

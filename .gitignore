@@ -119,3 +119,6 @@ worktrees/
 
 # Local UI review captures
 .ui-craft/
+
+# Local Stripe billing prototype output
+anchor-ui/dist-stripe-prototype/

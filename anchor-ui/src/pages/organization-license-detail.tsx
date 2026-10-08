@@ -32,7 +32,7 @@ import {
 	WarningIcon as TriangleAlert,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useLocation } from "@tanstack/react-router";
 
 /**
  * One organization's license, on its own route rather than in a dialog: it is
@@ -45,6 +45,7 @@ import { Outlet } from "@tanstack/react-router";
  */
 export default function OrganizationLicenseDetailPage() {
 	const { organizationId } = organizationLicenseDetailRoute.useParams();
+	const billingSelected = useLocation().pathname.endsWith("/billing");
 	const { currentProduct } = useProduct();
 	const productId = currentProduct?.id;
 
@@ -101,7 +102,7 @@ export default function OrganizationLicenseDetailPage() {
 		);
 	}
 
-	if (summaryQuery.isLoading || licenseQuery.isLoading) {
+	if (summaryQuery.isLoading || (!billingSelected && licenseQuery.isLoading)) {
 		return (
 			<Page
 				breadCrumbLabels={{ [organizationId]: "Loading" }}
@@ -168,6 +169,14 @@ export default function OrganizationLicenseDetailPage() {
 		isHttpQueryError(licenseQuery.error) && licenseQuery.error.status === 404;
 
 	const licenseBody = () => {
+		if (billingSelected) {
+			return (
+				<Stack space="lg">
+					<OrganizationLicenseTabs organizationId={organizationId} />
+					<Outlet />
+				</Stack>
+			);
+		}
 		if (licenseQuery.error && !licenseNotFound) {
 			const error = licenseQuery.error;
 			const detail = isHttpQueryError(error)
@@ -199,17 +208,19 @@ export default function OrganizationLicenseDetailPage() {
 		const license = licenseQuery.data;
 		if (licenseNotFound || !license) {
 			return (
-				<Empty>
-					<EmptyHeader>
-						<EmptyMedia icon={BadgeCheck} />
-						<EmptyTitle>No license</EmptyTitle>
-						<EmptyDescription>
-							This organization has not been instantiated onto a license
-							template. Instantiation happens through the API — organization
-							licenses are runtime data and not editable here.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
+				<Stack space="lg">
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia icon={BadgeCheck} />
+							<EmptyTitle>No license</EmptyTitle>
+							<EmptyDescription>
+								This organization has no license yet. Open Billing to start a
+								subscription, or grant a license through the product backend.
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+					<OrganizationLicenseTabs organizationId={organizationId} />
+				</Stack>
 			);
 		}
 

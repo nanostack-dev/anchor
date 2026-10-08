@@ -6,6 +6,7 @@ import {
 	open,
 	readFile,
 	readdir,
+	readlink,
 	rename,
 	rm,
 	writeFile,
@@ -19,11 +20,25 @@ const uiDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryDirectory = resolve(uiDirectory, "..");
 const appDirectory = join(repositoryDirectory, "apps", "anchor");
 const runtimeDirectory = join(uiDirectory, "e2e", "runtime");
-const localDirectory = join(runtimeDirectory, ".local");
+const runtimeNamespace = process.env.ANCHOR_E2E_RUNTIME_NAMESPACE ?? "";
+if (runtimeNamespace && !/^[a-z][a-z0-9-]{0,31}$/.test(runtimeNamespace))
+	throw new Error(
+		"ANCHOR_E2E_RUNTIME_NAMESPACE must be a short lowercase identifier.",
+	);
+const localDirectory = runtimeNamespace
+	? join(runtimeDirectory, ".local", "namespaces", runtimeNamespace)
+	: join(runtimeDirectory, ".local");
 const metadataPath = join(localDirectory, "runtime.json");
 const pendingMetadataPath = join(localDirectory, "startup.json");
 const composePath = join(runtimeDirectory, "docker-compose.yaml");
-const projectPrefix = `anchor-e2e-${createHash("sha256").update(repositoryDirectory).digest("hex").slice(0, 10)}-`;
+const projectPrefix = `anchor-e2e-${createHash("sha256")
+	.update(
+		runtimeNamespace
+			? `${repositoryDirectory}:${runtimeNamespace}`
+			: repositoryDirectory,
+	)
+	.digest("hex")
+	.slice(0, 10)}-`;
 
 function run(command, args, options = {}) {
 	return new Promise((resolveResult, reject) => {
@@ -155,16 +170,81 @@ function assertOwned(metadata) {
 
 async function ownsBackend(metadata) {
 	if (!metadata.pid || !metadata.executable) return false;
+	const identity = await backendIdentity(metadata.pid);
+	return Boolean(
+		identity &&
+			identity.command === metadata.executable &&
+			identity.directory === appDirectory &&
+			(!metadata.backendStartedAt ||
+				identity.startedAt === metadata.backendStartedAt),
+	);
+}
+
+async function backendIdentity(pid) {
 	try {
-		const command = await run("ps", [
+		const output = await run("ps", [
 			"-p",
-			String(metadata.pid),
+			String(pid),
 			"-o",
-			"command=",
+			"lstart=,command=",
 		]);
-		return command === metadata.executable;
+		const matched = output.match(
+			/^(\S+\s+\S+\s+\d+\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s+(.*)$/,
+		);
+		if (!matched) return null;
+		const directory =
+			process.platform === "linux"
+				? await readlink(`/proc/${pid}/cwd`)
+				: (await run("lsof", ["-a", "-p", String(pid), "-d", "cwd", "-Fn"]))
+						.split("\n")
+						.find((line) => line.startsWith("n"))
+						?.slice(1);
+		return { startedAt: matched[1], command: matched[2], directory };
 	} catch {
-		return false;
+		return null;
+	}
+}
+
+function backendEnvironment(metadata) {
+	const env = Object.fromEntries(
+		["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "TZ"]
+			.filter((name) => process.env[name] !== undefined)
+			.map((name) => [name, process.env[name]]),
+	);
+	return {
+		...env,
+		CONFIG_PATH: join(runtimeDirectory, "application.yaml"),
+		ANCHOR_E2E_MIGRATIONS_PATH: join(appDirectory, "migrations"),
+		POSTGRES_PORT: String(metadata.postgresPort),
+		POSTGRES_PASSWORD_FILE: join(metadata.directory, "postgres-password"),
+		ADMIN_JWT_SECRET_FILE: join(metadata.directory, "jwt-secret"),
+		APP_ENCRYPTION_KEY_FILE: join(metadata.directory, "encryption-key"),
+		REDIS_ADDRESS: `127.0.0.1:${metadata.redisPort}`,
+		SERVER_PORT: new URL(metadata.apiURL).port,
+		ALLOWED_ORIGIN: metadata.frontendURL,
+		ENVIRONMENT: "development",
+		LOG_LEVEL: "warn",
+	};
+}
+
+async function spawnBackend(metadata) {
+	const logFile = await open(join(metadata.directory, "api.log"), "a", 0o600);
+	try {
+		const child = spawn(metadata.executable, [], {
+			cwd: appDirectory,
+			env: backendEnvironment(metadata),
+			detached: true,
+			stdio: ["ignore", logFile.fd, logFile.fd],
+		});
+		await new Promise((resolveSpawned, reject) => {
+			child.once("spawn", resolveSpawned);
+			child.once("error", reject);
+		});
+		metadata.pid = child.pid;
+		child.unref();
+		metadata.backendStartedAt = (await backendIdentity(child.pid))?.startedAt;
+	} finally {
+		await logFile.close();
 	}
 }
 
@@ -243,6 +323,138 @@ export async function stopRuntime(metadata) {
 			(name) => rm(join(target.directory, name), { force: true }),
 		),
 	);
+}
+
+export async function refreshRuntime({ expectedRunId, signal } = {}) {
+	const metadata = await readMetadata();
+	if (!metadata)
+		throw new Error("No managed Anchor runtime exists to refresh.");
+	assertOwned(metadata);
+	if (expectedRunId && metadata.runId !== expectedRunId)
+		throw new Error(
+			"The managed Anchor runtime identity changed; refresh was refused.",
+		);
+	for (const value of [metadata.apiURL, metadata.frontendURL]) {
+		const url = new URL(value);
+		if (
+			url.protocol !== "http:" ||
+			url.hostname !== "127.0.0.1" ||
+			url.username ||
+			url.password ||
+			url.pathname !== "/" ||
+			url.search ||
+			url.hash
+		)
+			throw new Error("The managed runtime must use loopback origins.");
+	}
+	const lockDirectory = join(localDirectory, "startup.lock");
+	try {
+		await mkdir(lockDirectory);
+	} catch (error) {
+		if (error.code !== "EEXIST") throw error;
+		throw new Error(
+			"Another managed runtime operation is already in progress.",
+		);
+	}
+	await writeFile(
+		join(lockDirectory, "owner.json"),
+		JSON.stringify({ pid: process.pid }),
+		{ mode: 0o600 },
+	);
+	let restarted = false;
+	try {
+		signal?.throwIfAborted();
+		const fingerprint = await sourceFingerprint();
+		const executable = join(localDirectory, "bin", `anchor-${fingerprint}`);
+		await run("go", ["build", "-o", executable, "./cmd"], {
+			cwd: appDirectory,
+			timeout: 300_000,
+			signal,
+			env: {
+				...process.env,
+				GOCACHE: process.env.GOCACHE || join(localDirectory, "go-build"),
+			},
+		});
+		if ((await sourceFingerprint()) !== fingerprint)
+			throw new Error(
+				"Backend source changed during compilation; retry refresh after edits finish.",
+			);
+		const identity = await backendIdentity(metadata.pid);
+		if (identity) {
+			if (!(await ownsBackend(metadata)))
+				throw new Error(
+					"The recorded backend process changed ownership; refresh was refused.",
+				);
+			metadata.backendStartedAt = identity.startedAt;
+			await writeMetadata(metadata);
+			if (!(await ownsBackend(metadata)))
+				throw new Error(
+					"The backend process identity changed before shutdown.",
+				);
+			process.kill(metadata.pid, "SIGTERM");
+			try {
+				await poll(
+					async () => !(await ownsBackend(metadata)),
+					"owned Anchor API shutdown",
+					15_000,
+					signal,
+				);
+			} catch (error) {
+				signal?.throwIfAborted();
+				if (!(await ownsBackend(metadata))) throw error;
+				process.kill(metadata.pid, "SIGKILL");
+				await poll(
+					async () => !(await ownsBackend(metadata)),
+					"owned Anchor API termination",
+					5_000,
+					signal,
+				);
+			}
+		} else {
+			let running = false;
+			try {
+				process.kill(metadata.pid, 0);
+				running = true;
+			} catch (error) {
+				if (error.code !== "ESRCH") throw error;
+			}
+			if (running || (await probe(`${metadata.apiURL}/health`)))
+				throw new Error(
+					"Backend ownership could not be verified; refresh was refused.",
+				);
+		}
+		signal?.throwIfAborted();
+		metadata.executable = executable;
+		metadata.fingerprint = fingerprint;
+		await spawnBackend(metadata);
+		restarted = true;
+		await writeMetadata(metadata);
+		await poll(
+			async () => {
+				if (!(await ownsBackend(metadata)))
+					throw new Error(
+						`Anchor exited during refresh. Inspect ${join(metadata.directory, "api.log")}.`,
+					);
+				return probe(`${metadata.apiURL}/health`);
+			},
+			"refreshed Anchor API and database migrations",
+			120_000,
+			signal,
+		);
+		return metadata;
+	} catch (error) {
+		if (restarted && (await ownsBackend(metadata))) {
+			process.kill(metadata.pid, "SIGTERM");
+			await poll(
+				async () => !(await ownsBackend(metadata)),
+				"failed refreshed backend shutdown",
+				15_000,
+			);
+		}
+		throw error;
+	} finally {
+		await rm(lockDirectory, { recursive: true, force: true });
+	}
 }
 
 export async function startRuntime({
@@ -352,41 +564,7 @@ export async function startRuntime({
 		}
 		const apiPort = await allocatePort();
 		metadata.apiURL = `http://127.0.0.1:${apiPort}`;
-		const logFile = await open(join(metadata.directory, "api.log"), "a", 0o600);
-		try {
-			const env = Object.fromEntries(
-				["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "TZ"]
-					.filter((name) => process.env[name] !== undefined)
-					.map((name) => [name, process.env[name]]),
-			);
-			Object.assign(env, {
-				CONFIG_PATH: join(runtimeDirectory, "application.yaml"),
-				ANCHOR_E2E_MIGRATIONS_PATH: join(appDirectory, "migrations"),
-				POSTGRES_PORT: String(metadata.postgresPort),
-				POSTGRES_PASSWORD_FILE: join(metadata.directory, "postgres-password"),
-				ADMIN_JWT_SECRET_FILE: join(metadata.directory, "jwt-secret"),
-				APP_ENCRYPTION_KEY_FILE: join(metadata.directory, "encryption-key"),
-				REDIS_ADDRESS: `127.0.0.1:${metadata.redisPort}`,
-				SERVER_PORT: String(apiPort),
-				ALLOWED_ORIGIN: frontendURL,
-				ENVIRONMENT: "development",
-				LOG_LEVEL: "warn",
-			});
-			const child = spawn(metadata.executable, [], {
-				cwd: appDirectory,
-				env,
-				detached: true,
-				stdio: ["ignore", logFile.fd, logFile.fd],
-			});
-			await new Promise((resolveSpawned, reject) => {
-				child.once("spawn", resolveSpawned);
-				child.once("error", reject);
-			});
-			metadata.pid = child.pid;
-			child.unref();
-		} finally {
-			await logFile.close();
-		}
+		await spawnBackend(metadata);
 		await writeMetadata(metadata, pendingMetadataPath);
 		await poll(
 			async () => {
@@ -429,6 +607,21 @@ if (
 			console.log("Stopped this worktree's Anchor E2E runtime.");
 		} else if (command === "status") {
 			console.log(JSON.stringify(await statusRuntime(), null, 2));
+		} else if (command === "refresh") {
+			const controller = new AbortController();
+			const cancel = () =>
+				controller.abort(new Error("Runtime refresh interrupted."));
+			process.once("SIGINT", cancel);
+			process.once("SIGTERM", cancel);
+			try {
+				const metadata = await refreshRuntime({ signal: controller.signal });
+				console.log(
+					`Refreshed managed Anchor backend ${metadata.runId}; database and API origin preserved.`,
+				);
+			} finally {
+				process.removeListener("SIGINT", cancel);
+				process.removeListener("SIGTERM", cancel);
+			}
 		} else if (command === "verify-stopped") {
 			for (const name of ["runtime.json", "startup.json", "startup.lock"]) {
 				try {
@@ -497,7 +690,7 @@ if (
 			}
 		} else
 			throw new Error(
-				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | stop | status | verify-stopped",
+				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | refresh | stop | status | verify-stopped",
 			);
 	} catch (error) {
 		console.error(error.message);
