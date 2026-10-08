@@ -34,6 +34,15 @@ import {
 } from "./fields";
 import type { WorkflowVariable } from "./workflow-model";
 
+type EditedRow = EventDataRow & { id: number };
+
+function identify(
+	list: EventDataRow[],
+	counter: { current: number },
+): EditedRow[] {
+	return list.map((row) => ({ ...row, id: counter.current++ }));
+}
+
 function RowEditor({
 	row,
 	index,
@@ -178,7 +187,10 @@ export function EventDataEditor({
 }) {
 	const parsed = parseEventData(data, types);
 	const [asJSON, setAsJSON] = useState(parsed === undefined);
-	const [rows, setRows] = useState<EventDataRow[]>(parsed ?? []);
+	const nextId = useRef(0);
+	const [rows, setRows] = useState<EditedRow[]>(() =>
+		identify(parsed ?? [], nextId),
+	);
 	const [focusIndex, setFocusIndex] = useState<number>();
 	const sent = useRef(serializeEventData(rows));
 
@@ -190,11 +202,11 @@ export function EventDataEditor({
 			setAsJSON(true);
 			return;
 		}
-		setRows(next);
+		setRows(identify(next, nextId));
 		sent.current = serializeEventData(next);
 	}, [data, types]);
 
-	const update = (next: EventDataRow[]) => {
+	const update = (next: EditedRow[]) => {
 		setRows(next);
 		sent.current = serializeEventData(next);
 		onChange(sent.current);
@@ -231,7 +243,7 @@ export function EventDataEditor({
 						if (asJSON) {
 							const next = parseEventData(data, types);
 							if (next === undefined) return;
-							setRows(next);
+							setRows(identify(next, nextId));
 							sent.current = serializeEventData(next);
 						}
 						setAsJSON(!asJSON);
@@ -273,8 +285,7 @@ export function EventDataEditor({
 					) : null}
 					{rows.map((row, index) => (
 						<RowEditor
-							// biome-ignore lint/suspicious/noArrayIndexKey: rows are edited in place and have no identity of their own
-							key={index}
+							key={row.id}
 							row={row}
 							index={index}
 							duplicate={
@@ -285,13 +296,13 @@ export function EventDataEditor({
 							variables={variables}
 							onChange={(next) =>
 								update(
-									rows.map((current, position) =>
-										position === index ? next : current,
+									rows.map((current) =>
+										current.id === row.id ? { ...next, id: row.id } : current,
 									),
 								)
 							}
 							onRemove={() =>
-								update(rows.filter((_, position) => position !== index))
+								update(rows.filter((current) => current.id !== row.id))
 							}
 						/>
 					))}
@@ -304,7 +315,12 @@ export function EventDataEditor({
 								setFocusIndex(rows.length);
 								update([
 									...rows,
-									{ key: "", value: "", type: WorkflowFieldType.TEXT },
+									{
+										id: nextId.current++,
+										key: "",
+										value: "",
+										type: WorkflowFieldType.TEXT,
+									},
 								]);
 							}}
 						>
