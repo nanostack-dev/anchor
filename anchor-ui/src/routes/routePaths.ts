@@ -14,6 +14,7 @@ export const ROUTE_PATHS = {
 	PRODUCT_INTEGRATIONS: "/platform/$productId/integrations",
 	PRODUCT_INTEGRATION_CLERK: "/platform/$productId/integration-clerk",
 	PRODUCT_INTEGRATION_SMTP: "/platform/$productId/integration-smtp",
+	PRODUCT_INTEGRATION_STRIPE: "/platform/$productId/integration-stripe",
 	PRODUCTS: "/products",
 
 	// Product routes
@@ -29,6 +30,7 @@ export const ROUTE_PATHS = {
 		"/products/resources/permissions/$permissionName",
 	PRODUCT_EDIT: "/products/$productId/edit",
 	PRODUCT_EVENTS: "/products/events",
+	PRODUCT_PRICING: "/products/pricing",
 
 	// Licensing routes
 	PRODUCT_LICENSE_SCHEMA: "/products/licensing/schema",

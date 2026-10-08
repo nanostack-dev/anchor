@@ -3,6 +3,7 @@ import { type RouteContext, rootRoute } from "@/routes/__root";
 import { organizationApiKeysRoute } from "@/routes/organizations/organization-api-keys";
 import { organizationLicenseRoute } from "@/routes/organizations/organization-license";
 import {
+	organizationLicenseBillingRoute,
 	organizationLicenseChangesRoute,
 	organizationLicenseDetailIndexRoute,
 	organizationLicenseDetailRoute,
@@ -15,6 +16,7 @@ import { workspaceMembershipsRoute } from "@/routes/organizations/workspace-memb
 import { workspacesRoute } from "@/routes/organizations/workspaces";
 import { productIntegrationClerkRoute } from "@/routes/platform/$productId.integration-clerk";
 import { productIntegrationSmtpRoute } from "@/routes/platform/$productId.integration-smtp";
+import { productIntegrationStripeRoute } from "@/routes/platform/$productId.integration-stripe";
 import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
 import { initRoute } from "@/routes/platform/init";
 import { integrationClerkRoute } from "@/routes/platform/integration-clerk";
@@ -34,6 +36,7 @@ import {
 } from "@/routes/products/license-template";
 import { licenseTemplatesRoute } from "@/routes/products/license-templates";
 import { productPermissionsRoute } from "@/routes/products/permissions";
+import { productPricingRoute } from "@/routes/products/pricing";
 import { productApiKeyEditRoute } from "@/routes/products/product-api-key-edit";
 import { productApiKeyNewRoute } from "@/routes/products/product-api-key-new";
 import { productApiKeysRoute } from "@/routes/products/product-api-keys";
@@ -76,6 +79,7 @@ const routeTree = rootRoute.addChildren([
 		organizationLicenseUsageRoute,
 		organizationLicenseChangesRoute,
 		organizationLicenseValuesRoute,
+		organizationLicenseBillingRoute,
 	]),
 	workspacesRoute,
 	workspaceMembershipsRoute,
@@ -88,6 +92,8 @@ const routeTree = rootRoute.addChildren([
 	integrationClerkRoute,
 	productIntegrationClerkRoute,
 	productIntegrationSmtpRoute,
+	productIntegrationStripeRoute,
+	productPricingRoute,
 	emailTemplatesRoute,
 	emailTemplateBuilderRoute,
 	emailSendsRoute,
