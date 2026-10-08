@@ -113,13 +113,74 @@ components:
           type: string
         pending_update:
           type: boolean
+    FraudRefundCurrency:
+      type: string
+      enum: [usd, cad, eur]
+    FraudRefundStatus:
+      type: string
+      enum: [skipped, processing, pending, requires_action, succeeded, failed, canceled, review_required]
+      x-enum-varnames: [FraudRefundSkipped, FraudRefundProcessing, FraudRefundPending, FraudRefundRequiresAction, FraudRefundSucceeded, FraudRefundFailed, FraudRefundCanceled, FraudRefundReviewRequired]
+    FraudRefundPolicy:
+      type: object
+      additionalProperties: false
+      required: [enabled, currency, max_amount]
+      properties:
+        enabled:
+          type: boolean
+        currency:
+          $ref: '#/components/schemas/FraudRefundCurrency'
+        max_amount:
+          type: integer
+          x-go-type: int64
+          minimum: 0
+          maximum: 99999999
+          description: Maximum original payment amount in minor currency units. Must be positive when enabled.
+    FraudRefund:
+      type: object
+      additionalProperties: false
+      required: [id, warning_id, charge_id, invoice_id, subscription_id, organization_id, refund_id, currency, amount, status, reason, last_error, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        warning_id:
+          type: string
+        charge_id:
+          type: string
+        invoice_id:
+          type: string
+        subscription_id:
+          type: string
+        organization_id:
+          type: string
+        refund_id:
+          type: string
+        currency:
+          type: string
+        reason:
+          type: string
+        last_error:
+          type: string
+        amount:
+          type: integer
+          x-go-type: int64
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/FraudRefundStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     Settings:
       type: object
       additionalProperties: false
-      required: [fallback_template_id]
+      required: [fallback_template_id, fraud_refund_policy]
       properties:
         fallback_template_id:
           $ref: '#/components/schemas/Identifier'
+        fraud_refund_policy:
+          $ref: '#/components/schemas/FraudRefundPolicy'
     BillingEvent:
       type: object
       additionalProperties: false
@@ -141,7 +202,7 @@ components:
     State:
       type: object
       additionalProperties: false
-      required: [account, product, templates, prices, organizations, settings, events]
+      required: [account, product, templates, prices, organizations, settings, events, fraud_refunds]
       properties:
         account:
           $ref: '#/components/schemas/Account'
@@ -165,6 +226,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BillingEvent'
+        fraud_refunds:
+          type: array
+          items:
+            $ref: '#/components/schemas/FraudRefund'
     CreatePriceRequest:
       type: object
       additionalProperties: false
@@ -208,10 +273,11 @@ components:
     UpdateSettingsRequest:
       type: object
       additionalProperties: false
-      required: [fallback_template_id]
       properties:
         fallback_template_id:
           $ref: '#/components/schemas/Identifier'
+        fraud_refund_policy:
+          $ref: '#/components/schemas/FraudRefundPolicy'
     URLResponse:
       type: object
       additionalProperties: false

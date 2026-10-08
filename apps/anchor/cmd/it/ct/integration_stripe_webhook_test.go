@@ -75,6 +75,15 @@ func storedStripeEvents(t *testing.T, instance integration.Instance) map[string]
 	return state.Events
 }
 
+func requireNoStripeBillingState(t *testing.T, instance integration.Instance) {
+	t.Helper()
+	var count int
+	require.NoError(t, testDB.QueryRowContext(t.Context(), `SELECT count(*) FROM stripe_billing_states
+		WHERE integration_instance_id=$1 AND platform_tenant_id=$2 AND product_id=$3`,
+		instance.ID, instance.PlatformTenantID, instance.ProductID).Scan(&count))
+	require.Zero(t, count, "refused webhook must not initialize billing state")
+}
+
 func TestStripeWebhookUsesRawSignedBodyAndRejectsLiveOrForeignAccount(t *testing.T) {
 	t.Parallel()
 	tc := newWebhookSecretTestCtx(t)
@@ -84,13 +93,13 @@ func TestStripeWebhookUsesRawSignedBodyAndRejectsLiveOrForeignAccount(t *testing
 		"  \"livemode\": false, \"data\": {\"object\": {\"customer\": \"cus_unlinked\"}}\n}"
 	invalid := sendStripeContractEvent(t, tc.product.ProductID, body, "t=1,v1=invalid")
 	require.Equal(t, http.StatusBadRequest, invalid.StatusCode(), string(invalid.Body))
-	require.Empty(t, storedStripeEvents(t, instance))
+	requireNoStripeBillingState(t, instance)
 	for _, suffix := range []string{`, "livemode": true`, `, "account": "acct_Foreign123"`} {
 		unsafeBody := `{"id":"evt_refused","object":"event","type":"customer.subscription.updated",` +
 			`"data":{"object":{"customer":"cus_unlinked"}}` + suffix + `}`
 		response := sendStripeContractEvent(t, tc.product.ProductID, unsafeBody, signedStripeContractEvent(unsafeBody))
 		require.Equal(t, http.StatusBadRequest, response.StatusCode(), string(response.Body))
-		require.Empty(t, storedStripeEvents(t, instance))
+		requireNoStripeBillingState(t, instance)
 	}
 	for range 2 {
 		response := sendStripeContractEvent(t, tc.product.ProductID, body, signedStripeContractEvent(body))

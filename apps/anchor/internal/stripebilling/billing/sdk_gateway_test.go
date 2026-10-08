@@ -106,6 +106,35 @@ func TestSDKGatewayPinsIdentityAndEncodesFormParameters(t *testing.T) {
 	assert.Empty(t, params.Get("status"))
 }
 
+func TestSDKRefundPinsAccountAndPersistsRequestIdentity(t *testing.T) {
+	t.Parallel()
+	transport := &stripeTransport{fixtures: []httpFixture{
+		sandboxIdentity(),
+		{
+			status: http.StatusOK,
+			body:   `{"id":"re_expected","charge":"ch_expected","amount":1500,"currency":"usd","status":"pending"}`,
+		},
+	}}
+	gateway, err := billing.NewSDKGateway(nativeConfig(), &http.Client{Transport: transport})
+	require.NoError(t, err)
+	refund, err := gateway.Client().V1Refunds.Create(t.Context(), &stripe.RefundCreateParams{
+		IdempotencyKey: new("saved-charge-intent"), Charge: new("ch_expected"), Amount: new(int64(1500)),
+		Metadata: map[string]string{"anchor_refund_action_id": "action_expected"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, stripe.RefundStatusPending, refund.Status)
+	require.Len(t, transport.records, 2)
+	request := transport.records[1]
+	require.Equal(t, "acct_expected", request.headers.Get("Stripe-Account"))
+	require.Equal(t, "saved-charge-intent", request.headers.Get("Idempotency-Key"))
+	params, err := url.ParseQuery(request.body)
+	require.NoError(t, err)
+	require.Equal(t, "1500", params.Get("amount"))
+	require.Equal(t, "ch_expected", params.Get("charge"))
+	require.Equal(t, "action_expected", params.Get("metadata[anchor_refund_action_id]"))
+	require.Empty(t, params.Get("reason"))
+}
+
 func TestSDKGatewayEncodesQueriesWithoutChangingScope(t *testing.T) {
 	t.Parallel()
 	transport := &stripeTransport{fixtures: []httpFixture{sandboxIdentity(),

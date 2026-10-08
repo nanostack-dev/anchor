@@ -7,14 +7,19 @@ import (
 	"errors"
 	"time"
 
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/product"
 	"anchor/internal/integration/provider"
 	licensesvc "anchor/internal/license/service"
+	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 	billing "anchor/internal/stripebilling/billing"
 
+	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
@@ -25,6 +30,7 @@ const (
 	actionTimeout            = 3 * time.Minute
 	maximumConcurrentActions = 4
 	unlockTimeout            = 5 * time.Second
+	webhookReceiptTimeout    = 10 * time.Second
 )
 
 type Params struct {
@@ -184,15 +190,7 @@ func (m *Manager) serviceForInstance(
 			"Enable Stripe and complete its connection setup first.",
 		)
 	}
-	selected, err := m.params.Registry.GetProvider(string(integration.ProviderTypeStripe))
-	if err != nil {
-		return nil, err
-	}
-	resolver, ok := selected.(billing.ConnectionResolver)
-	if !ok {
-		return nil, errors.New("stripe provider cannot resolve billing settings")
-	}
-	config, err := resolver.ResolveBillingConfig(ctx, instance)
+	config, err := m.resolveConnectionConfig(ctx, instance)
 	if err != nil {
 		return nil, err
 	}
@@ -245,9 +243,27 @@ func (m *Manager) serviceForInstance(
 	return svc, nil
 }
 
-// IngestInternal is the only public webhook path. Product addressing selects
-// an instance; Service validates its Stripe signature and ownership before writes.
+func (m *Manager) resolveConnectionConfig(
+	ctx context.Context,
+	instance integration.Instance,
+) (billing.ConnectionConfig, error) {
+	selected, err := m.params.Registry.GetProvider(string(integration.ProviderTypeStripe))
+	if err != nil {
+		return billing.ConnectionConfig{}, err
+	}
+	resolver, ok := selected.(billing.ConnectionResolver)
+	if !ok {
+		return billing.ConnectionConfig{}, errors.New("stripe provider cannot resolve billing settings")
+	}
+	return resolver.ResolveBillingConfig(ctx, instance)
+}
+
+// IngestInternal receives signed webhooks addressed to a product. A short shared
+// integration row lock captures current configuration and policy with the durable
+// event commit, without waiting for the external-operation advisory lock.
 func (m *Manager) IngestInternal(ctx context.Context, productID string, payload []byte, signature string) error {
+	ctx, cancel := context.WithTimeout(ctx, webhookReceiptTimeout)
+	defer cancel()
 	found, err := m.params.Instances.FindByProductAndProviderInternal(
 		ctx,
 		productID,
@@ -259,13 +275,49 @@ func (m *Manager) IngestInternal(ctx context.Context, productID string, payload 
 	if found.IsAbsent() {
 		return fault.NotFound("STRIPE_INTEGRATION_NOT_FOUND", "Stripe integration does not exist.")
 	}
-	return m.withInstance(
-		ctx,
-		found.Value(),
-		func(actionCtx context.Context, s *billing.Service) error {
-			return s.HandleWebhook(actionCtx, payload, signature)
-		},
+	return transactor.New(m.params.DB).InTx(ctx, func(txCtx context.Context) error {
+		instance, reloadErr := m.lockWebhookInstance(txCtx, found.Value())
+		if reloadErr != nil {
+			return reloadErr
+		}
+		config, resolveErr := m.resolveConnectionConfig(txCtx, instance)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		store := &databaseStore{
+			ctx: txCtx, db: m.params.DB, queue: m.params.Queue,
+			instance: instance, accountID: config.AccountID,
+		}
+		return billing.ReceiveWebhook(txCtx, billing.Config{
+			ExpectedAccountID: config.AccountID,
+			ProductID:         instance.ProductID,
+			WebhookSecret:     config.WebhookSecret,
+		}, store, payload, signature)
+	})
+}
+
+func (m *Manager) lockWebhookInstance(
+	ctx context.Context,
+	instance integration.Instance,
+) (integration.Instance, error) {
+	t := table.IntegrationInstances
+	current, err := transactor.QueryOptional[model.IntegrationInstances](ctx, m.params.DB,
+		t.SELECT(t.AllColumns).FROM(t).WHERE(
+			t.ID.EQ(postgres.String(instance.ID)).
+				AND(t.PlatformTenantID.EQ(postgres.String(instance.PlatformTenantID))).
+				AND(t.ProductID.EQ(postgres.String(instance.ProductID))).
+				AND(t.ProviderType.EQ(postgres.String(string(integration.ProviderTypeStripe)))),
+		).FOR(postgres.SHARE()),
 	)
+	if err != nil {
+		return integration.Instance{}, err
+	}
+	if current.IsAbsent() || !current.Value().IsEnabled || current.Value().Status != string(integration.StatusActive) {
+		return integration.Instance{}, fault.Conflict(
+			"STRIPE_INTEGRATION_NOT_ACTIVE", "The Stripe integration is no longer active.",
+		)
+	}
+	return mapper.NewIntegrationInstanceMapper().ToDomain(current.Value()), nil
 }
 
 // RunInternal handles durable jobs whose instance identity was recorded at receipt.
