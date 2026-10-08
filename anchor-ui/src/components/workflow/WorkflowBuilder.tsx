@@ -38,6 +38,7 @@ import {
 	NativeSelectOptGroup,
 	NativeSelectOption,
 } from "@nanostackorg/design-system/components/native-select";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import { Switch } from "@nanostackorg/design-system/components/switch";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Textarea } from "@nanostackorg/design-system/components/textarea";
@@ -78,6 +79,8 @@ import {
 	buildWorkflowGraph,
 	selectionNodeId,
 } from "./canvas/workflow-graph";
+import { fieldTypeIcons } from "./field-icons";
+import { fieldTypeLabels } from "./fields";
 import { useWorkflowResources } from "./useWorkflowResources";
 import {
 	CUSTOM_EVENT_PREFIX,
@@ -109,6 +112,7 @@ interface SaveProblem {
 	detail: string;
 	stepId?: string;
 	param?: string;
+	field?: string;
 }
 
 function chainOf(workflow: WorkflowResponse): ChainWorkflow {
@@ -463,6 +467,12 @@ export function WorkflowBuilder({
 				.filter((problem) => problem.stepId === stepId)
 				.map((problem) => [problem.param ?? "", problem.detail]),
 		);
+	const stepFieldErrors = (stepId: string) =>
+		Object.fromEntries(
+			problems
+				.filter((problem) => problem.stepId === stepId && problem.field)
+				.map((problem) => [problem.field ?? "", problem.detail]),
+		);
 
 	const invalidate = (saved?: WorkflowResponse) => {
 		void queryClient.invalidateQueries({
@@ -507,6 +517,10 @@ export function WorkflowBuilder({
 						? undefined
 						: draft.definition.steps[described.stepIndex]?.id,
 				param: location.match(/\.params\.(\w+)/)?.[1],
+				field:
+					typeof apiError.metadata?.field === "string"
+						? apiError.metadata.field
+						: undefined,
 			};
 		});
 		const next = found.length
@@ -755,17 +769,34 @@ export function WorkflowBuilder({
 						{trigger.description}
 					</Text>
 				) : null}
-				{trigger && trigger.data_fields.length > 0 ? (
-					<Box className="flex flex-wrap gap-1">
-						{trigger.data_fields.map((field) => (
-							<Box
-								as="span"
-								key={field}
-								className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs"
-							>
-								event.data.{field}
-							</Box>
-						))}
+				{trigger && trigger.fields.length > 0 ? (
+					<Box
+						as="ul"
+						aria-label="Fields the event carries"
+						className="space-y-1"
+					>
+						{trigger.fields.map((field) => {
+							const FieldIcon = fieldTypeIcons[field.type];
+							return (
+								<Box
+									as="li"
+									key={field.name}
+									title={field.description}
+									className="flex items-center gap-2 text-xs"
+								>
+									<FieldIcon
+										className="size-3.5 shrink-0 text-muted-foreground"
+										aria-hidden
+									/>
+									<Box as="span" className="break-all font-mono">
+										event.data.{field.name}
+									</Box>
+									<Box as="span" className="shrink-0 text-muted-foreground">
+										{fieldTypeLabels[field.type]}
+									</Box>
+								</Box>
+							);
+						})}
 					</Box>
 				) : null}
 				{startedBy.length > 0 ? (
@@ -792,6 +823,7 @@ export function WorkflowBuilder({
 					label="Event condition"
 					conditions={draft.definition.conditions}
 					variables={triggerVariables(trigger)}
+					resources={resources}
 					onChange={(conditions) =>
 						changeDraft({
 							...draft,
@@ -822,6 +854,7 @@ export function WorkflowBuilder({
 				variables={variablesBeforeStep(catalog, draft, selectedIndex)}
 				resources={resources}
 				errors={stepErrors(selectedStep.id)}
+				fieldErrors={stepFieldErrors(selectedStep.id)}
 				starts={startsOf(selectedStep)}
 				loopWarning={loopWarningFor(selectedStep)}
 				onChange={(next) => {
@@ -981,11 +1014,13 @@ export function WorkflowBuilder({
 					as="section"
 					tabIndex={-1}
 					aria-label={inspectorTitle}
-					className="outline-none overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:max-h-[min(76vh,820px)] lg:overflow-y-auto"
+					className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs outline-none lg:h-[min(76vh,820px)]"
 				>
-					<InspectorTransition selection={selection}>
-						{inspector}
-					</InspectorTransition>
+					<ScrollArea height="fill">
+						<InspectorTransition selection={selection}>
+							{inspector}
+						</InspectorTransition>
+					</ScrollArea>
 				</Box>
 			</Box>
 		</Stack>

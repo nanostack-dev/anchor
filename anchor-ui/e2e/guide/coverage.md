@@ -9,14 +9,14 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **61 scenarios in 15 spec files**.
+The managed app suite declares **62 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
 | [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 5 |
 | [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
-| [access/workflows.e2e.ts](../features/access/workflows.e2e.ts) | 4 |
+| [access/workflows.e2e.ts](../features/access/workflows.e2e.ts) | 5 |
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
@@ -114,7 +114,7 @@ and read back through the Runs tab and the API.
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
 | `PRODUCT_WORKFLOWS` — `/products/workflows` | Empty state, recipe card opens a prefilled builder, saved workflow listed with its last run status, custom-event links between workflows, deleted workflow gone. | API organizations and one API workflow emitting a custom event. | workflows |
-| `PRODUCT_WORKFLOW_NEW` — `/products/workflows/new` | Canvas trigger, condition and step nodes opening their inspector and "Back to flow", recipe prefill, dry run against a real organization with simulated writes and nothing written (each step node shows "Simulated"), required name and trigger, server validation pinned to the step and parameter it concerns, trigger select (catalog and custom events), "Started after" hint, add steps from the action menu, event-field prefill, insert a step output into a parameter, step condition, disable, create. | Role and organization ids are free text; no live member is added. | workflows |
+| `PRODUCT_WORKFLOW_NEW` — `/products/workflows/new` | Canvas trigger, condition and step nodes opening their inspector and "Back to flow", recipe prefill, dry run against a real organization with simulated writes and nothing written (each step node shows "Simulated"), required name and trigger, server validation pinned to the step and parameter it concerns, trigger select (catalog and custom events), "Started after" hint, add steps from the action menu, event-field prefill shown as a field pill, a step output dragged from "Data you can use" onto a parameter, click-to-insert into the input used last, typed custom event data (a picked field types its row), `WORKFLOW_EVENT_FIELD_CONFLICT` pinned on the event data, the catalog typing a custom event from its senders, step condition, disable, create. | Role and organization ids are free text; no live member is added. | workflows |
 | `PRODUCT_WORKFLOW_DETAIL` — `/products/workflows/$workflowId` | Run triggered by the next organization only (an earlier one is ignored), run status read only once it finishes, Runs tab status and event data, reload persistence of steps, condition field/operator/value, parameter and disabled state, a custom event starting a follow-up workflow (the follow-up shows as an "Open" node on the canvas), the loop warning in the toolbar, on the step that causes it and as a "Loop" edge on the canvas, "Fit the workflow", the leave-without-saving guard (Stay, then Discard and leave through a chained-workflow node), inserting a step from the "+" before a step and finding it in view, the save the server refuses with `WORKFLOW_LOOP`, a "Call your backend" step whose backend writes back with the causation header and the resulting "Loop prevented" run in the Runs tab, delete confirmation. | A loopback Node server stands in for the Product backend (`core.workflow.allow_private_targets` is on only in the test runtimes). Not clicked in a browser: "Run for real" (covered by `TestRunWorkflow_RunsNowAgainstTheGivenEventData`), workflow-level conditions, zoom in and out, moving or removing a step, "Keep going if this step fails", "Chain stopped" runs (component test only) and failed or running runs (stories only). | workflows |
 
 ## Licensing

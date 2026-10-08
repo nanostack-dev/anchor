@@ -2,6 +2,7 @@ import type {
 	WorkflowCatalogResponse,
 	WorkflowStep,
 	WorkflowStepStatus,
+	WorkflowTriggerResponse,
 } from "@/client";
 import type { Edge, Node } from "@xyflow/react";
 import {
@@ -10,7 +11,10 @@ import {
 	type WorkflowDraft,
 	findAction,
 	findTrigger,
+	operatorLabels,
+	operatorNeedsValue,
 	stepEmits,
+	triggerVariables,
 } from "../workflow-model";
 
 export const NODE_WIDTH = 288;
@@ -110,13 +114,20 @@ function summarize(step: WorkflowStep, catalog?: WorkflowCatalogResponse) {
 	return `${telling.label}: ${step.params[telling.name].trim()}`;
 }
 
-function conditionSummary(draft: WorkflowDraft) {
+export function conditionSummary(
+	draft: WorkflowDraft,
+	trigger: WorkflowTriggerResponse | undefined,
+) {
 	const conditions = draft.definition.conditions;
 	if (conditions.length === 0) return "Every event starts a run";
-	const [first] = conditions;
-	return conditions.length === 1
-		? `${first.field} ${first.operator.replace(/_/g, " ")} ${first.value ?? ""}`.trim()
-		: `${conditions.length} conditions must all hold`;
+	if (conditions.length > 1)
+		return `${conditions.length} conditions must all hold`;
+	const [only] = conditions;
+	const field =
+		triggerVariables(trigger).find((variable) => variable.path === only.field)
+			?.label ?? only.field;
+	const value = operatorNeedsValue(only.operator) ? ` ${only.value ?? ""}` : "";
+	return `${field} ${operatorLabels[only.operator]}${value}`.trim();
 }
 
 export interface GraphInput {
@@ -190,7 +201,7 @@ export function buildWorkflowGraph(input: GraphInput): {
 		position: { x: 0, y: ROW_GAP },
 		data: {
 			count: draft.definition.conditions.length,
-			summary: conditionSummary(draft),
+			summary: conditionSummary(draft, trigger),
 			selected: selection.kind === "conditions",
 			order: order++,
 		},

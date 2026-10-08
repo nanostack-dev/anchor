@@ -144,13 +144,56 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await expect(
 		page.getByRole("button", { name: "Trigger: Product user created" }),
 	).toBeInViewport();
+	await page
+		.getByRole("button", { name: "Conditions on the event", exact: true })
+		.click();
+	await page
+		.getByRole("button", { name: "Add condition", exact: true })
+		.click();
+	const eventComparison = page.getByRole("combobox", {
+		name: "Event condition 1: comparison",
+	});
+	const eventField = page.getByRole("button", {
+		name: /^Event condition 1: value to test/,
+	});
+	await eventField.click();
+	await page.getByRole("option", { name: /^Event type/ }).click();
+	await expect(eventField).toHaveAccessibleName(
+		"Event condition 1: value to test: Event type from Event, Text",
+	);
+	await expect(
+		eventComparison.getByRole("option", { name: "contains", exact: true }),
+	).toHaveCount(1);
+	await eventField.click();
+	await page.getByRole("option", { name: /^product_user_id/ }).click();
+	await expect(eventField).toHaveAccessibleName(
+		"Event condition 1: value to test: product_user_id from Event, Product user ID",
+	);
+	await expect(
+		eventComparison.getByRole("option", { name: "is one of", exact: true }),
+	).toHaveCount(1);
+	await expect(
+		eventComparison.getByRole("option", { name: "contains", exact: true }),
+	).toHaveCount(0);
+	await eventComparison.selectOption("exists");
+	await expect(
+		page.getByRole("textbox", { name: "Event condition 1: compared with" }),
+	).toHaveCount(0);
+	await captureReviewCheckpoint(page, testInfo, "typed-event-condition");
+	await backToFlow(page);
+	await expect(
+		page.getByRole("button", { name: "Conditions on the event", exact: true }),
+	).toContainText("product_user_id is set");
+
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Read product user", exact: true })
 		.click();
 	await expect(
-		page.getByRole("textbox", { name: "Product user *", exact: true }),
-	).toHaveValue("{{event.data.product_user_id}}");
+		page.getByRole("button", {
+			name: "Product user *: product_user_id from Event. Edit",
+		}),
+	).toBeVisible();
 
 	await backToFlow(page);
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
@@ -160,12 +203,25 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	const invite = page.getByRole("article", {
 		name: "Step 2: Invite to organization",
 	});
-	await invite
-		.getByRole("button", { name: "Insert a value into Email" })
-		.click();
-	await page.getByRole("menuitem", { name: "email", exact: true }).click();
-	const email = invite.getByRole("textbox", { name: "Email *", exact: true });
-	await expect(email).toHaveValue("{{steps.product_user.email}}");
+	const emailInput = invite.getByRole("textbox", {
+		name: "Email *",
+		exact: true,
+	});
+	const emailChip = invite
+		.getByRole("region", { name: "Data you can use" })
+		.getByRole("button", { name: "email, Email, from Read product user" });
+	if ((testInfo.project.use.viewport?.width ?? 1280) < 640) {
+		// A phone inserts a field by tapping the input, then the chip.
+		await emailInput.click();
+		await emailChip.click();
+	} else {
+		await emailChip.dragTo(emailInput);
+	}
+	await expect(
+		invite.getByRole("button", {
+			name: "Email *: email from Read product user. Edit",
+		}),
+	).toBeVisible();
 	await page
 		.getByRole("button", { name: "Create workflow", exact: true })
 		.click();
@@ -204,8 +260,9 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		.getByRole("button", { name: "Add condition", exact: true })
 		.click();
 	await invite
-		.getByRole("combobox", { name: "Step 2 condition 1: value to test" })
-		.fill("steps.product_user.email_domain");
+		.getByRole("button", { name: /^Step 2 condition 1: value to test/ })
+		.click();
+	await page.getByRole("option", { name: /^email_domain/ }).click();
 	await invite
 		.getByRole("combobox", { name: "Step 2 condition 1: comparison" })
 		.selectOption("ends_with");
@@ -231,8 +288,10 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	});
 	await expect(saved).toBeInViewport({ ratio: 0.2 });
 	await expect(
-		saved.getByRole("combobox", { name: "Step 2 condition 1: value to test" }),
-	).toHaveValue("steps.product_user.email_domain");
+		saved.getByRole("button", {
+			name: "Step 2 condition 1: value to test: email_domain from Read product user, Text",
+		}),
+	).toBeVisible();
 	await expect(
 		saved.getByRole("combobox", { name: "Step 2 condition 1: comparison" }),
 	).toHaveValue("ends_with");
@@ -240,20 +299,39 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 		saved.getByRole("textbox", { name: "Step 2 condition 1: compared with" }),
 	).toHaveValue("acme.com");
 	await expect(
-		saved.getByRole("textbox", { name: "Email *", exact: true }),
-	).toHaveValue("{{steps.product_user.email}}");
+		saved.getByRole("button", {
+			name: "Email *: email from Read product user. Edit",
+		}),
+	).toBeVisible();
 	await expect(
 		page.getByRole("switch", { name: "Enabled", exact: true }),
 	).not.toBeChecked();
 	const persisted = await world.api.get<{
 		enabled: boolean;
-		definition: { steps: unknown[] };
+		definition: { steps: unknown[]; conditions: unknown[] };
 	}>(`${world.productPath}/workflows/${workflowId}`);
 	expect(persisted.enabled).toBe(false);
 	expect(persisted.definition.steps).toHaveLength(2);
-	await saved.scrollIntoViewIfNeeded();
+	expect(persisted.definition.conditions).toMatchObject([
+		{ field: "event.data.product_user_id", operator: "exists" },
+	]);
+	await saved
+		.getByRole("group", { name: "Step 2 condition 1" })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "saved-workflow");
 
+	await backToFlow(page);
+	await page
+		.getByRole("button", { name: "Conditions on the event", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", {
+			name: "Event condition 1: value to test: product_user_id from Event, Product user ID",
+		}),
+	).toBeVisible();
+	await expect(
+		page.getByRole("combobox", { name: "Event condition 1: comparison" }),
+	).toHaveValue("exists");
 	await backToFlow(page);
 	await page
 		.getByRole("button", { name: "Insert a step before step 2" })
@@ -308,6 +386,7 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 					params: {
 						event: "onboarding.started",
 						data: '{"organization_id": "{{event.data.organization_id}}", "plan": "pro"}',
+						data_types: '{"organization_id": "organization", "plan": "text"}',
 					},
 				},
 			],
@@ -334,9 +413,12 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 			exact: true,
 		}),
 	).toBeVisible();
-	await expect(
-		triggerSettings.getByText("event.data.organization_id", { exact: true }),
-	).toBeVisible();
+	const carried = triggerSettings.getByRole("list", {
+		name: "Fields the event carries",
+	});
+	await expect(carried.getByRole("listitem").first()).toHaveText(
+		"event.data.organization_idOrganization ID",
+	);
 	await backToFlow(page);
 	await expect(
 		page.getByRole("button", { name: `Open “${handoff.name}”` }),
@@ -349,8 +431,10 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 		name: "Step 1: Create workspace",
 	});
 	await expect(
-		workspace.getByRole("textbox", { name: "Organization *", exact: true }),
-	).toHaveValue("{{event.data.organization_id}}");
+		workspace.getByRole("button", {
+			name: "Organization *: organization_id from Event. Edit",
+		}),
+	).toBeVisible();
 	await workspace
 		.getByRole("textbox", { name: "Name *", exact: true })
 		.fill("Kickoff {{event.data.plan}}");
@@ -459,6 +543,119 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 	);
 	await links.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "workflow-links");
+});
+
+// Covers: PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
+test("a custom event's data is typed where it is sent, and a field cannot get a second type", async ({
+	page,
+	world,
+}, testInfo) => {
+	const event = `billing.${world.name("seats").replace("-", "_")}`;
+	const first = await createWorkflowViaAPI(world, {
+		name: world.name("seat-sync"),
+		description: "",
+		enabled: false,
+		trigger_event_type: "organization.created",
+		definition: {
+			conditions: [],
+			steps: [
+				{
+					id: "send",
+					action: "workflow.emit",
+					params: {
+						event,
+						data: '{"seats": "5"}',
+						data_types: '{"seats": "number"}',
+					},
+				},
+			],
+		},
+	});
+	await openWorkflows(page, world);
+	await page
+		.getByRole("button", { name: "New workflow", exact: true })
+		.first()
+		.click();
+	const name = world.name("seat-upgrade");
+	await page.getByLabel("Name", { exact: true }).fill(name);
+	await page.getByRole("button", { name: "Trigger: Pick a trigger" }).click();
+	await page
+		.getByLabel("Event", { exact: true })
+		.selectOption("organization.created");
+	await backToFlow(page);
+	await page.getByRole("button", { name: "Add a step", exact: true }).click();
+	await page
+		.getByRole("menuitem", { name: "Start other workflows", exact: true })
+		.click();
+	const send = page.getByRole("article", {
+		name: "Step 1: Start other workflows",
+	});
+	await send
+		.getByRole("combobox", { name: "Custom event *", exact: true })
+		.fill(event);
+	const data = send.getByRole("region", { name: "Event data" });
+	await data.getByRole("button", { name: "Add field" }).click();
+	const seats = data.getByRole("group", { name: "Event field 1" });
+	await seats.getByRole("textbox", { name: "Name", exact: true }).fill("seats");
+	await seats
+		.getByRole("textbox", { name: "Value of seats", exact: true })
+		.fill("25");
+	await data.getByRole("button", { name: "Add field" }).click();
+	const owner = data.getByRole("group", { name: "Event field 2" });
+	await owner
+		.getByRole("textbox", { name: "Name", exact: true })
+		.fill("owner_org");
+	await owner
+		.getByRole("textbox", { name: "Value of owner_org", exact: true })
+		.click();
+	await send
+		.getByRole("region", { name: "Data you can use" })
+		.getByRole("button", {
+			name: "organization_id, Organization ID, from Event",
+		})
+		.click();
+	await expect(owner.getByRole("combobox", { name: "Type" })).toHaveValue(
+		"organization",
+	);
+
+	await page
+		.getByRole("button", { name: "Create workflow", exact: true })
+		.click();
+	await expect(
+		data.getByText(`“${first.name}” sends it as number`, { exact: false }),
+	).toBeVisible();
+	await data.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "field-type-conflict");
+	await seats.getByRole("combobox", { name: "Type" }).selectOption("number");
+	await page
+		.getByRole("button", { name: "Create workflow", exact: true })
+		.click();
+	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+	const saved = await world.api.get<{
+		definition: { steps: { params: Record<string, string> }[] };
+	}>(`${world.productPath}/workflows/${workflowIdFrom(page)}`);
+	expect(JSON.parse(saved.definition.steps[0].params.data_types)).toEqual({
+		seats: "number",
+		owner_org: "organization",
+	});
+
+	await openWorkflows(page, world);
+	await page
+		.getByRole("button", { name: "New workflow", exact: true })
+		.first()
+		.click();
+	await page.getByRole("button", { name: "Trigger: Pick a trigger" }).click();
+	await page
+		.getByLabel("Event", { exact: true })
+		.selectOption(`custom.${event}`);
+	const carried = page
+		.getByRole("region", { name: "Trigger settings", exact: true })
+		.getByRole("list", { name: "Fields the event carries" });
+	await expect(carried.getByRole("listitem")).toHaveText([
+		"event.data.owner_orgOrganization ID",
+		"event.data.seatsNumber",
+	]);
+	await captureReviewCheckpoint(page, testInfo, "typed-custom-event");
 });
 
 // Covers: PRODUCT_WORKFLOW_DETAIL

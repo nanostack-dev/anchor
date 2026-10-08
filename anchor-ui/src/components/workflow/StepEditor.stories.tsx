@@ -33,19 +33,21 @@ function StatefulStepEditor({
 		},
 	};
 	return (
-		<StepEditor
-			step={step}
-			index={1}
-			count={2}
-			catalog={fixtureCatalog}
-			variables={variablesBeforeStep(fixtureCatalog, draft, 1)}
-			resources={{}}
-			errors={errors}
-			starts={starts}
-			onChange={setStep}
-			onMove={fn()}
-			onRemove={fn()}
-		/>
+		<div style={{ width: 720 }}>
+			<StepEditor
+				step={step}
+				index={1}
+				count={2}
+				catalog={fixtureCatalog}
+				variables={variablesBeforeStep(fixtureCatalog, draft, 1)}
+				resources={{}}
+				errors={errors}
+				starts={starts}
+				onChange={setStep}
+				onMove={fn()}
+				onRemove={fn()}
+			/>
+		</div>
 	);
 }
 
