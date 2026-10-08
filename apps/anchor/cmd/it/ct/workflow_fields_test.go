@@ -111,3 +111,20 @@ func TestCreateWorkflow_RefusesASecondTypeForACustomEventField(t *testing.T) {
 	assert.Equal(t, "number", metadata["other_type"])
 	assert.Equal(t, first.Id, metadata["other_workflow_id"])
 }
+
+func TestUpdateWorkflow_RefusesASecondTypeForACustomEventField(t *testing.T) {
+	t.Parallel()
+	w := newWorkflowWorld(t)
+	upgraded := customEvent("upgraded")
+	w.createWorkflow(workflowBody("organization.created",
+		typedEmitStep("handoff", upgraded, `{"seats": "5"}`, `{"seats": "number"}`)))
+	body := workflowBody("product_user.created",
+		typedEmitStep("notify", upgraded, `{"seats": "5"}`, `{"seats": "number"}`))
+	second := w.createWorkflow(body)
+
+	body.Definition.Steps[0].Params["data_types"] = `{"seats": "text"}`
+	resp, err := w.client.UpdateWorkflowWithResponse(context.Background(), w.product.ProductID, second.Id, body)
+
+	require.NoError(t, err)
+	assertErrorCode(t, resp.StatusCode(), resp.Body, http.StatusBadRequest, "WORKFLOW_EVENT_FIELD_CONFLICT")
+}
