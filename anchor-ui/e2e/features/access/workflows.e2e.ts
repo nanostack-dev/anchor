@@ -184,14 +184,25 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await page
 		.getByRole("button", { name: "Add condition", exact: true })
 		.click();
-	await expect(
-		page.getByRole("button", {
-			name: "Event condition 1: value to test: product_user_id from Event, Product user ID",
-		}),
-	).toBeVisible();
 	const eventComparison = page.getByRole("combobox", {
 		name: "Event condition 1: comparison",
 	});
+	const eventField = page.getByRole("button", {
+		name: /^Event condition 1: value to test/,
+	});
+	await eventField.click();
+	await page.getByRole("option", { name: /^Event type/ }).click();
+	await expect(eventField).toHaveAccessibleName(
+		"Event condition 1: value to test: Event type from Event, Text",
+	);
+	await expect(
+		eventComparison.getByRole("option", { name: "contains", exact: true }),
+	).toHaveCount(1);
+	await eventField.click();
+	await page.getByRole("option", { name: /^product_user_id/ }).click();
+	await expect(eventField).toHaveAccessibleName(
+		"Event condition 1: value to test: product_user_id from Event, Product user ID",
+	);
 	await expect(
 		eventComparison.getByRole("option", { name: "is one of", exact: true }),
 	).toHaveCount(1);
@@ -204,6 +215,9 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	).toHaveCount(0);
 	await captureReviewCheckpoint(page, testInfo, "typed-event-condition");
 	await backToFlow(page);
+	await expect(
+		page.getByRole("button", { name: "Conditions on the event", exact: true }),
+	).toContainText("product_user_id is set");
 
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
@@ -335,9 +349,23 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	expect(persisted.definition.conditions).toMatchObject([
 		{ field: "event.data.product_user_id", operator: "exists" },
 	]);
-	await saved.scrollIntoViewIfNeeded();
+	await saved
+		.getByRole("group", { name: "Step 2 condition 1" })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "saved-workflow");
 
+	await backToFlow(page);
+	await page
+		.getByRole("button", { name: "Conditions on the event", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", {
+			name: "Event condition 1: value to test: product_user_id from Event, Product user ID",
+		}),
+	).toBeVisible();
+	await expect(
+		page.getByRole("combobox", { name: "Event condition 1: comparison" }),
+	).toHaveValue("exists");
 	await backToFlow(page);
 	await page
 		.getByRole("button", { name: "Insert a step before step 2" })

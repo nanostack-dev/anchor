@@ -22,20 +22,27 @@ import {
 	fieldPathPattern,
 	fieldTypeLabels,
 	fits,
+	isInsideJsonField,
 } from "./fields";
 import { type WorkflowVariable, groupBy } from "./workflow-model";
 
+const optionValue = (field: WorkflowVariable) =>
+	`${field.source} ${field.label} ${field.path}`;
+
 function FieldOption({
 	field,
+	checked,
 	onSelect,
 }: {
 	field: WorkflowVariable;
+	checked: boolean;
 	onSelect: () => void;
 }) {
 	const Icon = fieldTypeIcons[field.type];
 	return (
 		<CommandItem
-			value={`${field.source} ${field.label} ${field.path}`}
+			value={optionValue(field)}
+			checked={checked}
 			onSelect={onSelect}
 		>
 			<Icon aria-hidden />
@@ -54,13 +61,14 @@ function FieldOption({
 /**
  * A searchable list of the fields a value can use. Fields that fit a
  * parameter, or share a type, come first. With `allowPath`, a typed path
- * that no listed field names (a metadata key) can be used as is.
+ * inside a listed JSON field (a metadata key) can be used as is.
  */
 export function FieldPicker({
 	fields,
 	paramType,
 	fitType,
 	allowPath = false,
+	selected,
 	label,
 	trigger,
 	onPick,
@@ -69,6 +77,7 @@ export function FieldPicker({
 	paramType?: WorkflowParamType;
 	fitType?: WorkflowFieldType;
 	allowPath?: boolean;
+	selected?: string;
 	label: string;
 	trigger?: ReactElement;
 	onPick: (path: string) => void;
@@ -92,15 +101,28 @@ export function FieldPicker({
 	const offerPath =
 		allowPath &&
 		fieldPathPattern.test(path) &&
-		!fields.some((field) => field.path === path);
+		!fields.some((field) => field.path === path) &&
+		isInsideJsonField(fields, path);
+	const current = fields.find((field) => field.path === selected);
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		if (!next) setQuery("");
+	};
 	const pick = (picked: string) => {
 		onPick(picked);
-		setQuery("");
-		setOpen(false);
+		changeOpen(false);
 	};
+	const option = (field: WorkflowVariable) => (
+		<FieldOption
+			key={field.path}
+			field={field}
+			checked={field.path === selected}
+			onSelect={() => pick(field.path)}
+		/>
+	);
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={changeOpen}>
 			<PopoverTrigger
 				render={
 					trigger ?? (
@@ -115,7 +137,7 @@ export function FieldPicker({
 				}
 			/>
 			<PopoverContent align={trigger ? "start" : "end"} aria-label={label}>
-				<Command>
+				<Command defaultValue={current ? optionValue(current) : undefined}>
 					<CommandInput
 						placeholder={allowPath ? "Search or type a path" : "Search fields"}
 						aria-label="Search fields"
@@ -139,7 +161,7 @@ export function FieldPicker({
 						) : null}
 						<CommandEmpty>
 							{allowPath
-								? "No field matches. Type a full path such as steps.org.metadata.plan."
+								? "No field matches. A key inside a JSON field can be typed as a path, such as steps.org.metadata.plan."
 								: "No field matches."}
 						</CommandEmpty>
 						{fitting.length > 0 ? (
@@ -148,24 +170,12 @@ export function FieldPicker({
 									paramType ? `Fits: ${expected}` : `Same type: ${expected}`
 								}
 							>
-								{fitting.map((field) => (
-									<FieldOption
-										key={field.path}
-										field={field}
-										onSelect={() => pick(field.path)}
-									/>
-								))}
+								{fitting.map(option)}
 							</CommandGroup>
 						) : null}
 						{groupBy(others, (field) => field.source).map(([source, group]) => (
 							<CommandGroup key={source} heading={source}>
-								{group.map((field) => (
-									<FieldOption
-										key={field.path}
-										field={field}
-										onSelect={() => pick(field.path)}
-									/>
-								))}
+								{group.map(option)}
 							</CommandGroup>
 						))}
 					</CommandList>

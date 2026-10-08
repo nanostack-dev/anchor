@@ -2,11 +2,13 @@ import {
 	type WorkflowCondition,
 	WorkflowFieldType,
 	WorkflowOperator,
+	WorkflowParamType,
 } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { ConditionEditor } from "./ConditionEditor";
+import type { WorkflowResources } from "./useWorkflowResources";
 import { demoFields, worstCaseFields } from "./workflow-fixtures";
 import type { WorkflowVariable } from "./workflow-model";
 
@@ -17,15 +19,31 @@ const verified: WorkflowVariable = {
 	type: WorkflowFieldType.BOOLEAN,
 };
 
-const fields = [...demoFields, verified];
+const metadata: WorkflowVariable = {
+	path: "steps.product_user.metadata",
+	label: "metadata",
+	source: "Read product user",
+	type: WorkflowFieldType.JSON,
+};
+
+const role: WorkflowVariable = {
+	path: "steps.role.role_id",
+	label: "role_id",
+	source: "Create role",
+	type: WorkflowFieldType.ROLE,
+};
+
+const fields = [...demoFields, verified, metadata];
 
 function StatefulConditions({
 	initial,
 	variables,
+	resources,
 	width = 400,
 }: {
 	initial: WorkflowCondition[];
 	variables: WorkflowVariable[];
+	resources?: WorkflowResources;
 	width?: number;
 }) {
 	const [conditions, setConditions] = useState(initial);
@@ -35,6 +53,7 @@ function StatefulConditions({
 				label="Event condition"
 				conditions={conditions}
 				variables={variables}
+				resources={resources}
 				onChange={setConditions}
 				emptyLabel="Every event starts a run."
 			/>
@@ -193,16 +212,154 @@ export const WorstCase: Story = {
 			},
 		],
 	},
-	play: async ({ canvasElement }) => {
+	play: async ({ canvasElement, args }) => {
 		const canvas = within(canvasElement);
 		await expect(
 			canvas.getAllByRole("group", { name: /Event condition \d/ }),
 		).toHaveLength(6);
+		for (const [index, condition] of args.initial.entries()) {
+			await expect(
+				canvas.getByRole("combobox", {
+					name: `Event condition ${index + 1}: comparison`,
+				}),
+			).toHaveValue(condition.operator);
+		}
 		await expect(
 			canvas.getByRole("button", {
-				name: /^Event condition 3: value to test: steps\.gone/,
+				name: "Event condition 3: value to test: steps.gone.metadata.plan_with_a_very_long_name_x, not available here",
 			}),
 		).toBeVisible();
+		await expect(
+			canvas.getByText(
+				"JSON fields cannot use “does not equal”. Pick another comparison.",
+			),
+		).toBeVisible();
+	},
+};
+
+/**
+ * Saved before conditions were typed, or before the trigger changed: an
+ * operator its field no longer offers, a yes-or-no value in capitals and a
+ * field the trigger dropped. Each shows what is saved, flagged.
+ */
+export const ASavedConditionThatNoLongerFits: Story = {
+	args: {
+		initial: [
+			{
+				field: "event.data.organization_id",
+				operator: WorkflowOperator.CONTAINS,
+				value: "org_",
+			},
+			{
+				field: verified.path,
+				operator: WorkflowOperator.EQUALS,
+				value: "TRUE",
+			},
+			{
+				field: "event.data.removed_field",
+				operator: WorkflowOperator.EQUALS,
+				value: "x",
+			},
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const comparison = canvas.getByRole("combobox", {
+			name: "Event condition 1: comparison",
+		});
+		await expect(comparison).toHaveValue("contains");
+		await expect(
+			within(comparison).getByRole("option", {
+				name: "contains (does not fit)",
+			}),
+		).toBeInTheDocument();
+		await expect(
+			canvas.getByText(
+				"Organization ID fields cannot use “contains”. Pick another comparison.",
+			),
+		).toBeVisible();
+		await userEvent.selectOptions(comparison, "equals");
+		await expect(
+			within(comparison).queryByRole("option", { name: /does not fit/ }),
+		).toBeNull();
+		await expect(canvas.queryByText(/fields cannot use/)).toBeNull();
+
+		await expect(
+			canvas.getByRole("combobox", {
+				name: "Event condition 2: compared with",
+			}),
+		).toHaveDisplayValue("Yes");
+		await expect(
+			canvas.getByRole("button", {
+				name: "Event condition 3: value to test: event.data.removed_field, not available here",
+			}),
+		).toBeVisible();
+		await expect(
+			canvas.getByText(
+				"“event.data.removed_field” is not something this condition can read here. Pick a field.",
+			),
+		).toBeVisible();
+	},
+};
+
+/** Tab to the field, Enter, type and Enter: focus comes back to the field. */
+export const PickingAFieldByKeyboard: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+		await userEvent.tab();
+		const trigger = canvas.getByRole("button", {
+			name: /^Event condition 1: value to test/,
+		});
+		await expect(trigger).toHaveFocus();
+		await userEvent.keyboard("{Enter}");
+		const search = await body.findByPlaceholderText("Search or type a path");
+		await expect(search).toHaveFocus();
+		await expect(
+			await body.findByRole("option", { name: /^email\b/ }),
+		).toHaveAttribute("data-checked", "true");
+		await userEvent.type(search, "email_domain");
+		await userEvent.keyboard("{Enter}");
+		const picked = canvas.getByRole("button", {
+			name: "Event condition 1: value to test: email_domain from Read product user, Text",
+		});
+		await expect(picked).toHaveFocus();
+		await expect(
+			canvas.getByRole("status", { name: "Conditions" }),
+		).toHaveTextContent(
+			'[{"field":"steps.product_user.email_domain","operator":"ends_with","value":""}]',
+		);
+	},
+};
+
+/** A role field suggests the product's roles, except in a list. */
+export const ARoleIsSuggested: Story = {
+	args: {
+		variables: [...fields, role],
+		resources: {
+			[WorkflowParamType.ROLE]: [{ value: "role_admin", label: "Admin" }],
+		},
+		initial: [
+			{ field: role.path, operator: WorkflowOperator.EQUALS, value: "" },
+		],
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const value = canvas.getByRole("combobox", {
+			name: "Event condition 1: compared with",
+		});
+		const listId = value.getAttribute("list");
+		await expect(listId).toBeTruthy();
+		await expect(
+			canvasElement.ownerDocument.getElementById(listId ?? "")?.textContent,
+		).toContain("Admin");
+		await userEvent.selectOptions(
+			canvas.getByRole("combobox", { name: "Event condition 1: comparison" }),
+			"in",
+		);
+		await expect(
+			canvas.getByRole("textbox", { name: "Event condition 1: compared with" }),
+		).not.toHaveAttribute("list");
 	},
 };
 
