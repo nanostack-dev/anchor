@@ -19,7 +19,7 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 	"anchor/internal/security/encryption"
-	"anchor/internal/stripeprototype"
+	"anchor/internal/stripebilling/billing"
 )
 
 var (
@@ -37,7 +37,7 @@ type Provider struct {
 	cipher    *secrets.VersionedCipher
 	cipherErr error
 	backends  *stripeSDK.Backends
-	cliRunner stripeprototype.CommandRunner
+	cliRunner billing.CommandRunner
 }
 
 type NewProviderParams struct {
@@ -137,7 +137,7 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 		return err
 	}
 	if cfg.AuthMethod == string(AuthMethodLocalCLI) {
-		cli, cliErr := stripeprototype.NewCLI(cfg.AccountID, p.cliRunner)
+		cli, cliErr := billing.NewCLI(cfg.AccountID, p.cliRunner)
 		if cliErr != nil {
 			return errors.New("stripe CLI sandbox account is invalid")
 		}
@@ -159,21 +159,21 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 
 func (p *Provider) ResolveBillingConfig(
 	_ context.Context, instance integration.Instance,
-) (stripeprototype.ConnectionConfig, error) {
+) (billing.ConnectionConfig, error) {
 	cfg, err := p.resolveConfig(instance.ConfigJSON)
 	if err != nil {
-		return stripeprototype.ConnectionConfig{}, err
+		return billing.ConnectionConfig{}, err
 	}
 	if err = validateConfig(cfg); err != nil {
-		return stripeprototype.ConnectionConfig{}, err
+		return billing.ConnectionConfig{}, err
 	}
 	if cfg.AccountID == "" || cfg.ReturnURL == "" || cfg.WebhookSecret == "" ||
 		(cfg.AuthMethod == AuthMethodAPIKey && cfg.APIKey == "") {
-		return stripeprototype.ConnectionConfig{}, errors.New(
+		return billing.ConnectionConfig{}, errors.New(
 			"configure the Stripe sandbox account, authentication, webhook secret and return URL",
 		)
 	}
-	return stripeprototype.ConnectionConfig{
+	return billing.ConnectionConfig{
 		AuthMethod: string(cfg.AuthMethod),
 		APIKey:     cfg.APIKey, AccountID: cfg.AccountID, WebhookSecret: cfg.WebhookSecret, ReturnURL: cfg.ReturnURL,
 	}, nil

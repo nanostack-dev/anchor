@@ -10,7 +10,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
-	billing "anchor/internal/stripeprototype"
+	billing "anchor/internal/stripebilling/billing"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"

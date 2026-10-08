@@ -9,7 +9,7 @@ import (
 	"anchor/internal/domain/product"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/service"
-	billing "anchor/internal/stripeprototype"
+	billing "anchor/internal/stripebilling/billing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"

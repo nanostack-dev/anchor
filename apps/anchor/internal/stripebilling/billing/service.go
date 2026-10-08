@@ -1,4 +1,4 @@
-package stripeprototype
+package billing
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"maps"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/segmentio/ksuid"
+	"github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )
 
@@ -26,16 +26,17 @@ var (
 )
 
 const (
-	statusNone            = "none"
-	statusPending         = "pending"
-	statusError           = "error"
-	metadataInstallation  = "metadata[anchor_prototype_id]"
-	stripeCustomer        = "customer"
-	stripeTrue            = "true"
-	maximumVisibleEvents  = 100
-	maximumRetrySeconds   = 60
-	maximumRetryExponent  = 6
-	maximumPortalProducts = 10
+	statusNone                 = "none"
+	statusPending              = "pending"
+	statusError                = "error"
+	maximumVisibleEvents       = 100
+	maximumRetrySeconds        = 60
+	maximumRetryExponent       = 6
+	maximumPortalProducts      = 10
+	stripeInstallationMetadata = "anchor_prototype_id"
+	stripeProductMetadata      = "anchor_product_id"
+	stripeSubscriptionPageSize = 100
+	maximumStripeSubscriptions = 1000
 )
 
 type Config struct {
@@ -146,16 +147,19 @@ func (s *Service) CreatePrice(ctx context.Context, request CreatePriceRequest) (
 	if err != nil {
 		return Price{}, err
 	}
-	var remote stripeObject
-	err = s.stripe.Request(ctx, "post", "/v1/prices", map[string]string{
-		"product":                   productID,
-		"unit_amount":               strconv.FormatInt(request.Amount, 10),
-		"currency":                  string(request.Currency),
-		"recurring[interval]":       string(request.Interval),
-		"nickname":                  request.Name,
-		"metadata[anchor_price_id]": intentID,
-		metadataInstallation:        stored.InstallationID,
-	}, stored.InstallationID+"-price-"+intentID, &remote)
+	remote, err := s.stripe.Client().V1Prices.Create(ctx, &stripe.PriceCreateParams{
+		IdempotencyKey: stripe.String(stored.InstallationID + "-price-" + intentID),
+		Product: stripe.String(
+			productID,
+		),
+		UnitAmount: new(request.Amount),
+		Currency:   stripe.String(string(request.Currency)),
+		Recurring: &stripe.PriceCreateRecurringParams{
+			Interval: stripe.String(string(request.Interval)),
+		},
+		Nickname: stripe.String(request.Name),
+		Metadata: map[string]string{"anchor_price_id": intentID, stripeInstallationMetadata: stored.InstallationID},
+	})
 	if err != nil {
 		return Price{}, err
 	}
@@ -193,13 +197,10 @@ func (s *Service) ArchivePrice(ctx context.Context, priceID string) (Price, erro
 		}
 		return Price{}, err
 	}
-	if err = s.stripe.Request(
+	if _, err = s.stripe.Client().V1Prices.Update(
 		ctx,
-		"post",
-		"/v1/prices/"+price.StripePriceID,
-		map[string]string{"active": "false"},
-		"",
-		nil,
+		price.StripePriceID,
+		&stripe.PriceUpdateParams{Active: new(false)},
 	); err != nil {
 		return Price{}, err
 	}
@@ -283,31 +284,32 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 	if err = s.saveOrganization(organization); err != nil {
 		return URLResponse{}, err
 	}
-	params := map[string]string{
-		"mode":                                  "subscription",
-		stripeCustomer:                          organization.CustomerID,
-		"line_items[0][price]":                  price.StripePriceID,
-		"line_items[0][quantity]":               "1",
-		"client_reference_id":                   organizationID,
-		"success_url":                           s.organizationReturnURL(organizationID) + "?checkout=success",
-		"cancel_url":                            s.organizationReturnURL(organizationID) + "?checkout=canceled",
-		"subscription_data[billing_mode][type]": "classic",
-		"subscription_data[metadata][anchor_prototype_id]":    stored.InstallationID,
-		"subscription_data[metadata][anchor_organization_id]": organizationID,
-		"subscription_data[metadata][anchor_product_id]":      s.config.ProductID,
+	params := &stripe.CheckoutSessionCreateParams{
+		IdempotencyKey: stripe.String(organization.CheckoutIntent),
+		Mode:           stripe.String("subscription"),
+		Customer:       stripe.String(organization.CustomerID),
+		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
+			{Price: stripe.String(price.StripePriceID), Quantity: new(int64(1))},
+		},
+		ClientReferenceID: stripe.String(
+			organizationID,
+		),
+		SuccessURL: stripe.String(s.organizationReturnURL(organizationID) + "?checkout=success"),
+		CancelURL:  stripe.String(s.organizationReturnURL(organizationID) + "?checkout=canceled"),
+		SubscriptionData: &stripe.CheckoutSessionCreateSubscriptionDataParams{
+			BillingMode: &stripe.CheckoutSessionCreateSubscriptionDataBillingModeParams{Type: stripe.String("classic")},
+			Metadata: map[string]string{
+				stripeInstallationMetadata: stored.InstallationID,
+				"anchor_organization_id":   organizationID,
+				stripeProductMetadata:      s.config.ProductID,
+			},
+		},
 	}
 	if request.TrialDays > 0 {
-		params["subscription_data[trial_period_days]"] = strconv.Itoa(request.TrialDays)
+		params.SubscriptionData.TrialPeriodDays = new(int64(request.TrialDays))
 	}
-	var session stripeObject
-	if err = s.stripe.Request(
-		ctx,
-		"post",
-		"/v1/checkout/sessions",
-		params,
-		organization.CheckoutIntent,
-		&session,
-	); err != nil {
+	session, err := s.stripe.Client().V1CheckoutSessions.Create(ctx, params)
+	if err != nil {
 		return URLResponse{}, err
 	}
 	organization.CheckoutID = session.ID
@@ -339,11 +341,15 @@ func (s *Service) ensureCustomer(ctx context.Context, organizationID string) (or
 	if err = s.saveOrganization(organization); err != nil {
 		return organizationRecord{}, err
 	}
-	var customer stripeObject
-	err = s.stripe.Request(ctx, "post", "/v1/customers", map[string]string{
-		"name": organization.CustomerName, "metadata[anchor_organization_id]": organizationID,
-		"metadata[anchor_product_id]": s.config.ProductID, metadataInstallation: stored.InstallationID,
-	}, organization.CustomerIntent, &customer)
+	customer, err := s.stripe.Client().V1Customers.Create(ctx, &stripe.CustomerCreateParams{
+		IdempotencyKey: stripe.String(organization.CustomerIntent),
+		Name:           stripe.String(organization.CustomerName),
+		Metadata: map[string]string{
+			"anchor_organization_id":   organizationID,
+			stripeProductMetadata:      s.config.ProductID,
+			stripeInstallationMetadata: stored.InstallationID,
+		},
+	})
 	if err != nil {
 		return organizationRecord{}, err
 	}
@@ -406,20 +412,22 @@ func (s *Service) syncLocked(ctx context.Context, organizationID string) (Organi
 		}
 		return organization.Organization, nil
 	}
-	if len(current.Items.Data) != 1 {
-		return Organization{}, errors.New("the prototype supports one recurring price per organization")
+	if !validSubscriptionItem(current) {
+		return Organization{}, errors.New("billing supports one recurring price per organization")
 	}
 	price, err := functional.Slice(slices.Collect(maps.Values(stored.Prices))).
-		FindFirst(func(price Price) bool { return price.StripePriceID == current.Items.Data[0].Price.ID }).
+		FindFirst(func(price Price) bool { return price.StripePriceID == subscriptionItems(current)[0].Price.ID }).
 		ToResult(errors.New("subscription price is not mapped to an Anchor license template")).
 		Value()
 	if err != nil {
 		return Organization{}, err
 	}
-	organization.SubscriptionID, organization.Status, organization.PriceID = current.ID, current.Status, price.ID
+	organization.SubscriptionID, organization.Status, organization.PriceID = current.ID, string(
+		current.Status,
+	), price.ID
 	organization.CancelAtPeriodEnd = current.CancelAtPeriodEnd || current.CancelAt > 0
-	organization.PendingUpdate = len(current.PendingUpdate) > 0 && string(current.PendingUpdate) != "null"
-	if end := current.Items.Data[0].CurrentPeriodEnd; end > 0 {
+	organization.PendingUpdate = current.PendingUpdate != nil
+	if end := subscriptionItems(current)[0].CurrentPeriodEnd; end > 0 {
 		value := time.Unix(end, 0).UTC()
 		organization.CurrentPeriodEnd = &value
 	}
@@ -429,11 +437,14 @@ func (s *Service) syncLocked(ctx context.Context, organizationID string) (Organi
 	}
 	targetTemplate := ""
 	switch current.Status {
-	case "active", "trialing":
+	case stripe.SubscriptionStatusActive, stripe.SubscriptionStatusTrialing:
 		targetTemplate = price.TemplateID
-	case "canceled", "unpaid", "paused", "incomplete_expired":
+	case stripe.SubscriptionStatusCanceled,
+		stripe.SubscriptionStatusUnpaid,
+		stripe.SubscriptionStatusPaused,
+		stripe.SubscriptionStatusIncompleteExpired:
 		targetTemplate = stored.Settings.FallbackTemplateID
-	case "past_due", "incomplete":
+	case stripe.SubscriptionStatusPastDue, stripe.SubscriptionStatusIncomplete:
 	default:
 		return Organization{}, fmt.Errorf("unknown Stripe subscription status %q", current.Status)
 	}
@@ -488,24 +499,25 @@ func (s *Service) ChangeSubscription(
 	if organization.SubscriptionID == "" || terminal(organization.Status) {
 		return Organization{}, fmt.Errorf("%w: start checkout for a new subscription", ErrConflict)
 	}
-	var current subscription
-	if err = s.stripe.Request(
-		ctx,
-		"get",
-		"/v1/subscriptions/"+organization.SubscriptionID,
-		nil,
-		"",
-		&current,
-	); err != nil {
+	current, err := s.stripe.Client().V1Subscriptions.Retrieve(ctx, organization.SubscriptionID, nil)
+	if err != nil {
 		return Organization{}, err
 	}
-	if len(current.Items.Data) != 1 {
+	if !validSubscriptionItem(current) {
 		return Organization{}, ErrConflict
 	}
-	if err = s.stripe.Request(ctx, "post", "/v1/subscriptions/"+organization.SubscriptionID, map[string]string{
-		"items[0][id]": current.Items.Data[0].ID, "items[0][price]": price.StripePriceID,
-		"payment_behavior": "pending_if_incomplete", "proration_behavior": "always_invoice",
-	}, ksuid.New().String(), nil); err != nil {
+	if _, err = s.stripe.Client().V1Subscriptions.Update(
+		ctx,
+		organization.SubscriptionID,
+		&stripe.SubscriptionUpdateParams{
+			IdempotencyKey: stripe.String(ksuid.New().String()),
+			Items: []*stripe.SubscriptionUpdateItemParams{
+				{ID: stripe.String(subscriptionItems(current)[0].ID), Price: stripe.String(price.StripePriceID)},
+			},
+			PaymentBehavior:   stripe.String("pending_if_incomplete"),
+			ProrationBehavior: stripe.String("always_invoice"),
+		},
+	); err != nil {
 		return Organization{}, err
 	}
 	return s.syncLocked(ctx, organizationID)
@@ -524,8 +536,8 @@ func (s *Service) SetCancellation(ctx context.Context, organizationID string, ca
 	if organization.SubscriptionID == "" || terminal(organization.Status) {
 		return Organization{}, fmt.Errorf("%w: no current subscription to change", ErrConflict)
 	}
-	if err = s.stripe.Request(ctx, "post", "/v1/subscriptions/"+organization.SubscriptionID,
-		map[string]string{"cancel_at_period_end": strconv.FormatBool(cancel)}, "", nil); err != nil {
+	if _, err = s.stripe.Client().V1Subscriptions.Update(ctx, organization.SubscriptionID,
+		&stripe.SubscriptionUpdateParams{CancelAtPeriodEnd: new(cancel)}); err != nil {
 		return Organization{}, err
 	}
 	return s.syncLocked(ctx, organizationID)
@@ -560,46 +572,64 @@ func (s *Service) Portal(ctx context.Context, organizationID string) (URLRespons
 	) > maximumPortalProducts {
 		prices = []Price{}
 	}
-	params := map[string]string{
-		"business_profile[headline]":                    "Manage your Anchor organization subscription",
-		"default_return_url":                            s.config.ReturnURL,
-		"features[invoice_history][enabled]":            stripeTrue,
-		"features[payment_method_update][enabled]":      stripeTrue,
-		"features[customer_update][enabled]":            stripeTrue,
-		"features[customer_update][allowed_updates][0]": "email",
-		"features[subscription_cancel][enabled]":        stripeTrue,
-		"features[subscription_cancel][mode]":           "at_period_end",
-		"features[subscription_update][enabled]":        strconv.FormatBool(len(prices) > 0),
+	update := &stripe.BillingPortalConfigurationCreateFeaturesSubscriptionUpdateParams{
+		Enabled: new(len(prices) > 0),
 	}
 	if len(prices) > 0 {
-		params["features[subscription_update][default_allowed_updates][0]"] = "price"
-		params["features[subscription_update][proration_behavior]"] = "always_invoice"
+		update.DefaultAllowedUpdates = []*string{stripe.String("price")}
+		update.ProrationBehavior = stripe.String("always_invoice")
 		productIDs := prices.Map(func(price Price) string { return price.StripeProductID }).
 			UniqueBy(func(id string) string { return id })
-		for i, productID := range productIDs {
-			prefix := fmt.Sprintf("features[subscription_update][products][%d]", i)
-			params[prefix+"[product]"] = productID
+		for _, productID := range productIDs {
 			group := prices.Filter(func(price Price) bool { return price.StripeProductID == productID })
-			for j, price := range group {
-				params[fmt.Sprintf("%s[prices][%d]", prefix, j)] = price.StripePriceID
-			}
+			update.Products = append(
+				update.Products,
+				&stripe.BillingPortalConfigurationCreateFeaturesSubscriptionUpdateProductParams{
+					Product: stripe.String(
+						productID,
+					),
+					Prices: group.Map(func(price Price) *string { return stripe.String(price.StripePriceID) }),
+				},
+			)
 		}
 	}
-	var configuration, session stripeObject
-	if err = s.stripe.Request(
+	configuration, err := s.stripe.Client().V1BillingPortalConfigurations.Create(
 		ctx,
-		"post",
-		"/v1/billing_portal/configurations",
-		params,
-		"",
-		&configuration,
-	); err != nil {
+		&stripe.BillingPortalConfigurationCreateParams{
+			BusinessProfile: &stripe.BillingPortalConfigurationCreateBusinessProfileParams{
+				Headline: stripe.String("Manage your Anchor organization subscription"),
+			},
+			DefaultReturnURL: stripe.String(s.config.ReturnURL),
+			Features: &stripe.BillingPortalConfigurationCreateFeaturesParams{
+				InvoiceHistory: &stripe.BillingPortalConfigurationCreateFeaturesInvoiceHistoryParams{
+					Enabled: new(true),
+				},
+				PaymentMethodUpdate: &stripe.BillingPortalConfigurationCreateFeaturesPaymentMethodUpdateParams{
+					Enabled: new(true),
+				},
+				CustomerUpdate: &stripe.BillingPortalConfigurationCreateFeaturesCustomerUpdateParams{
+					Enabled:        new(true),
+					AllowedUpdates: []*string{stripe.String("email")},
+				},
+				SubscriptionCancel: &stripe.BillingPortalConfigurationCreateFeaturesSubscriptionCancelParams{
+					Enabled: new(true),
+					Mode:    stripe.String("at_period_end"),
+				},
+				SubscriptionUpdate: update,
+			},
+		},
+	)
+	if err != nil {
 		return URLResponse{}, err
 	}
-	if err = s.stripe.Request(ctx, "post", "/v1/billing_portal/sessions", map[string]string{
-		stripeCustomer: organization.CustomerID, "configuration": configuration.ID,
-		"return_url": s.organizationReturnURL(organizationID),
-	}, "", &session); err != nil {
+	session, err := s.stripe.Client().V1BillingPortalSessions.Create(ctx, &stripe.BillingPortalSessionCreateParams{
+		Customer: stripe.String(
+			organization.CustomerID,
+		),
+		Configuration: stripe.String(configuration.ID),
+		ReturnURL:     stripe.String(s.organizationReturnURL(organizationID)),
+	})
+	if err != nil {
 		return URLResponse{}, err
 	}
 	return URLResponse{URL: session.URL}, nil
@@ -785,16 +815,8 @@ func (s *Service) recoverCheckout(
 	organization *organizationRecord,
 	request CheckoutRequest,
 ) (functional.Option[URLResponse], error) {
-	var err error
-	var existing checkoutSession
-	if err = s.stripe.Request(
-		ctx,
-		"get",
-		"/v1/checkout/sessions/"+organization.CheckoutID,
-		nil,
-		"",
-		&existing,
-	); err != nil {
+	existing, err := s.stripe.Client().V1CheckoutSessions.Retrieve(ctx, organization.CheckoutID, nil)
+	if err != nil {
 		return functional.None[URLResponse](), err
 	}
 	if existing.Status == "complete" {
@@ -806,14 +828,7 @@ func (s *Service) recoverCheckout(
 		if organization.CheckoutPrice == request.PriceID && organization.CheckoutTrial == request.TrialDays {
 			return functional.Some(URLResponse{URL: existing.URL}), nil
 		}
-		if err = s.stripe.Request(
-			ctx,
-			"post",
-			"/v1/checkout/sessions/"+organization.CheckoutID+"/expire",
-			nil,
-			"",
-			nil,
-		); err != nil {
+		if _, err = s.stripe.Client().V1CheckoutSessions.Expire(ctx, organization.CheckoutID, nil); err != nil {
 			return functional.None[URLResponse](), err
 		}
 	}
@@ -824,7 +839,7 @@ func (s *Service) recoverCheckout(
 func (s *Service) retireCompletedCheckout(
 	ctx context.Context,
 	organization *organizationRecord,
-	session checkoutSession,
+	session *stripe.CheckoutSession,
 ) error {
 	if _, err := s.syncLocked(ctx, organization.ID); err != nil {
 		return err
@@ -834,21 +849,24 @@ func (s *Service) retireCompletedCheckout(
 		return err
 	}
 	current := stored.Organizations[organization.ID]
-	if session.Live || session.ID != current.CheckoutID || string(session.Customer) != current.CustomerID ||
-		session.ClientReferenceID != current.ID || session.Subscription == "" ||
-		string(session.Subscription) != current.SubscriptionID || !terminal(current.Status) {
+	if session.Livemode || session.ID != current.CheckoutID ||
+		(session.Customer == nil || session.Customer.ID != current.CustomerID) ||
+		session.ClientReferenceID != current.ID ||
+		session.Subscription == nil ||
+		session.Subscription.ID != current.SubscriptionID ||
+		!terminal(current.Status) {
 		return fmt.Errorf(
 			"%w: completed checkout needs a reconciled terminal subscription before replacement",
 			ErrConflict,
 		)
 	}
-	var previous subscription
-	if err = s.stripe.Request(ctx, "get", "/v1/subscriptions/"+current.SubscriptionID, nil, "", &previous); err != nil {
+	previous, err := s.stripe.Client().V1Subscriptions.Retrieve(ctx, current.SubscriptionID, nil)
+	if err != nil {
 		return err
 	}
-	if previous.ID != current.SubscriptionID || !terminal(previous.Status) || previous.Live ||
-		previous.Customer != current.CustomerID || previous.Metadata["anchor_prototype_id"] != stored.InstallationID ||
-		previous.Metadata["anchor_organization_id"] != current.ID || previous.Metadata["anchor_product_id"] != s.config.ProductID {
+	if previous.ID != current.SubscriptionID || !terminal(string(previous.Status)) || previous.Livemode ||
+		(previous.Customer == nil || previous.Customer.ID != current.CustomerID) || previous.Metadata[stripeInstallationMetadata] != stored.InstallationID ||
+		previous.Metadata["anchor_organization_id"] != current.ID || previous.Metadata[stripeProductMetadata] != s.config.ProductID {
 		return fmt.Errorf(
 			"%w: completed checkout subscription ownership or terminal state could not be verified",
 			ErrConflict,
@@ -863,31 +881,38 @@ func (s *Service) ownedSubscriptions(
 	ctx context.Context,
 	organization organizationRecord,
 	stored StoredState,
-) (functional.Seq[subscription], error) {
-	var err error
-	var subscriptions []subscription
-	params := map[string]string{stripeCustomer: organization.CustomerID, "status": "all", "limit": "100"}
+) (functional.Seq[*stripe.Subscription], error) {
+	subscriptions := []*stripe.Subscription{}
+	params := &stripe.SubscriptionListParams{
+		Limit:    new(int64(stripeSubscriptionPageSize)),
+		Customer: stripe.String(organization.CustomerID),
+		Status:   stripe.String("all"),
+	}
 	for {
-		var page struct {
-			Data    []subscription `json:"data"`
-			HasMore bool           `json:"has_more"`
-		}
-		if err = s.stripe.Request(ctx, "get", "/v1/subscriptions", params, "", &page); err != nil {
+		page := s.stripe.Client().V1Subscriptions.List(ctx, params)
+		if err := page.Err(); err != nil {
 			return nil, err
 		}
-		subscriptions = append(subscriptions, page.Data...)
-		if !page.HasMore {
-			break
-		}
-		if len(page.Data) == 0 || len(subscriptions) > 1000 {
+		data := page.Data()
+		subscriptions = append(subscriptions, data...)
+		if len(subscriptions) > maximumStripeSubscriptions {
 			return nil, errors.New("unexpected Stripe subscription pagination")
 		}
-		params["starting_after"] = page.Data[len(page.Data)-1].ID
+		if !page.Meta().HasMore {
+			break
+		}
+		if len(data) == 0 || data[len(data)-1] == nil || data[len(data)-1].ID == "" {
+			return nil, errors.New("unexpected Stripe subscription pagination")
+		}
+		params.StartingAfter = stripe.String(data[len(data)-1].ID)
 	}
-	return functional.Slice(subscriptions).Filter(func(subscription subscription) bool {
-		return subscription.Customer == organization.CustomerID && !subscription.Live &&
-			subscription.Metadata["anchor_prototype_id"] == stored.InstallationID &&
-			subscription.Metadata["anchor_organization_id"] == organization.ID && subscription.Metadata["anchor_product_id"] == s.config.ProductID
+	return functional.Slice(subscriptions).Filter(func(subscription *stripe.Subscription) bool {
+		return subscription != nil && subscription.Customer != nil &&
+			subscription.Customer.ID == organization.CustomerID &&
+			!subscription.Livemode &&
+			subscription.Metadata[stripeInstallationMetadata] == stored.InstallationID &&
+			subscription.Metadata["anchor_organization_id"] == organization.ID &&
+			subscription.Metadata[stripeProductMetadata] == s.config.ProductID
 	}), nil
 }
 
@@ -915,11 +940,15 @@ func (s *Service) ensureStripeProduct(
 			return "", err
 		}
 	}
-	var product stripeObject
-	err := s.stripe.Request(ctx, "post", "/v1/products", map[string]string{
-		"name": stored.ProductNames[request.TemplateID], "metadata[anchor_product_id]": s.config.ProductID,
-		"metadata[anchor_template_id]": request.TemplateID, metadataInstallation: stored.InstallationID,
-	}, stored.InstallationID+"-product-"+request.TemplateID, &product)
+	product, err := s.stripe.Client().V1Products.Create(ctx, &stripe.ProductCreateParams{
+		IdempotencyKey: stripe.String(stored.InstallationID + "-product-" + request.TemplateID),
+		Name:           stripe.String(stored.ProductNames[request.TemplateID]),
+		Metadata: map[string]string{
+			stripeProductMetadata:      s.config.ProductID,
+			"anchor_template_id":       request.TemplateID,
+			stripeInstallationMetadata: stored.InstallationID,
+		},
+	})
 	if err != nil {
 		return "", err
 	}
@@ -932,10 +961,10 @@ func (s *Service) ensureStripeProduct(
 	return product.ID, nil
 }
 
-func canonicalSubscription(owned functional.Seq[subscription], savedID string) (subscription, error) {
-	active := owned.Filter(func(value subscription) bool { return !terminal(value.Status) })
+func canonicalSubscription(owned functional.Seq[*stripe.Subscription], savedID string) (*stripe.Subscription, error) {
+	active := owned.Filter(func(value *stripe.Subscription) bool { return !terminal(string(value.Status)) })
 	if len(active) > 1 {
-		return subscription{}, fmt.Errorf(
+		return &stripe.Subscription{}, fmt.Errorf(
 			"%w: multiple current subscriptions need manual resolution in Stripe",
 			ErrConflict,
 		)
@@ -944,10 +973,12 @@ func canonicalSubscription(owned functional.Seq[subscription], savedID string) (
 		return active[0], nil
 	}
 	if savedID != "" {
-		return owned.FindFirst(func(value subscription) bool { return value.ID == savedID }).OrElse(subscription{}), nil
+		return owned.FindFirst(func(value *stripe.Subscription) bool { return value.ID == savedID }).
+				OrElse(&stripe.Subscription{}),
+			nil
 	}
 	// A terminal subscription may be the first canonical state observed after downtime.
-	return owned.FoldLeft(subscription{}, func(latest, candidate subscription) subscription {
+	return owned.FoldLeft(&stripe.Subscription{}, func(latest, candidate *stripe.Subscription) *stripe.Subscription {
 		if candidate.Created > latest.Created || latest.ID == "" {
 			return candidate
 		}
@@ -961,3 +992,15 @@ func (s *Service) organizationReturnURL(organizationID string) string {
 
 // QueueReconciliation records missed-event repair as durable work in the state store.
 func (s *Service) QueueReconciliation() error { return s.queueLinkedOrganizations() }
+
+func subscriptionItems(subscription *stripe.Subscription) []*stripe.SubscriptionItem {
+	if subscription == nil || subscription.Items == nil {
+		return nil
+	}
+	return subscription.Items.Data
+}
+
+func validSubscriptionItem(subscription *stripe.Subscription) bool {
+	items := subscriptionItems(subscription)
+	return len(items) == 1 && items[0] != nil && items[0].ID != "" && items[0].Price != nil && items[0].Price.ID != ""
+}

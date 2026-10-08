@@ -28,7 +28,7 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
-	"anchor/internal/stripeprototype"
+	"anchor/internal/stripebilling/billing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -2639,10 +2639,10 @@ type SmtpIntegrationPublicConfigEncryption string
 type SortDirection = search.SortDirection
 
 // StripeBillingAccount defines model for StripeBillingAccount.
-type StripeBillingAccount = stripeprototype.Account
+type StripeBillingAccount = billing.Account
 
 // StripeBillingBillingEvent defines model for StripeBillingBillingEvent.
-type StripeBillingBillingEvent = stripeprototype.BillingEvent
+type StripeBillingBillingEvent = billing.BillingEvent
 
 // StripeBillingCancellationRequest defines model for StripeBillingCancellationRequest.
 type StripeBillingCancellationRequest struct {
@@ -2650,43 +2650,43 @@ type StripeBillingCancellationRequest struct {
 }
 
 // StripeBillingCheckoutRequest defines model for StripeBillingCheckoutRequest.
-type StripeBillingCheckoutRequest = stripeprototype.CheckoutRequest
+type StripeBillingCheckoutRequest = billing.CheckoutRequest
 
 // StripeBillingCreatePriceRequest defines model for StripeBillingCreatePriceRequest.
-type StripeBillingCreatePriceRequest = stripeprototype.CreatePriceRequest
+type StripeBillingCreatePriceRequest = billing.CreatePriceRequest
 
 // StripeBillingIdentifier defines model for StripeBillingIdentifier.
 type StripeBillingIdentifier = string
 
 // StripeBillingOrganization defines model for StripeBillingOrganization.
-type StripeBillingOrganization = stripeprototype.Organization
+type StripeBillingOrganization = billing.Organization
 
 // StripeBillingPrice defines model for StripeBillingPrice.
-type StripeBillingPrice = stripeprototype.Price
+type StripeBillingPrice = billing.Price
 
 // StripeBillingProduct defines model for StripeBillingProduct.
-type StripeBillingProduct = stripeprototype.Product
+type StripeBillingProduct = billing.Product
 
 // StripeBillingSettings defines model for StripeBillingSettings.
-type StripeBillingSettings = stripeprototype.Settings
+type StripeBillingSettings = billing.Settings
 
 // StripeBillingState defines model for StripeBillingState.
-type StripeBillingState = stripeprototype.State
+type StripeBillingState = billing.State
 
 // StripeBillingSubscriptionRequest defines model for StripeBillingSubscriptionRequest.
-type StripeBillingSubscriptionRequest = stripeprototype.SubscriptionRequest
+type StripeBillingSubscriptionRequest = billing.SubscriptionRequest
 
 // StripeBillingTemplate defines model for StripeBillingTemplate.
-type StripeBillingTemplate = stripeprototype.Template
+type StripeBillingTemplate = billing.Template
 
 // StripeBillingURLResponse defines model for StripeBillingURLResponse.
-type StripeBillingURLResponse = stripeprototype.URLResponse
+type StripeBillingURLResponse = billing.URLResponse
 
 // StripeBillingUpdateSettingsRequest defines model for StripeBillingUpdateSettingsRequest.
-type StripeBillingUpdateSettingsRequest = stripeprototype.UpdateSettingsRequest
+type StripeBillingUpdateSettingsRequest = billing.UpdateSettingsRequest
 
 // StripeBillingWebhookResponse defines model for StripeBillingWebhookResponse.
-type StripeBillingWebhookResponse = stripeprototype.WebhookResponse
+type StripeBillingWebhookResponse = billing.WebhookResponse
 
 // StripeIntegrationAuthMethod API_KEY uses an encrypted Stripe test key. LOCAL_CLI uses the current authorized Stripe CLI sandbox login and requires a loopback HTTP return URL.
 type StripeIntegrationAuthMethod string

@@ -1,4 +1,4 @@
-package: stripeprototype
+package: billing
 output: contract.gen.go
 generate:
   models: true

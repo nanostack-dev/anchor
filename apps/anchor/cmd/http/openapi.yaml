@@ -261,9 +261,9 @@ components:
       maxLength: 128
       pattern: '^[A-Za-z0-9_-]+$'
     StripeBillingAccount:
-      x-go-type: stripeprototype.Account
+      x-go-type: billing.Account
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, name, mode]
@@ -276,9 +276,9 @@ components:
           type: string
           enum: [sandbox]
     StripeBillingProduct:
-      x-go-type: stripeprototype.Product
+      x-go-type: billing.Product
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, name]
@@ -288,9 +288,9 @@ components:
         name:
           type: string
     StripeBillingTemplate:
-      x-go-type: stripeprototype.Template
+      x-go-type: billing.Template
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, name, values, archived]
@@ -305,9 +305,9 @@ components:
         archived:
           type: boolean
     StripeBillingPrice:
-      x-go-type: stripeprototype.Price
+      x-go-type: billing.Price
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, name, template_id, amount, currency, interval, stripe_product_id, stripe_price_id, active]
@@ -337,9 +337,9 @@ components:
         active:
           type: boolean
     StripeBillingOrganization:
-      x-go-type: stripeprototype.Organization
+      x-go-type: billing.Organization
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, name, template_id, license_values, customer_id, subscription_id, price_id, status, cancel_at_period_end, current_period_end, sync_state, last_synced_at, sync_error, pending_update]
@@ -376,9 +376,9 @@ components:
         pending_update:
           type: boolean
     StripeBillingSettings:
-      x-go-type: stripeprototype.Settings
+      x-go-type: billing.Settings
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [fallback_template_id]
@@ -386,9 +386,9 @@ components:
         fallback_template_id:
           type: string
     StripeBillingBillingEvent:
-      x-go-type: stripeprototype.BillingEvent
+      x-go-type: billing.BillingEvent
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [id, type, organization_id, status, received_at, last_error]
@@ -407,9 +407,9 @@ components:
         last_error:
           type: string
     StripeBillingState:
-      x-go-type: stripeprototype.State
+      x-go-type: billing.State
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [account, product, templates, prices, organizations, settings, events]
@@ -437,9 +437,9 @@ components:
           items:
             $ref: '#/components/schemas/StripeBillingBillingEvent'
     StripeBillingCreatePriceRequest:
-      x-go-type: stripeprototype.CreatePriceRequest
+      x-go-type: billing.CreatePriceRequest
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [name, template_id, amount, currency, interval]
@@ -462,9 +462,9 @@ components:
           type: string
           enum: [month, year]
     StripeBillingCheckoutRequest:
-      x-go-type: stripeprototype.CheckoutRequest
+      x-go-type: billing.CheckoutRequest
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [price_id]
@@ -476,9 +476,9 @@ components:
           minimum: 0
           maximum: 30
     StripeBillingSubscriptionRequest:
-      x-go-type: stripeprototype.SubscriptionRequest
+      x-go-type: billing.SubscriptionRequest
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [price_id]
@@ -486,9 +486,9 @@ components:
         price_id:
           $ref: '#/components/schemas/StripeBillingIdentifier'
     StripeBillingUpdateSettingsRequest:
-      x-go-type: stripeprototype.UpdateSettingsRequest
+      x-go-type: billing.UpdateSettingsRequest
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [fallback_template_id]
@@ -496,9 +496,9 @@ components:
         fallback_template_id:
           $ref: '#/components/schemas/StripeBillingIdentifier'
     StripeBillingURLResponse:
-      x-go-type: stripeprototype.URLResponse
+      x-go-type: billing.URLResponse
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [url]
@@ -507,9 +507,9 @@ components:
           type: string
           format: uri
     StripeBillingWebhookResponse:
-      x-go-type: stripeprototype.WebhookResponse
+      x-go-type: billing.WebhookResponse
       x-go-type-import:
-        path: anchor/internal/stripeprototype
+        path: anchor/internal/stripebilling/billing
       type: object
       additionalProperties: false
       required: [received]

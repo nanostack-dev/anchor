@@ -1,4 +1,4 @@
-package stripeprototype
+package billing
 
 import (
 	"context"

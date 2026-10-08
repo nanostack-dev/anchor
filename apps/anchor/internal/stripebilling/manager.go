@@ -13,7 +13,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
 	"anchor/internal/service"
-	billing "anchor/internal/stripeprototype"
+	billing "anchor/internal/stripebilling/billing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -200,7 +200,7 @@ func (m *Manager) serviceForInstance(
 	if config.AuthMethod == "LOCAL_CLI" {
 		stripe, err = billing.NewCLI(config.AccountID, nil)
 	} else {
-		stripe, err = billing.NewHTTPGateway(config, nil)
+		stripe, err = billing.NewSDKGateway(config, nil)
 	}
 	if err != nil {
 		return nil, err

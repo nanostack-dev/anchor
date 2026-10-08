@@ -19,7 +19,7 @@ import (
 	"anchor/internal/domain/integration"
 	stripeprovider "anchor/internal/integration/provider/stripe"
 	"anchor/internal/stripebilling"
-	"anchor/internal/stripeprototype"
+	"anchor/internal/stripebilling/billing"
 )
 
 func seedActiveStripeWebhookInstance(t *testing.T, tc webhookSecretTestCtx) integration.Instance {
@@ -98,7 +98,7 @@ func TestStripeWebhookUsesRawSignedBodyAndRejectsLiveOrForeignAccount(t *testing
 	}
 	events := storedStripeEvents(t, instance)
 	require.Len(t, events, 1)
-	var event stripeprototype.BillingEvent
+	var event billing.BillingEvent
 	require.NoError(t, json.Unmarshal(events["evt_raw_signed"], &event))
 	require.Equal(t, "ignored", event.Status)
 	require.Empty(t, event.OrganizationID)
@@ -107,7 +107,7 @@ func TestStripeWebhookUsesRawSignedBodyAndRejectsLiveOrForeignAccount(t *testing
 func seedLinkedStripeState(t *testing.T, tc webhookSecretTestCtx, instance integration.Instance) string {
 	t.Helper()
 	organization := tc.product.CreateOrganization(t, "Webhook transaction fixture", nil)
-	body, err := json.Marshal(stripeprototype.NewStoredState(stripeFixtureAccount, tc.product.ProductID))
+	body, err := json.Marshal(billing.NewStoredState(stripeFixtureAccount, tc.product.ProductID))
 	require.NoError(t, err)
 	var state map[string]any
 	require.NoError(t, json.Unmarshal(body, &state))
@@ -195,7 +195,7 @@ func TestStripeWebhookCommitsStateAndDurableQueueTogether(t *testing.T) {
 	}
 	events := storedStripeEvents(t, instance)
 	require.Len(t, events, 1)
-	var event stripeprototype.BillingEvent
+	var event billing.BillingEvent
 	require.NoError(t, json.Unmarshal(events["evt_transactional"], &event))
 	require.Equal(t, "pending", event.Status)
 	require.Equal(t, organizationID, event.OrganizationID)

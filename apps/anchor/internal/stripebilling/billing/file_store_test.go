@@ -1,5 +1,5 @@
 //nolint:testpackage // The durable recovery fixtures need direct access to private persisted event and organization records.
-package stripeprototype
+package billing
 
 import (
 	"encoding/json"

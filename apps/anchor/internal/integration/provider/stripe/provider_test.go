@@ -19,7 +19,7 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
-	"anchor/internal/stripeprototype"
+	"anchor/internal/stripebilling/billing"
 )
 
 const (
@@ -187,7 +187,7 @@ func TestConnectionVerificationPinsSandboxAccountAndHidesRemoteErrors(t *testing
 				assert.Equal(t, "/v1/account", r.URL.Path)
 				assert.Equal(t, http.MethodGet, r.Method)
 				assert.Equal(t, testAccount, r.Header.Get("Stripe-Account"))
-				assert.Equal(t, stripeprototype.StripeVersion, r.Header.Get("Stripe-Version"))
+				assert.Equal(t, billing.StripeVersion, r.Header.Get("Stripe-Version"))
 				assert.Contains(t, r.Header.Get("Authorization"), testAPIKey)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(test.status)

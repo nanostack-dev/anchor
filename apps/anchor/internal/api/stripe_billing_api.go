@@ -7,7 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 	"anchor/internal/security"
-	billing "anchor/internal/stripeprototype"
+	billing "anchor/internal/stripebilling/billing"
 )
 
 func stripeBillingError(err error) error {

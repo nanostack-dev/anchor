@@ -1,7 +1,8 @@
 //nolint:testpackage // Tests inspect private persisted records to verify recovery and webhook isolation.
-package stripeprototype
+package billing
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -9,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,6 +21,8 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	stripeSDK "github.com/stripe/stripe-go/v87"
+	"github.com/stripe/stripe-go/v87/form"
 )
 
 type stripeRequest struct {
@@ -37,6 +41,66 @@ type fakeStripe struct {
 func (*fakeStripe) Account(context.Context) (Account, error) {
 	return Account{ID: "acct_expected", Name: "New Business", Mode: Sandbox}, nil
 }
+
+func (s *fakeStripe) Client() *stripeSDK.Client {
+	return stripeSDK.NewClient("sk_test_serviceFixture", stripeSDK.WithBackends(&stripeSDK.Backends{
+		API: s, Connect: s, Uploads: s,
+	}))
+}
+
+func (s *fakeStripe) Call(
+	method, path, key string,
+	params stripeSDK.ParamsContainer,
+	result stripeSDK.LastResponseSetter,
+) error {
+	values := &form.Values{}
+	form.AppendTo(values, params)
+	return s.CallRaw(method, path, key, []byte(values.Encode()), params.GetParams(), result)
+}
+
+func (s *fakeStripe) CallRaw(
+	method, path, _ string,
+	body []byte,
+	params *stripeSDK.Params,
+	result stripeSDK.LastResponseSetter,
+) error {
+	if params == nil || params.Context == nil {
+		return errors.New("the SDK operation must propagate the caller context")
+	}
+	if err := params.Context.Err(); err != nil {
+		return err
+	}
+	values, err := url.ParseQuery(string(body))
+	if err != nil {
+		return err
+	}
+	encoded := make(map[string]string, len(values))
+	for name, entries := range values {
+		if len(entries) != 1 {
+			return fmt.Errorf("unexpected repeated SDK parameter: %s", name)
+		}
+		encoded[name] = entries[0]
+	}
+	intent := ""
+	if params.IdempotencyKey != nil {
+		intent = *params.IdempotencyKey
+	}
+	return s.Request(params.Context, strings.ToLower(method), path, encoded, intent, result)
+}
+
+func (*fakeStripe) CallStreaming(
+	string, string, string, stripeSDK.ParamsContainer, stripeSDK.StreamingLastResponseSetter,
+) error {
+	return errors.New("unexpected streaming SDK request")
+}
+
+func (*fakeStripe) CallMultipart(
+	string, string, string, string, *bytes.Buffer, *stripeSDK.Params, stripeSDK.LastResponseSetter,
+) error {
+	return errors.New("unexpected multipart SDK request")
+}
+
+func (*fakeStripe) SetMaxNetworkRetries(int64) {}
 
 func (s *fakeStripe) Request(
 	_ context.Context,
@@ -303,8 +367,9 @@ func TestCheckoutLostResponsePreservesIntentUntilRecovered(t *testing.T) {
 				return nil
 			}))
 			var remoteIntent string
+			var remoteParams map[string]string
 			checkoutCalls := 0
-			w.stripe.respond = func(_ string, path string, _ map[string]string, intent string) (any, error) {
+			w.stripe.respond = func(_ string, path string, params map[string]string, intent string) (any, error) {
 				switch path {
 				case "/v1/subscriptions":
 					return map[string]any{"data": []any{}}, nil
@@ -312,9 +377,17 @@ func TestCheckoutLostResponsePreservesIntentUntilRecovered(t *testing.T) {
 					checkoutCalls++
 					if remoteIntent == "" {
 						remoteIntent = intent
+						remoteParams = params
+						assert.NotEmpty(t, intent)
 						return nil, errors.New("checkout response was lost after Stripe created the session")
 					}
 					assert.Equal(t, remoteIntent, intent)
+					assert.Equal(
+						t,
+						remoteParams,
+						params,
+						"recovery must reuse the same SDK parameters as the persisted intent",
+					)
 					return map[string]any{"id": "cs_recovered", "url": "https://checkout.stripe.com/recovered"}, nil
 				default:
 					return nil, fmt.Errorf("unexpected request %s", path)
@@ -751,6 +824,182 @@ func TestSyncRefusesSubscriptionFromAnotherCustomer(t *testing.T) {
 	state, err := w.store.Snapshot()
 	require.NoError(t, err)
 	assert.Equal(t, "cus_expected", state.Organizations[w.organization].CustomerID)
+	assert.Equal(t, w.freeTemplate, state.Organizations[w.organization].TemplateID)
+}
+
+func TestSDKSubscriptionEmptyListKeepsUnsubscribedOrganization(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	w.stripe.current = nil
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		organization := state.Organizations[w.organization]
+		organization.SubscriptionID = ""
+		state.Organizations[w.organization] = organization
+		return nil
+	}))
+	organization, err := w.service.SyncOrganization(t.Context(), w.organization)
+	require.NoError(t, err)
+	assert.Empty(t, organization.SubscriptionID)
+	assert.Equal(t, statusNone, organization.Status)
+	assert.Equal(t, "synced", organization.SyncState)
+	assert.Equal(t, w.freeTemplate, organization.TemplateID)
+	assert.Empty(t, w.anchor.applications)
+	require.Len(t, w.stripe.requests, 1)
+	assert.Equal(t, "all", w.stripe.requests[0].params["status"])
+	assert.Equal(t, "cus_expected", w.stripe.requests[0].params["customer"])
+}
+
+func TestSDKSubscriptionPaginationRefusesEmptyMorePageAndLaterFailure(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"empty more page", "second page failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			calls := 0
+			w.stripe.respond = func(_ string, path string, params map[string]string, _ string) (any, error) {
+				if path != "/v1/subscriptions" {
+					return nil, fmt.Errorf("unexpected request %s", path)
+				}
+				calls++
+				if calls > 1 {
+					assert.Equal(t, "sub_expected", params["starting_after"])
+					return nil, errors.New("the next subscription page could not be read")
+				}
+				data := []any{}
+				if scenario == "second page failure" {
+					data = append(data, w.stripe.current)
+				}
+				return map[string]any{"data": data, "has_more": true}, nil
+			}
+			_, err := w.service.SyncOrganization(t.Context(), w.organization)
+			require.Error(t, err)
+			if scenario == "empty more page" {
+				assert.Equal(t, 1, calls, "an empty page must not refetch the same cursor")
+			} else {
+				assert.Equal(t, 2, calls)
+			}
+			assert.Empty(t, w.anchor.applications, "partial pages must not grant an entitlement")
+			state, snapshotErr := w.store.Snapshot()
+			require.NoError(t, snapshotErr)
+			assert.Equal(t, w.freeTemplate, state.Organizations[w.organization].TemplateID)
+		})
+	}
+}
+
+func TestSDKSubscriptionPaginationFindsCurrentSubscriptionAfterTerminalPage(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	previous := subscriptionPayload("sub_previous", "cus_expected", "canceled", "price_paid")
+	previous["metadata"] = w.stripe.current["metadata"]
+	w.stripe.respond = func(_ string, path string, params map[string]string, _ string) (any, error) {
+		if path != "/v1/subscriptions" {
+			return nil, fmt.Errorf("unexpected request %s", path)
+		}
+		if params["starting_after"] == "" {
+			return map[string]any{"data": []any{previous}, "has_more": true}, nil
+		}
+		assert.Equal(t, "sub_previous", params["starting_after"])
+		return map[string]any{"data": []any{w.stripe.current}, "has_more": false}, nil
+	}
+	organization, err := w.service.SyncOrganization(t.Context(), w.organization)
+	require.NoError(t, err)
+	assert.Equal(t, "sub_expected", organization.SubscriptionID)
+	assert.Equal(t, "active", organization.Status)
+	assert.Equal(t, w.paidTemplate, organization.TemplateID)
+	require.Len(t, w.stripe.requests, 2)
+	require.Len(t, w.anchor.applications, 1)
+}
+
+func TestSDKSubscriptionFinalPageCannotExceedSafetyLimit(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	pages := 0
+	cursor := ""
+	w.stripe.respond = func(_ string, path string, params map[string]string, _ string) (any, error) {
+		if path != "/v1/subscriptions" {
+			return nil, fmt.Errorf("unexpected request %s", path)
+		}
+		assert.Equal(t, cursor, params["starting_after"])
+		assert.Equal(t, "100", params["limit"])
+		pages++
+		if pages > 11 {
+			return nil, errors.New("subscription enumeration exceeded the expected page limit")
+		}
+		size := 100
+		if pages == 11 {
+			size = 1
+		}
+		data := make([]any, 0, size)
+		for index := range size {
+			cursor = fmt.Sprintf("sub_page_%d_%d", pages, index)
+			item := subscriptionPayload(cursor, "cus_expected", "canceled", "price_paid")
+			item["metadata"] = w.stripe.current["metadata"]
+			data = append(data, item)
+		}
+		return map[string]any{"data": data, "has_more": pages < 11}, nil
+	}
+	_, err := w.service.SyncOrganization(t.Context(), w.organization)
+	require.ErrorContains(t, err, "pagination")
+	assert.Equal(t, 11, pages)
+	assert.Empty(t, w.anchor.applications)
+	state, snapshotErr := w.store.Snapshot()
+	require.NoError(t, snapshotErr)
+	assert.Equal(t, w.freeTemplate, state.Organizations[w.organization].TemplateID)
+}
+
+func TestSDKSubscriptionMissingReferencesFailWithoutLicenseMigration(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"null resource", "null customer", "null items", "null item", "null price"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			switch scenario {
+			case "null customer":
+				w.stripe.current["customer"] = nil
+			case "null items":
+				w.stripe.current["items"] = nil
+			case "null item":
+				w.stripe.current["items"] = map[string]any{"data": []any{nil}}
+			case "null price":
+				w.stripe.current["items"] = map[string]any{
+					"data": []any{map[string]any{"id": "si_expected", "price": nil}},
+				}
+			}
+			if scenario == "null resource" {
+				w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+					if path != "/v1/subscriptions" {
+						return nil, fmt.Errorf("unexpected request %s", path)
+					}
+					return map[string]any{"data": []any{nil}, "has_more": false}, nil
+				}
+			}
+			_, err := w.service.SyncOrganization(t.Context(), w.organization)
+			require.Error(t, err)
+			assert.Empty(t, w.anchor.applications)
+			state, snapshotErr := w.store.Snapshot()
+			require.NoError(t, snapshotErr)
+			assert.Equal(t, w.freeTemplate, state.Organizations[w.organization].TemplateID)
+		})
+	}
+}
+
+func TestSDKSubscriptionMultipleCurrentSubscriptionsRefuseMigration(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	second := subscriptionPayload("sub_duplicate", "cus_expected", "trialing", "price_paid")
+	second["metadata"] = w.stripe.current["metadata"]
+	w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+		if path != "/v1/subscriptions" {
+			return nil, fmt.Errorf("unexpected request %s", path)
+		}
+		return map[string]any{"data": []any{w.stripe.current, second}, "has_more": false}, nil
+	}
+	_, err := w.service.SyncOrganization(t.Context(), w.organization)
+	require.ErrorIs(t, err, ErrConflict)
+	assert.Empty(t, w.anchor.applications)
+	state, snapshotErr := w.store.Snapshot()
+	require.NoError(t, snapshotErr)
+	assert.Equal(t, "sub_expected", state.Organizations[w.organization].SubscriptionID)
 	assert.Equal(t, w.freeTemplate, state.Organizations[w.organization].TemplateID)
 }
 
