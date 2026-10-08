@@ -160,8 +160,13 @@ func mapWorkflowTrigger(trigger engine.Trigger) WorkflowTriggerResponse {
 		Description: trigger.Description,
 		GroupType:   trigger.GroupType,
 		GroupName:   trigger.GroupName,
+		Fields:      functional.Slice(trigger.Fields).Map(mapWorkflowEventField),
 		DataFields:  trigger.DataFields,
 	}
+}
+
+func mapWorkflowEventField(field engine.FieldSpec) WorkflowEventFieldResponse {
+	return WorkflowEventFieldResponse{Name: field.Name, Type: field.Type, Description: field.Description}
 }
 
 func mapWorkflowAction(spec engine.ActionSpec) WorkflowActionResponse {
@@ -180,6 +185,9 @@ func mapWorkflowAction(spec engine.ActionSpec) WorkflowActionResponse {
 			if param.Description != "" {
 				response.Description = &param.Description
 			}
+			if param.Types != "" {
+				response.Types = &param.Types
+			}
 			if len(param.Options) > 0 {
 				options := append([]string{}, param.Options...)
 				response.Options = &options
@@ -187,7 +195,7 @@ func mapWorkflowAction(spec engine.ActionSpec) WorkflowActionResponse {
 			return response
 		}),
 		Outputs: functional.Slice(spec.Outputs).Map(func(output engine.OutputSpec) WorkflowActionOutputResponse {
-			return WorkflowActionOutputResponse{Name: output.Name, Description: output.Description}
+			return WorkflowActionOutputResponse{Name: output.Name, Type: output.Type, Description: output.Description}
 		}),
 	}
 }

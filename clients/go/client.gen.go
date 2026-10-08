@@ -1644,7 +1644,7 @@ type ClientInterface interface {
 
 	// CreateWorkflowWithBody Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1653,7 +1653,7 @@ type ClientInterface interface {
 
 	// CreateWorkflow Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1674,7 +1674,7 @@ type ClientInterface interface {
 
 	// UpdateWorkflowWithBody Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1683,7 +1683,7 @@ type ClientInterface interface {
 
 	// UpdateWorkflow Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5010,7 +5010,7 @@ func (c *Client) ListWorkflows(ctx context.Context, productId ProductIdParameter
 
 // CreateWorkflowWithBody Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5029,7 +5029,7 @@ func (c *Client) CreateWorkflowWithBody(ctx context.Context, productId ProductId
 
 // CreateWorkflow Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5080,7 +5080,7 @@ func (c *Client) GetWorkflow(ctx context.Context, productId ProductIdParameter, 
 
 // UpdateWorkflowWithBody Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5099,7 +5099,7 @@ func (c *Client) UpdateWorkflowWithBody(ctx context.Context, productId ProductId
 
 // UpdateWorkflow Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12809,7 +12809,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateWorkflowWithBodyWithResponse Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12818,7 +12818,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateWorkflowWithResponse Create Workflow
 	//
-	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+	// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12843,7 +12843,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateWorkflowWithBodyWithResponse Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12852,7 +12852,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateWorkflowWithResponse Update Workflow
 	//
-	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+	// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23981,7 +23981,7 @@ func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, pro
 
 // CreateWorkflowWithBodyWithResponse Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23996,7 +23996,7 @@ func (c *ClientWithResponses) CreateWorkflowWithBodyWithResponse(ctx context.Con
 
 // CreateWorkflowWithResponse Create Workflow
 //
-// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+// Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24039,7 +24039,7 @@ func (c *ClientWithResponses) GetWorkflowWithResponse(ctx context.Context, produ
 
 // UpdateWorkflowWithBodyWithResponse Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -24054,7 +24054,7 @@ func (c *ClientWithResponses) UpdateWorkflowWithBodyWithResponse(ctx context.Con
 
 // UpdateWorkflowWithResponse Update Workflow
 //
-// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+// Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

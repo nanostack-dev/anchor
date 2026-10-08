@@ -111,6 +111,14 @@ func (e *Engine) validateStep(
 			problems.add(err)
 			continue
 		}
+		if param.Type == ParamFieldTypes && strings.TrimSpace(raw) != "" {
+			keys := map[string]bool{}
+			for _, key := range declaredKeys(step.Params[param.Types]) {
+				keys[key] = true
+			}
+			problems.add(validateFieldTypes(paramLocation, raw, keys))
+			continue
+		}
 		problems.add(known.check(paramLocation, raw))
 	}
 	problems.add(validateConditions(location+".when", step.When, known))

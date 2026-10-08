@@ -2508,7 +2508,7 @@ export const listWorkflows = <ThrowOnError extends boolean = false>(options: Opt
 
 /**
  * Create Workflow
- * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
+ * Creates a workflow. The definition is checked against the catalog: every action, parameter and operator must exist, every required parameter must be set, and every `{{ }}` reference must name a key of the trigger event or an output of an earlier step. An enabled workflow is refused when it could start itself again, through its own writes or through other enabled workflows: the error names the loop. A step that sends a custom event field with a type another step of the product gives it differently is refused with `WORKFLOW_EVENT_FIELD_CONFLICT`; `metadata.location` points at that step's `data_types`. A workflow runs as the Product, so `workflow:create` lets a key act on everything its steps can reach.
  */
 export const createWorkflow = <ThrowOnError extends boolean = false>(options: Options<CreateWorkflowData, ThrowOnError>) => {
     return (options.client ?? client).post<CreateWorkflowResponses, CreateWorkflowErrors, ThrowOnError>({
@@ -2574,7 +2574,7 @@ export const getWorkflow = <ThrowOnError extends boolean = false>(options: Optio
 
 /**
  * Update Workflow
- * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, as on create.
+ * Replaces the workflow's name, description, trigger, definition and enabled flag. Runs already started keep the definition they started with. Enabling or changing a workflow is refused when it would close a loop, or give a custom event field a second type, as on create.
  */
 export const updateWorkflow = <ThrowOnError extends boolean = false>(options: Options<UpdateWorkflowData, ThrowOnError>) => {
     return (options.client ?? client).put<UpdateWorkflowResponses, UpdateWorkflowErrors, ThrowOnError>({

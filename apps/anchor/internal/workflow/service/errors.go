@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
@@ -24,6 +25,18 @@ var errChainTooDeep = fault.Conflict(
 )
 
 var errFinishRun = errors.New("workflow: record finished run")
+
+func fieldTypeConflictError(conflict engine.FieldConflict) error {
+	return fault.BadRequest("WORKFLOW_EVENT_FIELD_CONFLICT", conflict.Describe()).Metadata(map[string]any{
+		"location":            fmt.Sprintf("steps[%d].params.data_types", conflict.StepIndex),
+		"event":               conflict.Event,
+		"field":               conflict.Field,
+		"type":                string(conflict.Type),
+		"other_type":          string(conflict.OtherType),
+		"other_workflow_id":   conflict.OtherID,
+		"other_workflow_name": conflict.OtherName,
+	})
+}
 
 func loopError(path []engine.LoopHop) error {
 	hops := make([]map[string]any, 0, len(path))

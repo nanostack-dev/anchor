@@ -2764,6 +2764,9 @@ type UserResponse struct {
 type WorkflowActionOutputResponse struct {
 	Description string `json:"description"`
 	Name        string `json:"name"`
+
+	// Type What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+	Type WorkflowFieldType `json:"type"`
 }
 
 // WorkflowActionParamResponse defines model for WorkflowActionParamResponse.
@@ -2781,6 +2784,11 @@ type WorkflowActionParamResponse struct {
 
 	// Type What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
 	Type WorkflowParamType `json:"type"`
+
+	// Types For a `field_types` parameter: the JSON parameter whose keys it types, such as `data`.
+	//
+	// Examples: data
+	Types *string `json:"types,omitempty"`
 }
 
 // WorkflowActionResponse defines model for WorkflowActionResponse.
@@ -2838,6 +2846,20 @@ type WorkflowDryRunRequest struct {
 	EventData map[string]string    `json:"event_data"`
 	Workflow  WorkflowWriteRequest `json:"workflow"`
 }
+
+// WorkflowEventFieldResponse One value an event carries under `event.data`.
+type WorkflowEventFieldResponse struct {
+	Description string `json:"description"`
+
+	// Name Examples: organization_id
+	Name string `json:"name"`
+
+	// Type What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+	Type WorkflowFieldType `json:"type"`
+}
+
+// WorkflowFieldType What a value an event carries or a step produces is, so a client can offer a parameter only the fields that fit it. Every value is still sent as a string. Identifier types (`organization`, `product_user`, ...) name the resource the identifier points at.
+type WorkflowFieldType = engine.FieldType
 
 // WorkflowInclude A related resource a workflow read can ask for.
 type WorkflowInclude = workflow.Include
@@ -2974,12 +2996,15 @@ type WorkflowStepStatus = workflow.StepStatus
 
 // WorkflowTriggerResponse defines model for WorkflowTriggerResponse.
 type WorkflowTriggerResponse struct {
-	// DataFields Keys the event carries under `event.data`.
+	// DataFields Names of `fields`, kept for clients that read names only.
 	//
 	// Examples: ["organization_id"]
 	DataFields  []string `json:"data_fields"`
 	Description string   `json:"description"`
-	GroupName   string   `json:"group_name"`
+
+	// Fields Typed keys the event carries under `event.data`. A custom event's fields come from the steps that send it: the keys of their `data` parameter, typed by their `data_types` parameter (text when left out).
+	Fields    []WorkflowEventFieldResponse `json:"fields"`
+	GroupName string                       `json:"group_name"`
 
 	// GroupType `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
 	GroupType ProductEventGroupType `json:"group_type"`
