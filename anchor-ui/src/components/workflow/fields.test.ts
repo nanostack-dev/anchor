@@ -11,6 +11,7 @@ import {
 	fits,
 	inferFieldType,
 	insertReference,
+	isInsideJsonField,
 	openReference,
 	operatorsFor,
 	parseEventData,
@@ -164,5 +165,26 @@ describe("typed conditions", () => {
 		expect(fieldPathPattern.test("steps.org.metadata.plan")).toBe(true);
 		expect(fieldPathPattern.test("event.data.plan")).toBe(true);
 		expect(fieldPathPattern.test("plan")).toBe(false);
+	});
+
+	it("takes a typed path only inside a listed JSON field", () => {
+		const listed: WorkflowVariable[] = [
+			{
+				path: "steps.org.metadata",
+				label: "metadata",
+				source: "Read organization",
+				type: WorkflowFieldType.JSON,
+			},
+			{
+				path: "steps.org.name",
+				label: "name",
+				source: "Read organization",
+				type: WorkflowFieldType.TEXT,
+			},
+		];
+		expect(isInsideJsonField(listed, "steps.org.metadata.plan")).toBe(true);
+		expect(isInsideJsonField(listed, "steps.org.metadata")).toBe(false);
+		expect(isInsideJsonField(listed, "steps.org.name.first")).toBe(false);
+		expect(isInsideJsonField(listed, "steps.gone.metadata.plan")).toBe(false);
 	});
 });

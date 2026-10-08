@@ -1,7 +1,7 @@
 import {
 	type WorkflowCondition,
 	WorkflowFieldType,
-	type WorkflowOperator,
+	WorkflowOperator,
 	WorkflowParamType,
 } from "@/client";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import {
 	fieldAt,
 	fieldTypeLabels,
 	isIdentifier,
+	isInsideJsonField,
 	operatorsFor,
 } from "./fields";
 import type { WorkflowResources } from "./useWorkflowResources";
@@ -62,34 +63,41 @@ function ConditionRow({
 	const path = condition.field.trim();
 	const field = path ? fieldAt(variables, path) : undefined;
 	const type = field?.type;
-	const operators = operatorsFor(type);
+	const custom = !field && Boolean(path) && isInsideJsonField(variables, path);
+	const missing = Boolean(path) && !field && !custom;
+	const allowed = operatorsFor(type);
+	const operatorFits = allowed.includes(condition.operator);
+	const operators = operatorFits ? allowed : [condition.operator, ...allowed];
 	const needsValue = operatorNeedsValue(condition.operator);
+	const isList = condition.operator === WorkflowOperator.IN;
 	const FieldIcon = field ? fieldTypeIcons[field.type] : Braces;
 	const resourceType = type ? resourceTypes[type] : undefined;
-	const options = resourceType ? (resources[resourceType] ?? []) : [];
+	const options =
+		resourceType && !isList ? (resources[resourceType] ?? []) : [];
+	const value = condition.value ?? "";
+	const yesOrNo = value.toLowerCase();
+	const strayYesOrNo =
+		value !== "" && yesOrNo !== "true" && yesOrNo !== "false";
 
 	const chooseField = (next: string) => {
 		const nextType = fieldAt(variables, next)?.type;
-		const allowed = operatorsFor(nextType);
-		const operator = allowed.includes(condition.operator)
-			? condition.operator
-			: allowed[0];
-		const keepsValue =
-			nextType !== WorkflowFieldType.BOOLEAN ||
-			condition.value === "true" ||
-			condition.value === "false";
+		const nextAllowed = operatorsFor(nextType);
 		onChange({
 			field: next,
-			operator,
-			value: keepsValue ? condition.value : "",
+			operator: nextAllowed.includes(condition.operator)
+				? condition.operator
+				: nextAllowed[0],
+			value: nextType === type ? condition.value : "",
 		});
 	};
 
 	const fieldDescription = field
 		? `${field.label} from ${field.source}, ${fieldTypeLabels[field.type]}`
-		: path
+		: custom
 			? `${path}, a custom path`
-			: "pick a field";
+			: path
+				? `${path}, not available here`
+				: "pick a field";
 
 	return (
 		<Box
@@ -121,6 +129,7 @@ function ConditionRow({
 					<FieldPicker
 						fields={variables}
 						allowPath
+						selected={path}
 						label={`${name}: value to test`}
 						onPick={chooseField}
 						trigger={
@@ -139,6 +148,7 @@ function ConditionRow({
 									className={cn(
 										"max-w-[60%] shrink-0 truncate font-mono text-xs",
 										!path && "text-muted-foreground",
+										missing && "text-warning-on-tint",
 									)}
 								>
 									{field?.label ?? (path || "Pick a field")}
@@ -149,9 +159,11 @@ function ConditionRow({
 								>
 									{field
 										? `${field.source} · ${fieldTypeLabels[field.type]}`
-										: path
+										: custom
 											? "Custom path"
-											: ""}
+											: missing
+												? "Not available here"
+												: ""}
 								</Box>
 								<ChevronDown
 									className="size-3.5 shrink-0 text-muted-foreground"
@@ -180,7 +192,9 @@ function ConditionRow({
 				>
 					{operators.map((operator) => (
 						<NativeSelectOption key={operator} value={operator}>
-							{operatorLabels[operator]}
+							{operator === condition.operator && !operatorFits
+								? `${operatorLabels[operator]} (does not fit)`
+								: operatorLabels[operator]}
 						</NativeSelectOption>
 					))}
 				</NativeSelect>
@@ -191,12 +205,17 @@ function ConditionRow({
 								<NativeSelect
 									size="sm"
 									aria-label={`${name}: compared with`}
-									value={condition.value ?? ""}
+									value={strayYesOrNo ? value : yesOrNo}
 									onChange={(event) => onChange({ value: event.target.value })}
 								>
 									<NativeSelectOption value="">
 										Pick yes or no
 									</NativeSelectOption>
+									{strayYesOrNo ? (
+										<NativeSelectOption value={value}>
+											{value} (not yes or no)
+										</NativeSelectOption>
+									) : null}
 									<NativeSelectOption value="true">Yes</NativeSelectOption>
 									<NativeSelectOption value="false">No</NativeSelectOption>
 								</NativeSelect>
@@ -210,7 +229,9 @@ function ConditionRow({
 												: "sans"
 										}
 										inputMode={
-											type === WorkflowFieldType.NUMBER ? "decimal" : undefined
+											type === WorkflowFieldType.NUMBER && !isList
+												? "decimal"
+												: undefined
 										}
 										list={options.length > 0 ? listId : undefined}
 										aria-label={`${name}: compared with`}
@@ -235,7 +256,7 @@ function ConditionRow({
 						{type === WorkflowFieldType.BOOLEAN ? null : (
 							<FieldPicker
 								label={`Insert a value into ${name.toLowerCase()}`}
-								fields={variables}
+								fields={variables.filter((variable) => variable.path !== path)}
 								fitType={type}
 								onPick={(picked) =>
 									onChange({
@@ -247,6 +268,15 @@ function ConditionRow({
 					</Box>
 				) : null}
 			</Box>
+			{missing ? (
+				<Text size="xs" tone="warning">
+					“{path}” is not something this condition can read here. Pick a field.
+				</Text>
+			) : !operatorFits && type ? (
+				<Text size="xs" tone="warning">
+					{`${fieldTypeLabels[type]} fields cannot use “${operatorLabels[condition.operator]}”. Pick another comparison.`}
+				</Text>
+			) : null}
 		</Box>
 	);
 }
@@ -299,18 +329,22 @@ export function ConditionEditor({
 					{emptyLabel}
 				</Text>
 			) : null}
-			{conditions.map((condition, index) => (
-				<ConditionRow
-					// biome-ignore lint/suspicious/noArrayIndexKey: conditions have no identity of their own
-					key={index}
-					name={`${label} ${index + 1}`}
-					condition={condition}
-					variables={variables}
-					resources={resources}
-					onChange={(patch) => update(index, patch)}
-					onRemove={() => remove(index)}
-				/>
-			))}
+			{conditions.length > 0 ? (
+				<Box className="flex flex-col gap-3">
+					{conditions.map((condition, index) => (
+						<ConditionRow
+							// biome-ignore lint/suspicious/noArrayIndexKey: conditions have no identity of their own
+							key={index}
+							name={`${label} ${index + 1}`}
+							condition={condition}
+							variables={variables}
+							resources={resources}
+							onChange={(patch) => update(index, patch)}
+							onRemove={() => remove(index)}
+						/>
+					))}
+				</Box>
+			) : null}
 			<Box>
 				<Button variant="ghost" size="sm" icon={Plus} onClick={add}>
 					{addLabel}

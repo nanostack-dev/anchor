@@ -290,3 +290,15 @@ export function comparedValueHint(
 /** Paths a person may type that no listed field names, such as a metadata key. */
 export const fieldPathPattern =
 	/^(event\.(data\.[a-z0-9_]+|type|id)|steps\.[a-z][a-z0-9_]*\.[a-zA-Z0-9_.]+|workflow\.(id|name))$/;
+
+/** Whether a path names a key inside a listed JSON field, which no list can show. */
+export function isInsideJsonField(
+	fields: WorkflowVariable[],
+	path: string,
+): boolean {
+	return fields.some(
+		(field) =>
+			field.type === WorkflowFieldType.JSON &&
+			path.startsWith(`${field.path}.`),
+	);
+}
