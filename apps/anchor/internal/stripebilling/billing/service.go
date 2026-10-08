@@ -2,7 +2,6 @@ package billing
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,7 +15,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/segmentio/ksuid"
 	"github.com/stripe/stripe-go/v87"
-	"github.com/stripe/stripe-go/v87/webhook"
 )
 
 var (
@@ -35,6 +33,7 @@ const (
 	maximumPortalProducts      = 10
 	stripeInstallationMetadata = "anchor_prototype_id"
 	stripeProductMetadata      = "anchor_product_id"
+	stripeOrganizationMetadata = "anchor_organization_id"
 	stripeSubscriptionPageSize = 100
 	maximumStripeSubscriptions = 1000
 )
@@ -110,9 +109,16 @@ func (s *Service) stateLocked(ctx context.Context) (State, error) {
 	if len(events) > maximumVisibleEvents {
 		events = events[:maximumVisibleEvents]
 	}
+	refunds := functional.Slice(slices.Collect(maps.Values(stored.FraudRefunds))).
+		Map(func(record fraudRefundRecord) FraudRefund { return record.FraudRefund })
+	slices.SortFunc(refunds, func(a, b FraudRefund) int { return b.CreatedAt.Compare(a.CreatedAt) })
+	if len(refunds) > maximumVisibleEvents {
+		refunds = refunds[:maximumVisibleEvents]
+	}
 	return State{Account: account, Product: snapshot.Product, Templates: append([]Template{}, snapshot.Templates...),
 		Organizations: append([]Organization{}, organizations...), Prices: append([]Price{}, prices...),
-		Settings: stored.Settings, Events: append([]BillingEvent{}, events...)}, nil
+		Settings: normalizedSettings(stored.Settings), Events: append([]BillingEvent{}, events...),
+		FraudRefunds: append([]FraudRefund{}, refunds...)}, nil
 }
 
 func (s *Service) CreatePrice(ctx context.Context, request CreatePriceRequest) (Price, error) {
@@ -210,16 +216,45 @@ func (s *Service) ArchivePrice(ctx context.Context, priceID string) (Price, erro
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, request UpdateSettingsRequest) (Settings, error) {
-	if err := validateID(request.FallbackTemplateID); err != nil {
-		return Settings{}, err
+	if request.FallbackTemplateID == nil && request.FraudRefundPolicy == nil {
+		return Settings{}, ErrInput
+	}
+	if request.FallbackTemplateID != nil {
+		if err := validateID(*request.FallbackTemplateID); err != nil {
+			return Settings{}, err
+		}
+	}
+	if request.FraudRefundPolicy != nil {
+		policy := request.FraudRefundPolicy
+		if err := validate.ValidateStruct(struct {
+			Currency  string `validate:"oneof=usd cad eur"`
+			MaxAmount int64  `validate:"gte=0,lte=99999999"`
+		}{string(policy.Currency), policy.MaxAmount}); err != nil || policy.Enabled && policy.MaxAmount == 0 {
+			return Settings{}, fmt.Errorf(
+				"%w: select a supported currency and a positive payment limit when enabled",
+				ErrInput,
+			)
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.requireTemplate(ctx, request.FallbackTemplateID); err != nil {
-		return Settings{}, err
+	if request.FallbackTemplateID != nil {
+		if err := s.requireTemplate(ctx, *request.FallbackTemplateID); err != nil {
+			return Settings{}, err
+		}
 	}
-	settings := Settings(request)
-	err := s.store.Update(func(state *StoredState) error { state.Settings = settings; return nil })
+	var settings Settings
+	err := s.store.Update(func(state *StoredState) error {
+		settings = normalizedSettings(state.Settings)
+		if request.FallbackTemplateID != nil {
+			settings.FallbackTemplateID = *request.FallbackTemplateID
+		}
+		if request.FraudRefundPolicy != nil {
+			settings.FraudRefundPolicy = *request.FraudRefundPolicy
+		}
+		state.Settings = settings
+		return nil
+	})
 	return settings, err
 }
 
@@ -300,7 +335,7 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 			BillingMode: &stripe.CheckoutSessionCreateSubscriptionDataBillingModeParams{Type: stripe.String("classic")},
 			Metadata: map[string]string{
 				stripeInstallationMetadata: stored.InstallationID,
-				"anchor_organization_id":   organizationID,
+				stripeOrganizationMetadata: organizationID,
 				stripeProductMetadata:      s.config.ProductID,
 			},
 		},
@@ -345,7 +380,7 @@ func (s *Service) ensureCustomer(ctx context.Context, organizationID string) (or
 		IdempotencyKey: stripe.String(organization.CustomerIntent),
 		Name:           stripe.String(organization.CustomerName),
 		Metadata: map[string]string{
-			"anchor_organization_id":   organizationID,
+			stripeOrganizationMetadata: organizationID,
 			stripeProductMetadata:      s.config.ProductID,
 			stripeInstallationMetadata: stored.InstallationID,
 		},
@@ -636,53 +671,7 @@ func (s *Service) Portal(ctx context.Context, organizationID string) (URLRespons
 }
 
 func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature string) error {
-	if err := validate.ValidateStruct(struct {
-		Signature string `validate:"required"`
-	}{signature}); err != nil {
-		return ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	event, err := webhook.ConstructEventWithOptions(
-		body,
-		signature,
-		s.config.WebhookSecret,
-		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true},
-	)
-	if err != nil {
-		return fmt.Errorf("%w: invalid Stripe webhook signature", ErrInput)
-	}
-	if event.Livemode || event.Account != "" && event.Account != s.config.ExpectedAccountID {
-		return fmt.Errorf("%w: webhook does not belong to the configured sandbox account", ErrInput)
-	}
-	var object struct {
-		Customer string `json:"customer"`
-	}
-	if err = json.Unmarshal(event.Data.Raw, &object); err != nil {
-		return ErrInput
-	}
-	return s.store.Update(func(state *StoredState) error {
-		if _, duplicate := state.Events[event.ID]; duplicate {
-			return nil
-		}
-		organizationID := functional.Slice(slices.Collect(maps.Values(state.Organizations))).
-			FindFirst(func(organization organizationRecord) bool {
-				return object.Customer != "" && organization.CustomerID == object.Customer
-			}).
-			Map(func(organization organizationRecord) string { return organization.ID }).
-			OrElse("")
-		status := statusPending
-		if organizationID == "" {
-			status = "ignored"
-		}
-		state.Events[event.ID] = eventRecord{
-			ID: event.ID, Type: string(event.Type), OrganizationID: organizationID,
-			ReceivedAt: time.Now().UTC(), Status: status,
-			NextAttempt: time.Now().UTC(),
-		}
-		return nil
-	})
+	return ReceiveWebhook(ctx, s.config, s.store, body, signature)
 }
 
 func (s *Service) ProcessPending(ctx context.Context) error {
@@ -702,9 +691,14 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
-		_, syncErr := s.syncLocked(ctx, job.OrganizationID)
-		if syncErr != nil {
-			syncErr = errors.Join(syncErr, s.markSyncError(job.OrganizationID, syncErr))
+		var syncErr error
+		if financialEvent(job.Type) {
+			syncErr = s.processFinancialEvent(ctx, job)
+		} else {
+			_, syncErr = s.syncLocked(ctx, job.OrganizationID)
+			if syncErr != nil {
+				syncErr = errors.Join(syncErr, s.markSyncError(job.OrganizationID, syncErr))
+			}
 		}
 		if err = s.store.Update(func(state *StoredState) error {
 			event := state.Events[job.ID]
@@ -713,6 +707,9 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 				event.Status, event.LastError = "processed", ""
 			} else {
 				event.Status, event.LastError = statusError, syncErr.Error()
+				if financialEvent(job.Type) {
+					event.LastError = "Stripe could not confirm the financial action; Anchor will reconcile it safely."
+				}
 				event.NextAttempt = time.Now().
 					Add(time.Duration(min(maximumRetrySeconds, 1<<min(event.Attempts, maximumRetryExponent))) * time.Second)
 			}
@@ -806,6 +803,31 @@ func (s *Service) queueLinkedOrganizations() error {
 				NextAttempt: now,
 			}
 		}
+		for _, refund := range state.FraudRefunds {
+			if refund.IdempotencyKey == "" || refund.Status == FraudRefundSkipped ||
+				refund.Status == FraudRefundSucceeded ||
+				refund.Status == FraudRefundFailed ||
+				refund.Status == FraudRefundCanceled {
+				continue
+			}
+			id := "fraud-reconcile-" + refund.ID
+			if event, exists := state.Events[id]; exists &&
+				(event.Status == statusPending || event.Status == statusError) {
+				continue
+			}
+			now := time.Now().UTC()
+			state.Events[id] = eventRecord{
+				ID:             id,
+				Type:           fraudReconciliation,
+				OrganizationID: refund.OrganizationID,
+				Status:         statusPending,
+				ReceivedAt:     now,
+				ChargeID:       refund.ChargeID,
+				ResourceID:     refund.RefundID,
+				NextAttempt:    now,
+			}
+		}
+		queueTerminalRefundMonitoring(state)
 		return nil
 	})
 }
@@ -866,7 +888,7 @@ func (s *Service) retireCompletedCheckout(
 	}
 	if previous.ID != current.SubscriptionID || !terminal(string(previous.Status)) || previous.Livemode ||
 		(previous.Customer == nil || previous.Customer.ID != current.CustomerID) || previous.Metadata[stripeInstallationMetadata] != stored.InstallationID ||
-		previous.Metadata["anchor_organization_id"] != current.ID || previous.Metadata[stripeProductMetadata] != s.config.ProductID {
+		previous.Metadata[stripeOrganizationMetadata] != current.ID || previous.Metadata[stripeProductMetadata] != s.config.ProductID {
 		return fmt.Errorf(
 			"%w: completed checkout subscription ownership or terminal state could not be verified",
 			ErrConflict,
@@ -911,7 +933,7 @@ func (s *Service) ownedSubscriptions(
 			subscription.Customer.ID == organization.CustomerID &&
 			!subscription.Livemode &&
 			subscription.Metadata[stripeInstallationMetadata] == stored.InstallationID &&
-			subscription.Metadata["anchor_organization_id"] == organization.ID &&
+			subscription.Metadata[stripeOrganizationMetadata] == organization.ID &&
 			subscription.Metadata[stripeProductMetadata] == s.config.ProductID
 	}), nil
 }

@@ -987,6 +987,63 @@ func (e StripeBillingCreatePriceRequestInterval) Valid() bool {
 	}
 }
 
+// Defines values for StripeBillingFraudRefundCurrency.
+const (
+	StripeBillingFraudRefundCurrencyCad StripeBillingFraudRefundCurrency = "cad"
+	StripeBillingFraudRefundCurrencyEur StripeBillingFraudRefundCurrency = "eur"
+	StripeBillingFraudRefundCurrencyUsd StripeBillingFraudRefundCurrency = "usd"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingFraudRefundCurrency enum.
+func (e StripeBillingFraudRefundCurrency) Valid() bool {
+	switch e {
+	case StripeBillingFraudRefundCurrencyCad:
+		return true
+	case StripeBillingFraudRefundCurrencyEur:
+		return true
+	case StripeBillingFraudRefundCurrencyUsd:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StripeBillingFraudRefundStatus.
+const (
+	FraudRefundCanceled       StripeBillingFraudRefundStatus = "canceled"
+	FraudRefundFailed         StripeBillingFraudRefundStatus = "failed"
+	FraudRefundPending        StripeBillingFraudRefundStatus = "pending"
+	FraudRefundProcessing     StripeBillingFraudRefundStatus = "processing"
+	FraudRefundRequiresAction StripeBillingFraudRefundStatus = "requires_action"
+	FraudRefundReviewRequired StripeBillingFraudRefundStatus = "review_required"
+	FraudRefundSkipped        StripeBillingFraudRefundStatus = "skipped"
+	FraudRefundSucceeded      StripeBillingFraudRefundStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the StripeBillingFraudRefundStatus enum.
+func (e StripeBillingFraudRefundStatus) Valid() bool {
+	switch e {
+	case FraudRefundCanceled:
+		return true
+	case FraudRefundFailed:
+		return true
+	case FraudRefundPending:
+		return true
+	case FraudRefundProcessing:
+		return true
+	case FraudRefundRequiresAction:
+		return true
+	case FraudRefundReviewRequired:
+		return true
+	case FraudRefundSkipped:
+		return true
+	case FraudRefundSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StripeBillingPriceCurrency.
 const (
 	StripeBillingPriceCurrencyCad StripeBillingPriceCurrency = "cad"
@@ -3632,6 +3689,39 @@ type StripeBillingCreatePriceRequestCurrency string
 // StripeBillingCreatePriceRequestInterval defines model for StripeBillingCreatePriceRequest.Interval.
 type StripeBillingCreatePriceRequestInterval string
 
+// StripeBillingFraudRefund defines model for StripeBillingFraudRefund.
+type StripeBillingFraudRefund struct {
+	Amount         int                            `json:"amount"`
+	ChargeId       string                         `json:"charge_id"`
+	CreatedAt      time.Time                      `json:"created_at"`
+	Currency       string                         `json:"currency"`
+	Id             string                         `json:"id"`
+	InvoiceId      string                         `json:"invoice_id"`
+	LastError      string                         `json:"last_error"`
+	OrganizationId string                         `json:"organization_id"`
+	Reason         string                         `json:"reason"`
+	RefundId       string                         `json:"refund_id"`
+	Status         StripeBillingFraudRefundStatus `json:"status"`
+	SubscriptionId string                         `json:"subscription_id"`
+	UpdatedAt      time.Time                      `json:"updated_at"`
+	WarningId      string                         `json:"warning_id"`
+}
+
+// StripeBillingFraudRefundCurrency defines model for StripeBillingFraudRefundCurrency.
+type StripeBillingFraudRefundCurrency string
+
+// StripeBillingFraudRefundPolicy defines model for StripeBillingFraudRefundPolicy.
+type StripeBillingFraudRefundPolicy struct {
+	Currency StripeBillingFraudRefundCurrency `json:"currency"`
+	Enabled  bool                             `json:"enabled"`
+
+	// MaxAmount Maximum original payment amount in minor currency units. Must be positive when enabled.
+	MaxAmount int `json:"max_amount"`
+}
+
+// StripeBillingFraudRefundStatus defines model for StripeBillingFraudRefundStatus.
+type StripeBillingFraudRefundStatus string
+
 // StripeBillingIdentifier defines model for StripeBillingIdentifier.
 type StripeBillingIdentifier = string
 
@@ -3682,13 +3772,15 @@ type StripeBillingProduct struct {
 
 // StripeBillingSettings defines model for StripeBillingSettings.
 type StripeBillingSettings struct {
-	FallbackTemplateId string `json:"fallback_template_id"`
+	FallbackTemplateId string                         `json:"fallback_template_id"`
+	FraudRefundPolicy  StripeBillingFraudRefundPolicy `json:"fraud_refund_policy"`
 }
 
 // StripeBillingState defines model for StripeBillingState.
 type StripeBillingState struct {
 	Account       StripeBillingAccount        `json:"account"`
 	Events        []StripeBillingBillingEvent `json:"events"`
+	FraudRefunds  []StripeBillingFraudRefund  `json:"fraud_refunds"`
 	Organizations []StripeBillingOrganization `json:"organizations"`
 	Prices        []StripeBillingPrice        `json:"prices"`
 	Product       StripeBillingProduct        `json:"product"`
@@ -3716,7 +3808,8 @@ type StripeBillingURLResponse struct {
 
 // StripeBillingUpdateSettingsRequest defines model for StripeBillingUpdateSettingsRequest.
 type StripeBillingUpdateSettingsRequest struct {
-	FallbackTemplateId StripeBillingIdentifier `json:"fallback_template_id"`
+	FallbackTemplateId *StripeBillingIdentifier        `json:"fallback_template_id,omitempty"`
+	FraudRefundPolicy  *StripeBillingFraudRefundPolicy `json:"fraud_refund_policy,omitempty"`
 }
 
 // StripeBillingWebhookResponse defines model for StripeBillingWebhookResponse.

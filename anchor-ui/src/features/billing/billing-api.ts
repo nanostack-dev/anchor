@@ -45,11 +45,13 @@ export function createBillingAPI(productId: string): BillingAPI {
 		organization_id: organizationId,
 	});
 	return {
-		load: async () =>
-			zState.parse(
-				(await getStripeBillingState({ path: productPath, throwOnError: true }))
-					.data,
-			),
+		load: async () => {
+			const data = (
+				await getStripeBillingState({ path: productPath, throwOnError: true })
+			).data;
+			zState.parse(data);
+			return data;
+		},
 		createPrice: async (body) =>
 			(
 				await createStripeBillingPrice({

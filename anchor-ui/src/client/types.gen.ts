@@ -56,8 +56,76 @@ export type StripeBillingOrganization = {
     pending_update: boolean;
 };
 
+export enum StripeBillingFraudRefundCurrency {
+    USD = 'usd',
+    CAD = 'cad',
+    EUR = 'eur'
+}
+
+export enum StripeBillingFraudRefundStatus {
+    /**
+     * FraudRefundSkipped
+     */
+    FRAUD_REFUND_SKIPPED = 'skipped',
+    /**
+     * FraudRefundProcessing
+     */
+    FRAUD_REFUND_PROCESSING = 'processing',
+    /**
+     * FraudRefundPending
+     */
+    FRAUD_REFUND_PENDING = 'pending',
+    /**
+     * FraudRefundRequiresAction
+     */
+    FRAUD_REFUND_REQUIRES_ACTION = 'requires_action',
+    /**
+     * FraudRefundSucceeded
+     */
+    FRAUD_REFUND_SUCCEEDED = 'succeeded',
+    /**
+     * FraudRefundFailed
+     */
+    FRAUD_REFUND_FAILED = 'failed',
+    /**
+     * FraudRefundCanceled
+     */
+    FRAUD_REFUND_CANCELED = 'canceled',
+    /**
+     * FraudRefundReviewRequired
+     */
+    FRAUD_REFUND_REVIEW_REQUIRED = 'review_required'
+}
+
+export type StripeBillingFraudRefundPolicy = {
+    enabled: boolean;
+    currency: StripeBillingFraudRefundCurrency;
+    /**
+     * Maximum original payment amount in minor currency units. Must be positive when enabled.
+     */
+    max_amount: number;
+};
+
+export type StripeBillingFraudRefund = {
+    id: string;
+    warning_id: string;
+    charge_id: string;
+    invoice_id: string;
+    subscription_id: string;
+    organization_id: string;
+    refund_id: string;
+    currency: string;
+    reason: string;
+    last_error: string;
+    amount: number;
+    status: StripeBillingFraudRefundStatus;
+    created_at: string;
+    updated_at: string;
+};
+
 export type StripeBillingSettings = {
     fallback_template_id: string;
+    fraud_refund_policy: StripeBillingFraudRefundPolicy;
 };
 
 export type StripeBillingBillingEvent = {
@@ -77,6 +145,7 @@ export type StripeBillingState = {
     organizations: Array<StripeBillingOrganization>;
     settings: StripeBillingSettings;
     events: Array<StripeBillingBillingEvent>;
+    fraud_refunds: Array<StripeBillingFraudRefund>;
 };
 
 export type StripeBillingCreatePriceRequest = {
@@ -97,7 +166,8 @@ export type StripeBillingSubscriptionRequest = {
 };
 
 export type StripeBillingUpdateSettingsRequest = {
-    fallback_template_id: StripeBillingIdentifier;
+    fallback_template_id?: StripeBillingIdentifier;
+    fraud_refund_policy?: StripeBillingFraudRefundPolicy;
 };
 
 export type StripeBillingUrlResponse = {

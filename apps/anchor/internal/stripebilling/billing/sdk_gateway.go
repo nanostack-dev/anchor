@@ -280,6 +280,14 @@ func validateSDKResource(result stripe.LastResponseSetter) error {
 		id = resource.ID
 	case *stripe.Subscription:
 		id = resource.ID
+	case *stripe.Charge:
+		id = resource.ID
+	case *stripe.Invoice:
+		id = resource.ID
+	case *stripe.RadarEarlyFraudWarning:
+		id = resource.ID
+	case *stripe.Refund:
+		id = resource.ID
 	case *stripe.CheckoutSession:
 		id = resource.ID
 	case *stripe.BillingPortalConfiguration:

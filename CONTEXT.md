@@ -62,6 +62,14 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 
 **"Plan"** is a billing word. Billing lives outside Anchor ([ADR-0002](docs/adr/0002-anchor-owns-entitlement-state-not-billing.md)), so a plan is something a billing system knows about. Inside Anchor the equivalent concept is a *license template*. If a design document says "plan", it is either talking about the billing system or using the wrong word.
 
+## Optional Stripe billing
+
+| term | means | not |
+| --- | --- | --- |
+| **early fraud warning** | An issuer report of suspected fraud on a card payment. | Not a formal dispute or confirmation that a refund succeeded. |
+| **fraud refund policy** | A Product's choice to automatically refund eligible early fraud warnings, bounded by currency and the original payment amount. | Not a change to the Organization's license or subscription. |
+| **fraud refund action** | The recorded decision and reimbursement outcome for a payment reported by an early fraud warning. | Not an additional reimbursement for every delivery of the warning. |
+
 ## Identity and credentials
 
 | term | means |

@@ -66,8 +66,49 @@ export const zStripeBillingOrganization = z.object({
     pending_update: z.boolean()
 });
 
+export const zStripeBillingFraudRefundCurrency = z.enum([
+    'usd',
+    'cad',
+    'eur'
+]);
+
+export const zStripeBillingFraudRefundStatus = z.enum([
+    'skipped',
+    'processing',
+    'pending',
+    'requires_action',
+    'succeeded',
+    'failed',
+    'canceled',
+    'review_required'
+]);
+
+export const zStripeBillingFraudRefundPolicy = z.object({
+    enabled: z.boolean(),
+    currency: zStripeBillingFraudRefundCurrency,
+    max_amount: z.int().gte(0).lte(99999999)
+});
+
+export const zStripeBillingFraudRefund = z.object({
+    id: z.string(),
+    warning_id: z.string(),
+    charge_id: z.string(),
+    invoice_id: z.string(),
+    subscription_id: z.string(),
+    organization_id: z.string(),
+    refund_id: z.string(),
+    currency: z.string(),
+    reason: z.string(),
+    last_error: z.string(),
+    amount: z.int().gte(0),
+    status: zStripeBillingFraudRefundStatus,
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
 export const zStripeBillingSettings = z.object({
-    fallback_template_id: z.string()
+    fallback_template_id: z.string(),
+    fraud_refund_policy: zStripeBillingFraudRefundPolicy
 });
 
 export const zStripeBillingBillingEvent = z.object({
@@ -86,7 +127,8 @@ export const zStripeBillingState = z.object({
     prices: z.array(zStripeBillingPrice),
     organizations: z.array(zStripeBillingOrganization),
     settings: zStripeBillingSettings,
-    events: z.array(zStripeBillingBillingEvent)
+    events: z.array(zStripeBillingBillingEvent),
+    fraud_refunds: z.array(zStripeBillingFraudRefund)
 });
 
 export const zStripeBillingCreatePriceRequest = z.object({
@@ -114,7 +156,8 @@ export const zStripeBillingSubscriptionRequest = z.object({
 });
 
 export const zStripeBillingUpdateSettingsRequest = z.object({
-    fallback_template_id: zStripeBillingIdentifier
+    fallback_template_id: z.optional(zStripeBillingIdentifier),
+    fraud_refund_policy: z.optional(zStripeBillingFraudRefundPolicy)
 });
 
 export const zStripeBillingUrlResponse = z.object({

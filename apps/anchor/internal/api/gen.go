@@ -2655,6 +2655,18 @@ type StripeBillingCheckoutRequest = billing.CheckoutRequest
 // StripeBillingCreatePriceRequest defines model for StripeBillingCreatePriceRequest.
 type StripeBillingCreatePriceRequest = billing.CreatePriceRequest
 
+// StripeBillingFraudRefund defines model for StripeBillingFraudRefund.
+type StripeBillingFraudRefund = billing.FraudRefund
+
+// StripeBillingFraudRefundCurrency defines model for StripeBillingFraudRefundCurrency.
+type StripeBillingFraudRefundCurrency = billing.FraudRefundCurrency
+
+// StripeBillingFraudRefundPolicy defines model for StripeBillingFraudRefundPolicy.
+type StripeBillingFraudRefundPolicy = billing.FraudRefundPolicy
+
+// StripeBillingFraudRefundStatus defines model for StripeBillingFraudRefundStatus.
+type StripeBillingFraudRefundStatus = billing.FraudRefundStatus
+
 // StripeBillingIdentifier defines model for StripeBillingIdentifier.
 type StripeBillingIdentifier = string
 
