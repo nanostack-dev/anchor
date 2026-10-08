@@ -144,6 +144,33 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	await expect(
 		page.getByRole("button", { name: "Trigger: Product user created" }),
 	).toBeInViewport();
+	await page
+		.getByRole("button", { name: "Conditions on the event", exact: true })
+		.click();
+	await page
+		.getByRole("button", { name: "Add condition", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", {
+			name: "Event condition 1: value to test: product_user_id from Event, Product user ID",
+		}),
+	).toBeVisible();
+	const eventComparison = page.getByRole("combobox", {
+		name: "Event condition 1: comparison",
+	});
+	await expect(
+		eventComparison.getByRole("option", { name: "is one of", exact: true }),
+	).toHaveCount(1);
+	await expect(
+		eventComparison.getByRole("option", { name: "contains", exact: true }),
+	).toHaveCount(0);
+	await eventComparison.selectOption("exists");
+	await expect(
+		page.getByRole("textbox", { name: "Event condition 1: compared with" }),
+	).toHaveCount(0);
+	await captureReviewCheckpoint(page, testInfo, "typed-event-condition");
+	await backToFlow(page);
+
 	await page.getByRole("button", { name: "Add a step", exact: true }).click();
 	await page
 		.getByRole("menuitem", { name: "Read product user", exact: true })
@@ -267,10 +294,13 @@ test("a workflow built from scratch is validated, edited with step conditions, p
 	).not.toBeChecked();
 	const persisted = await world.api.get<{
 		enabled: boolean;
-		definition: { steps: unknown[] };
+		definition: { steps: unknown[]; conditions: unknown[] };
 	}>(`${world.productPath}/workflows/${workflowId}`);
 	expect(persisted.enabled).toBe(false);
 	expect(persisted.definition.steps).toHaveLength(2);
+	expect(persisted.definition.conditions).toMatchObject([
+		{ field: "event.data.product_user_id", operator: "exists" },
+	]);
 	await saved.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "saved-workflow");
 
