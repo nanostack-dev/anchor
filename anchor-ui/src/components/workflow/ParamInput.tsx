@@ -237,12 +237,12 @@ export function ParamInput({
 						aria-label={`${label}: ${pillName} from ${pillSource}. Edit`}
 						title={referenced?.description ?? path}
 						onClick={() => setEditing(true)}
-						className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-foreground outline-none transition-transform duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.97] motion-reduce:active:scale-100"
+						className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-foreground outline-none transition-transform duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.97] motion-reduce:active:scale-100"
 					>
 						{PillIcon ? (
 							<PillIcon className="size-3 shrink-0 text-primary" aria-hidden />
 						) : null}
-						<Box as="span" className="max-w-[65%] shrink-0 truncate font-mono">
+						<Box as="span" className="max-w-56 shrink-0 truncate font-mono">
 							{pillName}
 						</Box>
 						<Box
