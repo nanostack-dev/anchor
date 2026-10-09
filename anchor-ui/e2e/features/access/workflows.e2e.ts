@@ -653,6 +653,95 @@ test("workflows chain through a custom event, and a loop is flagged then refused
 });
 
 // Covers: PRODUCT_WORKFLOW_NEW, PRODUCT_WORKFLOW_DETAIL
+test("a workflow creating a user for every organization is refused while another creates an organization for every user", async ({
+	page,
+	world,
+}, testInfo) => {
+	const organizationForUser = await createWorkflowViaAPI(world, {
+		name: world.name("org-for-user"),
+		enabled: true,
+		trigger_event_type: "product_user.created",
+		definition: {
+			conditions: [],
+			steps: [
+				{
+					id: "org",
+					action: "organization.create",
+					params: { name: "Team of {{event.data.product_user_id}}" },
+				},
+			],
+		},
+	});
+	await openWorkflows(page, world);
+	await page
+		.getByRole("button", { name: "New workflow", exact: true })
+		.first()
+		.click();
+	const name = world.name("user-for-org");
+	await page.getByLabel("Name", { exact: true }).fill(name);
+	await page
+		.getByRole("button", { name: "Trigger: Pick a trigger", exact: true })
+		.click();
+	await page
+		.getByLabel("Event", { exact: true })
+		.selectOption("organization.created");
+	await backToFlow(page);
+	await page.getByRole("button", { name: "Add a step", exact: true }).click();
+	await page
+		.getByRole("menuitem", { name: "Create product user", exact: true })
+		.click();
+	const createUser = page.getByRole("article", {
+		name: "Step 1: Create product user",
+	});
+	await createUser
+		.getByRole("textbox", { name: "Email *", exact: true })
+		.fill("owner@example.com");
+	await expect(
+		createUser.getByText("This step would start a loop", { exact: true }),
+	).toBeVisible();
+	await expect(createUser).toContainText(
+		`“${organizationForUser.name}” (on product_user.created) emits organization.created`,
+	);
+	await captureReviewCheckpoint(page, testInfo, "user-organization-loop");
+
+	await page
+		.getByRole("button", { name: "Create workflow", exact: true })
+		.click();
+	await expect(
+		page.getByText(/Saving this would let the workflow start itself again/),
+	).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: "New workflow", exact: true }),
+	).toBeVisible();
+	await captureReviewCheckpoint(
+		page,
+		testInfo,
+		"user-organization-loop-refused",
+	);
+
+	const enabled = page.getByRole("switch", { name: "Enabled", exact: true });
+	await enabled.click();
+	await expect(enabled).not.toBeChecked();
+	await expect(
+		createUser.getByText("This step would start a loop", { exact: true }),
+	).toHaveCount(0);
+	await page
+		.getByRole("button", { name: "Create workflow", exact: true })
+		.click();
+	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+
+	await page.getByRole("switch", { name: "Enabled", exact: true }).click();
+	await page.getByRole("button", { name: "Save changes", exact: true }).click();
+	await expect(page.getByText("Not saved", { exact: true })).toBeVisible();
+	await expect(
+		page.getByText(/Saving this would let the workflow start itself again/),
+	).toBeVisible();
+	const saved = await world.api.get<{ enabled: boolean }>(
+		`${world.productPath}/workflows/${workflowIdFrom(page)}`,
+	);
+	expect(saved.enabled).toBe(false);
+});
+
 test("a custom event's data is typed where it is sent, and a field cannot get a second type", async ({
 	page,
 	world,

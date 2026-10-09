@@ -126,3 +126,21 @@ func TestValidate_RejectsAnOptionTheParameterDoesNotOffer(t *testing.T) {
 
 	assert.Contains(t, validationLocation(t, err), "accepts POST, PUT, PATCH, GET, DELETE")
 }
+
+func TestFindLoop_SeesAUserAndAnOrganizationThatCreateEachOther(t *testing.T) {
+	organizationForUser := wf("org-for-user", string(events.ProductUserCreated), true,
+		workflow.Step{ID: "org", Action: engine.ActionOrganizationCreate, Params: map[string]string{
+			"name": "Team", "owner_product_user_id": "{{event.data.product_user_id}}",
+		}})
+	userForOrganization := wf("user-for-org", string(events.OrganizationCreated), true,
+		workflow.Step{ID: "user", Action: engine.ActionProductUserCreate, Params: map[string]string{
+			"email": "owner@example.com",
+		}})
+
+	path := newEngine(t).FindLoop(userForOrganization, []workflow.Workflow{organizationForUser})
+
+	require.Len(t, path, 2)
+	assert.Equal(t, []string{"user-for-org", "org-for-user"}, []string{path[0].WorkflowID, path[1].WorkflowID})
+	assert.Equal(t, []string{string(events.ProductUserCreated), string(events.OrganizationCreated)},
+		[]string{path[0].Emits, path[1].Emits})
+}

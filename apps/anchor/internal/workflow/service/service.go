@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
@@ -43,20 +44,22 @@ type WorkflowService interface {
 }
 
 type workflowService struct {
-	repo   repository.Repository
-	engine *engine.Engine
-	runner *Runner
-	logger zerolog.Logger
+	repo       repository.Repository
+	transactor transactor.Transactor
+	engine     *engine.Engine
+	runner     *Runner
+	logger     zerolog.Logger
 }
 
 func NewWorkflowService(
-	repo repository.Repository, eng *engine.Engine, runner *Runner, logger zerolog.Logger,
+	repo repository.Repository, tx transactor.Transactor, eng *engine.Engine, runner *Runner, logger zerolog.Logger,
 ) WorkflowService {
 	return &workflowService{
-		repo:   repo,
-		engine: eng,
-		runner: runner,
-		logger: logger.With().Str("component", "workflow_service").Logger(),
+		repo:       repo,
+		transactor: tx,
+		engine:     eng,
+		runner:     runner,
+		logger:     logger.With().Str("component", "workflow_service").Logger(),
 	}
 }
 
@@ -100,6 +103,23 @@ func (s *workflowService) checkChains(ctx context.Context, candidate workflow.Wo
 	return nil
 }
 
+// saveInTurn checks the workflow against the product's others and writes it
+// while holding the product's save lock, so the check sees every save that
+// finished before it.
+func (s *workflowService) saveInTurn(
+	ctx context.Context, wf workflow.Workflow, write func(txCtx context.Context) error,
+) error {
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.LockProduct(txCtx, wf.PlatformTenantID, wf.ProductID); err != nil {
+			return err
+		}
+		if err := s.checkChains(txCtx, wf); err != nil {
+			return err
+		}
+		return write(txCtx)
+	})
+}
+
 func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput) (workflow.Workflow, error) {
 	if err := validate.ValidateStruct(input); err != nil {
 		return workflow.Workflow{}, err
@@ -110,10 +130,12 @@ func (s *workflowService) Create(ctx context.Context, input workflow.CreateInput
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.GenerateID()
 	wf.CreatedAt = time.Now().UTC()
-	if err := s.checkChains(ctx, wf); err != nil {
-		return workflow.Workflow{}, err
-	}
-	created, err := s.repo.Create(ctx, wf)
+	var created workflow.Workflow
+	err := s.saveInTurn(ctx, wf, func(txCtx context.Context) error {
+		var writeErr error
+		created, writeErr = s.repo.Create(txCtx, wf)
+		return writeErr
+	})
 	if err != nil {
 		return workflow.Workflow{}, err
 	}
@@ -162,10 +184,12 @@ func (s *workflowService) Update(ctx context.Context, input workflow.UpdateInput
 	}
 	wf := fromWriteInput(input.TenantID, input.ProductID, input.WriteInput)
 	wf.ID = input.WorkflowID
-	if err := s.checkChains(ctx, wf); err != nil {
-		return workflow.Workflow{}, err
-	}
-	updated, err := s.repo.Update(ctx, wf)
+	var updated functional.Option[workflow.Workflow]
+	err := s.saveInTurn(ctx, wf, func(txCtx context.Context) error {
+		var writeErr error
+		updated, writeErr = s.repo.Update(txCtx, wf)
+		return writeErr
+	})
 	if err != nil {
 		return workflow.Workflow{}, err
 	}
