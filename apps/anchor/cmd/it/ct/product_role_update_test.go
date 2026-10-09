@@ -1,7 +1,9 @@
 package ct_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +14,46 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestProductRole_UpdatePermissionReplacementStates(t *testing.T) {
+	t.Parallel()
+	for _, state := range []string{"omitted", "empty", "replacement"} {
+		t.Run(state, func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			product.CreateDefaultProductResourcePermissions(t)
+			client := product.OwnerAuthenticatedClient()
+			initial := product.DefaultResourcePermissions[0].Name
+			replacement := product.DefaultResourcePermissions[1].Name
+			name := "PermissionStates_" + ids.MustNew("role")
+			created, err := client.CreateProductRoleWithResponse(t.Context(), product.ProductID,
+				ct.CreateProductRoleJSONRequestBody{Name: name, Permissions: []string{initial}})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, created.StatusCode())
+			require.NotNil(t, created.JSON201)
+
+			body := map[string]any{"name": name}
+			expected := []string{initial}
+			switch state {
+			case "empty":
+				body["permissions"] = []string{}
+				expected = []string{}
+			case "replacement":
+				body["permissions"] = []string{replacement}
+				expected = []string{replacement}
+			}
+			encoded, err := json.Marshal(body)
+			require.NoError(t, err)
+			updated, err := client.UpdateProductRoleWithBodyWithResponse(t.Context(), product.ProductID,
+				created.JSON201.Id, "application/json", bytes.NewReader(encoded))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, updated.StatusCode())
+			require.NotNil(t, updated.JSON200)
+			assert.NotNil(t, updated.JSON200.Permissions)
+			assert.ElementsMatch(t, expected, rolePermissionNames(t, product, created.JSON201.Id))
+		})
+	}
+}
 
 func TestProductRole_Update(t *testing.T) {
 	t.Parallel()

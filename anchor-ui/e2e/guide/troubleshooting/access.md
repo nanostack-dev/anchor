@@ -16,7 +16,9 @@ both the UI and the persisted API resource.
   a role when deletion impact is the behavior under test.
 - `access.role-*` covers the role wizard, resource permission selection,
   view/edit/cancel, persisted grant replacement, list controls and single/bulk
-  deletion. An assigned role must retain its row after a `409` deletion error;
+  deletion. `access.role-empty-update` replaces grants with an empty array through
+  the public API and verifies the detail view after reload; the current role
+  wizard still requires a permission. An assigned role must retain its row after a `409` deletion error;
   bulk deletion must report the failed row while deleting an unrelated role.
 - Product users and organizations are read-only browser lists. Their API
   creation is preparation, not browser coverage of a creation flow.

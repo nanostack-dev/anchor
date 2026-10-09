@@ -116,12 +116,12 @@ func (s *AnchorAPI) UpdateProductRole(
 }
 
 func (s *AnchorAPI) mapToProductRolePermissionSlice(
-	productID, roleID string, permissionsStrings []string,
+	productID, roleID string, permissionsStrings *[]string,
 ) []role.ProductRolePermission {
-	if len(permissionsStrings) == 0 {
+	if permissionsStrings == nil {
 		return nil
 	}
-	return functional.Slice(permissionsStrings).Map(func(perm string) role.ProductRolePermission {
+	return functional.Slice(*permissionsStrings).Map(func(perm string) role.ProductRolePermission {
 		return role.ProductRolePermission{
 			ProductRoleID:  roleID,
 			ProductID:      productID,

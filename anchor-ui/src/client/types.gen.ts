@@ -552,7 +552,7 @@ export type ProductRoleUpdateRequest = {
      */
     description?: string | null;
     /**
-     * Optional list of permission names (strings) to assign initially.
+     * Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
      */
     permissions?: Array<string>;
 };

@@ -2311,8 +2311,8 @@ type ProductRoleUpdateRequest struct {
 	// Examples: Editor
 	Name string `json:"name"`
 
-	// Permissions Optional list of permission names (strings) to assign initially.
-	Permissions []string `json:"permissions,omitempty"`
+	// Permissions Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
+	Permissions *[]string `json:"permissions,omitempty"`
 }
 
 // ProductSearchRequest defines model for ProductSearchRequest.
