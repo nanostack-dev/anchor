@@ -38,7 +38,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 	}
 
 	return AddOrganizationMember201JSONResponse(
-		mapOrgMemberToResponse(membership, false),
+		mapOrgMemberToResponse(membership, organization.WithoutRolePermissions),
 	), nil
 }
 
@@ -97,7 +97,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 	}
 
 	return UpdateOrganizationMemberRole200JSONResponse(
-		mapOrgMemberToResponse(membership, false),
+		mapOrgMemberToResponse(membership, organization.WithoutRolePermissions),
 	), nil
 }
 
@@ -192,7 +192,7 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 			res.Items).Map(
 
 			func(m organization.Membership) OrganizationMemberResponse {
-				return mapOrgMemberToResponse(m, false)
+				return mapOrgMemberToResponse(m, organization.WithoutRolePermissions)
 			}),
 
 		Total: res.Total,
@@ -203,15 +203,6 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 }
 
 func mapOrgMemberToResponse(m organization.Membership, includePermissions bool) OrganizationMemberResponse {
-	var permissions *[]string
-	if includePermissions {
-		perms := m.RolePermissions
-		if perms == nil {
-			perms = []string{}
-		}
-		permissions = &perms
-	}
-
 	var name *string
 	if m.UserName != "" {
 		name = &m.UserName
@@ -230,7 +221,18 @@ func mapOrgMemberToResponse(m organization.Membership, includePermissions bool) 
 		}{
 			Id:          m.RoleID,
 			Name:        m.RoleName,
-			Permissions: permissions,
+			Permissions: includedRolePermissions(m.RolePermissions, includePermissions),
 		},
 	}
+}
+
+// includedRolePermissions keeps an omitted projection distinct from requested empty permissions.
+func includedRolePermissions(names []string, include bool) *[]string {
+	if !include {
+		return nil
+	}
+	if names == nil {
+		names = []string{}
+	}
+	return &names
 }
