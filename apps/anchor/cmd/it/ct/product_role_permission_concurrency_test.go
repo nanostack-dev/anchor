@@ -157,7 +157,7 @@ func TestProductRole_UpdateWithPermissionsReplacesTheSet(t *testing.T) {
 	replacement := []string{permissionNames[1], permissionNames[2]}
 	resp, err := client.UpdateProductRoleWithResponse(
 		t.Context(), productContext.ProductID, roleID,
-		ct.UpdateProductRoleJSONRequestBody{Name: "RaceRole_" + ids.MustNew("role"), Permissions: replacement},
+		ct.UpdateProductRoleJSONRequestBody{Name: "RaceRole_" + ids.MustNew("role"), Permissions: &replacement},
 	)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode())

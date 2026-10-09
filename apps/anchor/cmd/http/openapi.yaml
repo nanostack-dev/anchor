@@ -1090,12 +1090,11 @@ components:
           examples: ["Can view and edit resources within assigned organizations/workspaces."]
         permissions:
           type: array
-          description: Optional list of permission names (strings) to assign 
-            initially.
+          description: Permission names to replace the assigned set. Omit this field to
+            keep the current permissions; send an empty array to remove all permissions.
           items:
             type: string
             examples: ["document:edit"]
-          x-go-type-skip-optional-pointer: true
     ProductRoleResponse:
       type: object
       properties:

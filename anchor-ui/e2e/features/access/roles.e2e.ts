@@ -3,6 +3,7 @@ import type {
 	ProductRoleResponse,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { selectProduct } from "../../support/ui";
 import {
 	bulkDelete,
@@ -14,6 +15,34 @@ import {
 	row,
 	user,
 } from "./helpers";
+
+// Covers: PRODUCT_ROLE_DETAIL
+test("access.role-empty-update: an explicit empty API replacement persists after reload", async ({
+	page,
+	world,
+}, testInfo) => {
+	const grant = await permission(world);
+	const savedRole = await role(world, [grant.name]);
+	await selectProduct(page, world.product);
+	await page.goto(`${paths.roles}/${savedRole.id}`);
+	const details = page.getByRole("region", { name: "Role details" });
+	await expect(details).toContainText(grant.name);
+	await captureReviewCheckpoint(page, testInfo, "assigned-role");
+
+	const updated = await world.api.put<ProductRoleResponse>(
+		`${world.productPath}/roles/${savedRole.id}`,
+		{ name: savedRole.name, permissions: [] },
+	);
+	expect(updated.permissions).toEqual([]);
+	await page.reload();
+	await expect(details).toContainText("No permissions assigned");
+	await expect(details).not.toContainText(grant.name);
+	const persisted = await world.api.get<ProductRoleResponse>(
+		`${world.productPath}/roles/${savedRole.id}`,
+	);
+	expect(persisted.permissions).toEqual([]);
+	await captureReviewCheckpoint(page, testInfo, "empty-role-after-reload");
+});
 
 // Covers: PRODUCT_ROLES, PRODUCT_ROLE_DETAIL
 test("access.role-lifecycle: create role wizard, change grants, cancel edit, reload and delete", async ({
