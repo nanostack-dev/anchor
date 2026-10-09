@@ -16,6 +16,8 @@ Use [agent workflow](agent-workflow.md) for affected-area local E2E before pushi
 
 Read [implementation rules](agent-rules.md) for parallel CT isolation and [engineering practices](../engineering-best-practices.md) for test SDK ownership. A root-directory lint that prints `0 issues` is not a module check. UI `build` does not check types.
 
+The Go verification workflow runs for pull requests against any base branch, including stacked parent branches, so every layer receives `ci-ok` on its own head. Change detection still selects backend/frontend jobs. Preview flag/upsert, preview toggle and preview teardown remain limited to a `main` PR base; main push deployment conditions are unchanged.
+
 ## Regenerate contracts and database models
 
 1. Change `apps/anchor/cmd/http/openapi.yaml` before generated server/client code. Schema changes are migrations, never hot database edits.
