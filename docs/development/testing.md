@@ -30,3 +30,7 @@ The Go verification workflow runs for pull requests against any base branch, inc
 Status/error contract changes also update Echopoint flow assertions in both organizations. Follow the [flow-suite procedure](flow-suite-testing.md) and run `echopoint --profile <prod|dev> flows run --tag anchor --environment dev` for each profile; one profile's pass does not cover the other.
 
 [Go Build and Test](../../.github/workflows/go.yml) selects backend/frontend verification through reusable ci-workflows and reports `ci-ok`. [Isolated browser CI](../../.github/workflows/e2e-app.yml) runs the managed app gate and cleanup for its selected paths; deployed smoke and infra post-deploy suites are separate boundaries. Preserve the PR preview marker and distinguish executed, skipped, blocked and unknown checks. Documentation-only changes need link/command provenance checks, with CI selection reported accurately.
+
+## API-key pagination boundaries
+
+The product API-key and organization API-key repository tests list their five page boundaries as named local cases: full, first, second, partial and beyond-end without sort. Every case checks total matches separately from the returned count, length and ordered IDs. Preserve the two repository scopes and the existing sequential fixture execution when extending these tables.
