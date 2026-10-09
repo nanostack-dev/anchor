@@ -179,7 +179,7 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	logger zerolog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false,
+		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -203,7 +203,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 	logger zerolog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false,
+		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -269,7 +269,7 @@ func (s *organizationMembershipService) RemoveMember(
 	}
 
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
+		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).

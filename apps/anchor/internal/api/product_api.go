@@ -468,13 +468,7 @@ func mapUserOrgMembershipToResponse(
 		Id:   m.RoleID,
 		Name: m.RoleName,
 	}
-	if includePermissions {
-		permissions := m.RolePermissions
-		if permissions == nil {
-			permissions = []string{}
-		}
-		role.Permissions = &permissions
-	}
+	role.Permissions = includedRolePermissions(m.RolePermissions, includePermissions)
 
 	response := UserOrganizationResponse{
 		JoinedAt: m.JoinedAt,

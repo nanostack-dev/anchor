@@ -349,7 +349,7 @@ func (s *organizationService) CreateWithMember(
 	}
 
 	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, false,
+		ctx, input.ProductID, input.ProductUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -379,7 +379,7 @@ func (s *organizationService) CreateWithMember(
 		org := foundOrg.ToPtr()
 
 		foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
-			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false,
+			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
 		)
 		if errGetMembership != nil {
 			return organization.OrganizationWithMemberResult{}, errGetMembership

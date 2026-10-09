@@ -143,9 +143,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		func(row userOrgMembershipRow) user.OrganizationMembership {
-			return r.toDomain(row)
-		},
+		r.toDomain,
 	).Value()
 }
 
@@ -166,9 +164,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		func(row userOrgMembershipRow) user.OrganizationMembership {
-			return r.toDomain(row)
-		},
+		r.toDomain,
 	)
 }
 
@@ -195,7 +191,13 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		return organization.Membership{}, err
 	}
 
-	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	found, err := r.FindByOrgIDAndUserID(
+		ctx,
+		productID,
+		organizationID,
+		productUserID,
+		organization.WithoutRolePermissions,
+	)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -235,7 +237,13 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 
-	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	found, err := r.FindByOrgIDAndUserID(
+		ctx,
+		productID,
+		organizationID,
+		productUserID,
+		organization.WithoutRolePermissions,
+	)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -379,9 +387,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		func(row orgMembershipRow) organization.Membership {
-			return r.toDomainMembership(row)
-		},
+		r.toDomainMembership,
 	)
 }
 
@@ -399,9 +405,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		func(row orgMembershipRow) organization.Membership {
-			return r.toDomainMembership(row)
-		},
+		r.toDomainMembership,
 	).Value()
 }
 
