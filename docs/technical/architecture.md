@@ -20,3 +20,7 @@ Platform administrator / Product backend / Anchor UI
 - [anchor-ui](../../anchor-ui/) is the light-only React administration app. [clients/go](../../clients/go/) is a separate Go module generated from the same contract and replaced locally by the service/test module.
 
 [Dependencies and source ownership](dependencies.md) describes shared libraries and external CI/deployment. The [documentation index](../README.md) links current capability guides and preserved specs; a proposal in a spec is not proof that it shipped.
+
+## Integration ingestion decision
+
+An integration instance derives `CanIngest` and its diagnostic `IngestionBlockReason` from one private decision. Disabled state takes precedence over missing or blank webhook secrets, followed by lifecycle status. Active is the only allowed state; unknown statuses remain blocked. Error diagnostics are arbitrary stored text, so even the text `active` cannot authorize ingestion. Exported methods and reason strings stay stable.
