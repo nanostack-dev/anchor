@@ -30,3 +30,11 @@ An integration instance derives `CanIngest` and its diagnostic `IngestionBlockRe
 Licensing uses the existing framework transactor context for locked repository reads: call `FindByOrganization(transactor.ForUpdate(txCtx), ...)` inside the existing transaction. The retained repository lookup keeps its tenant/product/organization predicate and one-row limit. Keep the decorator inline on the read; subsequent writes use the undecorated transaction context.
 
 Template synchronization and adjustment retain their product advisory lock before the row read. Adjustment backfill uses its existing transaction without that advisory lock; migration inherits its outer session lock. These arrangements are distinct and must not be combined during a readability refactor.
+
+## Service operation phases
+
+`CreateWithMember` resolves its existing organization/membership result through a private idempotency helper before acquiring the existing creation lock. Metadata validation still precedes that lookup; absent entities after a membership lookup remain server-invariant errors.
+
+Product API-key updates prepare a requested permission replacement separately from the transaction/refetch and post-commit cache eviction. Omitted permissions skip preparation; an explicit empty replacement still checks mutability and clears permissions.
+
+Email sends check rate limits through a private helper after rendering/variable encoding and before selecting or creating the durable send row. Dedupe, failed-row reuse, provider dispatch and the bounded detached terminal-status write retain their ordering and contexts.

@@ -348,61 +348,12 @@ func (s *organizationService) CreateWithMember(
 		return organization.OrganizationWithMemberResult{}, err
 	}
 
-	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, organization.WithoutRolePermissions,
-	)
+	existing, err := s.findExistingOrganizationWithMember(ctx, input, logger)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("failed to check existing memberships for idempotency")
 		return organization.OrganizationWithMemberResult{}, err
 	}
-	if len(existingMemberships) > 0 {
-		existing := existingMemberships[0]
-
-		// Below, the organization and membership are re-read by an id this call
-		// never named; both came off existingMemberships a moment ago. Neither
-		// caller input caused an absence here, so a miss is a server invariant,
-		// not a 404: see PublishTemplate's second guard in
-		// docs/engineering-best-practices.md.
-		foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
-		if errGetOrg != nil {
-			return organization.OrganizationWithMemberResult{}, errGetOrg
-		}
-		if foundOrg.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
-				"create-with-member: organization %s missing after membership lookup",
-				existing.OrganizationID,
-			)
-		}
-		org := foundOrg.ToPtr()
-
-		foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
-			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
-		)
-		if errGetMembership != nil {
-			return organization.OrganizationWithMemberResult{}, errGetMembership
-		}
-		if foundMembership.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
-				"create-with-member: membership for product user %s in organization %s missing after lookup",
-				input.ProductUserID, existing.OrganizationID,
-			)
-		}
-		membership := foundMembership.ToPtr()
-
-		logger.Info().
-			Str("product_id", input.ProductID).
-			Str("organization_id", org.ID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("CreateWithMember: returning existing org+membership (idempotent)")
-
-		return organization.OrganizationWithMemberResult{
-			Organization: *org,
-			Membership:   *membership,
-			WasExisting:  true,
-		}, nil
+	if existing.IsPresent() {
+		return existing.Value(), nil
 	}
 
 	// No existing membership — acquire the lock and create the org + founding membership atomically.
@@ -540,6 +491,69 @@ func (s *organizationService) CreateWithMember(
 		Membership:   createdMembership,
 		WasExisting:  false,
 	}, nil
+}
+
+func (s *organizationService) findExistingOrganizationWithMember(
+	ctx context.Context, input organization.CreateOrganizationWithMemberInput, logger zerolog.Logger,
+) (functional.Option[organization.OrganizationWithMemberResult], error) {
+	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
+		ctx, input.ProductID, input.ProductUserID, organization.WithoutRolePermissions,
+	)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", input.ProductID).
+			Str("product_user_id", input.ProductUserID).
+			Msg("failed to check existing memberships for idempotency")
+		return functional.None[organization.OrganizationWithMemberResult](), err
+	}
+	if len(existingMemberships) == 0 {
+		return functional.None[organization.OrganizationWithMemberResult](), nil
+	}
+
+	existing := existingMemberships[0]
+
+	// Below, the organization and membership are re-read by an id this call
+	// never named; both came off existingMemberships a moment ago. Neither
+	// caller input caused an absence here, so a miss is a server invariant,
+	// not a 404: see PublishTemplate's second guard in
+	// docs/engineering-best-practices.md.
+	foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
+	if errGetOrg != nil {
+		return functional.None[organization.OrganizationWithMemberResult](), errGetOrg
+	}
+	if foundOrg.IsAbsent() {
+		return functional.None[organization.OrganizationWithMemberResult](), fmt.Errorf(
+			"create-with-member: organization %s missing after membership lookup",
+			existing.OrganizationID,
+		)
+	}
+	org := foundOrg.ToPtr()
+
+	foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
+		ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
+	)
+	if errGetMembership != nil {
+		return functional.None[organization.OrganizationWithMemberResult](), errGetMembership
+	}
+	if foundMembership.IsAbsent() {
+		return functional.None[organization.OrganizationWithMemberResult](), fmt.Errorf(
+			"create-with-member: membership for product user %s in organization %s missing after lookup",
+			input.ProductUserID, existing.OrganizationID,
+		)
+	}
+	membership := foundMembership.ToPtr()
+
+	logger.Info().
+		Str("product_id", input.ProductID).
+		Str("organization_id", org.ID).
+		Str("product_user_id", input.ProductUserID).
+		Msg("CreateWithMember: returning existing org+membership (idempotent)")
+
+	return functional.Some(organization.OrganizationWithMemberResult{
+		Organization: *org,
+		Membership:   *membership,
+		WasExisting:  true,
+	}), nil
 }
 
 func (s *organizationService) Update(
