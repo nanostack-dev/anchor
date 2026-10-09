@@ -293,8 +293,8 @@ func (s *organizationLicenseService) AdjustValues(
 		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
 			return err
 		}
-		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
-			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
+		foundExisting, findErr := s.licenseRepo.FindByOrganization(
+			transactor.ForUpdate(txCtx), in.TenantID, in.ProductID, in.OrganizationID,
 		)
 		if findErr != nil {
 			return findErr

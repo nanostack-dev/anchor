@@ -58,8 +58,8 @@ func (b *LicenseAdjustmentBackfill) Run(ctx context.Context) error {
 
 func (b *LicenseAdjustmentBackfill) initialize(ctx context.Context, row license.OrganizationLicense) error {
 	return b.tx.InTx(ctx, func(txCtx context.Context) error {
-		found, err := b.licenses.FindByOrganizationForUpdate(
-			txCtx,
+		found, err := b.licenses.FindByOrganization(
+			transactor.ForUpdate(txCtx),
 			row.PlatformTenantID,
 			row.ProductID,
 			row.OrganizationID,

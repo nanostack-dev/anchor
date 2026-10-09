@@ -69,7 +69,7 @@ func (syncLicenseRepository) ListOrganizationIDsForTemplateAfter(
 	return []string{"org_1"}, nil
 }
 
-func (syncLicenseRepository) FindByOrganizationForUpdate(
+func (syncLicenseRepository) FindByOrganization(
 	context.Context, string, string, string,
 ) (functional.Option[license.OrganizationLicense], error) {
 	return functional.Some(license.OrganizationLicense{

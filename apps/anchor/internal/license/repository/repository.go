@@ -114,6 +114,7 @@ type OrganizationLicenseRepository interface {
 	// FindByOrganization returns the Organization's license, or an absent Option
 	// when it has never been instantiated. Scoping by product as well is what
 	// stops a caller reading another Product's license by guessing a KSUID.
+	// Use an inline transactor.ForUpdate context inside a transaction for a locked read.
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
 	) (functional.Option[license.OrganizationLicense], error)
@@ -123,11 +124,6 @@ type OrganizationLicenseRepository interface {
 	FindByOrganizations(
 		ctx context.Context, tenantID string, productID string, organizationIDs []string,
 	) (map[string]license.OrganizationLicense, error)
-	// FindByOrganizationForUpdate is FindByOrganization plus FOR UPDATE.
-	// Call it inside a transaction so two adjustments cannot share one previous set.
-	FindByOrganizationForUpdate(
-		ctx context.Context, tenantID string, productID string, organizationID string,
-	) (functional.Option[license.OrganizationLicense], error)
 	Create(
 		ctx context.Context, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)
