@@ -41,6 +41,7 @@ const (
 	ActionMemberRemove       workflow.ActionType = "member.remove"
 	ActionInvitationCreate   workflow.ActionType = "invitation.create"
 	ActionProductUserGet     workflow.ActionType = "product_user.get"
+	ActionProductUserCreate  workflow.ActionType = "product_user.create"
 	ActionLicenseInstantiate workflow.ActionType = "license.instantiate"
 	ActionLicenseMigrate     workflow.ActionType = "license.migrate"
 	ActionLicenseAdjust      workflow.ActionType = "license.adjust"
@@ -391,6 +392,29 @@ func buildActions(s Services) []action {
 		},
 		{
 			spec: ActionSpec{
+				Type: ActionProductUserCreate, Group: GroupUsers, Name: "Create product user", Writes: true,
+				MayEmit: []string{string(events.ProductUserCreated)},
+				Description: "Adds an active product user with this email. Signing in stays with your " +
+					"identity provider. Fails when the product already has a user with this email.",
+				Params: []ParamSpec{
+					{Name: keyEmail, Label: "Email", Type: ParamEmail, Required: true},
+					{Name: keyName, Label: labelName, Type: ParamText,
+						Description: "Defaults to the part of the email before @."},
+				},
+				Outputs: []OutputSpec{
+					{
+						Name:        keyProductUserID,
+						Type:        FieldProductUser,
+						Description: "Identifier of the new product user.",
+					},
+					{Name: keyEmail, Type: FieldEmail, Description: "Email address."},
+					{Name: keyName, Type: FieldText, Description: "Display name."},
+				},
+			},
+			run: s.createProductUser,
+		},
+		{
+			spec: ActionSpec{
 				Type: ActionLicenseInstantiate, Group: GroupLicensing, Name: "License organization", Writes: true,
 				MayEmit:     []string{string(events.OrganizationLicenseUpdated)},
 				Description: "Gives an organization that holds no license its first one, copied from a template.",
@@ -571,4 +595,19 @@ func emailDomain(address string) string {
 		return ""
 	}
 	return strings.ToLower(domain)
+}
+
+func (s Services) createProductUser(ctx context.Context, env Env, p Params) (map[string]any, error) {
+	email := p.String(keyEmail)
+	name := strings.TrimSpace(p.String(keyName))
+	if name == "" {
+		name, _, _ = strings.Cut(email, "@")
+	}
+	created, err := s.ProductUsers.Create(ctx, user.CreateProductUserInput{
+		ProductID: env.ProductID, Email: email, Name: name, Status: user.ProductUserStatusActive,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{keyProductUserID: created.ID, keyEmail: created.Email, keyName: created.Name}, nil
 }

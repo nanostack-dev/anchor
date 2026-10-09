@@ -9,6 +9,7 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -20,6 +21,10 @@ var _ Repository = (*repositoryImpl)(nil)
 // Repository persists workflows and their runs. Every tenant-facing method is
 // scoped by tenant and product.
 type Repository interface {
+	// LockProduct holds the product's workflow saves until the surrounding
+	// transaction ends, so two saves cannot both pass the loop check before
+	// either is written. Outside a transaction it holds nothing.
+	LockProduct(ctx context.Context, tenantID, productID string) error
 	Create(ctx context.Context, wf workflow.Workflow) (workflow.Workflow, error)
 	Update(ctx context.Context, wf workflow.Workflow) (functional.Option[workflow.Workflow], error)
 	FindByID(ctx context.Context, tenantID, productID, workflowID string) (functional.Option[workflow.Workflow], error)
@@ -52,6 +57,13 @@ type repositoryImpl struct {
 
 func NewRepository(db *sql.DB) Repository {
 	return &repositoryImpl{db: db}
+}
+
+func (r *repositoryImpl) LockProduct(ctx context.Context, tenantID, productID string) error {
+	stmt := postgres.RawStatement("SELECT pg_advisory_xact_lock(#key)", postgres.RawArgs{
+		"#key": pglock.KeyHash("workflow-save:" + tenantID + ":" + productID),
+	})
+	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func workflowScope(tenantID, productID string) postgres.BoolExpression {
