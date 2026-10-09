@@ -748,16 +748,8 @@ func (s *emailService) Send(
 		varsJSON = raw
 	}
 
-	for _, w := range s.rateLimits {
-		since := time.Now().Add(-w.WindowDuration)
-		var count int64
-		count, err = s.sendRepo.CountSince(ctx, in.TenantID, in.ProductID, since)
-		if err != nil {
-			return email.SendRecord{}, err
-		}
-		if count >= w.MaxSends {
-			return email.SendRecord{}, ErrEmailRateLimitExceeded
-		}
+	if err = s.checkRateLimits(ctx, in); err != nil {
+		return email.SendRecord{}, err
 	}
 
 	var persisted email.SendRecord
@@ -840,6 +832,21 @@ func (s *emailService) Send(
 	persisted.Status = email.SendStatusSent
 	persisted.SentAt = &now
 	return persisted, nil
+}
+
+func (s *emailService) checkRateLimits(ctx context.Context, in email.SendInput) error {
+	for _, w := range s.rateLimits {
+		since := time.Now().Add(-w.WindowDuration)
+		count, err := s.sendRepo.CountSince(ctx, in.TenantID, in.ProductID, since)
+		if err != nil {
+			return err
+		}
+		if count >= w.MaxSends {
+			return ErrEmailRateLimitExceeded
+		}
+	}
+
+	return nil
 }
 
 // isEmailSendDedupeConflict reports whether err is the unique violation raised

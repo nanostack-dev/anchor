@@ -226,35 +226,10 @@ func (s *productAPIKeyService) Update(
 	}
 
 	if permissionsUpdated {
-		if !updatedAPIKey.Mutable {
-			return apikey.ProductAPIKey{}, NewProductAPIKeyPermissionsImmutableError(input.ID)
+		updatedAPIKey.Permissions, err = s.preparePermissionUpdate(ctx, input, updatedAPIKey, logger)
+		if err != nil {
+			return apikey.ProductAPIKey{}, err
 		}
-
-		permissions := *input.Permissions
-		if len(permissions) > 0 {
-			canonicalPermissions, permErr := s.permissionsValidation(
-				ctx,
-				input.ProductID,
-				permissions,
-				logger,
-			)
-			if permErr != nil {
-				return apikey.ProductAPIKey{}, permErr
-			}
-			permissions = canonicalPermissions
-		}
-
-		updatedAPIKey.Permissions = functional.Slice(
-			permissions).Map(
-
-			func(perm string) apikey.ProductAPIKeyPermission {
-				return apikey.ProductAPIKeyPermission{
-					APIKeyID:       input.ID,
-					ProductID:      input.ProductID,
-					PermissionName: perm,
-					CreatedAt:      time.Now(),
-				}
-			})
 	}
 
 	var updatedAPIKeyFromDB apikey.ProductAPIKey
@@ -318,6 +293,37 @@ func (s *productAPIKeyService) Update(
 		Msg("product API key updated")
 
 	return updatedAPIKeyFromDB, nil
+}
+
+func (s *productAPIKeyService) preparePermissionUpdate(
+	ctx context.Context, input apikey.UpdateProductAPIKeyInput, current apikey.ProductAPIKey, logger zerolog.Logger,
+) ([]apikey.ProductAPIKeyPermission, error) {
+	if !current.Mutable {
+		return nil, NewProductAPIKeyPermissionsImmutableError(input.ID)
+	}
+
+	permissions := *input.Permissions
+	if len(permissions) > 0 {
+		canonicalPermissions, permErr := s.permissionsValidation(
+			ctx,
+			input.ProductID,
+			permissions,
+			logger,
+		)
+		if permErr != nil {
+			return nil, permErr
+		}
+		permissions = canonicalPermissions
+	}
+
+	return functional.Slice(permissions).Map(func(perm string) apikey.ProductAPIKeyPermission {
+		return apikey.ProductAPIKeyPermission{
+			APIKeyID:       input.ID,
+			ProductID:      input.ProductID,
+			PermissionName: perm,
+			CreatedAt:      time.Now(),
+		}
+	}), nil
 }
 
 func (s *productAPIKeyService) Delete(
