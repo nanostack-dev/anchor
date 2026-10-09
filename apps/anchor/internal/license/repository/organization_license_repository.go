@@ -65,7 +65,13 @@ func (r *organizationLicenseRepositoryImpl) ListUninitializedAdjustmentsInternal
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
 ) (functional.Option[license.OrganizationLicense], error) {
-	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
+	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
+		FROM(table.OrganizationLicenses).
+		WHERE(
+			organizationLicenseScope(tenantID, productID).
+				AND(table.OrganizationLicenses.OrganizationID.EQ(postgres.String(organizationID))),
+		).LIMIT(1)
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
@@ -92,27 +98,6 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
 	return functional.Slice(rows).ToMap(func(row license.OrganizationLicense) string {
 		return row.OrganizationID
 	}), nil
-}
-
-func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(
-	ctx context.Context, tenantID string, productID string, organizationID string,
-) (functional.Option[license.OrganizationLicense], error) {
-	return r.findByOrganization(ctx, tenantID, productID, organizationID, true)
-}
-
-func (r *organizationLicenseRepositoryImpl) findByOrganization(
-	ctx context.Context, tenantID string, productID string, organizationID string, forUpdate bool,
-) (functional.Option[license.OrganizationLicense], error) {
-	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
-		FROM(table.OrganizationLicenses).
-		WHERE(
-			organizationLicenseScope(tenantID, productID).
-				AND(table.OrganizationLicenses.OrganizationID.EQ(postgres.String(organizationID))),
-		).LIMIT(1)
-	if forUpdate {
-		stmt = stmt.FOR(postgres.UPDATE())
-	}
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *organizationLicenseRepositoryImpl) Create(

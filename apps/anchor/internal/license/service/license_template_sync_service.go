@@ -202,8 +202,8 @@ func (s *licenseTemplateSyncService) syncOne(
 		if err := acquireLicenseWriteLock(txCtx, payload.TenantID, payload.ProductID); err != nil {
 			return err
 		}
-		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
-			txCtx, payload.TenantID, payload.ProductID, organizationID,
+		foundExisting, findErr := s.licenseRepo.FindByOrganization(
+			transactor.ForUpdate(txCtx), payload.TenantID, payload.ProductID, organizationID,
 		)
 		if findErr != nil {
 			return findErr

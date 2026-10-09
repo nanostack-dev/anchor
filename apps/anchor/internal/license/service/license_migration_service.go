@@ -259,8 +259,8 @@ func (s *licenseMigrationService) migrateOne(
 	wrote := false
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
-			txCtx, run.input.TenantID, run.input.ProductID, organizationID,
+		foundExisting, findErr := s.licenseRepo.FindByOrganization(
+			transactor.ForUpdate(txCtx), run.input.TenantID, run.input.ProductID, organizationID,
 		)
 		if findErr != nil {
 			return findErr
