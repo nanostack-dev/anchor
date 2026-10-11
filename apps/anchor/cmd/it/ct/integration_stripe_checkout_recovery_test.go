@@ -50,7 +50,10 @@ func seedCheckoutRecoveryFixture(t *testing.T, intent string, trial int, custome
 		(integration_instance_id,platform_tenant_id,product_id,state_json) VALUES($1,$2,$3,$4::jsonb)`,
 		instance.ID, tc.tenantID, tc.product.ProductID, string(body))
 	require.NoError(t, err)
-	return checkoutRecoveryFixture{context: tc, instance: instance, organizationID: organization.Id, priceID: priceID, intent: intent, trial: trial}
+	return checkoutRecoveryFixture{
+		context: tc, instance: instance, organizationID: organization.Id,
+		priceID: priceID, intent: intent, trial: trial,
+	}
 }
 
 func (fixture checkoutRecoveryFixture) requireUnchanged(t *testing.T) {
