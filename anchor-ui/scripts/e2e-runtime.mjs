@@ -15,6 +15,10 @@ import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+	fixtureOrigin,
+	writeStripeFixtureWrapper,
+} from "./e2e-stripe-fixture.mjs";
 
 const uiDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryDirectory = resolve(uiDirectory, "..");
@@ -30,6 +34,11 @@ const localDirectory = runtimeNamespace
 	: join(runtimeDirectory, ".local");
 const metadataPath = join(localDirectory, "runtime.json");
 const pendingMetadataPath = join(localDirectory, "startup.json");
+const stripeFixtureScript = join(
+	uiDirectory,
+	"scripts",
+	"e2e-stripe-fixture.mjs",
+);
 const composePath = join(runtimeDirectory, "docker-compose.yaml");
 const projectPrefix = `anchor-e2e-${createHash("sha256")
 	.update(
@@ -213,6 +222,7 @@ function backendEnvironment(metadata) {
 	);
 	return {
 		...env,
+		PATH: fixtureBackendPath(metadata, env.PATH),
 		CONFIG_PATH: join(runtimeDirectory, "application.yaml"),
 		ANCHOR_E2E_MIGRATIONS_PATH: join(appDirectory, "migrations"),
 		POSTGRES_PORT: String(metadata.postgresPort),
@@ -225,6 +235,147 @@ function backendEnvironment(metadata) {
 		ENVIRONMENT: "development",
 		LOG_LEVEL: "warn",
 	};
+}
+
+export function fixtureBackendPath(metadata, existingPath) {
+	if (!metadata.stripeFixtureURL) return existingPath;
+	fixtureOrigin(metadata.stripeFixtureURL);
+	if (
+		metadata.stripeFixtureWrapperDirectory !==
+		join(metadata.directory, "stripe-cli")
+	)
+		throw new Error("The Stripe CLI wrapper must belong to this runtime.");
+	return `${metadata.stripeFixtureWrapperDirectory}:${existingPath ?? ""}`;
+}
+
+export async function ownsStripeFixture(metadata) {
+	if (
+		!Number.isInteger(metadata.stripeFixturePID) ||
+		!metadata.stripeFixtureStartedAt
+	)
+		return false;
+	const identity = await backendIdentity(metadata.stripeFixturePID);
+	return (
+		identity?.startedAt === metadata.stripeFixtureStartedAt &&
+		identity.directory === uiDirectory &&
+		identity.command ===
+			`${process.execPath} ${stripeFixtureScript} --port ${new URL(fixtureOrigin(metadata.stripeFixtureURL)).port}`
+	);
+}
+
+async function stripeFixtureReady(metadata) {
+	if (!(await ownsStripeFixture(metadata))) return false;
+	try {
+		const response = await fetch(
+			`${fixtureOrigin(metadata.stripeFixtureURL)}/health`,
+			{ signal: AbortSignal.timeout(2000), redirect: "error" },
+		);
+		const body = await response.json();
+		return (
+			response.ok &&
+			body.fixture === "anchor-stripe" &&
+			body.pid === metadata.stripeFixturePID
+		);
+	} catch {
+		return false;
+	}
+}
+
+async function stripeFixtureFingerprint() {
+	return createHash("sha256")
+		.update(await readFile(stripeFixtureScript))
+		.digest("hex");
+}
+
+async function requireStripeFixture(metadata) {
+	if (
+		metadata.stripeFixtureURL &&
+		(!(await stripeFixtureReady(metadata)) ||
+			metadata.stripeFixtureFingerprint !== (await stripeFixtureFingerprint()))
+	)
+		throw new Error(
+			"The owned Stripe fixture is missing or its source changed; stop this disposable runtime before restarting.",
+		);
+}
+
+export async function stopStripeFixture(metadata) {
+	if (!metadata.stripeFixturePID) return;
+	if (!(await ownsStripeFixture(metadata))) {
+		try {
+			process.kill(metadata.stripeFixturePID, 0);
+		} catch (error) {
+			if (error.code === "ESRCH") return;
+			throw error;
+		}
+		throw new Error(
+			"Stripe fixture process ownership changed; shutdown was refused.",
+		);
+	}
+	process.kill(metadata.stripeFixturePID, "SIGTERM");
+	try {
+		await poll(
+			async () => !(await ownsStripeFixture(metadata)),
+			"owned Stripe fixture shutdown",
+			10000,
+		);
+	} catch {
+		if (await ownsStripeFixture(metadata))
+			process.kill(metadata.stripeFixturePID, "SIGKILL");
+	}
+}
+
+export async function startStripeFixtureProcess(
+	metadata,
+	{ signal, persist = async () => {} } = {},
+) {
+	const port = await allocatePort();
+	metadata.stripeFixtureURL = `http://127.0.0.1:${port}`;
+	metadata.stripeFixtureWrapperDirectory = join(
+		metadata.directory,
+		"stripe-cli",
+	);
+	metadata.stripeFixtureFingerprint = await stripeFixtureFingerprint();
+	await writeStripeFixtureWrapper(
+		metadata.stripeFixtureWrapperDirectory,
+		metadata.stripeFixtureURL,
+	);
+	const logFile = await open(
+		join(metadata.directory, "stripe-fixture.log"),
+		"a",
+		0o600,
+	);
+	try {
+		const child = spawn(
+			process.execPath,
+			[stripeFixtureScript, "--port", String(port)],
+			{
+				cwd: uiDirectory,
+				detached: true,
+				stdio: ["ignore", logFile.fd, logFile.fd],
+			},
+		);
+		await new Promise((resolve, reject) => {
+			child.once("spawn", resolve);
+			child.once("error", reject);
+		});
+		metadata.stripeFixturePID = child.pid;
+		child.unref();
+		metadata.stripeFixtureStartedAt = (
+			await backendIdentity(child.pid)
+		)?.startedAt;
+		await persist();
+		await poll(
+			() => stripeFixtureReady(metadata),
+			"owned loopback Stripe fixture",
+			10000,
+			signal,
+		);
+	} catch (error) {
+		await stopStripeFixture(metadata);
+		throw error;
+	} finally {
+		await logFile.close();
+	}
 }
 
 async function spawnBackend(metadata) {
@@ -306,6 +457,7 @@ export async function stopRuntime(metadata) {
 			if (await ownsBackend(target)) process.kill(target.pid, "SIGKILL");
 		}
 	}
+	await stopStripeFixture(target);
 	await compose(target, [
 		"down",
 		"--volumes",
@@ -319,8 +471,17 @@ export async function stopRuntime(metadata) {
 	if (pending?.runId === target.runId)
 		await rm(pendingMetadataPath, { force: true });
 	await Promise.all(
-		["postgres-password", "jwt-secret", "encryption-key", "owner.json"].map(
-			(name) => rm(join(target.directory, name), { force: true }),
+		[
+			"postgres-password",
+			"jwt-secret",
+			"encryption-key",
+			"owner.json",
+			"stripe-cli",
+		].map((name) =>
+			rm(join(target.directory, name), {
+				force: true,
+				recursive: name === "stripe-cli",
+			}),
 		),
 	);
 }
@@ -330,6 +491,7 @@ export async function refreshRuntime({ expectedRunId, signal } = {}) {
 	if (!metadata)
 		throw new Error("No managed Anchor runtime exists to refresh.");
 	assertOwned(metadata);
+	await requireStripeFixture(metadata);
 	if (expectedRunId && metadata.runId !== expectedRunId)
 		throw new Error(
 			"The managed Anchor runtime identity changed; refresh was refused.",
@@ -461,6 +623,7 @@ export async function startRuntime({
 	reuse = true,
 	requireFresh = false,
 	frontendURL = "http://127.0.0.1:3015",
+	stripeFixture = false,
 	signal,
 } = {}) {
 	if (new URL(frontendURL).hostname !== "127.0.0.1")
@@ -505,10 +668,18 @@ export async function startRuntime({
 		const existing = await statusRuntime();
 		if (
 			existing?.active &&
+			Boolean(existing.stripeFixtureURL) !== stripeFixture
+		)
+			throw new Error(
+				"The active runtime uses a different Stripe transport; stop its owner before changing fixture mode.",
+			);
+		if (
+			existing?.active &&
 			reuse &&
 			existing.fingerprint === fingerprint &&
 			existing.frontendURL === frontendURL
 		) {
+			await requireStripeFixture(existing);
 			const { active: _, ...reused } = existing;
 			return reused;
 		}
@@ -564,6 +735,11 @@ export async function startRuntime({
 		}
 		const apiPort = await allocatePort();
 		metadata.apiURL = `http://127.0.0.1:${apiPort}`;
+		if (stripeFixture)
+			await startStripeFixtureProcess(metadata, {
+				signal,
+				persist: () => writeMetadata(metadata, pendingMetadataPath),
+			});
 		await spawnBackend(metadata);
 		await writeMetadata(metadata, pendingMetadataPath);
 		await poll(

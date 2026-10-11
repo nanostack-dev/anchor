@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -276,6 +277,31 @@ func (w *serviceWorld) restart(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestScheduledReconciliationStaysBoundedAndPreservesBillingActivity(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	body, signature := signedEvent(t, w.config.WebhookSecret, "evt_invoice", "invoice.paid",
+		map[string]any{"id": "in_expected", "customer": "cus_expected"})
+	require.NoError(t, w.service.HandleWebhook(t.Context(), body, signature))
+	require.NoError(t, w.service.ProcessPending(t.Context()))
+	for range 100 {
+		require.NoError(t, w.service.QueueReconciliation())
+		require.NoError(t, w.service.ProcessPending(t.Context()))
+		stored, err := w.store.Snapshot()
+		require.NoError(t, err)
+		require.Len(t, stored.Events, 2, "completed repair work must not accumulate")
+	}
+	state, err := w.service.State(t.Context())
+	require.NoError(t, err)
+	require.Len(t, state.Events, 1)
+	assert.Equal(t, "evt_invoice", state.Events[0].ID)
+	require.NoError(t, w.service.HandleWebhook(t.Context(), body, signature))
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.Len(t, stored.Events, 2, "the original Stripe event must retain its deduplication record")
+	assert.Equal(t, 1, stored.Events["evt_invoice"].Attempts)
+}
+
 func TestFirstRunStateSerializesEmptyCollectionsAsArrays(t *testing.T) {
 	t.Parallel()
 	w := newServiceWorld(t)
@@ -296,6 +322,89 @@ func TestFirstRunStateSerializesEmptyCollectionsAsArrays(t *testing.T) {
 	for _, field := range []string{"prices", "events", "organizations", "templates"} {
 		assert.JSONEq(t, "[]", string(fields[field]), "%s must satisfy the required array contract", field)
 	}
+}
+
+func TestReceivedStripeEventWithRepairTypeRetainsDedupeAndVisibility(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	body, signature := signedEvent(t, w.config.WebhookSecret, "evt_received", "reconciliation.scheduled",
+		map[string]any{"id": "in_expected", "customer": "cus_expected"})
+	require.NoError(t, w.service.HandleWebhook(t.Context(), body, signature))
+	require.NoError(t, w.service.ProcessPending(t.Context()))
+	require.NoError(t, w.service.QueueReconciliation())
+	state, err := w.service.State(t.Context())
+	require.NoError(t, err)
+	require.Len(t, state.Events, 1)
+	assert.Equal(t, "evt_received", state.Events[0].ID)
+	require.NoError(t, w.service.HandleWebhook(t.Context(), body, signature))
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.Equal(t, "processed", stored.Events["evt_received"].Status)
+	assert.Equal(t, 1, stored.Events["evt_received"].Attempts)
+}
+
+func TestReconciliationRemovesLegacyClutterWithoutResettingBackoff(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	backoff := time.Now().UTC().Add(time.Hour)
+	pendingID, errorID := ksuid.New().String(), ksuid.New().String()
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		for range 100 {
+			id := ksuid.New().String()
+			state.Events[id] = eventRecord{ID: id, Type: "reconciliation.scheduled",
+				OrganizationID: w.organization, Status: "processed", ReceivedAt: time.Now().UTC()}
+		}
+		state.Events[pendingID] = eventRecord{ID: pendingID, Type: "reconciliation.scheduled",
+			OrganizationID: w.organization, Status: "pending", Attempts: 4, NextAttempt: backoff}
+		state.Events[errorID] = eventRecord{ID: errorID, Type: "reconciliation.scheduled",
+			OrganizationID: w.organization, Status: "error", Attempts: 7, NextAttempt: backoff,
+			LastError: "Stripe unavailable"}
+		state.FraudRefunds = map[string]fraudRefundRecord{
+			"audit_skipped": {FraudRefund: FraudRefund{ID: "audit_skipped", Status: FraudRefundSkipped}},
+		}
+		return nil
+	}))
+	before, err := w.store.Snapshot()
+	require.NoError(t, err)
+	for range 3 {
+		require.NoError(t, w.service.QueueReconciliation())
+	}
+	require.NoError(t, w.service.ProcessPending(t.Context()))
+	after, err := w.store.Snapshot()
+	require.NoError(t, err)
+	require.Len(t, after.Events, 2)
+	assert.Equal(t, before.Events[pendingID], after.Events[pendingID])
+	assert.Equal(t, before.Events[errorID], after.Events[errorID])
+	assert.Equal(t, before.FraudRefunds, after.FraudRefunds)
+	assert.Empty(t, w.stripe.requests, "future retries must not be made immediately by a new sweep")
+}
+
+func TestInternalRepairEventsDoNotCrowdOutRecentStripeActivity(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	body, signature := signedEvent(t, w.config.WebhookSecret, "evt_invoice", "invoice.paid",
+		map[string]any{"id": "in_expected", "customer": "cus_expected"})
+	require.NoError(t, w.service.HandleWebhook(t.Context(), body, signature))
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		for range 100 {
+			id := ksuid.New().String()
+			state.Events[id] = eventRecord{ID: id, Type: "reconciliation.scheduled",
+				OrganizationID: w.organization, Status: "processed", ReceivedAt: time.Now().UTC()}
+		}
+		state.Events["fraud-reconcile-action"] = eventRecord{
+			ID:   "fraud-reconcile-action",
+			Type: "fraud.refund.reconciliation",
+		}
+		state.Events["fraud-monitor-action"] = eventRecord{ID: "fraud-monitor-action", Type: "fraud.refund.monitor"}
+		return nil
+	}))
+	state, err := w.service.State(t.Context())
+	require.NoError(t, err)
+	require.Len(t, state.Events, 1)
+	assert.Equal(t, "evt_invoice", state.Events[0].ID)
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.Len(t, stored.Events, 103, "reading activity must not delete received or pending work")
 }
 
 func TestCheckoutAcceptsAnchorOrganizationPrefixAndRejectsPathInjection(t *testing.T) {
@@ -349,6 +458,55 @@ func TestCheckoutAcceptsAnchorOrganizationPrefixAndRejectsPathInjection(t *testi
 			assert.Equal(t, w.config.ProductID, checkout.params["subscription_data[metadata][anchor_product_id]"])
 		})
 	}
+}
+
+func TestPriceArchiveRefusesUnresolvedCheckout(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	intent := ksuid.New().String()
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		organization := state.Organizations[w.organization]
+		organization.CheckoutIntent, organization.CheckoutPrice = intent, w.price.ID
+		state.Organizations[w.organization] = organization
+		return nil
+	}))
+	w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+		if path == "/v1/prices/price_paid" {
+			return map[string]any{"id": "price_paid", "active": false}, nil
+		}
+		return nil, fmt.Errorf("unexpected Stripe request %s", path)
+	}
+	_, err := w.service.ArchivePrice(t.Context(), w.price.ID)
+	require.ErrorIs(t, err, ErrConflict)
+	assert.Empty(t, w.stripe.requests, "refusal must leave the remote price active")
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.True(t, stored.Prices[w.price.ID].Active)
+	assert.Equal(t, intent, stored.Organizations[w.organization].CheckoutIntent)
+}
+
+func TestPriceArchiveAllowsKnownCheckoutSession(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		organization := state.Organizations[w.organization]
+		organization.CheckoutID, organization.CheckoutIntent, organization.CheckoutPrice = "cs_known", "known_intent", w.price.ID
+		state.Organizations[w.organization] = organization
+		return nil
+	}))
+	w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+		if path == "/v1/prices/price_paid" {
+			return map[string]any{"id": "price_paid", "active": false}, nil
+		}
+		return nil, fmt.Errorf("unexpected Stripe request %s", path)
+	}
+	price, err := w.service.ArchivePrice(t.Context(), w.price.ID)
+	require.NoError(t, err)
+	assert.False(t, price.Active)
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.Equal(t, "cs_known", stored.Organizations[w.organization].CheckoutID)
+	assert.Equal(t, "known_intent", stored.Organizations[w.organization].CheckoutIntent)
 }
 
 func TestCheckoutLostResponsePreservesIntentUntilRecovered(t *testing.T) {
@@ -406,6 +564,7 @@ func TestCheckoutLostResponsePreservesIntentUntilRecovered(t *testing.T) {
 			_, err = w.service.Checkout(t.Context(), w.organization, changed)
 			require.ErrorIs(t, err, ErrConflict)
 			assert.Equal(t, 1, checkoutCalls)
+			assert.Len(t, w.stripe.requests, 2, "a changed ambiguous request must refuse before SDK calls")
 			state, err := w.store.Snapshot()
 			require.NoError(t, err)
 			assert.Equal(t, remoteIntent, state.Organizations[w.organization].CheckoutIntent)
@@ -414,6 +573,210 @@ func TestCheckoutLostResponsePreservesIntentUntilRecovered(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "https://checkout.stripe.com/recovered", result.URL)
 			assert.Equal(t, 2, checkoutCalls)
+		})
+	}
+}
+
+func TestArchivedPriceCheckoutRecoversOriginalAmbiguousRequest(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		organization := state.Organizations[w.organization]
+		organization.SubscriptionID = ""
+		state.Organizations[w.organization] = organization
+		return nil
+	}))
+	var originalParams map[string]string
+	var originalIntent string
+	w.stripe.respond = func(_ string, path string, params map[string]string, intent string) (any, error) {
+		switch path {
+		case "/v1/subscriptions":
+			return map[string]any{"data": []any{}}, nil
+		case "/v1/checkout/sessions":
+			if originalIntent == "" {
+				originalIntent, originalParams = intent, params
+				return nil, errors.New("checkout response lost after acceptance")
+			}
+			require.Equal(t, originalIntent, intent)
+			require.Equal(t, originalParams, params)
+			return map[string]any{"id": "cs_recovered", "url": "https://checkout.stripe.com/recovered"}, nil
+		default:
+			return nil, fmt.Errorf("unexpected Stripe request %s", path)
+		}
+	}
+	request := CheckoutRequest{PriceID: w.price.ID, TrialDays: 7}
+	_, err := w.service.Checkout(t.Context(), w.organization, request)
+	require.Error(t, err)
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		price := state.Prices[w.price.ID]
+		price.Active = false
+		state.Prices[w.price.ID] = price
+		return nil
+	}))
+	w.restart(t)
+	result, err := w.service.Checkout(t.Context(), w.organization, request)
+	require.NoError(t, err)
+	assert.Equal(t, "https://checkout.stripe.com/recovered", result.URL)
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.False(t, stored.Prices[w.price.ID].Active)
+	assert.Equal(t, originalIntent, stored.Organizations[w.organization].CheckoutIntent)
+	assert.Equal(t, "cs_recovered", stored.Organizations[w.organization].CheckoutID)
+}
+
+func TestAmbiguousCheckoutOutsideReplayWindowKeepsIntent(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"expired", "future", "invalid"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			created := time.Now().Add(-24 * time.Hour)
+			if scenario == "future" {
+				created = time.Now().Add(time.Hour)
+			}
+			id, err := ksuid.NewRandomWithTime(created)
+			require.NoError(t, err)
+			intent := id.String()
+			if scenario == "invalid" {
+				intent = "legacy_pending_intent"
+			}
+			require.NoError(t, w.store.Update(func(state *StoredState) error {
+				organization := state.Organizations[w.organization]
+				organization.SubscriptionID = ""
+				organization.CheckoutIntent, organization.CheckoutPrice, organization.CheckoutTrial = intent, w.price.ID, 7
+				state.Organizations[w.organization] = organization
+				return nil
+			}))
+			w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+				if path == "/v1/subscriptions" {
+					return map[string]any{"data": []any{}}, nil
+				}
+				return map[string]any{"id": "cs_unexpected", "url": "https://checkout.stripe.com/unexpected"}, nil
+			}
+			_, err = w.service.Checkout(t.Context(), w.organization, CheckoutRequest{PriceID: w.price.ID, TrialDays: 7})
+			require.ErrorIs(t, err, ErrConflict)
+			stored, err := w.store.Snapshot()
+			require.NoError(t, err)
+			assert.Equal(t, intent, stored.Organizations[w.organization].CheckoutIntent)
+			assert.Empty(t, stored.Organizations[w.organization].CheckoutID)
+			assert.Empty(t, w.stripe.requests, "unsafe replay must refuse before SDK calls")
+		})
+	}
+}
+
+func TestAmbiguousCheckoutConfigurationDriftCannotCreateAnotherSession(t *testing.T) {
+	t.Parallel()
+	w := newServiceWorld(t)
+	require.NoError(t, w.store.Update(func(state *StoredState) error {
+		organization := state.Organizations[w.organization]
+		organization.SubscriptionID = ""
+		state.Organizations[w.organization] = organization
+		return nil
+	}))
+	var originalParams map[string]string
+	var originalIntent string
+	accepted := 0
+	w.stripe.respond = func(_ string, path string, params map[string]string, intent string) (any, error) {
+		if path == "/v1/subscriptions" {
+			return map[string]any{"data": []any{}}, nil
+		}
+		if path != "/v1/checkout/sessions" {
+			return nil, fmt.Errorf("unexpected Stripe request %s", path)
+		}
+		if originalIntent == "" {
+			originalIntent, originalParams = intent, params
+			accepted++
+			return nil, errors.New("checkout response lost after acceptance")
+		}
+		if intent == originalIntent && !maps.Equal(params, originalParams) {
+			return nil, &stripeSDK.Error{Type: stripeSDK.ErrorTypeIdempotency, Msg: "Parameters differ"}
+		}
+		if intent != originalIntent {
+			accepted++
+		}
+		return map[string]any{"id": "cs_created", "url": "https://checkout.stripe.com/created"}, nil
+	}
+	request := CheckoutRequest{PriceID: w.price.ID}
+	_, err := w.service.Checkout(t.Context(), w.organization, request)
+	require.Error(t, err)
+	w.config.ReturnURL = "http://127.0.0.1:4248"
+	w.service, err = NewService(w.config, w.stripe, w.anchor, w.store)
+	require.NoError(t, err)
+	_, err = w.service.Checkout(t.Context(), w.organization, request)
+	var providerErr *stripeSDK.Error
+	require.ErrorAs(t, err, &providerErr)
+	assert.Equal(t, stripeSDK.ErrorTypeIdempotency, providerErr.Type)
+	assert.Equal(t, 1, accepted)
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	assert.Equal(t, originalIntent, stored.Organizations[w.organization].CheckoutIntent)
+	assert.Empty(t, stored.Organizations[w.organization].CheckoutID)
+}
+
+func TestArchivedPriceCheckoutRecoversOnlyOwnedKnownSession(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"open", "expired", "unknown status", "foreign customer", "foreign organization", "foreign session", "live"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			w := newServiceWorld(t)
+			require.NoError(t, w.store.Update(func(state *StoredState) error {
+				price := state.Prices[w.price.ID]
+				price.Active = false
+				state.Prices[w.price.ID] = price
+				organization := state.Organizations[w.organization]
+				organization.SubscriptionID = ""
+				organization.CheckoutID, organization.CheckoutIntent, organization.CheckoutPrice = "cs_previous", "legacy_known_intent", w.price.ID
+				state.Organizations[w.organization] = organization
+				return nil
+			}))
+			session := map[string]any{
+				"id":                  "cs_previous",
+				"customer":            "cus_expected",
+				"client_reference_id": w.organization,
+				"livemode":            false,
+				"status":              "open",
+				"url":                 "https://checkout.stripe.com/existing",
+			}
+			switch scenario {
+			case "expired":
+				session["status"] = "expired"
+			case "unknown status":
+				session["status"] = "unknown"
+			case "foreign customer":
+				session["customer"] = "cus_foreign"
+			case "foreign organization":
+				session["client_reference_id"] = "org_foreign"
+			case "foreign session":
+				session["id"] = "cs_foreign"
+			case "live":
+				session["livemode"] = true
+			}
+			w.stripe.respond = func(_ string, path string, _ map[string]string, _ string) (any, error) {
+				if path == "/v1/subscriptions" {
+					return map[string]any{"data": []any{}}, nil
+				}
+				if path == "/v1/checkout/sessions/cs_previous" {
+					return session, nil
+				}
+				return nil, fmt.Errorf("unexpected Stripe request %s", path)
+			}
+			result, err := w.service.Checkout(t.Context(), w.organization, CheckoutRequest{PriceID: w.price.ID})
+			switch scenario {
+			case "open":
+				require.NoError(t, err)
+				assert.Equal(t, "https://checkout.stripe.com/existing", result.URL)
+			case "expired":
+				require.ErrorIs(t, err, ErrInput)
+			default:
+				require.ErrorIs(t, err, ErrConflict)
+			}
+			stored, snapshotErr := w.store.Snapshot()
+			require.NoError(t, snapshotErr)
+			assert.Equal(t, "cs_previous", stored.Organizations[w.organization].CheckoutID)
+			assert.Equal(t, "legacy_known_intent", stored.Organizations[w.organization].CheckoutIntent)
+			for _, request := range w.stripe.requests {
+				assert.Equal(t, "get", request.method)
+			}
 		})
 	}
 }

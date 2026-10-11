@@ -13,6 +13,28 @@ running. Otherwise use the regular app-suite command, which starts it.
 
 ## Local integration fixtures
 
+### Stripe billing
+
+The managed browser launcher starts an owned loopback Stripe fixture for native
+billing regressions and passes its CLI wrapper only to the disposable backend.
+The real `stripe:prototype` launcher continues to use the developer's authenticated
+sandbox CLI. Runtime reuse must match the selected transport; use a separate
+namespace for browser verification while the sandbox demo is running.
+
+The native Checkout regression deliberately loses the response after the fixture
+has accepted the request. Assert the API's `500`, archive `409`, retained active
+price, and successful retry with identical parameters and request key. The fixture
+must contain one session. Clearing the saved intent or changing the retry payload
+would hide the financial ambiguity. Backend tests separately cover archived
+legacy records and unsafe recovery outside the 23-hour window.
+
+The other native journey signs the public webhook's exact bytes and waits for
+`invoice.paid` to be processed by Anchor's real worker. It verifies that the invoice
+remains visible after manual reconciliation and reload, then checks that a
+disputed warning produces **Skipped** and the manual-review explanation without
+a refund request. Manual **Reconcile** does not enqueue the periodic repair job;
+the 100-sweep backend regression covers bounded scheduling and activity history.
+
 SMTP setup starts asynchronous connection verification. An enabled integration
 can still be `CONFIGURING`; the visible `Live` badge represents the enabled
 switch, not a successful SMTP handshake. `configureSMTP` polls the real API for

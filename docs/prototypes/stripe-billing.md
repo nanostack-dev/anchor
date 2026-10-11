@@ -124,6 +124,14 @@ Anchor organizations. Stripe sandbox objects remain in the account after shutdow
    retain their price. Change amounts by creating a replacement price and moving
    subscriptions explicitly.
 
+If a Checkout response is lost, retry the same price and trial to recover the
+session with its saved request key. Anchor refuses to archive that price while
+the session's outcome is unknown. A previously archived price can still recover
+that exact request within 23 hours of the saved intent's creation, or retrieve a
+known session. Recovery never creates a replacement request for an uncertain
+session. An expired, malformed, future-dated, or incomplete saved intent requires
+investigation in Stripe; it remains recorded rather than being silently cleared.
+
 Choose an active **fallback template**, initially Free, for ended subscriptions.
 Active and trialing subscriptions select their paid price's template. Canceled,
 unpaid, paused, and expired incomplete subscriptions select the fallback.
@@ -169,6 +177,11 @@ new refunds.
 
 Periodic reconciliation refreshes linked subscriptions and known refund actions;
 it does not discover a warning whose initial delivery never reached Anchor.
+Each linked organization reuses one repair-job identity. Pending or failed jobs
+retain their retry schedule; completed internal subscription jobs are replaced
+on the next sweep, including historical generated jobs. Internal repair work is
+excluded from the latest 100 billing activity entries. Received Stripe events
+and financial audit records remain persisted for deduplication and investigation.
 Keep the local CLI listener and Anchor API running during sandbox verification.
 After downtime, inspect Stripe for missed warnings and investigate those payments;
 resend signed events through a configured Stripe webhook endpoint where available.
@@ -180,6 +193,8 @@ arrive late and reimbursement can fail; the policy cannot guarantee avoiding
 dispute fees. See [the source research](../research/stripe-fraud-refund-events.md)
 for the distinction between early fraud warnings, inquiries, and formal disputes.
 Turning the policy off stops new refunds while issued refunds remain monitored.
+An already disputed payment is **Skipped**, with an explanation that it needs
+manual review; this decision does not submit a refund.
 Disconnecting Stripe, or deleting its product, is refused while financial actions
 still need resolution; pausing the connection preserves their records for
 reconciliation after resuming. An action that was never submitted to Stripe and
@@ -231,8 +246,14 @@ credentials. Account pinning, sandbox guards, bounded requests, cancellation,
 idempotency keys, and secret-safe errors apply to both transports.
 
 The managed browser suite covers the native integration and billing pages using
-real local Anchor authentication, products, and organization prerequisites, with
-Stripe billing responses replaced at the API boundary. Ordinary browser tests
+real local Anchor authentication, products, and organization prerequisites.
+Presentation scenarios replace billing responses at the Anchor API boundary.
+Two native regressions run through the real billing API, PostgreSQL state,
+durable workers, official Go client, and LOCAL_CLI transport against an owned
+loopback Stripe fixture. They cover an accepted Checkout with a lost response,
+archive refusal and exact retry, plus signed invoice and disputed-warning intake.
+The fixture is selected explicitly by the disposable browser launcher; the
+real sandbox demo retains its authenticated Stripe CLI. Ordinary browser tests
 need no Stripe login and make no external Stripe requests. Run the affected
 selection and the complete gate through the existing `test:e2e:affected` and
 `test:e2e:verify` commands. Review screenshots, videos, and failure traces stay in
