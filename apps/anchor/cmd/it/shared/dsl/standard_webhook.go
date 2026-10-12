@@ -135,3 +135,9 @@ func otherSigningSecret() string {
 		bytes.Repeat([]byte{0x42}, signingSecretBytes),
 	)
 }
+
+// StandardWebhookSignatureMatches reports whether a request Anchor signed
+// carries a signature made with the secret over its id, timestamp and body.
+func StandardWebhookSignatureMatches(secret string, headers http.Header, body []byte) bool {
+	return standardWebhookSignatureMatches(secret, headers, body)
+}

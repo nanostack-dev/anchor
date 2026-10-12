@@ -24,6 +24,7 @@ import (
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
 	"anchor/internal/session"
+	"anchor/internal/workflow"
 
 	"go.uber.org/fx"
 )
@@ -57,6 +58,7 @@ func startAnchor(target ...any) {
 		events.NewModule(),
 		license.NewModule(),
 		invitation.NewModule(),
+		workflow.NewModule(),
 		session.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),

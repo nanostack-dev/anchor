@@ -3,7 +3,6 @@ package events
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -120,9 +119,9 @@ type deliverer struct {
 }
 
 func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
-	var payload queuePayload
-	if err := json.Unmarshal(job.Payload, &payload); err != nil {
-		return fmt.Errorf("events: decode job: %w", err)
+	payload, err := DecodeQueuedEvent(job.Payload)
+	if err != nil {
+		return err
 	}
 	target, found, err := d.endpoints.DeliveryTarget(ctx, payload.ProductID)
 	if err != nil {
@@ -132,14 +131,7 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		return nil
 	}
 
-	eventType := payload.Type
-	if eventType == "" {
-		var env Envelope
-		if unmarshalErr := json.Unmarshal(payload.Body, &env); unmarshalErr == nil {
-			eventType = env.Type
-		}
-	}
-	if !target.Allows(eventType) {
+	if !target.Allows(payload.Type) {
 		return nil
 	}
 

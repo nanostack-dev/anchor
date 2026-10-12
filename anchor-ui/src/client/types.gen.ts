@@ -341,9 +341,13 @@ export type ProductEventsCatalogResponse = {
     items: Array<ProductEventDefinitionResponse>;
 };
 
+/**
+ * `custom` names an event a Product's workflows emit for each other with the `workflow.emit` action. Custom events appear only as workflow triggers; they are never delivered to the event endpoint.
+ */
 export enum ProductEventGroupType {
     INTERNAL = 'internal',
-    INTEGRATION = 'integration'
+    INTEGRATION = 'integration',
+    CUSTOM = 'custom'
 }
 
 export type ProductEventDefinitionResponse = {
@@ -2564,6 +2568,282 @@ export type UsageSeriesResponse = PagedListResponse & {
 };
 
 /**
+ * How a condition compares the value at `field` with `value`. Every comparison ignores letter case. `in` takes a comma-separated list. `exists` and `not_exists` take no value; an empty string counts as absent.
+ */
+export enum WorkflowOperator {
+    EQUALS = 'equals',
+    NOT_EQUALS = 'not_equals',
+    CONTAINS = 'contains',
+    NOT_CONTAINS = 'not_contains',
+    STARTS_WITH = 'starts_with',
+    ENDS_WITH = 'ends_with',
+    IN = 'in',
+    EXISTS = 'exists',
+    NOT_EXISTS = 'not_exists'
+}
+
+/**
+ * A related resource a workflow read can ask for.
+ */
+export enum WorkflowInclude {
+    LAST_RUN = 'last_run'
+}
+
+/**
+ * `skipped` is a run whose workflow conditions did not hold: no step ran. `running` is a run still in progress, or one whose process stopped before it finished; it is never retried.
+ */
+export enum WorkflowRunStatus {
+    RUNNING = 'running',
+    SUCCEEDED = 'succeeded',
+    FAILED = 'failed',
+    SKIPPED = 'skipped'
+}
+
+/**
+ * `event` is a run started by a product event, `manual` one started through the run endpoint, `dry_run` one that wrote nothing and was not stored.
+ */
+export enum WorkflowRunTrigger {
+    EVENT = 'event',
+    MANUAL = 'manual',
+    DRY_RUN = 'dry_run'
+}
+
+/**
+ * `skipped` is a step whose `when` conditions did not hold. `simulated` is a write step in a dry run: its parameters were resolved and nothing was written.
+ */
+export enum WorkflowStepStatus {
+    SUCCEEDED = 'succeeded',
+    FAILED = 'failed',
+    SKIPPED = 'skipped',
+    SIMULATED = 'simulated'
+}
+
+/**
+ * What a parameter holds, so a client can offer the right picker. Every parameter is sent as a string; `json` parameters hold a JSON object after their references are resolved.
+ */
+export enum WorkflowParamType {
+    TEXT = 'text',
+    EMAIL = 'email',
+    JSON = 'json',
+    ORGANIZATION = 'organization',
+    PRODUCT_USER = 'product_user',
+    ROLE = 'role',
+    LICENSE_TEMPLATE = 'license_template',
+    EMAIL_TEMPLATE = 'email_template',
+    URL = 'url',
+    CUSTOM_EVENT = 'custom_event'
+}
+
+export type WorkflowCondition = {
+    /**
+     * Path of the value to test: `event.data.<field>`, `steps.<step id>.<output>` (deeper for objects such as `steps.org.metadata.plan`), `event.type` or `workflow.id`.
+     */
+    field: string;
+    operator: WorkflowOperator;
+    /**
+     * Value to compare with. May hold `{{ path }}` references.
+     */
+    value?: string;
+};
+
+export type WorkflowStep = {
+    /**
+     * Identifier unique in the workflow. Later steps read this step's output as `steps.<id>.<output>`.
+     */
+    id: string;
+    /**
+     * Display name of the step.
+     */
+    name?: string;
+    /**
+     * An action type from the workflow catalog.
+     */
+    action: string;
+    /**
+     * Parameter values by name. Each may hold `{{ path }}` references to the trigger event or an earlier step's output.
+     */
+    params: {
+        [key: string]: string;
+    };
+    /**
+     * Conditions that must all hold for this step to run. Absent means always.
+     */
+    when?: Array<WorkflowCondition>;
+    /**
+     * Keep running the next steps when this one fails. The run still reads `failed`.
+     */
+    continue_on_error?: boolean;
+};
+
+export type WorkflowDefinition = {
+    /**
+     * Conditions on the trigger event that must all hold for the workflow to run. They can read only `event.*` and `workflow.*`.
+     */
+    conditions: Array<WorkflowCondition>;
+    /**
+     * Steps run one after the other, in order.
+     */
+    steps: Array<WorkflowStep>;
+};
+
+export type WorkflowWriteRequest = {
+    name: string;
+    description?: string;
+    /**
+     * A disabled workflow keeps its definition and starts no run on events.
+     */
+    enabled: boolean;
+    /**
+     * The event that starts a run: a product event from the workflow catalog, or a custom event (`custom.` followed by lowercase words joined by dots) that another workflow emits.
+     */
+    trigger_event_type: string;
+    definition: WorkflowDefinition;
+};
+
+/**
+ * A Product's own automation: when its trigger event happens and every condition holds, its steps run in order against the Product's resources, as the Product.
+ */
+export type WorkflowResponse = {
+    id: Ksuid;
+    name: string;
+    description?: string;
+    enabled: boolean;
+    trigger_event_type: string;
+    definition: WorkflowDefinition;
+    /**
+     * Every event type the steps can emit, product or custom. A workflow triggered by one of them runs after this one.
+     */
+    emits: Array<string>;
+    /**
+     * The latest run. Present only on a read passing `include=last_run`, and then absent when the workflow never ran.
+     */
+    last_run?: WorkflowRunResponse;
+    created_at: string;
+    updated_at: string;
+};
+
+export type WorkflowListResponse = {
+    items: Array<WorkflowResponse>;
+    count: number;
+};
+
+export type WorkflowStepResultResponse = {
+    step_id: string;
+    action: string;
+    status: WorkflowStepStatus;
+    /**
+     * Parameters after their references were resolved.
+     */
+    params?: {
+        [key: string]: unknown;
+    };
+    /**
+     * What the step produced, readable by later steps as `steps.<id>.*`.
+     */
+    output?: {
+        [key: string]: unknown;
+    };
+    error?: string;
+};
+
+export type WorkflowRunResponse = {
+    id: Ksuid;
+    workflow_id: Ksuid;
+    workflow_name?: string;
+    /**
+     * The product event the run reacted to, or a generated id for a manual or dry run.
+     */
+    event_id: string;
+    event_type: string;
+    event_data: {
+        [key: string]: string;
+    };
+    trigger: WorkflowRunTrigger;
+    status: WorkflowRunStatus;
+    steps: Array<WorkflowStepResultResponse>;
+    error?: string;
+    started_at: string;
+    finished_at?: string;
+};
+
+export type WorkflowRunListResponse = {
+    items: Array<WorkflowRunResponse>;
+    count: number;
+};
+
+export type WorkflowRunRequest = {
+    /**
+     * The `data` of the event to run against, as the trigger event would carry it.
+     */
+    event_data: {
+        [key: string]: string;
+    };
+};
+
+export type WorkflowDryRunRequest = {
+    workflow: WorkflowWriteRequest;
+    event_data: {
+        [key: string]: string;
+    };
+};
+
+export type WorkflowTriggerResponse = {
+    type: string;
+    name: string;
+    description: string;
+    group_type: ProductEventGroupType;
+    group_name: string;
+    /**
+     * Keys the event carries under `event.data`.
+     */
+    data_fields: Array<string>;
+};
+
+export type WorkflowActionParamResponse = {
+    name: string;
+    label: string;
+    description?: string;
+    type: WorkflowParamType;
+    required: boolean;
+    /**
+     * The only values the parameter accepts. Absent means any value.
+     */
+    options?: Array<string>;
+    /**
+     * The value must be written out and cannot hold `{{ }}` references, because Anchor reads it when the workflow is saved.
+     */
+    literal: boolean;
+};
+
+export type WorkflowActionOutputResponse = {
+    name: string;
+    description: string;
+};
+
+export type WorkflowActionResponse = {
+    type: string;
+    name: string;
+    description: string;
+    group: string;
+    /**
+     * The action changes a resource or calls out. A dry run only resolves it.
+     */
+    writes: boolean;
+    /**
+     * Every event type the action can emit. `workflow.emit` lists none here: its event is the one its step names.
+     */
+    emits: Array<string>;
+    params: Array<WorkflowActionParamResponse>;
+    outputs: Array<WorkflowActionOutputResponse>;
+};
+
+export type WorkflowCatalogResponse = {
+    triggers: Array<WorkflowTriggerResponse>;
+    actions: Array<WorkflowActionResponse>;
+    operators: Array<WorkflowOperator>;
+};
+
+/**
  * The KSUID of the platform invitation.
  */
 export type PlatformInvitationIdParameter = Ksuid;
@@ -2602,6 +2882,16 @@ export type OrganizationIdParameter = Ksuid;
  * The KSUID of the workspace.
  */
 export type WorkspaceIdParameter = Ksuid;
+
+/**
+ * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+ */
+export type WorkflowIncludeParameter = Array<WorkflowInclude>;
+
+/**
+ * The KSUID of the workflow.
+ */
+export type WorkflowIdParameter = Ksuid;
 
 /**
  * The KSUID of the product Product User.
@@ -7842,6 +8132,443 @@ export type GetOrganizationUsageSeriesResponses = {
 };
 
 export type GetOrganizationUsageSeriesResponse = GetOrganizationUsageSeriesResponses[keyof GetOrganizationUsageSeriesResponses];
+
+export type GetWorkflowCatalogData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflow-catalog';
+};
+
+export type GetWorkflowCatalogErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetWorkflowCatalogError = GetWorkflowCatalogErrors[keyof GetWorkflowCatalogErrors];
+
+export type GetWorkflowCatalogResponses = {
+    /**
+     * Success
+     */
+    200: WorkflowCatalogResponse;
+};
+
+export type GetWorkflowCatalogResponse = GetWorkflowCatalogResponses[keyof GetWorkflowCatalogResponses];
+
+export type ListWorkflowsData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: {
+        /**
+         * Related resources to read alongside each workflow, comma separated — `?include=last_run`. A resource not named is left out of the response. Each named resource costs one statement for the whole response.
+         */
+        include?: Array<WorkflowInclude>;
+    };
+    url: '/v1/products/{product_id}/workflows';
+};
+
+export type ListWorkflowsErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type ListWorkflowsError = ListWorkflowsErrors[keyof ListWorkflowsErrors];
+
+export type ListWorkflowsResponses = {
+    /**
+     * Success
+     */
+    200: WorkflowListResponse;
+};
+
+export type ListWorkflowsResponse = ListWorkflowsResponses[keyof ListWorkflowsResponses];
+
+export type CreateWorkflowData = {
+    body: WorkflowWriteRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflows';
+};
+
+export type CreateWorkflowErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type CreateWorkflowError = CreateWorkflowErrors[keyof CreateWorkflowErrors];
+
+export type CreateWorkflowResponses = {
+    /**
+     * Workflow created
+     */
+    201: WorkflowResponse;
+};
+
+export type CreateWorkflowResponse = CreateWorkflowResponses[keyof CreateWorkflowResponses];
+
+export type DeleteWorkflowData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the workflow.
+         */
+        workflow_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflows/{workflow_id}';
+};
+
+export type DeleteWorkflowErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type DeleteWorkflowError = DeleteWorkflowErrors[keyof DeleteWorkflowErrors];
+
+export type DeleteWorkflowResponses = {
+    /**
+     * Workflow deleted
+     */
+    204: void;
+};
+
+export type DeleteWorkflowResponse = DeleteWorkflowResponses[keyof DeleteWorkflowResponses];
+
+export type GetWorkflowData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the workflow.
+         */
+        workflow_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflows/{workflow_id}';
+};
+
+export type GetWorkflowErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetWorkflowError = GetWorkflowErrors[keyof GetWorkflowErrors];
+
+export type GetWorkflowResponses = {
+    /**
+     * Success
+     */
+    200: WorkflowResponse;
+};
+
+export type GetWorkflowResponse = GetWorkflowResponses[keyof GetWorkflowResponses];
+
+export type UpdateWorkflowData = {
+    body: WorkflowWriteRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the workflow.
+         */
+        workflow_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflows/{workflow_id}';
+};
+
+export type UpdateWorkflowErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type UpdateWorkflowError = UpdateWorkflowErrors[keyof UpdateWorkflowErrors];
+
+export type UpdateWorkflowResponses = {
+    /**
+     * Workflow updated
+     */
+    200: WorkflowResponse;
+};
+
+export type UpdateWorkflowResponse = UpdateWorkflowResponses[keyof UpdateWorkflowResponses];
+
+export type ListWorkflowRunsData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the workflow.
+         */
+        workflow_id: Ksuid;
+    };
+    query?: {
+        limit?: number;
+    };
+    url: '/v1/products/{product_id}/workflows/{workflow_id}/runs';
+};
+
+export type ListWorkflowRunsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type ListWorkflowRunsError = ListWorkflowRunsErrors[keyof ListWorkflowRunsErrors];
+
+export type ListWorkflowRunsResponses = {
+    /**
+     * Success
+     */
+    200: WorkflowRunListResponse;
+};
+
+export type ListWorkflowRunsResponse = ListWorkflowRunsResponses[keyof ListWorkflowRunsResponses];
+
+export type RunWorkflowData = {
+    body: WorkflowRunRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the workflow.
+         */
+        workflow_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflows/{workflow_id}/runs';
+};
+
+export type RunWorkflowErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type RunWorkflowError = RunWorkflowErrors[keyof RunWorkflowErrors];
+
+export type RunWorkflowResponses = {
+    /**
+     * The finished run. A failed step is reported in the run, not as an error status.
+     */
+    200: WorkflowRunResponse;
+};
+
+export type RunWorkflowResponse = RunWorkflowResponses[keyof RunWorkflowResponses];
+
+export type DryRunWorkflowData = {
+    body: WorkflowDryRunRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/workflow-dry-runs';
+};
+
+export type DryRunWorkflowErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type DryRunWorkflowError = DryRunWorkflowErrors[keyof DryRunWorkflowErrors];
+
+export type DryRunWorkflowResponses = {
+    /**
+     * The finished dry run.
+     */
+    200: WorkflowRunResponse;
+};
+
+export type DryRunWorkflowResponse = DryRunWorkflowResponses[keyof DryRunWorkflowResponses];
+
+export type ListProductWorkflowRunsData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: {
+        limit?: number;
+    };
+    url: '/v1/products/{product_id}/workflow-runs';
+};
+
+export type ListProductWorkflowRunsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type ListProductWorkflowRunsError = ListProductWorkflowRunsErrors[keyof ListProductWorkflowRunsErrors];
+
+export type ListProductWorkflowRunsResponses = {
+    /**
+     * Success
+     */
+    200: WorkflowRunListResponse;
+};
+
+export type ListProductWorkflowRunsResponse = ListProductWorkflowRunsResponses[keyof ListProductWorkflowRunsResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});

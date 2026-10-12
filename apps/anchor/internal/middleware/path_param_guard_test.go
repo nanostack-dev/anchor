@@ -23,6 +23,7 @@ var maintainedPathParams = map[string]struct{}{
 	"product_user_id":         {},
 	"provider_type":           {},
 	"role_id":                 {},
+	"workflow_id":             {},
 	"workspace_id":            {},
 }
 
