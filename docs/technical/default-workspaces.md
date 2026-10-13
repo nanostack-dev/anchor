@@ -24,6 +24,8 @@ Workspace responses carry the read-only `is_default` field. The designation is
 stored independently of the name. A default initially uses the name `Default`;
 an existing workspace with that exact name is designated instead of creating
 another. Renaming the designated workspace preserves its identity and designation.
+Default designation uses a separate write, so concurrent ordinary edits preserve
+the designation and provisioning preserves name/description changes.
 The service serializes provisioning on the organization's row, and a partial
 unique index permits at most one designated default per organization.
 
@@ -52,11 +54,11 @@ workspace filtering. Those changes belong to later consumer PRs.
 
 `apps/anchor/cmd/it/ct/default_workspace_test.go` covers opted-in creation and
 signed organization/workspace events, false/omitted compatibility, founding-member
-retries, multi-product startup pagination, concurrent sweeps and rename/restart
-identity. Run the owning CTs from `apps/anchor` with:
+retries, rollback with the organization transaction, multi-product startup
+pagination, concurrent sweeps, rename/restart identity and stale-edit interleaving. Run the owning CTs from `apps/anchor` with:
 
 ```sh
-go test ./cmd/it/ct/... -run 'Test(Organization.*DefaultWorkspace|DefaultWorkspaceStartup)' -count=1
+go test ./cmd/it/ct/... -run 'Test(Organization.*DefaultWorkspace|DefaultWorkspace)' -count=1
 ```
 
 The startup test stays serial because its reconciliation pass visits all products.

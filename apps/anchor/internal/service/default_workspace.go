@@ -2,28 +2,25 @@ package service
 
 import (
 	"context"
-	"strings"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
 const defaultWorkspaceName = "Default"
 
 func (s *workspaceService) EnsureDefault(
 	ctx context.Context,
-	productID, organizationID string,
+	input workspace.EnsureDefaultWorkspaceInput,
 ) (workspace.Workspace, error) {
-	if strings.TrimSpace(productID) == "" || strings.TrimSpace(organizationID) == "" {
-		return workspace.Workspace{}, fault.BadRequest(
-			"INVALID_WORKSPACE_ORGANIZATION",
-			"Product and organization IDs are required.",
-		)
+	if err := validate.ValidateStruct(input); err != nil {
+		return workspace.Workspace{}, err
 	}
+	productID, organizationID := input.ProductID, input.OrganizationID
 	var result workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if lockErr := s.lockOrganization(txCtx, productID, organizationID); lockErr != nil {
@@ -48,9 +45,8 @@ func (s *workspaceService) EnsureDefault(
 		}
 		if byName.IsPresent() {
 			current := byName.Value()
-			current.IsDefault = true
 			var updateErr error
-			result, updateErr = s.workspaceRepo.Update(txCtx, productID, organizationID, current)
+			result, updateErr = s.workspaceRepo.DesignateDefault(txCtx, productID, organizationID, current.ID)
 			if updateErr != nil {
 				return updateErr
 			}

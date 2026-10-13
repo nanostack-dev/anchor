@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/workspace"
 	"anchor/internal/repository"
 
 	"github.com/rs/zerolog"
@@ -37,8 +38,7 @@ func (s *DefaultWorkspaceStartupSync) Run(ctx context.Context) error {
 		for _, org := range page {
 			if _, ensureErr := s.workspaces.EnsureDefault(
 				ctx,
-				org.ProductID,
-				org.ID,
+				workspace.EnsureDefaultWorkspaceInput{ProductID: org.ProductID, OrganizationID: org.ID},
 			); ensureErr != nil &&
 				!errors.Is(ensureErr, organization.ErrOrganizationNotFound) {
 				return fmt.Errorf("ensure default workspace: %w", ensureErr)

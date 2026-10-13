@@ -17,6 +17,7 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
@@ -322,7 +323,9 @@ func (s *organizationService) Create(
 		}
 		created.License = instantiated
 		if input.CreateDefaultWorkspace {
-			if _, workspaceErr := s.workspaces.EnsureDefault(txCtx, input.ProductID, created.ID); workspaceErr != nil {
+			if _, workspaceErr := s.workspaces.EnsureDefault(txCtx, workspace.EnsureDefaultWorkspaceInput{
+				ProductID: input.ProductID, OrganizationID: created.ID,
+			}); workspaceErr != nil {
 				return workspaceErr
 			}
 		}
@@ -364,8 +367,10 @@ func (s *organizationService) CreateWithMember(
 		if input.CreateDefaultWorkspace {
 			if _, workspaceErr := s.workspaces.EnsureDefault(
 				ctx,
-				input.ProductID,
-				existing.Value().Organization.ID,
+				workspace.EnsureDefaultWorkspaceInput{
+					ProductID:      input.ProductID,
+					OrganizationID: existing.Value().Organization.ID,
+				},
 			); workspaceErr != nil {
 				return organization.OrganizationWithMemberResult{}, workspaceErr
 			}
@@ -464,8 +469,7 @@ func (s *organizationService) CreateWithMember(
 		if input.CreateDefaultWorkspace {
 			if _, workspaceErr := s.workspaces.EnsureDefault(
 				lockCtx,
-				input.ProductID,
-				createdOrg.ID,
+				workspace.EnsureDefaultWorkspaceInput{ProductID: input.ProductID, OrganizationID: createdOrg.ID},
 			); workspaceErr != nil {
 				return workspaceErr
 			}

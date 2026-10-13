@@ -29,6 +29,7 @@ func workspacesUpdatableColumns() postgres.ColumnList {
 }
 
 type WorkspaceRepository interface {
+	DesignateDefault(ctx context.Context, productID, organizationID, workspaceID string) (workspace.Workspace, error)
 	FindDefault(ctx context.Context, productID, organizationID string) (functional.Option[workspace.Workspace], error)
 	FindByID(
 		ctx context.Context,
@@ -165,6 +166,24 @@ func (r *workspaceRepositoryImpl) FindDefault(
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.workspaceMapper.ToDomain)
 }
 
+// DesignateDefault changes only the designation, preserving concurrent name/description edits.
+func (r *workspaceRepositoryImpl) DesignateDefault(
+	ctx context.Context, productID, organizationID, workspaceID string,
+) (workspace.Workspace, error) {
+	stmt := table.Workspaces.UPDATE(table.Workspaces.IsDefault, table.Workspaces.UpdatedAt).
+		SET(postgres.Bool(true), postgres.TimestampzT(time.Now())).
+		FROM(table.Organizations).
+		WHERE(table.Workspaces.ID.EQ(postgres.String(workspaceID)).AND(r.mutationScopedWhere(productID, organizationID)))
+	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
+		return workspace.Workspace{}, err
+	}
+	found, err := r.FindByID(ctx, productID, organizationID, workspaceID)
+	if err != nil {
+		return workspace.Workspace{}, err
+	}
+	return found.ToResult(workspace.ErrWorkspaceNotFound).Value()
+}
+
 func (r *workspaceRepositoryImpl) Update(
 	ctx context.Context,
 	productID string,
@@ -179,6 +198,7 @@ func (r *workspaceRepositoryImpl) Update(
 			table.Workspaces.ID,
 			table.Workspaces.OrganizationID,
 			table.Workspaces.CreatedAt,
+			table.Workspaces.IsDefault,
 		),
 	).MODEL(
 		entityToUpdate,

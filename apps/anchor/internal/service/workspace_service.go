@@ -15,7 +15,7 @@ import (
 )
 
 type WorkspaceService interface {
-	EnsureDefault(ctx context.Context, productID, organizationID string) (workspace.Workspace, error)
+	EnsureDefault(ctx context.Context, input workspace.EnsureDefaultWorkspaceInput) (workspace.Workspace, error)
 	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)

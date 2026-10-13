@@ -8,6 +8,7 @@ import (
 
 	itdsl "anchor/cmd/it/shared/dsl"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/workspace"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -145,4 +146,40 @@ func TestDefaultWorkspaceStartupSweep(t *testing.T) {
 	require.Equal(t, legacyWorkspace.Id, afterRestart.Items[0].Id)
 	require.NotNil(t, afterRestart.Items[0].IsDefault)
 	require.True(t, *afterRestart.Items[0].IsDefault)
+}
+
+// A workspace edit can have read its entity before startup designates it.
+// Persist that stale edit after provisioning to pin the actual lost-update interleaving.
+func TestDefaultWorkspaceDesignationSurvivesStaleEdit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	product := createTestProductContext(t)
+	org := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{Name: ids.MustNew("org")})
+	original := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Default"})
+	before, err := defaultWorkspaceRepository.FindByID(ctx, product.ProductID, org.Id, original.Id)
+	require.NoError(t, err)
+	require.True(t, before.IsPresent())
+	stale := before.Value()
+	require.False(t, stale.IsDefault)
+	_, err = defaultWorkspaceService.EnsureDefault(
+		ctx,
+		workspace.EnsureDefaultWorkspaceInput{ProductID: product.ProductID, OrganizationID: org.Id},
+	)
+	require.NoError(t, err)
+	stale.Name = "Renamed " + ids.MustNew("ws")
+	stale.Description = new("Concurrent edit")
+	updated, err := defaultWorkspaceRepository.Update(ctx, product.ProductID, org.Id, stale)
+	require.NoError(t, err)
+	require.True(t, updated.IsDefault)
+	require.Equal(t, stale.Name, updated.Name)
+	require.Equal(t, stale.Description, updated.Description)
+	ensured, err := defaultWorkspaceService.EnsureDefault(
+		ctx,
+		workspace.EnsureDefaultWorkspaceInput{ProductID: product.ProductID, OrganizationID: org.Id},
+	)
+	require.NoError(t, err)
+	require.Equal(t, original.Id, ensured.ID)
+	require.Equal(t, stale.Name, ensured.Name)
+	workspaces := product.Workspaces(org.Id).Search(ct.SearchOrganizationWorkspacesJSONRequestBody{})
+	require.Len(t, workspaces.Items, 1)
 }

@@ -31,6 +31,8 @@ var (
 	defaultWorkspaceStartup       *service.DefaultWorkspaceStartupSync
 	defaultWorkspaceOrganizations service.OrganizationService
 	defaultWorkspaceTx            transactor.Transactor
+	defaultWorkspaceService       service.WorkspaceService
+	defaultWorkspaceRepository    repository.WorkspaceRepository
 )
 
 func TestMain(m *testing.M) {
@@ -52,6 +54,8 @@ func TestMain(m *testing.M) {
 				&defaultWorkspaceStartup,
 				&defaultWorkspaceOrganizations,
 				&defaultWorkspaceTx,
+				&defaultWorkspaceService,
+				&defaultWorkspaceRepository,
 				&authCfg,
 				&EventQueue,
 				&IntegrationRepo,
