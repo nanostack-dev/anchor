@@ -17,6 +17,7 @@ func (m *WorkspaceMapper) ToDomain(entity model.Workspaces) workspace.Workspace 
 		OrganizationID: entity.OrganizationID,
 		Name:           entity.Name,
 		Description:    entity.Description,
+		IsDefault:      entity.IsDefault,
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
 	}
@@ -28,6 +29,7 @@ func (m *WorkspaceMapper) ToEntity(domain workspace.Workspace) model.Workspaces 
 		OrganizationID: domain.OrganizationID,
 		Name:           domain.Name,
 		Description:    domain.Description,
+		IsDefault:      domain.IsDefault,
 		CreatedAt:      domain.CreatedAt,
 		UpdatedAt:      domain.UpdatedAt,
 	}

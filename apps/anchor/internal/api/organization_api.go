@@ -81,14 +81,15 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 	if request.Body.FoundingMember != nil {
 		input := organization.CreateOrganizationWithMemberInput{
-			TenantID:          tenantID,
-			ProductID:         request.ProductId,
-			Name:              request.Body.Name,
-			Description:       request.Body.Description,
-			Metadata:          mapMetadataToInput(request.Body.Metadata),
-			ProductUserID:     request.Body.FoundingMember.ProductUserId,
-			RoleID:            request.Body.FoundingMember.RoleId,
-			LicenseTemplateID: licenseTemplateID,
+			CreateDefaultWorkspace: functional.FromPtr(request.Body.CreateDefaultWorkspace).OrElse(false),
+			TenantID:               tenantID,
+			ProductID:              request.ProductId,
+			Name:                   request.Body.Name,
+			Description:            request.Body.Description,
+			Metadata:               mapMetadataToInput(request.Body.Metadata),
+			ProductUserID:          request.Body.FoundingMember.ProductUserId,
+			RoleID:                 request.Body.FoundingMember.RoleId,
+			LicenseTemplateID:      licenseTemplateID,
 		}
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
@@ -107,12 +108,13 @@ func (s *AnchorAPI) CreateProductOrganization(
 	}
 
 	input := organization.CreateOrganizationInput{
-		TenantID:          tenantID,
-		ProductID:         request.ProductId,
-		Name:              request.Body.Name,
-		Description:       request.Body.Description,
-		Metadata:          mapMetadataToInput(request.Body.Metadata),
-		LicenseTemplateID: licenseTemplateID,
+		CreateDefaultWorkspace: functional.FromPtr(request.Body.CreateDefaultWorkspace).OrElse(false),
+		TenantID:               tenantID,
+		ProductID:              request.ProductId,
+		Name:                   request.Body.Name,
+		Description:            request.Body.Description,
+		Metadata:               mapMetadataToInput(request.Body.Metadata),
+		LicenseTemplateID:      licenseTemplateID,
 	}
 
 	created, err := s.OrganizationService.Create(ctx, input)

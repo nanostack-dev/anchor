@@ -476,6 +476,17 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 				`"founding_member":{"product_user_id":"pusr_1","role_id":"prole_1"}}`,
 		},
 		{
+			name:  "organization create with default workspace",
+			reply: stubResponse{status: http.StatusCreated, body: orgBody},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Organizations().Create("Acme").DefaultWorkspace().Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/organizations",
+			wantBody:   `{"name":"Acme","create_default_workspace":true}`,
+		},
+		{
 			name:  "organization search",
 			reply: stubResponse{status: http.StatusOK, body: listBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {

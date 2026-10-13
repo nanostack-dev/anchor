@@ -1233,6 +1233,10 @@ export type UserResponse = {
 
 export type ProductOrganizationRequest = {
     /**
+     * On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Startup also ensures default workspaces for all organizations that already exist.
+     */
+    create_default_workspace?: boolean;
+    /**
      * Name of the organization. Not unique — two Organizations in one Product may share a name, so address an Organization by its ID.
      */
     name: string;
@@ -1337,6 +1341,10 @@ export type ProductWorkspaceRequest = {
 };
 
 export type ProductWorkspaceResponse = {
+    /**
+     * Whether this is the organization's designated default workspace.
+     */
+    readonly is_default?: boolean;
     /**
      * Unique identifier for the workspace.
      */
@@ -2561,6 +2569,33 @@ export type UsageSeriesPointResponse = {
 
 export type UsageSeriesResponse = PagedListResponse & {
     items: Array<UsageSeriesPointResponse>;
+};
+
+export type ProductWorkspaceResponseWritable = {
+    /**
+     * Unique identifier for the workspace.
+     */
+    id: Ksuid;
+    /**
+     * ID of the organization this workspace belongs to.
+     */
+    organization_id: Ksuid;
+    /**
+     * Name of the workspace.
+     */
+    name: string;
+    /**
+     * Description of the workspace.
+     */
+    description?: string | null;
+    /**
+     * Timestamp when the workspace was created.
+     */
+    created_at: string;
+    /**
+     * Timestamp when the workspace was last updated.
+     */
+    updated_at: string;
 };
 
 /**

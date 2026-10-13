@@ -18,4 +18,5 @@ type Workspaces struct {
 	Description    *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	IsDefault      bool
 }

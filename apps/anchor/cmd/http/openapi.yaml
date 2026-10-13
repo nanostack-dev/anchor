@@ -2101,6 +2101,15 @@ components:
     ProductOrganizationRequest:
       type: object
       properties:
+        create_default_workspace:
+          type: boolean
+          default: false
+          description: >-
+            On creation, ensure a Default workspace in the same transaction as
+            the organization. Omitted or false leaves workspace creation unchanged.
+            A founding-member retry ensures the existing organization has its
+            default workspace. Ignored by organization updates. Startup also
+            ensures default workspaces for all organizations that already exist.
         name:
           type: string
           minLength: 2
@@ -2252,6 +2261,10 @@ components:
     ProductWorkspaceResponse:
       type: object
       properties:
+        is_default:
+          type: boolean
+          readOnly: true
+          description: Whether this is the organization's designated default workspace.
         id:
           $ref: "#/components/schemas/ksuid"
           description: Unique identifier for the workspace.

@@ -121,8 +121,13 @@ func (b *OrgCreateBuilder) Metadata(m map[string]any) *OrgCreateBuilder {
 	return b
 }
 
-// FoundingMember assigns a first member with the given role. Anchor creates the
-// organization and the membership atomically in one transaction.
+// DefaultWorkspace creates the default workspace atomically with the organization.
+func (b *OrgCreateBuilder) DefaultWorkspace() *OrgCreateBuilder {
+	b.req.CreateDefaultWorkspace = new(true)
+	return b
+}
+
+// FoundingMember assigns the first member atomically with the organization.
 func (b *OrgCreateBuilder) FoundingMember(productUserID, roleID string) *OrgCreateBuilder {
 	b.req.FoundingMember = &nanoclient.FoundingMemberRequest{ProductUserId: productUserID, RoleId: roleID}
 	return b

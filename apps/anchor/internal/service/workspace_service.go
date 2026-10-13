@@ -15,6 +15,7 @@ import (
 )
 
 type WorkspaceService interface {
+	EnsureDefault(ctx context.Context, productID, organizationID string) (workspace.Workspace, error)
 	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)
@@ -111,6 +112,9 @@ func (s *workspaceService) Create(
 
 	var created workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if lockErr := s.lockOrganization(txCtx, input.ProductID, input.OrganizationID); lockErr != nil {
+			return lockErr
+		}
 		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 			txCtx,
 			input.ProductID,

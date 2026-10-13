@@ -11,6 +11,7 @@ type Workspace struct {
 	OrganizationID string
 	Name           string
 	Description    *string
+	IsDefault      bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

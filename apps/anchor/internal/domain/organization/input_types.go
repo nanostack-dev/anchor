@@ -12,6 +12,7 @@ type Include string
 const IncludeLicense Include = "license"
 
 type CreateOrganizationInput struct {
+	CreateDefaultWorkspace bool
 	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID    string  `validate:"required_with=LicenseTemplateID"`
 	ProductID   string  `validate:"required,notblank"`
@@ -72,6 +73,7 @@ type SearchProductOrganizationsInput struct {
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization
 // and assigning its founding member with a role in a single transaction.
 type CreateOrganizationWithMemberInput struct {
+	CreateDefaultWorkspace bool
 	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID      string  `validate:"required_with=LicenseTemplateID"`
 	ProductID     string  `validate:"required,notblank"`

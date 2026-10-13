@@ -1959,6 +1959,9 @@ type ProductOrganizationListResponse struct {
 
 // ProductOrganizationRequest defines model for ProductOrganizationRequest.
 type ProductOrganizationRequest struct {
+	// CreateDefaultWorkspace On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Startup also ensures default workspaces for all organizations that already exist.
+	CreateDefaultWorkspace *bool `json:"create_default_workspace,omitempty"`
+
 	// Description Optional description of the organization.
 	//
 	// Examples: Leading provider of innovative solutions.
@@ -2456,6 +2459,9 @@ type ProductWorkspaceResponse struct {
 	//
 	// Examples: ws_3iXYZ...
 	Id Ksuid `json:"id"`
+
+	// IsDefault Whether this is the organization's designated default workspace.
+	IsDefault *bool `json:"is_default,omitempty"`
 
 	// Name Name of the workspace.
 	//

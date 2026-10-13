@@ -106,6 +106,7 @@ type organizationService struct {
 	productRoleRepo   repository.ProductRoleRepository
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
+	workspaces        WorkspaceService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
 	events            events.Emitter
@@ -119,6 +120,7 @@ func NewOrganizationService(
 	productRoleRepo repository.ProductRoleRepository,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
+	workspaces WorkspaceService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
 	eventEmitter events.Emitter,
@@ -131,6 +133,7 @@ func NewOrganizationService(
 		productRoleRepo:   productRoleRepo,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
+		workspaces:        workspaces,
 		transactor:        tx,
 		lock:              lock,
 		events:            eventEmitter,
@@ -318,6 +321,11 @@ func (s *organizationService) Create(
 			return licenseErr
 		}
 		created.License = instantiated
+		if input.CreateDefaultWorkspace {
+			if _, workspaceErr := s.workspaces.EnsureDefault(txCtx, input.ProductID, created.ID); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		return s.emitOrganization(txCtx, events.OrganizationCreated, created.ProductID, created.ID)
 	}); txErr != nil {
@@ -353,6 +361,15 @@ func (s *organizationService) CreateWithMember(
 		return organization.OrganizationWithMemberResult{}, err
 	}
 	if existing.IsPresent() {
+		if input.CreateDefaultWorkspace {
+			if _, workspaceErr := s.workspaces.EnsureDefault(
+				ctx,
+				input.ProductID,
+				existing.Value().Organization.ID,
+			); workspaceErr != nil {
+				return organization.OrganizationWithMemberResult{}, workspaceErr
+			}
+		}
 		return existing.Value(), nil
 	}
 
@@ -444,6 +461,15 @@ func (s *organizationService) CreateWithMember(
 			return licenseErr
 		}
 		createdOrg.License = createdLicense
+		if input.CreateDefaultWorkspace {
+			if _, workspaceErr := s.workspaces.EnsureDefault(
+				lockCtx,
+				input.ProductID,
+				createdOrg.ID,
+			); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		if emitErr := s.emitOrganization(
 			lockCtx,

@@ -18,6 +18,7 @@ func NewModule() fx.Option {
 			NewInvitationService,
 			NewOrganizationService,
 			NewWorkspaceService,
+			NewDefaultWorkspaceStartupSync,
 			NewOrganizationAPIKeyService,
 			NewOrganizationMembershipService,
 			NewPermissionService,
@@ -46,6 +47,7 @@ func NewModule() fx.Option {
 
 		// Background workers
 		fx.Invoke(RegisterProductPermissionStartupSync),
+		fx.Invoke(RegisterDefaultWorkspaceStartupSync),
 		fx.Invoke(RegisterAPIKeyEventWorker),
 		fx.Invoke(RegisterIntegrationEventWorker),
 	)

@@ -737,6 +737,7 @@ export const zOrganizationLicenseInstantiateRequest = z.object({
 });
 
 export const zProductOrganizationRequest = z.object({
+    create_default_workspace: z.optional(z.boolean()).default(false),
     name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
@@ -828,6 +829,7 @@ export const zProductWorkspaceRequest = z.object({
 });
 
 export const zProductWorkspaceResponse = z.object({
+    is_default: z.optional(z.boolean().readonly()),
     id: zKsuid,
     organization_id: zKsuid,
     name: z.string(),
@@ -1662,6 +1664,18 @@ export const zUsageSeriesPointResponse = z.object({
 export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
     items: z.array(zUsageSeriesPointResponse)
 }));
+
+export const zProductWorkspaceResponseWritable = z.object({
+    id: zKsuid,
+    organization_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
 
 /**
  * The KSUID of the platform invitation.

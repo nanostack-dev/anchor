@@ -15,6 +15,7 @@ func mapWorkspaceToResponse(item workspace.Workspace) ProductWorkspaceResponse {
 		OrganizationId: item.OrganizationID,
 		Name:           item.Name,
 		Description:    item.Description,
+		IsDefault:      new(item.IsDefault),
 		CreatedAt:      item.CreatedAt,
 		UpdatedAt:      item.UpdatedAt,
 	}

@@ -25,6 +25,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
+- [Default workspaces and startup provisioning](technical/default-workspaces.md)
 - [product events spec](product-events-spec.md)
 
 Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), with its `.json` source and the standalone `.html` report beside it.

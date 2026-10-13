@@ -29,6 +29,7 @@ func workspacesUpdatableColumns() postgres.ColumnList {
 }
 
 type WorkspaceRepository interface {
+	FindDefault(ctx context.Context, productID, organizationID string) (functional.Option[workspace.Workspace], error)
 	FindByID(
 		ctx context.Context,
 		productID string,
@@ -154,6 +155,14 @@ func (r *workspaceRepositoryImpl) Create(
 	}
 
 	return created, nil
+}
+
+func (r *workspaceRepositoryImpl) FindDefault(
+	ctx context.Context, productID, organizationID string,
+) (functional.Option[workspace.Workspace], error) {
+	stmt := table.Workspaces.SELECT(table.Workspaces.AllColumns).FROM(r.joinOrganizations()).
+		WHERE(r.scopedWhere(productID, organizationID).AND(table.Workspaces.IsDefault.EQ(postgres.Bool(true)))).LIMIT(1)
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.workspaceMapper.ToDomain)
 }
 
 func (r *workspaceRepositoryImpl) Update(
