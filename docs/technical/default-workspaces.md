@@ -54,12 +54,15 @@ workspace filtering. Those changes belong to later consumer PRs.
 
 `apps/anchor/cmd/it/ct/default_workspace_test.go` covers opted-in creation and
 signed organization/workspace events, false/omitted compatibility, founding-member
-retries, rollback with the organization transaction, multi-product startup
-pagination, concurrent sweeps, rename/restart identity and stale-edit interleaving. Run the owning CTs from `apps/anchor` with:
+retries, rollback with the organization transaction and stale-edit interleaving.
+`apps/anchor/cmd/it/service/defaultworkspaces` covers multi-product startup
+pagination, concurrent sweeps and rename/restart identity in a separate runtime. Run the owning CTs from `apps/anchor` with:
 
 ```sh
 go test ./cmd/it/ct/... -run 'Test(Organization.*DefaultWorkspace|DefaultWorkspace)' -count=1
+go test ./cmd/it/service/defaultworkspaces/... -count=1
 ```
 
-The startup test stays serial because its reconciliation pass visits all products.
-The ordinary request tests use isolated product fixtures and run in parallel.
+The startup sweep visits every product, so its test owns a separate server,
+database and queue. It cannot enqueue events for other tests' closed webhook
+fixtures. The ordinary request tests use isolated product fixtures and run in parallel.

@@ -28,7 +28,6 @@ var (
 	OrgMemberRepo                 repository.OrganizationMembershipRepository
 	EventQueue                    *queue.Client
 	IntegrationRepo               repository.IntegrationInstanceRepository
-	defaultWorkspaceStartup       *service.DefaultWorkspaceStartupSync
 	defaultWorkspaceOrganizations service.OrganizationService
 	defaultWorkspaceTx            transactor.Transactor
 	defaultWorkspaceService       service.WorkspaceService
@@ -51,7 +50,6 @@ func TestMain(m *testing.M) {
 			JWTHelper:               &TokenHelper,
 			SessionService:          &SessionSvc,
 			ExtraPopulateTargets: []any{
-				&defaultWorkspaceStartup,
 				&defaultWorkspaceOrganizations,
 				&defaultWorkspaceTx,
 				&defaultWorkspaceService,
