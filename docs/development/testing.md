@@ -27,7 +27,7 @@ The Go verification workflow runs for pull requests against any base branch, inc
 
 ## Deployed API suite and CI
 
-Status/error contract changes also update Echopoint flow assertions in both organizations. Follow the [flow-suite procedure](flow-suite-testing.md) and run `echopoint --profile <prod|dev> flows run --tag anchor --environment dev` for each profile; one profile's pass does not cover the other.
+Status/error contract changes also update the Echopoint flow assertions of the `anchor` suite. It lives only in the prod echopoint organization (CLI profile `prod`) and targets the dev APIs through its `dev` environment; the dev organization does not copy it. Follow the [flow-suite procedure](flow-suite-testing.md) and run `echopoint --profile prod flows run --tag anchor --environment dev`. The post-deploy gate runs the same selection.
 
 [Go Build and Test](../../.github/workflows/go.yml) selects backend/frontend verification through reusable ci-workflows and reports `ci-ok`. [Isolated browser CI](../../.github/workflows/e2e-app.yml) runs the managed app gate and cleanup for its selected paths; deployed smoke and infra post-deploy suites are separate boundaries. Preserve the PR preview marker and distinguish executed, skipped, blocked and unknown checks. Documentation-only changes need link/command provenance checks, with CI selection reported accurately.
 
