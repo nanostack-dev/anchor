@@ -44,6 +44,13 @@ func mapOrganizationToResponse(org organization.Organization) ProductOrganizatio
 		UpdatedAt:   org.UpdatedAt,
 	}
 	response.License = functional.FromPtr(org.License).Map(mapOrganizationLicenseToResponse).ToPtr()
+	if org.Workspaces != nil {
+		items := make([]ProductWorkspaceResponse, 0, len(*org.Workspaces))
+		for _, item := range *org.Workspaces {
+			items = append(items, mapWorkspaceToResponse(item))
+		}
+		response.Workspaces = &items
+	}
 	return response
 }
 

@@ -2,16 +2,17 @@ package workspace
 
 import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
-type EnsureDefaultWorkspaceInput struct {
-	ProductID      string `validate:"required,notblank"`
-	OrganizationID string `validate:"required,notblank"`
-}
-
 type CreateWorkspaceInput struct {
+	IsDefault      bool
 	ProductID      string  `validate:"required,notblank"`
 	OrganizationID string  `validate:"required,notblank"`
 	Name           string  `validate:"required,notblank,min=2,max=100"`
 	Description    *string `validate:"omitempty,max=500"`
+}
+
+type ListByOrganizationsInput struct {
+	ProductID       string   `validate:"required,notblank"`
+	OrganizationIDs []string `validate:"required,min=1,dive,notblank"`
 }
 
 type FindWorkspaceInput struct {

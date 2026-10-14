@@ -598,6 +598,17 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantBody:   `{"name":"Production","description":"Production workloads"}`,
 		},
 		{
+			name:  "workspace create as default",
+			reply: stubResponse{status: http.StatusCreated, body: `{"id":"wsp_1","name":"Default","is_default":true}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Organization(testOrgID).Workspaces().Create("Default").IsDefault(true).Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/organizations/org_1/workspaces",
+			wantBody:   `{"name":"Default","is_default":true}`,
+		},
+		{
 			name:  "api key create",
 			reply: stubResponse{status: http.StatusCreated, body: `{"id":"oak_1","value":"anchor_org_apikey_x"}`},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {

@@ -1959,7 +1959,7 @@ type ProductOrganizationListResponse struct {
 
 // ProductOrganizationRequest defines model for ProductOrganizationRequest.
 type ProductOrganizationRequest struct {
-	// CreateDefaultWorkspace On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Startup also ensures default workspaces for all organizations that already exist.
+	// CreateDefaultWorkspace On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Consumers can reconcile existing organizations through workspace includes and creation.
 	CreateDefaultWorkspace *bool `json:"create_default_workspace,omitempty"`
 
 	// Description Optional description of the organization.
@@ -2019,6 +2019,9 @@ type ProductOrganizationResponse struct {
 
 	// UpdatedAt Timestamp when the organization was last updated.
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// Workspaces The organization's workspaces, including their default designation. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
+	Workspaces *[]ProductWorkspaceResponse `json:"workspaces,omitempty"`
 }
 
 // ProductOrganizationSearchRequest defines model for ProductOrganizationSearchRequest.
@@ -2438,6 +2441,9 @@ type ProductWorkspaceRequest struct {
 	//
 	// Examples: Workspace for production users and resources.
 	Description *string `json:"description,omitempty"`
+
+	// IsDefault Creation-only option to provision the organization's designated default. If a default exists, returns it unchanged. Otherwise designates an existing workspace with this name or creates it atomically. Ignored on update.
+	IsDefault *bool `json:"is_default,omitempty"`
 
 	// Name Name of the workspace. Must be unique within the organization.
 	//
@@ -2913,13 +2919,13 @@ type ListLicenseTemplatesParams struct {
 
 // SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
 type SearchProductOrganizationsParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProductOrganizationParams defines parameters for GetProductOrganization.
 type GetProductOrganizationParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 

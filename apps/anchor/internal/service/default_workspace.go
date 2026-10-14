@@ -13,9 +13,9 @@ import (
 
 const defaultWorkspaceName = "Default"
 
-func (s *workspaceService) EnsureDefault(
+func (s *workspaceService) createDefault(
 	ctx context.Context,
-	input workspace.EnsureDefaultWorkspaceInput,
+	input workspace.CreateWorkspaceInput,
 ) (workspace.Workspace, error) {
 	if err := validate.ValidateStruct(input); err != nil {
 		return workspace.Workspace{}, err
@@ -38,7 +38,7 @@ func (s *workspaceService) EnsureDefault(
 			txCtx,
 			productID,
 			organizationID,
-			defaultWorkspaceName,
+			input.Name,
 		)
 		if nameErr != nil {
 			return nameErr
@@ -52,7 +52,12 @@ func (s *workspaceService) EnsureDefault(
 			}
 			return s.emitWorkspace(txCtx, events.WorkspaceUpdated, productID, organizationID, result.ID)
 		}
-		created := workspace.Workspace{OrganizationID: organizationID, Name: defaultWorkspaceName, IsDefault: true}
+		created := workspace.Workspace{
+			OrganizationID: organizationID,
+			Name:           input.Name,
+			Description:    input.Description,
+			IsDefault:      true,
+		}
 		created.GenerateID()
 		var createErr error
 		result, createErr = s.workspaceRepo.Create(txCtx, created)

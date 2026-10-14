@@ -28,6 +28,7 @@ func (s *AnchorAPI) CreateOrganizationWorkspace(
 	created, err := s.WorkspaceService.Create(
 		ctx,
 		workspace.CreateWorkspaceInput{
+			IsDefault:      functional.FromPtr(request.Body.IsDefault).OrElse(false),
 			ProductID:      request.ProductId,
 			OrganizationID: request.OrganizationId,
 			Name:           request.Body.Name,

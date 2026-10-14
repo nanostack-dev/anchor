@@ -752,8 +752,22 @@ export const zProductOrganizationRequest = z.object({
  * A related resource an organization read can ask for.
  */
 export const zOrganizationInclude = z.enum([
-    'license'
+    'license',
+    'workspace'
 ]);
+
+export const zProductWorkspaceResponse = z.object({
+    is_default: z.optional(z.boolean().readonly()),
+    id: zKsuid,
+    organization_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
 
 export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
 
@@ -802,6 +816,7 @@ export const zProductOrganizationResponse = z.object({
         z.null()
     ])),
     metadata: z.optional(zMetadata),
+    workspaces: z.optional(z.array(zProductWorkspaceResponse).readonly()),
     license: z.optional(zOrganizationLicenseResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -821,24 +836,12 @@ export const zProductOrganizationListResponse = zPagedListResponse.and(z.object(
 }));
 
 export const zProductWorkspaceRequest = z.object({
+    is_default: z.optional(z.boolean()),
     name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
         z.null()
     ]))
-});
-
-export const zProductWorkspaceResponse = z.object({
-    is_default: z.optional(z.boolean().readonly()),
-    id: zKsuid,
-    organization_id: zKsuid,
-    name: z.string(),
-    description: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
 });
 
 export const zProductWorkspaceSearchRequest = zSearchRequest.and(z.object({
@@ -1665,6 +1668,20 @@ export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
     items: z.array(zUsageSeriesPointResponse)
 }));
 
+export const zProductOrganizationResponseWritable = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    metadata: z.optional(zMetadata),
+    license: z.optional(zOrganizationLicenseResponse),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
 export const zProductWorkspaceResponseWritable = z.object({
     id: zKsuid,
     organization_id: zKsuid,
@@ -1693,7 +1710,7 @@ export const zPlatformUserIdParameter = zKsuid;
 export const zProductIdParameter = zKsuid;
 
 /**
- * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 

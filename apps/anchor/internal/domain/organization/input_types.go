@@ -9,7 +9,10 @@ import (
 // nothing about whether the organization has it.
 type Include string
 
-const IncludeLicense Include = "license"
+const (
+	IncludeLicense   Include = "license"
+	IncludeWorkspace Include = "workspace"
+)
 
 type CreateOrganizationInput struct {
 	CreateDefaultWorkspace bool

@@ -42,12 +42,6 @@ type OrganizationRepository interface {
 		ctx context.Context, productID string,
 		input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
 	) (search.Result[organization.Organization], error)
-	// ListWithoutDefaultWorkspaceInternal is only for the startup sweep across products.
-	ListWithoutDefaultWorkspaceInternal(
-		ctx context.Context,
-		afterID string,
-		limit int64,
-	) ([]organization.Organization, error)
 }
 
 type organizationRepositoryImpl struct {
@@ -101,20 +95,6 @@ func (r *organizationRepositoryImpl) Create(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.organizationMapper.ToDomain,
 	).Value()
-}
-
-func (r *organizationRepositoryImpl) ListWithoutDefaultWorkspaceInternal(
-	ctx context.Context, afterID string, limit int64,
-) ([]organization.Organization, error) {
-	where := postgres.NOT(postgres.EXISTS(table.Workspaces.SELECT(table.Workspaces.ID).
-		WHERE(table.Workspaces.OrganizationID.EQ(table.Organizations.ID).
-			AND(table.Workspaces.IsDefault.EQ(postgres.Bool(true))))))
-	if afterID != "" {
-		where = where.AND(table.Organizations.ID.GT(postgres.String(afterID)))
-	}
-	stmt := table.Organizations.SELECT(table.Organizations.AllColumns).
-		WHERE(where).ORDER_BY(table.Organizations.ID.ASC()).LIMIT(limit)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.organizationMapper.ToDomain).Value()
 }
 
 func (r *organizationRepositoryImpl) Update(

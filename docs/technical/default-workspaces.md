@@ -29,40 +29,46 @@ the designation and provisioning preserves name/description changes.
 The service serializes provisioning on the organization's row, and a partial
 unique index permits at most one designated default per organization.
 
-## Startup sweep
+## Linked organization reads
 
-After migrations, Anchor's startup hook visits every organization that lacks a
-designated default, across all products, using keyset pages of 200. It calls the
-same provisioning operation used by organization creation. Each organization
-commits independently, including its workspace event. Multiple starting replicas
-serialize per organization and converge on the same workspace.
+Use the existing organization read with `?include=workspace,license` to obtain
+its workspace list and license together. `include=workspace` expands the
+`workspaces` array, including each workspace's `is_default` designation. An
+included organization without workspaces returns `[]`; omitting the include
+omits the field. Organization searches support the same include and read each
+related resource for the whole page in one statement.
 
-The hook completes before HTTP startup. It honors the startup context. A failure
-prevents startup; the next start resumes with organizations that still lack a
-default, preserving the work already committed. An organization deleted while
-the sweep runs no longer needs provisioning and is skipped. No detached task,
-external API call or SQL business trigger creates these workspaces.
+The Go SDK accepts both include constants on `Organizations().Get`. To request a
+designated default through ordinary workspace creation, use
+`client.Organization(orgID).Workspaces().Create("Default").IsDefault(true).Do(ctx)`.
 
-The option controls creation time: an organization created after the sweep with
-the option false/absent has no default until a later startup or an opted-in
-founding-member retry. Deleting a designated workspace follows the existing
-workspace deletion contract; a later ensure/startup can create its replacement.
-This prerequisite does not assign Echopoint resources to workspaces or enforce
-workspace filtering. Those changes belong to later consumer PRs.
+The existing workspace Create API accepts `is_default: true`. It atomically
+returns the designated default if one exists, otherwise designates a workspace
+with the requested name or creates it. Renamed defaults retain their identity.
+This gives product startup syncs idempotent provisioning without a special
+lookup or ensure endpoint. Ordinary workspace creation remains unchanged.
+
+## Echopoint-owned startup sync
+
+Anchor does not run a global organization sweep. Echopoint owns startup
+reconciliation for its configured Anchor product: page through organizations,
+get each with `include=workspace,license`, and provision a default through the
+existing workspace Create API when one is missing. No other product is swept.
+
+The organization creation option remains creation-only. An organization created
+without it has no default until its owning product provisions one. Workspace
+deletion retains its existing contract. This prerequisite does not assign
+Echopoint resource ownership or enforce workspace filtering.
 
 ## Verification
 
-`apps/anchor/cmd/it/ct/default_workspace_test.go` covers opted-in creation and
-signed organization/workspace events, false/omitted compatibility, founding-member
-retries, rollback with the organization transaction and stale-edit interleaving.
-`apps/anchor/cmd/it/service/defaultworkspaces` covers multi-product startup
-pagination, concurrent sweeps and rename/restart identity in a separate runtime. Run the owning CTs from `apps/anchor` with:
+The default-workspace CTs cover opted-in creation/events, false/omitted
+compatibility, founding-member retries, rollback and stale-edit interleaving.
+`organization_workspace_include_test.go` covers absent versus included-empty
+workspace lists, combined workspace/license includes, product isolation and
+idempotent provisioning through ordinary workspace Create. Run from
+`apps/anchor`:
 
 ```sh
-go test ./cmd/it/ct/... -run 'Test(Organization.*DefaultWorkspace|DefaultWorkspace)' -count=1
-go test ./cmd/it/service/defaultworkspaces/... -count=1
+go test ./cmd/it/ct/... -run 'Test(Organization.*DefaultWorkspace|DefaultWorkspace|OrganizationReadIncludes|OrganizationWorkspaceInclude)' -count=1
 ```
-
-The startup sweep visits every product, so its test owns a separate server,
-database and queue. It cannot enqueue events for other tests' closed webhook
-fixtures. The ordinary request tests use isolated product fixtures and run in parallel.

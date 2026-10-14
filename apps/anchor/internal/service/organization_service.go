@@ -238,30 +238,38 @@ func (s *organizationService) attachIncludes(
 	organizations []organization.Organization,
 	includes []organization.Include,
 ) ([]organization.Organization, error) {
-	if len(organizations) == 0 || !slices.Contains(includes, organization.IncludeLicense) {
+	if len(organizations) == 0 {
 		return organizations, nil
 	}
-
 	organizationIDs := functional.Slice(organizations).Map(func(org organization.Organization) string {
 		return org.ID
 	}).ToSlice()
-
-	licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
-		TenantID:        tenantID,
-		ProductID:       productID,
-		OrganizationIDs: organizationIDs,
-	})
-	if err != nil {
-		s.logger.Error().
-			Str("product_id", productID).
-			Err(err).
-			Msg("failed to read the licenses of the organizations read")
-		return nil, err
+	if slices.Contains(includes, organization.IncludeLicense) {
+		licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
+			TenantID: tenantID, ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			if held, ok := licenses[org.ID]; ok {
+				organizations[i].License = &held
+			}
+		}
 	}
-
-	for i, org := range organizations {
-		if held, ok := licenses[org.ID]; ok {
-			organizations[i].License = &held
+	if slices.Contains(includes, organization.IncludeWorkspace) {
+		linked, err := s.workspaces.ListByOrganizations(ctx, workspace.ListByOrganizationsInput{
+			ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			items := linked[org.ID]
+			if items == nil {
+				items = []workspace.Workspace{}
+			}
+			organizations[i].Workspaces = &items
 		}
 	}
 	return organizations, nil
@@ -323,9 +331,12 @@ func (s *organizationService) Create(
 		}
 		created.License = instantiated
 		if input.CreateDefaultWorkspace {
-			if _, workspaceErr := s.workspaces.EnsureDefault(txCtx, workspace.EnsureDefaultWorkspaceInput{
-				ProductID: input.ProductID, OrganizationID: created.ID,
-			}); workspaceErr != nil {
+			if _, workspaceErr := s.workspaces.Create(
+				txCtx,
+				workspace.CreateWorkspaceInput{Name: defaultWorkspaceName, IsDefault: true,
+					ProductID: input.ProductID, OrganizationID: created.ID,
+				},
+			); workspaceErr != nil {
 				return workspaceErr
 			}
 		}
@@ -365,9 +376,9 @@ func (s *organizationService) CreateWithMember(
 	}
 	if existing.IsPresent() {
 		if input.CreateDefaultWorkspace {
-			if _, workspaceErr := s.workspaces.EnsureDefault(
+			if _, workspaceErr := s.workspaces.Create(
 				ctx,
-				workspace.EnsureDefaultWorkspaceInput{
+				workspace.CreateWorkspaceInput{Name: defaultWorkspaceName, IsDefault: true,
 					ProductID:      input.ProductID,
 					OrganizationID: existing.Value().Organization.ID,
 				},
@@ -467,9 +478,14 @@ func (s *organizationService) CreateWithMember(
 		}
 		createdOrg.License = createdLicense
 		if input.CreateDefaultWorkspace {
-			if _, workspaceErr := s.workspaces.EnsureDefault(
+			if _, workspaceErr := s.workspaces.Create(
 				lockCtx,
-				workspace.EnsureDefaultWorkspaceInput{ProductID: input.ProductID, OrganizationID: createdOrg.ID},
+				workspace.CreateWorkspaceInput{
+					Name:           defaultWorkspaceName,
+					IsDefault:      true,
+					ProductID:      input.ProductID,
+					OrganizationID: createdOrg.ID,
+				},
 			); workspaceErr != nil {
 				return workspaceErr
 			}

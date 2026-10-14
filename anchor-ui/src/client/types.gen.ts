@@ -1233,7 +1233,7 @@ export type UserResponse = {
 
 export type ProductOrganizationRequest = {
     /**
-     * On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Startup also ensures default workspaces for all organizations that already exist.
+     * On creation, ensure a Default workspace in the same transaction as the organization. Omitted or false leaves workspace creation unchanged. A founding-member retry ensures the existing organization has its default workspace. Ignored by organization updates. Consumers can reconcile existing organizations through workspace includes and creation.
      */
     create_default_workspace?: boolean;
     /**
@@ -1265,7 +1265,11 @@ export enum OrganizationInclude {
     /**
      * OrganizationIncludeLicense
      */
-    ORGANIZATION_INCLUDE_LICENSE = 'license'
+    ORGANIZATION_INCLUDE_LICENSE = 'license',
+    /**
+     * OrganizationIncludeWorkspace
+     */
+    ORGANIZATION_INCLUDE_WORKSPACE = 'workspace'
 }
 
 export type FoundingMemberRequest = {
@@ -1301,6 +1305,10 @@ export type ProductOrganizationResponse = {
      */
     metadata?: Metadata;
     /**
+     * The organization's workspaces, including their default designation. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
+     */
+    readonly workspaces?: Array<ProductWorkspaceResponse>;
+    /**
      * The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
      */
     license?: OrganizationLicenseResponse;
@@ -1330,6 +1338,10 @@ export type ProductOrganizationListResponse = PagedListResponse & {
 };
 
 export type ProductWorkspaceRequest = {
+    /**
+     * Creation-only option to provision the organization's designated default. If a default exists, returns it unchanged. Otherwise designates an existing workspace with this name or creates it atomically. Ignored on update.
+     */
+    is_default?: boolean;
     /**
      * Name of the workspace. Must be unique within the organization.
      */
@@ -2571,6 +2583,41 @@ export type UsageSeriesResponse = PagedListResponse & {
     items: Array<UsageSeriesPointResponse>;
 };
 
+export type ProductOrganizationResponseWritable = {
+    /**
+     * Unique identifier for the organization (e.g., prefix 'org_').
+     */
+    id: Ksuid;
+    /**
+     * ID of the Product this organization belongs to.
+     */
+    product_id: Ksuid;
+    /**
+     * Name of the organization.
+     */
+    name: string;
+    /**
+     * Description of the organization.
+     */
+    description?: string | null;
+    /**
+     * Key-value metadata for the organization.
+     */
+    metadata?: Metadata;
+    /**
+     * The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
+     */
+    license?: OrganizationLicenseResponse;
+    /**
+     * Timestamp when the organization was created.
+     */
+    created_at: string;
+    /**
+     * Timestamp when the organization was last updated.
+     */
+    updated_at: string;
+};
+
 export type ProductWorkspaceResponseWritable = {
     /**
      * Unique identifier for the workspace.
@@ -2614,7 +2661,7 @@ export type PlatformUserIdParameter = Ksuid;
 export type ProductIdParameter = Ksuid;
 
 /**
- * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export type OrganizationIncludeParameter = Array<OrganizationInclude>;
 
@@ -5260,7 +5307,7 @@ export type SearchProductOrganizationsData = {
     };
     query?: {
         /**
-         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
          */
         include?: Array<OrganizationInclude>;
     };
@@ -5357,7 +5404,7 @@ export type GetProductOrganizationData = {
     };
     query?: {
         /**
-         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
          */
         include?: Array<OrganizationInclude>;
     };

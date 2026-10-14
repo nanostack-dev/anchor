@@ -15,7 +15,10 @@ import (
 )
 
 type WorkspaceService interface {
-	EnsureDefault(ctx context.Context, input workspace.EnsureDefaultWorkspaceInput) (workspace.Workspace, error)
+	ListByOrganizations(
+		ctx context.Context,
+		input workspace.ListByOrganizationsInput,
+	) (map[string][]workspace.Workspace, error)
 	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)
@@ -24,6 +27,15 @@ type WorkspaceService interface {
 		ctx context.Context,
 		input workspace.SearchWorkspacesInput,
 	) (search.Result[workspace.Workspace], error)
+}
+
+func (s *workspaceService) ListByOrganizations(
+	ctx context.Context, input workspace.ListByOrganizationsInput,
+) (map[string][]workspace.Workspace, error) {
+	if err := validate.ValidateStruct(input); err != nil {
+		return nil, err
+	}
+	return s.workspaceRepo.ListByOrganizations(ctx, input.ProductID, input.OrganizationIDs)
 }
 
 type workspaceService struct {
@@ -93,6 +105,10 @@ func (s *workspaceService) Create(
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return workspace.Workspace{}, err
+	}
+
+	if input.IsDefault {
+		return s.createDefault(ctx, input)
 	}
 
 	if err := s.ensureOrganizationExists(ctx, input.ProductID, input.OrganizationID); err != nil {

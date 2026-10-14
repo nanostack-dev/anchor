@@ -33,7 +33,8 @@ func (o Organizations) Create(name string) *OrgCreateBuilder {
 // Get returns one organization by ID. Name a related resource to read it
 // alongside the organization:
 //
-//	org, err := c.Organizations().Get(ctx, orgID, nanoclient.OrganizationIncludeLicense)
+//	org, err := c.Organizations().Get(ctx, orgID,
+//	    nanoclient.OrganizationIncludeWorkspace, nanoclient.OrganizationIncludeLicense)
 func (o Organizations) Get(
 	ctx context.Context,
 	organizationID string,

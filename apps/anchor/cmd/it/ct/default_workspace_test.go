@@ -102,7 +102,7 @@ func TestOrganizationFoundingMemberRetryEnsuresDefaultWorkspace(t *testing.T) {
 	require.Equal(t, workspaces.Items[0].Id, unchanged.Items[0].Id)
 }
 
-// A workspace edit can have read its entity before startup designates it.
+// A workspace edit can have read its entity before default provisioning designates it.
 // Persist that stale edit after provisioning to pin the actual lost-update interleaving.
 func TestDefaultWorkspaceDesignationSurvivesStaleEdit(t *testing.T) {
 	t.Parallel()
@@ -115,9 +115,14 @@ func TestDefaultWorkspaceDesignationSurvivesStaleEdit(t *testing.T) {
 	require.True(t, before.IsPresent())
 	stale := before.Value()
 	require.False(t, stale.IsDefault)
-	_, err = defaultWorkspaceService.EnsureDefault(
+	_, err = defaultWorkspaceService.Create(
 		ctx,
-		workspace.EnsureDefaultWorkspaceInput{ProductID: product.ProductID, OrganizationID: org.Id},
+		workspace.CreateWorkspaceInput{
+			Name:           "Default",
+			IsDefault:      true,
+			ProductID:      product.ProductID,
+			OrganizationID: org.Id,
+		},
 	)
 	require.NoError(t, err)
 	stale.Name = "Renamed " + ids.MustNew("ws")
@@ -127,9 +132,14 @@ func TestDefaultWorkspaceDesignationSurvivesStaleEdit(t *testing.T) {
 	require.True(t, updated.IsDefault)
 	require.Equal(t, stale.Name, updated.Name)
 	require.Equal(t, stale.Description, updated.Description)
-	ensured, err := defaultWorkspaceService.EnsureDefault(
+	ensured, err := defaultWorkspaceService.Create(
 		ctx,
-		workspace.EnsureDefaultWorkspaceInput{ProductID: product.ProductID, OrganizationID: org.Id},
+		workspace.CreateWorkspaceInput{
+			Name:           "Default",
+			IsDefault:      true,
+			ProductID:      product.ProductID,
+			OrganizationID: org.Id,
+		},
 	)
 	require.NoError(t, err)
 	require.Equal(t, original.Id, ensured.ID)
