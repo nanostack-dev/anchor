@@ -172,36 +172,25 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 		assert.Equal(t, slices.Sorted(slices.Values(names)), names)
 	})
 
-	t.Run(
-		"sorting by the date the copy was taken places the unlicensed where a missing value sorts",
-		func(t *testing.T) {
-			w := newLicensedWorld(t)
-			unlicensed := w.NewNamedOrganization("Never Licensed")
+	t.Run("sorting by the date the copy was taken puts the unlicensed last", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		unlicensed := w.NewNamedOrganization("Never Licensed")
 
-			// An organization holding no license has no date, and a missing value
-			// sorts after every date when ascending and before every date when
-			// descending: the placement the keyset cursor follows, so a page boundary
-			// can fall on either side of the unlicensed organizations without
-			// repeating or dropping one.
-			ascending := w.Search().Run(ct.OrganizationLicenseSearchRequest{
+		// Descending is the direction an operator wants for "newest on this
+		// tier first", and it is the one Postgres would otherwise answer with
+		// NULLs — the organizations holding no license — at the top.
+		for _, direction := range []ct.SortDirection{ct.ASC, ct.DESC} {
+			page := w.Search().Run(ct.OrganizationLicenseSearchRequest{
 				SortBy:        new(ct.InstantiatedAt),
-				SortDirection: new(ct.ASC),
+				SortDirection: &direction,
 			})
-			require.NotEmpty(t, ascending.Items)
-			last := ascending.Items[len(ascending.Items)-1]
-			assert.Equal(t, unlicensed, last.OrganizationId)
+
+			require.NotEmpty(t, page.Items)
+			last := page.Items[len(page.Items)-1]
+			assert.Equal(t, unlicensed, last.OrganizationId, "direction %s", direction)
 			assert.Nil(t, last.License)
-
-			descending := w.Search().Run(ct.OrganizationLicenseSearchRequest{
-				SortBy:        new(ct.InstantiatedAt),
-				SortDirection: new(ct.DESC),
-			})
-			require.NotEmpty(t, descending.Items)
-			first := descending.Items[0]
-			assert.Equal(t, unlicensed, first.OrganizationId)
-			assert.Nil(t, first.License)
-		},
-	)
+		}
+	})
 
 	t.Run("narrows to the organizations named", func(t *testing.T) {
 		w := newLicensedWorld(t)

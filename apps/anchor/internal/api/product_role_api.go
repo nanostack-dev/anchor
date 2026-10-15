@@ -7,7 +7,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product/role"
-	"anchor/internal/searchx"
 )
 
 func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse {
@@ -197,5 +196,5 @@ func mapToSearchProductRoleInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }

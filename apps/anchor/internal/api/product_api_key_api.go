@@ -7,7 +7,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product/apikey"
-	"anchor/internal/searchx"
 )
 
 func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKeyResponse {
@@ -178,5 +177,5 @@ func mapToSearchProductAPIKeyInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }

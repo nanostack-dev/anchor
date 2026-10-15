@@ -400,7 +400,7 @@ func mapToSearchIntegrationAuditLogsRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }
 
 // ---------------------------------------------------------------------------

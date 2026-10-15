@@ -128,7 +128,7 @@ func mapToSearchEmailTemplatesRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }
 
 func (s *AnchorAPI) GetEmailTemplate(
@@ -491,5 +491,5 @@ func mapToSearchEmailSendsRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }

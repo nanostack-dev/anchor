@@ -9,7 +9,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organizationinvitation"
-	"anchor/internal/searchx"
 )
 
 func (s *AnchorAPI) CreateOrganizationInvitation(
@@ -201,7 +200,7 @@ func mapSearchOrganizationInvitationsRequestToInput(
 	return req.WithFilter(filter).
 		WithSort(body.SortBy, body.SortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }
 
 func mapInvitationToResponse(invitation organizationinvitation.Invitation) OrganizationInvitationResponse {

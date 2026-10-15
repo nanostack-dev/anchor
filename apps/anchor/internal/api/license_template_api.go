@@ -144,7 +144,7 @@ func mapToSearchLicenseTemplatesRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }
 
 func (s *AnchorAPI) UpdateLicenseTemplate(

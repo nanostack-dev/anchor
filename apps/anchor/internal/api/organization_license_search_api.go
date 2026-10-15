@@ -66,5 +66,5 @@ func mapToSearchOrganizationLicensesRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(searchx.Pagination(body.Pagination))
+		WithPagination(body.Pagination)
 }

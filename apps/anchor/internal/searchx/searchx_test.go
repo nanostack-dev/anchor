@@ -54,30 +54,3 @@ func TestSort(t *testing.T) {
 		assert.Nil(t, direction, "search.Request.WithSort sorts it ascending")
 	})
 }
-
-func TestPagination(t *testing.T) {
-	t.Parallel()
-
-	t.Run("no pagination stays absent", func(t *testing.T) {
-		t.Parallel()
-		assert.Nil(t, searchx.Pagination(nil))
-	})
-
-	t.Run("a cursor sent alone takes the default page size", func(t *testing.T) {
-		t.Parallel()
-		sent := &search.Pagination{Cursor: "next"}
-
-		completed := searchx.Pagination(sent)
-
-		assert.Equal(t, int32(10), completed.Limit)
-		assert.Equal(t, "next", completed.Cursor)
-		assert.Zero(t, sent.Limit, "the request the client sent is not changed")
-	})
-
-	t.Run("a limit the client named is kept", func(t *testing.T) {
-		t.Parallel()
-		sent := &search.Pagination{Limit: 25, Offset: 50}
-
-		assert.Same(t, sent, searchx.Pagination(sent))
-	})
-}

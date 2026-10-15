@@ -9,7 +9,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/organization"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
@@ -256,7 +255,7 @@ func mapToSearchProductOrganizationInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }
 
 func initialWorkspaceInput(input *ProductWorkspaceRequest) *organization.InitialWorkspaceInput {
