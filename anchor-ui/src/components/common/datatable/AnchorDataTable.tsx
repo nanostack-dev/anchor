@@ -517,7 +517,7 @@ export function AnchorDataTable<
 			<Box className="flex flex-col gap-2 p-4">
 				<Box className="flex flex-wrap items-center gap-2">
 					{onFullTextSearchChange && (
-						<Box className="w-full max-w-sm min-w-0 flex-1">
+						<Box className="min-w-0 max-w-sm flex-[1_1_12rem]">
 							<Input
 								placeholder={fullTextSearchPlaceHolder}
 								value={fullTextSearch ?? ""}

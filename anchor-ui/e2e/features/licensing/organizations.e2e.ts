@@ -408,6 +408,9 @@ test("license changes can load history beyond the initial fifty records", async 
 			.filter({ hasText: "Instantiated" })
 			.getByText("Instantiated", { exact: true }),
 	).toHaveCount(0);
+	await page
+		.getByRole("button", { name: "Load older changes", exact: true })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "history-first-page");
 	await page
 		.getByRole("button", { name: "Load older changes", exact: true })
@@ -421,6 +424,11 @@ test("license changes can load history beyond the initial fifty records", async 
 	await expect(
 		page.getByRole("button", { name: "Load older changes", exact: true }),
 	).toHaveCount(0);
+	await page
+		.getByRole("listitem")
+		.filter({ hasText: "Instantiated" })
+		.getByText("Instantiated", { exact: true })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "history-all-loaded");
 });
 
@@ -443,6 +451,13 @@ test("organization licenses name a tier listed after the first hundred templates
 	await expect(
 		page.getByRole("row").filter({ hasText: customized.name }),
 	).toContainText(lastTier.name);
+	const search = page.getByRole("textbox", {
+		name: "Search organizations",
+		exact: true,
+	});
+	await expect
+		.poll(async () => (await search.boundingBox())?.width ?? 0)
+		.toBeGreaterThanOrEqual(160);
 	await captureReviewCheckpoint(page, testInfo, "organizations-last-tier");
 	await page.getByRole("button", { name: "Tier", exact: true }).click();
 	await page.getByRole("option", { name: lastTier.name, exact: true }).click();

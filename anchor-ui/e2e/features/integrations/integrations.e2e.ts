@@ -180,6 +180,7 @@ test("Clerk audit activity loads older entries beyond the first fifty", async ({
 	await expect(created).toBeVisible();
 	await expect(updated).toHaveCount(51);
 	await expect(loadOlder).toHaveCount(0);
+	await created.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "audit-all-loaded");
 });
 
