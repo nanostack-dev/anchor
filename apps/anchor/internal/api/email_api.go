@@ -65,13 +65,16 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
-	templates, err := s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request: search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
-			WithSort(new(email.SortFieldTemplateCreatedAt), new(search.SortDescending)).
-			WithPagination(new(legacyListPagination(limit, offset))),
-	})
+	templates, err := legacyListPage(limit, offset,
+		func(pagination search.Pagination) (search.Result[email.Template], error) {
+			return s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
+				TenantID:  tenantID,
+				ProductID: request.ProductId,
+				Request: search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
+					WithSort(new(email.SortFieldTemplateCreatedAt), new(search.SortDescending)).
+					WithPagination(&pagination),
+			})
+		})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email templates")
 		return nil, err
@@ -427,14 +430,17 @@ func (s *AnchorAPI) ListEmailSends(
 		filter.Statuses = []email.SendStatus{*request.Params.Status}
 	}
 
-	records, err := s.EmailService.SearchSends(ctx, email.SearchSendsInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request: search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
-			WithFilter(&filter).
-			WithSort(new(email.SortFieldSendCreatedAt), new(search.SortDescending)).
-			WithPagination(new(legacyListPagination(limit, offset))),
-	})
+	records, err := legacyListPage(limit, offset,
+		func(pagination search.Pagination) (search.Result[email.SendRecord], error) {
+			return s.EmailService.SearchSends(ctx, email.SearchSendsInput{
+				TenantID:  tenantID,
+				ProductID: request.ProductId,
+				Request: search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
+					WithFilter(&filter).
+					WithSort(new(email.SortFieldSendCreatedAt), new(search.SortDescending)).
+					WithPagination(&pagination),
+			})
+		})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email sends")
 		return nil, err

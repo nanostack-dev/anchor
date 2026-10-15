@@ -172,3 +172,77 @@ func TestDeprecatedListUserOrganizationsReturnsEveryMembership(t *testing.T) {
 	}
 	assert.Equal(t, organizations, got)
 }
+
+// The old lists took any limit. A page larger than one search can hold is
+// assembled from consecutive searches, so nothing is cut at the search maximum.
+const legacyOversizedRows = 1005
+
+//nolint:staticcheck // the deprecated route stays covered until it is removed
+func TestDeprecatedListEmailTemplatesReturnsMoreThanAThousand(t *testing.T) {
+	t.Parallel()
+	tc := newEmailTestCtx(t)
+	execSQL(t, `INSERT INTO email_templates (id, platform_tenant_id, product_id, slug, name, created_at)
+		SELECT 'etpl_' || $1 || lpad(g::text, 6, '0'), $2, $3, 'slug-' || g, 'Template ' || g, $4::timestamptz + g * interval '1 second'
+		FROM generate_series(1, $5::int) AS g`,
+		ids.MustNew("ct"), tc.tenantID, tc.product.ProductID, tiedAt(), legacyOversizedRows)
+	newestFirst := idsFromSQL(
+		t,
+		`SELECT id FROM email_templates WHERE product_id = $1 ORDER BY created_at DESC, id DESC`,
+		tc.product.ProductID,
+	)
+	client := tc.product.OwnerAuthenticatedClient()
+
+	whole, err := client.ListEmailTemplatesWithResponse(
+		t.Context(), tc.product.ProductID, &ct.ListEmailTemplatesParams{Limit: new(int64(1500))},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, whole.JSON200, string(whole.Body))
+	assert.Equal(t, newestFirst, templateIDs(whole.JSON200.Items), "every row once, newest first, none cut at 1000")
+	assert.Equal(t, legacyOversizedRows, whole.JSON200.Count)
+
+	tail, err := client.ListEmailTemplatesWithResponse(
+		t.Context(),
+		tc.product.ProductID,
+		&ct.ListEmailTemplatesParams{Limit: new(int64(1200)), Offset: new(int64(10))},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, tail.JSON200, string(tail.Body))
+	assert.Equal(t, newestFirst[10:], templateIDs(tail.JSON200.Items), "the offset applies once, the rest follows")
+}
+
+//nolint:staticcheck // the deprecated route stays covered until it is removed
+func TestDeprecatedListEmailSendsReturnsMoreThanAThousand(t *testing.T) {
+	t.Parallel()
+	tc := newEmailTestCtx(t)
+	execSQL(t, `INSERT INTO email_send_records
+		(id, platform_tenant_id, product_id, to_address, from_address, subject, body_html, status, created_at)
+		SELECT 'esnd_' || $1 || lpad(g::text, 6, '0'), $2, $3, 'to' || g || '@example.com', 'noreply@tryanchor.dev', 'S', '<p>B</p>', 'SENT',
+			$4::timestamptz + g * interval '1 second'
+		FROM generate_series(1, $5::int) AS g`,
+		ids.MustNew("ct"), tc.tenantID, tc.product.ProductID, tiedAt(), legacyOversizedRows)
+	newestFirst := idsFromSQL(
+		t,
+		`SELECT id FROM email_send_records WHERE product_id = $1 ORDER BY created_at DESC, id DESC`,
+		tc.product.ProductID,
+	)
+
+	resp, err := tc.product.OwnerAuthenticatedClient().ListEmailSendsWithResponse(
+		t.Context(), tc.product.ProductID, &ct.ListEmailSendsParams{Limit: new(int64(1100)), Offset: new(int64(3))},
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp.JSON200, string(resp.Body))
+	got := make([]string, 0, len(resp.JSON200.Items))
+	for _, item := range resp.JSON200.Items {
+		got = append(got, item.Id)
+	}
+	assert.Equal(t, newestFirst[3:], got)
+}
+
+func templateIDs(items []ct.EmailTemplateResponse) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, item.Id)
+	}
+	return out
+}
