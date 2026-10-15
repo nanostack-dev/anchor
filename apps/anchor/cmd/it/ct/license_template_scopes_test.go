@@ -78,8 +78,8 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, read.StatusCode())
 
-		list, err := writeOnly.ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID, nil,
+		list, err := writeOnly.SearchLicenseTemplatesWithResponse(
+			context.Background(), tc.product.ProductID, ct.SearchLicenseTemplatesJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())
@@ -133,8 +133,8 @@ func TestLicenseTemplateScopes(t *testing.T) {
 			[]string{"license_schema:read", "license_schema:create", "license_schema:update"},
 		)
 
-		list, err := schemaOnly.ListLicenseTemplatesWithResponse(
-			context.Background(), tc.product.ProductID, nil,
+		list, err := schemaOnly.SearchLicenseTemplatesWithResponse(
+			context.Background(), tc.product.ProductID, ct.SearchLicenseTemplatesJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())

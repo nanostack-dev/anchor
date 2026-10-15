@@ -247,6 +247,7 @@ func (r *productAPIKeyRepository) Delete(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
+//nolint:dupl // mirrored by organization API key repository with equivalent keyset
 func (r *productAPIKeyRepository) SearchByProductID(
 	ctx context.Context, input apikey.SearchProductAPIKeysInput,
 ) (search.Result[apikey.ProductAPIKey], error) {

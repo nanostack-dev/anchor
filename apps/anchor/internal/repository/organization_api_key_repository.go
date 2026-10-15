@@ -254,6 +254,7 @@ func (r *organizationAPIKeyRepository) Update(
 	return r.mapper.ToDomainWithPermissions(updated, permissions), nil
 }
 
+//nolint:dupl // mirrors product API key search with organization-scoped tables
 func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	ctx context.Context,
 	input orgapikey.SearchOrganizationAPIKeysInput,
