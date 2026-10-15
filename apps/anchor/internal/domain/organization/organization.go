@@ -22,8 +22,8 @@ type Organization struct {
 	// read including [IncludeLicense]. Nil otherwise, which says nothing about
 	// whether the organization holds one.
 	License *license.OrganizationLicense
-	// Workspaces is nil unless IncludeWorkspace was requested; an included empty list is non-nil.
-	Workspaces *[]workspace.Workspace
+	// Workspaces is populated only when IncludeWorkspace was requested.
+	Workspaces []workspace.Workspace
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }

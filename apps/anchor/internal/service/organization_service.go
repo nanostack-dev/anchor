@@ -265,11 +265,7 @@ func (s *organizationService) attachIncludes(
 			return nil, err
 		}
 		for i, org := range organizations {
-			items := linked[org.ID]
-			if items == nil {
-				items = []workspace.Workspace{}
-			}
-			organizations[i].Workspaces = &items
+			organizations[i].Workspaces = linked[org.ID]
 		}
 	}
 	return organizations, nil
