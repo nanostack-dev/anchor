@@ -15,6 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { startRuntime, statusRuntime, stopRuntime } from "./e2e-runtime.mjs";
+import { seedStripeDemoOrganizations } from "./stripe-prototype-bootstrap.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const uiDirectory = resolve(dirname(scriptPath), "..");
@@ -32,6 +33,13 @@ const events = [
 	"invoice.paid",
 	"invoice.payment_failed",
 	"invoice.payment_action_required",
+	"radar.early_fraud_warning.created",
+	"radar.early_fraud_warning.updated",
+	"refund.created",
+	"refund.updated",
+	"refund.failed",
+	"charge.dispute.created",
+	"charge.dispute.updated",
 ].join(",");
 const cancellation = new AbortController();
 const children = new Set();
@@ -454,12 +462,12 @@ async function bootstrap(accountID) {
 		});
 		if (template.name === "Free") fallbackID = created.id;
 	}
-	for (const name of ["Maple Studio", "Northstar Labs"])
-		await anchorRequest(`${productPath}/organizations`, {
-			method: "POST",
-			token,
-			body: { name, license: { template_id: fallbackID } },
-		});
+	await seedStripeDemoOrganizations(anchorRequest, {
+		productPath,
+		token,
+		fallbackTemplateID: fallbackID,
+		privateValues,
+	});
 	const session = {
 		runtime_id: runtime.runId,
 		account_id: accountID,

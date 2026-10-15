@@ -51,6 +51,7 @@ type productService struct {
 	productRepo           repository.ProductRepository
 	productPermissionRepo repository.ProductPermissionRepository
 	eventEndpoints        events.EndpointService
+	integrations          IntegrationService
 	products              cache.Cache[product.Product]
 	logger                zerolog.Logger
 	transactor            transactor.Transactor
@@ -60,12 +61,14 @@ func NewProductService(
 	productRepo repository.ProductRepository,
 	productPermissionRepo repository.ProductPermissionRepository,
 	eventEndpoints events.EndpointService,
+	integrations IntegrationService,
 	cacheStore cache.Store, transactor transactor.Transactor, logger zerolog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
 		eventEndpoints:        eventEndpoints,
+		integrations:          integrations,
 		products:              cache.New[product.Product](cacheStore, productCachePrefix, productCacheTTL, logger),
 		logger:                logger.With().Str("component", "product_service").Logger(),
 		transactor:            transactor,
@@ -432,6 +435,9 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 	}
 
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if guardErr := s.integrations.RequireProductDeletable(txCtx, input.TenantID, input.ProductID); guardErr != nil {
+			return guardErr
+		}
 		prod, findErr := s.findProductForUpdate(txCtx, input.TenantID, input.ProductID, logger)
 		if findErr != nil {
 			return findErr

@@ -7,6 +7,7 @@ export {
 	type StripeBillingCheckoutRequest as CheckoutRequest,
 	type StripeBillingSubscriptionRequest as SubscriptionRequest,
 	type StripeBillingUpdateSettingsRequest as UpdateSettingsRequest,
+	StripeBillingFraudRefundCurrency as FraudRefundCurrency,
 	zStripeBillingState as zState,
 	zStripeBillingUrlResponse as zUrlResponse,
 	zStripeBillingCreatePriceRequest as zCreatePriceRequest,

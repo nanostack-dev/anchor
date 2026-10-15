@@ -10,13 +10,17 @@ import (
 	"sync"
 	"time"
 
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
 	serviceconfig "anchor/internal/service/config"
+	"anchor/internal/stripebilling/billing"
 
+	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
@@ -98,6 +102,11 @@ type IntegrationService interface {
 		ctx context.Context,
 		input integration.IngestWebhookInput,
 	) (integration.Event, error)
+
+	// RequireProductDeletable refuses deleting a product whose Stripe connection
+	// holds unresolved refunds, since the deletion cascades to the refund audit.
+	// Call it inside the product deletion transaction, before locking the product.
+	RequireProductDeletable(ctx context.Context, tenantID, productID string) error
 
 	// VerifyAndActivateInternal resumes a persisted CONFIGURING connection
 	// synchronously for trusted durable workers. Tenant-facing handlers must not
@@ -373,8 +382,8 @@ func (s *integrationService) UpdateInstance(
 
 	var updated integration.Instance
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		found, findErr := s.instanceRepo.FindByID(
-			txCtx, input.TenantID, input.ID,
+		existingValue, findErr := s.findInstanceForMutation(
+			txCtx, input.TenantID, input.ProductID, input.ID,
 		)
 		if findErr != nil {
 			logger.Error().Err(findErr).
@@ -382,10 +391,6 @@ func (s *integrationService) UpdateInstance(
 				Msg("failed to find instance for update")
 			return findErr
 		}
-		if found.IsAbsent() || found.Value().ProductID != input.ProductID {
-			return ErrIntegrationInstanceNotFound
-		}
-		existingValue := found.Value()
 		existing := &existingValue
 
 		prov, provErr := s.registry.GetProvider(string(existing.ProviderType))
@@ -467,6 +472,98 @@ func (s *integrationService) UpdateInstance(
 	}
 
 	return updated, nil
+}
+
+func (s *integrationService) findInstanceForMutation(
+	ctx context.Context,
+	tenantID, productID, instanceID string,
+) (integration.Instance, error) {
+	found, err := s.instanceRepo.FindByID(ctx, tenantID, instanceID)
+	if err != nil {
+		return integration.Instance{}, err
+	}
+	if found.IsAbsent() || found.Value().ProductID != productID {
+		return integration.Instance{}, ErrIntegrationInstanceNotFound
+	}
+	if found.Value().ProviderType != integration.ProviderTypeStripe {
+		return found.Value(), nil
+	}
+	// Billing holds this exact PostgreSQL session key across external operations.
+	if _, err = transactor.CurrentTx(ctx).ExecContext(
+		ctx,
+		"SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+		"stripe-billing:"+instanceID,
+	); err != nil {
+		return integration.Instance{}, err
+	}
+	found, err = s.instanceRepo.FindByID(ctx, tenantID, instanceID)
+	if err != nil {
+		return integration.Instance{}, err
+	}
+	if found.IsAbsent() || found.Value().ProductID != productID {
+		return integration.Instance{}, ErrIntegrationInstanceNotFound
+	}
+	return found.Value(), nil
+}
+
+func (s *integrationService) RequireProductDeletable(ctx context.Context, tenantID, productID string) error {
+	if err := validate.ValidateStruct(struct {
+		TenantID  string `validate:"required,notblank"`
+		ProductID string `validate:"required,notblank"`
+	}{tenantID, productID}); err != nil {
+		return err
+	}
+	instances, err := s.instanceRepo.ListByProduct(ctx, tenantID, productID)
+	if err != nil {
+		return err
+	}
+	for _, listed := range instances {
+		if listed.ProviderType != integration.ProviderTypeStripe {
+			continue
+		}
+		instance, findErr := s.findInstanceForMutation(ctx, tenantID, productID, listed.ID)
+		if errors.Is(findErr, ErrIntegrationInstanceNotFound) {
+			continue
+		}
+		if findErr != nil {
+			return findErr
+		}
+		if refundsErr := s.requireStripeRefundsResolved(ctx, instance); refundsErr != nil {
+			return refundsErr
+		}
+	}
+	return nil
+}
+
+func (s *integrationService) requireStripeRefundsResolved(ctx context.Context, instance integration.Instance) error {
+	if instance.ProviderType != integration.ProviderTypeStripe {
+		return nil
+	}
+	t := table.StripeBillingStates
+	row, err := transactor.QueryOptional[model.StripeBillingStates](
+		ctx,
+		s.db,
+		t.SELECT(t.AllColumns).FROM(t).WHERE(
+			t.IntegrationInstanceID.EQ(postgres.String(instance.ID)).
+				AND(t.PlatformTenantID.EQ(postgres.String(instance.PlatformTenantID))).
+				AND(t.ProductID.EQ(postgres.String(instance.ProductID))),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	if row.IsAbsent() {
+		return nil
+	}
+	var state billing.StoredState
+	if err = json.Unmarshal([]byte(row.Value().StateJSON), &state); err != nil || state.InstallationID == "" ||
+		state.AccountID == "" || state.ProductID != instance.ProductID || billing.HasUnresolvedRefunds(state) {
+		return fault.Conflict(
+			"STRIPE_REFUNDS_UNRESOLVED",
+			"Resolve pending refunds before disconnecting Stripe or deleting its product.",
+		)
+	}
+	return nil
 }
 
 // manageReconcileSchedulerOnUpdate starts or cancels the reconcile scheduler when an instance's
@@ -596,24 +693,16 @@ func (s *integrationService) DeleteInstance(
 		return valErr
 	}
 
-	// Verify it exists first.
-	found, findErr := s.instanceRepo.FindByID(
-		ctx, input.TenantID, input.ID,
-	)
-	if findErr != nil {
-		logger.Error().Err(findErr).
-			Str("instance_id", input.ID).
-			Msg("failed to find instance for deletion")
-		return findErr
-	}
-	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
-		return ErrIntegrationInstanceNotFound
-	}
-	existing := found.Value()
-
-	hadKey := hasClerkAPIKey(existing.ConfigJSON) && existing.ProviderType == integration.ProviderTypeClerk
-
+	var hadKey bool
 	delErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		existing, findErr := s.findInstanceForMutation(txCtx, input.TenantID, input.ProductID, input.ID)
+		if findErr != nil {
+			return findErr
+		}
+		if refundsErr := s.requireStripeRefundsResolved(txCtx, existing); refundsErr != nil {
+			return refundsErr
+		}
+		hadKey = hasClerkAPIKey(existing.ConfigJSON) && existing.ProviderType == integration.ProviderTypeClerk
 		s.writeAuditLog(
 			txCtx,
 			logger,

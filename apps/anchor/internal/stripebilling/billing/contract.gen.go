@@ -61,6 +61,63 @@ func (e CreatePriceRequestInterval) Valid() bool {
 	}
 }
 
+// Defines values for FraudRefundCurrency.
+const (
+	FraudRefundCurrencyCad FraudRefundCurrency = "cad"
+	FraudRefundCurrencyEur FraudRefundCurrency = "eur"
+	FraudRefundCurrencyUsd FraudRefundCurrency = "usd"
+)
+
+// Valid indicates whether the value is a known member of the FraudRefundCurrency enum.
+func (e FraudRefundCurrency) Valid() bool {
+	switch e {
+	case FraudRefundCurrencyCad:
+		return true
+	case FraudRefundCurrencyEur:
+		return true
+	case FraudRefundCurrencyUsd:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FraudRefundStatus.
+const (
+	FraudRefundCanceled       FraudRefundStatus = "canceled"
+	FraudRefundFailed         FraudRefundStatus = "failed"
+	FraudRefundPending        FraudRefundStatus = "pending"
+	FraudRefundProcessing     FraudRefundStatus = "processing"
+	FraudRefundRequiresAction FraudRefundStatus = "requires_action"
+	FraudRefundReviewRequired FraudRefundStatus = "review_required"
+	FraudRefundSkipped        FraudRefundStatus = "skipped"
+	FraudRefundSucceeded      FraudRefundStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the FraudRefundStatus enum.
+func (e FraudRefundStatus) Valid() bool {
+	switch e {
+	case FraudRefundCanceled:
+		return true
+	case FraudRefundFailed:
+		return true
+	case FraudRefundPending:
+		return true
+	case FraudRefundProcessing:
+		return true
+	case FraudRefundRequiresAction:
+		return true
+	case FraudRefundReviewRequired:
+		return true
+	case FraudRefundSkipped:
+		return true
+	case FraudRefundSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PriceCurrency.
 const (
 	PriceCurrencyCad PriceCurrency = "cad"
@@ -146,6 +203,39 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+// FraudRefund defines model for FraudRefund.
+type FraudRefund struct {
+	Amount         int64             `json:"amount"`
+	ChargeID       string            `json:"charge_id"`
+	CreatedAt      time.Time         `json:"created_at"`
+	Currency       string            `json:"currency"`
+	ID             string            `json:"id"`
+	InvoiceID      string            `json:"invoice_id"`
+	LastError      string            `json:"last_error"`
+	OrganizationID string            `json:"organization_id"`
+	Reason         string            `json:"reason"`
+	RefundID       string            `json:"refund_id"`
+	Status         FraudRefundStatus `json:"status"`
+	SubscriptionID string            `json:"subscription_id"`
+	UpdatedAt      time.Time         `json:"updated_at"`
+	WarningID      string            `json:"warning_id"`
+}
+
+// FraudRefundCurrency defines model for FraudRefundCurrency.
+type FraudRefundCurrency string
+
+// FraudRefundPolicy defines model for FraudRefundPolicy.
+type FraudRefundPolicy struct {
+	Currency FraudRefundCurrency `json:"currency"`
+	Enabled  bool                `json:"enabled"`
+
+	// MaxAmount Maximum original payment amount in minor currency units. Must be positive when enabled.
+	MaxAmount int64 `json:"max_amount"`
+}
+
+// FraudRefundStatus defines model for FraudRefundStatus.
+type FraudRefundStatus string
+
 // Identifier defines model for Identifier.
 type Identifier = string
 
@@ -196,13 +286,15 @@ type Product struct {
 
 // Settings defines model for Settings.
 type Settings struct {
-	FallbackTemplateID Identifier `json:"fallback_template_id"`
+	FallbackTemplateID Identifier        `json:"fallback_template_id"`
+	FraudRefundPolicy  FraudRefundPolicy `json:"fraud_refund_policy"`
 }
 
 // State defines model for State.
 type State struct {
 	Account       Account        `json:"account"`
 	Events        []BillingEvent `json:"events"`
+	FraudRefunds  []FraudRefund  `json:"fraud_refunds"`
 	Organizations []Organization `json:"organizations"`
 	Prices        []Price        `json:"prices"`
 	Product       Product        `json:"product"`
@@ -230,7 +322,8 @@ type URLResponse struct {
 
 // UpdateSettingsRequest defines model for UpdateSettingsRequest.
 type UpdateSettingsRequest struct {
-	FallbackTemplateID Identifier `json:"fallback_template_id"`
+	FallbackTemplateID *Identifier        `json:"fallback_template_id,omitempty"`
+	FraudRefundPolicy  *FraudRefundPolicy `json:"fraud_refund_policy,omitempty"`
 }
 
 // WebhookResponse defines model for WebhookResponse.

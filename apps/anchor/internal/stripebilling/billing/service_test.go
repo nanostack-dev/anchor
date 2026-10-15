@@ -1169,7 +1169,7 @@ func TestInvalidBodySelectionsStayBadRequestAndUnlinkedPortalStaysConflict(t *te
 	require.ErrorIs(t, err, ErrInput)
 	_, err = w.service.UpdateSettings(
 		t.Context(),
-		UpdateSettingsRequest{FallbackTemplateID: "ltpl_" + ksuid.New().String()},
+		UpdateSettingsRequest{FallbackTemplateID: new("ltpl_" + ksuid.New().String())},
 	)
 	require.ErrorIs(t, err, ErrInput)
 	require.NoError(

@@ -4,6 +4,7 @@ import {
 	IntegrationInstanceStatus,
 	IntegrationProviderType,
 	type StripeBillingErrorResponse,
+	StripeBillingFraudRefundCurrency,
 	StripeIntegrationAuthMethod,
 	zStripeIntegrationConfigWritable,
 	zStripeIntegrationPublicConfig,
@@ -59,11 +60,25 @@ async function fixtureBilling(
 			status = 201;
 		} else if (path.endsWith("/archive"))
 			body = await api.archivePrice(path.split("/")[2]);
-		else if (path === "/settings")
-			body = await api.updateSettings(
-				zUpdateSettingsRequest.parse(request.postDataJSON()),
-			);
-		else {
+		else if (path === "/settings") {
+			const parsed = zUpdateSettingsRequest.parse(request.postDataJSON());
+			const { fraud_refund_policy: policy, ...settings } = parsed;
+			body = await api.updateSettings({
+				...settings,
+				...(policy
+					? {
+							fraud_refund_policy: {
+								...policy,
+								currency: {
+									usd: StripeBillingFraudRefundCurrency.USD,
+									cad: StripeBillingFraudRefundCurrency.CAD,
+									eur: StripeBillingFraudRefundCurrency.EUR,
+								}[policy.currency],
+							},
+						}
+					: {}),
+			});
+		} else {
 			const organizationId = path.split("/")[2];
 			const operation = path.split("/")[3];
 			if (operation === "checkout")
