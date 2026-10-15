@@ -41,7 +41,7 @@ type SearchProductUserFilter struct {
 	IDs         []string            `validate:"omitempty,dive,notblank"`
 	Emails      []string            `validate:"omitempty,dive,email"`
 	Names       []string            `validate:"omitempty,dive,notblank"`
-	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended"`
+	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended ACTIVE INACTIVE"`
 	ExternalIDs []string            `validate:"omitempty,dive,notblank"`
 }
 

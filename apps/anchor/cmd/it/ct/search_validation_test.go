@@ -78,7 +78,7 @@ func TestSearchesRejectFilterValuesOutsideTheirEnums(t *testing.T) {
 		})
 
 	tenant := itdsl.Given(t).Tenant(itdsl.TenantOpts{Alias: "t", Isolated: true}).Build().Tenant("t")
-	add("platform user role", `{"filter":{"roles":["BOGUS"]}}`, "Roles",
+	add("platform user role", `{"filter":{"roles":["BOGUS"]}}`, "filter.roles",
 		func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			resp, err := tenant.OwnerClient.SearchPlatformUsersWithBodyWithResponse(ctx, "application/json", body)
 			return httpCall(resp, err, func(r *ct.SearchPlatformUsersResponse) []byte { return r.Body })

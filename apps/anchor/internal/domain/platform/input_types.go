@@ -1,6 +1,8 @@
 package platform
 
 import (
+	"strings"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/searchx"
@@ -20,9 +22,9 @@ type GetPlatformUserInput struct {
 
 // SearchPlatformUserFilter defines search criteria for platform users.
 type SearchPlatformUserFilter struct {
-	IDs    []string     `validate:"omitempty,dive,notblank"`
-	Emails []string     `validate:"omitempty,dive,email"`
-	Roles  []TenantRole `validate:"omitempty,dive,oneof=OWNER ADMIN"`
+	IDs    []string `validate:"omitempty,dive,notblank"`
+	Emails []string `validate:"omitempty,dive,email"`
+	Roles  []TenantRole
 }
 
 type SortFieldPlatformUser string
@@ -40,13 +42,25 @@ type SearchPlatformUsersInput struct {
 	Request  search.Request[SearchPlatformUserFilter, SortFieldPlatformUser] `validate:"required"`
 }
 
-// Validate checks the input and the sort the client named.
+// Validate checks the input, the sort the client named and the roles it filters
+// on. A role compares without regard to letter case, as the search does.
 func (in SearchPlatformUsersInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	if err := searchx.ValidateRequest(in, in.Request,
 		SortFieldPlatformUserCreatedAt,
 		SortFieldPlatformUserUpdatedAt,
 		SortFieldPlatformUserEmail,
-		SortFieldPlatformUserRole)
+		SortFieldPlatformUserRole); err != nil {
+		return err
+	}
+	if in.Request.Filter == nil {
+		return nil
+	}
+	roles := make([]string, len(in.Request.Filter.Roles))
+	for i, role := range in.Request.Filter.Roles {
+		roles[i] = strings.ToLower(string(role))
+	}
+	return searchx.ValidateOneOf("filter.roles", roles,
+		[]string{strings.ToLower(string(TenantRoleOwner)), strings.ToLower(string(TenantRoleAdmin))})
 }
 
 // GetPlatformUserByUserIDInput defines the input structure for retrieving a platform user by user Name.
