@@ -17,7 +17,7 @@ func WebhookPayloadMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost ||
 			!strings.HasPrefix(r.URL.Path, "/v1/products/") ||
-			!strings.Contains(r.URL.Path, "/integrations/webhooks/") {
+			(!strings.Contains(r.URL.Path, "/integrations/webhooks/") && !strings.HasSuffix(r.URL.Path, "/billing/stripe/webhook")) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -49,7 +49,7 @@ func WebhookHeadersFromContext(ctx context.Context) map[string]string {
 // webhookHeaderPrefixes returns header name prefixes that are forwarded into
 // context for webhook signature validation (e.g. svix-id, svix-timestamp,
 // svix-signature).
-func webhookHeaderPrefixes() []string { return []string{"svix-", "webhook-"} }
+func webhookHeaderPrefixes() []string { return []string{"svix-", "webhook-", "stripe-"} }
 
 // NewWebhookHeadersMiddleware returns a StrictMiddlewareFunc that, for the
 // IngestWebhook operation, copies relevant HTTP headers into the request
@@ -57,7 +57,7 @@ func webhookHeaderPrefixes() []string { return []string{"svix-", "webhook-"} }
 func NewWebhookHeadersMiddleware() StrictMiddlewareFunc {
 	return func(f StrictHandlerFunc, operationID string) StrictHandlerFunc {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-			if operationID == "IngestWebhook" {
+			if operationID == "IngestWebhook" || operationID == "IngestStripeBillingWebhook" {
 				headers := extractWebhookHeaders(r)
 				ctx = context.WithValue(ctx, webhookHeadersKey{}, headers)
 			}

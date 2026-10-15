@@ -4,6 +4,7 @@ import (
 	"anchor/internal/integration/provider"
 	"anchor/internal/integration/provider/clerk"
 	"anchor/internal/integration/provider/smtp"
+	"anchor/internal/integration/provider/stripe"
 	"anchor/internal/security/encryption"
 
 	"go.uber.org/fx"
@@ -18,5 +19,6 @@ func NewModule() fx.Option {
 		provider.NewModule(),
 		clerk.NewModule(),
 		smtp.NewModule(),
+		stripe.NewModule(),
 	)
 }

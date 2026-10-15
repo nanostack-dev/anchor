@@ -42,6 +42,7 @@ func UseSchema(schema string) {
 	ProductUsers = ProductUsers.FromSchema(schema)
 	Products = Products.FromSchema(schema)
 	SchemaMigrations = SchemaMigrations.FromSchema(schema)
+	StripeBillingStates = StripeBillingStates.FromSchema(schema)
 	UsageObservations = UsageObservations.FromSchema(schema)
 	Users = Users.FromSchema(schema)
 	WorkspaceMemberships = WorkspaceMemberships.FromSchema(schema)

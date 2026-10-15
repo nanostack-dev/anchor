@@ -24,6 +24,7 @@ import (
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
 	"anchor/internal/session"
+	"anchor/internal/stripebilling"
 
 	"go.uber.org/fx"
 )
@@ -56,6 +57,7 @@ func startAnchor(target ...any) {
 		email.NewModule(),
 		events.NewModule(),
 		license.NewModule(),
+		stripebilling.NativeModule(),
 		invitation.NewModule(),
 		session.NewModule(),
 		api.NewModule(),

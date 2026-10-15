@@ -6,6 +6,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
+	"anchor/internal/stripebilling"
 
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
@@ -15,6 +16,7 @@ import (
 var _ StrictServerInterface = (*AnchorAPI)(nil)
 
 type AnchorAPI struct {
+	StripeBilling                 *stripebilling.Manager
 	TenantService                 service.TenantService
 	AuthService                   service.AuthService
 	PlatformInvitationService     service.InvitationService
@@ -45,6 +47,7 @@ type AnchorAPI struct {
 }
 
 type Params struct {
+	StripeBilling *stripebilling.Manager
 	fx.In
 	TenantService                 service.TenantService
 	AuthService                   service.AuthService
@@ -77,6 +80,7 @@ type Params struct {
 
 func NewAPI(params Params) *AnchorAPI {
 	return &AnchorAPI{
+		StripeBilling:                 params.StripeBilling,
 		TenantService:                 params.TenantService,
 		AuthService:                   params.AuthService,
 		PlatformInvitationService:     params.PlatformInvitationService,
