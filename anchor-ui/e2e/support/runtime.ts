@@ -8,6 +8,7 @@ export interface LocalRuntime {
 	smtpPort: number;
 	runId: string;
 	directory: string;
+	stripeFixtureURL?: string;
 }
 export function runtime(): LocalRuntime {
 	const namespace = process.env.ANCHOR_E2E_RUNTIME_NAMESPACE ?? "";

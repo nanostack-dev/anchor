@@ -1,5 +1,32 @@
-import { describe, expect, it } from "vitest";
-import { formatFraudAmount } from "./fraud-refund-activity";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { createElement } from "react";
+import { afterEach, describe, expect, it } from "vitest";
+import { fraudDisputedFixtureState } from "./fixtures";
+import {
+	FraudRefundActivity,
+	formatFraudAmount,
+} from "./fraud-refund-activity";
+
+afterEach(cleanup);
+
+describe("fraud refund activity", () => {
+	it("explains a disputed payment while preserving its skipped outcome", () => {
+		render(
+			createElement(FraudRefundActivity, { state: fraudDisputedFixtureState }),
+		);
+		const activity = within(
+			screen.getByRole("list", { name: "Fraud refund activity" }),
+		);
+		expect(activity.getAllByRole("listitem")).toHaveLength(1);
+		expect(activity.getByText("Skipped", { exact: true })).toBeTruthy();
+		expect(
+			activity.getByText("The payment is disputed and needs manual review."),
+		).toBeTruthy();
+		expect(activity.getByText("Amount unavailable")).toBeTruthy();
+		expect(activity.queryByText("Refunded", { exact: true })).toBeNull();
+		expect(activity.queryByText("charge disputed", { exact: true })).toBeNull();
+	});
+});
 
 describe("fraud refund amounts", () => {
 	it("keeps unknown and zero skipped amounts distinct from completed money", () => {

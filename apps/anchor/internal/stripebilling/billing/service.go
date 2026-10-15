@@ -36,6 +36,9 @@ const (
 	stripeOrganizationMetadata = "anchor_organization_id"
 	stripeSubscriptionPageSize = 100
 	maximumStripeSubscriptions = 1000
+	organizationReconciliation = "reconciliation.scheduled"
+	organizationRepairPrefix   = "organization-reconcile-"
+	checkoutReplayWindow       = 23 * time.Hour
 )
 
 type Config struct {
@@ -104,7 +107,8 @@ func (s *Service) stateLocked(ctx context.Context) (State, error) {
 	prices := functional.Slice(slices.Collect(maps.Values(stored.Prices))).
 		SortedBy(func(price Price) string { return price.Name })
 	events := functional.Slice(slices.Collect(maps.Values(stored.Events))).
-		Map(func(event eventRecord) BillingEvent { return event.BillingEvent })
+		FilterMap(func(event eventRecord) bool { return !internalBillingEvent(event) },
+			func(event eventRecord) BillingEvent { return event.BillingEvent })
 	slices.SortFunc(events, func(a, b BillingEvent) int { return b.ReceivedAt.Compare(a.ReceivedAt) })
 	if len(events) > maximumVisibleEvents {
 		events = events[:maximumVisibleEvents]
@@ -203,6 +207,17 @@ func (s *Service) ArchivePrice(ctx context.Context, priceID string) (Price, erro
 		}
 		return Price{}, err
 	}
+	stored, err := s.store.Snapshot()
+	if err != nil {
+		return Price{}, err
+	}
+	if functional.Slice(slices.Collect(maps.Values(stored.Organizations))).
+		FindFirst(func(organization organizationRecord) bool {
+			return organization.CheckoutPrice == priceID && organization.CheckoutIntent != "" &&
+				organization.CheckoutID == ""
+		}).IsPresent() {
+		return Price{}, fmt.Errorf("%w: recover the pending checkout before archiving its price", ErrConflict)
+	}
 	if _, err = s.stripe.Client().V1Prices.Update(
 		ctx,
 		price.StripePriceID,
@@ -270,12 +285,25 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	price, err := s.price(request.PriceID, true)
+	stored, err := s.store.Snapshot()
 	if err != nil {
 		return URLResponse{}, err
 	}
-	if err = s.requireTemplate(ctx, price.TemplateID); err != nil {
+	organization := stored.Organizations[organizationID]
+	if err = validatePendingCheckout(organization, request); err != nil {
 		return URLResponse{}, err
+	}
+	price, err := s.price(request.PriceID, false)
+	if err != nil {
+		return URLResponse{}, err
+	}
+	if !price.Active && !matchesSavedCheckout(organization, request) {
+		return URLResponse{}, fmt.Errorf("%w: select an active price from this product", ErrInput)
+	}
+	if price.Active {
+		if err = s.requireTemplate(ctx, price.TemplateID); err != nil {
+			return URLResponse{}, err
+		}
 	}
 	_, err = s.ensureCustomer(ctx, organizationID)
 	if err != nil {
@@ -284,23 +312,19 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 	if _, err = s.syncLocked(ctx, organizationID); err != nil {
 		return URLResponse{}, err
 	}
-	stored, err := s.store.Snapshot()
+	stored, err = s.store.Snapshot()
 	if err != nil {
 		return URLResponse{}, err
 	}
-	organization := stored.Organizations[organizationID]
+	organization = stored.Organizations[organizationID]
 	if organization.SubscriptionID != "" && !terminal(organization.Status) {
 		return URLResponse{}, fmt.Errorf(
 			"%w: this organization already has a subscription; change its price instead",
 			ErrConflict,
 		)
 	}
-	if organization.CheckoutID == "" && organization.CheckoutIntent != "" &&
-		(organization.CheckoutPrice != request.PriceID || organization.CheckoutTrial != request.TrialDays) {
-		return URLResponse{}, fmt.Errorf(
-			"%w: retry the previous checkout price and trial first to recover its pending session",
-			ErrConflict,
-		)
+	if err = validatePendingCheckout(organization, request); err != nil {
+		return URLResponse{}, err
 	}
 	if organization.CheckoutID != "" {
 		existing, recoveryErr := s.recoverCheckout(ctx, &organization, request)
@@ -310,6 +334,9 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 		if existing.IsPresent() {
 			return existing.Value(), nil
 		}
+	}
+	if !price.Active && organization.CheckoutIntent == "" {
+		return URLResponse{}, fmt.Errorf("%w: select an active price from this product", ErrInput)
 	}
 	if organization.CheckoutIntent == "" || organization.CheckoutPrice != request.PriceID ||
 		organization.CheckoutTrial != request.TrialDays {
@@ -352,6 +379,33 @@ func (s *Service) Checkout(ctx context.Context, organizationID string, request C
 		return URLResponse{}, err
 	}
 	return URLResponse{URL: session.URL}, nil
+}
+
+func validatePendingCheckout(organization organizationRecord, request CheckoutRequest) error {
+	if organization.CheckoutID != "" || organization.CheckoutIntent == "" {
+		return nil
+	}
+	if organization.CheckoutPrice != request.PriceID || organization.CheckoutTrial != request.TrialDays {
+		return fmt.Errorf(
+			"%w: retry the previous checkout price and trial first to recover its pending session",
+			ErrConflict,
+		)
+	}
+	intent, err := ksuid.Parse(organization.CheckoutIntent)
+	now := time.Now().UTC()
+	if err != nil || organization.CustomerID == "" || intent.Time().After(now) ||
+		!now.Before(intent.Time().Add(checkoutReplayWindow)) {
+		return fmt.Errorf(
+			"%w: the pending checkout needs manual recovery in Stripe before another checkout",
+			ErrConflict,
+		)
+	}
+	return nil
+}
+
+func matchesSavedCheckout(organization organizationRecord, request CheckoutRequest) bool {
+	return (organization.CheckoutID != "" || organization.CheckoutIntent != "") &&
+		organization.CheckoutPrice == request.PriceID && organization.CheckoutTrial == request.TrialDays
 }
 
 func (s *Service) ensureCustomer(ctx context.Context, organizationID string) (organizationRecord, error) {
@@ -789,16 +843,44 @@ func validateID(id string) error {
 
 func terminal(status string) bool { return status == "canceled" || status == "incomplete_expired" }
 
-func (s *Service) queueLinkedOrganizations() error {
+func internalBillingEvent(event eventRecord) bool {
+	if strings.HasPrefix(event.ID, "evt_") {
+		return false
+	}
+	switch event.Type {
+	case organizationReconciliation:
+		_, legacyErr := ksuid.Parse(event.ID)
+		return legacyErr == nil || event.ID == organizationRepairPrefix+event.OrganizationID
+	case fraudReconciliation:
+		return strings.HasPrefix(event.ID, "fraud-reconcile-")
+	case fraudReceiptMonitoring:
+		return strings.HasPrefix(event.ID, "fraud-monitor-")
+	default:
+		return false
+	}
+}
+
+func (s *Service) queueReconciliation() error {
 	return s.store.Update(func(state *StoredState) error {
+		queuedOrganizations := map[string]bool{}
+		for id, event := range state.Events {
+			if event.Type != organizationReconciliation || !internalBillingEvent(event) {
+				continue
+			}
+			if event.Status == "processed" || event.Status == "ignored" {
+				delete(state.Events, id)
+				continue
+			}
+			queuedOrganizations[event.OrganizationID] = true
+		}
 		for _, organization := range state.Organizations {
-			if organization.CustomerID == "" {
+			if organization.CustomerID == "" || queuedOrganizations[organization.ID] {
 				continue
 			}
 			now := time.Now().UTC()
-			id := ksuid.New().String()
+			id := organizationRepairPrefix + organization.ID
 			state.Events[id] = eventRecord{
-				ID: id, Type: "reconciliation.scheduled", OrganizationID: organization.ID,
+				ID: id, Type: organizationReconciliation, OrganizationID: organization.ID,
 				Status: statusPending, ReceivedAt: now,
 				NextAttempt: now,
 			}
@@ -841,10 +923,22 @@ func (s *Service) recoverCheckout(
 	if err != nil {
 		return functional.None[URLResponse](), err
 	}
+	if existing.Status != "open" && existing.Status != "complete" && existing.Status != "expired" {
+		return functional.None[URLResponse](), fmt.Errorf(
+			"%w: saved checkout status needs manual confirmation in Stripe",
+			ErrConflict,
+		)
+	}
 	if existing.Status == "complete" {
 		if err = s.retireCompletedCheckout(ctx, organization, existing); err != nil {
 			return functional.None[URLResponse](), err
 		}
+	} else if existing.Livemode || existing.ID != organization.CheckoutID || existing.Customer == nil ||
+		existing.Customer.ID != organization.CustomerID || existing.ClientReferenceID != organization.ID {
+		return functional.None[URLResponse](), fmt.Errorf(
+			"%w: saved checkout ownership could not be verified",
+			ErrConflict,
+		)
 	}
 	if existing.Status == "open" {
 		if organization.CheckoutPrice == request.PriceID && organization.CheckoutTrial == request.TrialDays {
@@ -1013,7 +1107,7 @@ func (s *Service) organizationReturnURL(organizationID string) string {
 }
 
 // QueueReconciliation records missed-event repair as durable work in the state store.
-func (s *Service) QueueReconciliation() error { return s.queueLinkedOrganizations() }
+func (s *Service) QueueReconciliation() error { return s.queueReconciliation() }
 
 func subscriptionItems(subscription *stripe.Subscription) []*stripe.SubscriptionItem {
 	if subscription == nil || subscription.Items == nil {

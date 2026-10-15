@@ -11,6 +11,7 @@ import {
 import {
 	createFixtureAPI,
 	fixtureState,
+	fraudDisputedFixtureState,
 	fraudEnabledFixtureState,
 	fraudWorstCaseFixtureState,
 } from "./fixtures";
@@ -293,10 +294,34 @@ export const WorstCase: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("EUR 999,999.99")).toBeVisible();
-		await expect(canvas.getByText("Amount unavailable")).toBeVisible();
+		for (const amount of canvas.getAllByText("Amount unavailable"))
+			await expect(amount).toBeVisible();
+		await expect(
+			canvas.getByText("The payment is disputed and needs manual review."),
+		).toBeVisible();
 		await expect(
 			canvas.getAllByText("Needs review", { exact: true }),
 		).toHaveLength(2);
+	},
+};
+
+export const DisputedPayment: Story = {
+	args: { state: fraudDisputedFixtureState },
+	play: async ({ canvasElement }) => {
+		const activity = within(
+			await within(canvasElement).findByRole("list", {
+				name: "Fraud refund activity",
+			}),
+		);
+		await expect(activity.getAllByRole("listitem")).toHaveLength(1);
+		await expect(activity.getByText("Skipped", { exact: true })).toBeVisible();
+		await expect(
+			activity.getByText("The payment is disputed and needs manual review."),
+		).toBeVisible();
+		await expect(activity.getByText("Amount unavailable")).toBeVisible();
+		await expect(
+			activity.queryByText("Refunded", { exact: true }),
+		).not.toBeInTheDocument();
 	},
 };
 

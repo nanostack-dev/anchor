@@ -9,7 +9,7 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **66 scenarios in 15 spec files**.
+The managed app suite declares **68 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
@@ -20,7 +20,7 @@ The managed app suite declares **66 scenarios in 15 spec files**.
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
 | [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 5 |
-| [integrations/stripe-billing.e2e.ts](../features/integrations/stripe-billing.e2e.ts) | 6 |
+| [integrations/stripe-billing.e2e.ts](../features/integrations/stripe-billing.e2e.ts) | 8 |
 | [licensing/migrations.e2e.ts](../features/licensing/migrations.e2e.ts) | 3 |
 | [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 7 |
 | [licensing/schema.e2e.ts](../features/licensing/schema.e2e.ts) | 4 |

@@ -189,6 +189,19 @@ export const fraudEnabledFixtureState: State = {
 	],
 };
 
+export const fraudDisputedFixtureState: State = {
+	...structuredClone(fraudEnabledFixtureState),
+	fraud_refunds: [
+		{
+			...fraudEnabledFixtureState.fraud_refunds[1],
+			id: "fraud_disputed",
+			warning_id: "issfr_warning_disputed",
+			charge_id: "ch_payment_disputed",
+			reason: "charge_disputed",
+		},
+	],
+};
+
 export const fraudWorstCaseFixtureState: State = (() => {
 	const state = structuredClone(fraudEnabledFixtureState);
 	state.organizations[0].name =
@@ -198,6 +211,9 @@ export const fraudWorstCaseFixtureState: State = (() => {
 	state.fraud_refunds[0].currency = "eur";
 	state.fraud_refunds[3].last_error =
 		"The connected account’s available balance is insufficient to complete this refund. The refund remains failed until an operator reviews the payment and account balance in Stripe. No subscription was canceled and the organization’s adjusted license values remain unchanged.";
+	state.fraud_refunds.push(
+		structuredClone(fraudDisputedFixtureState.fraud_refunds[0]),
+	);
 	for (const status of [
 		FraudRefundStatus.FRAUD_REFUND_PROCESSING,
 		FraudRefundStatus.FRAUD_REFUND_REQUIRES_ACTION,

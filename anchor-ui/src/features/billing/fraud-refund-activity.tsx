@@ -36,7 +36,7 @@ const reasons: Record<string, string> = {
 	policy_disabled: "Automatic refunds were off when this warning arrived.",
 	warning_not_actionable:
 		"This warning does not qualify for an automatic refund.",
-	formal_dispute: "The payment has a formal dispute and needs manual review.",
+	charge_disputed: "The payment is disputed and needs manual review.",
 	charge_not_eligible: "The payment is not eligible for an automatic refund.",
 	currency_mismatch: "The payment currency does not match the refund policy.",
 	amount_exceeds_limit: "The original payment amount exceeds the policy limit.",
