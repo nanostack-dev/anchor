@@ -58,6 +58,9 @@ const (
 	integrationVerificationPersistTimeout = 5 * time.Second
 )
 
+// errVerificationTimedOut marks a connection probe that reached its own deadline.
+var errVerificationTimedOut = errors.New("connection verification timed out")
+
 type verificationRun struct {
 	cancel context.CancelFunc
 }
@@ -1692,7 +1695,7 @@ func (s *integrationService) VerifyAndActivateInternal(ctx context.Context, inst
 	if _, verifies := prov.(provider.ConnectionVerifier); !verifies {
 		return nil
 	}
-	verifyCtx, cancel := context.WithTimeout(ctx, integrationVerificationTimeout)
+	verifyCtx, cancel := context.WithTimeoutCause(ctx, integrationVerificationTimeout, errVerificationTimedOut)
 	run := &verificationRun{cancel: cancel}
 	s.verificationMu.Lock()
 	if s.verificationRuns[instanceID] != nil {
@@ -1714,7 +1717,9 @@ func (s *integrationService) startVerifyAndActivate(
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), integrationVerificationTimeout)
+	ctx, cancel := context.WithTimeoutCause(
+		context.Background(), integrationVerificationTimeout, errVerificationTimedOut,
+	)
 	run := &verificationRun{cancel: cancel}
 
 	s.verificationMu.Lock()
@@ -1776,8 +1781,11 @@ func (s *integrationService) verifyAndActivate(
 		return nil
 	}
 
-	if err := ctx.Err(); err != nil {
-		return err
+	// Only the verification's own deadline is an outcome to save. A run cancelled
+	// or bounded by its caller (process shutdown, job timeout) stays CONFIGURING
+	// for durable recovery.
+	if ctx.Err() != nil && !errors.Is(context.Cause(ctx), errVerificationTimedOut) {
+		return ctx.Err()
 	}
 	persistCtx, cancel := context.WithTimeout(context.Background(), integrationVerificationPersistTimeout)
 	defer cancel()

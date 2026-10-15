@@ -205,3 +205,62 @@ func TestVerificationRecoveryPersistsFailureAndRetriesPersistenceErrors(t *testi
 	require.Equal(t, integration.StatusConfiguring, repo.current().Status)
 	require.Empty(t, svc.verificationRuns)
 }
+
+func TestVerificationProbeDeadlinePersistsError(t *testing.T) {
+	t.Parallel()
+	repo := &verificationRepository{instance: verificationFixture()}
+	timedOut := errors.New("dial tcp: i/o timeout")
+	p := &verificationProvider{verify: func(ctx context.Context, _ *integration.Instance) error {
+		<-ctx.Done()
+		return timedOut
+	}}
+	svc := verificationService(repo, p)
+	ctx, cancel := context.WithTimeoutCause(t.Context(), 10*time.Millisecond, errVerificationTimedOut)
+	run := &verificationRun{cancel: cancel}
+	svc.verificationRuns[repo.instance.ID] = run
+	require.NoError(t, svc.verifyAndActivate(ctx, zerolog.Nop(), repo.current(), p, run))
+	require.Equal(t, integration.StatusError, repo.current().Status)
+	require.Equal(t, timedOut.Error(), *repo.current().LastError)
+	require.Empty(t, svc.verificationRuns)
+}
+
+func TestVerificationCancelledByShutdownStaysConfiguring(t *testing.T) {
+	t.Parallel()
+	repo := &verificationRepository{instance: verificationFixture()}
+	started := make(chan struct{})
+	p := &verificationProvider{verify: func(ctx context.Context, _ *integration.Instance) error {
+		close(started)
+		<-ctx.Done()
+		return ctx.Err()
+	}}
+	svc := verificationService(repo, p)
+	worker, shutdown := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- svc.VerifyAndActivateInternal(worker, repo.instance.ID) }()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("verification did not start")
+	}
+	shutdown()
+	require.ErrorIs(t, <-done, context.Canceled)
+	require.Equal(t, integration.StatusConfiguring, repo.current().Status)
+	require.Nil(t, repo.current().LastError)
+	require.Empty(t, svc.verificationRuns)
+}
+
+func TestVerificationBoundedByCallerDeadlineStaysConfiguring(t *testing.T) {
+	t.Parallel()
+	repo := &verificationRepository{instance: verificationFixture()}
+	p := &verificationProvider{verify: func(ctx context.Context, _ *integration.Instance) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}}
+	svc := verificationService(repo, p)
+	job, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+	t.Cleanup(cancel)
+	require.ErrorIs(t, svc.VerifyAndActivateInternal(job, repo.instance.ID), context.DeadlineExceeded)
+	require.Equal(t, integration.StatusConfiguring, repo.current().Status)
+	require.Nil(t, repo.current().LastError)
+	require.Empty(t, svc.verificationRuns)
+}
