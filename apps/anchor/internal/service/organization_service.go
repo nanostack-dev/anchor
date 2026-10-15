@@ -330,10 +330,10 @@ func (s *organizationService) Create(
 			return licenseErr
 		}
 		created.License = instantiated
-		if input.CreateDefaultWorkspace {
+		if input.Workspace != nil {
 			if _, workspaceErr := s.workspaces.Create(
 				txCtx,
-				workspace.CreateWorkspaceInput{Name: defaultWorkspaceName, IsDefault: true,
+				workspace.CreateWorkspaceInput{Name: input.Workspace.Name, Description: input.Workspace.Description,
 					ProductID: input.ProductID, OrganizationID: created.ID,
 				},
 			); workspaceErr != nil {
@@ -375,17 +375,6 @@ func (s *organizationService) CreateWithMember(
 		return organization.OrganizationWithMemberResult{}, err
 	}
 	if existing.IsPresent() {
-		if input.CreateDefaultWorkspace {
-			if _, workspaceErr := s.workspaces.Create(
-				ctx,
-				workspace.CreateWorkspaceInput{Name: defaultWorkspaceName, IsDefault: true,
-					ProductID:      input.ProductID,
-					OrganizationID: existing.Value().Organization.ID,
-				},
-			); workspaceErr != nil {
-				return organization.OrganizationWithMemberResult{}, workspaceErr
-			}
-		}
 		return existing.Value(), nil
 	}
 
@@ -477,12 +466,12 @@ func (s *organizationService) CreateWithMember(
 			return licenseErr
 		}
 		createdOrg.License = createdLicense
-		if input.CreateDefaultWorkspace {
+		if input.Workspace != nil {
 			if _, workspaceErr := s.workspaces.Create(
 				lockCtx,
 				workspace.CreateWorkspaceInput{
-					Name:           defaultWorkspaceName,
-					IsDefault:      true,
+					Name:           input.Workspace.Name,
+					Description:    input.Workspace.Description,
 					ProductID:      input.ProductID,
 					OrganizationID: createdOrg.ID,
 				},

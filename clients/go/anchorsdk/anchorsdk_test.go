@@ -476,15 +476,15 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 				`"founding_member":{"product_user_id":"pusr_1","role_id":"prole_1"}}`,
 		},
 		{
-			name:  "organization create with default workspace",
+			name:  "organization create with initial workspace",
 			reply: stubResponse{status: http.StatusCreated, body: orgBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Organizations().Create("Acme").DefaultWorkspace().Do(ctx)
+				_, err := c.Organizations().Create("Acme").Workspace("Engineering").Do(ctx)
 				return err
 			},
 			wantMethod: http.MethodPost,
 			wantPath:   "/v1/products/prd_test/organizations",
-			wantBody:   `{"name":"Acme","create_default_workspace":true}`,
+			wantBody:   `{"name":"Acme","workspace":{"name":"Engineering"}}`,
 		},
 		{
 			name:  "organization search",
@@ -596,17 +596,6 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantMethod: http.MethodPost,
 			wantPath:   "/v1/products/prd_test/organizations/org_1/workspaces",
 			wantBody:   `{"name":"Production","description":"Production workloads"}`,
-		},
-		{
-			name:  "workspace create as default",
-			reply: stubResponse{status: http.StatusCreated, body: `{"id":"wsp_1","name":"Default","is_default":true}`},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Organization(testOrgID).Workspaces().Create("Default").IsDefault(true).Do(ctx)
-				return err
-			},
-			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/organizations/org_1/workspaces",
-			wantBody:   `{"name":"Default","is_default":true}`,
 		},
 		{
 			name:  "api key create",

@@ -107,10 +107,6 @@ func (s *workspaceService) Create(
 		return workspace.Workspace{}, err
 	}
 
-	if input.IsDefault {
-		return s.createDefault(ctx, input)
-	}
-
 	if err := s.ensureOrganizationExists(ctx, input.ProductID, input.OrganizationID); err != nil {
 		return workspace.Workspace{}, err
 	}
@@ -128,9 +124,14 @@ func (s *workspaceService) Create(
 
 	var created workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if lockErr := s.lockOrganization(txCtx, input.ProductID, input.OrganizationID); lockErr != nil {
-			return lockErr
+		if err := s.ensureOrganizationExists(
+			transactor.ForUpdate(txCtx),
+			input.ProductID,
+			input.OrganizationID,
+		); err != nil {
+			return err
 		}
+
 		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 			txCtx,
 			input.ProductID,

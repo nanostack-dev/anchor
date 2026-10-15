@@ -88,15 +88,15 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 	if request.Body.FoundingMember != nil {
 		input := organization.CreateOrganizationWithMemberInput{
-			CreateDefaultWorkspace: functional.FromPtr(request.Body.CreateDefaultWorkspace).OrElse(false),
-			TenantID:               tenantID,
-			ProductID:              request.ProductId,
-			Name:                   request.Body.Name,
-			Description:            request.Body.Description,
-			Metadata:               mapMetadataToInput(request.Body.Metadata),
-			ProductUserID:          request.Body.FoundingMember.ProductUserId,
-			RoleID:                 request.Body.FoundingMember.RoleId,
-			LicenseTemplateID:      licenseTemplateID,
+			Workspace:         initialWorkspaceInput(request.Body.Workspace),
+			TenantID:          tenantID,
+			ProductID:         request.ProductId,
+			Name:              request.Body.Name,
+			Description:       request.Body.Description,
+			Metadata:          mapMetadataToInput(request.Body.Metadata),
+			ProductUserID:     request.Body.FoundingMember.ProductUserId,
+			RoleID:            request.Body.FoundingMember.RoleId,
+			LicenseTemplateID: licenseTemplateID,
 		}
 
 		res, err := s.OrganizationService.CreateWithMember(ctx, input)
@@ -115,13 +115,13 @@ func (s *AnchorAPI) CreateProductOrganization(
 	}
 
 	input := organization.CreateOrganizationInput{
-		CreateDefaultWorkspace: functional.FromPtr(request.Body.CreateDefaultWorkspace).OrElse(false),
-		TenantID:               tenantID,
-		ProductID:              request.ProductId,
-		Name:                   request.Body.Name,
-		Description:            request.Body.Description,
-		Metadata:               mapMetadataToInput(request.Body.Metadata),
-		LicenseTemplateID:      licenseTemplateID,
+		Workspace:         initialWorkspaceInput(request.Body.Workspace),
+		TenantID:          tenantID,
+		ProductID:         request.ProductId,
+		Name:              request.Body.Name,
+		Description:       request.Body.Description,
+		Metadata:          mapMetadataToInput(request.Body.Metadata),
+		LicenseTemplateID: licenseTemplateID,
 	}
 
 	created, err := s.OrganizationService.Create(ctx, input)
@@ -251,4 +251,11 @@ func mapToSearchProductOrganizationInput(
 		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
 		searchReqBody.Pagination,
 	)
+}
+
+func initialWorkspaceInput(input *ProductWorkspaceRequest) *organization.InitialWorkspaceInput {
+	if input == nil {
+		return nil
+	}
+	return &organization.InitialWorkspaceInput{Name: input.Name, Description: input.Description}
 }

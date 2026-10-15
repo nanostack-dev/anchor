@@ -727,6 +727,14 @@ export const zUserResponse = z.object({
     role: z.string()
 });
 
+export const zProductWorkspaceRequest = z.object({
+    name: z.string().min(2).max(100),
+    description: z.optional(z.union([
+        z.string().max(500),
+        z.null()
+    ]))
+});
+
 export const zFoundingMemberRequest = z.object({
     product_user_id: zKsuid,
     role_id: zKsuid
@@ -737,7 +745,7 @@ export const zOrganizationLicenseInstantiateRequest = z.object({
 });
 
 export const zProductOrganizationRequest = z.object({
-    create_default_workspace: z.optional(z.boolean()).default(false),
+    workspace: z.optional(zProductWorkspaceRequest),
     name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
@@ -757,7 +765,6 @@ export const zOrganizationInclude = z.enum([
 ]);
 
 export const zProductWorkspaceResponse = z.object({
-    is_default: z.optional(z.boolean().readonly()),
     id: zKsuid,
     organization_id: zKsuid,
     name: z.string(),
@@ -834,15 +841,6 @@ export const zProductOrganizationSearchRequest = zSearchRequest.and(z.object({
 export const zProductOrganizationListResponse = zPagedListResponse.and(z.object({
     items: z.array(zProductOrganizationResponse)
 }));
-
-export const zProductWorkspaceRequest = z.object({
-    is_default: z.optional(z.boolean()),
-    name: z.string().min(2).max(100),
-    description: z.optional(z.union([
-        z.string().max(500),
-        z.null()
-    ]))
-});
 
 export const zProductWorkspaceSearchRequest = zSearchRequest.and(z.object({
     filter: z.optional(zWorkspaceFilter),
@@ -1678,18 +1676,6 @@ export const zProductOrganizationResponseWritable = z.object({
     ])),
     metadata: z.optional(zMetadata),
     license: z.optional(zOrganizationLicenseResponse),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
-});
-
-export const zProductWorkspaceResponseWritable = z.object({
-    id: zKsuid,
-    organization_id: zKsuid,
-    name: z.string(),
-    description: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });

@@ -122,9 +122,9 @@ func (b *OrgCreateBuilder) Metadata(m map[string]any) *OrgCreateBuilder {
 	return b
 }
 
-// DefaultWorkspace creates the default workspace atomically with the organization.
-func (b *OrgCreateBuilder) DefaultWorkspace() *OrgCreateBuilder {
-	b.req.CreateDefaultWorkspace = new(true)
+// Workspace creates an ordinary named workspace atomically with a new organization.
+func (b *OrgCreateBuilder) Workspace(name string) *OrgCreateBuilder {
+	b.req.Workspace = &nanoclient.ProductWorkspaceRequest{Name: name}
 	return b
 }
 

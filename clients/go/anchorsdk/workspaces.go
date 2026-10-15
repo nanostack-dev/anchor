@@ -85,13 +85,6 @@ func (b *WorkspaceCreateBuilder) Description(description string) *WorkspaceCreat
 	return b
 }
 
-// IsDefault requests the organization's designated default at creation. If one
-// already exists, Anchor returns it without changing its name or description.
-func (b *WorkspaceCreateBuilder) IsDefault(isDefault bool) *WorkspaceCreateBuilder {
-	b.req.IsDefault = new(isDefault)
-	return b
-}
-
 // Do creates the workspace.
 func (b *WorkspaceCreateBuilder) Do(ctx context.Context) (*nanoclient.ProductWorkspaceResponse, error) {
 	const op = "Workspaces.Create"

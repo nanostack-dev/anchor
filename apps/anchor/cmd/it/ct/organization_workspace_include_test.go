@@ -23,7 +23,7 @@ func TestOrganizationReadIncludesWorkspaces(t *testing.T) {
 	require.NotNil(t, empty.JSON200.Workspaces)
 	require.Empty(t, *empty.JSON200.Workspaces)
 	created := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{
-		Name: "Default", IsDefault: new(true),
+		Name: "Development",
 	})
 	other := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Production"})
 	read := product.Organizations().Get(org.Id, ct.OrganizationIncludeWorkspace)
@@ -34,9 +34,7 @@ func TestOrganizationReadIncludesWorkspaces(t *testing.T) {
 		byID[item.Id] = item
 	}
 	require.Equal(t, created.Id, byID[created.Id].Id)
-	require.True(t, *byID[created.Id].IsDefault)
 	require.Equal(t, other.Id, byID[other.Id].Id)
-	require.False(t, *byID[other.Id].IsDefault)
 }
 
 func TestOrganizationReadIncludesWorkspaceAndLicense(t *testing.T) {
@@ -44,7 +42,7 @@ func TestOrganizationReadIncludesWorkspaceAndLicense(t *testing.T) {
 	w := newLicenseWorld(t)
 	name := itdsl.UniqueOrganizationName()
 	body := organizationBody(name, new(w.TemplateID()))
-	body.CreateDefaultWorkspace = new(true)
+	body.Workspace = &ct.ProductWorkspaceRequest{Name: "Production"}
 	licensed := w.Organizations().Create(body)
 	empty := w.Organizations().Create(organizationBody(name, nil))
 	read := w.Organizations().Get(licensed.Id, ct.OrganizationIncludeWorkspace, ct.OrganizationIncludeLicense)
@@ -74,9 +72,9 @@ func TestOrganizationWorkspaceIncludeIsProductScoped(t *testing.T) {
 	foreign := createTestProductContext(t)
 	name := ids.MustNew("org")
 	org := owner.Organizations().
-		Create(ct.CreateProductOrganizationJSONRequestBody{Name: name, CreateDefaultWorkspace: new(true)})
+		Create(ct.CreateProductOrganizationJSONRequestBody{Name: name, Workspace: &ct.ProductWorkspaceRequest{Name: "Production"}})
 	foreignOrg := foreign.Organizations().
-		Create(ct.CreateProductOrganizationJSONRequestBody{Name: name, CreateDefaultWorkspace: new(true)})
+		Create(ct.CreateProductOrganizationJSONRequestBody{Name: name, Workspace: &ct.ProductWorkspaceRequest{Name: "Production"}})
 	refused := owner.Organizations().
 		GetRaw(foreignOrg.Id, ct.OrganizationIncludeWorkspace, ct.OrganizationIncludeLicense)
 	require.Equal(t, http.StatusNotFound, refused.StatusCode())
@@ -88,20 +86,18 @@ func TestOrganizationWorkspaceIncludeIsProductScoped(t *testing.T) {
 	}
 }
 
-func TestDefaultWorkspaceUsesExistingCreateAPI(t *testing.T) {
+func TestOrganizationWorkspacesHaveNoSpecialIdentity(t *testing.T) {
 	t.Parallel()
 	product := createTestProductContext(t)
 	org := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{Name: ids.MustNew("org")})
-	legacy := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Default"})
-	body := ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Default", IsDefault: new(true)}
-	first := product.Workspaces(org.Id).Create(body)
-	require.Equal(t, legacy.Id, first.Id)
-	require.True(t, *first.IsDefault)
-	product.Workspaces(org.Id).Update(first.Id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Renamed default"})
-	again := product.Workspaces(org.Id).Create(body)
-	require.Equal(t, first.Id, again.Id)
-	require.Equal(t, "Renamed default", again.Name)
-	require.True(t, *again.IsDefault)
-	read := product.Organizations().Get(org.Id, ct.OrganizationIncludeWorkspace)
-	require.Len(t, *read.Workspaces, 1)
+	first := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Default"})
+	second := product.Workspaces(org.Id).Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Production"})
+	product.Workspaces(org.Id).Update(first.Id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Development"})
+	read := product.Organizations().GetRaw(org.Id, ct.OrganizationIncludeWorkspace)
+	require.NotContains(t, string(read.Body), `"is_default"`)
+	require.Len(t, *read.JSON200.Workspaces, 2)
+	product.Workspaces(org.Id).Delete(first.Id)
+	product.Workspaces(org.Id).Delete(second.Id)
+	empty := product.Organizations().GetRaw(org.Id, ct.OrganizationIncludeWorkspace)
+	require.Contains(t, string(empty.Body), `"workspaces":[]`)
 }

@@ -3,7 +3,6 @@ package workspace
 import "github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 type CreateWorkspaceInput struct {
-	IsDefault      bool
 	ProductID      string  `validate:"required,notblank"`
 	OrganizationID string  `validate:"required,notblank"`
 	Name           string  `validate:"required,notblank,min=2,max=100"`

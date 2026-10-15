@@ -25,7 +25,6 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
-- [Default workspaces and startup provisioning](technical/default-workspaces.md)
 - [product events spec](product-events-spec.md)
 
 Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), with its `.json` source and the standalone `.html` report beside it.
@@ -35,3 +34,5 @@ Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-dupli
 ## Maintain alongside implementation
 
 Update the owning page in the same PR when behavior, setup, validation, a reusable fix or domain language changes. Keep component documentation beside its owner and link it here. Preserve ADR numbering/history; separate current technical behavior from rationale, proposals and incidents. Verify links and commands against final source and retain no credentials or sensitive raw logs. The [local workflow](development/agent-workflow.md) defines completion without a required external skill.
+
+- [Domain glossary](../GLOSSARY.md)

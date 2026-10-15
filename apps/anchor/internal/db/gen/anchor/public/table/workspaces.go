@@ -23,7 +23,6 @@ type workspacesTable struct {
 	Description    postgres.ColumnString
 	CreatedAt      postgres.ColumnTimestampz
 	UpdatedAt      postgres.ColumnTimestampz
-	IsDefault      postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -71,10 +70,9 @@ func newWorkspacesTableImpl(schemaName, tableName, alias string) workspacesTable
 		DescriptionColumn    = postgres.StringColumn("description")
 		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
-		IsDefaultColumn      = postgres.BoolColumn("is_default")
-		allColumns           = postgres.ColumnList{IDColumn, OrganizationIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn}
-		mutableColumns       = postgres.ColumnList{OrganizationIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn}
-		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn}
+		allColumns           = postgres.ColumnList{IDColumn, OrganizationIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns       = postgres.ColumnList{OrganizationIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
+		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return workspacesTable{
@@ -87,7 +85,6 @@ func newWorkspacesTableImpl(schemaName, tableName, alias string) workspacesTable
 		Description:    DescriptionColumn,
 		CreatedAt:      CreatedAtColumn,
 		UpdatedAt:      UpdatedAtColumn,
-		IsDefault:      IsDefaultColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

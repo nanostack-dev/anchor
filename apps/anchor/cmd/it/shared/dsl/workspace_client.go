@@ -100,3 +100,21 @@ func (c WorkspaceClient) UpdateRaw(
 	require.NoError(c.t, err)
 	return resp
 }
+
+func (c WorkspaceClient) Delete(id string) {
+	c.t.Helper()
+	resp := c.DeleteRaw(id)
+	require.Equal(c.t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+}
+
+func (c WorkspaceClient) DeleteRaw(id string) *client.DeleteOrganizationWorkspaceResponse {
+	c.t.Helper()
+	resp, err := c.client.DeleteOrganizationWorkspaceWithResponse(
+		context.Background(),
+		c.productID,
+		c.organizationID,
+		id,
+	)
+	require.NoError(c.t, err)
+	return resp
+}

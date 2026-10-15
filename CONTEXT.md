@@ -11,8 +11,7 @@ This file is the project's glossary. When output names a domain concept — an i
 | **Platform Tenant** | The top-level instance. Currently one per deployment. |
 | **Product** | An application built on Anchor. Owns its own permission catalog, roles, email templates, and license schema. |
 | **Organization** | A Product's customer. The unit a license attaches to. |
-| **Workspace** | A sub-unit within an Organization — a team or project. |
-| **Default Workspace** | The Organization's designated initial Workspace. Its identity remains the same when its name changes. |
+| **Workspace** | A sub-unit within an Organization — a team or project. An Organization can have zero or more; none is inherently preferred. |
 | **Platform User** | An administrator of the platform. Authenticates with a bearer token. |
 | **Product User** | An end user of a Product. Directory-only; authentication comes from an external IdP. |
 
