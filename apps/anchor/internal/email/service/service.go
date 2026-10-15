@@ -592,7 +592,7 @@ func (s *emailService) GetTemplate(
 func (s *emailService) SearchTemplates(
 	ctx context.Context, in email.SearchTemplatesInput,
 ) (search.Result[email.Template], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[email.Template]{}, err
 	}
 	return s.templateRepo.Search(ctx, in)
@@ -897,7 +897,7 @@ func (s *emailService) TestSend(
 func (s *emailService) SearchSends(
 	ctx context.Context, in email.SearchSendsInput,
 ) (search.Result[email.SendRecord], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[email.SendRecord]{}, err
 	}
 	return s.sendRepo.Search(ctx, in)

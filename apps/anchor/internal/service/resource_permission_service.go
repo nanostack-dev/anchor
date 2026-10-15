@@ -309,7 +309,7 @@ func (s *resourcePermissionService) SearchByProduct(
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
 	}
 

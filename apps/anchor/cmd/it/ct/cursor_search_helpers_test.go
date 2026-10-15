@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -229,6 +230,14 @@ func (c cursorCase) run(t *testing.T) {
 		})
 		assert.Equal(t, expected[cursorPageSize:min(len(expected), cursorPageSize+cursorDefaultPageSize)], rest.ids,
 			"the default page size applies")
+	})
+
+	t.Run("rejects a sort_by outside the contract", func(t *testing.T) {
+		status, raw, err := c.call(context.Background(), strings.NewReader(`{"sort_by":"not_a_sortable_field"}`))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status, string(raw))
+		assert.Contains(t, string(raw), "sort_by", "the error names the field")
+		assert.Contains(t, string(raw), "VALIDATION_ERROR")
 	})
 
 	t.Run("rejects a malformed cursor", func(t *testing.T) {

@@ -3,6 +3,8 @@ package apikey
 import (
 	"time"
 
+	"anchor/internal/searchx"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
@@ -47,6 +49,17 @@ const (
 type SearchProductAPIKeysInput struct {
 	ProductID string `validate:"required,notblank"`
 	Request   search.Request[SearchProductAPIKeyFilter, SortFieldProductAPIKey]
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductAPIKeysInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductAPIKeyID,
+		SortFieldProductAPIKeyCreatedAt,
+		SortFieldProductAPIKeyUpdatedAt,
+		SortFieldProductAPIKeyName,
+		SortFieldProductAPIKeyStatus,
+		SortFieldProductAPIKeyLastUsed)
 }
 
 type SearchProductAPIKeyFilter struct {

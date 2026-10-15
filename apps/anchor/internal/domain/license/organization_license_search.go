@@ -1,6 +1,10 @@
 package license
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 // SearchOrganizationLicenseFilter narrows a search over a Product's
 // Organizations and the licenses they hold.
@@ -26,6 +30,13 @@ type SearchOrganizationLicensesInput struct {
 	TenantID  string `validate:"required,notblank"`
 	ProductID string `validate:"required,notblank"`
 	Request   search.Request[SearchOrganizationLicenseFilter, SortFieldOrganizationLicense]
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchOrganizationLicensesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldOrganizationLicenseOrganizationName,
+		SortFieldOrganizationLicenseInstantiatedAt)
 }
 
 // OrganizationLicenseSummary is one Organization and the license it holds.

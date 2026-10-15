@@ -210,7 +210,7 @@ func (s *productUserService) Search(
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[user.ProductUser]{}, err
 	}
 
@@ -300,7 +300,7 @@ func (s *productUserService) SearchUserOrganizations(
 ) (search.Result[user.OrganizationMembership], error) {
 	logger := s.logger.With().Str("operation", "SearchUserOrganizations").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[user.OrganizationMembership]{}, err
 	}
 

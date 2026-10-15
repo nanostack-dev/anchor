@@ -1,6 +1,10 @@
 package email
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 // CreateTemplateInput is the request shape for authoring a new template.
 //
@@ -96,6 +100,15 @@ type SearchTemplatesInput struct {
 	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
 }
 
+// Validate checks the input and the sort the client named.
+func (in SearchTemplatesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldTemplateCreatedAt,
+		SortFieldTemplateUpdatedAt,
+		SortFieldTemplateName,
+		SortFieldTemplateSlug)
+}
+
 // DeleteTemplateInput is the request shape for removing a template (and all
 // its versions cascade-deleted).
 type DeleteTemplateInput struct {
@@ -181,7 +194,7 @@ const (
 // SearchSendsFilter narrows a send-record search. Empty fields do not filter.
 type SearchSendsFilter struct {
 	TemplateIDs []string
-	Statuses    []SendStatus
+	Statuses    []SendStatus `validate:"omitempty,dive,oneof=QUEUED SENDING SENT FAILED"`
 }
 
 // SearchSendsInput is the request shape for searching the send history.
@@ -189,4 +202,11 @@ type SearchSendsInput struct {
 	TenantID  string                                           `validate:"required"`
 	ProductID string                                           `validate:"required"`
 	Request   search.Request[SearchSendsFilter, SortFieldSend] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchSendsInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldSendCreatedAt,
+		SortFieldSendStatus)
 }

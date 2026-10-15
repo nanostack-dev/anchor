@@ -1,6 +1,10 @@
 package organization
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 // AddMemberInput is the input for adding a product user to an organization with a role.
 type AddMemberInput struct {
@@ -61,4 +65,11 @@ type SearchMembersInput struct {
 	ProductID      string                                               `validate:"required,notblank"`
 	OrganizationID string                                               `validate:"required,notblank"`
 	Request        search.Request[SearchMembersFilter, SortFieldMember] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchMembersInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldMemberJoinedAt,
+		SortFieldMemberEmail)
 }

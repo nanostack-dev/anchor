@@ -206,7 +206,7 @@ func (s *licenseTemplateService) ListTemplates(
 func (s *licenseTemplateService) SearchTemplates(
 	ctx context.Context, in license.SearchTemplatesInput,
 ) (search.Result[license.Template], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[license.Template]{}, err
 	}
 

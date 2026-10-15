@@ -2,6 +2,8 @@ package role
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
 )
 
 type CreateProductRoleInput struct {
@@ -41,6 +43,15 @@ const (
 type SearchProductRolesInput struct {
 	ProductID string `validate:"required,notblank"`
 	Request   search.Request[SearchProductRoleFilter, SortFieldProductRole]
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductRolesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductRoleID,
+		SortFieldProductRoleCreatedAt,
+		SortFieldProductRoleUpdatedAt,
+		SortFieldProductRoleName)
 }
 
 type SearchProductRoleFilter struct {

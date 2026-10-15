@@ -290,7 +290,7 @@ func (s *workspaceService) Search(
 ) (search.Result[workspace.Workspace], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
 

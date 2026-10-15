@@ -351,7 +351,7 @@ func (s *organizationLicenseService) AdjustValues(
 func (s *organizationLicenseService) Search(
 	ctx context.Context, in license.SearchOrganizationLicensesInput,
 ) (search.Result[license.OrganizationLicenseSummary], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[license.OrganizationLicenseSummary]{}, err
 	}
 	return s.licenseRepo.Search(ctx, in)

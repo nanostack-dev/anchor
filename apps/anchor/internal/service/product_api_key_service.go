@@ -380,7 +380,7 @@ func (s *productAPIKeyService) Search(
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 

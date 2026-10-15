@@ -2,6 +2,8 @@ package organization
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
 )
 
 // Include names a related resource a read can ask for alongside the
@@ -76,6 +78,14 @@ type SearchProductOrganizationsInput struct {
 	ProductID string                                                                        `validate:"required,notblank"`
 	Request   search.Request[SearchProductOrganizationFilter, SortFieldProductOrganization] `validate:"required"`
 	Include   []Include
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductOrganizationsInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductOrganizationCreatedAt,
+		SortFieldProductOrganizationUpdatedAt,
+		SortFieldProductOrganizationName)
 }
 
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization

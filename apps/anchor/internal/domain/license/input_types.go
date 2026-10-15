@@ -3,6 +3,8 @@ package license
 import (
 	"time"
 
+	"anchor/internal/searchx"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
@@ -107,7 +109,7 @@ const (
 // SearchTemplatesFilter narrows a template search. Empty Statuses keeps every
 // template, archived ones included.
 type SearchTemplatesFilter struct {
-	Statuses []TemplateStatus
+	Statuses []TemplateStatus `validate:"omitempty,dive,oneof=ACTIVE ARCHIVED"`
 }
 
 // SearchTemplatesInput is the request shape for searching a Product's license
@@ -116,6 +118,15 @@ type SearchTemplatesInput struct {
 	TenantID  string                                                   `validate:"required,notblank"`
 	ProductID string                                                   `validate:"required,notblank"`
 	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchTemplatesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldTemplateName,
+		SortFieldTemplateStatus,
+		SortFieldTemplateCreatedAt,
+		SortFieldTemplateUpdatedAt)
 }
 
 // ArchiveTemplateInput is the request shape for withdrawing one license
@@ -172,7 +183,7 @@ const (
 
 // SearchLicenseChangesFilter narrows one Organization's license history.
 type SearchLicenseChangesFilter struct {
-	Types         []ChangeType
+	Types         []ChangeType `validate:"omitempty,dive,oneof=INSTANTIATED ADJUSTED SET TEMPLATE_SYNCED"`
 	ChangedAfter  *time.Time
 	ChangedBefore *time.Time
 }
@@ -183,6 +194,12 @@ type SearchLicenseChangesInput struct {
 	ProductID      string                                                      `validate:"required,notblank"`
 	OrganizationID string                                                      `validate:"required,notblank"`
 	Request        search.Request[SearchLicenseChangesFilter, SortFieldChange] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchLicenseChangesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldChangeChangedAt)
 }
 
 // AdjustLicenseInput adjusts one Organization's license without touching the

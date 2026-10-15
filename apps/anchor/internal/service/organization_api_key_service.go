@@ -327,7 +327,7 @@ func (s *organizationAPIKeyService) Search(
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
@@ -43,7 +42,7 @@ func NewLicenseHistoryService(
 func (s *licenseHistoryService) SearchChanges(
 	ctx context.Context, in license.SearchLicenseChangesInput,
 ) (search.Result[license.OrganizationLicenseChange], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
 

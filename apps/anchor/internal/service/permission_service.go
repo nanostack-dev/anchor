@@ -243,7 +243,7 @@ func (s *permissionService) SearchByProductID(
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
 	}
 

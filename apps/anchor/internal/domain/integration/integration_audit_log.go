@@ -52,3 +52,25 @@ const (
 	AuditActionReconcileCompleted  = "RECONCILE_COMPLETED"
 	AuditActionReconcileBatch      = "RECONCILE_BATCH"
 )
+
+// AuditActions lists every action an audit entry can carry, the closed set a
+// search may filter on.
+func AuditActions() []string {
+	return []string{
+		AuditActionIntegrationCreated,
+		AuditActionConfigUpdated,
+		AuditActionIntegrationDeleted,
+		AuditActionWebhookReceived,
+		AuditActionWebhookProcessed,
+		AuditActionWebhookFailed,
+		AuditActionSignatureInvalid,
+		AuditActionUpsertUser,
+		AuditActionDeleteUser,
+		AuditActionCommandTypeInvalid,
+		AuditActionEventParseFailed,
+		AuditActionCommandsBuildFailed,
+		AuditActionEventRetryScheduled,
+		AuditActionReconcileCompleted,
+		AuditActionReconcileBatch,
+	}
+}

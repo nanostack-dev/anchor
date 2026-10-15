@@ -2,6 +2,8 @@ package platform
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
 )
 
 // DeletePlatformUserInput defines the input structure for deleting a platform user.
@@ -18,9 +20,9 @@ type GetPlatformUserInput struct {
 
 // SearchPlatformUserFilter defines search criteria for platform users.
 type SearchPlatformUserFilter struct {
-	IDs    []string `validate:"omitempty,dive,notblank"`
-	Emails []string `validate:"omitempty,dive,email"`
-	Roles  []TenantRole
+	IDs    []string     `validate:"omitempty,dive,notblank"`
+	Emails []string     `validate:"omitempty,dive,email"`
+	Roles  []TenantRole `validate:"omitempty,dive,oneof=OWNER ADMIN"`
 }
 
 type SortFieldPlatformUser string
@@ -36,6 +38,15 @@ const (
 type SearchPlatformUsersInput struct {
 	TenantID string                                                          `validate:"required,notblank"`
 	Request  search.Request[SearchPlatformUserFilter, SortFieldPlatformUser] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchPlatformUsersInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldPlatformUserCreatedAt,
+		SortFieldPlatformUserUpdatedAt,
+		SortFieldPlatformUserEmail,
+		SortFieldPlatformUserRole)
 }
 
 // GetPlatformUserByUserIDInput defines the input structure for retrieving a platform user by user Name.

@@ -171,7 +171,7 @@ func (s *productRoleService) SearchProductRoles(
 ) (search.Result[role.ProductRole], error) {
 	logger := s.logger.With().Str("operation", "SearchProductRoles").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[role.ProductRole]{}, err
 	}
 

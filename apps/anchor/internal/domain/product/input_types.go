@@ -1,6 +1,10 @@
 package product
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 type CreateProductInput struct {
 	TenantID    string `json:"tenant_id"   validate:"required,notblank"`
@@ -39,6 +43,14 @@ const (
 type SearchProductInput struct {
 	TenantID string                                                `json:"tenant_id" validate:"required,notblank"`
 	Request  search.Request[SearchProductFilter, SortFieldProduct] `json:"request"   validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductCreatedAt,
+		SortFieldProductUpdatedAt,
+		SortFieldProductName)
 }
 
 type GetProductInput struct {

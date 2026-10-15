@@ -676,7 +676,7 @@ func (s *integrationService) SearchAuditLogs(
 ) (search.Result[integration.AuditLog], error) {
 	logger := s.logger.With().Str("operation", "SearchAuditLogs").Logger()
 
-	if valErr := validate.ValidateStruct(input); valErr != nil {
+	if valErr := input.Validate(); valErr != nil {
 		return search.Result[integration.AuditLog]{}, valErr
 	}
 

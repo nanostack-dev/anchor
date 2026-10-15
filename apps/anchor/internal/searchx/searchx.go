@@ -4,8 +4,13 @@ package searchx
 
 import (
 	"errors"
+	"net/http"
+	"slices"
+	"strings"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
 // IsCursorError reports a client mistake in the pagination cursor: a cursor
@@ -30,4 +35,52 @@ func Sort[S ~string](
 		direction = &defaultDirection
 	}
 	return &defaultField, direction
+}
+
+// ValidateRequest validates a search input and then its sort. The request body
+// of a search is not checked against the OpenAPI enums, so a sort_by outside
+// the resource's sortable fields would otherwise be ignored and the default
+// order served in its place. Allowed lists every sort field the resource maps.
+func ValidateRequest[F any, S ~string](input any, request search.Request[F, S], allowed ...S) error {
+	if err := validate.ValidateStruct(input); err != nil {
+		return err
+	}
+	for _, sort := range request.Sort {
+		if !slices.Contains(allowed, sort.Field) {
+			return notOneOf("sort_by", string(sort.Field), allowedStrings(allowed))
+		}
+	}
+	return nil
+}
+
+// ValidateOneOf reports a filter value outside the closed set the contract
+// names, for a set the struct tags cannot spell.
+func ValidateOneOf(field string, values []string, allowed []string) error {
+	for _, value := range values {
+		if !slices.Contains(allowed, value) {
+			return notOneOf(field, value, allowed)
+		}
+	}
+	return nil
+}
+
+func allowedStrings[S ~string](allowed []S) []string {
+	out := make([]string, len(allowed))
+	for i, value := range allowed {
+		out[i] = string(value)
+	}
+	return out
+}
+
+func notOneOf(field, value string, allowed []string) *fault.Error {
+	return fault.NewWithDetails([]fault.Detail{{
+		Code:    "VALIDATION_ERROR",
+		Message: field + " must be one of: " + strings.Join(allowed, ", "),
+		Metadata: map[string]any{
+			"field": field,
+			"rule":  "oneof",
+			"param": strings.Join(allowed, " "),
+			"value": value,
+		},
+	}}, http.StatusBadRequest)
 }
