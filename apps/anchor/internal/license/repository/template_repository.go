@@ -108,7 +108,7 @@ func (r *templateRepositoryImpl) Search(
 	}
 	if term := in.Request.FullTextSearch; term != nil && *term != "" {
 		if fullText := jetx.BuildSubstringFilter(
-			[]postgres.ColumnString{table.LicenseTemplates.Name}, *term,
+			[]postgres.ColumnString{table.LicenseTemplates.Name, table.LicenseTemplates.Description}, *term,
 		); fullText != nil {
 			where = where.AND(fullText)
 		}

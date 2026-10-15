@@ -898,7 +898,7 @@ type ClientInterface interface {
 
 	// SearchLicenseTemplatesWithBody Search License Templates
 	//
-	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
@@ -908,7 +908,7 @@ type ClientInterface interface {
 
 	// SearchLicenseTemplates Search License Templates
 	//
-	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
@@ -3447,7 +3447,7 @@ func (c *Client) CreateLicenseTemplate(ctx context.Context, productId ProductIdP
 
 // SearchLicenseTemplatesWithBody Search License Templates
 //
-// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 // Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
@@ -3467,7 +3467,7 @@ func (c *Client) SearchLicenseTemplatesWithBody(ctx context.Context, productId P
 
 // SearchLicenseTemplates Search License Templates
 //
-// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 // Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
@@ -11933,7 +11933,7 @@ type ClientWithResponsesInterface interface {
 
 	// SearchLicenseTemplatesWithBodyWithResponse Search License Templates
 	//
-	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -11943,7 +11943,7 @@ type ClientWithResponsesInterface interface {
 
 	// SearchLicenseTemplatesWithResponse Search License Templates
 	//
-	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -22405,7 +22405,7 @@ func (c *ClientWithResponses) CreateLicenseTemplateWithResponse(ctx context.Cont
 
 // SearchLicenseTemplatesWithBodyWithResponse Search License Templates
 //
-// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 // Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -22421,7 +22421,7 @@ func (c *ClientWithResponses) SearchLicenseTemplatesWithBodyWithResponse(ctx con
 
 // SearchLicenseTemplatesWithResponse Search License Templates
 //
-// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
 // Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).

@@ -22,7 +22,7 @@ import {
 	createRouter,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import LicenseTemplatePage from "./license-template";
 
 const TIMESTAMPS = {
@@ -36,6 +36,13 @@ const TEMPLATE: LicenseTemplateResponse = {
 	name: "Enterprise",
 	status: LicenseTemplateStatus.ACTIVE,
 	values: { max_flows: 10000 },
+};
+const STARTER: LicenseTemplateResponse = {
+	...TEMPLATE,
+	id: "ltm_starter",
+	name: "Starter",
+	description: "Bundles invoicing seats",
+	values: { max_flows: 10 },
 };
 const SCHEMA: LicenseSchemaResponse = {
 	...TIMESTAMPS,
@@ -128,8 +135,23 @@ const meta = {
 						total: 1,
 					});
 				if (path.endsWith("/licensing/schema")) return Response.json(SCHEMA);
-				if (path.endsWith("/licensing/templates/search"))
-					return Response.json({ items: [saved], count: 1, total: 1 });
+				if (path.endsWith("/licensing/templates/search")) {
+					const { full_text_search: term } = await request.json();
+					const items = parameters.searchableDescription
+						? [saved, STARTER].filter(
+								(template) =>
+									!term ||
+									`${template.name} ${template.description ?? ""}`
+										.toLowerCase()
+										.includes(String(term).toLowerCase()),
+							)
+						: [saved];
+					return Response.json({
+						items,
+						count: items.length,
+						total: items.length,
+					});
+				}
 				if (path.endsWith("/licensing/templates/ltm_test")) {
 					if (parameters.templateStatus !== 200)
 						return new Response(null, { status: parameters.templateStatus });
@@ -225,5 +247,25 @@ export const BackendFailureIsNotNotFound: Story = {
 		await expect(
 			canvas.getByRole("button", { name: "Try again" }),
 		).toBeVisible();
+	},
+};
+export const SearchMatchesTheDescription: Story = {
+	args: { initialPath: ROUTE_PATHS.PRODUCT_LICENSE_TEMPLATES },
+	parameters: { templateStatus: 200, searchableDescription: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			await canvas.findByRole("link", { name: "Enterprise" }),
+		).toBeVisible();
+		await userEvent.type(
+			canvas.getByPlaceholderText("Search templates"),
+			"invoicing",
+		);
+		await waitFor(() =>
+			expect(
+				canvas.queryByRole("link", { name: "Enterprise" }),
+			).not.toBeInTheDocument(),
+		);
+		await expect(canvas.getByRole("link", { name: "Starter" })).toBeVisible();
 	},
 };

@@ -450,6 +450,40 @@ func TestSearchLicenseTemplates(t *testing.T) {
 		assert.Equal(t, []string{pro.Id}, search(ct.SearchLicenseTemplatesJSONRequestBody{FullTextSearch: new("Pr")}))
 	})
 
+	t.Run("full text search matches the description as well as the name", func(t *testing.T) {
+		t.Parallel()
+		tc := newTemplateCtx(t)
+		client := tc.product.OwnerAuthenticatedClient()
+		create := func(name, description string) string {
+			resp, err := client.CreateLicenseTemplateWithResponse(t.Context(), tc.product.ProductID,
+				ct.CreateLicenseTemplateJSONRequestBody{
+					Name: name, Description: new(description), Values: validTemplateValues(),
+				})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+			return resp.JSON201.Id
+		}
+		byName := create("Zephyr", "plain")
+		byDescription := create("Quartz", "Includes Zephyr-grade support")
+		create("Granite", "nothing relevant")
+
+		resp, err := client.SearchLicenseTemplatesWithResponse(t.Context(), tc.product.ProductID,
+			ct.SearchLicenseTemplatesJSONRequestBody{FullTextSearch: new("Zephyr")})
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		got := make([]string, 0, len(resp.JSON200.Items))
+		for _, item := range resp.JSON200.Items {
+			got = append(got, item.Id)
+		}
+		assert.ElementsMatch(t, []string{byName, byDescription}, got)
+
+		onlyDescription, err := client.SearchLicenseTemplatesWithResponse(t.Context(), tc.product.ProductID,
+			ct.SearchLicenseTemplatesJSONRequestBody{FullTextSearch: new("grade support")})
+		require.NoError(t, err)
+		require.Len(t, onlyDescription.JSON200.Items, 1)
+		assert.Equal(t, byDescription, onlyDescription.JSON200.Items[0].Id, "a description-only match is found")
+	})
+
 	t.Run("a key without license_template:read is refused", func(t *testing.T) {
 		t.Parallel()
 		tc := newTemplateCtx(t)

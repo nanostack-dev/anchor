@@ -33,7 +33,7 @@ Each ordering ends with the tiebreak, and the tiebreak follows the direction of 
 | `searchUserOrganizations` | `joined_at` ASC | `organization_id` (composite key, user fixed) | joined_at, name | none: one user belongs to few organizations |
 | `searchEmailTemplates` | `created_at` DESC | `id` | created_at, updated_at, name, slug | `(product_id, created_at, id)` |
 | `searchEmailSends` | `created_at` DESC | `id` | created_at, status | `(product_id, created_at, id)` |
-| `searchLicenseTemplates` | `name` ASC | `id` | name, status, created_at, updated_at | product-scoped, small |
+| `searchLicenseTemplates` | `name` ASC | `id` | name, status, created_at, updated_at (full text matches name and description) | product-scoped, small |
 | `searchOrganizationLicenseHistory` | `changed_at` DESC | `id` | changed_at | `(organization_id, changed_at DESC, id DESC)` |
 
 The last six are new. They replace the `GET` lists below, which stay available and are marked `deprecated: true` with the search named in their description.
@@ -42,8 +42,8 @@ The last six are new. They replace the `GET` lists below, which stay available a
 | --- | --- | --- |
 | `listIntegrationAuditLogs` | `searchIntegrationAuditLogs` | the newest 100 entries |
 | `listUserOrganizations` | `searchUserOrganizations` | every membership, ordered by join date |
-| `listEmailTemplates` | `searchEmailTemplates` | `limit` and `offset`, and `count` equal to `total` |
-| `listEmailSends` | `searchEmailSends` | `limit`, `offset`, `template_id` and `status` |
+| `listEmailTemplates` | `searchEmailTemplates` | any `limit` (a page over 1000 is assembled from consecutive searches), `offset`, and `count` equal to `total` |
+| `listEmailSends` | `searchEmailSends` | any `limit`, `offset`, `template_id` and `status` |
 | `listLicenseTemplates` | `searchLicenseTemplates` | every template, ordered by name |
 | `getOrganizationLicenseHistory` | `searchOrganizationLicenseHistory` | `limit` and `offset` |
 
@@ -53,10 +53,15 @@ Not searches, with the reason stated in their operation descriptions: `listInteg
 
 - A search uses `transactor.Page(...).Keyset(transactor.Keys(...))`, never `OrderBy` or `SortColumns`. Each sort field maps to a key whose constructor matches the column type and nullability in the migrations: `StringKey` for `VARCHAR`, `TimeKey` for `TIMESTAMPTZ`, and a `Nullable*` key for a nullable column or a column read through a left join. A text column holding enum-like values (`status`, `role`) is a `StringKey`.
 - The row type scans one SQL row per item. A search that shows children (role permissions, API-key permissions, the permissions behind `include=role_permissions`) pages the parents flat and loads the children for the page in a second statement.
+- The body of a search is not checked against the OpenAPI enums, so each search input has a `Validate()` that the service calls first: struct tags (`oneof`, `dive`) refuse a filter value outside its enum, and `searchx.ValidateRequest` refuses a `sort_by` the resource does not map. Both answer 400 `VALIDATION_ERROR`. A new sort field is added to the repository's key map and to that list.
 - Sort only on bounded columns. Every sortable column is `VARCHAR(n)` or a timestamp.
 - `search.Request.WithSort(nil, nil)` injects `created_at` ASC. A resource whose default is not that sets its default in its API mapper with `searchx.Sort`.
 - A nullable key sorts NULLs last when ascending and first when descending, the Postgres placement, unless the key pins it with `NullsLast()` or `NullsFirst()`. `last_used_at` on API keys and `name` on product users keep the default. `instantiated_at` on organization licenses is `NullsLast()`, so organizations holding no license come after every licensed one in both directions, and the cursor follows that placement.
 - Internal loops that walked pages by offset follow `next_cursor`: the license adjustment backfill reads the history this way, and so does the permission sync at startup.
+
+## Index migrations
+
+Migrations 000043 to 000053 add the indexes in the table above, one file per index. Each file holds exactly one `CREATE INDEX CONCURRENTLY IF NOT EXISTS` statement and its down file one `DROP INDEX CONCURRENTLY IF EXISTS`. golang-migrate's postgres driver sends a file as a single query on its own connection and opens no transaction, so a lone statement builds without blocking writes, while a file with several statements runs in an implicit transaction where `CONCURRENTLY` is refused. Keep it one statement per file. A concurrent build that fails leaves an invalid index and the migration dirty: drop the index by name, then rerun. `TestCursorSearchIndexMigrationsAreSingleConcurrentStatements` and `TestCursorSearchIndexesAreValid` guard the shape and the result.
 
 ## Tests
 

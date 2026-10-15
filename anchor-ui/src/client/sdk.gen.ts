@@ -2278,7 +2278,7 @@ export const createLicenseTemplate = <ThrowOnError extends boolean = false>(opti
 
 /**
  * Search License Templates
- * Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name.
+ * Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
  * Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
  */
 export const searchLicenseTemplates = <ThrowOnError extends boolean = false>(options: Options<SearchLicenseTemplatesData, ThrowOnError>) => {

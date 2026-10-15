@@ -7988,7 +7988,7 @@ paths:
         has ever offered is searchable, whatever its status: archiving keeps
         the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on
         sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches
-        the template name.
+        the template name and description.
 
         Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchLicenseTemplates
