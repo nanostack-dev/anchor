@@ -482,6 +482,46 @@ func TestSearchLicenseTemplates(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, onlyDescription.JSON200.Items, 1)
 		assert.Equal(t, byDescription, onlyDescription.JSON200.Items[0].Id, "a description-only match is found")
+
+		mixedCase, err := client.SearchLicenseTemplatesWithResponse(t.Context(), tc.product.ProductID,
+			ct.SearchLicenseTemplatesJSONRequestBody{FullTextSearch: new("zEPHYR")})
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, mixedCase.StatusCode(), string(mixedCase.Body))
+		assert.Len(t, mixedCase.JSON200.Items, 2, "matching ignores case, as the table did on the client")
+	})
+
+	t.Run("full text search matches LIKE metacharacters literally", func(t *testing.T) {
+		t.Parallel()
+		tc := newTemplateCtx(t)
+		client := tc.product.OwnerAuthenticatedClient()
+		create := func(name string) string {
+			resp, err := client.CreateLicenseTemplateWithResponse(t.Context(), tc.product.ProductID,
+				ct.CreateLicenseTemplateJSONRequestBody{Name: name, Values: validTemplateValues()})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+			return resp.JSON201.Id
+		}
+		percent := create("Discount 100% off")
+		underscore := create("seat_cap")
+		create("Seatxcap")
+		create("Plain")
+
+		for term, want := range map[string][]string{
+			"%":        {percent},
+			"100%":     {percent},
+			"seat_cap": {underscore},
+			`\`:        {},
+		} {
+			resp, err := client.SearchLicenseTemplatesWithResponse(t.Context(), tc.product.ProductID,
+				ct.SearchLicenseTemplatesJSONRequestBody{FullTextSearch: new(term)})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+			got := make([]string, 0, len(resp.JSON200.Items))
+			for _, item := range resp.JSON200.Items {
+				got = append(got, item.Id)
+			}
+			assert.ElementsMatch(t, want, got, "term %q", term)
+		}
 	})
 
 	t.Run("a key without license_template:read is refused", func(t *testing.T) {
