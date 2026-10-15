@@ -97,6 +97,8 @@ Successful search response:
 }
 ```
 
+The response carries a `next_cursor` while more workspaces follow. Send it back as `pagination.cursor`, with the same filter and sort, to read the next page, and stop when it is absent. `offset` serves page-number tables only and cannot be combined with a cursor. Without a `sort_by`, workspaces come oldest first, then by `id`. See [cursor-paginated searches](technical/cursor-pagination.md).
+
 ## Authorization
 
 Product API key callers need the matching workspace scope:
