@@ -24,6 +24,7 @@ import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import type { ReactNode } from "react";
 
@@ -46,6 +47,8 @@ interface IntegrationDetailPageProps {
 	auditTitle?: string;
 	onLoadMoreAudit?: () => void;
 	auditIsLoadingMore?: boolean;
+	auditLoadMoreErrorMessage?: string | null;
+	auditTotal?: number;
 }
 const auditTone: Record<
 	NonNullable<IntegrationAuditEntry["severity"]>,
@@ -63,6 +66,8 @@ export function IntegrationDetailPage({
 	auditTitle = "Audit log",
 	onLoadMoreAudit,
 	auditIsLoadingMore = false,
+	auditLoadMoreErrorMessage = null,
+	auditTotal,
 }: IntegrationDetailPageProps) {
 	const sortedAuditEntries = [...auditEntries].sort(
 		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -125,14 +130,27 @@ export function IntegrationDetailPage({
 									</Box>
 								))}
 								{onLoadMoreAudit ? (
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={onLoadMoreAudit}
-										disabled={auditIsLoadingMore}
-									>
-										{auditIsLoadingMore ? "Loading…" : "Load older activity"}
-									</Button>
+									<Spread space="md">
+										{auditLoadMoreErrorMessage ? (
+											<Text size="xs" tone="critical" role="alert">
+												{auditLoadMoreErrorMessage}
+											</Text>
+										) : (
+											<Text size="xs" tone="muted">
+												{auditTotal === undefined
+													? `Showing ${sortedAuditEntries.length}`
+													: `Showing ${sortedAuditEntries.length} of ${auditTotal}`}
+											</Text>
+										)}
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={onLoadMoreAudit}
+											disabled={auditIsLoadingMore}
+										>
+											{auditIsLoadingMore ? "Loading…" : "Load older activity"}
+										</Button>
+									</Spread>
 								) : null}
 							</Stack>
 						)}

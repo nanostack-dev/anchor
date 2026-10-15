@@ -73,3 +73,7 @@ review profile. Verify with:
 ```sh
 pnpm test:e2e:review e2e/features/licensing/organizations.e2e.ts --grep 'first hundred templates'
 ```
+
+The independent review of the same change found that the active-filter row
+beside it did not wrap: at 393 px a long tier chip, its remove control and
+**Clear all** were clipped by the card. That row now wraps with `min-w-0`.

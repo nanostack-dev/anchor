@@ -194,6 +194,7 @@ export default function ClerkIntegrationPage() {
 		hasNextPage: hasOlderAudit,
 		fetchNextPage: fetchOlderAudit,
 		isFetchingNextPage: isFetchingOlderAudit,
+		isFetchNextPageError: isOlderAuditError,
 	} = useInfiniteQuery({
 		queryKey: auditQueryKey,
 		initialPageParam: undefined as string | undefined,
@@ -450,11 +451,17 @@ export default function ClerkIntegrationPage() {
 			auditEntries={auditEntries}
 			auditIsLoading={Boolean(clerkInstance) && isAuditLoading}
 			auditErrorMessage={
-				auditError ? "Failed to load integration audit activity." : null
+				auditError && !auditData
+					? "Failed to load integration audit activity."
+					: null
 			}
 			auditTitle="Integration audit"
 			onLoadMoreAudit={hasOlderAudit ? () => void fetchOlderAudit() : undefined}
 			auditIsLoadingMore={isFetchingOlderAudit}
+			auditLoadMoreErrorMessage={
+				isOlderAuditError ? "Couldn’t load older activity. Try again." : null
+			}
+			auditTotal={auditData?.pages[0]?.total}
 		>
 			{clerkInstance?.last_error ? (
 				<Alert tone="critical">

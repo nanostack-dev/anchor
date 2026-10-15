@@ -58,7 +58,7 @@ export function OrganizationLicenseHistory({
 		retry: false,
 	});
 
-	if (historyQuery.error) {
+	if (historyQuery.error && !historyQuery.data) {
 		const error = historyQuery.error;
 		const detail = isHttpQueryError(error)
 			? (getErrorDetail(error.body) ??
@@ -89,6 +89,11 @@ export function OrganizationLicenseHistory({
 					: undefined
 			}
 			isLoadingMore={historyQuery.isFetchingNextPage}
+			loadMoreErrorMessage={
+				historyQuery.isFetchNextPageError
+					? "Couldn’t load older changes. Try again."
+					: null
+			}
 		/>
 	);
 }

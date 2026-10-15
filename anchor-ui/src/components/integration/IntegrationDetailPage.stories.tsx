@@ -79,7 +79,11 @@ const pageOfActivity: IntegrationAuditEntry[] = Array.from(
 );
 
 export const OlderActivityAvailable: Story = {
-	args: { auditEntries: pageOfActivity, onLoadMoreAudit: fn() },
+	args: {
+		auditEntries: pageOfActivity,
+		onLoadMoreAudit: fn(),
+		auditTotal: 52,
+	},
 	play: async ({ args, canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(canvas.getAllByText("CONFIG UPDATED")).toHaveLength(50);
@@ -87,6 +91,7 @@ export const OlderActivityAvailable: Story = {
 			name: "Load older activity",
 		});
 		await expect(loadOlder).toBeEnabled();
+		await expect(canvas.getByText("Showing 50 of 52")).toBeVisible();
 		await userEvent.click(loadOlder);
 		await expect(args.onLoadMoreAudit).toHaveBeenCalledOnce();
 	},
@@ -161,5 +166,25 @@ export const WorstCase: Story = {
 		await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
 			document.documentElement.clientWidth,
 		);
+	},
+};
+
+export const OlderActivityFailedToLoad: Story = {
+	args: {
+		auditEntries: pageOfActivity.slice(0, 3),
+		onLoadMoreAudit: fn(),
+		auditTotal: 52,
+		auditLoadMoreErrorMessage: "Couldn’t load older activity. Try again.",
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getAllByText("CONFIG UPDATED")).toHaveLength(3);
+		await expect(canvas.getByRole("alert")).toHaveTextContent(
+			"Couldn’t load older activity. Try again.",
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Load older activity" }),
+		);
+		await expect(args.onLoadMoreAudit).toHaveBeenCalledOnce();
 	},
 };

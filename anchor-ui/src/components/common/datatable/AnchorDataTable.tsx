@@ -304,7 +304,7 @@ export function AnchorDataTable<
 		if (!filters || !onFiltersChange) return null;
 
 		return (
-			<Box className="flex gap-2 items-center">
+			<Box className="flex min-w-0 flex-wrap items-center gap-2">
 				{filters.map((filter) =>
 					filter.type === "text" ? (
 						<Input
