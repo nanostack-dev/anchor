@@ -2,6 +2,7 @@ package anchorsdk
 
 import (
 	"context"
+	"iter"
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -175,10 +176,44 @@ func (s *MemberSearch) Limit(limit int32) *MemberSearch {
 	return s
 }
 
-// Offset skips the given number of members.
+// Offset skips the given number of members, for page-number navigation. To read every
+// page, iterate with Cursor or All instead.
 func (s *MemberSearch) Offset(offset int32) *MemberSearch {
 	s.page().Offset = new(offset)
 	return s
+}
+
+// Cursor continues the search after the last item of a previous page. Pass the
+// previous page's NextCursor; Anchor refuses a cursor combined with an offset,
+// and answers a cursor from another filter or sort with an error. To read every
+// page, use [MemberSearch.All].
+func (s *MemberSearch) Cursor(cursor string) *MemberSearch {
+	s.page().Cursor = new(cursor)
+	return s
+}
+
+// All reads every matching item, following NextCursor from page to page until
+// Anchor sends none. It starts where the builder starts: at the first item, or
+// after the cursor set with [MemberSearch.Cursor]. The builder is not changed, so it can
+// run again. A failed page ends the sequence with its error.
+//
+//	for item, err := range search.Limit(100).All(ctx) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // use item
+//	}
+func (s *MemberSearch) All(ctx context.Context) iter.Seq2[nanoclient.OrganizationMemberResponse, error] {
+	return allPages(ctx, "Members.Search", startCursor(s.req.Pagination),
+		func(ctx context.Context, cursor string) ([]nanoclient.OrganizationMemberResponse, string, error) {
+			next := *s
+			next.req.Pagination = pageAfter(s.req.Pagination, cursor)
+			page, err := next.Do(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			return page.Items, derefCursor(page.NextCursor), nil
+		})
 }
 
 // Do runs the search.
