@@ -98,9 +98,10 @@ func (s *AnchorAPI) SearchOrganizationAPIKeys(
 	}
 
 	response := OrganizationAPIKeyListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapOrganizationAPIKeyToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapOrganizationAPIKeyToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchOrganizationAPIKeys200JSONResponse(response), nil

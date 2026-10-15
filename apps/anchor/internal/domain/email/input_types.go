@@ -1,5 +1,7 @@
 package email
 
+import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+
 // CreateTemplateInput is the request shape for authoring a new template.
 //
 // On create the service writes the envelope row plus a single DRAFT version
@@ -70,12 +72,28 @@ type GetTemplateInput struct {
 	ID        string `validate:"required"`
 }
 
-// ListTemplatesInput is the request shape for paginated template listing.
-type ListTemplatesInput struct {
-	TenantID  string `validate:"required"`
-	ProductID string `validate:"required"`
-	Limit     int64
-	Offset    int64
+// SortFieldTemplate names a column a template search may order by.
+type SortFieldTemplate string
+
+const (
+	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
+	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
+	SortFieldTemplateName      SortFieldTemplate = "name"
+	SortFieldTemplateSlug      SortFieldTemplate = "slug"
+)
+
+// SearchTemplatesFilter narrows a template search. Empty fields do not filter.
+type SearchTemplatesFilter struct {
+	IDs      []string
+	Slugs    []string
+	IsActive *bool
+}
+
+// SearchTemplatesInput is the request shape for searching a product's templates.
+type SearchTemplatesInput struct {
+	TenantID  string                                                   `validate:"required"`
+	ProductID string                                                   `validate:"required"`
+	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
 }
 
 // DeleteTemplateInput is the request shape for removing a template (and all
@@ -152,12 +170,23 @@ type SaveTemplateExamplesInput struct {
 	Examples   []TemplateExample
 }
 
-// ListSendsInput is the paginated query shape for the send-history view.
-type ListSendsInput struct {
-	TenantID   string `validate:"required"`
-	ProductID  string `validate:"required"`
-	TemplateID *string
-	Status     *SendStatus
-	Limit      int64
-	Offset     int64
+// SortFieldSend names a column a send-record search may order by.
+type SortFieldSend string
+
+const (
+	SortFieldSendCreatedAt SortFieldSend = "created_at"
+	SortFieldSendStatus    SortFieldSend = "status"
+)
+
+// SearchSendsFilter narrows a send-record search. Empty fields do not filter.
+type SearchSendsFilter struct {
+	TemplateIDs []string
+	Statuses    []SendStatus
+}
+
+// SearchSendsInput is the request shape for searching the send history.
+type SearchSendsInput struct {
+	TenantID  string                                           `validate:"required"`
+	ProductID string                                           `validate:"required"`
+	Request   search.Request[SearchSendsFilter, SortFieldSend] `validate:"required"`
 }

@@ -36,9 +36,10 @@ func (s *AnchorAPI) SearchProductPermissions(
 	}
 
 	response := ProductPermissionListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductPermissionToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductPermissionToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductPermissions200JSONResponse(response), nil

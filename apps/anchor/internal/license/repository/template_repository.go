@@ -8,8 +8,11 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
@@ -89,8 +92,50 @@ func (r *templateRepositoryImpl) ListByProduct(
 	stmt := table.LicenseTemplates.SELECT(table.LicenseTemplates.AllColumns).
 		FROM(table.LicenseTemplates).
 		WHERE(where).
-		ORDER_BY(table.LicenseTemplates.Name.ASC())
+		ORDER_BY(table.LicenseTemplates.Name.ASC(), table.LicenseTemplates.ID.ASC())
 	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+}
+
+func (r *templateRepositoryImpl) Search(
+	ctx context.Context, in license.SearchTemplatesInput,
+) (search.Result[license.Template], error) {
+	where := licenseTemplateScope(in.TenantID, in.ProductID)
+	if filter := in.Request.Filter; filter != nil && len(filter.Statuses) > 0 {
+		statuses := functional.Slice(filter.Statuses).Map(func(status license.TemplateStatus) string {
+			return string(status)
+		})
+		where = where.AND(table.LicenseTemplates.Status.IN(jetx.ToStringExpressions(statuses)...))
+	}
+	if term := in.Request.FullTextSearch; term != nil && *term != "" {
+		if fullText := jetx.BuildSubstringFilter(
+			[]postgres.ColumnString{table.LicenseTemplates.Name}, *term,
+		); fullText != nil {
+			where = where.AND(fullText)
+		}
+	}
+
+	order := transactor.Keys(
+		in.Request.Sort,
+		map[license.SortFieldTemplate]transactor.Key[model.LicenseTemplates]{
+			license.SortFieldTemplateName: transactor.StringKey(
+				table.LicenseTemplates.Name, func(row model.LicenseTemplates) string { return row.Name },
+			),
+			license.SortFieldTemplateCreatedAt: transactor.TimeKey(
+				table.LicenseTemplates.CreatedAt, func(row model.LicenseTemplates) time.Time { return row.CreatedAt },
+			),
+			license.SortFieldTemplateUpdatedAt: transactor.TimeKey(
+				table.LicenseTemplates.UpdatedAt, func(row model.LicenseTemplates) time.Time { return row.UpdatedAt },
+			),
+		},
+		transactor.StringKey(table.LicenseTemplates.ID, func(row model.LicenseTemplates) string { return row.ID }),
+	)
+
+	return transactor.Page(r.db, r.mapper.ToDomain, table.LicenseTemplates.AllColumns).
+		From(table.LicenseTemplates).
+		Where(where).
+		Keyset(order).
+		Run(ctx, in.Request.Pagination).
+		Value()
 }
 
 func (r *templateRepositoryImpl) Create(

@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 
@@ -84,6 +85,10 @@ type LicenseTemplateService interface {
 	// has to resolve, because a license names it.
 	GetTemplate(ctx context.Context, in license.GetTemplateInput) (*license.Template, error)
 	ListTemplates(ctx context.Context, in license.ListTemplatesInput) ([]license.Template, error)
+	// SearchTemplates pages the Product's templates with a cursor.
+	SearchTemplates(
+		ctx context.Context, in license.SearchTemplatesInput,
+	) (search.Result[license.Template], error)
 	UpdateTemplate(ctx context.Context, in license.UpdateTemplateInput) (license.Template, error)
 	// ArchiveTemplate withdraws the tier and returns it. It is idempotent, and it
 	// cannot be undone. Prefer this to DeleteTemplate once a template might have
@@ -196,6 +201,16 @@ func (s *licenseTemplateService) ListTemplates(
 	}
 
 	return s.templateRepo.ListByProduct(ctx, in.TenantID, in.ProductID, in.Status)
+}
+
+func (s *licenseTemplateService) SearchTemplates(
+	ctx context.Context, in license.SearchTemplatesInput,
+) (search.Result[license.Template], error) {
+	if err := validate.ValidateStruct(in); err != nil {
+		return search.Result[license.Template]{}, err
+	}
+
+	return s.templateRepo.Search(ctx, in)
 }
 
 func (s *licenseTemplateService) UpdateTemplate(

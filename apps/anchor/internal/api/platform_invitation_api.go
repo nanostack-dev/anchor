@@ -113,9 +113,10 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 		return nil, err
 	}
 	return SearchPlatformInvitations200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapPlatformInvitationToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapPlatformInvitationToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 

@@ -1,6 +1,11 @@
 package integration
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+)
 
 type CreateInstanceInput struct {
 	TenantID     string       `validate:"required"`
@@ -52,10 +57,27 @@ type CreateAuditLogInput struct {
 	DiffJSON              json.RawMessage
 }
 
-type ListAuditLogsInput struct {
-	TenantID              string `validate:"required"`
-	ProductID             string `validate:"required"`
-	IntegrationInstanceID string `validate:"required"`
-	Limit                 int64
-	Offset                int64
+// SortFieldAuditLog names a column an audit log search may order by.
+type SortFieldAuditLog string
+
+const (
+	SortFieldAuditLogCreatedAt SortFieldAuditLog = "created_at"
+	SortFieldAuditLogAction    SortFieldAuditLog = "action"
+	SortFieldAuditLogSeverity  SortFieldAuditLog = "severity"
+)
+
+// SearchAuditLogsFilter narrows an audit log search. Empty fields do not
+// filter.
+type SearchAuditLogsFilter struct {
+	Actions       []string
+	Severities    []AuditSeverity
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
+
+type SearchAuditLogsInput struct {
+	TenantID              string                                                   `validate:"required"`
+	ProductID             string                                                   `validate:"required"`
+	IntegrationInstanceID string                                                   `validate:"required"`
+	Request               search.Request[SearchAuditLogsFilter, SortFieldAuditLog] `validate:"required"`
 }

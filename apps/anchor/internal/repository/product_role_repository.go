@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -377,6 +378,24 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	// page is taken on roles alone and permissions are fetched separately for the
 	// paged roles with no limit/offset. See product_api_key_repository.go's
 	// SearchByProductID for the same pattern.
+	idKey := transactor.StringKey(table.ProductRoles.ID, func(row model.ProductRoles) string { return row.ID })
+	order := transactor.Keys(
+		input.Sort,
+		map[role.SortFieldProductRole]transactor.Key[model.ProductRoles]{
+			role.SortFieldProductRoleCreatedAt: transactor.TimeKey(
+				table.ProductRoles.CreatedAt, func(row model.ProductRoles) time.Time { return row.CreatedAt },
+			),
+			role.SortFieldProductRoleUpdatedAt: transactor.TimeKey(
+				table.ProductRoles.UpdatedAt, func(row model.ProductRoles) time.Time { return row.UpdatedAt },
+			),
+			role.SortFieldProductRoleName: transactor.StringKey(
+				table.ProductRoles.Name, func(row model.ProductRoles) string { return row.Name },
+			),
+			role.SortFieldProductRoleID: idKey,
+		},
+		idKey,
+	)
+
 	pageResult, err := transactor.Page(
 		r.db,
 		func(entity model.ProductRoles) model.ProductRoles { return entity },
@@ -384,14 +403,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	).
 		From(table.ProductRoles).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[role.SortFieldProductRole]postgres.Column{
-				role.SortFieldProductRoleCreatedAt: table.ProductRoles.CreatedAt,
-				role.SortFieldProductRoleUpdatedAt: table.ProductRoles.UpdatedAt,
-				role.SortFieldProductRoleName:      table.ProductRoles.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
@@ -437,9 +449,10 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	)
 
 	return search.Result[role.ProductRole]{
-		Items: items,
-		Total: pageResult.Total,
-		Count: len(items),
+		Items:      items,
+		Total:      pageResult.Total,
+		Count:      len(items),
+		NextCursor: pageResult.NextCursor,
 	}, nil
 }
 

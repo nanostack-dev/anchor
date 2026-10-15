@@ -63,6 +63,29 @@ type ListUserOrganizationsInput struct {
 	IncludePermissions bool
 }
 
+// SortFieldUserOrganization names a column a user-organization search may order by.
+type SortFieldUserOrganization string
+
+const (
+	SortFieldUserOrganizationJoinedAt SortFieldUserOrganization = "joined_at"
+	SortFieldUserOrganizationName     SortFieldUserOrganization = "name"
+)
+
+// SearchUserOrganizationsFilter narrows the organizations a user belongs to.
+type SearchUserOrganizationsFilter struct {
+	OrganizationIDs []string
+	RoleIDs         []string
+}
+
+// SearchUserOrganizationsInput is the input for searching the organizations a
+// product user belongs to.
+type SearchUserOrganizationsInput struct {
+	ProductID          string `validate:"required,notblank"`
+	ProductUserID      string `validate:"required,notblank"`
+	IncludePermissions bool
+	Request            search.Request[SearchUserOrganizationsFilter, SortFieldUserOrganization] `validate:"required"`
+}
+
 // GetUserOrganizationInput is the input for getting a specific organization a user belongs to.
 type GetUserOrganizationInput struct {
 	ProductID          string `validate:"required,notblank"`

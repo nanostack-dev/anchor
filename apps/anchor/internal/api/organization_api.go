@@ -167,8 +167,9 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		Items: functional.Slice(result.Items).Map(func(org organization.Organization) ProductOrganizationResponse {
 			return mapOrganizationToResponse(org, includeWorkspaces)
 		}),
-		Total: result.Total,
-		Count: result.Count,
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 

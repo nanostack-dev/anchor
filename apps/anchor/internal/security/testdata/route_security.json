@@ -285,10 +285,19 @@
       "email:send"
     ]
   },
+  "POST /v1/products/{product_id}/email/sends/search": {
+    "platformBearerAuth": []
+  },
   "POST /v1/products/{product_id}/email/templates": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "email_template:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/email/templates/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "email_template:read"
     ]
   },
   "POST /v1/products/{product_id}/email/templates/{email_template_id}/preview": {
@@ -308,6 +317,9 @@
   },
   "POST /v1/products/{product_id}/integrations/webhooks/{provider_type}": {
     "\u003cpublic\u003e": []
+  },
+  "POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search": {
+    "platformBearerAuth": []
   },
   "POST /v1/products/{product_id}/invitations/search": {
     "platformBearerAuth": [],
@@ -337,6 +349,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "license_template:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/licensing/templates/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "license_template:read"
     ]
   },
   "POST /v1/products/{product_id}/licensing/templates/{license_template_id}/archive": {
@@ -396,6 +414,12 @@
       "organization_license:create"
     ]
   },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_license:read"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations/{organization_id}/license/usage": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -435,6 +459,11 @@
   },
   "POST /v1/products/{product_id}/product-users/search": {
     "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "product_user:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search": {
     "productApiKeyAuth": [
       "product_user:read"
     ]

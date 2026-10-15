@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -335,6 +336,9 @@ func (s *organizationAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return nil, err
+		}
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Err(err).

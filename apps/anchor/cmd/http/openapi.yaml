@@ -307,10 +307,15 @@ components:
         total:
           type: integer
           format: int64
-          description: Total number of matching items.
+          description: Number of items matching the filter, independent of the cursor.
         count:
           type: integer
           description: The number of items returned in this response.
+        next_cursor:
+          type: string
+          description: >-
+            Cursor for the next page. Absent on the last page: iterate until it
+            is absent. Never infer the end from count or total.
       required:
       - total
       - count
@@ -324,7 +329,6 @@ components:
           description: Full-text search term to match against searchable fields.
         sort_direction:
           $ref: "#/components/schemas/SortDirection"
-          description: Sorting direction
       description: Generic search request template
 
     PaginationRequest:
@@ -342,14 +346,26 @@ components:
           format: int32
           minimum: 0
           default: 0
-          description: Number of items to skip.
+          description: >-
+            Number of items to skip. Use for page-number navigation only;
+            iterate with `cursor`.
+        cursor:
+          type: string
+          maxLength: 8192
+          description: >-
+            Opaque cursor from the previous page's `next_cursor`. Continues the
+            search after the last item of that page, with the same filter and
+            sort. Omit to start at the first item. Cannot be combined with a
+            non-zero `offset`. An invalid cursor answers 400 INVALID_CURSOR.
       x-go-type: search.Pagination
       x-go-type-import:
         path: github.com/nanostack-dev/nanostack-framework/pkg/search
     SortDirection:
       type: string
       enum: [ASC, DESC]
-      default: DESC
+      description: >-
+        Direction of the sort. With a `sort_by`, omitted means ASC. Without
+        one, the operation's documented default order applies.
       x-go-type: search.SortDirection
       x-go-type-import:
         path: github.com/nanostack-dev/nanostack-framework/pkg/search
@@ -1896,6 +1912,50 @@ components:
             $ref: "#/components/schemas/UserOrganizationResponse"
       required:
       - items
+    UserOrganizationFilter:
+      type: object
+      description: Narrows the organizations a product user belongs to.
+      properties:
+        organization_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Keep only memberships in one of these organizations.
+          x-go-type-skip-optional-pointer: true
+        role_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Keep only memberships holding one of these roles.
+          x-go-type-skip-optional-pointer: true
+    UserOrganizationSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/UserOrganizationFilter"
+          sort_by:
+            type: string
+            enum:
+            - joined_at
+            - name
+            default: joined_at
+            description: Field to sort by. `name` is the organization name.
+            x-go-type: user.SortFieldUserOrganization
+            x-go-type-import:
+              path: anchor/internal/domain/product/user
+    UserOrganizationSearchResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/UserOrganizationResponse"
+        required:
+        - items
     ProductPermissionSearchRequest:
       allOf:
       - $ref: "#/components/schemas/SearchRequest"
@@ -1911,7 +1971,10 @@ components:
             - resource
             - created_at
             default: created_at
-            description: Field to sort by
+            description: >-
+              Field to sort by. `id` and `resource` order by the permission
+              name, whose `resource:action` form groups permissions by
+              resource.
             x-go-type: permission.SortFieldProductPermission
             x-go-type-import:
               path: anchor/internal/domain/permission
@@ -2935,6 +2998,59 @@ components:
       required:
       - items
       - count
+    IntegrationAuditLogFilter:
+      type: object
+      description: Narrows the audit log entries of one integration instance.
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+          description: Keep only entries with one of these action codes.
+          x-go-type-skip-optional-pointer: true
+        severities:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntegrationAuditLogSeverity"
+          description: Keep only entries with one of these severities.
+          x-go-type-skip-optional-pointer: true
+        created_after:
+          type: string
+          format: date-time
+          description: Keep only entries recorded at or after this instant.
+        created_before:
+          type: string
+          format: date-time
+          description: Keep only entries recorded before this instant.
+    IntegrationAuditLogSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/IntegrationAuditLogFilter"
+          sort_by:
+            type: string
+            enum:
+            - created_at
+            - action
+            - severity
+            default: created_at
+            description: Field to sort by.
+            x-go-type: integration.SortFieldAuditLog
+            x-go-type-import:
+              path: anchor/internal/domain/integration
+    IntegrationAuditLogSearchResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/IntegrationAuditLogEntryResponse"
+        required:
+        - items
     # Email schemas
     EmailVariableType:
       type: string
@@ -3113,6 +3229,54 @@ components:
         count:
           type: integer
 
+    EmailTemplateFilter:
+      type: object
+      description: Narrows a search over a product's email templates.
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/ksuid'
+          x-go-type-skip-optional-pointer: true
+        slugs:
+          type: array
+          items:
+            type: string
+          description: Keep only templates with one of these slugs.
+          x-go-type-skip-optional-pointer: true
+        is_active:
+          type: boolean
+          description: "`true` keeps only active templates, `false` only inactive ones. Omit for both."
+    EmailTemplateSearchRequest:
+      allOf:
+      - $ref: '#/components/schemas/SearchRequest'
+      - type: object
+        properties:
+          filter:
+            $ref: '#/components/schemas/EmailTemplateFilter'
+          sort_by:
+            type: string
+            enum:
+            - created_at
+            - updated_at
+            - name
+            - slug
+            default: created_at
+            description: Field to sort by.
+            x-go-type: email.SortFieldTemplate
+            x-go-type-import:
+              path: anchor/internal/domain/email
+    EmailTemplateSearchResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/EmailTemplateResponse'
+        required:
+        - items
     TemplateExample:
       type: object
       required: [id, name, variables]
@@ -3245,6 +3409,50 @@ components:
         count:
           type: integer
 
+    EmailSendFilter:
+      type: object
+      description: Narrows a search over a product's email send records.
+      properties:
+        template_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/ksuid'
+          description: Keep only sends rendered from one of these templates.
+          x-go-type-skip-optional-pointer: true
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailSendStatus'
+          description: Keep only sends in one of these statuses.
+          x-go-type-skip-optional-pointer: true
+    EmailSendSearchRequest:
+      allOf:
+      - $ref: '#/components/schemas/SearchRequest'
+      - type: object
+        properties:
+          filter:
+            $ref: '#/components/schemas/EmailSendFilter'
+          sort_by:
+            type: string
+            enum:
+            - created_at
+            - status
+            default: created_at
+            description: Field to sort by.
+            x-go-type: email.SortFieldSend
+            x-go-type-import:
+              path: anchor/internal/domain/email
+    EmailSendSearchResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/EmailSendRecordResponse'
+        required:
+        - items
     # --- Licensing ---
     # A license field's type. Flat and closed: a license field is never a list
     # or a nested object, so this deliberately does not reuse EmailVariableType.
@@ -3495,6 +3703,47 @@ components:
         count:
           type: integer
 
+    LicenseTemplateFilter:
+      type: object
+      description: Narrows a search over a product's license templates.
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseTemplateStatus'
+          description: >-
+            Keep only templates with one of these statuses. Omit for every
+            template the product has ever offered.
+          x-go-type-skip-optional-pointer: true
+    LicenseTemplateSearchRequest:
+      allOf:
+      - $ref: '#/components/schemas/SearchRequest'
+      - type: object
+        properties:
+          filter:
+            $ref: '#/components/schemas/LicenseTemplateFilter'
+          sort_by:
+            type: string
+            enum:
+            - name
+            - created_at
+            - updated_at
+            default: name
+            description: Field to sort by.
+            x-go-type: license.SortFieldTemplate
+            x-go-type-import:
+              path: anchor/internal/domain/license
+    LicenseTemplateSearchResponse:
+      allOf:
+      - $ref: '#/components/schemas/PagedListResponse'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/LicenseTemplateResponse'
+        required:
+        - items
     OrganizationLicenseInstantiateRequest:
       type: object
       required: [template_id]
@@ -3980,8 +4229,10 @@ components:
       enum: [organization_name, instantiated_at]
       default: organization_name
       description: >-
-        Field to sort by. `instantiated_at` puts organizations holding no
-        license last, because they were never stamped.
+        Field to sort by. `instantiated_at` has no value for an organization
+        holding no license, because it was never stamped. Such organizations
+        sort after every licensed one when ascending and before them when
+        descending, the way a missing value sorts in the database.
       x-go-type: license.SortFieldOrganizationLicense
       x-go-type-import:
         path: anchor/internal/domain/license
@@ -4044,6 +4295,40 @@ components:
         required:
         - items
 
+    OrganizationLicenseHistoryFilter:
+      type: object
+      description: Narrows the history of one organization's license.
+      properties:
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseChangeType'
+          description: Keep only entries of one of these types.
+          x-go-type-skip-optional-pointer: true
+        changed_after:
+          type: string
+          format: date-time
+          description: Keep only entries made at or after this instant.
+        changed_before:
+          type: string
+          format: date-time
+          description: Keep only entries made before this instant.
+    OrganizationLicenseHistorySearchRequest:
+      allOf:
+      - $ref: '#/components/schemas/SearchRequest'
+      - type: object
+        properties:
+          filter:
+            $ref: '#/components/schemas/OrganizationLicenseHistoryFilter'
+          sort_by:
+            type: string
+            enum:
+            - changed_at
+            default: changed_at
+            description: Field to sort by.
+            x-go-type: license.SortFieldChange
+            x-go-type-import:
+              path: anchor/internal/domain/license
     UsageReportRequest:
       type: object
       description: >-
@@ -4480,8 +4765,10 @@ paths:
   /v1/products/search:
     post:
       summary: Search Products
-      description: Searches for products based on criteria. Requires Platform 
-        Bearer token.
+      description: >-
+        Searches for products based on criteria. Requires Platform  Bearer token.
+
+        Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProducts
       tags: [Product]
       security:
@@ -4593,6 +4880,8 @@ paths:
         Returns all registered internal and integration events available for
         webhook subscriptions. Internal events are grouped by Anchor area;
         integration events are grouped by provider.
+
+        Not a search. This is a static catalog compiled into the binary, not a stored collection, so it returns every event at once.
       operationId: getProductEventsCatalog
       tags: [Product]
       security:
@@ -4653,6 +4942,7 @@ paths:
       description: |-
         Lists all integration instances for the specified product.
         Requires Platform Bearer token.
+        Not a search. A product has at most one integration instance per provider, so the list is bounded by the number of providers and returns every instance.
       operationId: listIntegrationInstances
       tags: [Integration]
       security:
@@ -4760,7 +5050,9 @@ paths:
         Lists audit log entries for a specific integration instance.
         Entries are returned in reverse chronological order (newest first).
         Requires Platform Bearer token.
+        Deprecated: use `searchIntegrationAuditLogs`, which pages with a cursor.
       operationId: listIntegrationAuditLogs
+      deprecated: true
       tags: [Integration]
       security:
       - platformBearerAuth: []
@@ -4771,6 +5063,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntegrationAuditLogListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/IntegrationInstanceIdParameter"
+    post:
+      summary: Search Integration Audit Logs
+      description: >-
+        Searches the audit log entries of one integration instance. The log is
+        append-only and grows with every webhook and reconcile run, so it pages
+        with a cursor and reaches every entry, not only the newest hundred.
+        Filter by `actions`, `severities` and a `created_after` and
+        `created_before` range. Requires Platform Bearer token.
+
+        Default order is `created_at` descending, then `id` descending, newest
+        first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchIntegrationAuditLogs
+      tags: [Integration]
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationAuditLogSearchRequest"
+      responses:
+        "200":
+          description: A page of audit log entries for the integration instance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationAuditLogSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4871,8 +5203,10 @@ paths:
     - $ref: "#/components/parameters/ProductIdParameter"
     post:
       summary: Search Product Resource Permissions
-      description: Searches for resource permissions within a product. Requires 
-        Platform Bearer token or Product API Key with permissions:read.
+      description: >-
+        Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+
+        Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductResourcePermissions
       tags: [ProductResourcePermission]
       security:
@@ -5021,6 +5355,7 @@ paths:
       description: |-
         Retrieves a list of platform invitations, allowing filtering and pagination.
         Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchPlatformInvitations
       tags: [PlatformInvitation]
       security:
@@ -5103,6 +5438,7 @@ paths:
       description: |-
         Retrieves a list of platform Users, allowing filtering and pagination.
         Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchPlatformUsers
       tags: [PlatformUser]
       security:
@@ -5193,6 +5529,8 @@ paths:
         These permissions govern access to the product itself within Anchor
         (e.g. product:settings:read). They are system-defined and cannot be
         created or deleted via the API. Requires Platform Bearer token.
+
+        Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductPermissions
       tags: [ProductPermission]
       security:
@@ -5255,9 +5593,10 @@ paths:
 
     post:
       summary: Search ProductRoles for Product
-      description: Searches for product roles defined for a specific product 
-        based on criteria. Requires Platform Bearer token or Product API Key
-        with product_role:read scope.
+      description: >-
+        Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductRoles
       tags: [ProductRole]
       security:
@@ -5502,8 +5841,10 @@ paths:
 
     post:
       summary: Search Product API Keys
-      description: Searches for product API keys defined for a specific product 
-        based on criteria. Requires Platform Bearer token.
+      description: >-
+        Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+
+        Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductAPIKeys
       tags: [ProductAPIKey]
       security:
@@ -5709,6 +6050,7 @@ paths:
       description: |-
         Retrieves a list of users associated with the specified Product,
         allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+        Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductUsers
       tags: [ProductUser]
       security:
@@ -5791,7 +6133,9 @@ paths:
         Lists all organizations that the specified product user belongs to,
         including their role and membership details in each organization.
         Requires an API Key with `product_user:read` permission.
+        Deprecated: use `searchUserOrganizations`, which pages with a cursor.
       operationId: listUserOrganizations
+      deprecated: true
       tags: [ProductUser]
       security:
       - productApiKeyAuth: ["product_user:read"]
@@ -5813,6 +6157,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserOrganizationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/product-users/{product_user_id}/organizations/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ProductUserIdParameter"
+    post:
+      summary: Search User Organizations
+      description: >-
+        Searches the organizations that the specified product user belongs to,
+        including their role and membership details in each organization.
+        Filter by `organization_ids` and `role_ids`. Pass
+        `include=role_permissions` to read the permissions of every role in the
+        page. Requires an API Key with `product_user:read` permission.
+
+        Default order is `joined_at` ascending, then `organization_id`.
+        Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchUserOrganizations
+      tags: [ProductUser]
+      security:
+      - productApiKeyAuth: ["product_user:read"]
+      parameters:
+      - name: include
+        in: query
+        required: false
+        description: Comma-separated list of additional fields to include.
+        schema:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserOrganizationInclude"
+        style: form
+        explode: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserOrganizationSearchRequest"
+      responses:
+        "200":
+          description: A page of the organizations the user belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserOrganizationSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -5866,7 +6261,10 @@ paths:
 
     post:
       summary: Search Organization API Keys
-      description: Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+      description: >-
+        Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+
+        Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchOrganizationAPIKeys
       tags: [OrganizationAPIKey]
       security:
@@ -6143,6 +6541,7 @@ paths:
         allowing filtering and pagination. Pass `include` to read a related
         resource alongside every organization in the page.
         Requires API Key with `product_organization:read` permission or Platform Bearer token.
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductOrganizations
       tags: [ProductOrganization]
       security:
@@ -6297,7 +6696,10 @@ paths:
     - $ref: "#/components/parameters/OrganizationIdParameter"
     post:
       summary: Search Organization Workspaces
-      description: Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+      description: >-
+        Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchOrganizationWorkspaces
       tags: [Workspace]
       security:
@@ -6537,7 +6939,10 @@ paths:
     - $ref: '#/components/parameters/OrganizationIdParameter'
     post:
       summary: Search Organization Members
-      description: Search members in an organization.
+      description: >-
+        Search members in an organization.
+
+        Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchOrganizationMembers
       tags:
       - OrganizationMember
@@ -6624,6 +7029,8 @@ paths:
         Lists the invitations of one organization, optionally filtered by
         status and email address. An invitation whose expiry has passed while it
         was pending reads and filters as `expired`.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchOrganizationInvitations
       tags:
       - OrganizationInvitation
@@ -6806,6 +7213,8 @@ paths:
         `pending` status, to show the invitations waiting for them. Email
         addresses compare without regard to letter case. An invitation whose
         expiry has passed while it was pending reads and filters as `expired`.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchProductOrganizationInvitations
       tags:
       - OrganizationInvitation
@@ -6872,7 +7281,10 @@ paths:
           $ref: '#/components/responses/Conflict'
     get:
       summary: List Email Templates
+      description: >-
+        Deprecated: use `searchEmailTemplates`, which pages with a cursor.
       operationId: listEmailTemplates
+      deprecated: true
       tags:
       - Email
       security:
@@ -6907,6 +7319,47 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/email/templates/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search Email Templates
+      description: >-
+        Searches the product's email templates. Filter by `ids`, `slugs` and
+        `is_active`; `full_text_search` matches the name and the slug.
+
+        Default order is `created_at` descending, then `id` descending, newest
+        first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchEmailTemplates
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - email_template:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/products/{product_id}/email/templates/{email_template_id}:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'
@@ -7130,7 +7583,10 @@ paths:
     - $ref: '#/components/parameters/EmailTemplateIdParameter'
     get:
       summary: Get Template Examples
-      description: Returns the saved variable example sets for this template.
+      description: >-
+        Returns the saved variable example sets for this template.
+
+        Not a search. The examples are an array embedded in one template, bounded by the template, so they return together with it.
       operationId: getEmailTemplateExamples
       tags:
       - Email
@@ -7224,7 +7680,10 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     get:
       summary: List Send Records
+      description: >-
+        Deprecated: use `searchEmailSends`, which pages with a cursor.
       operationId: listEmailSends
+      deprecated: true
       tags:
       - Email
       security:
@@ -7271,6 +7730,45 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /v1/products/{product_id}/email/sends/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search Send Records
+      description: >-
+        Searches the product's email send records. Filter by `template_ids` and
+        `statuses`.
+
+        Default order is `created_at` descending, then `id` descending, newest
+        first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchEmailSends
+      tags:
+      - Email
+      security:
+      - platformBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailSendSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSendSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   # ---------------------------------------------------------------------------
   # Licensing
   # ---------------------------------------------------------------------------
@@ -7316,6 +7814,8 @@ paths:
           $ref: '#/components/responses/LicensingWriteConflict'
     get:
       summary: Get License Schema
+      description: >-
+        Not a search. The fields are an array embedded in the one schema a product has, so they return together with it.
       operationId: getLicenseSchema
       tags:
       - Licensing
@@ -7445,7 +7945,10 @@ paths:
         license named it is gone and will not appear here. Filter by `status`
         for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see
         withdrawn tiers — for example when moving customers off one.
+
+        Deprecated: use `searchLicenseTemplates`, which pages with a cursor.
       operationId: listLicenseTemplates
+      deprecated: true
       tags:
       - Licensing
       parameters:
@@ -7466,6 +7969,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LicenseTemplateListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/licensing/templates/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    post:
+      summary: Search License Templates
+      description: >-
+        Searches the product's license templates. Every template the product
+        has ever offered is searchable, whatever its status: archiving keeps
+        the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on
+        sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches
+        the template name.
+
+        Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchLicenseTemplates
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - license_template:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseTemplateSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseTemplateSearchResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -7633,6 +8177,8 @@ paths:
         An organization with no license is a result with `license` absent, not
         a missing row. `usage` is never derived here; read one organization's
         license for that.
+
+        Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
       operationId: searchOrganizationLicenses
       tags:
       - Licensing
@@ -7867,6 +8413,8 @@ paths:
         instantiated from, one license field at a time. Use it to find accounts
         with bespoke arrangements. The template always resolves, archived or
         not, so this answers for the lifetime of the license.
+
+        Not a search. The differences are derived per request from one license and its template, so they return together.
       operationId: getOrganizationLicenseDiff
       tags:
       - Licensing
@@ -7911,7 +8459,10 @@ paths:
         An organization that has never been licensed reads as an empty history
         rather than as a 404 — nothing has happened to it yet, which is a fact
         rather than an absence. A 404 means no such organization.
+
+        Deprecated: use `searchOrganizationLicenseHistory`, which pages with a cursor.
       operationId: getOrganizationLicenseHistory
+      deprecated: true
       tags:
       - Licensing
       security:
@@ -7934,6 +8485,56 @@ paths:
           format: int32
           minimum: 0
           default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLicenseHistoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/organizations/{organization_id}/license/history/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Search Organization License History
+      description: >-
+        Searches every change ever made to an organization's license: the
+        template it was instantiated from, and each later adjustment naming
+        the license field, the value it held and the value it was given.
+        Filter by `types` and by a `changed_after` and `changed_before` range.
+
+        The history is append-only and immutable. There is no route that edits
+        or removes an entry, so "what was this customer given, and when" keeps
+        the same answer for the lifetime of the organization. An organization
+        that has never been licensed has an empty history rather than a 404. A
+        404 means no such organization.
+
+        Default order is `changed_at` descending, then `id` descending, newest
+        first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchOrganizationLicenseHistory
+      tags:
+      - Licensing
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_license:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationLicenseHistorySearchRequest'
       responses:
         '200':
           description: Success
@@ -8023,6 +8624,8 @@ paths:
         organization is within or past it — is not this endpoint's job. It
         returns the series as stored; that judgment stays in the license
         state read.
+
+        Not a search. This is an aggregate time series computed per request from the continuous aggregates, not a stored collection. It pages by `limit` and `offset` over time buckets in ascending order, and never returns a `next_cursor`.
       operationId: getOrganizationUsageSeries
       tags:
       - Licensing

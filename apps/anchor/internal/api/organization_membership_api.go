@@ -10,6 +10,7 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/searchx"
 )
 
 func (s *AnchorAPI) AddOrganizationMember(
@@ -155,11 +156,13 @@ func mapSearchOrganizationMembersRequestToInput(
 		}
 	}
 
+	sortBy, sortDirection := searchx.Sort(
+		request.Body.SortBy, request.Body.SortDirection,
+		organization.SortFieldMemberJoinedAt, search.SortDescending,
+	)
+
 	return req.WithFilter(filter).
-		WithSort(
-			request.Body.SortBy,
-			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
+		WithSort(sortBy, sortDirection).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
 		request.Body.Pagination,
 	)
 }
@@ -195,8 +198,9 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 				return mapOrgMemberToResponse(m, organization.WithoutRolePermissions)
 			}),
 
-		Total: res.Total,
-		Count: len(res.Items),
+		Total:      res.Total,
+		NextCursor: nextCursor(res.NextCursor),
+		Count:      len(res.Items),
 	}
 
 	return SearchOrganizationMembers200JSONResponse(resp), nil

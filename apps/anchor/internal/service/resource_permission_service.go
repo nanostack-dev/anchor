@@ -12,6 +12,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -316,6 +317,9 @@ func (s *resourcePermissionService) SearchByProduct(
 		ctx, input.ProductID, input.Request,
 	)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return search.Result[resourcepermission.ProductResourcePermission]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

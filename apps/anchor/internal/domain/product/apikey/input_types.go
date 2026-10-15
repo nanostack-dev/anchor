@@ -36,6 +36,7 @@ type DeleteProductAPIKeyInput struct {
 type SortFieldProductAPIKey string
 
 const (
+	SortFieldProductAPIKeyID        SortFieldProductAPIKey = "id"
 	SortFieldProductAPIKeyCreatedAt SortFieldProductAPIKey = "created_at"
 	SortFieldProductAPIKeyUpdatedAt SortFieldProductAPIKey = "updated_at"
 	SortFieldProductAPIKeyName      SortFieldProductAPIKey = "name"

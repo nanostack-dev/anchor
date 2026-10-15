@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -182,18 +183,29 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 				OR(table.PlatformUsers.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
 		)
 	}
+	order := transactor.Keys(
+		input.Sort,
+		map[platform.SortFieldPlatformUser]transactor.Key[model.PlatformUsers]{
+			platform.SortFieldPlatformUserCreatedAt: transactor.TimeKey(
+				table.PlatformUsers.CreatedAt, func(row model.PlatformUsers) time.Time { return row.CreatedAt },
+			),
+			platform.SortFieldPlatformUserUpdatedAt: transactor.TimeKey(
+				table.PlatformUsers.UpdatedAt, func(row model.PlatformUsers) time.Time { return row.UpdatedAt },
+			),
+			platform.SortFieldPlatformUserEmail: transactor.StringKey(
+				table.PlatformUsers.Email, func(row model.PlatformUsers) string { return row.Email },
+			),
+			platform.SortFieldPlatformUserRole: transactor.StringKey(
+				table.PlatformUsers.Role, func(row model.PlatformUsers) string { return row.Role },
+			),
+		},
+		transactor.StringKey(table.PlatformUsers.ID, func(row model.PlatformUsers) string { return row.ID }),
+	)
+
 	return transactor.Page(r.db, r.platformUserMapper.ToDomain, table.PlatformUsers.AllColumns).
 		From(table.PlatformUsers).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[platform.SortFieldPlatformUser]postgres.Column{
-				platform.SortFieldPlatformUserCreatedAt: table.PlatformUsers.CreatedAt,
-				platform.SortFieldPlatformUserUpdatedAt: table.PlatformUsers.UpdatedAt,
-				platform.SortFieldPlatformUserEmail:     table.PlatformUsers.Email,
-				platform.SortFieldPlatformUserRole:      table.PlatformUsers.Role,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

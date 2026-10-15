@@ -77,6 +77,11 @@ type TemplateRepository interface {
 	ListByProduct(
 		ctx context.Context, tenantID string, productID string, status *license.TemplateStatus,
 	) ([]license.Template, error)
+	// Search pages the Product's templates with a cursor, every status unless
+	// the filter names some.
+	Search(
+		ctx context.Context, in license.SearchTemplatesInput,
+	) (search.Result[license.Template], error)
 	Create(
 		ctx context.Context, template license.Template,
 	) (license.Template, error)
@@ -182,10 +187,11 @@ type OrganizationLicenseChangeRepository interface {
 	Append(
 		ctx context.Context, changes []license.OrganizationLicenseChange,
 	) error
-	// ListByOrganization returns the Organization's history newest first, one
-	// page at a time. An Organization with no history reads as an empty page.
-	ListByOrganization(
-		ctx context.Context, in license.ListLicenseChangesInput,
+	// Search returns the Organization's history one page at a time, newest
+	// first unless the request sorts otherwise. An Organization with no
+	// history reads as an empty page.
+	Search(
+		ctx context.Context, in license.SearchLicenseChangesInput,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 

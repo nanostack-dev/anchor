@@ -13,12 +13,12 @@ import (
 	intrepo "anchor/internal/repository"
 )
 
-// LicenseHistoryService reads one Organization's license history, newest first.
-// An Organization that was never licensed returns an empty page. A 404 means
-// no such Organization.
+// LicenseHistoryService searches one Organization's license history. An
+// Organization that was never licensed returns an empty page. A 404 means no
+// such Organization.
 type LicenseHistoryService interface {
-	ListChanges(
-		ctx context.Context, in license.ListLicenseChangesInput,
+	SearchChanges(
+		ctx context.Context, in license.SearchLicenseChangesInput,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 
@@ -40,8 +40,8 @@ func NewLicenseHistoryService(
 	}
 }
 
-func (s *licenseHistoryService) ListChanges(
-	ctx context.Context, in license.ListLicenseChangesInput,
+func (s *licenseHistoryService) SearchChanges(
+	ctx context.Context, in license.SearchLicenseChangesInput,
 ) (search.Result[license.OrganizationLicenseChange], error) {
 	if err := validate.ValidateStruct(in); err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
@@ -55,5 +55,5 @@ func (s *licenseHistoryService) ListChanges(
 		return search.Result[license.OrganizationLicenseChange]{}, organization.ErrOrganizationNotFound
 	}
 
-	return s.changes.ListByOrganization(ctx, in)
+	return s.changes.Search(ctx, in)
 }

@@ -14,9 +14,11 @@ import (
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -50,8 +52,6 @@ type integrationReconcileQueuePayload struct {
 	IsScheduler           bool   `json:"is_scheduler,omitempty"`
 }
 
-const defaultAuditLogLimit int64 = 100
-
 const (
 	integrationReconcileCommandBatchSize  = 200
 	integrationVerificationTimeout        = 30 * time.Second
@@ -84,10 +84,10 @@ type IntegrationService interface {
 		ctx context.Context,
 		input integration.ListInstancesInput,
 	) ([]integration.Instance, error)
-	ListAuditLogs(
+	SearchAuditLogs(
 		ctx context.Context,
-		input integration.ListAuditLogsInput,
-	) ([]integration.AuditLog, error)
+		input integration.SearchAuditLogsInput,
+	) (search.Result[integration.AuditLog], error)
 
 	// IngestWebhook validates the webhook, persists the event as PENDING,
 	// and returns immediately. Processing happens asynchronously.
@@ -670,19 +670,14 @@ func (s *integrationService) ListInstances(
 	return instances, nil
 }
 
-func (s *integrationService) ListAuditLogs(
+func (s *integrationService) SearchAuditLogs(
 	ctx context.Context,
-	input integration.ListAuditLogsInput,
-) ([]integration.AuditLog, error) {
-	logger := s.logger.With().Str("operation", "ListAuditLogs").Logger()
+	input integration.SearchAuditLogsInput,
+) (search.Result[integration.AuditLog], error) {
+	logger := s.logger.With().Str("operation", "SearchAuditLogs").Logger()
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
-		return nil, valErr
-	}
-
-	limit := input.Limit
-	if limit <= 0 {
-		limit = defaultAuditLogLimit
+		return search.Result[integration.AuditLog]{}, valErr
 	}
 
 	found, findErr := s.instanceRepo.FindByID(
@@ -692,26 +687,21 @@ func (s *integrationService) ListAuditLogs(
 		logger.Error().Err(findErr).
 			Str("integration_instance_id", input.IntegrationInstanceID).
 			Msg("failed to find integration instance for audit logs")
-		return nil, findErr
+		return search.Result[integration.AuditLog]{}, findErr
 	}
 
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
-		return nil, ErrIntegrationInstanceNotFound
+		return search.Result[integration.AuditLog]{}, ErrIntegrationInstanceNotFound
 	}
 
-	logs, listErr := s.auditLogRepo.ListByInstanceScoped(
-		ctx,
-		input.TenantID,
-		input.ProductID,
-		input.IntegrationInstanceID,
-		limit,
-		input.Offset,
-	)
-	if listErr != nil {
-		logger.Error().Err(listErr).
-			Str("integration_instance_id", input.IntegrationInstanceID).
-			Msg("failed to list integration audit logs")
-		return nil, listErr
+	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, input)
+	if searchErr != nil {
+		if !searchx.IsCursorError(searchErr) {
+			logger.Error().Err(searchErr).
+				Str("integration_instance_id", input.IntegrationInstanceID).
+				Msg("failed to search integration audit logs")
+		}
+		return search.Result[integration.AuditLog]{}, searchErr
 	}
 
 	return logs, nil

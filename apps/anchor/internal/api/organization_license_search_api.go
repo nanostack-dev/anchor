@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
@@ -36,9 +37,10 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 	}
 
 	return SearchOrganizationLicenses200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapOrganizationLicenseSummaryToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapOrganizationLicenseSummaryToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -55,9 +57,14 @@ func mapToSearchOrganizationLicensesRequest(
 		}).
 		ToPtr()
 
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection,
+		license.SortFieldOrganizationLicenseOrganizationName, search.SortAscending,
+	)
+
 	return search.NewRequest[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense]().
 		WithFilter(filter).
-		WithSort(body.SortBy, body.SortDirection).
+		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
 		WithPagination(body.Pagination)
 }

@@ -127,29 +127,26 @@ func listAllProductPermissions(
 	productID string,
 ) ([]permission.ProductPermission, error) {
 	const pageSize = int32(200)
-	var (
-		offset int32
-		all    []permission.ProductPermission
-	)
+	var all []permission.ProductPermission
+
+	request := search.Request[
+		permission.SearchProductPermissionFilter,
+		permission.SortFieldProductPermission,
+	]{
+		Pagination: search.Pagination{Limit: pageSize},
+	}
 
 	for {
-		request := search.Request[
-			permission.SearchProductPermissionFilter,
-			permission.SortFieldProductPermission,
-		]{
-			Pagination: search.Pagination{Limit: pageSize, Offset: offset},
-		}
-
 		result, err := permRepo.SearchByProduct(ctx, productID, request)
 		if err != nil {
 			return nil, err
 		}
 
 		all = append(all, result.Items...)
-		if len(result.Items) < int(pageSize) {
+		if result.NextCursor == "" {
 			break
 		}
-		offset += pageSize
+		request = request.WithCursor(result.NextCursor)
 	}
 
 	return all, nil

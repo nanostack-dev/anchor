@@ -14,6 +14,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/mapper"
@@ -277,17 +278,26 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		}
 	}
 
+	order := transactor.Keys(
+		input.Sort,
+		map[workspace.SortFieldProductWorkspace]transactor.Key[model.Workspaces]{
+			workspace.SortFieldProductWorkspaceCreatedAt: transactor.TimeKey(
+				table.Workspaces.CreatedAt, func(row model.Workspaces) time.Time { return row.CreatedAt },
+			),
+			workspace.SortFieldProductWorkspaceUpdatedAt: transactor.TimeKey(
+				table.Workspaces.UpdatedAt, func(row model.Workspaces) time.Time { return row.UpdatedAt },
+			),
+			workspace.SortFieldProductWorkspaceName: transactor.StringKey(
+				table.Workspaces.Name, func(row model.Workspaces) string { return row.Name },
+			),
+		},
+		transactor.StringKey(table.Workspaces.ID, func(row model.Workspaces) string { return row.ID }),
+	)
+
 	return transactor.Page(r.db, r.workspaceMapper.ToDomain, table.Workspaces.AllColumns).
 		From(r.joinOrganizations()).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[workspace.SortFieldProductWorkspace]postgres.Column{
-				workspace.SortFieldProductWorkspaceCreatedAt: table.Workspaces.CreatedAt,
-				workspace.SortFieldProductWorkspaceUpdatedAt: table.Workspaces.UpdatedAt,
-				workspace.SortFieldProductWorkspaceName:      table.Workspaces.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

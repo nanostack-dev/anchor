@@ -57,9 +57,10 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 	}
 
 	return SearchOrganizationInvitations200JSONResponse(OrganizationInvitationListResponse{
-		Items: functional.Slice(result.Items).Map(mapInvitationToResponse),
-		Total: result.Total,
-		Count: len(result.Items),
+		Items:      functional.Slice(result.Items).Map(mapInvitationToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      len(result.Items),
 	}), nil
 }
 
@@ -148,9 +149,10 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 	}
 
 	return SearchProductOrganizationInvitations200JSONResponse(OrganizationInvitationListResponse{
-		Items: functional.Slice(result.Items).Map(mapInvitationToResponse),
-		Total: result.Total,
-		Count: len(result.Items),
+		Items:      functional.Slice(result.Items).Map(mapInvitationToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      len(result.Items),
 	}), nil
 }
 

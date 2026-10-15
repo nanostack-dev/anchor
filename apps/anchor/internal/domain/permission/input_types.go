@@ -38,6 +38,8 @@ type SearchProductPermissionFilter struct {
 type SortFieldProductPermission string
 
 const (
+	SortFieldProductPermissionID        SortFieldProductPermission = "id"
+	SortFieldProductPermissionResource  SortFieldProductPermission = "resource"
 	SortFieldProductPermissionCreatedAt SortFieldProductPermission = "created_at"
 	SortFieldProductPermissionUpdatedAt SortFieldProductPermission = "updated_at"
 	SortFieldProductPermissionName      SortFieldProductPermission = "name"

@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -87,25 +88,56 @@ func (r *templateRepositoryImpl) FindBySlugInternal(
 	)
 }
 
-func (r *templateRepositoryImpl) List(
-	ctx context.Context, tenantID string, productID string, limit int64, offset int64,
+func (r *templateRepositoryImpl) Search(
+	ctx context.Context, in email.SearchTemplatesInput,
 ) (search.Result[email.Template], error) {
-	if limit <= 0 {
-		limit = 50
+	where := table.EmailTemplates.PlatformTenantID.EQ(postgres.String(in.TenantID)).
+		AND(table.EmailTemplates.ProductID.EQ(postgres.String(in.ProductID)))
+
+	if filter := in.Request.Filter; filter != nil {
+		if ids := jetx.BuildIDFilter(table.EmailTemplates.ID, filter.IDs); ids != nil {
+			where = where.AND(ids)
+		}
+		if slugs := jetx.BuildStringArrayFilter(table.EmailTemplates.Slug, filter.Slugs); slugs != nil {
+			where = where.AND(slugs)
+		}
+		if filter.IsActive != nil {
+			where = where.AND(table.EmailTemplates.IsActive.EQ(postgres.Bool(*filter.IsActive)))
+		}
 	}
-	where := table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID)).
-		AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID)))
-	countStmt := postgres.SELECT(postgres.COUNT(postgres.STAR).AS("count_result.count")).
-		FROM(table.EmailTemplates).WHERE(where)
-	total, err := transactor.QueryCount(ctx, r.db, countStmt).Value()
-	if err != nil {
-		return search.Result[email.Template]{}, err
+	if term := in.Request.FullTextSearch; term != nil && *term != "" {
+		if fullText := jetx.BuildSubstringFilter(
+			[]postgres.ColumnString{table.EmailTemplates.Name, table.EmailTemplates.Slug}, *term,
+		); fullText != nil {
+			where = where.AND(fullText)
+		}
 	}
-	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
-		FROM(table.EmailTemplates).WHERE(where).
-		ORDER_BY(table.EmailTemplates.CreatedAt.DESC()).LIMIT(limit).OFFSET(offset)
-	items, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
-	return search.Result[email.Template]{Items: items, Total: total, Count: len(items)}, err
+
+	order := transactor.Keys(
+		in.Request.Sort,
+		map[email.SortFieldTemplate]transactor.Key[model.EmailTemplates]{
+			email.SortFieldTemplateCreatedAt: transactor.TimeKey(
+				table.EmailTemplates.CreatedAt, func(row model.EmailTemplates) time.Time { return row.CreatedAt },
+			),
+			email.SortFieldTemplateUpdatedAt: transactor.TimeKey(
+				table.EmailTemplates.UpdatedAt, func(row model.EmailTemplates) time.Time { return row.UpdatedAt },
+			),
+			email.SortFieldTemplateName: transactor.StringKey(
+				table.EmailTemplates.Name, func(row model.EmailTemplates) string { return row.Name },
+			),
+			email.SortFieldTemplateSlug: transactor.StringKey(
+				table.EmailTemplates.Slug, func(row model.EmailTemplates) string { return row.Slug },
+			),
+		},
+		transactor.StringKey(table.EmailTemplates.ID, func(row model.EmailTemplates) string { return row.ID }),
+	)
+
+	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailTemplates.AllColumns).
+		From(table.EmailTemplates).
+		Where(where).
+		Keyset(order).
+		Run(ctx, in.Request.Pagination).
+		Value()
 }
 
 func (r *templateRepositoryImpl) Create(

@@ -65,9 +65,10 @@ func (s *AnchorAPI) SearchProductRoles(
 	}
 
 	response := ProductRoleListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductRoleToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductRoleToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductRoles200JSONResponse(response), nil

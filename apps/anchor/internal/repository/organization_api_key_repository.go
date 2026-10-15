@@ -262,20 +262,39 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
+	idKey := transactor.StringKey(
+		table.OrganizationAPIKeys.ID, func(row model.OrganizationAPIKeys) string { return row.ID },
+	)
+	order := transactor.Keys(
+		input.Request.Sort,
+		map[orgapikey.SortFieldOrganizationAPIKey]transactor.Key[model.OrganizationAPIKeys]{
+			orgapikey.SortFieldOrganizationAPIKeyID: idKey,
+			orgapikey.SortFieldOrganizationAPIKeyCreatedAt: transactor.TimeKey(
+				table.OrganizationAPIKeys.CreatedAt,
+				func(row model.OrganizationAPIKeys) time.Time { return row.CreatedAt },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: transactor.TimeKey(
+				table.OrganizationAPIKeys.UpdatedAt,
+				func(row model.OrganizationAPIKeys) time.Time { return row.UpdatedAt },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyName: transactor.StringKey(
+				table.OrganizationAPIKeys.Name, func(row model.OrganizationAPIKeys) string { return row.Name },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyStatus: transactor.StringKey(
+				table.OrganizationAPIKeys.Status, func(row model.OrganizationAPIKeys) string { return row.Status },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyLastUsed: transactor.NullableTimeKey(
+				table.OrganizationAPIKeys.LastUsedAt,
+				func(row model.OrganizationAPIKeys) *time.Time { return row.LastUsedAt },
+			),
+		},
+		idKey,
+	)
+
 	result, err := transactor.Page(r.db, r.mapper.ToDomain, table.OrganizationAPIKeys.AllColumns).
 		From(table.OrganizationAPIKeys).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Request.Sort,
-			map[orgapikey.SortFieldOrganizationAPIKey]postgres.Column{
-				orgapikey.SortFieldOrganizationAPIKeyID:        table.OrganizationAPIKeys.ID,
-				orgapikey.SortFieldOrganizationAPIKeyCreatedAt: table.OrganizationAPIKeys.CreatedAt,
-				orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: table.OrganizationAPIKeys.UpdatedAt,
-				orgapikey.SortFieldOrganizationAPIKeyName:      table.OrganizationAPIKeys.Name,
-				orgapikey.SortFieldOrganizationAPIKeyStatus:    table.OrganizationAPIKeys.Status,
-				orgapikey.SortFieldOrganizationAPIKeyLastUsed:  table.OrganizationAPIKeys.LastUsedAt,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {

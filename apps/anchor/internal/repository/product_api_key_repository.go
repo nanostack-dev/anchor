@@ -255,6 +255,30 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
+	idKey := transactor.StringKey(table.ProductAPIKeys.ID, func(row model.ProductAPIKeys) string { return row.ID })
+	order := transactor.Keys(
+		input.Request.Sort,
+		map[apikey.SortFieldProductAPIKey]transactor.Key[model.ProductAPIKeys]{
+			apikey.SortFieldProductAPIKeyID: idKey,
+			apikey.SortFieldProductAPIKeyCreatedAt: transactor.TimeKey(
+				table.ProductAPIKeys.CreatedAt, func(row model.ProductAPIKeys) time.Time { return row.CreatedAt },
+			),
+			apikey.SortFieldProductAPIKeyUpdatedAt: transactor.TimeKey(
+				table.ProductAPIKeys.UpdatedAt, func(row model.ProductAPIKeys) time.Time { return row.UpdatedAt },
+			),
+			apikey.SortFieldProductAPIKeyName: transactor.StringKey(
+				table.ProductAPIKeys.Name, func(row model.ProductAPIKeys) string { return row.Name },
+			),
+			apikey.SortFieldProductAPIKeyStatus: transactor.StringKey(
+				table.ProductAPIKeys.Status, func(row model.ProductAPIKeys) string { return row.Status },
+			),
+			apikey.SortFieldProductAPIKeyLastUsed: transactor.NullableTimeKey(
+				table.ProductAPIKeys.LastUsedAt, func(row model.ProductAPIKeys) *time.Time { return row.LastUsedAt },
+			),
+		},
+		idKey,
+	)
+
 	pageResult, err := transactor.Page(
 		r.db,
 		func(entity model.ProductAPIKeys) model.ProductAPIKeys {
@@ -264,16 +288,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	).
 		From(table.ProductAPIKeys).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Request.Sort,
-			map[apikey.SortFieldProductAPIKey]postgres.Column{
-				apikey.SortFieldProductAPIKeyCreatedAt: table.ProductAPIKeys.CreatedAt,
-				apikey.SortFieldProductAPIKeyUpdatedAt: table.ProductAPIKeys.UpdatedAt,
-				apikey.SortFieldProductAPIKeyName:      table.ProductAPIKeys.Name,
-				apikey.SortFieldProductAPIKeyStatus:    table.ProductAPIKeys.Status,
-				apikey.SortFieldProductAPIKeyLastUsed:  table.ProductAPIKeys.LastUsedAt,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
@@ -288,9 +303,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 
 	if len(itemEntities) == 0 {
 		return search.Result[apikey.ProductAPIKey]{
-			Items: []apikey.ProductAPIKey{},
-			Count: 0,
-			Total: resultCount,
+			Items:      []apikey.ProductAPIKey{},
+			Count:      0,
+			Total:      resultCount,
+			NextCursor: pageResult.NextCursor,
 		}, nil
 	}
 
@@ -317,9 +333,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	})
 
 	return search.Result[apikey.ProductAPIKey]{
-		Items: items,
-		Count: len(items),
-		Total: resultCount,
+		Items:      items,
+		Count:      len(items),
+		Total:      resultCount,
+		NextCursor: pageResult.NextCursor,
 	}, nil
 }
 

@@ -32,6 +32,7 @@ type DeleteProductRoleInput struct {
 type SortFieldProductRole string
 
 const (
+	SortFieldProductRoleID        SortFieldProductRole = "id"
 	SortFieldProductRoleCreatedAt SortFieldProductRole = "created_at"
 	SortFieldProductRoleUpdatedAt SortFieldProductRole = "updated_at"
 	SortFieldProductRoleName      SortFieldProductRole = "name"

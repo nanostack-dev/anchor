@@ -14,6 +14,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
@@ -319,19 +320,32 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		)
 	}
 
+	order := transactor.Keys(
+		request.Sort,
+		map[user.SortFieldProductUser]transactor.Key[model.ProductUsers]{
+			user.SortFieldProductUserCreatedAt: transactor.TimeKey(
+				table.ProductUsers.CreatedAt, func(row model.ProductUsers) time.Time { return row.CreatedAt },
+			),
+			user.SortFieldProductUserUpdatedAt: transactor.TimeKey(
+				table.ProductUsers.UpdatedAt, func(row model.ProductUsers) time.Time { return row.UpdatedAt },
+			),
+			user.SortFieldProductUserEmail: transactor.StringKey(
+				table.ProductUsers.Email, func(row model.ProductUsers) string { return row.Email },
+			),
+			user.SortFieldProductUserName: transactor.NullableStringKey(
+				table.ProductUsers.Name, func(row model.ProductUsers) *string { return row.Name },
+			),
+			user.SortFieldProductUserStatus: transactor.StringKey(
+				table.ProductUsers.Status, func(row model.ProductUsers) string { return row.Status },
+			),
+		},
+		transactor.StringKey(table.ProductUsers.ID, func(row model.ProductUsers) string { return row.ID }),
+	)
+
 	return transactor.Page(r.db, r.productUserMapper.ToDomain, table.ProductUsers.AllColumns).
 		From(table.ProductUsers).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			request.Sort,
-			map[user.SortFieldProductUser]postgres.Column{
-				user.SortFieldProductUserCreatedAt: table.ProductUsers.CreatedAt,
-				user.SortFieldProductUserUpdatedAt: table.ProductUsers.UpdatedAt,
-				user.SortFieldProductUserEmail:     table.ProductUsers.Email,
-				user.SortFieldProductUserName:      table.ProductUsers.Name,
-				user.SortFieldProductUserStatus:    table.ProductUsers.Status,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, request.Pagination).
 		Value()
 }
