@@ -31,3 +31,20 @@ func Sort[S ~string](
 	}
 	return &defaultField, direction
 }
+
+// defaultLimit is the page size of a search that names none, the one the
+// framework gives a request without pagination.
+const defaultLimit int32 = 10
+
+// Pagination completes the pagination a client sent. A client that continues a
+// walk by cursor may send the cursor alone, and a page of no rows is not a
+// request, so a missing limit takes the same default as a request without
+// pagination.
+func Pagination(pagination *search.Pagination) *search.Pagination {
+	if pagination == nil || pagination.Limit != 0 {
+		return pagination
+	}
+	completed := *pagination
+	completed.Limit = defaultLimit
+	return &completed
+}

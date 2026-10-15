@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/permission"
+	"anchor/internal/searchx"
 )
 
 func mapProductPermissionToResponse(perm permission.ProductPermission) ProductPermissionResponse {
@@ -76,9 +77,7 @@ func mapToSearchProductPermissionInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
 }
 
 func lowerPermissionNames(names []string) []string {

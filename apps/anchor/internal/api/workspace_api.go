@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/workspace"
+	"anchor/internal/searchx"
 )
 
 func mapWorkspaceToResponse(item workspace.Workspace) ProductWorkspaceResponse {
@@ -147,7 +148,5 @@ func mapToSearchWorkspaceInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
 }

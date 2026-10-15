@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
+	"anchor/internal/searchx"
 )
 
 func mapOrganizationAPIKeyToResponse(
@@ -286,5 +287,5 @@ func mapToSearchOrganizationAPIKeyInput(
 	]().WithFilter(filter).
 		WithSort(searchReqBody.SortBy, searchReqBody.SortDirection).
 		WithFullTextSearch(searchReqBody.FullTextSearch).
-		WithPagination(searchReqBody.Pagination)
+		WithPagination(searchx.Pagination(searchReqBody.Pagination))
 }

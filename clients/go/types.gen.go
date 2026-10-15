@@ -2677,7 +2677,7 @@ type PaginationRequest struct {
 	// Cursor Opaque cursor from the previous page's `next_cursor`. Continues the search after the last item of that page, with the same filter and sort. Omit to start at the first item. Cannot be combined with a non-zero `offset`. An invalid cursor answers 400 INVALID_CURSOR.
 	Cursor *string `json:"cursor,omitempty"`
 
-	// Limit Maximum number of items per page.
+	// Limit Maximum number of items per page. A request that names no limit, including one that sends only a cursor, gets 10.
 	Limit *int32 `json:"limit,omitempty"`
 
 	// Offset Number of items to skip. Use for page-number navigation only; iterate with `cursor`.

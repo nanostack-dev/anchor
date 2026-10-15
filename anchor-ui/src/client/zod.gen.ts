@@ -25,7 +25,7 @@ export const zPagedListResponse = z.object({
 });
 
 export const zPaginationRequest = z.object({
-    limit: z.optional(z.int().gte(1).lte(100)).default(20),
+    limit: z.optional(z.int().gte(1).lte(100)).default(10),
     offset: z.optional(z.int().gte(0)).default(0),
     cursor: z.optional(z.string().max(8192))
 });

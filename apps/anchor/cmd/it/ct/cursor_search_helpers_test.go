@@ -18,7 +18,9 @@ import (
 const (
 	cursorPageSize     = 3
 	cursorMinimumPages = 3
-	invalidCursorCode  = "INVALID_CURSOR"
+	// cursorDefaultPageSize is the page of a request that names no limit.
+	cursorDefaultPageSize = 10
+	invalidCursorCode     = "INVALID_CURSOR"
 )
 
 // searchCall posts one search body to one operation and returns the raw answer.
@@ -74,7 +76,10 @@ type searchPageRequest struct {
 
 func (r searchPageRequest) body(t *testing.T) io.Reader {
 	t.Helper()
-	pagination := map[string]any{"limit": r.limit}
+	pagination := map[string]any{}
+	if r.limit > 0 {
+		pagination["limit"] = r.limit
+	}
 	if r.offset > 0 {
 		pagination["offset"] = r.offset
 	}
@@ -209,6 +214,23 @@ func (c cursorCase) run(t *testing.T) {
 	}
 
 	first := c.sorts[0]
+	t.Run("continues a cursor sent without a limit", func(t *testing.T) {
+		expected := first.order(t)
+		page := c.fetch(t, searchPageRequest{
+			limit: cursorPageSize, sortBy: first.sortBy, descending: first.descending, noDirection: first.omitDirection,
+		})
+		require.NotEmpty(t, page.nextCursor)
+
+		rest := c.fetch(t, searchPageRequest{
+			cursor:      page.nextCursor,
+			sortBy:      first.sortBy,
+			descending:  first.descending,
+			noDirection: first.omitDirection,
+		})
+		assert.Equal(t, expected[cursorPageSize:min(len(expected), cursorPageSize+cursorDefaultPageSize)], rest.ids,
+			"the default page size applies")
+	})
+
 	t.Run("rejects a malformed cursor", func(t *testing.T) {
 		c.rejected(t, searchPageRequest{
 			limit: cursorPageSize, cursor: "not-a-cursor", sortBy: first.sortBy, descending: first.descending,

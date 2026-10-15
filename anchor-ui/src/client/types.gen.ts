@@ -59,7 +59,7 @@ export type SearchRequest = {
 
 export type PaginationRequest = {
     /**
-     * Maximum number of items per page.
+     * Maximum number of items per page. A request that names no limit, including one that sends only a cursor, gets 10.
      */
     limit?: number;
     /**

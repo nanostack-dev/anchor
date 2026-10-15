@@ -8,6 +8,7 @@ import (
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
@@ -138,9 +139,7 @@ func mapToSearchPlatformInvitationRequest(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchx.Pagination(searchReqBody.Pagination))
 }
 
 func mapPlatformInvitationToResponse(

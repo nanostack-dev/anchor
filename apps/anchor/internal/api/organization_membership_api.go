@@ -162,9 +162,8 @@ func mapSearchOrganizationMembersRequestToInput(
 	)
 
 	return req.WithFilter(filter).
-		WithSort(sortBy, sortDirection).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
-	)
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(request.Body.FullTextSearch).WithPagination(searchx.Pagination(request.Body.Pagination))
 }
 
 func (s *AnchorAPI) SearchOrganizationMembers(

@@ -28,9 +28,7 @@ func mapToSearchProductInput(request *SearchProductsRequestObject) search.
 		WithSort(
 			request.Body.SortBy,
 			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
-	)
+		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(searchx.Pagination(request.Body.Pagination))
 }
 
 func mapProductToResponse(prod product.Product) ProductResponse {
@@ -286,9 +284,7 @@ func mapToSearchProductUserInput(
 		WithSort(
 			request.Body.SortBy,
 			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
-	)
+		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(searchx.Pagination(request.Body.Pagination))
 }
 
 func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
@@ -489,7 +485,7 @@ func mapToSearchUserOrganizationsRequest(
 		WithFilter(filter).
 		WithSort(sortBy, sortDirection).
 		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+		WithPagination(searchx.Pagination(body.Pagination))
 }
 
 func (s *AnchorAPI) GetUserOrganization(

@@ -7,6 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/searchx"
 )
 
 func mapProductResourcePermissionToResponse(
@@ -57,7 +58,7 @@ func mapToSearchProductResourcePermissionInput(
 		WithFullTextSearch(req.FullTextSearch).
 		WithFilter(filter).
 		WithSort(req.SortBy, req.SortDirection).
-		WithPagination(req.Pagination)
+		WithPagination(searchx.Pagination(req.Pagination))
 }
 
 func (s *AnchorAPI) CreateProductResourcePermission(
