@@ -28,4 +28,4 @@ Stripe setup and billing behave as part of Anchor, while core licenses retain th
 
 This extends ADR-0002's integration boundary. Anchor can display billing information through a provider adapter, while Stripe continues to determine what was paid and Anchor determines what is granted. Self-hosters can leave the integration unconfigured.
 
-Issued refunds cannot be reversed by turning the policy off. Disabling stops new refunds and preserves receipt monitoring. An unresolved financial action blocks deletion of the integration; this prototype has no force-clear action. See the [Stripe runbook](../prototypes/stripe-billing.md#refund-early-fraud-warnings) for the replay and receipt-monitoring windows and operator procedure.
+Issued refunds cannot be reversed by turning the policy off. Disabling stops new refunds and preserves receipt monitoring. An unresolved financial action blocks deletion of the integration and of its product; this prototype has no force-clear action. See the [Stripe runbook](../prototypes/stripe-billing.md#refund-early-fraud-warnings) for the replay and receipt-monitoring windows and operator procedure.

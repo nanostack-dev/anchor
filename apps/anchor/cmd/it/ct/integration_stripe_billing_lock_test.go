@@ -158,6 +158,31 @@ func TestStripeIntegrationDeletesResolvedRefunds(t *testing.T) {
 	}
 }
 
+func TestStripeProductDeleteRefusesUnresolvedRefunds(t *testing.T) {
+	t.Parallel()
+	tc := newWebhookSecretTestCtx(t)
+	instance := createStripeContractInstance(t, tc)
+	seedStripeRefundAudit(t, tc, instance.Id, "review_required")
+	response, err := tc.product.OwnerAuthenticatedClient().DeleteProductWithResponse(
+		t.Context(), tc.product.ProductID)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusConflict, response.StatusCode())
+	require.Contains(t, string(response.Body), "Resolve pending refunds before disconnecting Stripe")
+	retained := getIntegrationInstance(t, tc.product, instance.Id)
+	require.Equal(t, instance.Id, retained.Id)
+}
+
+func TestStripeProductDeleteAllowsResolvedRefunds(t *testing.T) {
+	t.Parallel()
+	tc := newWebhookSecretTestCtx(t)
+	instance := createStripeContractInstance(t, tc)
+	seedStripeRefundAudit(t, tc, instance.Id, "succeeded")
+	response, err := tc.product.OwnerAuthenticatedClient().DeleteProductWithResponse(
+		t.Context(), tc.product.ProductID)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, response.StatusCode())
+}
+
 func TestStripeIntegrationCanDisableWithUnresolvedRefunds(t *testing.T) {
 	t.Parallel()
 	tc := newWebhookSecretTestCtx(t)

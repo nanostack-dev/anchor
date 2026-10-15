@@ -103,6 +103,11 @@ type IntegrationService interface {
 		input integration.IngestWebhookInput,
 	) (integration.Event, error)
 
+	// RequireProductDeletable refuses deleting a product whose Stripe connection
+	// holds unresolved refunds, since the deletion cascades to the refund audit.
+	// Call it inside the product deletion transaction, before locking the product.
+	RequireProductDeletable(ctx context.Context, tenantID, productID string) error
+
 	// VerifyAndActivateInternal resumes a persisted CONFIGURING connection
 	// synchronously for trusted durable workers. Tenant-facing handlers must not
 	// expose this instance-ID-only entry point.
@@ -501,6 +506,35 @@ func (s *integrationService) findInstanceForMutation(
 	return found.Value(), nil
 }
 
+func (s *integrationService) RequireProductDeletable(ctx context.Context, tenantID, productID string) error {
+	if err := validate.ValidateStruct(struct {
+		TenantID  string `validate:"required,notblank"`
+		ProductID string `validate:"required,notblank"`
+	}{tenantID, productID}); err != nil {
+		return err
+	}
+	instances, err := s.instanceRepo.ListByProduct(ctx, tenantID, productID)
+	if err != nil {
+		return err
+	}
+	for _, listed := range instances {
+		if listed.ProviderType != integration.ProviderTypeStripe {
+			continue
+		}
+		instance, findErr := s.findInstanceForMutation(ctx, tenantID, productID, listed.ID)
+		if errors.Is(findErr, ErrIntegrationInstanceNotFound) {
+			continue
+		}
+		if findErr != nil {
+			return findErr
+		}
+		if refundsErr := s.requireStripeRefundsResolved(ctx, instance); refundsErr != nil {
+			return refundsErr
+		}
+	}
+	return nil
+}
+
 func (s *integrationService) requireStripeRefundsResolved(ctx context.Context, instance integration.Instance) error {
 	if instance.ProviderType != integration.ProviderTypeStripe {
 		return nil
@@ -524,7 +558,10 @@ func (s *integrationService) requireStripeRefundsResolved(ctx context.Context, i
 	var state billing.StoredState
 	if err = json.Unmarshal([]byte(row.Value().StateJSON), &state); err != nil || state.InstallationID == "" ||
 		state.AccountID == "" || state.ProductID != instance.ProductID || billing.HasUnresolvedRefunds(state) {
-		return fault.Conflict("STRIPE_REFUNDS_UNRESOLVED", "Resolve pending refunds before disconnecting Stripe.")
+		return fault.Conflict(
+			"STRIPE_REFUNDS_UNRESOLVED",
+			"Resolve pending refunds before disconnecting Stripe or deleting its product.",
+		)
 	}
 	return nil
 }

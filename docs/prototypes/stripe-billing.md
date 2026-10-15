@@ -181,8 +181,10 @@ arrive late and reimbursement can fail; the policy cannot guarantee avoiding
 dispute fees. See [the source research](../research/stripe-fraud-refund-events.md)
 for the distinction between early fraud warnings, inquiries, and formal disputes.
 Turning the policy off stops new refunds while issued refunds remain monitored.
-Disconnecting Stripe is refused while financial actions still need resolution;
-pausing the connection preserves their records for reconciliation after resuming.
+Disconnecting Stripe, or deleting its product, is refused while financial actions
+still need resolution; pausing the connection preserves their records for
+reconciliation after resuming. An action that was never submitted to Stripe and
+whose warning or payment changed before the retry is **Skipped**, not held for review.
 **Needs review** requires an operator to investigate the payment in Stripe. This
 prototype can recover a matching Stripe refund receipt, but does not expose a
 force-clear action for an uncertain refund. If no receipt can be recovered, keep

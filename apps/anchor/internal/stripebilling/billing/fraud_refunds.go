@@ -531,7 +531,7 @@ func (s *Service) retryFraudRefund(
 	}
 	if warning.ID != record.WarningID || warning.Livemode || !warning.Actionable || warning.Charge == nil ||
 		warning.Charge.ID != record.ChargeID {
-		return s.reviewFraudRefund(record, "warning_not_actionable")
+		return s.stopFraudRefund(record, "warning_not_actionable")
 	}
 	charge, err := s.stripe.Client().V1Charges.Retrieve(ctx, record.ChargeID, nil)
 	if err != nil {
@@ -542,7 +542,7 @@ func (s *Service) retryFraudRefund(
 		slices.ContainsFunc(refunds, func(refund *stripe.Refund) bool {
 			return refund.Status == stripe.RefundStatusPending || refund.Status == stripe.RefundStatusRequiresAction
 		}) {
-		return s.reviewFraudRefund(record, "charge_changed")
+		return s.stopFraudRefund(record, "charge_changed")
 	}
 	owned, err := s.ownedRefundCharge(ctx, charge, stored)
 	if err != nil {
@@ -550,7 +550,7 @@ func (s *Service) retryFraudRefund(
 	}
 	if owned == nil || owned.InvoiceID != record.InvoiceID || owned.SubscriptionID != record.SubscriptionID ||
 		owned.OrganizationID != record.OrganizationID || owned.CustomerID != record.CustomerID {
-		return s.reviewFraudRefund(record, "ownership_unverified")
+		return s.stopFraudRefund(record, "ownership_unverified")
 	}
 	return s.issueFraudRefund(ctx, record)
 }

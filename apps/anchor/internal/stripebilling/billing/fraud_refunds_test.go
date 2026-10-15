@@ -540,6 +540,41 @@ func TestFraudRefundFreshnessAfterCommittedIntentStopsBeforePost(t *testing.T) {
 	require.Zero(t, w.created)
 }
 
+func TestFraudRefundRetryOfUnsentIntentStopsWithoutReview(t *testing.T) {
+	t.Parallel()
+	w := newRefundWorld(t)
+	respond := w.stripe.respond
+	outage := true
+	w.stripe.respond = func(method, path string, params map[string]string, key string) (any, error) {
+		if path == "/v1/radar/early_fraud_warnings/issfr_expected" && outage {
+			stored, err := w.store.Snapshot()
+			if err != nil {
+				return nil, err
+			}
+			if _, exists := stored.FraudRefunds["ch_expected"]; exists {
+				outage = false
+				return nil, errors.New("temporary Stripe outage")
+			}
+		}
+		return respond(method, path, params, key)
+	}
+	w.send(t, "evt_warning", fraudWarningCreated, w.warning)
+	stored, err := w.store.Snapshot()
+	require.NoError(t, err)
+	require.Equal(t, FraudRefundProcessing, stored.FraudRefunds["ch_expected"].Status)
+	require.True(t, stored.FraudRefunds["ch_expected"].FirstAttemptAt.IsZero())
+	w.charge["disputed"] = true
+	w.retry(t)
+	state, err := w.service.State(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, FraudRefundSkipped, state.FraudRefunds[0].Status)
+	require.Equal(t, "charge_changed", state.FraudRefunds[0].Reason)
+	require.Zero(t, w.created)
+	stored, err = w.store.Snapshot()
+	require.NoError(t, err)
+	require.False(t, HasUnresolvedRefunds(stored))
+}
+
 type faultRefundStore struct {
 	StateStore
 	reject func(StoredState) bool
