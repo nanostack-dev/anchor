@@ -1,7 +1,10 @@
 import { StoryRouter } from "@/lib/storybook/story-router";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
-import { IntegrationDetailPage } from "./IntegrationDetailPage";
+import { expect, fn, userEvent, within } from "storybook/test";
+import {
+	type IntegrationAuditEntry,
+	IntegrationDetailPage,
+} from "./IntegrationDetailPage";
 const meta = {
 	title: "Integrations/Detail",
 	component: IntegrationDetailPage,
@@ -61,5 +64,102 @@ export const RecentActivity: Story = {
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		await expect(canvas.getByText("error")).toBeVisible();
+	},
+};
+
+const pageOfActivity: IntegrationAuditEntry[] = Array.from(
+	{ length: 50 },
+	(_, index) => ({
+		id: `entry-${index}`,
+		title: "CONFIG UPDATED",
+		description: `Integration configuration updated - status: ACTIVE | config_version: ${index + 2}`,
+		timestamp: new Date(Date.UTC(2026, 0, 1, 12, index)).toISOString(),
+		severity: "info",
+	}),
+);
+
+export const OlderActivityAvailable: Story = {
+	args: { auditEntries: pageOfActivity, onLoadMoreAudit: fn() },
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getAllByText("CONFIG UPDATED")).toHaveLength(50);
+		const loadOlder = canvas.getByRole("button", {
+			name: "Load older activity",
+		});
+		await expect(loadOlder).toBeEnabled();
+		await userEvent.click(loadOlder);
+		await expect(args.onLoadMoreAudit).toHaveBeenCalledOnce();
+	},
+};
+
+export const LoadingOlderActivity: Story = {
+	args: {
+		auditEntries: pageOfActivity.slice(0, 3),
+		onLoadMoreAudit: fn(),
+		auditIsLoadingMore: true,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			canvas.getByRole("button", { name: "Loading…" }),
+		).toBeDisabled();
+		await expect(
+			canvas.queryByRole("button", { name: "Load older activity" }),
+		).not.toBeInTheDocument();
+	},
+};
+
+export const AllActivityLoaded: Story = {
+	args: { auditEntries: pageOfActivity.slice(0, 1) },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("CONFIG UPDATED")).toBeVisible();
+		await expect(
+			canvas.queryByRole("button", { name: /older activity/ }),
+		).not.toBeInTheDocument();
+	},
+};
+
+const unbreakable = "x".repeat(180);
+
+export const WorstCase: Story = {
+	args: {
+		title: `Clerk Authentication for ${"a very long product name ".repeat(4)}`,
+		summary: [
+			{ label: "Provider", value: "Clerk" },
+			{ label: "Status", value: "ACTIVE" },
+			{ label: "Activity", value: 1_234_567 },
+			{ label: "Last updated", value: "January 1, 2026 12:00 PM" },
+		],
+		auditEntries: [
+			{
+				id: "unbreakable",
+				title: `WEBHOOK PROCESSING FAILED ${unbreakable}`,
+				description: `Webhook accepted and queued for processing - event_id: iev_${unbreakable} | external_event_id: msg_${unbreakable}`,
+				timestamp: "2026-01-02T12:00:00Z",
+				severity: "error",
+			},
+			{
+				id: "empty",
+				title: "",
+				description: "",
+				timestamp: "2026-01-01T12:00:00Z",
+			},
+		],
+		onLoadMoreAudit: fn(),
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const loadOlder = canvas.getByRole("button", {
+			name: "Load older activity",
+		});
+		await expect(loadOlder).toBeVisible();
+		const bounds = loadOlder.getBoundingClientRect();
+		await expect(bounds.right).toBeLessThanOrEqual(
+			document.documentElement.clientWidth,
+		);
+		await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+			document.documentElement.clientWidth,
+		);
 	},
 };

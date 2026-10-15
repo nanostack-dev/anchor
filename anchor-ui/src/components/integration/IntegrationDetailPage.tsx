@@ -106,7 +106,7 @@ export function IntegrationDetailPage({
 								{sortedAuditEntries.map((entry) => (
 									<Box
 										key={entry.id}
-										className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
+										className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 [overflow-wrap:anywhere] last:border-0 last:pb-0"
 									>
 										<Stack space="xs">
 											<Inline>
