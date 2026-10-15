@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_organization_memberships_organization_created_user;

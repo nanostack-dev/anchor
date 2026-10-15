@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_integration_audit_logs_instance_created_id;
