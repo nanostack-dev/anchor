@@ -174,8 +174,26 @@ test("Clerk audit activity loads older entries beyond the first fifty", async ({
 	});
 	await expect(updated).toHaveCount(50);
 	await expect(created).toHaveCount(0);
+	await expect(
+		page.getByText("Showing 50 of 52", { exact: true }),
+	).toBeVisible();
 	await loadOlder.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "audit-first-page");
+	const auditSearch = `**${world.productPath}/integrations/${instance.id}/audit-logs/search`;
+	await page.route(auditSearch, (route) =>
+		route.request().postDataJSON()?.pagination?.cursor
+			? route.abort("failed")
+			: route.continue(),
+	);
+	await loadOlder.click();
+	await expect(
+		page.getByText("Couldn’t load older activity. Try again.", {
+			exact: true,
+		}),
+	).toBeVisible();
+	await expect(updated).toHaveCount(50);
+	await captureReviewCheckpoint(page, testInfo, "audit-older-failed");
+	await page.unroute(auditSearch);
 	await loadOlder.click();
 	await expect(created).toBeVisible();
 	await expect(updated).toHaveCount(51);

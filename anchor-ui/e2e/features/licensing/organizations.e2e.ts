@@ -412,6 +412,22 @@ test("license changes can load history beyond the initial fifty records", async 
 		.getByRole("button", { name: "Load older changes", exact: true })
 		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "history-first-page");
+	const loadedChanges = await page.getByRole("listitem").count();
+	const historySearch = `**${licensePath(world, organization)}/history/search`;
+	await page.route(historySearch, (route) =>
+		route.request().postDataJSON()?.pagination?.cursor
+			? route.abort("failed")
+			: route.continue(),
+	);
+	await page
+		.getByRole("button", { name: "Load older changes", exact: true })
+		.click();
+	await expect(
+		page.getByText("Couldn’t load older changes. Try again.", { exact: true }),
+	).toBeVisible();
+	await expect(page.getByRole("listitem")).toHaveCount(loadedChanges);
+	await captureReviewCheckpoint(page, testInfo, "history-older-failed");
+	await page.unroute(historySearch);
 	await page
 		.getByRole("button", { name: "Load older changes", exact: true })
 		.click();
@@ -482,6 +498,13 @@ test("organization licenses name a tier listed after the first hundred templates
 	).toHaveValue("25");
 	await expect(page.getByText("Tier grants 10", { exact: true })).toBeVisible();
 	await captureReviewCheckpoint(page, testInfo, "license-values-last-tier");
+	await page
+		.getByRole("navigation", { name: "License sections", exact: true })
+		.getByRole("link", { name: "Changes", exact: true })
+		.click();
+	await expect(
+		page.getByRole("listitem").filter({ hasText: "Instantiated" }),
+	).toContainText(lastTier.name);
 });
 
 // Covers: ORGANIZATION_LICENSE_DETAIL

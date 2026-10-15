@@ -255,6 +255,7 @@ test("template search and status filters expose archived templates as read-only,
 	await expect(
 		page.getByRole("row").filter({ hasText: active.name }),
 	).toHaveCount(0);
+	await expect(page.getByText("1 total", { exact: true })).toBeVisible();
 	await page
 		.getByRole("link", { name: `View ${archived.name}`, exact: true })
 		.click();
