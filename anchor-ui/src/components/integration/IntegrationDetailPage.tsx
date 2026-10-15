@@ -12,6 +12,7 @@ import {
 	Badge,
 	type BadgeTone,
 } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Card,
 	CardContent,
@@ -43,6 +44,8 @@ interface IntegrationDetailPageProps {
 	auditIsLoading?: boolean;
 	auditErrorMessage?: string | null;
 	auditTitle?: string;
+	onLoadMoreAudit?: () => void;
+	auditIsLoadingMore?: boolean;
 }
 const auditTone: Record<
 	NonNullable<IntegrationAuditEntry["severity"]>,
@@ -58,6 +61,8 @@ export function IntegrationDetailPage({
 	auditIsLoading = false,
 	auditErrorMessage,
 	auditTitle = "Audit log",
+	onLoadMoreAudit,
+	auditIsLoadingMore = false,
 }: IntegrationDetailPageProps) {
 	const sortedAuditEntries = [...auditEntries].sort(
 		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -119,6 +124,16 @@ export function IntegrationDetailPage({
 										</Text>
 									</Box>
 								))}
+								{onLoadMoreAudit ? (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={onLoadMoreAudit}
+										disabled={auditIsLoadingMore}
+									>
+										{auditIsLoadingMore ? "Loading…" : "Load older activity"}
+									</Button>
+								) : null}
 							</Stack>
 						)}
 					</CardContent>

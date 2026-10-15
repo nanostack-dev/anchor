@@ -1,11 +1,10 @@
 import {
 	type OrganizationLicenseHistoryResponse,
-	getOrganizationLicenseHistory,
+	SortDirection,
+	searchOrganizationLicenseHistory,
 } from "@/client";
-import {
-	getOrganizationLicenseHistoryQueryKey,
-	listLicenseTemplatesOptions,
-} from "@/client/@tanstack/react-query.gen";
+import { searchOrganizationLicenseHistoryQueryKey } from "@/client/@tanstack/react-query.gen";
+import { allLicenseTemplatesOptions } from "@/hooks/useAllLicenseTemplates";
 import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -23,9 +22,7 @@ export function OrganizationLicenseHistory({
 	productId,
 	organizationId,
 }: OrganizationLicenseHistoryProps) {
-	const templatesQuery = useQuery(
-		listLicenseTemplatesOptions({ path: { product_id: productId } }),
-	);
+	const templatesQuery = useQuery(allLicenseTemplatesOptions(productId));
 	const templateName = useCallback(
 		(templateId: string) =>
 			templatesQuery.data?.items?.find((item) => item.id === templateId)
@@ -34,26 +31,27 @@ export function OrganizationLicenseHistory({
 	);
 
 	const historyQuery = useInfiniteQuery({
-		queryKey: getOrganizationLicenseHistoryQueryKey({
+		queryKey: searchOrganizationLicenseHistoryQueryKey({
 			path: { product_id: productId, organization_id: organizationId },
-			query: { limit: historyPageSize, offset: 0 },
+			body: {
+				pagination: { limit: historyPageSize },
+				sort_by: "changed_at",
+				sort_direction: SortDirection.DESC,
+			},
 		}),
-		initialPageParam: 0,
+		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (
 			lastPage: OrganizationLicenseHistoryResponse,
-			pages: OrganizationLicenseHistoryResponse[],
-		): number | undefined => {
-			const loaded = pages.reduce(
-				(count, page) => count + page.items.length,
-				0,
-			);
-			return loaded < lastPage.total ? loaded : undefined;
-		},
+		): string | undefined => lastPage.next_cursor,
 		queryFn: ({ pageParam, signal }) =>
 			unwrapQuery(
-				getOrganizationLicenseHistory({
+				searchOrganizationLicenseHistory({
 					path: { product_id: productId, organization_id: organizationId },
-					query: { limit: historyPageSize, offset: pageParam },
+					body: {
+						pagination: { limit: historyPageSize, cursor: pageParam },
+						sort_by: "changed_at",
+						sort_direction: SortDirection.DESC,
+					},
 					signal,
 				}),
 			),

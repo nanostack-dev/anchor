@@ -1,10 +1,11 @@
+import { SortDirection } from "@/client";
 import type {
 	EmailSendRecordResponse,
 	EmailSendStatus,
-	ListEmailSendsData,
 	Options,
+	SearchEmailSendsData,
 } from "@/client";
-import { listEmailSendsOptions } from "@/client/@tanstack/react-query.gen";
+import { searchEmailSendsOptions } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import { useProduct } from "@/context/product/ProductContext";
@@ -37,19 +38,25 @@ export function EmailSendsDatatable() {
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [statusFilter, setStatusFilter] = useState<string>("");
 
-	const queryOptions = useMemo((): Options<ListEmailSendsData> => {
+	const queryOptions = useMemo((): Options<SearchEmailSendsData> => {
 		return {
 			path: { product_id: productId },
-			query: {
-				limit: pagination.pageSize,
-				offset: pagination.pageIndex * pagination.pageSize,
-				status: statusFilter ? (statusFilter as EmailSendStatus) : undefined,
+			body: {
+				pagination: {
+					limit: pagination.pageSize,
+					offset: pagination.pageIndex * pagination.pageSize,
+				},
+				filter: statusFilter
+					? { statuses: [statusFilter as EmailSendStatus] }
+					: undefined,
+				sort_by: "created_at",
+				sort_direction: SortDirection.DESC,
 			},
 		};
 	}, [pagination, productId, statusFilter]);
 
 	const { data, isLoading, error, refetch } = useQuery({
-		...listEmailSendsOptions(queryOptions),
+		...searchEmailSendsOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct,
 	});
@@ -145,7 +152,7 @@ export function EmailSendsDatatable() {
 				onRetry={() => {
 					void refetch();
 				}}
-				total={data?.count ?? 0}
+				total={data?.total ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
 				sorting={sorting}

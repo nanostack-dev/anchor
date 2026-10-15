@@ -1,14 +1,14 @@
-import { deleteEmailTemplate } from "@/client";
+import { SortDirection, deleteEmailTemplate } from "@/client";
 import type {
 	ApiErrorResponse,
 	EmailTemplateResponse,
-	ListEmailTemplatesData,
 	Options,
+	SearchEmailTemplatesData,
 } from "@/client";
 import {
 	createEmailTemplateMutation,
 	deleteEmailTemplateMutation,
-	listEmailTemplatesOptions,
+	searchEmailTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
@@ -68,18 +68,22 @@ export function EmailTemplatesDatatable() {
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [createError, setCreateError] = useState<string | null>(null);
 
-	const queryOptions = useMemo((): Options<ListEmailTemplatesData> => {
+	const queryOptions = useMemo((): Options<SearchEmailTemplatesData> => {
 		return {
 			path: { product_id: productId },
-			query: {
-				limit: pagination.pageSize,
-				offset: pagination.pageIndex * pagination.pageSize,
+			body: {
+				pagination: {
+					limit: pagination.pageSize,
+					offset: pagination.pageIndex * pagination.pageSize,
+				},
+				sort_by: "created_at",
+				sort_direction: SortDirection.DESC,
 			},
 		};
 	}, [pagination, productId]);
 
 	const { data, isLoading, isFetching, error, refetch } = useQuery({
-		...listEmailTemplatesOptions(queryOptions),
+		...searchEmailTemplatesOptions(queryOptions),
 		placeholderData: keepPreviousData,
 		enabled: !!currentProduct,
 	});
@@ -93,7 +97,7 @@ export function EmailTemplatesDatatable() {
 					| { _id?: string; path?: { product_id?: string } }
 					| undefined;
 				return (
-					key?._id === "listEmailTemplates" &&
+					key?._id === "searchEmailTemplates" &&
 					key.path?.product_id === currentProduct.id
 				);
 			},
@@ -252,7 +256,7 @@ export function EmailTemplatesDatatable() {
 				onRetry={() => {
 					void refetch();
 				}}
-				total={data?.count ?? 0}
+				total={data?.total ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
 				sorting={sorting}

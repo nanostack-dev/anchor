@@ -1,11 +1,17 @@
-import { type LicenseTemplateResponse, LicenseTemplateStatus } from "@/client";
+import {
+	type LicenseTemplateResponse,
+	type LicenseTemplateSearchRequest,
+	LicenseTemplateStatus,
+	SortDirection,
+} from "@/client";
 import {
 	getLicenseSchemaOptions,
-	listLicenseTemplatesOptions,
+	searchLicenseTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
@@ -24,7 +30,7 @@ import {
 	PencilLineIcon as PenLine,
 	PlusIcon as Plus,
 } from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -44,10 +50,9 @@ interface LicenseTemplateDatatableProps {
 }
 
 /**
- * Lists a product's license templates. The list route returns every template
- * unpaginated (ordered by name — see its OpenAPI description), so paging,
- * search and the status filter all run client-side over that one fetch
- * rather than round-tripping the API on every keystroke.
+ * Lists a product's license templates through the template search: paging by
+ * offset for the table's page numbers, and the sort, the name search and the
+ * status filter all run on the server so the total stays the filter's own.
  */
 export function LicenseTemplateDatatable({
 	productId,
@@ -68,41 +73,34 @@ export function LicenseTemplateDatatable({
 	});
 	const schema = schemaQuery.data;
 
+	const searchBody = useMemo(
+		(): LicenseTemplateSearchRequest => ({
+			pagination: {
+				limit: pagination.pageSize,
+				offset: pagination.pageIndex * pagination.pageSize,
+			},
+			sort_by: mapSortingToApiField<LicenseTemplateSearchRequest["sort_by"]>(
+				sorting[0]?.id,
+				"name",
+			),
+			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
+			full_text_search: debouncedSearch || undefined,
+			filter:
+				statusFilter.length > 0
+					? { statuses: statusFilter as LicenseTemplateStatus[] }
+					: undefined,
+		}),
+		[pagination, sorting, debouncedSearch, statusFilter],
+	);
+
 	const templatesQuery = useQuery({
-		...listLicenseTemplatesOptions({ path: { product_id: productId } }),
+		...searchLicenseTemplatesOptions({
+			path: { product_id: productId },
+			body: searchBody,
+		}),
+		placeholderData: keepPreviousData,
 	});
-	const allItems = templatesQuery.data?.items ?? [];
-
-	const filtered = useMemo(() => {
-		let items = allItems;
-		if (statusFilter.length > 0) {
-			items = items.filter((t) => statusFilter.includes(t.status));
-		}
-		if (debouncedSearch) {
-			const q = debouncedSearch.toLowerCase();
-			items = items.filter(
-				(t) =>
-					t.name.toLowerCase().includes(q) ||
-					(t.description ?? "").toLowerCase().includes(q),
-			);
-		}
-		const sort = sorting[0];
-		if (sort) {
-			const { id, desc } = sort;
-			items = [...items].sort((a, b) => {
-				const av = String(a[id as keyof LicenseTemplateResponse] ?? "");
-				const bv = String(b[id as keyof LicenseTemplateResponse] ?? "");
-				const cmp = av.localeCompare(bv);
-				return desc ? -cmp : cmp;
-			});
-		}
-		return items;
-	}, [allItems, statusFilter, debouncedSearch, sorting]);
-
-	const pageItems = useMemo(() => {
-		const start = pagination.pageIndex * pagination.pageSize;
-		return filtered.slice(start, start + pagination.pageSize);
-	}, [filtered, pagination]);
+	const pageItems = templatesQuery.data?.items ?? [];
 
 	const columns = useMemo(
 		() => [
@@ -245,7 +243,7 @@ export function LicenseTemplateDatatable({
 				resourceName="license templates"
 				error={templatesQuery.error}
 				onRetry={() => void templatesQuery.refetch()}
-				total={filtered.length}
+				total={templatesQuery.data?.total ?? 0}
 				pagination={pagination}
 				onPaginationChange={setPagination}
 				sorting={sorting}

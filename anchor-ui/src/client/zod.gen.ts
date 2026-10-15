@@ -1567,6 +1567,7 @@ export const zLicenseTemplateSearchRequest = zSearchRequest.and(z.object({
     filter: z.optional(zLicenseTemplateFilter),
     sort_by: z.optional(z.enum([
         'name',
+        'status',
         'created_at',
         'updated_at'
     ]))

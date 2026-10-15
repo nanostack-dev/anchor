@@ -2330,7 +2330,7 @@ export type LicenseTemplateSearchRequest = SearchRequest & {
     /**
      * Field to sort by.
      */
-    sort_by?: 'name' | 'created_at' | 'updated_at';
+    sort_by?: 'name' | 'status' | 'created_at' | 'updated_at';
 };
 
 export type LicenseTemplateSearchResponse = PagedListResponse & {
