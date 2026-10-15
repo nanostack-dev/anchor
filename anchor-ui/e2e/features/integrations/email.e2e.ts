@@ -548,8 +548,10 @@ test("email lists paginate templates and delivered send records", async ({
 		.poll(
 			async () =>
 				(
-					await world.api.get<{ items: EmailSendRecordResponse[] }>(
-						`${world.productPath}/email/sends`,
+					await world.api.post<{ items: EmailSendRecordResponse[] }>(
+						`${world.productPath}/email/sends/search`,
+						{ pagination: { limit: 50 } },
+						200,
 					)
 				).items.filter((record) => record.status === "SENT").length,
 		)
@@ -644,8 +646,10 @@ test("email template list deletes one row and only the selected rows in bulk", a
 	await expect(
 		page.getByRole("row", { name: new RegExp(templates[3].name) }),
 	).toBeVisible();
-	const remaining = await world.api.get<{ items: EmailTemplateResponse[] }>(
-		`${world.productPath}/email/templates`,
+	const remaining = await world.api.post<{ items: EmailTemplateResponse[] }>(
+		`${world.productPath}/email/templates/search`,
+		{ pagination: { limit: 50 } },
+		200,
 	);
 	expect(remaining.items.map((template) => template.id)).toEqual([
 		templates[3].id,

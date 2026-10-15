@@ -19,6 +19,10 @@ leave `src/client/` stale.
 - Validate forms with the generated Zod schemas — never hand-write validation for a field that exists in the spec. The generated schemas mark every field optional (OpenAPI default), so layer `.superRefine()` on top for required-field rules and UX messages.
 - API fields are snake_case, form state is camelCase — map when surfacing field errors.
 
+## Searches and pagination
+
+Tables page by `offset` for their page numbers, and pass the `sort_by` and `sort_direction` they show. A list that loads more, an infinite query, or a loop that reads every page uses `pagination.cursor` and `next_cursor` instead, and ends on the first page without a `next_cursor`, never on `count` or `total`. A collection of a persisted resource has a `POST .../search`: do not add a `GET` list. See [cursor-paginated searches](../docs/technical/cursor-pagination.md).
+
 ## Forms & state
 
 - Local form state: `useState` + generated Zod schema. Server state: TanStack Query.

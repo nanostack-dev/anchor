@@ -128,8 +128,8 @@ const meta = {
 						total: 1,
 					});
 				if (path.endsWith("/licensing/schema")) return Response.json(SCHEMA);
-				if (path.endsWith("/licensing/templates"))
-					return Response.json({ items: [saved], count: 1 });
+				if (path.endsWith("/licensing/templates/search"))
+					return Response.json({ items: [saved], count: 1, total: 1 });
 				if (path.endsWith("/licensing/templates/ltm_test")) {
 					if (parameters.templateStatus !== 200)
 						return new Response(null, { status: parameters.templateStatus });
