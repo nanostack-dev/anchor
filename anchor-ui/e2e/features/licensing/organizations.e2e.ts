@@ -5,6 +5,7 @@ import {
 	UsageShape,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import {
 	adjustLicense,
 	createOrganization,
@@ -385,7 +386,7 @@ test("unsaved customer adjustments require a choice before tab navigation and le
 test("license changes can load history beyond the initial fifty records", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	await declareSchema(world);
 	const organization = await createOrganization(
 		world,
@@ -401,6 +402,13 @@ test("license changes can load history beyond the initial fifty records", async 
 	await expect(
 		page.getByText("Showing 50 of 52", { exact: true }),
 	).toBeVisible();
+	await expect(
+		page
+			.getByRole("listitem")
+			.filter({ hasText: "Instantiated" })
+			.getByText("Instantiated", { exact: true }),
+	).toHaveCount(0);
+	await captureReviewCheckpoint(page, testInfo, "history-first-page");
 	await page
 		.getByRole("button", { name: "Load older changes", exact: true })
 		.click();
@@ -413,6 +421,52 @@ test("license changes can load history beyond the initial fifty records", async 
 	await expect(
 		page.getByRole("button", { name: "Load older changes", exact: true }),
 	).toHaveCount(0);
+	await captureReviewCheckpoint(page, testInfo, "history-all-loaded");
+});
+
+// Covers: ORGANIZATION_LICENSE, ORGANIZATION_LICENSE_DETAIL
+test("organization licenses name a tier listed after the first hundred templates", async ({
+	page,
+	world,
+}, testInfo) => {
+	await declareSchema(world);
+	for (let index = 0; index < 100; index += 1)
+		await createTemplate(world, `aa-filler-${String(index).padStart(3, "0")}`);
+	const lastTier = await createTemplate(world, "zz-last-tier");
+	const matching = await createOrganization(world, lastTier, "matching");
+	const customized = await createOrganization(world, lastTier, "customized");
+	await adjustLicense(world, customized, { max_flows: 25 });
+	await openLicensing(page, world, "/organizations/license");
+	const matchingRow = page.getByRole("row").filter({ hasText: matching.name });
+	await expect(matchingRow).toContainText(lastTier.name);
+	await expect(matchingRow).toContainText("Matches");
+	await expect(
+		page.getByRole("row").filter({ hasText: customized.name }),
+	).toContainText(lastTier.name);
+	await captureReviewCheckpoint(page, testInfo, "organizations-last-tier");
+	await page.getByRole("button", { name: "Tier", exact: true }).click();
+	await page.getByRole("option", { name: lastTier.name, exact: true }).click();
+	await page.keyboard.press("Escape");
+	await expect(page.getByText("2 total", { exact: true })).toBeVisible();
+	await page
+		.getByRole("link", {
+			name: `Open ${customized.name}’s license`,
+			exact: true,
+		})
+		.click();
+	await expect(
+		page.getByRole("heading", { name: customized.name, exact: true }),
+	).toBeVisible();
+	await expect(page.getByText(lastTier.name, { exact: true })).toBeVisible();
+	await page
+		.getByRole("navigation", { name: "License sections", exact: true })
+		.getByRole("link", { name: "Values", exact: true })
+		.click();
+	await expect(
+		page.getByRole("spinbutton", { name: "max_flows", exact: true }),
+	).toHaveValue("25");
+	await expect(page.getByText("Tier grants 10", { exact: true })).toBeVisible();
+	await captureReviewCheckpoint(page, testInfo, "license-values-last-tier");
 });
 
 // Covers: ORGANIZATION_LICENSE_DETAIL

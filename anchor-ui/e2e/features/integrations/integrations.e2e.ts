@@ -1,5 +1,9 @@
-import type { ProductResponse } from "../../../src/client";
+import type {
+	IntegrationInstanceResponse,
+	ProductResponse,
+} from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { selectProduct } from "../../support/ui";
 import {
 	eventReceiver,
@@ -145,6 +149,38 @@ test("Clerk setup preserves its secret through pause, reset, resume and signed i
 		page.getByText("No Clerk instance configured", { exact: true }),
 	).toBeVisible();
 	await expect.poll(async () => (await integrations(world)).length).toBe(0);
+});
+
+// Covers: PRODUCT_INTEGRATION_CLERK
+test("Clerk audit activity loads older entries beyond the first fifty", async ({
+	page,
+	world,
+}, testInfo) => {
+	const instance = await world.api.post<IntegrationInstanceResponse>(
+		`${world.productPath}/integrations`,
+		{ provider_type: "CLERK" },
+	);
+	for (let index = 0; index < 51; index += 1)
+		await world.api.put(`${world.productPath}/integrations/${instance.id}`, {
+			is_enabled: true,
+		});
+	await selectProduct(page, world.product);
+	await page.goto(`/platform/${world.product.id}/integration-clerk`);
+	const updated = page.getByText("CONFIG UPDATED", { exact: true });
+	const created = page.getByText("INTEGRATION CREATED", { exact: true });
+	const loadOlder = page.getByRole("button", {
+		name: "Load older activity",
+		exact: true,
+	});
+	await expect(updated).toHaveCount(50);
+	await expect(created).toHaveCount(0);
+	await loadOlder.scrollIntoViewIfNeeded();
+	await captureReviewCheckpoint(page, testInfo, "audit-first-page");
+	await loadOlder.click();
+	await expect(created).toBeVisible();
+	await expect(updated).toHaveCount(51);
+	await expect(loadOlder).toHaveCount(0);
+	await captureReviewCheckpoint(page, testInfo, "audit-all-loaded");
 });
 
 // Covers: PRODUCT_INTEGRATION_SMTP
