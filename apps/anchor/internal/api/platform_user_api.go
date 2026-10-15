@@ -38,9 +38,10 @@ func (s *AnchorAPI) SearchPlatformUsers(
 	}
 
 	return SearchPlatformUsers200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapPlatformUserToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapPlatformUserToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -148,9 +149,7 @@ func mapToSearchPlatformUserInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }
 
 func mapPlatformUserToResponse(

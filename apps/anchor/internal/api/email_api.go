@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"anchor/internal/domain/email"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, int64, int64, error) {
@@ -63,14 +65,16 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
-	in := email.ListTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Limit:     limit,
-		Offset:    offset,
-	}
-
-	templates, err := s.EmailService.ListTemplates(ctx, in)
+	templates, err := legacyListPage(limit, offset,
+		func(pagination search.Pagination) (search.Result[email.Template], error) {
+			return s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
+				TenantID:  tenantID,
+				ProductID: request.ProductId,
+				Request: search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
+					WithSort(new(email.SortFieldTemplateCreatedAt), new(search.SortDescending)).
+					WithPagination(&pagination),
+			})
+		})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email templates")
 		return nil, err
@@ -78,6 +82,56 @@ func (s *AnchorAPI) ListEmailTemplates(
 
 	items := functional.Slice(templates.Items).Map(mapTemplateToResponse)
 	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: int(templates.Total)}), nil
+}
+
+func (s *AnchorAPI) SearchEmailTemplates(
+	ctx context.Context, request SearchEmailTemplatesRequestObject,
+) (SearchEmailTemplatesResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.Body
+	if body == nil {
+		body = &SearchEmailTemplatesJSONRequestBody{}
+	}
+
+	result, err := s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
+		TenantID:  tenantID,
+		ProductID: request.ProductId,
+		Request:   mapToSearchEmailTemplatesRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search email templates")
+		return nil, err
+	}
+
+	return SearchEmailTemplates200JSONResponse{
+		Items:      functional.Slice(result.Items).Map(mapTemplateToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}, nil
+}
+
+func mapToSearchEmailTemplatesRequest(
+	body *SearchEmailTemplatesJSONRequestBody,
+) search.Request[email.SearchTemplatesFilter, email.SortFieldTemplate] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f EmailTemplateFilter) email.SearchTemplatesFilter {
+			return email.SearchTemplatesFilter{IDs: f.Ids, Slugs: f.Slugs, IsActive: f.IsActive}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, email.SortFieldTemplateCreatedAt, search.SortDescending,
+	)
+
+	return search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
 }
 
 func (s *AnchorAPI) GetEmailTemplate(
@@ -368,16 +422,25 @@ func (s *AnchorAPI) ListEmailSends(
 		return nil, err
 	}
 
-	in := email.ListSendsInput{
-		TenantID:   tenantID,
-		ProductID:  request.ProductId,
-		TemplateID: request.Params.TemplateId,
-		Status:     request.Params.Status,
-		Limit:      limit,
-		Offset:     offset,
+	var filter email.SearchSendsFilter
+	if request.Params.TemplateId != nil {
+		filter.TemplateIDs = []string{*request.Params.TemplateId}
+	}
+	if request.Params.Status != nil {
+		filter.Statuses = []email.SendStatus{*request.Params.Status}
 	}
 
-	records, err := s.EmailService.ListSends(ctx, in)
+	records, err := legacyListPage(limit, offset,
+		func(pagination search.Pagination) (search.Result[email.SendRecord], error) {
+			return s.EmailService.SearchSends(ctx, email.SearchSendsInput{
+				TenantID:  tenantID,
+				ProductID: request.ProductId,
+				Request: search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
+					WithFilter(&filter).
+					WithSort(new(email.SortFieldSendCreatedAt), new(search.SortDescending)).
+					WithPagination(&pagination),
+			})
+		})
 	if err != nil {
 		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email sends")
 		return nil, err
@@ -385,4 +448,54 @@ func (s *AnchorAPI) ListEmailSends(
 
 	items := functional.Slice(records.Items).Map(mapSendRecordToResponse)
 	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: int(records.Total)}), nil
+}
+
+func (s *AnchorAPI) SearchEmailSends(
+	ctx context.Context, request SearchEmailSendsRequestObject,
+) (SearchEmailSendsResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.Body
+	if body == nil {
+		body = &SearchEmailSendsJSONRequestBody{}
+	}
+
+	result, err := s.EmailService.SearchSends(ctx, email.SearchSendsInput{
+		TenantID:  tenantID,
+		ProductID: request.ProductId,
+		Request:   mapToSearchEmailSendsRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search email sends")
+		return nil, err
+	}
+
+	return SearchEmailSends200JSONResponse{
+		Items:      functional.Slice(result.Items).Map(mapSendRecordToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}, nil
+}
+
+func mapToSearchEmailSendsRequest(
+	body *SearchEmailSendsJSONRequestBody,
+) search.Request[email.SearchSendsFilter, email.SortFieldSend] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f EmailSendFilter) email.SearchSendsFilter {
+			return email.SearchSendsFilter{TemplateIDs: f.TemplateIds, Statuses: f.Statuses}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, email.SortFieldSendCreatedAt, search.SortDescending,
+	)
+
+	return search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
 }

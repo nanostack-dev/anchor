@@ -9,7 +9,7 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **58 scenarios in 14 spec files**.
+The managed app suite declares **60 scenarios in 14 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
@@ -19,9 +19,9 @@ The managed app suite declares **58 scenarios in 14 spec files**.
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
-| [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 4 |
+| [integrations/integrations.e2e.ts](../features/integrations/integrations.e2e.ts) | 5 |
 | [licensing/migrations.e2e.ts](../features/licensing/migrations.e2e.ts) | 3 |
-| [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 6 |
+| [licensing/organizations.e2e.ts](../features/licensing/organizations.e2e.ts) | 7 |
 | [licensing/schema.e2e.ts](../features/licensing/schema.e2e.ts) | 4 |
 | [licensing/templates.e2e.ts](../features/licensing/templates.e2e.ts) | 4 |
 | [platform/administration.e2e.ts](../features/platform/administration.e2e.ts) | 3 |
@@ -113,10 +113,10 @@ Specs: [schema](../features/licensing/schema.e2e.ts),
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
 | --- | --- | --- | --- |
 | `PRODUCT_LICENSE_SCHEMA` — `/products/licensing/schema` | Missing-schema guidance; visual/text create/edit/cancel; String, Number, Boolean, Enum and both Limit usage shapes; rules, conversion, remove field, diagnostics and required/duplicate/range/shape validation. | Schema scenarios create through the UI; other license scenarios declare via API. | schema |
-| `PRODUCT_LICENSE_TEMPLATES` — `/products/licensing/templates` | Missing-schema guidance, create/detail links, search, Status facet, name sort, pagination/page size and archived read-only rows. | API tiers prepare list/archive cases. No archive/delete UI is claimed. | schema, templates |
+| `PRODUCT_LICENSE_TEMPLATES` — `/products/licensing/templates` | Missing-schema guidance, create/detail links, server search by name and description (mixed case, `%` matched literally), server total, Status facet, name sort, pagination/page size and archived read-only rows. | API tiers prepare list/archive cases. No archive/delete UI is claimed. | schema, templates |
 | `PRODUCT_LICENSE_TEMPLATE_NEW` — `/products/licensing/templates/new` | Required name/all schema values, out-of-range rejection and create with every field type. | API schema prerequisite. | templates |
 | `PRODUCT_LICENSE_TEMPLATE_DETAIL` — `/products/licensing/templates/$templateId` | View/edit/cancel/save/reload, archived direct edit denied, missing-template recovery and followed value propagation preserving customer adjustments. | API organizations/adjustments prepare propagation; archival itself is API setup. | templates |
-| `ORGANIZATION_LICENSE` — `/organizations/license` | Search, Tier facet, matched/custom/unlicensed states, Next/Previous pagination, selected/current-page/all-query selection, migration preview, preserve/discard adjustments and changed/unchanged/failed results. | API organizations, tiers and adjustments; deleting one reviewed customer via API triggers partial failure. | schema, organizations, migrations |
+| `ORGANIZATION_LICENSE` — `/organizations/license` | Search, Tier facet, matched/custom/unlicensed states, tier names and facet options for a template beyond the first hundred, Next/Previous pagination, selected/current-page/all-query selection, migration preview, preserve/discard adjustments and changed/unchanged/failed results. | API organizations, tiers and adjustments; deleting one reviewed customer via API triggers partial failure. | schema, organizations, migrations |
 | `ORGANIZATION_LICENSE_DETAIL` — `/organizations/license/$organizationId` | Redirect to Usage, section links, unlicensed/missing states and return link. | API instantiated or unlicensed organization; detail actions appear in the children below. | organizations, templates, migrations |
 
 The detail route registers these child pages outside `ROUTE_PATHS`:
@@ -124,8 +124,8 @@ The detail route registers these child pages outside `ROUTE_PATHS`:
 | Child path | Browser actions asserted | API prerequisite or boundary |
 | --- | --- | --- |
 | `/organizations/license/$organizationId/usage` | Gauge/windowed values; within/at/exceeded/never states; limit selection and field query URL/reload; empty history; 24h/7d/30d/90d requests and pressed range; custom/no-limit states. | Usage is reported through the real API. Browser history/chart controls read it; the UI does not report usage. |
-| `/organizations/license/$organizationId/values` | Omission and real server rule validation/error recovery, discard, minimal-diff adjustment, persisted custom values, tier comparison, unsaved navigation Stay/Discard choice and reverted-value navigation. | API schema/tier/license; some adjusted values prepare propagation/migration cases. |
-| `/organizations/license/$organizationId/changes` | Instantiation, customer adjustment, followed update and migration entries; old/new tier display; load beyond fifty records. | API adjustments generate the long history; reading/loading history remains a browser action. |
+| `/organizations/license/$organizationId/values` | Omission and real server rule validation/error recovery, discard, minimal-diff adjustment, persisted custom values, tier comparison (including a tier beyond the first hundred templates), unsaved navigation Stay/Discard choice and reverted-value navigation. | API schema/tier/license; some adjusted values prepare propagation/migration cases. |
+| `/organizations/license/$organizationId/changes` | Instantiation, customer adjustment, followed update and migration entries; old/new tier display; load beyond fifty records by `next_cursor`, a failed older page keeping the loaded entries, and the name of a tier beyond the first hundred templates. | API adjustments generate the long history; reading/loading history remains a browser action. |
 
 ## Provider integrations and events
 
@@ -136,7 +136,7 @@ Spec: [integrations](../features/integrations/integrations.e2e.ts).
 | `PLATFORM_INTEGRATIONS` — `/platform/integrations` | Legacy redirect to selected product integrations. | Selected API product; no separate global provider configuration. | integrations |
 | `INTEGRATION_CLERK` — `/platform/integration-clerk` | Legacy redirect to selected product Clerk setup. | Selected API product. | integrations |
 | `PRODUCT_INTEGRATIONS` — `/platform/$productId/integrations` | Redirect destination renders SMTP provider overview. | Provider actions are exercised on their dedicated routes; card navigation is not individually asserted. | integrations |
-| `PRODUCT_INTEGRATION_CLERK` — `/platform/$productId/integration-clerk` | Create/configure webhook secret, reset draft, pause/reload/resume, ingested user/activity visible and instance delete. | API posts invalid and correctly signed Clerk webhooks; real local ingestion is asserted. Live vendor API reconciliation is excluded. | integrations |
+| `PRODUCT_INTEGRATION_CLERK` — `/platform/$productId/integration-clerk` | Create/configure webhook secret, reset draft, pause/reload/resume, ingested user/activity visible, Load older activity beyond the first fifty audit entries (a failed older page keeps the loaded entries and retries) and instance delete. | API posts invalid and correctly signed Clerk webhooks; real local ingestion is asserted. API configuration updates generate the long audit log. Live vendor API reconciliation is excluded. | integrations |
 | `PRODUCT_INTEGRATION_SMTP` — `/platform/$productId/integration-smtp` | Required host, local SMTP create/connect, metadata update/reload, blank password preservation, pause/resume and delete cancel/confirm. | Owned Mailpit SMTP; local PLAIN/NONE configuration. External delivery/TLS vendors are excluded. | integrations |
 | `PRODUCT_EVENTS` — `/products/events` | Categories/filter/no-results, checkbox selection, endpoint save/discard/reload, signing secret shown once and endpoint clear. | API creates an organization; the real queue delivers a signed webhook to an owned loopback receiver, whose body/signature are verified. | integrations |
 
@@ -148,7 +148,7 @@ Spec: [email](../features/integrations/email.e2e.ts).
 | --- | --- | --- | --- |
 | `EMAIL_TEMPLATES` — `/products/email/templates` | Empty list, New Template navigation, page size/Next/Previous pagination, single/bulk deletion leaving the unselected template. | API templates prepare pagination/deletion cases; builder lifecycle begins with UI creation. | email |
 | `EMAIL_TEMPLATE_BUILDER` — `/products/email/templates/$templateId` | Name/subject/Monaco HTML autosave and Copy HTML; inferred STRING variable/required flag; NUMBER/BOOL/OBJECT/LIST schema editing, nested object/list fields and field/variable removal; form/raw examples, list rows, remove/save/reload; delayed initial Examples response blocks creation/save until saved values load, then preserves saved and new examples together; rendered iframe/subject, manual Refresh Preview; publish/reload; Send Test. All editor assets must stay on app origin. | API configures SMTP, prepares the independent typed-variable template and checks persisted drafts/examples. Mailpit receives the real addressed/rendered message; rendered preview verifies number/boolean/nested-value coercion. | email |
-| `EMAIL_SENDS` — `/products/email/sends` | Recipient/subject/SENT record, Failed status no-results, Clear all recovery and page size/Next/Previous pagination. | UI test-send creates a real record; API sends prepare the smallest eleven-record pagination boundary through real local SMTP. Mailpit independently confirms delivery in the send journey. Read-only delivery history. | email |
+| `EMAIL_SENDS` — `/products/email/sends` | Recipient/subject/SENT record, Sent/Failed status filters sent to the search, Failed no-results, Clear all recovery and page size/Next/Previous pagination with the server total. | UI test-send creates a real record; API sends prepare the smallest eleven-record pagination boundary through real local SMTP. Mailpit independently confirms delivery in the send journey. Read-only delivery history. | email |
 
 ## Remaining behavior boundaries
 

@@ -32,13 +32,17 @@ export type ApiErrorResponse = {
 
 export type PagedListResponse = {
     /**
-     * Total number of matching items.
+     * Number of items matching the filter, independent of the cursor.
      */
     total: number;
     /**
      * The number of items returned in this response.
      */
     count: number;
+    /**
+     * Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+     */
+    next_cursor?: string;
 };
 
 /**
@@ -50,23 +54,27 @@ export type SearchRequest = {
      * Full-text search term to match against searchable fields.
      */
     full_text_search?: string;
-    /**
-     * Sorting direction
-     */
     sort_direction?: SortDirection;
 };
 
 export type PaginationRequest = {
     /**
-     * Maximum number of items per page.
+     * Maximum number of items per page. A request that names no limit, including one that sends only a cursor, gets 10.
      */
     limit?: number;
     /**
-     * Number of items to skip.
+     * Number of items to skip. Use for page-number navigation only; iterate with `cursor`.
      */
     offset?: number;
+    /**
+     * Opaque cursor from the previous page's `next_cursor`. Continues the search after the last item of that page, with the same filter and sort. Omit to start at the first item. Cannot be combined with a non-zero `offset`. An invalid cursor answers 400 INVALID_CURSOR.
+     */
+    cursor?: string;
 };
 
+/**
+ * Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+ */
 export enum SortDirection {
     ASC = 'ASC',
     DESC = 'DESC'
@@ -1108,13 +1116,39 @@ export type UserOrganizationListResponse = {
     items: Array<UserOrganizationResponse>;
 };
 
+/**
+ * Narrows the organizations a product user belongs to.
+ */
+export type UserOrganizationFilter = {
+    /**
+     * Keep only memberships in one of these organizations.
+     */
+    organization_ids?: Array<Ksuid>;
+    /**
+     * Keep only memberships holding one of these roles.
+     */
+    role_ids?: Array<Ksuid>;
+};
+
+export type UserOrganizationSearchRequest = SearchRequest & {
+    filter?: UserOrganizationFilter;
+    /**
+     * Field to sort by. `name` is the organization name.
+     */
+    sort_by?: 'joined_at' | 'name';
+};
+
+export type UserOrganizationSearchResponse = PagedListResponse & {
+    items: Array<UserOrganizationResponse>;
+};
+
 export type ProductPermissionSearchRequest = SearchRequest & {
     /**
      * Filter criteria for app permissions
      */
     filter?: ProductPermissionFilter;
     /**
-     * Field to sort by
+     * Field to sort by. `id` and `resource` order by the permission name, whose `resource:action` form groups permissions by resource.
      */
     sort_by?: 'id' | 'name' | 'resource' | 'created_at';
 };
@@ -1891,6 +1925,40 @@ export type IntegrationAuditLogListResponse = {
     count: number;
 };
 
+/**
+ * Narrows the audit log entries of one integration instance.
+ */
+export type IntegrationAuditLogFilter = {
+    /**
+     * Keep only entries with one of these action codes.
+     */
+    actions?: Array<string>;
+    /**
+     * Keep only entries with one of these severities.
+     */
+    severities?: Array<IntegrationAuditLogSeverity>;
+    /**
+     * Keep only entries recorded at or after this instant.
+     */
+    created_after?: string;
+    /**
+     * Keep only entries recorded before this instant.
+     */
+    created_before?: string;
+};
+
+export type IntegrationAuditLogSearchRequest = SearchRequest & {
+    filter?: IntegrationAuditLogFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'created_at' | 'action' | 'severity';
+};
+
+export type IntegrationAuditLogSearchResponse = PagedListResponse & {
+    items: Array<IntegrationAuditLogEntryResponse>;
+};
+
 export enum EmailVariableType {
     STRING = 'STRING',
     NUMBER = 'NUMBER',
@@ -1986,6 +2054,33 @@ export type EmailTemplateListResponse = {
     count: number;
 };
 
+/**
+ * Narrows a search over a product's email templates.
+ */
+export type EmailTemplateFilter = {
+    ids?: Array<Ksuid>;
+    /**
+     * Keep only templates with one of these slugs.
+     */
+    slugs?: Array<string>;
+    /**
+     * `true` keeps only active templates, `false` only inactive ones. Omit for both.
+     */
+    is_active?: boolean;
+};
+
+export type EmailTemplateSearchRequest = SearchRequest & {
+    filter?: EmailTemplateFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'created_at' | 'updated_at' | 'name' | 'slug';
+};
+
+export type EmailTemplateSearchResponse = PagedListResponse & {
+    items: Array<EmailTemplateResponse>;
+};
+
 export type TemplateExample = {
     /**
      * Client-generated UUID for this example set
@@ -2062,6 +2157,32 @@ export type EmailSendRecordResponse = {
 export type EmailSendRecordListResponse = {
     items: Array<EmailSendRecordResponse>;
     count: number;
+};
+
+/**
+ * Narrows a search over a product's email send records.
+ */
+export type EmailSendFilter = {
+    /**
+     * Keep only sends rendered from one of these templates.
+     */
+    template_ids?: Array<Ksuid>;
+    /**
+     * Keep only sends in one of these statuses.
+     */
+    statuses?: Array<EmailSendStatus>;
+};
+
+export type EmailSendSearchRequest = SearchRequest & {
+    filter?: EmailSendFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'created_at' | 'status';
+};
+
+export type EmailSendSearchResponse = PagedListResponse & {
+    items: Array<EmailSendRecordResponse>;
 };
 
 export enum LicenseFieldType {
@@ -2192,6 +2313,28 @@ export type LicenseTemplateResponse = {
 export type LicenseTemplateListResponse = {
     items: Array<LicenseTemplateResponse>;
     count: number;
+};
+
+/**
+ * Narrows a search over a product's license templates.
+ */
+export type LicenseTemplateFilter = {
+    /**
+     * Keep only templates with one of these statuses. Omit for every template the product has ever offered.
+     */
+    statuses?: Array<LicenseTemplateStatus>;
+};
+
+export type LicenseTemplateSearchRequest = SearchRequest & {
+    filter?: LicenseTemplateFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'name' | 'status' | 'created_at' | 'updated_at';
+};
+
+export type LicenseTemplateSearchResponse = PagedListResponse & {
+    items: Array<LicenseTemplateResponse>;
 };
 
 export type OrganizationLicenseInstantiateRequest = {
@@ -2460,7 +2603,7 @@ export type OrganizationLicenseFilter = {
 };
 
 /**
- * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+ * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
  */
 export enum OrganizationLicenseSortField {
     ORGANIZATION_NAME = 'organization_name',
@@ -2493,6 +2636,32 @@ export type OrganizationLicenseHistoryResponse = PagedListResponse & {
      * Newest first.
      */
     items: Array<OrganizationLicenseChangeResponse>;
+};
+
+/**
+ * Narrows the history of one organization's license.
+ */
+export type OrganizationLicenseHistoryFilter = {
+    /**
+     * Keep only entries of one of these types.
+     */
+    types?: Array<LicenseChangeType>;
+    /**
+     * Keep only entries made at or after this instant.
+     */
+    changed_after?: string;
+    /**
+     * Keep only entries made before this instant.
+     */
+    changed_before?: string;
+};
+
+export type OrganizationLicenseHistorySearchRequest = SearchRequest & {
+    filter?: OrganizationLicenseHistoryFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'changed_at';
 };
 
 /**
@@ -3347,6 +3516,52 @@ export type ListIntegrationAuditLogsResponses = {
 };
 
 export type ListIntegrationAuditLogsResponse = ListIntegrationAuditLogsResponses[keyof ListIntegrationAuditLogsResponses];
+
+export type SearchIntegrationAuditLogsData = {
+    body: IntegrationAuditLogSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the integration instance.
+         */
+        integration_instance_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search';
+};
+
+export type SearchIntegrationAuditLogsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchIntegrationAuditLogsError = SearchIntegrationAuditLogsErrors[keyof SearchIntegrationAuditLogsErrors];
+
+export type SearchIntegrationAuditLogsResponses = {
+    /**
+     * A page of audit log entries for the integration instance.
+     */
+    200: IntegrationAuditLogSearchResponse;
+};
+
+export type SearchIntegrationAuditLogsResponse = SearchIntegrationAuditLogsResponses[keyof SearchIntegrationAuditLogsResponses];
 
 export type IngestWebhookData = {
     /**
@@ -4811,6 +5026,57 @@ export type ListUserOrganizationsResponses = {
 };
 
 export type ListUserOrganizationsResponse = ListUserOrganizationsResponses[keyof ListUserOrganizationsResponses];
+
+export type SearchUserOrganizationsData = {
+    body: UserOrganizationSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the product Product User.
+         */
+        product_user_id: Ksuid;
+    };
+    query?: {
+        /**
+         * Comma-separated list of additional fields to include.
+         */
+        include?: Array<UserOrganizationInclude>;
+    };
+    url: '/v1/products/{product_id}/product-users/{product_user_id}/organizations/search';
+};
+
+export type SearchUserOrganizationsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchUserOrganizationsError = SearchUserOrganizationsErrors[keyof SearchUserOrganizationsErrors];
+
+export type SearchUserOrganizationsResponses = {
+    /**
+     * A page of the organizations the user belongs to.
+     */
+    200: UserOrganizationSearchResponse;
+};
+
+export type SearchUserOrganizationsResponse = SearchUserOrganizationsResponses[keyof SearchUserOrganizationsResponses];
 
 export type GetUserOrganizationData = {
     body?: never;
@@ -6401,6 +6667,52 @@ export type CreateEmailTemplateResponses = {
 
 export type CreateEmailTemplateResponse = CreateEmailTemplateResponses[keyof CreateEmailTemplateResponses];
 
+export type SearchEmailTemplatesData = {
+    body: EmailTemplateSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/email/templates/search';
+};
+
+export type SearchEmailTemplatesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type SearchEmailTemplatesError = SearchEmailTemplatesErrors[keyof SearchEmailTemplatesErrors];
+
+export type SearchEmailTemplatesResponses = {
+    /**
+     * Success
+     */
+    200: EmailTemplateSearchResponse;
+};
+
+export type SearchEmailTemplatesResponse = SearchEmailTemplatesResponses[keyof SearchEmailTemplatesResponses];
+
 export type DeleteEmailTemplateData = {
     body?: never;
     path: {
@@ -6960,6 +7272,52 @@ export type SendEmailResponses = {
 
 export type SendEmailResponse = SendEmailResponses[keyof SendEmailResponses];
 
+export type SearchEmailSendsData = {
+    body: EmailSendSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/email/sends/search';
+};
+
+export type SearchEmailSendsErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type SearchEmailSendsError = SearchEmailSendsErrors[keyof SearchEmailSendsErrors];
+
+export type SearchEmailSendsResponses = {
+    /**
+     * Success
+     */
+    200: EmailSendSearchResponse;
+};
+
+export type SearchEmailSendsResponse = SearchEmailSendsResponses[keyof SearchEmailSendsResponses];
+
 export type DeleteLicenseSchemaData = {
     body?: never;
     path: {
@@ -7232,6 +7590,48 @@ export type CreateLicenseTemplateResponses = {
 };
 
 export type CreateLicenseTemplateResponse = CreateLicenseTemplateResponses[keyof CreateLicenseTemplateResponses];
+
+export type SearchLicenseTemplatesData = {
+    body: LicenseTemplateSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/licensing/templates/search';
+};
+
+export type SearchLicenseTemplatesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchLicenseTemplatesError = SearchLicenseTemplatesErrors[keyof SearchLicenseTemplatesErrors];
+
+export type SearchLicenseTemplatesResponses = {
+    /**
+     * Success
+     */
+    200: LicenseTemplateSearchResponse;
+};
+
+export type SearchLicenseTemplatesResponse = SearchLicenseTemplatesResponses[keyof SearchLicenseTemplatesResponses];
 
 export type DeleteLicenseTemplateData = {
     body?: never;
@@ -7773,6 +8173,56 @@ export type GetOrganizationLicenseHistoryResponses = {
 };
 
 export type GetOrganizationLicenseHistoryResponse = GetOrganizationLicenseHistoryResponses[keyof GetOrganizationLicenseHistoryResponses];
+
+export type SearchOrganizationLicenseHistoryData = {
+    body: OrganizationLicenseHistorySearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/license/history/search';
+};
+
+export type SearchOrganizationLicenseHistoryErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type SearchOrganizationLicenseHistoryError = SearchOrganizationLicenseHistoryErrors[keyof SearchOrganizationLicenseHistoryErrors];
+
+export type SearchOrganizationLicenseHistoryResponses = {
+    /**
+     * Success
+     */
+    200: OrganizationLicenseHistoryResponse;
+};
+
+export type SearchOrganizationLicenseHistoryResponse = SearchOrganizationLicenseHistoryResponses[keyof SearchOrganizationLicenseHistoryResponses];
 
 export type ReportOrganizationUsageData = {
     body: UsageReportRequest;

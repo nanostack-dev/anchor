@@ -49,7 +49,7 @@ func (s *platformUserService) SearchPlatformUsers(
 ) (search.Result[platform.User], error) {
 	logger := s.logger.With().Str("operation", "SearchPlatformUsers").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[platform.User]{}, err
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)

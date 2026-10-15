@@ -3,7 +3,7 @@ import {
 	type OrganizationLicenseChangeResponse,
 } from "@/client";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 
 import { OrganizationLicenseHistoryView } from "./OrganizationLicenseHistoryView";
 
@@ -232,5 +232,26 @@ export const AGrantNamesOnlyWhereItLanded: Story = {
 		await expect(canvas.getByText("Licensed for the first time")).toBeVisible();
 		await expect(canvas.queryByText("Moved from")).toBeNull();
 		await expect(canvas.getByText("Pro")).toBeVisible();
+	},
+};
+
+export const OlderChangesFailedToLoad: Story = {
+	args: {
+		items: [raisedFlows, instantiated],
+		total: 3,
+		onLoadMore: fn(),
+		loadMoreErrorMessage: "Couldn’t load older changes. Try again.",
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByText("1 field customized")).toBeVisible();
+		await expect(canvas.getByRole("alert")).toHaveTextContent(
+			"Couldn’t load older changes. Try again.",
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Load older changes" }),
+		);
+		await expect(args.onLoadMore).toHaveBeenCalledOnce();
 	},
 };

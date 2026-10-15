@@ -3,6 +3,8 @@ package orgapikey
 import (
 	"time"
 
+	"anchor/internal/searchx"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
@@ -51,6 +53,17 @@ type SearchOrganizationAPIKeysInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 	Request        search.Request[SearchOrganizationAPIKeyFilter, SortFieldOrganizationAPIKey]
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchOrganizationAPIKeysInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldOrganizationAPIKeyID,
+		SortFieldOrganizationAPIKeyCreatedAt,
+		SortFieldOrganizationAPIKeyUpdatedAt,
+		SortFieldOrganizationAPIKeyName,
+		SortFieldOrganizationAPIKeyStatus,
+		SortFieldOrganizationAPIKeyLastUsed)
 }
 
 type SearchOrganizationAPIKeyFilter struct {

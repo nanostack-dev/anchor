@@ -63,7 +63,7 @@ export function LicenseTemplateForm({
 		void queryClient.invalidateQueries({
 			predicate: (query) =>
 				(query.queryKey[0] as { _id?: string } | undefined)?._id ===
-				"listLicenseTemplates",
+				"searchLicenseTemplates",
 		});
 		toast.add({
 			type: "success",

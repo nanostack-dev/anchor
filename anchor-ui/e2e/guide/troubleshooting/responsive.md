@@ -55,3 +55,27 @@ UI content before diagnosing a desktop-context fallback from video metadata.
 Inspect the actual file with `ffprobe`; retain its native speed when converting
 to MP4. [Anchor feature review](../../../../.claude/skills/anchor-feature-review/SKILL.md)
 binds the shared recording, playback and attachment procedure to this setup.
+
+## Table search collapsed beside a wide toolbar action
+
+The cursor-search review at mobile (393 px) and tablet (768 px) widths showed
+the Organization Licenses search field reduced to its first two or three
+placeholder letters. Its assertions still passed. The `AnchorDataTable` search
+wrapper used `flex-1`, a zero flex basis, so it never forced **Move all
+matching** onto the next line of the wrapping toolbar and shrank instead.
+
+The wrapper now uses a 12rem flex basis with `min-w-0` and `max-w-sm`: it grows
+to fill its line, and a wide sibling action wraps instead of collapsing it. The
+scenario "organization licenses name a tier listed after the first hundred
+templates" polls the search field's bounding box (at least 160 px) on every
+review profile. Verify with:
+
+```sh
+pnpm test:e2e:review e2e/features/licensing/organizations.e2e.ts --grep 'first hundred templates'
+```
+
+The independent review of the same change found that the active-filter row
+beside it did not wrap: at 393 px a long tier chip, its remove control and
+**Clear all** were clipped by the card. That row and each faceted filter's own trigger-and-chips group now wrap
+with `min-w-0`; the scenario checks that the tier chip's remove control ends
+inside the viewport.

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_product_users_product_created_id;

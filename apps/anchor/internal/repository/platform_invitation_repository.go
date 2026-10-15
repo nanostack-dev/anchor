@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/mapper"
@@ -91,17 +93,32 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 			table.PlatformInvitations.Email.LIKE(postgres.String("%" + *input.FullTextSearch + "%")),
 		)
 	}
+	order := transactor.Keys(
+		input.Sort,
+		map[invitation.SortFieldPlatformInvitation]transactor.Key[model.PlatformInvitations]{
+			invitation.SortFieldPlatformInvitationCreatedAt: transactor.TimeKey(
+				table.PlatformInvitations.CreatedAt,
+				func(row model.PlatformInvitations) time.Time { return row.CreatedAt },
+			),
+			invitation.SortFieldPlatformInvitationUpdatedAt: transactor.TimeKey(
+				table.PlatformInvitations.UpdatedAt,
+				func(row model.PlatformInvitations) time.Time { return row.UpdatedAt },
+			),
+			invitation.SortFieldPlatformInvitationEmail: transactor.StringKey(
+				table.PlatformInvitations.Email,
+				func(row model.PlatformInvitations) string { return row.Email },
+			),
+		},
+		transactor.StringKey(
+			table.PlatformInvitations.ID,
+			func(row model.PlatformInvitations) string { return row.ID },
+		),
+	)
+
 	return transactor.Page(r.db, r.mapper.ToDomain, table.PlatformInvitations.AllColumns).
 		From(table.PlatformInvitations).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[invitation.SortFieldPlatformInvitation]postgres.Column{
-				invitation.SortFieldPlatformInvitationCreatedAt: table.PlatformInvitations.CreatedAt,
-				invitation.SortFieldPlatformInvitationUpdatedAt: table.PlatformInvitations.UpdatedAt,
-				invitation.SortFieldPlatformInvitationEmail:     table.PlatformInvitations.Email,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

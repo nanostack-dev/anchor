@@ -7,6 +7,7 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
+	"anchor/internal/searchx"
 
 	"anchor/internal/repository"
 
@@ -30,6 +31,9 @@ type ProductUserService interface {
 	ListUserOrganizations(
 		ctx context.Context, input user.ListUserOrganizationsInput,
 	) ([]user.OrganizationMembership, error)
+	SearchUserOrganizations(
+		ctx context.Context, input user.SearchUserOrganizationsInput,
+	) (search.Result[user.OrganizationMembership], error)
 	GetUserOrganization(
 		ctx context.Context, input user.GetUserOrganizationInput,
 	) (user.OrganizationMembership, error)
@@ -206,7 +210,7 @@ func (s *productUserService) Search(
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[user.ProductUser]{}, err
 	}
 
@@ -289,6 +293,47 @@ func (s *productUserService) ListUserOrganizations(
 	}
 
 	return memberships, nil
+}
+
+func (s *productUserService) SearchUserOrganizations(
+	ctx context.Context, input user.SearchUserOrganizationsInput,
+) (search.Result[user.OrganizationMembership], error) {
+	logger := s.logger.With().Str("operation", "SearchUserOrganizations").Logger()
+
+	if err := input.Validate(); err != nil {
+		return search.Result[user.OrganizationMembership]{}, err
+	}
+
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(
+		ctx, input.ProductID, input.ProductUserID,
+	)
+	if err != nil {
+		logger.Error().
+			Str("product_id", input.ProductID).
+			Str("product_user_id", input.ProductUserID).
+			Err(err).
+			Msg("failed to verify product user exists")
+		return search.Result[user.OrganizationMembership]{}, err
+	}
+	if foundUser.IsAbsent() {
+		return search.Result[user.OrganizationMembership]{}, user.ErrProductUserNotFound
+	}
+
+	result, err := s.orgMembershipRepo.SearchByProductUserID(
+		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions, input.Request,
+	)
+	if err != nil {
+		if !searchx.IsCursorError(err) {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("product_user_id", input.ProductUserID).
+				Err(err).
+				Msg("failed to search user organizations")
+		}
+		return search.Result[user.OrganizationMembership]{}, err
+	}
+
+	return result, nil
 }
 
 func (s *productUserService) GetUserOrganization(

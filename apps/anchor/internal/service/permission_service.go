@@ -10,6 +10,7 @@ import (
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -242,12 +243,15 @@ func (s *permissionService) SearchByProductID(
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
 	}
 
 	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return search.Result[permission.ProductPermission]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

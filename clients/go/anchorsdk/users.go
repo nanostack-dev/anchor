@@ -2,6 +2,7 @@ package anchorsdk
 
 import (
 	"context"
+	"iter"
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
 )
@@ -68,12 +69,14 @@ func (u Users) List(ctx context.Context) (*nanoclient.ProductUserListResponse, e
 }
 
 // Organizations returns every organization the product user belongs to, with the
-// role held in each. The list is not paginated.
+// role held in each. It reads every page of [Users.SearchOrganizations], so the
+// result is complete however many organizations the user belongs to; search
+// instead to page through them yourself.
 func (u Users) Organizations(
 	ctx context.Context,
 	productUserID string,
 ) (*nanoclient.UserOrganizationListResponse, error) {
-	return u.organizations(ctx, "Users.Organizations", productUserID, nil)
+	return u.allOrganizations(ctx, productUserID, false)
 }
 
 // OrganizationsWithRolePermissions is [Users.Organizations] with each role's
@@ -83,10 +86,44 @@ func (u Users) OrganizationsWithRolePermissions(
 	ctx context.Context,
 	productUserID string,
 ) (*nanoclient.UserOrganizationListResponse, error) {
-	params := &nanoclient.ListUserOrganizationsParams{
-		Include: new([]nanoclient.UserOrganizationInclude{nanoclient.UserOrganizationIncludeRolePermissions}),
+	return u.allOrganizations(ctx, productUserID, true)
+}
+
+// SearchOrganizations starts building a query over the organizations the product
+// user belongs to, with the role held in each.
+//
+//	for membership, err := range c.Users().SearchOrganizations(userID).WithRolePermissions().All(ctx) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // use membership
+//	}
+func (u Users) SearchOrganizations(productUserID string) *UserOrganizationSearch {
+	return &UserOrganizationSearch{c: u.c, productUserID: productUserID}
+}
+
+// userOrganizationsPageSize is the page [Users.Organizations] reads with: the
+// largest limit the contract documents.
+const userOrganizationsPageSize int32 = 100
+
+func (u Users) allOrganizations(
+	ctx context.Context,
+	productUserID string,
+	withRolePermissions bool,
+) (*nanoclient.UserOrganizationListResponse, error) {
+	search := u.SearchOrganizations(productUserID).Limit(userOrganizationsPageSize)
+	if withRolePermissions {
+		search.WithRolePermissions()
 	}
-	return u.organizations(ctx, "Users.OrganizationsWithRolePermissions", productUserID, params)
+
+	items := []nanoclient.UserOrganizationResponse{}
+	for item, err := range search.All(ctx) {
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return &nanoclient.UserOrganizationListResponse{Items: items}, nil
 }
 
 // Organization returns one organization from the product user's perspective,
@@ -110,21 +147,6 @@ func (u Users) OrganizationWithRolePermissions(
 		Include: new([]nanoclient.UserOrganizationInclude{nanoclient.UserOrganizationIncludeRolePermissions}),
 	}
 	return u.organization(ctx, "Users.OrganizationWithRolePermissions", productUserID, organizationID, params)
-}
-
-// organizations is the shared body of the list-organizations methods.
-func (u Users) organizations(
-	ctx context.Context,
-	op, productUserID string,
-	params *nanoclient.ListUserOrganizationsParams,
-) (*nanoclient.UserOrganizationListResponse, error) {
-	return retrying(ctx, u.c, func(ctx context.Context) (*nanoclient.UserOrganizationListResponse, error) {
-		resp, err := u.c.api.ListUserOrganizationsWithResponse(ctx, u.c.productID, productUserID, params)
-		if err != nil {
-			return nil, transportError(op, err)
-		}
-		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
-	})
 }
 
 // organization is the shared body of the single-organization methods.
@@ -236,10 +258,44 @@ func (s *UserSearch) Limit(limit int32) *UserSearch {
 	return s
 }
 
-// Offset skips the given number of users.
+// Offset skips the given number of users, for page-number navigation. To read every
+// page, iterate with Cursor or All instead.
 func (s *UserSearch) Offset(offset int32) *UserSearch {
 	s.page().Offset = new(offset)
 	return s
+}
+
+// Cursor continues the search after the last item of a previous page. Pass the
+// previous page's NextCursor; Anchor refuses a cursor combined with an offset,
+// and answers a cursor from another filter or sort with an error. To read every
+// page, use [UserSearch.All].
+func (s *UserSearch) Cursor(cursor string) *UserSearch {
+	s.page().Cursor = new(cursor)
+	return s
+}
+
+// All reads every matching item, following NextCursor from page to page until
+// Anchor sends none. It starts where the builder starts: at the first item, or
+// after the cursor set with [UserSearch.Cursor]. The builder is not changed, so it can
+// run again. A failed page ends the sequence with its error.
+//
+//	for item, err := range search.Limit(100).All(ctx) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // use item
+//	}
+func (s *UserSearch) All(ctx context.Context) iter.Seq2[nanoclient.ProductUserResponse, error] {
+	return allPages(ctx, "Users.Search", startCursor(s.req.Pagination),
+		func(ctx context.Context, cursor string) ([]nanoclient.ProductUserResponse, string, error) {
+			next := *s
+			next.req.Pagination = pageAfter(s.req.Pagination, cursor)
+			page, err := next.Do(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			return page.Items, derefCursor(page.NextCursor), nil
+		})
 }
 
 // Do runs the search.
@@ -263,6 +319,117 @@ func (s *UserSearch) filter() *nanoclient.ProductUserFilter {
 }
 
 func (s *UserSearch) page() *nanoclient.PaginationRequest {
+	if s.req.Pagination == nil {
+		s.req.Pagination = &nanoclient.PaginationRequest{}
+	}
+	return s.req.Pagination
+}
+
+// UserOrganizationSearch accumulates a query over the organizations one product
+// user belongs to. Setter methods chain; [UserOrganizationSearch.Do] runs it.
+type UserOrganizationSearch struct {
+	c             *Client
+	productUserID string
+	include       []nanoclient.UserOrganizationInclude
+	req           nanoclient.UserOrganizationSearchRequest
+}
+
+// WithRolePermissions resolves the permissions of the role held in every
+// organization of the page.
+func (s *UserOrganizationSearch) WithRolePermissions() *UserOrganizationSearch {
+	s.include = append(s.include, nanoclient.UserOrganizationIncludeRolePermissions)
+	return s
+}
+
+// OrganizationIDs restricts the result to memberships in the given organizations.
+func (s *UserOrganizationSearch) OrganizationIDs(organizationIDs ...string) *UserOrganizationSearch {
+	s.filter().OrganizationIds = organizationIDs
+	return s
+}
+
+// RoleIDs restricts the result to memberships holding one of the given roles.
+func (s *UserOrganizationSearch) RoleIDs(roleIDs ...string) *UserOrganizationSearch {
+	s.filter().RoleIds = roleIDs
+	return s
+}
+
+// SortBy orders the result by one of Anchor's supported fields, for example
+// [nanoclient.UserOrganizationSearchRequestSortByJoinedAt]. Without it the
+// result runs from the earliest joined organization.
+func (s *UserOrganizationSearch) SortBy(
+	field nanoclient.UserOrganizationSearchRequestSortBy,
+	direction nanoclient.SortDirection,
+) *UserOrganizationSearch {
+	s.req.SortBy = new(field)
+	s.req.SortDirection = new(direction)
+	return s
+}
+
+// Limit caps the number of organizations returned.
+func (s *UserOrganizationSearch) Limit(limit int32) *UserOrganizationSearch {
+	s.page().Limit = new(limit)
+	return s
+}
+
+// Offset skips the given number of organizations, for page-number navigation. To
+// read every page, iterate with Cursor or All instead.
+func (s *UserOrganizationSearch) Offset(offset int32) *UserOrganizationSearch {
+	s.page().Offset = new(offset)
+	return s
+}
+
+// Cursor continues the search after the last item of a previous page. Pass the
+// previous page's NextCursor; Anchor refuses a cursor combined with an offset.
+// To read every page, use [UserOrganizationSearch.All].
+func (s *UserOrganizationSearch) Cursor(cursor string) *UserOrganizationSearch {
+	s.page().Cursor = new(cursor)
+	return s
+}
+
+// All reads every matching organization, following NextCursor from page to page
+// until Anchor sends none. The builder is not changed, so it can run again. A
+// failed page ends the sequence with its error.
+func (s *UserOrganizationSearch) All(ctx context.Context) iter.Seq2[nanoclient.UserOrganizationResponse, error] {
+	return allPages(ctx, "Users.SearchOrganizations", startCursor(s.req.Pagination),
+		func(ctx context.Context, cursor string) ([]nanoclient.UserOrganizationResponse, string, error) {
+			next := *s
+			next.req.Pagination = pageAfter(s.req.Pagination, cursor)
+			page, err := next.Do(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			return page.Items, derefCursor(page.NextCursor), nil
+		})
+}
+
+// Do runs the search.
+func (s *UserOrganizationSearch) Do(ctx context.Context) (*nanoclient.UserOrganizationSearchResponse, error) {
+	const op = "Users.SearchOrganizations"
+
+	params := &nanoclient.SearchUserOrganizationsParams{}
+	if len(s.include) > 0 {
+		params.Include = &s.include
+	}
+
+	return retrying(ctx, s.c, func(ctx context.Context) (*nanoclient.UserOrganizationSearchResponse, error) {
+		resp, err := s.c.api.SearchUserOrganizationsWithResponse(
+			ctx, s.c.productID, s.productUserID, params, s.req,
+		)
+		if err != nil {
+			return nil, transportError(op, err)
+		}
+		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
+	})
+}
+
+func (s *UserOrganizationSearch) filter() *nanoclient.UserOrganizationFilter {
+	if s.req.Filter == nil {
+		s.req.Filter = &nanoclient.UserOrganizationFilter{}
+	}
+	return s.req.Filter
+}
+
+func (s *UserOrganizationSearch) page() *nanoclient.PaginationRequest {
 	if s.req.Pagination == nil {
 		s.req.Pagination = &nanoclient.PaginationRequest{}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
@@ -379,12 +380,15 @@ func (s *productAPIKeyService) Search(
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 
 	result, err := s.apiKeyRepo.SearchByProductID(ctx, input)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return nil, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

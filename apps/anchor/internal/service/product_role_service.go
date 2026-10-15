@@ -15,6 +15,7 @@ import (
 	"anchor/internal/events"
 	invitationrepository "anchor/internal/invitation/repository"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -170,12 +171,15 @@ func (s *productRoleService) SearchProductRoles(
 ) (search.Result[role.ProductRole], error) {
 	logger := s.logger.With().Str("operation", "SearchProductRoles").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[role.ProductRole]{}, err
 	}
 
 	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return search.Result[role.ProductRole]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

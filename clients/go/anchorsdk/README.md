@@ -78,7 +78,7 @@ org := c.Organization("org_3iXYZ")
 |---|---|
 | `c.Email()` | fluent send |
 | `c.Organizations()` | create, get, update, delete, search, list |
-| `c.Users()` | create, get, delete, search, list, a user's organizations |
+| `c.Users()` | create, get, delete, search, list, a user's organizations (`SearchOrganizations` pages them) |
 | `c.Introspect(ctx, rawKey, scopes...)` | resolve an organization API key without knowing its org |
 | `org.Members()` | list, search, get, add, remove, set role |
 | `org.Invitations()` | create, list, search by status and email, get, update, delete, accept |
@@ -267,6 +267,42 @@ page, err := c.Organizations().Search().
 ```
 
 `List(ctx)` is shorthand for `Search().Do(ctx)`.
+
+### Reading every page
+
+A search pages with an opaque cursor. Every search builder has `Cursor(string)`, and every result carries
+`NextCursor`, which is nil on the last page. `All(ctx)` follows it for you and yields each item:
+
+```go
+for org, err := range c.Organizations().Search().Query("acme").Limit(100).All(ctx) {
+	if err != nil {
+		return err
+	}
+	fmt.Println(org.Name)
+}
+```
+
+To walk the pages yourself, send each `NextCursor` back and stop when it is nil. Never stop on `Count < Limit`
+or on `Total`.
+
+```go
+search := c.Organizations().Search().Limit(100)
+for {
+	page, err := search.Do(ctx)
+	if err != nil {
+		return err
+	}
+	// use page.Items
+	if page.NextCursor == nil {
+		break
+	}
+	search.Cursor(*page.NextCursor)
+}
+```
+
+A cursor belongs to one filter and one sort, so keep both unchanged while you walk. Anchor refuses a cursor
+that was issued for another sort, one that is malformed, and one sent together with `Offset`, each with a 400
+(`ErrInvalid`). Use `Offset` only to jump to a page number in a table, and iterate with the cursor.
 
 ## Errors
 

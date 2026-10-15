@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -326,7 +327,7 @@ func (s *organizationAPIKeyService) Search(
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -335,6 +336,9 @@ func (s *organizationAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
+		if searchx.IsCursorError(err) {
+			return nil, err
+		}
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Err(err).

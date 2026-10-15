@@ -4,6 +4,7 @@ import type {
 	EmailTemplateVersionResponse,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { selectProduct } from "../../support/ui";
 import { configureSMTP } from "./helpers";
 
@@ -510,7 +511,7 @@ test("email variable schemas and example forms preserve primitive, object and li
 test("email lists paginate templates and delivered send records", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	await configureSMTP(world);
 	const templates: EmailTemplateResponse[] = [];
 	for (let index = 0; index < 11; index++) {
@@ -548,8 +549,10 @@ test("email lists paginate templates and delivered send records", async ({
 		.poll(
 			async () =>
 				(
-					await world.api.get<{ items: EmailSendRecordResponse[] }>(
-						`${world.productPath}/email/sends`,
+					await world.api.post<{ items: EmailSendRecordResponse[] }>(
+						`${world.productPath}/email/sends/search`,
+						{ pagination: { limit: 50 } },
+						200,
 					)
 				).items.filter((record) => record.status === "SENT").length,
 		)
@@ -581,6 +584,7 @@ test("email lists paginate templates and delivered send records", async ({
 		await expect(
 			page.getByRole("button", { name: "Next", exact: true }),
 		).toBeDisabled();
+		await captureReviewCheckpoint(page, testInfo, `${route}-second-page`);
 		await page.getByRole("button", { name: "Previous", exact: true }).click();
 		await expect(
 			page.getByRole("row", { name: new RegExp(first) }),
@@ -589,6 +593,28 @@ test("email lists paginate templates and delivered send records", async ({
 			page.getByRole("button", { name: "Previous", exact: true }),
 		).toBeDisabled();
 	}
+	const filteredBy = (status: string) =>
+		page.waitForResponse(
+			(response) =>
+				response.request().method() === "POST" &&
+				new URL(response.url()).pathname ===
+					`${world.productPath}/email/sends/search` &&
+				response.request().postDataJSON()?.filter?.statuses?.[0] === status,
+		);
+	const sent = filteredBy("SENT");
+	await page.getByRole("button", { name: "Status", exact: true }).click();
+	await page.getByRole("option", { name: "Sent", exact: true }).click();
+	await page.keyboard.press("Escape");
+	expect((await sent).status()).toBe(200);
+	await expect(page.getByText("11 total", { exact: true })).toBeVisible();
+	await page.getByRole("button", { name: "Clear all", exact: true }).click();
+	const failed = filteredBy("FAILED");
+	await page.getByRole("button", { name: "Status", exact: true }).click();
+	await page.getByRole("option", { name: "Failed", exact: true }).click();
+	await page.keyboard.press("Escape");
+	expect((await failed).status()).toBe(200);
+	await expect(page.getByText(/^No sends match your filters$/)).toBeVisible();
+	await captureReviewCheckpoint(page, testInfo, "sends-filtered-empty");
 });
 
 // Covers: EMAIL_TEMPLATES
@@ -644,8 +670,10 @@ test("email template list deletes one row and only the selected rows in bulk", a
 	await expect(
 		page.getByRole("row", { name: new RegExp(templates[3].name) }),
 	).toBeVisible();
-	const remaining = await world.api.get<{ items: EmailTemplateResponse[] }>(
-		`${world.productPath}/email/templates`,
+	const remaining = await world.api.post<{ items: EmailTemplateResponse[] }>(
+		`${world.productPath}/email/templates/search`,
+		{ pagination: { limit: 50 } },
+		200,
 	);
 	expect(remaining.items.map((template) => template.id)).toEqual([
 		templates[3].id,

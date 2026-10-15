@@ -27,6 +27,24 @@ func (e ClerkIntegrationInstanceCreateRequestProviderType) Valid() bool {
 	}
 }
 
+// Defines values for EmailSendSearchRequestSortBy.
+const (
+	EmailSendSearchRequestSortByCreatedAt EmailSendSearchRequestSortBy = "created_at"
+	EmailSendSearchRequestSortByStatus    EmailSendSearchRequestSortBy = "status"
+)
+
+// Valid indicates whether the value is a known member of the EmailSendSearchRequestSortBy enum.
+func (e EmailSendSearchRequestSortBy) Valid() bool {
+	switch e {
+	case EmailSendSearchRequestSortByCreatedAt:
+		return true
+	case EmailSendSearchRequestSortByStatus:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EmailSendStatus.
 const (
 	EmailSendStatusFAILED  EmailSendStatus = "FAILED"
@@ -45,6 +63,30 @@ func (e EmailSendStatus) Valid() bool {
 	case EmailSendStatusSENDING:
 		return true
 	case EmailSendStatusSENT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EmailTemplateSearchRequestSortBy.
+const (
+	EmailTemplateSearchRequestSortByCreatedAt EmailTemplateSearchRequestSortBy = "created_at"
+	EmailTemplateSearchRequestSortByName      EmailTemplateSearchRequestSortBy = "name"
+	EmailTemplateSearchRequestSortBySlug      EmailTemplateSearchRequestSortBy = "slug"
+	EmailTemplateSearchRequestSortByUpdatedAt EmailTemplateSearchRequestSortBy = "updated_at"
+)
+
+// Valid indicates whether the value is a known member of the EmailTemplateSearchRequestSortBy enum.
+func (e EmailTemplateSearchRequestSortBy) Valid() bool {
+	switch e {
+	case EmailTemplateSearchRequestSortByCreatedAt:
+		return true
+	case EmailTemplateSearchRequestSortByName:
+		return true
+	case EmailTemplateSearchRequestSortBySlug:
+		return true
+	case EmailTemplateSearchRequestSortByUpdatedAt:
 		return true
 	default:
 		return false
@@ -93,6 +135,27 @@ func (e EmailVariableType) Valid() bool {
 	case EmailVariableTypeOBJECT:
 		return true
 	case EmailVariableTypeSTRING:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IntegrationAuditLogSearchRequestSortBy.
+const (
+	IntegrationAuditLogSearchRequestSortByAction    IntegrationAuditLogSearchRequestSortBy = "action"
+	IntegrationAuditLogSearchRequestSortByCreatedAt IntegrationAuditLogSearchRequestSortBy = "created_at"
+	IntegrationAuditLogSearchRequestSortBySeverity  IntegrationAuditLogSearchRequestSortBy = "severity"
+)
+
+// Valid indicates whether the value is a known member of the IntegrationAuditLogSearchRequestSortBy enum.
+func (e IntegrationAuditLogSearchRequestSortBy) Valid() bool {
+	switch e {
+	case IntegrationAuditLogSearchRequestSortByAction:
+		return true
+	case IntegrationAuditLogSearchRequestSortByCreatedAt:
+		return true
+	case IntegrationAuditLogSearchRequestSortBySeverity:
 		return true
 	default:
 		return false
@@ -300,6 +363,30 @@ func (e LicenseMigrationOutcome) Valid() bool {
 	}
 }
 
+// Defines values for LicenseTemplateSearchRequestSortBy.
+const (
+	LicenseTemplateSearchRequestSortByCreatedAt LicenseTemplateSearchRequestSortBy = "created_at"
+	LicenseTemplateSearchRequestSortByName      LicenseTemplateSearchRequestSortBy = "name"
+	LicenseTemplateSearchRequestSortByStatus    LicenseTemplateSearchRequestSortBy = "status"
+	LicenseTemplateSearchRequestSortByUpdatedAt LicenseTemplateSearchRequestSortBy = "updated_at"
+)
+
+// Valid indicates whether the value is a known member of the LicenseTemplateSearchRequestSortBy enum.
+func (e LicenseTemplateSearchRequestSortBy) Valid() bool {
+	switch e {
+	case LicenseTemplateSearchRequestSortByCreatedAt:
+		return true
+	case LicenseTemplateSearchRequestSortByName:
+		return true
+	case LicenseTemplateSearchRequestSortByStatus:
+		return true
+	case LicenseTemplateSearchRequestSortByUpdatedAt:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseTemplateStatus.
 const (
 	LicenseTemplateStatusACTIVE   LicenseTemplateStatus = "ACTIVE"
@@ -441,6 +528,21 @@ func (e OrganizationInvitationStatus) Valid() bool {
 	case Expired:
 		return true
 	case Pending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OrganizationLicenseHistorySearchRequestSortBy.
+const (
+	ChangedAt OrganizationLicenseHistorySearchRequestSortBy = "changed_at"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationLicenseHistorySearchRequestSortBy enum.
+func (e OrganizationLicenseHistorySearchRequestSortBy) Valid() bool {
+	switch e {
+	case ChangedAt:
 		return true
 	default:
 		return false
@@ -987,6 +1089,24 @@ func (e UserOrganizationInclude) Valid() bool {
 	}
 }
 
+// Defines values for UserOrganizationSearchRequestSortBy.
+const (
+	UserOrganizationSearchRequestSortByJoinedAt UserOrganizationSearchRequestSortBy = "joined_at"
+	UserOrganizationSearchRequestSortByName     UserOrganizationSearchRequestSortBy = "name"
+)
+
+// Valid indicates whether the value is a known member of the UserOrganizationSearchRequestSortBy enum.
+func (e UserOrganizationSearchRequestSortBy) Valid() bool {
+	switch e {
+	case UserOrganizationSearchRequestSortByJoinedAt:
+		return true
+	case UserOrganizationSearchRequestSortByName:
+		return true
+	default:
+		return false
+	}
+}
+
 // ApiError defines model for ApiError.
 type ApiError struct {
 	// Code A machine-readable error code.
@@ -1163,6 +1283,15 @@ type CreatedProductAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
+// EmailSendFilter Narrows a search over a product's email send records.
+type EmailSendFilter struct {
+	// Statuses Keep only sends in one of these statuses.
+	Statuses []EmailSendStatus `json:"statuses,omitempty"`
+
+	// TemplateIds Keep only sends rendered from one of these templates.
+	TemplateIds []Ksuid `json:"template_ids,omitempty"`
+}
+
 // EmailSendRecordListResponse defines model for EmailSendRecordListResponse.
 type EmailSendRecordListResponse struct {
 	Count int                       `json:"count"`
@@ -1208,6 +1337,38 @@ type EmailSendRequest struct {
 	Variables    *map[string]interface{} `json:"variables,omitempty"`
 }
 
+// EmailSendSearchRequest defines model for EmailSendSearchRequest.
+type EmailSendSearchRequest struct {
+	// Filter Narrows a search over a product's email send records.
+	Filter *EmailSendFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *EmailSendSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// EmailSendSearchRequestSortBy Field to sort by.
+type EmailSendSearchRequestSortBy string
+
+// EmailSendSearchResponse defines model for EmailSendSearchResponse.
+type EmailSendSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []EmailSendRecordResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
 // EmailSendStatus defines model for EmailSendStatus.
 type EmailSendStatus string
 
@@ -1228,6 +1389,17 @@ type EmailTemplateDraftUpdateRequest struct {
 	BodyText  *string                `json:"body_text,omitempty"`
 	Subject   *string                `json:"subject,omitempty"`
 	Variables *[]EmailVariableSchema `json:"variables,omitempty"`
+}
+
+// EmailTemplateFilter Narrows a search over a product's email templates.
+type EmailTemplateFilter struct {
+	Ids []Ksuid `json:"ids,omitempty"`
+
+	// IsActive `true` keeps only active templates, `false` only inactive ones. Omit for both.
+	IsActive *bool `json:"is_active,omitempty"`
+
+	// Slugs Keep only templates with one of these slugs.
+	Slugs []string `json:"slugs,omitempty"`
 }
 
 // EmailTemplateListResponse defines model for EmailTemplateListResponse.
@@ -1272,6 +1444,38 @@ type EmailTemplateResponse struct {
 	PublishedVersionId *string   `json:"published_version_id,omitempty"`
 	Slug               string    `json:"slug"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// EmailTemplateSearchRequest defines model for EmailTemplateSearchRequest.
+type EmailTemplateSearchRequest struct {
+	// Filter Narrows a search over a product's email templates.
+	Filter *EmailTemplateFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *EmailTemplateSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// EmailTemplateSearchRequestSortBy Field to sort by.
+type EmailTemplateSearchRequestSortBy string
+
+// EmailTemplateSearchResponse defines model for EmailTemplateSearchResponse.
+type EmailTemplateSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                     `json:"count"`
+	Items []EmailTemplateResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // EmailTemplateUpdateRequest defines model for EmailTemplateUpdateRequest.
@@ -1377,11 +1581,58 @@ type IntegrationAuditLogEntryResponse struct {
 	Severity IntegrationAuditLogSeverity `json:"severity"`
 }
 
+// IntegrationAuditLogFilter Narrows the audit log entries of one integration instance.
+type IntegrationAuditLogFilter struct {
+	// Actions Keep only entries with one of these action codes.
+	Actions []string `json:"actions,omitempty"`
+
+	// CreatedAfter Keep only entries recorded at or after this instant.
+	CreatedAfter *time.Time `json:"created_after,omitempty"`
+
+	// CreatedBefore Keep only entries recorded before this instant.
+	CreatedBefore *time.Time `json:"created_before,omitempty"`
+
+	// Severities Keep only entries with one of these severities.
+	Severities []IntegrationAuditLogSeverity `json:"severities,omitempty"`
+}
+
 // IntegrationAuditLogListResponse defines model for IntegrationAuditLogListResponse.
 type IntegrationAuditLogListResponse struct {
 	// Count The number of audit log items returned.
 	Count int                                `json:"count"`
 	Items []IntegrationAuditLogEntryResponse `json:"items"`
+}
+
+// IntegrationAuditLogSearchRequest defines model for IntegrationAuditLogSearchRequest.
+type IntegrationAuditLogSearchRequest struct {
+	// Filter Narrows the audit log entries of one integration instance.
+	Filter *IntegrationAuditLogFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *IntegrationAuditLogSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// IntegrationAuditLogSearchRequestSortBy Field to sort by.
+type IntegrationAuditLogSearchRequestSortBy string
+
+// IntegrationAuditLogSearchResponse defines model for IntegrationAuditLogSearchResponse.
+type IntegrationAuditLogSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                                `json:"count"`
+	Items []IntegrationAuditLogEntryResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // IntegrationAuditLogSeverity Severity level for integration audit events.
@@ -1622,6 +1873,12 @@ type LicenseTemplateCreateRequest struct {
 	Values LicenseTemplateValues `json:"values"`
 }
 
+// LicenseTemplateFilter Narrows a search over a product's license templates.
+type LicenseTemplateFilter struct {
+	// Statuses Keep only templates with one of these statuses. Omit for every template the product has ever offered.
+	Statuses []LicenseTemplateStatus `json:"statuses,omitempty"`
+}
+
 // LicenseTemplateListResponse defines model for LicenseTemplateListResponse.
 type LicenseTemplateListResponse struct {
 	Count int                       `json:"count"`
@@ -1650,6 +1907,38 @@ type LicenseTemplateResponse struct {
 	Status    LicenseTemplateStatus `json:"status"`
 	UpdatedAt time.Time             `json:"updated_at"`
 	Values    LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateSearchRequest defines model for LicenseTemplateSearchRequest.
+type LicenseTemplateSearchRequest struct {
+	// Filter Narrows a search over a product's license templates.
+	Filter *LicenseTemplateFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *LicenseTemplateSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// LicenseTemplateSearchRequestSortBy Field to sort by.
+type LicenseTemplateSearchRequestSortBy string
+
+// LicenseTemplateSearchResponse defines model for LicenseTemplateSearchResponse.
+type LicenseTemplateSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []LicenseTemplateResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // LicenseTemplateStatus Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
@@ -1731,7 +2020,10 @@ type OrganizationAPIKeyListResponse struct {
 	Count int                          `json:"count"`
 	Items []OrganizationAPIKeyResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1811,7 +2103,7 @@ type OrganizationAPIKeySearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *OrganizationAPIKeySearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1917,7 +2209,10 @@ type OrganizationInvitationListResponse struct {
 	Count int                              `json:"count"`
 	Items []OrganizationInvitationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1967,7 +2262,7 @@ type OrganizationInvitationSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *OrganizationInvitationSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2064,6 +2359,18 @@ type OrganizationLicenseFilter struct {
 	OrganizationIds []Ksuid `json:"organization_ids,omitempty"`
 }
 
+// OrganizationLicenseHistoryFilter Narrows the history of one organization's license.
+type OrganizationLicenseHistoryFilter struct {
+	// ChangedAfter Keep only entries made at or after this instant.
+	ChangedAfter *time.Time `json:"changed_after,omitempty"`
+
+	// ChangedBefore Keep only entries made before this instant.
+	ChangedBefore *time.Time `json:"changed_before,omitempty"`
+
+	// Types Keep only entries of one of these types.
+	Types []LicenseChangeType `json:"types,omitempty"`
+}
+
 // OrganizationLicenseHistoryResponse defines model for OrganizationLicenseHistoryResponse.
 type OrganizationLicenseHistoryResponse struct {
 	// Count The number of items returned in this response.
@@ -2072,9 +2379,31 @@ type OrganizationLicenseHistoryResponse struct {
 	// Items Newest first.
 	Items []OrganizationLicenseChangeResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
+
+// OrganizationLicenseHistorySearchRequest defines model for OrganizationLicenseHistorySearchRequest.
+type OrganizationLicenseHistorySearchRequest struct {
+	// Filter Narrows the history of one organization's license.
+	Filter *OrganizationLicenseHistoryFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *OrganizationLicenseHistorySearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationLicenseHistorySearchRequestSortBy Field to sort by.
+type OrganizationLicenseHistorySearchRequestSortBy string
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
 type OrganizationLicenseInstantiateRequest struct {
@@ -2181,10 +2510,10 @@ type OrganizationLicenseSearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 	SortBy *OrganizationLicenseSortField `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2194,11 +2523,14 @@ type OrganizationLicenseSearchResponse struct {
 	Count int                                  `json:"count"`
 	Items []OrganizationLicenseSummaryResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
-// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 type OrganizationLicenseSortField string
 
 // OrganizationLicenseSummaryResponse One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.
@@ -2237,7 +2569,10 @@ type OrganizationMemberListResponse struct {
 	Count int                          `json:"count"`
 	Items []OrganizationMemberResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2318,7 +2653,7 @@ type OrganizationMemberSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *OrganizationMemberSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2330,16 +2665,22 @@ type PagedListResponse struct {
 	// Count The number of items returned in this response.
 	Count int `json:"count"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
 // PaginationRequest defines model for PaginationRequest.
 type PaginationRequest struct {
-	// Limit Maximum number of items per page.
+	// Cursor Opaque cursor from the previous page's `next_cursor`. Continues the search after the last item of that page, with the same filter and sort. Omit to start at the first item. Cannot be combined with a non-zero `offset`. An invalid cursor answers 400 INVALID_CURSOR.
+	Cursor *string `json:"cursor,omitempty"`
+
+	// Limit Maximum number of items per page. A request that names no limit, including one that sends only a cursor, gets 10.
 	Limit *int32 `json:"limit,omitempty"`
 
-	// Offset Number of items to skip.
+	// Offset Number of items to skip. Use for page-number navigation only; iterate with `cursor`.
 	Offset *int32 `json:"offset,omitempty"`
 }
 
@@ -2358,7 +2699,10 @@ type PlatformInvitationListResponse struct {
 	Count int                          `json:"count"`
 	Items []PlatformInvitationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2411,7 +2755,7 @@ type PlatformInvitationSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *PlatformInvitationSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2436,7 +2780,10 @@ type PlatformUserListResponse struct {
 	Count int                    `json:"count"`
 	Items []PlatformUserResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2489,7 +2836,7 @@ type PlatformUserSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *PlatformUserSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2541,7 +2888,10 @@ type ProductAPIKeyListResponse struct {
 	Count int                     `json:"count"`
 	Items []ProductAPIKeyResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2621,7 +2971,7 @@ type ProductAPIKeySearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductAPIKeySearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2762,7 +3112,10 @@ type ProductListResponse struct {
 	Count int               `json:"count"`
 	Items []ProductResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2788,7 +3141,10 @@ type ProductOrganizationListResponse struct {
 	Count int                           `json:"count"`
 	Items []ProductOrganizationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2871,7 +3227,7 @@ type ProductOrganizationSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductOrganizationSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2890,7 +3246,10 @@ type ProductPermissionListResponse struct {
 	Count int                         `json:"count"`
 	Items []ProductPermissionResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2924,14 +3283,14 @@ type ProductPermissionSearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortBy Field to sort by
+	// SortBy Field to sort by. `id` and `resource` order by the permission name, whose `resource:action` form groups permissions by resource.
 	SortBy *ProductPermissionSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
-// ProductPermissionSearchRequestSortBy Field to sort by
+// ProductPermissionSearchRequestSortBy Field to sort by. `id` and `resource` order by the permission name, whose `resource:action` form groups permissions by resource.
 type ProductPermissionSearchRequestSortBy string
 
 // ProductRequest defines model for ProductRequest.
@@ -2962,7 +3321,10 @@ type ProductResourcePermissionListResponse struct {
 	Count int                                 `json:"count"`
 	Items []ProductResourcePermissionResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -3006,7 +3368,7 @@ type ProductResourcePermissionSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductResourcePermissionSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3082,7 +3444,10 @@ type ProductRoleListResponse struct {
 	Count int                   `json:"count"`
 	Items []ProductRoleResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -3145,7 +3510,7 @@ type ProductRoleSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductRoleSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3180,7 +3545,7 @@ type ProductSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3211,7 +3576,10 @@ type ProductUserListResponse struct {
 	Count int                   `json:"count"`
 	Items []ProductUserResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -3266,7 +3634,7 @@ type ProductUserSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *ProductUserSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3284,7 +3652,10 @@ type ProductWorkspaceListResponse struct {
 	Count int                        `json:"count"`
 	Items []ProductWorkspaceResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -3342,7 +3713,7 @@ type ProductWorkspaceSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *ProductWorkspaceSearchRequestSortBy `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3371,7 +3742,7 @@ type SearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -3448,7 +3819,7 @@ type SmtpIntegrationPublicConfigAuthMethod string
 // SmtpIntegrationPublicConfigEncryption defines model for SmtpIntegrationPublicConfig.Encryption.
 type SmtpIntegrationPublicConfigEncryption string
 
-// SortDirection defines model for SortDirection.
+// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 type SortDirection string
 
 // TemplateExample defines model for TemplateExample.
@@ -3550,12 +3921,24 @@ type UsageSeriesResponse struct {
 	Count int                        `json:"count"`
 	Items []UsageSeriesPointResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
 // UsageShape defines model for UsageShape.
 type UsageShape string
+
+// UserOrganizationFilter Narrows the organizations a product user belongs to.
+type UserOrganizationFilter struct {
+	// OrganizationIds Keep only memberships in one of these organizations.
+	OrganizationIds []Ksuid `json:"organization_ids,omitempty"`
+
+	// RoleIds Keep only memberships holding one of these roles.
+	RoleIds []Ksuid `json:"role_ids,omitempty"`
+}
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
 type UserOrganizationInclude string
@@ -3611,6 +3994,38 @@ type UserOrganizationRoleResponse struct {
 	//
 	// Examples: ["document:read","document:create"]
 	Permissions *[]string `json:"permissions,omitempty"`
+}
+
+// UserOrganizationSearchRequest defines model for UserOrganizationSearchRequest.
+type UserOrganizationSearchRequest struct {
+	// Filter Narrows the organizations a product user belongs to.
+	Filter *UserOrganizationFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. `name` is the organization name.
+	SortBy *UserOrganizationSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// UserOrganizationSearchRequestSortBy Field to sort by. `name` is the organization name.
+type UserOrganizationSearchRequestSortBy string
+
+// UserOrganizationSearchResponse defines model for UserOrganizationSearchResponse.
+type UserOrganizationSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []UserOrganizationResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // UserResponse defines model for UserResponse.
@@ -3830,6 +4245,12 @@ type ListUserOrganizationsParams struct {
 	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
 }
 
+// SearchUserOrganizationsParams defines parameters for SearchUserOrganizations.
+type SearchUserOrganizationsParams struct {
+	// Include Comma-separated list of additional fields to include.
+	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
 // GetUserOrganizationParams defines parameters for GetUserOrganization.
 type GetUserOrganizationParams struct {
 	// Include Comma-separated list of additional fields to include.
@@ -3875,8 +4296,14 @@ type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectR
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest
 
+// SearchEmailSendsJSONRequestBody defines body for SearchEmailSends for application/json ContentType.
+type SearchEmailSendsJSONRequestBody = EmailSendSearchRequest
+
 // CreateEmailTemplateJSONRequestBody defines body for CreateEmailTemplate for application/json ContentType.
 type CreateEmailTemplateJSONRequestBody = EmailTemplateCreateRequest
+
+// SearchEmailTemplatesJSONRequestBody defines body for SearchEmailTemplates for application/json ContentType.
+type SearchEmailTemplatesJSONRequestBody = EmailTemplateSearchRequest
 
 // UpdateEmailTemplateJSONRequestBody defines body for UpdateEmailTemplate for application/json ContentType.
 type UpdateEmailTemplateJSONRequestBody = EmailTemplateUpdateRequest
@@ -3899,6 +4326,9 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
+// SearchIntegrationAuditLogsJSONRequestBody defines body for SearchIntegrationAuditLogs for application/json ContentType.
+type SearchIntegrationAuditLogsJSONRequestBody = IntegrationAuditLogSearchRequest
+
 // SearchProductOrganizationInvitationsJSONRequestBody defines body for SearchProductOrganizationInvitations for application/json ContentType.
 type SearchProductOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearchRequest
 
@@ -3916,6 +4346,9 @@ type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
 
 // CreateLicenseTemplateJSONRequestBody defines body for CreateLicenseTemplate for application/json ContentType.
 type CreateLicenseTemplateJSONRequestBody = LicenseTemplateCreateRequest
+
+// SearchLicenseTemplatesJSONRequestBody defines body for SearchLicenseTemplates for application/json ContentType.
+type SearchLicenseTemplatesJSONRequestBody = LicenseTemplateSearchRequest
 
 // UpdateLicenseTemplateJSONRequestBody defines body for UpdateLicenseTemplate for application/json ContentType.
 type UpdateLicenseTemplateJSONRequestBody = LicenseTemplateUpdateRequest
@@ -3959,6 +4392,9 @@ type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
 // InstantiateOrganizationLicenseJSONRequestBody defines body for InstantiateOrganizationLicense for application/json ContentType.
 type InstantiateOrganizationLicenseJSONRequestBody = OrganizationLicenseInstantiateRequest
 
+// SearchOrganizationLicenseHistoryJSONRequestBody defines body for SearchOrganizationLicenseHistory for application/json ContentType.
+type SearchOrganizationLicenseHistoryJSONRequestBody = OrganizationLicenseHistorySearchRequest
+
 // ReportOrganizationUsageJSONRequestBody defines body for ReportOrganizationUsage for application/json ContentType.
 type ReportOrganizationUsageJSONRequestBody = UsageReportRequest
 
@@ -3988,6 +4424,9 @@ type CreateProductUserJSONRequestBody CreateProductUserJSONBody
 
 // SearchProductUsersJSONRequestBody defines body for SearchProductUsers for application/json ContentType.
 type SearchProductUsersJSONRequestBody = ProductUserSearchRequest
+
+// SearchUserOrganizationsJSONRequestBody defines body for SearchUserOrganizations for application/json ContentType.
+type SearchUserOrganizationsJSONRequestBody = UserOrganizationSearchRequest
 
 // CreateProductResourcePermissionJSONRequestBody defines body for CreateProductResourcePermission for application/json ContentType.
 type CreateProductResourcePermissionJSONRequestBody = CreateProductResourcePermissionRequest

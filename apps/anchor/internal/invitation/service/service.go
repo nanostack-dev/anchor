@@ -144,7 +144,7 @@ func (s *organizationInvitationService) Get(
 func (s *organizationInvitationService) Search(
 	ctx context.Context, input organizationinvitation.SearchInput,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
 
@@ -162,7 +162,7 @@ func (s *organizationInvitationService) Search(
 func (s *organizationInvitationService) SearchInProduct(
 	ctx context.Context, input organizationinvitation.SearchInProductInput,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
 

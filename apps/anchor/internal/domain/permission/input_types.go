@@ -1,6 +1,10 @@
 package permission
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 // CreateProductPermissionInput represents input for creating a new permission.
 type CreateProductPermissionInput struct {
@@ -38,6 +42,8 @@ type SearchProductPermissionFilter struct {
 type SortFieldProductPermission string
 
 const (
+	SortFieldProductPermissionID        SortFieldProductPermission = "id"
+	SortFieldProductPermissionResource  SortFieldProductPermission = "resource"
 	SortFieldProductPermissionCreatedAt SortFieldProductPermission = "created_at"
 	SortFieldProductPermissionUpdatedAt SortFieldProductPermission = "updated_at"
 	SortFieldProductPermissionName      SortFieldProductPermission = "name"
@@ -47,4 +53,14 @@ const (
 type SearchProductPermissionInput struct {
 	ProductID string                                                                    `json:"product_id" validate:"required,notblank"`
 	Request   search.Request[SearchProductPermissionFilter, SortFieldProductPermission] `json:"request"    validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductPermissionInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductPermissionID,
+		SortFieldProductPermissionName,
+		SortFieldProductPermissionResource,
+		SortFieldProductPermissionCreatedAt,
+		SortFieldProductPermissionUpdatedAt)
 }

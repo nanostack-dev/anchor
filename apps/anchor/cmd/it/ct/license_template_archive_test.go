@@ -19,18 +19,18 @@ func archiveTemplate(t *testing.T, tc licenseTestCtx, templateID string) *ct.Arc
 	return resp
 }
 
-// withStatus narrows a listing to one status. A nil params lists every template
+// withStatus narrows a search to one status. A nil filter finds every template
 // the product has ever offered.
-func withStatus(status ct.LicenseTemplateStatus) *ct.ListLicenseTemplatesParams {
-	return &ct.ListLicenseTemplatesParams{Status: &status}
+func withStatus(status ct.LicenseTemplateStatus) *ct.LicenseTemplateFilter {
+	return &ct.LicenseTemplateFilter{Statuses: []ct.LicenseTemplateStatus{status}}
 }
 
 func listTemplates(
-	t *testing.T, tc licenseTestCtx, params *ct.ListLicenseTemplatesParams,
-) ct.LicenseTemplateListResponse {
+	t *testing.T, tc licenseTestCtx, filter *ct.LicenseTemplateFilter,
+) ct.LicenseTemplateSearchResponse {
 	t.Helper()
-	resp, err := tc.product.OwnerAuthenticatedClient().ListLicenseTemplatesWithResponse(
-		context.Background(), tc.product.ProductID, params,
+	resp, err := tc.product.OwnerAuthenticatedClient().SearchLicenseTemplatesWithResponse(
+		context.Background(), tc.product.ProductID, ct.SearchLicenseTemplatesJSONRequestBody{Filter: filter},
 	)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))

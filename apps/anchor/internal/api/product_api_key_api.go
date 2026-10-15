@@ -90,9 +90,10 @@ func (s *AnchorAPI) SearchProductAPIKeys(
 	}
 
 	response := ProductAPIKeyListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductAPIKeyToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductAPIKeyToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductAPIKeys200JSONResponse(response), nil
@@ -176,7 +177,5 @@ func mapToSearchProductAPIKeyInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }

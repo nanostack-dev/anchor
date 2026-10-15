@@ -3,6 +3,8 @@ import type {
 	OrganizationLicenseResponse,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
+import { searchTable } from "../../support/ui";
 import {
 	adjustLicense,
 	chooseOption,
@@ -12,6 +14,7 @@ import {
 	fillTemplateValues,
 	licensePath,
 	openLicensing,
+	values,
 } from "./helpers";
 
 // Covers: PRODUCT_LICENSE_TEMPLATES, PRODUCT_LICENSE_TEMPLATE_NEW, PRODUCT_LICENSE_TEMPLATE_DETAIL
@@ -111,7 +114,7 @@ test("templates validate every required value and support create, view, cancel a
 test("template pagination and page size stay useful when a later-page search narrows the result", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	await declareSchema(world);
 	const templates = [];
 	for (let index = 0; index < 11; index += 1)
@@ -122,6 +125,7 @@ test("template pagination and page size stay useful when a later-page search nar
 	await expect(
 		page.getByRole("link", { name: `View ${templates[0].name}`, exact: true }),
 	).toBeVisible();
+	await expect(page.getByText("11 total", { exact: true })).toBeVisible();
 	await page.getByRole("button", { name: "Next", exact: true }).click();
 	await expect(
 		page.getByRole("link", { name: `View ${templates[10].name}`, exact: true }),
@@ -129,15 +133,21 @@ test("template pagination and page size stay useful when a later-page search nar
 	await expect(
 		page.getByRole("link", { name: `View ${templates[0].name}`, exact: true }),
 	).toHaveCount(0);
-	await page
-		.getByRole("textbox", { name: "Search templates", exact: true })
-		.fill(templates[0].name);
+	await captureReviewCheckpoint(page, testInfo, "templates-second-page");
+	await searchTable(
+		page,
+		"Search templates",
+		`${world.productPath}/licensing/templates/search`,
+		templates[0].name,
+	);
 	await expect(
 		page.getByRole("link", { name: `View ${templates[0].name}`, exact: true }),
 	).toBeVisible();
+	await expect(page.getByText("1 total", { exact: true })).toBeVisible();
 	await expect(
 		page.getByRole("button", { name: "Previous", exact: true }),
 	).toBeDisabled();
+	await captureReviewCheckpoint(page, testInfo, "templates-search-narrowed");
 	await page
 		.getByRole("textbox", { name: "Search templates", exact: true })
 		.fill("");
@@ -167,9 +177,17 @@ test("template pagination and page size stay useful when a later-page search nar
 test("template search and status filters expose archived templates as read-only, including direct edit URLs", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	await declareSchema(world);
-	const active = await createTemplate(world, "active-tier");
+	const descriptionTerm = world.name("invoicing");
+	const active = await world.api.post<LicenseTemplateResponse>(
+		`${world.productPath}/licensing/templates`,
+		{
+			name: world.name("active-tier"),
+			description: `Bundles ${descriptionTerm} seats`,
+			values,
+		},
+	);
 	const archived = await createTemplate(world, "retired-tier");
 	await world.api.post(
 		`${world.productPath}/licensing/templates/${archived.id}/archive`,
@@ -177,6 +195,44 @@ test("template search and status filters expose archived templates as read-only,
 		200,
 	);
 	await openLicensing(page, world, "/products/licensing/templates");
+	await expect(page.getByText("2 total", { exact: true })).toBeVisible();
+	await searchTable(
+		page,
+		"Search templates",
+		`${world.productPath}/licensing/templates/search`,
+		descriptionTerm,
+	);
+	await expect(
+		page.getByRole("row").filter({ hasText: active.name }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("row").filter({ hasText: archived.name }),
+	).toHaveCount(0);
+	await expect(page.getByText("1 total", { exact: true })).toBeVisible();
+	await captureReviewCheckpoint(page, testInfo, "templates-description-search");
+	const mixedCase = `${descriptionTerm.slice(0, 4).toUpperCase()}${descriptionTerm.slice(4)}`;
+	await searchTable(
+		page,
+		"Search templates",
+		`${world.productPath}/licensing/templates/search`,
+		mixedCase,
+	);
+	await expect(
+		page.getByRole("row").filter({ hasText: active.name }),
+	).toBeVisible();
+	await expect(page.getByText("1 total", { exact: true })).toBeVisible();
+	await searchTable(
+		page,
+		"Search templates",
+		`${world.productPath}/licensing/templates/search`,
+		"%",
+	);
+	await expect(
+		page.getByText(/^No license templates match your/),
+	).toBeVisible();
+	await expect(
+		page.getByRole("row").filter({ hasText: active.name }),
+	).toHaveCount(0);
 	await page
 		.getByRole("textbox", { name: "Search templates", exact: true })
 		.fill(archived.name);
@@ -199,6 +255,7 @@ test("template search and status filters expose archived templates as read-only,
 	await expect(
 		page.getByRole("row").filter({ hasText: active.name }),
 	).toHaveCount(0);
+	await expect(page.getByText("1 total", { exact: true })).toBeVisible();
 	await page
 		.getByRole("link", { name: `View ${archived.name}`, exact: true })
 		.click();

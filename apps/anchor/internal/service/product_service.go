@@ -457,7 +457,7 @@ func (s *productService) Search(
 ) (search.Result[product.Product], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[product.Product]{}, err
 	}
 

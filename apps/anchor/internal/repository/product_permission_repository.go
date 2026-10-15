@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/permission"
 	"anchor/internal/mapper"
@@ -172,17 +173,32 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		)
 	}
 
+	nameKey := transactor.StringKey(
+		table.ProductPermissions.Name,
+		func(row model.ProductPermissions) string { return row.Name },
+	)
+	order := transactor.Keys(
+		input.Sort,
+		map[permission.SortFieldProductPermission]transactor.Key[model.ProductPermissions]{
+			permission.SortFieldProductPermissionCreatedAt: transactor.TimeKey(
+				table.ProductPermissions.CreatedAt,
+				func(row model.ProductPermissions) time.Time { return row.CreatedAt },
+			),
+			permission.SortFieldProductPermissionUpdatedAt: transactor.TimeKey(
+				table.ProductPermissions.UpdatedAt,
+				func(row model.ProductPermissions) time.Time { return row.UpdatedAt },
+			),
+			permission.SortFieldProductPermissionName:     nameKey,
+			permission.SortFieldProductPermissionID:       nameKey,
+			permission.SortFieldProductPermissionResource: nameKey,
+		},
+		nameKey,
+	)
+
 	return transactor.Page(r.db, r.productPermissionMapper.ToDomain, table.ProductPermissions.AllColumns).
 		From(table.ProductPermissions).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[permission.SortFieldProductPermission]postgres.Column{
-				permission.SortFieldProductPermissionCreatedAt: table.ProductPermissions.CreatedAt,
-				permission.SortFieldProductPermissionUpdatedAt: table.ProductPermissions.UpdatedAt,
-				permission.SortFieldProductPermissionName:      table.ProductPermissions.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

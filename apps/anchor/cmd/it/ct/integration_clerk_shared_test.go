@@ -373,16 +373,19 @@ func listIntegrationAuditLogs(
 	t *testing.T,
 	productContext *itdsl.ProductContext,
 	integrationInstanceID string,
-) *ct.IntegrationAuditLogListResponse {
+) *ct.IntegrationAuditLogSearchResponse {
 	t.Helper()
 
-	resp, err := productContext.OwnerAuthenticatedClient().ListIntegrationAuditLogsWithResponse(
+	resp, err := productContext.OwnerAuthenticatedClient().SearchIntegrationAuditLogsWithResponse(
 		context.Background(),
 		productContext.ProductID,
 		integrationInstanceID,
+		ct.SearchIntegrationAuditLogsJSONRequestBody{
+			Pagination: &ct.PaginationRequest{Limit: new(int32(100))},
+		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode())
+	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(t, resp.JSON200)
 
 	return resp.JSON200

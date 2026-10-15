@@ -8,7 +8,7 @@ The database enforces structural integrity only. Every business rule — input s
 
 ### 1. Every service input goes through the validator
 
-- Define a dedicated `*Input` struct per operation in the domain layer (`internal/domain/<aggregate>/`), with `validate:"..."` struct tags. Inputs, DB structs, and domain objects are distinct types.
+- Define a dedicated `*Input` struct per operation in the domain layer (`internal/domain/<aggregate>/`), with `validate:"..."` struct tags. Inputs, DB structs, and domain objects are distinct types. Exception: if the arguments are only identifiers (ids, plus an optional credential such as a token), pass them as parameters. Do not wrap them in an `*Input` struct. Check emptiness inline. Use `*Input` when the operation carries a body: several fields, optionals, or semantic rules.
 - Validation uses `go-playground/validator/v10` through the shared wrapper `github.com/nanostack-dev/nanostack-framework/pkg/validate` (`ValidateStruct`). Custom tags available: `notblank`, `strongpassword`, `permission_name`, `request_url`.
 - **Every exported service method validates its input as its first action** — before any repository call, transaction, or external call. Two sanctioned styles:
   - Inline: `if err := validateStruct(input); err != nil { return ..., err }` at the top of the method.
@@ -55,6 +55,32 @@ Give each aggregate its own enum. A value that is valid for one aggregate is not
 **An include never carries derived data.** An include returns the stored record only. Data that a dedicated endpoint computes stays on that endpoint. In anchor the license include returns `license.OrganizationLicense`. The license route returns `license.OrganizationLicenseRead`, which adds usage and a derived status. Two types put the rule under the compiler. There are two reasons for the rule. Derived data has its own cost, cache, and freshness rules, and a page-wide include multiplies that cost where no caller can see it. Two sources for one computed value also drift apart.
 
 **Add the parameter without a break.** Keep the parameter `required: false`. In the Go SDK, add it as a variadic argument on a single-resource read — `Get(ctx, id, include ...Include)` — and as an `Include(...)` builder method on a search. Existing callers then compile with no change. Never add the include as a new positional argument. Never change a response type to carry it. A new enum value is an additive change. Removal of an enum value is a breaking change.
+
+### Collections are cursor-paginated searches
+
+Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.Keys` with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
+
+**Shape.** `POST /<collection>/search`, with `filter`, `sort`, optional full-text and `pagination` in the body. Nest the route under the parent when the parent scopes the collection (`/organizations/{organization_id}/workspaces/search`). The response carries `items`, `total`, `count` and `next_cursor`.
+
+**Cursor contract.**
+
+- `pagination.cursor` is optional. Absent starts at the first row. Send back the previous response's `next_cursor` to continue, with the same filter and sort.
+- `next_cursor` is absent or null on the last page. Iterate until it is absent; never infer the end from `count < limit` or from `total`.
+- `total` counts every match of the filter, not the rows left after the cursor.
+- A cursor is opaque. Clients never build, parse or store one beyond the walk that produced it. A cursor issued for another sort, a malformed one, or a cursor sent with a non-zero `offset` answers 400 (`INVALID_CURSOR`).
+- `offset` stays for page-number navigation in a UI table. Machine iteration (syncs, exports, SDK `All` helpers, MCP tools, the CLI, Terraform data sources) always uses the cursor.
+
+**Ordering is total.** Every sortable field maps to a typed key (`StringKey`, `EnumKey`, `TimeKey`, `IntKey`, `Nullable*` for a nullable column), and the ordering ends with the primary key as the tiebreak. A search without a requested sort orders by its documented default, still ending with the id. Never order a page by a non-unique column alone.
+
+**Indexes.** A search on a table that grows without bound has a composite index matching its default ordering behind its scope, for example `(organization_id, created_at, id)`. The seek is then one range scan, at any depth.
+
+**Static catalogs and aggregates are not resources.** A fixed list compiled into the binary (node definitions, permissions), a live in-memory view (connected runners) and an aggregate computed per request (analytics buckets, usage series) return their array directly. Pagination there would be a fiction. State the reason in the operation description.
+
+**GET lists.** A new collection gets a search, never a `GET` list. An existing `GET` list of a persisted resource is deprecated in the spec, with `deprecated: true` and the search named in its description, once the search exists. First-party clients move to the search in the same change.
+
+**SDK.** A search builder exposes `Cursor(string)` and the result exposes `NextCursor`. Offer an iterator (`All(ctx)` / `Pages(ctx)`) that follows `next_cursor`, so callers never write the loop themselves.
+
+**Tests.** Every search has an integration test that walks more than one page by cursor across rows with tied sort values, and asserts that each row comes back exactly once, in order. An invalid cursor answers 400.
 
 ### HTTP error statuses
 

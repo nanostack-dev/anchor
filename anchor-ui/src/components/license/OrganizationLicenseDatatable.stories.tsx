@@ -5,9 +5,9 @@ import {
 } from "@/client";
 import {
 	getLicenseSchemaQueryKey,
-	listLicenseTemplatesQueryKey,
 	searchOrganizationLicensesQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import { allLicenseTemplatesQueryKey } from "@/hooks/useAllLicenseTemplates";
 import { StoryRouter } from "@/lib/storybook/story-router";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -67,7 +67,7 @@ function TableHarness() {
 			defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY } },
 		});
 		client.setQueryData(getLicenseSchemaQueryKey({ path }), { fields: [] });
-		client.setQueryData(listLicenseTemplatesQueryKey({ path }), {
+		client.setQueryData(allLicenseTemplatesQueryKey(path.product_id), {
 			items: [
 				{
 					...timestamps,

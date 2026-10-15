@@ -167,8 +167,9 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		Items: functional.Slice(result.Items).Map(func(org organization.Organization) ProductOrganizationResponse {
 			return mapOrganizationToResponse(org, includeWorkspaces)
 		}),
-		Total: result.Total,
-		Count: result.Count,
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -254,9 +255,7 @@ func mapToSearchProductOrganizationInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }
 
 func initialWorkspaceInput(input *ProductWorkspaceRequest) *organization.InitialWorkspaceInput {

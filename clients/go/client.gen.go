@@ -196,6 +196,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of platform invitations, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -206,6 +207,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of platform invitations, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -233,6 +235,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of platform Users, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -243,6 +246,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of platform Users, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -286,7 +290,8 @@ type ClientInterface interface {
 
 	// SearchProductsWithBody Search Products
 	//
-	// Searches for products based on criteria. Requires Platform Bearer token.
+	// Searches for products based on criteria. Requires Platform  Bearer token.
+	// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -295,7 +300,8 @@ type ClientInterface interface {
 
 	// SearchProducts Search Products
 	//
-	// Searches for products based on criteria. Requires Platform Bearer token.
+	// Searches for products based on criteria. Requires Platform  Bearer token.
+	// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -354,7 +360,8 @@ type ClientInterface interface {
 
 	// SearchProductAPIKeysWithBody Search Product API Keys
 	//
-	// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+	// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -363,7 +370,8 @@ type ClientInterface interface {
 
 	// SearchProductAPIKeys Search Product API Keys
 	//
-	// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+	// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -422,7 +430,11 @@ type ClientInterface interface {
 
 	// ListEmailSends List Send Records
 	//
+	// Deprecated: use `searchEmailSends`, which pages with a cursor.
+	//
 	// Corresponds with GET /v1/products/{product_id}/email/sends (the `ListEmailSends` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailSends(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SendEmailWithBody Send Email
@@ -443,9 +455,33 @@ type ClientInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/email/sends (the `SendEmail` operationId).
 	SendEmail(ctx context.Context, productId ProductIdParameter, body SendEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchEmailSendsWithBody Search Send Records
+	//
+	// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+	SearchEmailSendsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchEmailSends Search Send Records
+	//
+	// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+	SearchEmailSends(ctx context.Context, productId ProductIdParameter, body SearchEmailSendsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListEmailTemplates List Email Templates
 	//
+	// Deprecated: use `searchEmailTemplates`, which pages with a cursor.
+	//
 	// Corresponds with GET /v1/products/{product_id}/email/templates (the `ListEmailTemplates` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailTemplates(ctx context.Context, productId ProductIdParameter, params *ListEmailTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEmailTemplateWithBody Create Email Template
@@ -461,6 +497,26 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/email/templates (the `CreateEmailTemplate` operationId).
 	CreateEmailTemplate(ctx context.Context, productId ProductIdParameter, body CreateEmailTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchEmailTemplatesWithBody Search Email Templates
+	//
+	// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+	SearchEmailTemplatesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchEmailTemplates Search Email Templates
+	//
+	// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+	SearchEmailTemplates(ctx context.Context, productId ProductIdParameter, body SearchEmailTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteEmailTemplate Delete Email Template
 	//
@@ -518,6 +574,7 @@ type ClientInterface interface {
 	// GetEmailTemplateExamples Get Template Examples
 	//
 	// Returns the saved variable example sets for this template.
+	// Not a search. The examples are an array embedded in one template, bounded by the template, so they return together with it.
 	//
 	// Corresponds with GET /v1/products/{product_id}/email/templates/{email_template_id}/examples (the `GetEmailTemplateExamples` operationId).
 	GetEmailTemplateExamples(ctx context.Context, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -568,6 +625,7 @@ type ClientInterface interface {
 	// GetProductEventsCatalog Get Product Events Catalog
 	//
 	// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
+	// Not a search. This is a static catalog compiled into the binary, not a stored collection, so it returns every event at once.
 	//
 	// Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 	GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -576,6 +634,7 @@ type ClientInterface interface {
 	//
 	// Lists all integration instances for the specified product.
 	// Requires Platform Bearer token.
+	// Not a search. A product has at most one integration instance per provider, so the list is bounded by the number of providers and returns every instance.
 	//
 	// Corresponds with GET /v1/products/{product_id}/integrations (the `ListIntegrationInstances` operationId).
 	ListIntegrationInstances(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -666,13 +725,37 @@ type ClientInterface interface {
 	// Lists audit log entries for a specific integration instance.
 	// Entries are returned in reverse chronological order (newest first).
 	// Requires Platform Bearer token.
+	// Deprecated: use `searchIntegrationAuditLogs`, which pages with a cursor.
 	//
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchIntegrationAuditLogsWithBody Search Integration Audit Logs
+	//
+	// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+	SearchIntegrationAuditLogsWithBody(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchIntegrationAuditLogs Search Integration Audit Logs
+	//
+	// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+	SearchIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, body SearchIntegrationAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProductOrganizationInvitationsWithBody Search Product Organization Invitations
 	//
 	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -682,6 +765,7 @@ type ClientInterface interface {
 	// SearchProductOrganizationInvitations Search Product Organization Invitations
 	//
 	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -717,6 +801,7 @@ type ClientInterface interface {
 	// Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 	// Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 	// An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+	// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -728,6 +813,7 @@ type ClientInterface interface {
 	// Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 	// Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 	// An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+	// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -740,6 +826,8 @@ type ClientInterface interface {
 	DeleteLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLicenseSchema Get License Schema
+	//
+	// Not a search. The fields are an array embedded in the one schema a product has, so they return together with it.
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
 	GetLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -783,8 +871,11 @@ type ClientInterface interface {
 	// ListLicenseTemplates List License Templates
 	//
 	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+	// Deprecated: use `searchLicenseTemplates`, which pages with a cursor.
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateLicenseTemplateWithBody Create License Template
@@ -804,6 +895,26 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchLicenseTemplatesWithBody Search License Templates
+	//
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+	SearchLicenseTemplatesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchLicenseTemplates Search License Templates
+	//
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+	SearchLicenseTemplates(ctx context.Context, productId ProductIdParameter, body SearchLicenseTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteLicenseTemplate Delete License Template
 	//
@@ -883,6 +994,7 @@ type ClientInterface interface {
 	// allowing filtering and pagination. Pass `include` to read a related
 	// resource alongside every organization in the page.
 	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -895,6 +1007,7 @@ type ClientInterface interface {
 	// allowing filtering and pagination. Pass `include` to read a related
 	// resource alongside every organization in the page.
 	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -964,6 +1077,7 @@ type ClientInterface interface {
 	// SearchOrganizationAPIKeysWithBody Search Organization API Keys
 	//
 	// Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -973,6 +1087,7 @@ type ClientInterface interface {
 	// SearchOrganizationAPIKeys Search Organization API Keys
 	//
 	// Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1050,6 +1165,7 @@ type ClientInterface interface {
 	// SearchOrganizationInvitationsWithBody Search Organization Invitations
 	//
 	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1059,6 +1175,7 @@ type ClientInterface interface {
 	// SearchOrganizationInvitations Search Organization Invitations
 	//
 	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1161,6 +1278,7 @@ type ClientInterface interface {
 	// GetOrganizationLicenseDiff Diff Organization License Against Its Template
 	//
 	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
+	// Not a search. The differences are derived per request from one license and its template, so they return together.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 	GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1170,9 +1288,34 @@ type ClientInterface interface {
 	// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
 	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
 	// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+	// Deprecated: use `searchOrganizationLicenseHistory`, which pages with a cursor.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	GetOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationLicenseHistoryWithBody Search Organization License History
+	//
+	// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+	// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+	SearchOrganizationLicenseHistoryWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationLicenseHistory Search Organization License History
+	//
+	// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+	// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+	SearchOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationLicenseHistoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReportOrganizationUsageWithBody Report Organization Usage
 	//
@@ -1201,6 +1344,7 @@ type ClientInterface interface {
 	// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
 	// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
 	// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+	// Not a search. This is an aggregate time series computed per request from the continuous aggregates, not a stored collection. It pages by `limit` and `offset` over time buckets in ascending order, and never returns a `next_cursor`.
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
 	GetOrganizationUsageSeries(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1226,6 +1370,7 @@ type ClientInterface interface {
 	// SearchOrganizationMembersWithBody Search Organization Members
 	//
 	// Search members in an organization.
+	// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1235,6 +1380,7 @@ type ClientInterface interface {
 	// SearchOrganizationMembers Search Organization Members
 	//
 	// Search members in an organization.
+	// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1294,6 +1440,7 @@ type ClientInterface interface {
 	// SearchOrganizationWorkspacesWithBody Search Organization Workspaces
 	//
 	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1303,6 +1450,7 @@ type ClientInterface interface {
 	// SearchOrganizationWorkspaces Search Organization Workspaces
 	//
 	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1344,6 +1492,7 @@ type ClientInterface interface {
 	// SearchProductPermissionsWithBody Search built-in Product Permissions
 	//
 	// Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1353,6 +1502,7 @@ type ClientInterface interface {
 	// SearchProductPermissions Search built-in Product Permissions
 	//
 	// Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1392,6 +1542,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of users associated with the specified Product,
 	// allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1402,6 +1553,7 @@ type ClientInterface interface {
 	//
 	// Retrieves a list of users associated with the specified Product,
 	// allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1429,9 +1581,32 @@ type ClientInterface interface {
 	// Lists all organizations that the specified product user belongs to,
 	// including their role and membership details in each organization.
 	// Requires an API Key with `product_user:read` permission.
+	// Deprecated: use `searchUserOrganizations`, which pages with a cursor.
 	//
 	// Corresponds with GET /v1/products/{product_id}/product-users/{product_user_id}/organizations (the `ListUserOrganizations` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListUserOrganizations(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *ListUserOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchUserOrganizationsWithBody Search User Organizations
+	//
+	// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+	// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+	SearchUserOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchUserOrganizations Search User Organizations
+	//
+	// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+	// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+	SearchUserOrganizations(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, body SearchUserOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserOrganization Get User Organization
 	//
@@ -1462,7 +1637,8 @@ type ClientInterface interface {
 
 	// SearchProductResourcePermissionsWithBody Search Product Resource Permissions
 	//
-	// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+	// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1471,7 +1647,8 @@ type ClientInterface interface {
 
 	// SearchProductResourcePermissions Search Product Resource Permissions
 	//
-	// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+	// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1530,7 +1707,8 @@ type ClientInterface interface {
 
 	// SearchProductRolesWithBody Search ProductRoles for Product
 	//
-	// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1539,7 +1717,8 @@ type ClientInterface interface {
 
 	// SearchProductRoles Search ProductRoles for Product
 	//
-	// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1800,6 +1979,7 @@ func (c *Client) CreatePlatformInvitation(ctx context.Context, body CreatePlatfo
 //
 // Retrieves a list of platform invitations, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1820,6 +2000,7 @@ func (c *Client) SearchPlatformInvitationsWithBody(ctx context.Context, contentT
 //
 // Retrieves a list of platform invitations, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1877,6 +2058,7 @@ func (c *Client) GetPlatformInvitation(ctx context.Context, invitationId Platfor
 //
 // Retrieves a list of platform Users, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1897,6 +2079,7 @@ func (c *Client) SearchPlatformUsersWithBody(ctx context.Context, contentType st
 //
 // Retrieves a list of platform Users, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1990,7 +2173,8 @@ func (c *Client) CreateProduct(ctx context.Context, body CreateProductJSONReques
 
 // SearchProductsWithBody Search Products
 //
-// Searches for products based on criteria. Requires Platform Bearer token.
+// Searches for products based on criteria. Requires Platform  Bearer token.
+// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2009,7 +2193,8 @@ func (c *Client) SearchProductsWithBody(ctx context.Context, contentType string,
 
 // SearchProducts Search Products
 //
-// Searches for products based on criteria. Requires Platform Bearer token.
+// Searches for products based on criteria. Requires Platform  Bearer token.
+// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2138,7 +2323,8 @@ func (c *Client) CreateProductAPIKey(ctx context.Context, productId ProductIdPar
 
 // SearchProductAPIKeysWithBody Search Product API Keys
 //
-// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2157,7 +2343,8 @@ func (c *Client) SearchProductAPIKeysWithBody(ctx context.Context, productId Pro
 
 // SearchProductAPIKeys Search Product API Keys
 //
-// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2286,7 +2473,10 @@ func (c *Client) IntrospectOrganizationAPIKey(ctx context.Context, productId Pro
 
 // ListEmailSends List Send Records
 //
+// Deprecated: use `searchEmailSends`, which pages with a cursor.
+//
 // Corresponds with GET /v1/products/{product_id}/email/sends (the `ListEmailSends` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) ListEmailSends(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListEmailSendsRequest(c.Server, productId, params)
 	if err != nil {
@@ -2337,9 +2527,52 @@ func (c *Client) SendEmail(ctx context.Context, productId ProductIdParameter, bo
 	return c.Client.Do(req)
 }
 
+// SearchEmailSendsWithBody Search Send Records
+//
+// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+func (c *Client) SearchEmailSendsWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchEmailSendsRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchEmailSends Search Send Records
+//
+// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+func (c *Client) SearchEmailSends(ctx context.Context, productId ProductIdParameter, body SearchEmailSendsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchEmailSendsRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListEmailTemplates List Email Templates
 //
+// Deprecated: use `searchEmailTemplates`, which pages with a cursor.
+//
 // Corresponds with GET /v1/products/{product_id}/email/templates (the `ListEmailTemplates` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) ListEmailTemplates(ctx context.Context, productId ProductIdParameter, params *ListEmailTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListEmailTemplatesRequest(c.Server, productId, params)
 	if err != nil {
@@ -2376,6 +2609,46 @@ func (c *Client) CreateEmailTemplateWithBody(ctx context.Context, productId Prod
 // Corresponds with POST /v1/products/{product_id}/email/templates (the `CreateEmailTemplate` operationId).
 func (c *Client) CreateEmailTemplate(ctx context.Context, productId ProductIdParameter, body CreateEmailTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateEmailTemplateRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchEmailTemplatesWithBody Search Email Templates
+//
+// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+func (c *Client) SearchEmailTemplatesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchEmailTemplatesRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchEmailTemplates Search Email Templates
+//
+// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+func (c *Client) SearchEmailTemplates(ctx context.Context, productId ProductIdParameter, body SearchEmailTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchEmailTemplatesRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2512,6 +2785,7 @@ func (c *Client) UpdateEmailTemplateDraft(ctx context.Context, productId Product
 // GetEmailTemplateExamples Get Template Examples
 //
 // Returns the saved variable example sets for this template.
+// Not a search. The examples are an array embedded in one template, bounded by the template, so they return together with it.
 //
 // Corresponds with GET /v1/products/{product_id}/email/templates/{email_template_id}/examples (the `GetEmailTemplateExamples` operationId).
 func (c *Client) GetEmailTemplateExamples(ctx context.Context, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2622,6 +2896,7 @@ func (c *Client) PublishEmailTemplate(ctx context.Context, productId ProductIdPa
 // GetProductEventsCatalog Get Product Events Catalog
 //
 // Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
+// Not a search. This is a static catalog compiled into the binary, not a stored collection, so it returns every event at once.
 //
 // Corresponds with GET /v1/products/{product_id}/events/catalog (the `GetProductEventsCatalog` operationId).
 func (c *Client) GetProductEventsCatalog(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2640,6 +2915,7 @@ func (c *Client) GetProductEventsCatalog(ctx context.Context, productId ProductI
 //
 // Lists all integration instances for the specified product.
 // Requires Platform Bearer token.
+// Not a search. A product has at most one integration instance per provider, so the list is bounded by the number of providers and returns every instance.
 //
 // Corresponds with GET /v1/products/{product_id}/integrations (the `ListIntegrationInstances` operationId).
 func (c *Client) ListIntegrationInstances(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2820,10 +3096,52 @@ func (c *Client) UpdateIntegrationInstance(ctx context.Context, productId Produc
 // Lists audit log entries for a specific integration instance.
 // Entries are returned in reverse chronological order (newest first).
 // Requires Platform Bearer token.
+// Deprecated: use `searchIntegrationAuditLogs`, which pages with a cursor.
 //
 // Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListIntegrationAuditLogsRequest(c.Server, productId, integrationInstanceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchIntegrationAuditLogsWithBody Search Integration Audit Logs
+//
+// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+func (c *Client) SearchIntegrationAuditLogsWithBody(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchIntegrationAuditLogsRequestWithBody(c.Server, productId, integrationInstanceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchIntegrationAuditLogs Search Integration Audit Logs
+//
+// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+func (c *Client) SearchIntegrationAuditLogs(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, body SearchIntegrationAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchIntegrationAuditLogsRequest(c.Server, productId, integrationInstanceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2837,6 +3155,7 @@ func (c *Client) ListIntegrationAuditLogs(ctx context.Context, productId Product
 // SearchProductOrganizationInvitationsWithBody Search Product Organization Invitations
 //
 // Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2856,6 +3175,7 @@ func (c *Client) SearchProductOrganizationInvitationsWithBody(ctx context.Contex
 // SearchProductOrganizationInvitations Search Product Organization Invitations
 //
 // Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2921,6 +3241,7 @@ func (c *Client) MigrateOrganizationLicenses(ctx context.Context, productId Prod
 // Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 // Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 // An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2942,6 +3263,7 @@ func (c *Client) SearchOrganizationLicensesWithBody(ctx context.Context, product
 // Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 // Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 // An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2974,6 +3296,8 @@ func (c *Client) DeleteLicenseSchema(ctx context.Context, productId ProductIdPar
 }
 
 // GetLicenseSchema Get License Schema
+//
+// Not a search. The fields are an array embedded in the one schema a product has, so they return together with it.
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/schema (the `GetLicenseSchema` operationId).
 func (c *Client) GetLicenseSchema(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3067,8 +3391,10 @@ func (c *Client) UpdateLicenseSchema(ctx context.Context, productId ProductIdPar
 // ListLicenseTemplates List License Templates
 //
 // Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+// Deprecated: use `searchLicenseTemplates`, which pages with a cursor.
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) ListLicenseTemplates(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListLicenseTemplatesRequest(c.Server, productId, params)
 	if err != nil {
@@ -3109,6 +3435,46 @@ func (c *Client) CreateLicenseTemplateWithBody(ctx context.Context, productId Pr
 // Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 func (c *Client) CreateLicenseTemplate(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateLicenseTemplateRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchLicenseTemplatesWithBody Search License Templates
+//
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+func (c *Client) SearchLicenseTemplatesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchLicenseTemplatesRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchLicenseTemplates Search License Templates
+//
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+func (c *Client) SearchLicenseTemplates(ctx context.Context, productId ProductIdParameter, body SearchLicenseTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchLicenseTemplatesRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3267,6 +3633,7 @@ func (c *Client) CreateProductOrganization(ctx context.Context, productId Produc
 // allowing filtering and pagination. Pass `include` to read a related
 // resource alongside every organization in the page.
 // Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3289,6 +3656,7 @@ func (c *Client) SearchProductOrganizationsWithBody(ctx context.Context, product
 // allowing filtering and pagination. Pass `include` to read a related
 // resource alongside every organization in the page.
 // Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3428,6 +3796,7 @@ func (c *Client) CreateOrganizationAPIKey(ctx context.Context, productId Product
 // SearchOrganizationAPIKeysWithBody Search Organization API Keys
 //
 // Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3447,6 +3816,7 @@ func (c *Client) SearchOrganizationAPIKeysWithBody(ctx context.Context, productI
 // SearchOrganizationAPIKeys Search Organization API Keys
 //
 // Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3614,6 +3984,7 @@ func (c *Client) CreateOrganizationInvitation(ctx context.Context, productId Pro
 // SearchOrganizationInvitationsWithBody Search Organization Invitations
 //
 // Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3633,6 +4004,7 @@ func (c *Client) SearchOrganizationInvitationsWithBody(ctx context.Context, prod
 // SearchOrganizationInvitations Search Organization Invitations
 //
 // Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3855,6 +4227,7 @@ func (c *Client) InstantiateOrganizationLicense(ctx context.Context, productId P
 // GetOrganizationLicenseDiff Diff Organization License Against Its Template
 //
 // Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
+// Not a search. The differences are derived per request from one license and its template, so they return together.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/diff (the `GetOrganizationLicenseDiff` operationId).
 func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3874,10 +4247,54 @@ func (c *Client) GetOrganizationLicenseDiff(ctx context.Context, productId Produ
 // Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
 // The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
 // An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+// Deprecated: use `searchOrganizationLicenseHistory`, which pages with a cursor.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) GetOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationLicenseHistoryRequest(c.Server, productId, organizationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationLicenseHistoryWithBody Search Organization License History
+//
+// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+func (c *Client) SearchOrganizationLicenseHistoryWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationLicenseHistoryRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationLicenseHistory Search Organization License History
+//
+// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+func (c *Client) SearchOrganizationLicenseHistory(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationLicenseHistoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationLicenseHistoryRequest(c.Server, productId, organizationId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3935,6 +4352,7 @@ func (c *Client) ReportOrganizationUsage(ctx context.Context, productId ProductI
 // Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
 // This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
 // Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+// Not a search. This is an aggregate time series computed per request from the continuous aggregates, not a stored collection. It pages by `limit` and `offset` over time buckets in ascending order, and never returns a `next_cursor`.
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/usage/series (the `GetOrganizationUsageSeries` operationId).
 func (c *Client) GetOrganizationUsageSeries(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationUsageSeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3990,6 +4408,7 @@ func (c *Client) AddOrganizationMember(ctx context.Context, productId ProductIdP
 // SearchOrganizationMembersWithBody Search Organization Members
 //
 // Search members in an organization.
+// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4009,6 +4428,7 @@ func (c *Client) SearchOrganizationMembersWithBody(ctx context.Context, productI
 // SearchOrganizationMembers Search Organization Members
 //
 // Search members in an organization.
+// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4138,6 +4558,7 @@ func (c *Client) CreateOrganizationWorkspace(ctx context.Context, productId Prod
 // SearchOrganizationWorkspacesWithBody Search Organization Workspaces
 //
 // Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4157,6 +4578,7 @@ func (c *Client) SearchOrganizationWorkspacesWithBody(ctx context.Context, produ
 // SearchOrganizationWorkspaces Search Organization Workspaces
 //
 // Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4248,6 +4670,7 @@ func (c *Client) UpdateOrganizationWorkspace(ctx context.Context, productId Prod
 // SearchProductPermissionsWithBody Search built-in Product Permissions
 //
 // Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4267,6 +4690,7 @@ func (c *Client) SearchProductPermissionsWithBody(ctx context.Context, productId
 // SearchProductPermissions Search built-in Product Permissions
 //
 // Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4346,6 +4770,7 @@ func (c *Client) CreateProductUser(ctx context.Context, productId ProductIdParam
 //
 // Retrieves a list of users associated with the specified Product,
 // allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4366,6 +4791,7 @@ func (c *Client) SearchProductUsersWithBody(ctx context.Context, productId Produ
 //
 // Retrieves a list of users associated with the specified Product,
 // allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4423,10 +4849,52 @@ func (c *Client) GetProductUser(ctx context.Context, productId ProductIdParamete
 // Lists all organizations that the specified product user belongs to,
 // including their role and membership details in each organization.
 // Requires an API Key with `product_user:read` permission.
+// Deprecated: use `searchUserOrganizations`, which pages with a cursor.
 //
 // Corresponds with GET /v1/products/{product_id}/product-users/{product_user_id}/organizations (the `ListUserOrganizations` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) ListUserOrganizations(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *ListUserOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListUserOrganizationsRequest(c.Server, productId, productUserId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchUserOrganizationsWithBody Search User Organizations
+//
+// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+func (c *Client) SearchUserOrganizationsWithBody(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserOrganizationsRequestWithBody(c.Server, productId, productUserId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchUserOrganizations Search User Organizations
+//
+// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+func (c *Client) SearchUserOrganizations(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, body SearchUserOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserOrganizationsRequest(c.Server, productId, productUserId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4496,7 +4964,8 @@ func (c *Client) CreateProductResourcePermission(ctx context.Context, productId 
 
 // SearchProductResourcePermissionsWithBody Search Product Resource Permissions
 //
-// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4515,7 +4984,8 @@ func (c *Client) SearchProductResourcePermissionsWithBody(ctx context.Context, p
 
 // SearchProductResourcePermissions Search Product Resource Permissions
 //
-// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4644,7 +5114,8 @@ func (c *Client) CreateProductRole(ctx context.Context, productId ProductIdParam
 
 // SearchProductRolesWithBody Search ProductRoles for Product
 //
-// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4663,7 +5134,8 @@ func (c *Client) SearchProductRolesWithBody(ctx context.Context, productId Produ
 
 // SearchProductRoles Search ProductRoles for Product
 //
-// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5857,6 +6329,53 @@ func NewSendEmailRequestWithBody(server string, productId ProductIdParameter, co
 	return req, nil
 }
 
+// NewSearchEmailSendsRequest calls the generic SearchEmailSends builder with application/json body
+func NewSearchEmailSendsRequest(server string, productId ProductIdParameter, body SearchEmailSendsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchEmailSendsRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewSearchEmailSendsRequestWithBody constructs an http.Request for the SearchEmailSends method, with any body, and a specified content type
+func NewSearchEmailSendsRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/email/sends/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListEmailTemplatesRequest constructs an http.Request for the ListEmailTemplates method
 func NewListEmailTemplatesRequest(server string, productId ProductIdParameter, params *ListEmailTemplatesParams) (*http.Request, error) {
 	var err error
@@ -5958,6 +6477,53 @@ func NewCreateEmailTemplateRequestWithBody(server string, productId ProductIdPar
 	}
 
 	operationPath := fmt.Sprintf("/v1/products/%s/email/templates", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchEmailTemplatesRequest calls the generic SearchEmailTemplates builder with application/json body
+func NewSearchEmailTemplatesRequest(server string, productId ProductIdParameter, body SearchEmailTemplatesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchEmailTemplatesRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewSearchEmailTemplatesRequestWithBody constructs an http.Request for the SearchEmailTemplates method, with any body, and a specified content type
+func NewSearchEmailTemplatesRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/email/templates/search", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6744,6 +7310,60 @@ func NewListIntegrationAuditLogsRequest(server string, productId ProductIdParame
 	return req, nil
 }
 
+// NewSearchIntegrationAuditLogsRequest calls the generic SearchIntegrationAuditLogs builder with application/json body
+func NewSearchIntegrationAuditLogsRequest(server string, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, body SearchIntegrationAuditLogsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchIntegrationAuditLogsRequestWithBody(server, productId, integrationInstanceId, "application/json", bodyReader)
+}
+
+// NewSearchIntegrationAuditLogsRequestWithBody constructs an http.Request for the SearchIntegrationAuditLogs method, with any body, and a specified content type
+func NewSearchIntegrationAuditLogsRequestWithBody(server string, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "integration_instance_id", integrationInstanceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/integrations/%s/audit-logs/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSearchProductOrganizationInvitationsRequest calls the generic SearchProductOrganizationInvitations builder with application/json body
 func NewSearchProductOrganizationInvitationsRequest(server string, productId ProductIdParameter, body SearchProductOrganizationInvitationsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -7136,6 +7756,53 @@ func NewCreateLicenseTemplateRequestWithBody(server string, productId ProductIdP
 	}
 
 	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchLicenseTemplatesRequest calls the generic SearchLicenseTemplates builder with application/json body
+func NewSearchLicenseTemplatesRequest(server string, productId ProductIdParameter, body SearchLicenseTemplatesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchLicenseTemplatesRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewSearchLicenseTemplatesRequestWithBody constructs an http.Request for the SearchLicenseTemplates method, with any body, and a specified content type
+func NewSearchLicenseTemplatesRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/licensing/templates/search", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8531,6 +9198,60 @@ func NewGetOrganizationLicenseHistoryRequest(server string, productId ProductIdP
 	return req, nil
 }
 
+// NewSearchOrganizationLicenseHistoryRequest calls the generic SearchOrganizationLicenseHistory builder with application/json body
+func NewSearchOrganizationLicenseHistoryRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationLicenseHistoryJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchOrganizationLicenseHistoryRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewSearchOrganizationLicenseHistoryRequestWithBody constructs an http.Request for the SearchOrganizationLicenseHistory method, with any body, and a specified content type
+func NewSearchOrganizationLicenseHistoryRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/license/history/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewReportOrganizationUsageRequest calls the generic ReportOrganizationUsage builder with application/json body
 func NewReportOrganizationUsageRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body ReportOrganizationUsageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9590,6 +10311,87 @@ func NewListUserOrganizationsRequest(server string, productId ProductIdParameter
 	return req, nil
 }
 
+// NewSearchUserOrganizationsRequest calls the generic SearchUserOrganizations builder with application/json body
+func NewSearchUserOrganizationsRequest(server string, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, body SearchUserOrganizationsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchUserOrganizationsRequestWithBody(server, productId, productUserId, params, "application/json", bodyReader)
+}
+
+// NewSearchUserOrganizationsRequestWithBody constructs an http.Request for the SearchUserOrganizations method, with any body, and a specified content type
+func NewSearchUserOrganizationsRequestWithBody(server string, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/product-users/%s/organizations/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Include != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "include", *params.Include, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetUserOrganizationRequest constructs an http.Request for the GetUserOrganization method
 func NewGetUserOrganizationRequest(server string, productId ProductIdParameter, productUserId ProductUserIdParameter, organizationId OrganizationIdParameter, params *GetUserOrganizationParams) (*http.Request, error) {
 	var err error
@@ -10383,6 +11185,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of platform invitations, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10393,6 +11196,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of platform invitations, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10424,6 +11228,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of platform Users, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10434,6 +11239,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of platform Users, allowing filtering and pagination.
 	// Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10481,7 +11287,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductsWithBodyWithResponse Search Products
 	//
-	// Searches for products based on criteria. Requires Platform Bearer token.
+	// Searches for products based on criteria. Requires Platform  Bearer token.
+	// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10490,7 +11297,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductsWithResponse Search Products
 	//
-	// Searches for products based on criteria. Requires Platform Bearer token.
+	// Searches for products based on criteria. Requires Platform  Bearer token.
+	// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10553,7 +11361,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductAPIKeysWithBodyWithResponse Search Product API Keys
 	//
-	// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+	// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10562,7 +11371,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductAPIKeysWithResponse Search Product API Keys
 	//
-	// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+	// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10625,9 +11435,13 @@ type ClientWithResponsesInterface interface {
 
 	// ListEmailSendsWithResponse List Send Records
 	//
+	// Deprecated: use `searchEmailSends`, which pages with a cursor.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/email/sends (the `ListEmailSends` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*ListEmailSendsResponse, error)
 
 	// SendEmailWithBodyWithResponse Send Email
@@ -10648,11 +11462,35 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /v1/products/{product_id}/email/sends (the `SendEmail` operationId).
 	SendEmailWithResponse(ctx context.Context, productId ProductIdParameter, body SendEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*SendEmailResponse, error)
 
+	// SearchEmailSendsWithBodyWithResponse Search Send Records
+	//
+	// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+	SearchEmailSendsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchEmailSendsResponse, error)
+
+	// SearchEmailSendsWithResponse Search Send Records
+	//
+	// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+	SearchEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchEmailSendsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchEmailSendsResponse, error)
+
 	// ListEmailTemplatesWithResponse List Email Templates
+	//
+	// Deprecated: use `searchEmailTemplates`, which pages with a cursor.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/email/templates (the `ListEmailTemplates` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailTemplatesParams, reqEditors ...RequestEditorFn) (*ListEmailTemplatesResponse, error)
 
 	// CreateEmailTemplateWithBodyWithResponse Create Email Template
@@ -10668,6 +11506,26 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/email/templates (the `CreateEmailTemplate` operationId).
 	CreateEmailTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateEmailTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailTemplateResponse, error)
+
+	// SearchEmailTemplatesWithBodyWithResponse Search Email Templates
+	//
+	// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+	SearchEmailTemplatesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchEmailTemplatesResponse, error)
+
+	// SearchEmailTemplatesWithResponse Search Email Templates
+	//
+	// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+	SearchEmailTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchEmailTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchEmailTemplatesResponse, error)
 
 	// DeleteEmailTemplateWithResponse Delete Email Template
 	//
@@ -10731,6 +11589,7 @@ type ClientWithResponsesInterface interface {
 	// GetEmailTemplateExamplesWithResponse Get Template Examples
 	//
 	// Returns the saved variable example sets for this template.
+	// Not a search. The examples are an array embedded in one template, bounded by the template, so they return together with it.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10785,6 +11644,7 @@ type ClientWithResponsesInterface interface {
 	// GetProductEventsCatalogWithResponse Get Product Events Catalog
 	//
 	// Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
+	// Not a search. This is a static catalog compiled into the binary, not a stored collection, so it returns every event at once.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10795,6 +11655,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Lists all integration instances for the specified product.
 	// Requires Platform Bearer token.
+	// Not a search. A product has at most one integration instance per provider, so the list is bounded by the number of providers and returns every instance.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10891,15 +11752,39 @@ type ClientWithResponsesInterface interface {
 	// Lists audit log entries for a specific integration instance.
 	// Entries are returned in reverse chronological order (newest first).
 	// Requires Platform Bearer token.
+	// Deprecated: use `searchIntegrationAuditLogs`, which pages with a cursor.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error)
+
+	// SearchIntegrationAuditLogsWithBodyWithResponse Search Integration Audit Logs
+	//
+	// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+	SearchIntegrationAuditLogsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchIntegrationAuditLogsResponse, error)
+
+	// SearchIntegrationAuditLogsWithResponse Search Integration Audit Logs
+	//
+	// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+	// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+	SearchIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, body SearchIntegrationAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchIntegrationAuditLogsResponse, error)
 
 	// SearchProductOrganizationInvitationsWithBodyWithResponse Search Product Organization Invitations
 	//
 	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10909,6 +11794,7 @@ type ClientWithResponsesInterface interface {
 	// SearchProductOrganizationInvitationsWithResponse Search Product Organization Invitations
 	//
 	// Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10944,6 +11830,7 @@ type ClientWithResponsesInterface interface {
 	// Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 	// Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 	// An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+	// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10955,6 +11842,7 @@ type ClientWithResponsesInterface interface {
 	// Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 	// Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 	// An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+	// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -10969,6 +11857,8 @@ type ClientWithResponsesInterface interface {
 	DeleteLicenseSchemaWithResponse(ctx context.Context, productId ProductIdParameter, reqEditors ...RequestEditorFn) (*DeleteLicenseSchemaResponse, error)
 
 	// GetLicenseSchemaWithResponse Get License Schema
+	//
+	// Not a search. The fields are an array embedded in the one schema a product has, so they return together with it.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -11014,10 +11904,13 @@ type ClientWithResponsesInterface interface {
 	// ListLicenseTemplatesWithResponse List License Templates
 	//
 	// Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+	// Deprecated: use `searchLicenseTemplates`, which pages with a cursor.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error)
 
 	// CreateLicenseTemplateWithBodyWithResponse Create License Template
@@ -11037,6 +11930,26 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /v1/products/{product_id}/licensing/templates (the `CreateLicenseTemplate` operationId).
 	CreateLicenseTemplateWithResponse(ctx context.Context, productId ProductIdParameter, body CreateLicenseTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLicenseTemplateResponse, error)
+
+	// SearchLicenseTemplatesWithBodyWithResponse Search License Templates
+	//
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+	SearchLicenseTemplatesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchLicenseTemplatesResponse, error)
+
+	// SearchLicenseTemplatesWithResponse Search License Templates
+	//
+	// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+	// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+	SearchLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchLicenseTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchLicenseTemplatesResponse, error)
 
 	// DeleteLicenseTemplateWithResponse Delete License Template
 	//
@@ -11122,6 +12035,7 @@ type ClientWithResponsesInterface interface {
 	// allowing filtering and pagination. Pass `include` to read a related
 	// resource alongside every organization in the page.
 	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11134,6 +12048,7 @@ type ClientWithResponsesInterface interface {
 	// allowing filtering and pagination. Pass `include` to read a related
 	// resource alongside every organization in the page.
 	// Requires API Key with `product_organization:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11207,6 +12122,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationAPIKeysWithBodyWithResponse Search Organization API Keys
 	//
 	// Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11216,6 +12132,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationAPIKeysWithResponse Search Organization API Keys
 	//
 	// Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+	// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11297,6 +12214,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
 	//
 	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11306,6 +12224,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationInvitationsWithResponse Search Organization Invitations
 	//
 	// Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11414,6 +12333,7 @@ type ClientWithResponsesInterface interface {
 	// GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
 	//
 	// Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
+	// Not a search. The differences are derived per request from one license and its template, so they return together.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -11425,11 +12345,36 @@ type ClientWithResponsesInterface interface {
 	// Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
 	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
 	// An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+	// Deprecated: use `searchOrganizationLicenseHistory`, which pages with a cursor.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	GetOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseHistoryResponse, error)
+
+	// SearchOrganizationLicenseHistoryWithBodyWithResponse Search Organization License History
+	//
+	// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+	// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+	SearchOrganizationLicenseHistoryWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationLicenseHistoryResponse, error)
+
+	// SearchOrganizationLicenseHistoryWithResponse Search Organization License History
+	//
+	// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+	// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+	// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+	SearchOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationLicenseHistoryJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationLicenseHistoryResponse, error)
 
 	// ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
 	//
@@ -11458,6 +12403,7 @@ type ClientWithResponsesInterface interface {
 	// Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
 	// This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
 	// Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+	// Not a search. This is an aggregate time series computed per request from the continuous aggregates, not a stored collection. It pages by `limit` and `offset` over time buckets in ascending order, and never returns a `next_cursor`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -11485,6 +12431,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationMembersWithBodyWithResponse Search Organization Members
 	//
 	// Search members in an organization.
+	// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11494,6 +12441,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationMembersWithResponse Search Organization Members
 	//
 	// Search members in an organization.
+	// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11557,6 +12505,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationWorkspacesWithBodyWithResponse Search Organization Workspaces
 	//
 	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11566,6 +12515,7 @@ type ClientWithResponsesInterface interface {
 	// SearchOrganizationWorkspacesWithResponse Search Organization Workspaces
 	//
 	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11611,6 +12561,7 @@ type ClientWithResponsesInterface interface {
 	// SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
 	//
 	// Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11620,6 +12571,7 @@ type ClientWithResponsesInterface interface {
 	// SearchProductPermissionsWithResponse Search built-in Product Permissions
 	//
 	// Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11661,6 +12613,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of users associated with the specified Product,
 	// allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11671,6 +12624,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// Retrieves a list of users associated with the specified Product,
 	// allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+	// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11702,11 +12656,34 @@ type ClientWithResponsesInterface interface {
 	// Lists all organizations that the specified product user belongs to,
 	// including their role and membership details in each organization.
 	// Requires an API Key with `product_user:read` permission.
+	// Deprecated: use `searchUserOrganizations`, which pages with a cursor.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/products/{product_id}/product-users/{product_user_id}/organizations (the `ListUserOrganizations` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListUserOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *ListUserOrganizationsParams, reqEditors ...RequestEditorFn) (*ListUserOrganizationsResponse, error)
+
+	// SearchUserOrganizationsWithBodyWithResponse Search User Organizations
+	//
+	// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+	// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+	SearchUserOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserOrganizationsResponse, error)
+
+	// SearchUserOrganizationsWithResponse Search User Organizations
+	//
+	// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+	// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+	SearchUserOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, body SearchUserOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserOrganizationsResponse, error)
 
 	// GetUserOrganizationWithResponse Get User Organization
 	//
@@ -11739,7 +12716,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductResourcePermissionsWithBodyWithResponse Search Product Resource Permissions
 	//
-	// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+	// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11748,7 +12726,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductResourcePermissionsWithResponse Search Product Resource Permissions
 	//
-	// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+	// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+	// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11811,7 +12790,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductRolesWithBodyWithResponse Search ProductRoles for Product
 	//
-	// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11820,7 +12800,8 @@ type ClientWithResponsesInterface interface {
 
 	// SearchProductRolesWithResponse Search ProductRoles for Product
 	//
-	// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -13560,6 +14541,82 @@ func (r SendEmailResponse) ContentType() string {
 	return ""
 }
 
+type SearchEmailSendsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EmailSendSearchResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON200() *EmailSendSearchResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SearchEmailSendsResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchEmailSendsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchEmailSendsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchEmailSendsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchEmailSendsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListEmailTemplatesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13699,6 +14756,82 @@ func (r CreateEmailTemplateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateEmailTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchEmailTemplatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EmailTemplateSearchResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON200() *EmailTemplateSearchResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SearchEmailTemplatesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchEmailTemplatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchEmailTemplatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchEmailTemplatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchEmailTemplatesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14892,6 +16025,75 @@ func (r ListIntegrationAuditLogsResponse) ContentType() string {
 	return ""
 }
 
+type SearchIntegrationAuditLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IntegrationAuditLogSearchResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchIntegrationAuditLogsResponse) GetJSON200() *IntegrationAuditLogSearchResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchIntegrationAuditLogsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchIntegrationAuditLogsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchIntegrationAuditLogsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchIntegrationAuditLogsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchIntegrationAuditLogsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchIntegrationAuditLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchIntegrationAuditLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchIntegrationAuditLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchProductOrganizationInvitationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15535,6 +16737,75 @@ func (r CreateLicenseTemplateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateLicenseTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchLicenseTemplatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LicenseTemplateSearchResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchLicenseTemplatesResponse) GetJSON200() *LicenseTemplateSearchResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchLicenseTemplatesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchLicenseTemplatesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchLicenseTemplatesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchLicenseTemplatesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchLicenseTemplatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchLicenseTemplatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchLicenseTemplatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchLicenseTemplatesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -17405,6 +18676,82 @@ func (r GetOrganizationLicenseHistoryResponse) ContentType() string {
 	return ""
 }
 
+type SearchOrganizationLicenseHistoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationLicenseHistoryResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON200() *OrganizationLicenseHistoryResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SearchOrganizationLicenseHistoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchOrganizationLicenseHistoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchOrganizationLicenseHistoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchOrganizationLicenseHistoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchOrganizationLicenseHistoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ReportOrganizationUsageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18723,6 +20070,75 @@ func (r ListUserOrganizationsResponse) ContentType() string {
 	return ""
 }
 
+type SearchUserOrganizationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserOrganizationSearchResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchUserOrganizationsResponse) GetJSON200() *UserOrganizationSearchResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchUserOrganizationsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchUserOrganizationsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchUserOrganizationsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchUserOrganizationsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchUserOrganizationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchUserOrganizationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchUserOrganizationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchUserOrganizationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetUserOrganizationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19779,6 +21195,7 @@ func (c *ClientWithResponses) CreatePlatformInvitationWithResponse(ctx context.C
 //
 // Retrieves a list of platform invitations, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19795,6 +21212,7 @@ func (c *ClientWithResponses) SearchPlatformInvitationsWithBodyWithResponse(ctx 
 //
 // Retrieves a list of platform invitations, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_invitation:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19844,6 +21262,7 @@ func (c *ClientWithResponses) GetPlatformInvitationWithResponse(ctx context.Cont
 //
 // Retrieves a list of platform Users, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19860,6 +21279,7 @@ func (c *ClientWithResponses) SearchPlatformUsersWithBodyWithResponse(ctx contex
 //
 // Retrieves a list of platform Users, allowing filtering and pagination.
 // Requires Platform Bearer token and appropriate permissions (e.g., `platform_User:read`).
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19937,7 +21357,8 @@ func (c *ClientWithResponses) CreateProductWithResponse(ctx context.Context, bod
 
 // SearchProductsWithBodyWithResponse Search Products
 //
-// Searches for products based on criteria. Requires Platform Bearer token.
+// Searches for products based on criteria. Requires Platform  Bearer token.
+// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -19952,7 +21373,8 @@ func (c *ClientWithResponses) SearchProductsWithBodyWithResponse(ctx context.Con
 
 // SearchProductsWithResponse Search Products
 //
-// Searches for products based on criteria. Requires Platform Bearer token.
+// Searches for products based on criteria. Requires Platform  Bearer token.
+// Default order is `created_at` ascending, then `id`. Every order ends with `id`, so a page never skips or repeats a row. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20057,7 +21479,8 @@ func (c *ClientWithResponses) CreateProductAPIKeyWithResponse(ctx context.Contex
 
 // SearchProductAPIKeysWithBodyWithResponse Search Product API Keys
 //
-// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20072,7 +21495,8 @@ func (c *ClientWithResponses) SearchProductAPIKeysWithBodyWithResponse(ctx conte
 
 // SearchProductAPIKeysWithResponse Search Product API Keys
 //
-// Searches for product API keys defined for a specific product based on criteria. Requires Platform Bearer token.
+// Searches for product API keys defined for a specific product  based on criteria. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20177,9 +21601,13 @@ func (c *ClientWithResponses) IntrospectOrganizationAPIKeyWithResponse(ctx conte
 
 // ListEmailSendsWithResponse List Send Records
 //
+// Deprecated: use `searchEmailSends`, which pages with a cursor.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/email/sends (the `ListEmailSends` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) ListEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailSendsParams, reqEditors ...RequestEditorFn) (*ListEmailSendsResponse, error) {
 	rsp, err := c.ListEmailSends(ctx, productId, params, reqEditors...)
 	if err != nil {
@@ -20218,11 +21646,47 @@ func (c *ClientWithResponses) SendEmailWithResponse(ctx context.Context, product
 	return ParseSendEmailResponse(rsp)
 }
 
+// SearchEmailSendsWithBodyWithResponse Search Send Records
+//
+// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+func (c *ClientWithResponses) SearchEmailSendsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchEmailSendsResponse, error) {
+	rsp, err := c.SearchEmailSendsWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchEmailSendsResponse(rsp)
+}
+
+// SearchEmailSendsWithResponse Search Send Records
+//
+// Searches the product's email send records. Filter by `template_ids` and `statuses`.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/email/sends/search (the `SearchEmailSends` operationId).
+func (c *ClientWithResponses) SearchEmailSendsWithResponse(ctx context.Context, productId ProductIdParameter, body SearchEmailSendsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchEmailSendsResponse, error) {
+	rsp, err := c.SearchEmailSends(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchEmailSendsResponse(rsp)
+}
+
 // ListEmailTemplatesWithResponse List Email Templates
+//
+// Deprecated: use `searchEmailTemplates`, which pages with a cursor.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/email/templates (the `ListEmailTemplates` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) ListEmailTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListEmailTemplatesParams, reqEditors ...RequestEditorFn) (*ListEmailTemplatesResponse, error) {
 	rsp, err := c.ListEmailTemplates(ctx, productId, params, reqEditors...)
 	if err != nil {
@@ -20255,6 +21719,38 @@ func (c *ClientWithResponses) CreateEmailTemplateWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseCreateEmailTemplateResponse(rsp)
+}
+
+// SearchEmailTemplatesWithBodyWithResponse Search Email Templates
+//
+// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+func (c *ClientWithResponses) SearchEmailTemplatesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchEmailTemplatesResponse, error) {
+	rsp, err := c.SearchEmailTemplatesWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchEmailTemplatesResponse(rsp)
+}
+
+// SearchEmailTemplatesWithResponse Search Email Templates
+//
+// Searches the product's email templates. Filter by `ids`, `slugs` and `is_active`; `full_text_search` matches the name and the slug.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/email/templates/search (the `SearchEmailTemplates` operationId).
+func (c *ClientWithResponses) SearchEmailTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchEmailTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchEmailTemplatesResponse, error) {
+	rsp, err := c.SearchEmailTemplates(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchEmailTemplatesResponse(rsp)
 }
 
 // DeleteEmailTemplateWithResponse Delete Email Template
@@ -20361,6 +21857,7 @@ func (c *ClientWithResponses) UpdateEmailTemplateDraftWithResponse(ctx context.C
 // GetEmailTemplateExamplesWithResponse Get Template Examples
 //
 // Returns the saved variable example sets for this template.
+// Not a search. The examples are an array embedded in one template, bounded by the template, so they return together with it.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20451,6 +21948,7 @@ func (c *ClientWithResponses) PublishEmailTemplateWithResponse(ctx context.Conte
 // GetProductEventsCatalogWithResponse Get Product Events Catalog
 //
 // Returns all registered internal and integration events available for webhook subscriptions. Internal events are grouped by Anchor area; integration events are grouped by provider.
+// Not a search. This is a static catalog compiled into the binary, not a stored collection, so it returns every event at once.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20467,6 +21965,7 @@ func (c *ClientWithResponses) GetProductEventsCatalogWithResponse(ctx context.Co
 //
 // Lists all integration instances for the specified product.
 // Requires Platform Bearer token.
+// Not a search. A product has at most one integration instance per provider, so the list is bounded by the number of providers and returns every instance.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20617,10 +22116,13 @@ func (c *ClientWithResponses) UpdateIntegrationInstanceWithResponse(ctx context.
 // Lists audit log entries for a specific integration instance.
 // Entries are returned in reverse chronological order (newest first).
 // Requires Platform Bearer token.
+// Deprecated: use `searchIntegrationAuditLogs`, which pages with a cursor.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs (the `ListIntegrationAuditLogs` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, reqEditors ...RequestEditorFn) (*ListIntegrationAuditLogsResponse, error) {
 	rsp, err := c.ListIntegrationAuditLogs(ctx, productId, integrationInstanceId, reqEditors...)
 	if err != nil {
@@ -20629,9 +22131,42 @@ func (c *ClientWithResponses) ListIntegrationAuditLogsWithResponse(ctx context.C
 	return ParseListIntegrationAuditLogsResponse(rsp)
 }
 
+// SearchIntegrationAuditLogsWithBodyWithResponse Search Integration Audit Logs
+//
+// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+func (c *ClientWithResponses) SearchIntegrationAuditLogsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchIntegrationAuditLogsResponse, error) {
+	rsp, err := c.SearchIntegrationAuditLogsWithBody(ctx, productId, integrationInstanceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchIntegrationAuditLogsResponse(rsp)
+}
+
+// SearchIntegrationAuditLogsWithResponse Search Integration Audit Logs
+//
+// Searches the audit log entries of one integration instance. The log is append-only and grows with every webhook and reconcile run, so it pages with a cursor and reaches every entry, not only the newest hundred. Filter by `actions`, `severities` and a `created_after` and `created_before` range. Requires Platform Bearer token.
+// Default order is `created_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search (the `SearchIntegrationAuditLogs` operationId).
+func (c *ClientWithResponses) SearchIntegrationAuditLogsWithResponse(ctx context.Context, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter, body SearchIntegrationAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchIntegrationAuditLogsResponse, error) {
+	rsp, err := c.SearchIntegrationAuditLogs(ctx, productId, integrationInstanceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchIntegrationAuditLogsResponse(rsp)
+}
+
 // SearchProductOrganizationInvitationsWithBodyWithResponse Search Product Organization Invitations
 //
 // Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20647,6 +22182,7 @@ func (c *ClientWithResponses) SearchProductOrganizationInvitationsWithBodyWithRe
 // SearchProductOrganizationInvitationsWithResponse Search Product Organization Invitations
 //
 // Lists the invitations of every organization of the Product, optionally filtered by status and email address. A Product calls it when a person signs in, with the verified email addresses of that person and the `pending` status, to show the invitations waiting for them. Email addresses compare without regard to letter case. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20700,6 +22236,7 @@ func (c *ClientWithResponses) MigrateOrganizationLicensesWithResponse(ctx contex
 // Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 // Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 // An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20717,6 +22254,7 @@ func (c *ClientWithResponses) SearchOrganizationLicensesWithBodyWithResponse(ctx
 // Lists the product's organizations alongside the license each one holds, one page at a time. This is the licensing view of the customer book: who is on which tier, and who is on none.
 // Filter by `license_template_ids` to answer "which customers are on the tier we are retiring", which archived templates accept. Filter by `licensed` to find organizations that were never stamped. `full_text_search` matches the organization name.
 // An organization with no license is a result with `license` absent, not a missing row. `usage` is never derived here; read one organization's license for that.
+// Default order is `organization_name` ascending, then the organization `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -20743,6 +22281,8 @@ func (c *ClientWithResponses) DeleteLicenseSchemaWithResponse(ctx context.Contex
 }
 
 // GetLicenseSchemaWithResponse Get License Schema
+//
+// Not a search. The fields are an array embedded in the one schema a product has, so they return together with it.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20818,10 +22358,13 @@ func (c *ClientWithResponses) UpdateLicenseSchemaWithResponse(ctx context.Contex
 // ListLicenseTemplatesWithResponse List License Templates
 //
 // Lists the product's license templates, ordered by name. Every template the product has ever offered is listed, whatever its status — archiving keeps the row on purpose. A template deleted while no Organization license named it is gone and will not appear here. Filter by `status` for one of the two: `ACTIVE` to see what is on sale, `ARCHIVED` to see withdrawn tiers — for example when moving customers off one.
+// Deprecated: use `searchLicenseTemplates`, which pages with a cursor.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/licensing/templates (the `ListLicenseTemplates` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) ListLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, params *ListLicenseTemplatesParams, reqEditors ...RequestEditorFn) (*ListLicenseTemplatesResponse, error) {
 	rsp, err := c.ListLicenseTemplates(ctx, productId, params, reqEditors...)
 	if err != nil {
@@ -20858,6 +22401,38 @@ func (c *ClientWithResponses) CreateLicenseTemplateWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseCreateLicenseTemplateResponse(rsp)
+}
+
+// SearchLicenseTemplatesWithBodyWithResponse Search License Templates
+//
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+func (c *ClientWithResponses) SearchLicenseTemplatesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchLicenseTemplatesResponse, error) {
+	rsp, err := c.SearchLicenseTemplatesWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchLicenseTemplatesResponse(rsp)
+}
+
+// SearchLicenseTemplatesWithResponse Search License Templates
+//
+// Searches the product's license templates. Every template the product has ever offered is searchable, whatever its status: archiving keeps the row on purpose. Filter by `statuses`, `ACTIVE` to see what is on sale and `ARCHIVED` to see withdrawn tiers. `full_text_search` matches the template name and description.
+// Default order is `name` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/licensing/templates/search (the `SearchLicenseTemplates` operationId).
+func (c *ClientWithResponses) SearchLicenseTemplatesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchLicenseTemplatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchLicenseTemplatesResponse, error) {
+	rsp, err := c.SearchLicenseTemplates(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchLicenseTemplatesResponse(rsp)
 }
 
 // DeleteLicenseTemplateWithResponse Delete License Template
@@ -20986,6 +22561,7 @@ func (c *ClientWithResponses) CreateProductOrganizationWithResponse(ctx context.
 // allowing filtering and pagination. Pass `include` to read a related
 // resource alongside every organization in the page.
 // Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21004,6 +22580,7 @@ func (c *ClientWithResponses) SearchProductOrganizationsWithBodyWithResponse(ctx
 // allowing filtering and pagination. Pass `include` to read a related
 // resource alongside every organization in the page.
 // Requires API Key with `product_organization:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21119,6 +22696,7 @@ func (c *ClientWithResponses) CreateOrganizationAPIKeyWithResponse(ctx context.C
 // SearchOrganizationAPIKeysWithBodyWithResponse Search Organization API Keys
 //
 // Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21134,6 +22712,7 @@ func (c *ClientWithResponses) SearchOrganizationAPIKeysWithBodyWithResponse(ctx 
 // SearchOrganizationAPIKeysWithResponse Search Organization API Keys
 //
 // Searches for organization API keys defined for a specific organization. Requires Product API Key with `organization_api_key:read` scope.
+// Default order is `created_at` ascending, then `id`. A key that was never used has no `last_used_at`, and sorts after every used key when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21269,6 +22848,7 @@ func (c *ClientWithResponses) CreateOrganizationInvitationWithResponse(ctx conte
 // SearchOrganizationInvitationsWithBodyWithResponse Search Organization Invitations
 //
 // Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21284,6 +22864,7 @@ func (c *ClientWithResponses) SearchOrganizationInvitationsWithBodyWithResponse(
 // SearchOrganizationInvitationsWithResponse Search Organization Invitations
 //
 // Lists the invitations of one organization, optionally filtered by status and email address. An invitation whose expiry has passed while it was pending reads and filters as `expired`.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21464,6 +23045,7 @@ func (c *ClientWithResponses) InstantiateOrganizationLicenseWithResponse(ctx con
 // GetOrganizationLicenseDiffWithResponse Diff Organization License Against Its Template
 //
 // Reports how an organization's license differs from the template it was instantiated from, one license field at a time. Use it to find accounts with bespoke arrangements. The template always resolves, archived or not, so this answers for the lifetime of the license.
+// Not a search. The differences are derived per request from one license and its template, so they return together.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -21481,16 +23063,53 @@ func (c *ClientWithResponses) GetOrganizationLicenseDiffWithResponse(ctx context
 // Reads every change ever made to an organization's license, newest first and paginated: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given.
 // The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. Deleting the organization takes its history with it.
 // An organization that has never been licensed reads as an empty history rather than as a 404 — nothing has happened to it yet, which is a fact rather than an absence. A 404 means no such organization.
+// Deprecated: use `searchOrganizationLicenseHistory`, which pages with a cursor.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/license/history (the `GetOrganizationLicenseHistory` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) GetOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, params *GetOrganizationLicenseHistoryParams, reqEditors ...RequestEditorFn) (*GetOrganizationLicenseHistoryResponse, error) {
 	rsp, err := c.GetOrganizationLicenseHistory(ctx, productId, organizationId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetOrganizationLicenseHistoryResponse(rsp)
+}
+
+// SearchOrganizationLicenseHistoryWithBodyWithResponse Search Organization License History
+//
+// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+func (c *ClientWithResponses) SearchOrganizationLicenseHistoryWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationLicenseHistoryResponse, error) {
+	rsp, err := c.SearchOrganizationLicenseHistoryWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationLicenseHistoryResponse(rsp)
+}
+
+// SearchOrganizationLicenseHistoryWithResponse Search Organization License History
+//
+// Searches every change ever made to an organization's license: the template it was instantiated from, and each later adjustment naming the license field, the value it held and the value it was given. Filter by `types` and by a `changed_after` and `changed_before` range.
+// The history is append-only and immutable. There is no route that edits or removes an entry, so "what was this customer given, and when" keeps the same answer for the lifetime of the organization. An organization that has never been licensed has an empty history rather than a 404. A 404 means no such organization.
+// Default order is `changed_at` descending, then `id` descending, newest first. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search (the `SearchOrganizationLicenseHistory` operationId).
+func (c *ClientWithResponses) SearchOrganizationLicenseHistoryWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationLicenseHistoryJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationLicenseHistoryResponse, error) {
+	rsp, err := c.SearchOrganizationLicenseHistory(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationLicenseHistoryResponse(rsp)
 }
 
 // ReportOrganizationUsageWithBodyWithResponse Report Organization Usage
@@ -21532,6 +23151,7 @@ func (c *ClientWithResponses) ReportOrganizationUsageWithResponse(ctx context.Co
 // Reads an organization's usage history for one license field: filtered by key and time range, and paginated. Granularity selects a level of the continuous-aggregate cascade — MINUTE, HOUR or DAY — each reporting the last observation per bucket, never a sum or an average, because the values are snapshots.
 // This is a deliberately separate read from the license state: a large paginated series and a small hot cacheable read want different shapes. This endpoint is not cached, and reading it never touches the license state read's cache.
 // Interpreting the series against a limit — deciding whether an organization is within or past it — is not this endpoint's job. It returns the series as stored; that judgment stays in the license state read.
+// Not a search. This is an aggregate time series computed per request from the continuous aggregates, not a stored collection. It pages by `limit` and `offset` over time buckets in ascending order, and never returns a `next_cursor`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -21577,6 +23197,7 @@ func (c *ClientWithResponses) AddOrganizationMemberWithResponse(ctx context.Cont
 // SearchOrganizationMembersWithBodyWithResponse Search Organization Members
 //
 // Search members in an organization.
+// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21592,6 +23213,7 @@ func (c *ClientWithResponses) SearchOrganizationMembersWithBodyWithResponse(ctx 
 // SearchOrganizationMembersWithResponse Search Organization Members
 //
 // Search members in an organization.
+// Default order is `joined_at` descending, then `product_user_id`, newest member first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21697,6 +23319,7 @@ func (c *ClientWithResponses) CreateOrganizationWorkspaceWithResponse(ctx contex
 // SearchOrganizationWorkspacesWithBodyWithResponse Search Organization Workspaces
 //
 // Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21712,6 +23335,7 @@ func (c *ClientWithResponses) SearchOrganizationWorkspacesWithBodyWithResponse(c
 // SearchOrganizationWorkspacesWithResponse Search Organization Workspaces
 //
 // Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21787,6 +23411,7 @@ func (c *ClientWithResponses) UpdateOrganizationWorkspaceWithResponse(ctx contex
 // SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
 //
 // Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21802,6 +23427,7 @@ func (c *ClientWithResponses) SearchProductPermissionsWithBodyWithResponse(ctx c
 // SearchProductPermissionsWithResponse Search built-in Product Permissions
 //
 // Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21867,6 +23493,7 @@ func (c *ClientWithResponses) CreateProductUserWithResponse(ctx context.Context,
 //
 // Retrieves a list of users associated with the specified Product,
 // allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21883,6 +23510,7 @@ func (c *ClientWithResponses) SearchProductUsersWithBodyWithResponse(ctx context
 //
 // Retrieves a list of users associated with the specified Product,
 // allowing filtering and pagination. Requires API Key with `product_user:read` permission or Platform Bearer token.
+// Default order is `created_at` ascending, then `id`. A user without a `name` sorts after every named user when ascending and before them when descending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21932,16 +23560,51 @@ func (c *ClientWithResponses) GetProductUserWithResponse(ctx context.Context, pr
 // Lists all organizations that the specified product user belongs to,
 // including their role and membership details in each organization.
 // Requires an API Key with `product_user:read` permission.
+// Deprecated: use `searchUserOrganizations`, which pages with a cursor.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /v1/products/{product_id}/product-users/{product_user_id}/organizations (the `ListUserOrganizations` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) ListUserOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *ListUserOrganizationsParams, reqEditors ...RequestEditorFn) (*ListUserOrganizationsResponse, error) {
 	rsp, err := c.ListUserOrganizations(ctx, productId, productUserId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseListUserOrganizationsResponse(rsp)
+}
+
+// SearchUserOrganizationsWithBodyWithResponse Search User Organizations
+//
+// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+func (c *ClientWithResponses) SearchUserOrganizationsWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserOrganizationsResponse, error) {
+	rsp, err := c.SearchUserOrganizationsWithBody(ctx, productId, productUserId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchUserOrganizationsResponse(rsp)
+}
+
+// SearchUserOrganizationsWithResponse Search User Organizations
+//
+// Searches the organizations that the specified product user belongs to, including their role and membership details in each organization. Filter by `organization_ids` and `role_ids`. Pass `include=role_permissions` to read the permissions of every role in the page. Requires an API Key with `product_user:read` permission.
+// Default order is `joined_at` ascending, then `organization_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search (the `SearchUserOrganizations` operationId).
+func (c *ClientWithResponses) SearchUserOrganizationsWithResponse(ctx context.Context, productId ProductIdParameter, productUserId ProductUserIdParameter, params *SearchUserOrganizationsParams, body SearchUserOrganizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserOrganizationsResponse, error) {
+	rsp, err := c.SearchUserOrganizations(ctx, productId, productUserId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchUserOrganizationsResponse(rsp)
 }
 
 // GetUserOrganizationWithResponse Get User Organization
@@ -21993,7 +23656,8 @@ func (c *ClientWithResponses) CreateProductResourcePermissionWithResponse(ctx co
 
 // SearchProductResourcePermissionsWithBodyWithResponse Search Product Resource Permissions
 //
-// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -22008,7 +23672,8 @@ func (c *ClientWithResponses) SearchProductResourcePermissionsWithBodyWithRespon
 
 // SearchProductResourcePermissionsWithResponse Search Product Resource Permissions
 //
-// Searches for resource permissions within a product. Requires Platform Bearer token or Product API Key with permissions:read.
+// Searches for resource permissions within a product. Requires  Platform Bearer token or Product API Key with permissions:read.
+// Default order is `created_at` ascending, then `name`, which identifies a permission within its product. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -22113,7 +23778,8 @@ func (c *ClientWithResponses) CreateProductRoleWithResponse(ctx context.Context,
 
 // SearchProductRolesWithBodyWithResponse Search ProductRoles for Product
 //
-// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -22128,7 +23794,8 @@ func (c *ClientWithResponses) SearchProductRolesWithBodyWithResponse(ctx context
 
 // SearchProductRolesWithResponse Search ProductRoles for Product
 //
-// Searches for product roles defined for a specific product based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Searches for product roles defined for a specific product  based on criteria. Requires Platform Bearer token or Product API Key with product_role:read scope.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23585,6 +25252,67 @@ func ParseSendEmailResponse(rsp *http.Response) (*SendEmailResponse, error) {
 	return response, nil
 }
 
+// ParseSearchEmailSendsResponse parses an HTTP response from a SearchEmailSendsWithResponse call
+func ParseSearchEmailSendsResponse(rsp *http.Response) (*SearchEmailSendsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchEmailSendsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EmailSendSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListEmailTemplatesResponse parses an HTTP response from a ListEmailTemplatesWithResponse call
 func ParseListEmailTemplatesResponse(rsp *http.Response) (*ListEmailTemplatesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -23659,6 +25387,67 @@ func ParseCreateEmailTemplateResponse(rsp *http.Response) (*CreateEmailTemplateR
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchEmailTemplatesResponse parses an HTTP response from a SearchEmailTemplatesWithResponse call
+func ParseSearchEmailTemplatesResponse(rsp *http.Response) (*SearchEmailTemplatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchEmailTemplatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EmailTemplateSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -24638,6 +26427,60 @@ func ParseListIntegrationAuditLogsResponse(rsp *http.Response) (*ListIntegration
 	return response, nil
 }
 
+// ParseSearchIntegrationAuditLogsResponse parses an HTTP response from a SearchIntegrationAuditLogsWithResponse call
+func ParseSearchIntegrationAuditLogsResponse(rsp *http.Response) (*SearchIntegrationAuditLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchIntegrationAuditLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IntegrationAuditLogSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSearchProductOrganizationInvitationsResponse parses an HTTP response from a SearchProductOrganizationInvitationsWithResponse call
 func ParseSearchProductOrganizationInvitationsResponse(rsp *http.Response) (*SearchProductOrganizationInvitationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -25149,6 +26992,60 @@ func ParseCreateLicenseTemplateResponse(rsp *http.Response) (*CreateLicenseTempl
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchLicenseTemplatesResponse parses an HTTP response from a SearchLicenseTemplatesWithResponse call
+func ParseSearchLicenseTemplatesResponse(rsp *http.Response) (*SearchLicenseTemplatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchLicenseTemplatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LicenseTemplateSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -26641,6 +28538,67 @@ func ParseGetOrganizationLicenseHistoryResponse(rsp *http.Response) (*GetOrganiz
 	return response, nil
 }
 
+// ParseSearchOrganizationLicenseHistoryResponse parses an HTTP response from a SearchOrganizationLicenseHistoryWithResponse call
+func ParseSearchOrganizationLicenseHistoryResponse(rsp *http.Response) (*SearchOrganizationLicenseHistoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchOrganizationLicenseHistoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationLicenseHistoryResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseReportOrganizationUsageResponse parses an HTTP response from a ReportOrganizationUsageWithResponse call
 func ParseReportOrganizationUsageResponse(rsp *http.Response) (*ReportOrganizationUsageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27656,6 +29614,60 @@ func ParseListUserOrganizationsResponse(rsp *http.Response) (*ListUserOrganizati
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchUserOrganizationsResponse parses an HTTP response from a SearchUserOrganizationsWithResponse call
+func ParseSearchUserOrganizationsResponse(rsp *http.Response) (*SearchUserOrganizationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchUserOrganizationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserOrganizationSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized

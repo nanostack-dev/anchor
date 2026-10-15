@@ -18,14 +18,15 @@ import (
 func TestEmailSendList(t *testing.T) {
 	t.Run("returns empty list for new product", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
-		resp, err := tc.product.OwnerAuthenticatedClient().ListEmailSendsWithResponse(
+		resp, err := tc.product.OwnerAuthenticatedClient().SearchEmailSendsWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			&ct.ListEmailSendsParams{},
+			ct.SearchEmailSendsJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
 		assert.Equal(t, 0, resp.JSON200.Count)
+		assert.Empty(t, resp.JSON200.NextCursor)
 	})
 
 	t.Run("returns send records after successful send", func(t *testing.T) {
@@ -64,14 +65,15 @@ func TestEmailSendList(t *testing.T) {
 		require.NoError(t, err)
 		mp.WaitForMessage(t, 10*time.Second)
 
-		list, err := client.ListEmailSendsWithResponse(
+		list, err := client.SearchEmailSendsWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			&ct.ListEmailSendsParams{},
+			ct.SearchEmailSendsJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, list.StatusCode())
 		assert.Equal(t, 1, list.JSON200.Count)
+		assert.EqualValues(t, 1, list.JSON200.Total)
 		assert.Equal(t, "SENT", string(list.JSON200.Items[0].Status))
 	})
 }

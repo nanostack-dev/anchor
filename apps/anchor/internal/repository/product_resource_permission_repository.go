@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -169,17 +170,30 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 		}
 	}
 
+	nameKey := transactor.StringKey(
+		table.ProductResourcePermissions.Name,
+		func(row model.ProductResourcePermissions) string { return row.Name },
+	)
+	order := transactor.Keys(
+		input.Sort,
+		map[resourcepermission.SortFieldProductResourcePermission]transactor.Key[model.ProductResourcePermissions]{
+			resourcepermission.SortFieldProductResourcePermissionCreatedAt: transactor.TimeKey(
+				table.ProductResourcePermissions.CreatedAt,
+				func(row model.ProductResourcePermissions) time.Time { return row.CreatedAt },
+			),
+			resourcepermission.SortFieldProductResourcePermissionUpdatedAt: transactor.TimeKey(
+				table.ProductResourcePermissions.UpdatedAt,
+				func(row model.ProductResourcePermissions) time.Time { return row.UpdatedAt },
+			),
+			resourcepermission.SortFieldProductResourcePermissionName: nameKey,
+		},
+		nameKey,
+	)
+
 	return transactor.Page(r.db, r.mapper.ToDomain, table.ProductResourcePermissions.AllColumns).
 		From(table.ProductResourcePermissions).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[resourcepermission.SortFieldProductResourcePermission]postgres.Column{
-				resourcepermission.SortFieldProductResourcePermissionCreatedAt: table.ProductResourcePermissions.CreatedAt,
-				resourcepermission.SortFieldProductResourcePermissionUpdatedAt: table.ProductResourcePermissions.UpdatedAt,
-				resourcepermission.SortFieldProductResourcePermissionName:      table.ProductResourcePermissions.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

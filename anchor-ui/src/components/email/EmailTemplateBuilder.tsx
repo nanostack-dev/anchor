@@ -15,7 +15,6 @@ import {
 	getEmailTemplateExamplesQueryKey,
 	getEmailTemplateOptions,
 	getEmailTemplateQueryKey,
-	listEmailTemplatesQueryKey,
 	listIntegrationInstancesOptions,
 	previewEmailTemplateMutation,
 	publishEmailTemplateMutation,
@@ -1667,9 +1666,9 @@ export function EmailTemplateBuilder({
 				}),
 			});
 			queryClient.invalidateQueries({
-				queryKey: listEmailTemplatesQueryKey({
-					path: { product_id: productId },
-				}),
+				queryKey: [
+					{ _id: "searchEmailTemplates", path: { product_id: productId } },
+				],
 			});
 		},
 	});
@@ -1736,9 +1735,9 @@ export function EmailTemplateBuilder({
 				}),
 			});
 			queryClient.invalidateQueries({
-				queryKey: listEmailTemplatesQueryKey({
-					path: { product_id: productId },
-				}),
+				queryKey: [
+					{ _id: "searchEmailTemplates", path: { product_id: productId } },
+				],
 			});
 		},
 		onError: (err) => {

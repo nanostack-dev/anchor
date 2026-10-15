@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_organization_invitations_product_created_id;

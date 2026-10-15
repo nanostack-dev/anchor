@@ -343,7 +343,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 			if assert.NotNil(t, response.JSON400, "error response should not be nil") {
 				assert.Contains(t, response.JSON400.Errors[0].Code, "VALIDATION_ERROR")
-				assert.Contains(t, response.JSON400.Errors[0].Message, "Limit")
+				assert.Contains(t, response.JSON400.Errors[0].Message, "limit")
 			}
 		},
 	)

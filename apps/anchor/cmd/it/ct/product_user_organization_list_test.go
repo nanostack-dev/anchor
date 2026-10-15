@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListUserOrganizations(t *testing.T) {
+func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -23,11 +23,12 @@ func TestListUserOrganizations(t *testing.T) {
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
-		resp, err := apiKeyClient.ListUserOrganizationsWithResponse(
+		resp, err := apiKeyClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			productUser.ID,
 			nil,
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err, "list user organizations request should not error")
@@ -61,11 +62,12 @@ func TestListUserOrganizations(t *testing.T) {
 
 		// List user organizations
 		readClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
-		listResp, err := readClient.ListUserOrganizationsWithResponse(
+		listResp, err := readClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			productUser.ID,
 			nil,
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err, "list user organizations request should not error")
@@ -121,11 +123,12 @@ func TestListUserOrganizations(t *testing.T) {
 		createDSLMembership(t, productCtx, productUser.ID, org2Resp.JSON201.Id, role2.ID)
 
 		readClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
-		listResp, err := readClient.ListUserOrganizationsWithResponse(
+		listResp, err := readClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			productUser.ID,
 			nil,
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err)
@@ -166,13 +169,14 @@ func TestListUserOrganizations(t *testing.T) {
 		// List with include=role_permissions
 		readClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 		include := []ct.UserOrganizationInclude{ct.UserOrganizationIncludeRolePermissions}
-		listResp, err := readClient.ListUserOrganizationsWithResponse(
+		listResp, err := readClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			productUser.ID,
-			&ct.ListUserOrganizationsParams{
+			&ct.SearchUserOrganizationsParams{
 				Include: &include,
 			},
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err)
@@ -197,11 +201,12 @@ func TestListUserOrganizations(t *testing.T) {
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
 		nonExistentUserID := ids.MustNew("puser")
-		resp, err := apiKeyClient.ListUserOrganizationsWithResponse(
+		resp, err := apiKeyClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			nonExistentUserID,
 			nil,
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err, "request should not error")
@@ -217,11 +222,12 @@ func TestListUserOrganizations(t *testing.T) {
 			[]string{"organization:read"},
 		)
 
-		resp, err := apiKeyClient.ListUserOrganizationsWithResponse(
+		resp, err := apiKeyClient.SearchUserOrganizationsWithResponse(
 			ctx,
 			productCtx.ProductID,
 			productUser.ID,
 			nil,
+			ct.SearchUserOrganizationsJSONRequestBody{},
 		)
 
 		require.NoError(t, err, "request should not error")

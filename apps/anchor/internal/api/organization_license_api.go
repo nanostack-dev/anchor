@@ -8,6 +8,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
@@ -141,14 +142,16 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 		return nil, err
 	}
 
-	result, err := s.LicenseHistoryService.ListChanges(ctx, license.ListLicenseChangesInput{
+	result, err := s.LicenseHistoryService.SearchChanges(ctx, license.SearchLicenseChangesInput{
 		TenantID:       tenantID,
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
-		Pagination: search.Pagination{
-			Limit:  ptr.DerefOr(request.Params.Limit, defaultLicenseHistoryLimit),
-			Offset: ptr.DerefOr(request.Params.Offset, int32(0)),
-		},
+		Request: search.NewRequest[license.SearchLicenseChangesFilter, license.SortFieldChange]().
+			WithSort(new(license.SortFieldChangeChangedAt), new(search.SortDescending)).
+			WithPagination(&search.Pagination{
+				Limit:  ptr.DerefOr(request.Params.Limit, defaultLicenseHistoryLimit),
+				Offset: ptr.DerefOr(request.Params.Offset, int32(0)),
+			}),
 	})
 	if err != nil {
 		logAPIError(s.logger, err).
@@ -159,8 +162,67 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 	}
 
 	return GetOrganizationLicenseHistory200JSONResponse(OrganizationLicenseHistoryResponse{
-		Items: functional.Slice(result.Items).Map(mapOrganizationLicenseChangeToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapOrganizationLicenseChangeToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
 	}), nil
+}
+
+func (s *AnchorAPI) SearchOrganizationLicenseHistory(
+	ctx context.Context, request SearchOrganizationLicenseHistoryRequestObject,
+) (SearchOrganizationLicenseHistoryResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.Body
+	if body == nil {
+		body = &SearchOrganizationLicenseHistoryJSONRequestBody{}
+	}
+
+	result, err := s.LicenseHistoryService.SearchChanges(ctx, license.SearchLicenseChangesInput{
+		TenantID:       tenantID,
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+		Request:        mapToSearchLicenseChangesRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("organization_id", request.OrganizationId).
+			Msg("failed to search organization license history")
+		return nil, err
+	}
+
+	return SearchOrganizationLicenseHistory200JSONResponse(OrganizationLicenseHistoryResponse{
+		Items:      functional.Slice(result.Items).Map(mapOrganizationLicenseChangeToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}), nil
+}
+
+func mapToSearchLicenseChangesRequest(
+	body *SearchOrganizationLicenseHistoryJSONRequestBody,
+) search.Request[license.SearchLicenseChangesFilter, license.SortFieldChange] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f OrganizationLicenseHistoryFilter) license.SearchLicenseChangesFilter {
+			return license.SearchLicenseChangesFilter{
+				Types:         f.Types,
+				ChangedAfter:  f.ChangedAfter,
+				ChangedBefore: f.ChangedBefore,
+			}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, license.SortFieldChangeChangedAt, search.SortDescending,
+	)
+
+	return search.NewRequest[license.SearchLicenseChangesFilter, license.SortFieldChange]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
 }

@@ -1,7 +1,11 @@
 //revive:disable-next-line:var-naming
 package user
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 type CreateProductUserInput struct {
 	ProductID string            `validate:"required,notblank"`
@@ -34,11 +38,11 @@ type DeleteProductUserInput struct {
 }
 
 type SearchProductUserFilter struct {
-	IDs         []string `validate:"omitempty,dive,notblank"`
-	Emails      []string `validate:"omitempty,dive,email"`
-	Names       []string `validate:"omitempty,dive,notblank"`
-	Statuses    []ProductUserStatus
-	ExternalIDs []string `validate:"omitempty,dive,notblank"`
+	IDs         []string            `validate:"omitempty,dive,notblank"`
+	Emails      []string            `validate:"omitempty,dive,email"`
+	Names       []string            `validate:"omitempty,dive,notblank"`
+	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended ACTIVE INACTIVE"`
+	ExternalIDs []string            `validate:"omitempty,dive,notblank"`
 }
 
 type SortFieldProductUser string
@@ -56,11 +60,51 @@ type SearchProductUserInput struct {
 	Request   search.Request[SearchProductUserFilter, SortFieldProductUser] `validate:"required"`
 }
 
+// Validate checks the input and the sort the client named.
+func (in SearchProductUserInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductUserCreatedAt,
+		SortFieldProductUserUpdatedAt,
+		SortFieldProductUserEmail,
+		SortFieldProductUserName,
+		SortFieldProductUserStatus)
+}
+
 // ListUserOrganizationsInput is the input for listing organizations a user belongs to.
 type ListUserOrganizationsInput struct {
 	ProductID          string `validate:"required,notblank"`
 	ProductUserID      string `validate:"required,notblank"`
 	IncludePermissions bool
+}
+
+// SortFieldUserOrganization names a column a user-organization search may order by.
+type SortFieldUserOrganization string
+
+const (
+	SortFieldUserOrganizationJoinedAt SortFieldUserOrganization = "joined_at"
+	SortFieldUserOrganizationName     SortFieldUserOrganization = "name"
+)
+
+// SearchUserOrganizationsFilter narrows the organizations a user belongs to.
+type SearchUserOrganizationsFilter struct {
+	OrganizationIDs []string
+	RoleIDs         []string
+}
+
+// SearchUserOrganizationsInput is the input for searching the organizations a
+// product user belongs to.
+type SearchUserOrganizationsInput struct {
+	ProductID          string `validate:"required,notblank"`
+	ProductUserID      string `validate:"required,notblank"`
+	IncludePermissions bool
+	Request            search.Request[SearchUserOrganizationsFilter, SortFieldUserOrganization] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchUserOrganizationsInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldUserOrganizationJoinedAt,
+		SortFieldUserOrganizationName)
 }
 
 // GetUserOrganizationInput is the input for getting a specific organization a user belongs to.

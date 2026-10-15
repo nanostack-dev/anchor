@@ -64,9 +64,10 @@ func (s *AnchorAPI) SearchOrganizationWorkspaces(
 	}
 
 	return SearchOrganizationWorkspaces200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapWorkspaceToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapWorkspaceToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -146,7 +147,5 @@ func mapToSearchWorkspaceInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }

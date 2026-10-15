@@ -2,6 +2,7 @@ package anchorsdk
 
 import (
 	"context"
+	"iter"
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
 )
@@ -171,10 +172,44 @@ func (s *WorkspaceSearch) Limit(limit int32) *WorkspaceSearch {
 	return s
 }
 
-// Offset skips the given number of workspaces.
+// Offset skips the given number of workspaces, for page-number navigation. To read every
+// page, iterate with Cursor or All instead.
 func (s *WorkspaceSearch) Offset(offset int32) *WorkspaceSearch {
 	s.page().Offset = new(offset)
 	return s
+}
+
+// Cursor continues the search after the last item of a previous page. Pass the
+// previous page's NextCursor; Anchor refuses a cursor combined with an offset,
+// and answers a cursor from another filter or sort with an error. To read every
+// page, use [WorkspaceSearch.All].
+func (s *WorkspaceSearch) Cursor(cursor string) *WorkspaceSearch {
+	s.page().Cursor = new(cursor)
+	return s
+}
+
+// All reads every matching item, following NextCursor from page to page until
+// Anchor sends none. It starts where the builder starts: at the first item, or
+// after the cursor set with [WorkspaceSearch.Cursor]. The builder is not changed, so it can
+// run again. A failed page ends the sequence with its error.
+//
+//	for item, err := range search.Limit(100).All(ctx) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // use item
+//	}
+func (s *WorkspaceSearch) All(ctx context.Context) iter.Seq2[nanoclient.ProductWorkspaceResponse, error] {
+	return allPages(ctx, "Workspaces.Search", startCursor(s.req.Pagination),
+		func(ctx context.Context, cursor string) ([]nanoclient.ProductWorkspaceResponse, string, error) {
+			next := *s
+			next.req.Pagination = pageAfter(s.req.Pagination, cursor)
+			page, err := next.Do(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			return page.Items, derefCursor(page.NextCursor), nil
+		})
 }
 
 // Do runs the search.

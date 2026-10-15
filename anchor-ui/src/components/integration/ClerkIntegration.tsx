@@ -3,22 +3,23 @@ import {
 	type CreateIntegrationInstanceData,
 	type DeleteIntegrationInstanceData,
 	type IntegrationAuditLogEntryResponse,
+	type IntegrationAuditLogSearchResponse,
 	IntegrationAuditLogSeverity,
 	type IntegrationInstanceResponse,
 	IntegrationProviderType,
-	type ListIntegrationAuditLogsData,
 	type ListIntegrationInstancesData,
 	type Options,
 	type ProductResponse,
+	SortDirection,
 	type UpdateIntegrationInstanceData,
+	searchIntegrationAuditLogs,
 } from "@/client";
 import {
 	createIntegrationInstanceMutation,
 	deleteIntegrationInstanceMutation,
-	listIntegrationAuditLogsOptions,
-	listIntegrationAuditLogsQueryKey,
 	listIntegrationInstancesOptions,
 	listIntegrationInstancesQueryKey,
+	searchIntegrationAuditLogsQueryKey,
 	updateIntegrationInstanceMutation,
 } from "@/client/@tanstack/react-query.gen";
 import {
@@ -64,7 +65,12 @@ import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Switch } from "@nanostackorg/design-system/components/switch";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Info, Plug, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -74,6 +80,8 @@ interface IntegrationFormState {
 	apiKey: string;
 	enabled: boolean;
 }
+
+const AUDIT_PAGE_SIZE = 50;
 
 const EMPTY_FORM: IntegrationFormState = {
 	webhookSecret: "",
@@ -167,19 +175,48 @@ export default function ClerkIntegrationPage() {
 		);
 	}, [listData]);
 
-	const auditQueryOptions: Options<ListIntegrationAuditLogsData> = {
+	const auditQueryKey = searchIntegrationAuditLogsQueryKey({
 		path: {
 			product_id: productId,
 			integration_instance_id: clerkInstance?.id ?? "",
 		},
-	};
+		body: {
+			pagination: { limit: AUDIT_PAGE_SIZE },
+			sort_by: "created_at",
+			sort_direction: SortDirection.DESC,
+		},
+	});
 
 	const {
 		data: auditData,
 		isLoading: isAuditLoading,
 		error: auditError,
-	} = useQuery({
-		...listIntegrationAuditLogsOptions(auditQueryOptions),
+		hasNextPage: hasOlderAudit,
+		fetchNextPage: fetchOlderAudit,
+		isFetchingNextPage: isFetchingOlderAudit,
+		isFetchNextPageError: isOlderAuditError,
+	} = useInfiniteQuery({
+		queryKey: auditQueryKey,
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (
+			lastPage: IntegrationAuditLogSearchResponse,
+		): string | undefined => lastPage.next_cursor,
+		queryFn: async ({ pageParam, signal }) => {
+			const { data } = await searchIntegrationAuditLogs({
+				path: {
+					product_id: productId,
+					integration_instance_id: clerkInstance?.id ?? "",
+				},
+				body: {
+					pagination: { limit: AUDIT_PAGE_SIZE, cursor: pageParam },
+					sort_by: "created_at",
+					sort_direction: SortDirection.DESC,
+				},
+				signal,
+				throwOnError: true,
+			});
+			return data;
+		},
 		enabled: Boolean(clerkInstance),
 	});
 
@@ -217,7 +254,7 @@ export default function ClerkIntegrationPage() {
 		});
 		if (clerkInstance) {
 			queryClient.invalidateQueries({
-				queryKey: listIntegrationAuditLogsQueryKey(auditQueryOptions),
+				queryKey: auditQueryKey,
 			});
 		}
 	};
@@ -348,7 +385,9 @@ export default function ClerkIntegrationPage() {
 	};
 
 	const auditEntries: IntegrationAuditEntry[] = useMemo(() => {
-		return (auditData?.items ?? []).map(mapAuditEntry);
+		return (auditData?.pages ?? [])
+			.flatMap((page) => page.items)
+			.map(mapAuditEntry);
 	}, [auditData]);
 
 	if (!activeProduct && !isProductsLoading) {
@@ -400,7 +439,7 @@ export default function ClerkIntegrationPage() {
 				},
 				{
 					label: "Activity",
-					value: auditData?.count ?? 0,
+					value: auditData?.pages[0]?.total ?? 0,
 				},
 				{
 					label: "Last updated",
@@ -412,9 +451,17 @@ export default function ClerkIntegrationPage() {
 			auditEntries={auditEntries}
 			auditIsLoading={Boolean(clerkInstance) && isAuditLoading}
 			auditErrorMessage={
-				auditError ? "Failed to load integration audit activity." : null
+				auditError && !auditData
+					? "Failed to load integration audit activity."
+					: null
 			}
 			auditTitle="Integration audit"
+			onLoadMoreAudit={hasOlderAudit ? () => void fetchOlderAudit() : undefined}
+			auditIsLoadingMore={isFetchingOlderAudit}
+			auditLoadMoreErrorMessage={
+				isOlderAuditError ? "Couldn’t load older activity. Try again." : null
+			}
+			auditTotal={auditData?.pages[0]?.total}
 		>
 			{clerkInstance?.last_error ? (
 				<Alert tone="critical">

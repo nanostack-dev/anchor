@@ -30,8 +30,8 @@ type TemplateRepository interface {
 	FindBySlugInternal(
 		ctx context.Context, productID string, slug string,
 	) (functional.Option[email.Template], error)
-	List(
-		ctx context.Context, tenantID string, productID string, limit int64, offset int64,
+	Search(
+		ctx context.Context, in email.SearchTemplatesInput,
 	) (search.Result[email.Template], error)
 	Create(
 		ctx context.Context, template email.Template,
@@ -133,8 +133,8 @@ type SendRecordRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
 	) (functional.Option[email.SendRecord], error)
-	List(
-		ctx context.Context, input email.ListSendsInput,
+	Search(
+		ctx context.Context, input email.SearchSendsInput,
 	) (search.Result[email.SendRecord], error)
 	// CountSinceInternal returns the number of sends for a product since the
 	// given timestamp. Used by the rate limiter; bypasses tenant scoping

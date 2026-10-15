@@ -12,6 +12,7 @@ import {
 	Badge,
 	type BadgeTone,
 } from "@nanostackorg/design-system/components/badge";
+import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Card,
 	CardContent,
@@ -23,6 +24,7 @@ import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import type { ReactNode } from "react";
 
@@ -43,6 +45,10 @@ interface IntegrationDetailPageProps {
 	auditIsLoading?: boolean;
 	auditErrorMessage?: string | null;
 	auditTitle?: string;
+	onLoadMoreAudit?: () => void;
+	auditIsLoadingMore?: boolean;
+	auditLoadMoreErrorMessage?: string | null;
+	auditTotal?: number;
 }
 const auditTone: Record<
 	NonNullable<IntegrationAuditEntry["severity"]>,
@@ -58,6 +64,10 @@ export function IntegrationDetailPage({
 	auditIsLoading = false,
 	auditErrorMessage,
 	auditTitle = "Audit log",
+	onLoadMoreAudit,
+	auditIsLoadingMore = false,
+	auditLoadMoreErrorMessage = null,
+	auditTotal,
 }: IntegrationDetailPageProps) {
 	const sortedAuditEntries = [...auditEntries].sort(
 		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -101,7 +111,7 @@ export function IntegrationDetailPage({
 								{sortedAuditEntries.map((entry) => (
 									<Box
 										key={entry.id}
-										className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
+										className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 [overflow-wrap:anywhere] last:border-0 last:pb-0"
 									>
 										<Stack space="xs">
 											<Inline>
@@ -119,6 +129,29 @@ export function IntegrationDetailPage({
 										</Text>
 									</Box>
 								))}
+								{onLoadMoreAudit ? (
+									<Spread space="md">
+										{auditLoadMoreErrorMessage ? (
+											<Text size="xs" tone="critical" role="alert">
+												{auditLoadMoreErrorMessage}
+											</Text>
+										) : (
+											<Text size="xs" tone="muted">
+												{auditTotal === undefined
+													? `Showing ${sortedAuditEntries.length}`
+													: `Showing ${sortedAuditEntries.length} of ${auditTotal}`}
+											</Text>
+										)}
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={onLoadMoreAudit}
+											disabled={auditIsLoadingMore}
+										>
+											{auditIsLoadingMore ? "Loading…" : "Load older activity"}
+										</Button>
+									</Spread>
+								) : null}
 							</Stack>
 						)}
 					</CardContent>

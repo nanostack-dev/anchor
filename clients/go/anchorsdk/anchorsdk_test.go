@@ -799,8 +799,8 @@ func TestReadOperationsUseExpectedRoutes(t *testing.T) {
 				_, err := c.Users().Organizations(ctx, testUserID)
 				return err
 			},
-			wantMethod: http.MethodGet,
-			wantPath:   "/v1/products/prd_test/product-users/pusr_1/organizations",
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/product-users/pusr_1/organizations/search",
 		},
 		{
 			name:  "user organization",

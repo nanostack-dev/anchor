@@ -7,10 +7,12 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider/smtp"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
@@ -83,6 +85,10 @@ func obfuscateSecret(secret *string) *string {
 		Map(secrets.Obfuscate).
 		ToPtr()
 }
+
+// legacyAuditLogListLimit is the page the deprecated GET list returns: the
+// newest hundred entries, as before.
+const legacyAuditLogListLimit int32 = 100
 
 func mapAuditLogToResponse(log integration.AuditLog) IntegrationAuditLogEntryResponse {
 	var metadata *map[string]any
@@ -311,13 +317,14 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 		return nil, err
 	}
 
-	input := integration.ListAuditLogsInput{
+	logs, err := s.IntegrationService.SearchAuditLogs(ctx, integration.SearchAuditLogsInput{
 		TenantID:              tenantID,
 		ProductID:             request.ProductId,
 		IntegrationInstanceID: request.IntegrationInstanceId,
-	}
-
-	logs, err := s.IntegrationService.ListAuditLogs(ctx, input)
+		Request: search.NewRequest[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog]().
+			WithSort(new(integration.SortFieldAuditLogCreatedAt), new(search.SortDescending)).
+			WithPagination(&search.Pagination{Limit: legacyAuditLogListLimit}),
+	})
 	if err != nil {
 		logAPIError(s.logger, err).
 			Str("product_id", request.ProductId).
@@ -326,7 +333,7 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 		return nil, err
 	}
 
-	items := functional.Slice(logs).Map(mapAuditLogToResponse).ToSlice()
+	items := functional.Slice(logs.Items).Map(mapAuditLogToResponse).ToSlice()
 	if items == nil {
 		items = []IntegrationAuditLogEntryResponse{}
 	}
@@ -335,6 +342,65 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 		Items: items,
 		Count: len(items),
 	}), nil
+}
+
+func (s *AnchorAPI) SearchIntegrationAuditLogs(
+	ctx context.Context, request SearchIntegrationAuditLogsRequestObject,
+) (SearchIntegrationAuditLogsResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.Body
+	if body == nil {
+		body = &SearchIntegrationAuditLogsJSONRequestBody{}
+	}
+
+	result, err := s.IntegrationService.SearchAuditLogs(ctx, integration.SearchAuditLogsInput{
+		TenantID:              tenantID,
+		ProductID:             request.ProductId,
+		IntegrationInstanceID: request.IntegrationInstanceId,
+		Request:               mapToSearchIntegrationAuditLogsRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("integration_instance_id", request.IntegrationInstanceId).
+			Msg("failed to search integration audit logs")
+		return nil, err
+	}
+
+	return SearchIntegrationAuditLogs200JSONResponse{
+		Items:      functional.Slice(result.Items).Map(mapAuditLogToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}, nil
+}
+
+func mapToSearchIntegrationAuditLogsRequest(
+	body *SearchIntegrationAuditLogsJSONRequestBody,
+) search.Request[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f IntegrationAuditLogFilter) integration.SearchAuditLogsFilter {
+			return integration.SearchAuditLogsFilter{
+				Actions:       f.Actions,
+				Severities:    f.Severities,
+				CreatedAfter:  f.CreatedAfter,
+				CreatedBefore: f.CreatedBefore,
+			}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, integration.SortFieldAuditLogCreatedAt, search.SortDescending,
+	)
+
+	return search.NewRequest[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
 }
 
 // ---------------------------------------------------------------------------

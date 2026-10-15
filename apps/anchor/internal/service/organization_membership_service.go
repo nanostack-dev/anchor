@@ -360,7 +360,7 @@ func (s *organizationMembershipService) SearchMembers(
 ) (search.Result[organization.Membership], error) {
 	logger := s.logger.With().Str("operation", "SearchMembers").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
 

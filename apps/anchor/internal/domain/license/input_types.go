@@ -1,6 +1,12 @@
 package license
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"time"
+
+	"anchor/internal/searchx"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+)
 
 // FieldDeclaration is one license field as supplied by a caller: the authored
 // shape, before an ID or timestamps exist.
@@ -90,6 +96,39 @@ type ListTemplatesInput struct {
 	Status    *TemplateStatus
 }
 
+// SortFieldTemplate names a column a template search may order by.
+type SortFieldTemplate string
+
+const (
+	SortFieldTemplateName      SortFieldTemplate = "name"
+	SortFieldTemplateStatus    SortFieldTemplate = "status"
+	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
+	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
+)
+
+// SearchTemplatesFilter narrows a template search. Empty Statuses keeps every
+// template, archived ones included.
+type SearchTemplatesFilter struct {
+	Statuses []TemplateStatus `validate:"omitempty,dive,oneof=ACTIVE ARCHIVED"`
+}
+
+// SearchTemplatesInput is the request shape for searching a Product's license
+// templates.
+type SearchTemplatesInput struct {
+	TenantID  string                                                   `validate:"required,notblank"`
+	ProductID string                                                   `validate:"required,notblank"`
+	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchTemplatesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldTemplateName,
+		SortFieldTemplateStatus,
+		SortFieldTemplateCreatedAt,
+		SortFieldTemplateUpdatedAt)
+}
+
 // ArchiveTemplateInput is the request shape for withdrawing one license
 // template. The row is kept, because the Organizations licensed from it name it
 // as the statement of what they were sold. See
@@ -135,12 +174,32 @@ type GetLicenseInput struct {
 	OrganizationID string `validate:"required,notblank"`
 }
 
-// ListLicenseChangesInput reads one Organization's license history, newest first.
-type ListLicenseChangesInput struct {
-	TenantID       string            `validate:"required,notblank"`
-	ProductID      string            `validate:"required,notblank"`
-	OrganizationID string            `validate:"required,notblank"`
-	Pagination     search.Pagination `validate:"required"`
+// SortFieldChange names a column a license history search may order by.
+type SortFieldChange string
+
+const (
+	SortFieldChangeChangedAt SortFieldChange = "changed_at"
+)
+
+// SearchLicenseChangesFilter narrows one Organization's license history.
+type SearchLicenseChangesFilter struct {
+	Types         []ChangeType `validate:"omitempty,dive,oneof=INSTANTIATED ADJUSTED SET TEMPLATE_SYNCED"`
+	ChangedAfter  *time.Time
+	ChangedBefore *time.Time
+}
+
+// SearchLicenseChangesInput searches one Organization's license history.
+type SearchLicenseChangesInput struct {
+	TenantID       string                                                      `validate:"required,notblank"`
+	ProductID      string                                                      `validate:"required,notblank"`
+	OrganizationID string                                                      `validate:"required,notblank"`
+	Request        search.Request[SearchLicenseChangesFilter, SortFieldChange] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchLicenseChangesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldChangeChangedAt)
 }
 
 // AdjustLicenseInput adjusts one Organization's license without touching the
