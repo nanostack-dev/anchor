@@ -3726,6 +3726,7 @@ components:
             type: string
             enum:
             - name
+            - status
             - created_at
             - updated_at
             default: name

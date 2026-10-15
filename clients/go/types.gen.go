@@ -367,6 +367,7 @@ func (e LicenseMigrationOutcome) Valid() bool {
 const (
 	LicenseTemplateSearchRequestSortByCreatedAt LicenseTemplateSearchRequestSortBy = "created_at"
 	LicenseTemplateSearchRequestSortByName      LicenseTemplateSearchRequestSortBy = "name"
+	LicenseTemplateSearchRequestSortByStatus    LicenseTemplateSearchRequestSortBy = "status"
 	LicenseTemplateSearchRequestSortByUpdatedAt LicenseTemplateSearchRequestSortBy = "updated_at"
 )
 
@@ -376,6 +377,8 @@ func (e LicenseTemplateSearchRequestSortBy) Valid() bool {
 	case LicenseTemplateSearchRequestSortByCreatedAt:
 		return true
 	case LicenseTemplateSearchRequestSortByName:
+		return true
+	case LicenseTemplateSearchRequestSortByStatus:
 		return true
 	case LicenseTemplateSearchRequestSortByUpdatedAt:
 		return true

@@ -120,6 +120,9 @@ func (r *templateRepositoryImpl) Search(
 			license.SortFieldTemplateName: transactor.StringKey(
 				table.LicenseTemplates.Name, func(row model.LicenseTemplates) string { return row.Name },
 			),
+			license.SortFieldTemplateStatus: transactor.StringKey(
+				table.LicenseTemplates.Status, func(row model.LicenseTemplates) string { return row.Status },
+			),
 			license.SortFieldTemplateCreatedAt: transactor.TimeKey(
 				table.LicenseTemplates.CreatedAt, func(row model.LicenseTemplates) time.Time { return row.CreatedAt },
 			),

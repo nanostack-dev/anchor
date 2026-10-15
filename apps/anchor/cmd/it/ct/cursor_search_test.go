@@ -926,6 +926,13 @@ func licenseTemplatesCursorCase(t *testing.T) cursorCase {
 		from: "license_templates", idExpr: "id", timeCol: "name", field: "name",
 		where: "product_id = $1", args: []any{tc.product.ProductID},
 	}
+	byStatus := cursorSort{
+		name: "sorted by status", sortBy: "status",
+		order: func(t *testing.T) []string {
+			return idsFromSQL(t, "SELECT id FROM license_templates WHERE product_id = $1 ORDER BY status ASC, id ASC",
+				tc.product.ProductID)
+		},
+	}
 	byCreatedAt := cursorSort{
 		name: "sorted by tied created_at", sortBy: "created_at", descending: true,
 		order: func(t *testing.T) []string {
@@ -948,7 +955,7 @@ func licenseTemplatesCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchLicenseTemplatesResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byCreatedAt),
+		sorts: append(ordered.sorts(), byStatus, byCreatedAt),
 	}
 }
 

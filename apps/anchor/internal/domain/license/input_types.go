@@ -99,6 +99,7 @@ type SortFieldTemplate string
 
 const (
 	SortFieldTemplateName      SortFieldTemplate = "name"
+	SortFieldTemplateStatus    SortFieldTemplate = "status"
 	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
 	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
 )
