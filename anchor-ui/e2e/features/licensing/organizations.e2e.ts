@@ -479,6 +479,17 @@ test("organization licenses name a tier listed after the first hundred templates
 	await page.getByRole("option", { name: lastTier.name, exact: true }).click();
 	await page.keyboard.press("Escape");
 	await expect(page.getByText("2 total", { exact: true })).toBeVisible();
+	const tierChip = page.getByRole("button", {
+		name: `Remove ${lastTier.name}`,
+		exact: true,
+	});
+	await expect
+		.poll(async () => {
+			const box = await tierChip.boundingBox();
+			return box ? box.x + box.width : Number.POSITIVE_INFINITY;
+		})
+		.toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+	await captureReviewCheckpoint(page, testInfo, "organizations-tier-filtered");
 	await page
 		.getByRole("link", {
 			name: `Open ${customized.name}’s license`,

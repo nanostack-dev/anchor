@@ -76,4 +76,6 @@ pnpm test:e2e:review e2e/features/licensing/organizations.e2e.ts --grep 'first h
 
 The independent review of the same change found that the active-filter row
 beside it did not wrap: at 393 px a long tier chip, its remove control and
-**Clear all** were clipped by the card. That row now wraps with `min-w-0`.
+**Clear all** were clipped by the card. That row and each faceted filter's own trigger-and-chips group now wrap
+with `min-w-0`; the scenario checks that the tier chip's remove control ends
+inside the viewport.
