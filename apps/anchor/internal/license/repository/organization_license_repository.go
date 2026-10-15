@@ -307,9 +307,10 @@ func (r *organizationLicenseRepositoryImpl) Search(
 //
 // instantiated_at comes from the outer side of the join, so it is NULL for an
 // Organization holding no license: a nullable key, although the column is NOT
-// NULL in its own table. NULLs sort last ascending and first descending, the
-// Postgres placement the keyset seek follows. Organizations hold one row each,
-// so the organization id is the tiebreak.
+// NULL in its own table. NullsLast keeps the organizations holding no license
+// after every licensed one in both directions, and the cursor follows that
+// placement. Organizations hold one row each, so the organization id is the
+// tiebreak.
 func organizationLicenseOrder(
 	sorts []search.Sort[license.SortFieldOrganizationLicense],
 ) transactor.Order[mapper.OrganizationLicenseSummaryRow] {
@@ -328,7 +329,7 @@ func organizationLicenseOrder(
 					}
 					return &row.License.InstantiatedAt
 				},
-			),
+			).NullsLast(),
 		},
 		transactor.StringKey(
 			table.Organizations.ID,

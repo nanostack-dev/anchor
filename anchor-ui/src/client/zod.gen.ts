@@ -1702,7 +1702,7 @@ export const zOrganizationLicenseFilter = z.object({
 });
 
 /**
- * Field to sort by. `instantiated_at` has no value for an organization holding no license, because it was never stamped. Such organizations sort after every licensed one when ascending and before them when descending, the way a missing value sorts in the database.
+ * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
  */
 export const zOrganizationLicenseSortField = z.enum([
     'organization_name',

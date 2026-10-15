@@ -1558,7 +1558,7 @@ type OrganizationLicenseSearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortBy Field to sort by. `instantiated_at` has no value for an organization holding no license, because it was never stamped. Such organizations sort after every licensed one when ascending and before them when descending, the way a missing value sorts in the database.
+	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 	SortBy *OrganizationLicenseSortField `json:"sort_by,omitempty"`
 
 	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
@@ -1578,7 +1578,7 @@ type OrganizationLicenseSearchResponse struct {
 	Total int64 `json:"total"`
 }
 
-// OrganizationLicenseSortField Field to sort by. `instantiated_at` has no value for an organization holding no license, because it was never stamped. Such organizations sort after every licensed one when ascending and before them when descending, the way a missing value sorts in the database.
+// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 type OrganizationLicenseSortField = license.SortFieldOrganizationLicense
 
 // OrganizationLicenseSummaryResponse One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.

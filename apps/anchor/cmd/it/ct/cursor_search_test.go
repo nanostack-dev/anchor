@@ -693,7 +693,7 @@ func organizationLicensesCursorCase(t *testing.T) cursorCase {
 			order: func(t *testing.T) []string {
 				return idsFromSQL(t, fmt.Sprintf(`SELECT o.id FROM organizations o
 					LEFT JOIN organization_licenses l ON l.organization_id = o.id
-					WHERE o.product_id = $1 ORDER BY l.instantiated_at %[1]s, o.id %[1]s`, direction(descending)),
+					WHERE o.product_id = $1 ORDER BY l.instantiated_at %[1]s NULLS LAST, o.id %[1]s`, direction(descending)),
 					w.productID())
 			},
 		}

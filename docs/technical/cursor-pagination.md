@@ -28,7 +28,7 @@ Each ordering ends with the tiebreak, and the tiebreak follows the direction of 
 | `searchOrganizationWorkspaces` | `created_at` ASC | `id` | name, created_at, updated_at | `(organization_id, created_at, id)` |
 | `searchOrganizationMembers` | `joined_at` DESC | `product_user_id` (composite key, organization fixed) | joined_at, email | `(organization_id, created_at, product_user_id)` |
 | `searchOrganizationInvitations`, `searchProductOrganizationInvitations` | `created_at` ASC | `id` | created_at, email, expires_at | `(organization_id, created_at, id)`, `(product_id, created_at, id)` |
-| `searchOrganizationLicenses` | `organization_name` ASC | `organizations.id` | organization_name, instantiated_at (nullable through the left join) | none for a name order: the scope index finds the product's organizations and the page sorts them |
+| `searchOrganizationLicenses` | `organization_name` ASC | `organizations.id` | organization_name, instantiated_at (nullable through the left join, NULLs last in both directions) | none for a name order: the scope index finds the product's organizations and the page sorts them |
 | `searchIntegrationAuditLogs` | `created_at` DESC | `id` | created_at, action, severity | `(integration_instance_id, created_at, id)` |
 | `searchUserOrganizations` | `joined_at` ASC | `organization_id` (composite key, user fixed) | joined_at, name | none: one user belongs to few organizations |
 | `searchEmailTemplates` | `created_at` DESC | `id` | created_at, updated_at, name, slug | `(product_id, created_at, id)` |
@@ -55,7 +55,7 @@ Not searches, with the reason stated in their operation descriptions: `listInteg
 - The row type scans one SQL row per item. A search that shows children (role permissions, API-key permissions, the permissions behind `include=role_permissions`) pages the parents flat and loads the children for the page in a second statement.
 - Sort only on bounded columns. Every sortable column is `VARCHAR(n)` or a timestamp.
 - `search.Request.WithSort(nil, nil)` injects `created_at` ASC. A resource whose default is not that sets its default in its API mapper with `searchx.Sort`.
-- NULLs sort last when ascending and first when descending, the Postgres placement the seek predicate follows. This reaches three searches: `last_used_at` on API keys, `name` on product users, and `instantiated_at` on organization licenses. The organization license search once placed unlicensed organizations last in both directions with a `CASE` expression. A keyset cannot express that, so descending now lists them first.
+- A nullable key sorts NULLs last when ascending and first when descending, the Postgres placement, unless the key pins it with `NullsLast()` or `NullsFirst()`. `last_used_at` on API keys and `name` on product users keep the default. `instantiated_at` on organization licenses is `NullsLast()`, so organizations holding no license come after every licensed one in both directions, and the cursor follows that placement.
 - Internal loops that walked pages by offset follow `next_cursor`: the license adjustment backfill reads the history this way, and so does the permission sync at startup.
 
 ## Tests
