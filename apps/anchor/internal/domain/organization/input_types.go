@@ -9,9 +9,18 @@ import (
 // nothing about whether the organization has it.
 type Include string
 
-const IncludeLicense Include = "license"
+const (
+	IncludeLicense   Include = "license"
+	IncludeWorkspace Include = "workspace"
+)
+
+type InitialWorkspaceInput struct {
+	Name        string  `validate:"required,notblank,min=2,max=100"`
+	Description *string `validate:"omitempty,max=500"`
+}
 
 type CreateOrganizationInput struct {
+	Workspace *InitialWorkspaceInput `validate:"omitempty"`
 	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID    string  `validate:"required_with=LicenseTemplateID"`
 	ProductID   string  `validate:"required,notblank"`
@@ -72,6 +81,7 @@ type SearchProductOrganizationsInput struct {
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization
 // and assigning its founding member with a role in a single transaction.
 type CreateOrganizationWithMemberInput struct {
+	Workspace *InitialWorkspaceInput `validate:"omitempty"`
 	// Needed only for LicenseTemplateID, which is read tenant-scoped.
 	TenantID      string  `validate:"required_with=LicenseTemplateID"`
 	ProductID     string  `validate:"required,notblank"`

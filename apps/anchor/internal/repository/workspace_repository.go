@@ -29,6 +29,11 @@ func workspacesUpdatableColumns() postgres.ColumnList {
 }
 
 type WorkspaceRepository interface {
+	ListByOrganizations(
+		ctx context.Context,
+		productID string,
+		organizationIDs []string,
+	) (map[string][]workspace.Workspace, error)
 	FindByID(
 		ctx context.Context,
 		productID string,
@@ -63,6 +68,28 @@ type WorkspaceRepository interface {
 		organizationID string,
 		input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
 	) (search.Result[workspace.Workspace], error)
+}
+
+// ListByOrganizations reads linked workspaces for a whole organization page in one statement.
+func (r *workspaceRepositoryImpl) ListByOrganizations(
+	ctx context.Context, productID string, organizationIDs []string,
+) (map[string][]workspace.Workspace, error) {
+	ids := functional.Slice(organizationIDs).Map(func(id string) postgres.Expression {
+		return postgres.String(id)
+	}).ToSlice()
+	stmt := table.Workspaces.SELECT(table.Workspaces.AllColumns).FROM(r.joinOrganizations()).
+		WHERE(table.Organizations.ProductID.EQ(postgres.String(productID)).
+			AND(table.Workspaces.OrganizationID.IN(ids...))).
+		ORDER_BY(table.Workspaces.CreatedAt.ASC(), table.Workspaces.ID.ASC())
+	items, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.workspaceMapper.ToDomain).Value()
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]workspace.Workspace)
+	for _, item := range items {
+		result[item.OrganizationID] = append(result[item.OrganizationID], item)
+	}
+	return result, nil
 }
 
 type workspaceRepositoryImpl struct {

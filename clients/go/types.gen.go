@@ -389,13 +389,16 @@ func (e OrganizationAPIKeyStatus) Valid() bool {
 
 // Defines values for OrganizationInclude.
 const (
-	OrganizationIncludeLicense OrganizationInclude = "license"
+	OrganizationIncludeLicense   OrganizationInclude = "license"
+	OrganizationIncludeWorkspace OrganizationInclude = "workspace"
 )
 
 // Valid indicates whether the value is a known member of the OrganizationInclude enum.
 func (e OrganizationInclude) Valid() bool {
 	switch e {
 	case OrganizationIncludeLicense:
+		return true
+	case OrganizationIncludeWorkspace:
 		return true
 	default:
 		return false
@@ -2811,6 +2814,9 @@ type ProductOrganizationRequest struct {
 	//
 	// Examples: Acme Corporation
 	Name string `json:"name"`
+
+	// Workspace Optionally create this ordinary workspace atomically with a new organization. Omitted leaves the organization without workspaces. Ignored on update and on a founding-member retry that returns an existing organization; such a retry never recreates deleted workspaces.
+	Workspace *ProductWorkspaceRequest `json:"workspace,omitempty"`
 }
 
 // ProductOrganizationResponse defines model for ProductOrganizationResponse.
@@ -2848,6 +2854,9 @@ type ProductOrganizationResponse struct {
 
 	// UpdatedAt Timestamp when the organization was last updated.
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// Workspaces The organization's ordinary workspaces. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
+	Workspaces *[]ProductWorkspaceResponse `json:"workspaces,omitempty"`
 }
 
 // ProductOrganizationSearchRequest defines model for ProductOrganizationSearchRequest.
@@ -3760,13 +3769,13 @@ type ListLicenseTemplatesParams struct {
 
 // SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
 type SearchProductOrganizationsParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProductOrganizationParams defines parameters for GetProductOrganization.
 type GetProductOrganizationParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 

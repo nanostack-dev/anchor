@@ -33,7 +33,8 @@ func (o Organizations) Create(name string) *OrgCreateBuilder {
 // Get returns one organization by ID. Name a related resource to read it
 // alongside the organization:
 //
-//	org, err := c.Organizations().Get(ctx, orgID, nanoclient.OrganizationIncludeLicense)
+//	org, err := c.Organizations().Get(ctx, orgID,
+//	    nanoclient.OrganizationIncludeWorkspace, nanoclient.OrganizationIncludeLicense)
 func (o Organizations) Get(
 	ctx context.Context,
 	organizationID string,
@@ -121,8 +122,13 @@ func (b *OrgCreateBuilder) Metadata(m map[string]any) *OrgCreateBuilder {
 	return b
 }
 
-// FoundingMember assigns a first member with the given role. Anchor creates the
-// organization and the membership atomically in one transaction.
+// Workspace creates an ordinary named workspace atomically with a new organization.
+func (b *OrgCreateBuilder) Workspace(name string) *OrgCreateBuilder {
+	b.req.Workspace = &nanoclient.ProductWorkspaceRequest{Name: name}
+	return b
+}
+
+// FoundingMember assigns the first member atomically with the organization.
 func (b *OrgCreateBuilder) FoundingMember(productUserID, roleID string) *OrgCreateBuilder {
 	b.req.FoundingMember = &nanoclient.FoundingMemberRequest{ProductUserId: productUserID, RoleId: roleID}
 	return b

@@ -9,6 +9,11 @@ type CreateWorkspaceInput struct {
 	Description    *string `validate:"omitempty,max=500"`
 }
 
+type ListByOrganizationsInput struct {
+	ProductID       string   `validate:"required,notblank"`
+	OrganizationIDs []string `validate:"required,min=1,dive,notblank"`
+}
+
 type FindWorkspaceInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`

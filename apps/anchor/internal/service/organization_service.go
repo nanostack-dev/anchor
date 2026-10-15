@@ -17,6 +17,7 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
@@ -106,6 +107,7 @@ type organizationService struct {
 	productRoleRepo   repository.ProductRoleRepository
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
+	workspaces        WorkspaceService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
 	events            events.Emitter
@@ -119,6 +121,7 @@ func NewOrganizationService(
 	productRoleRepo repository.ProductRoleRepository,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
+	workspaces WorkspaceService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
 	eventEmitter events.Emitter,
@@ -131,6 +134,7 @@ func NewOrganizationService(
 		productRoleRepo:   productRoleRepo,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
+		workspaces:        workspaces,
 		transactor:        tx,
 		lock:              lock,
 		events:            eventEmitter,
@@ -234,30 +238,34 @@ func (s *organizationService) attachIncludes(
 	organizations []organization.Organization,
 	includes []organization.Include,
 ) ([]organization.Organization, error) {
-	if len(organizations) == 0 || !slices.Contains(includes, organization.IncludeLicense) {
+	if len(organizations) == 0 {
 		return organizations, nil
 	}
-
 	organizationIDs := functional.Slice(organizations).Map(func(org organization.Organization) string {
 		return org.ID
 	}).ToSlice()
-
-	licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
-		TenantID:        tenantID,
-		ProductID:       productID,
-		OrganizationIDs: organizationIDs,
-	})
-	if err != nil {
-		s.logger.Error().
-			Str("product_id", productID).
-			Err(err).
-			Msg("failed to read the licenses of the organizations read")
-		return nil, err
+	if slices.Contains(includes, organization.IncludeLicense) {
+		licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
+			TenantID: tenantID, ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			if held, ok := licenses[org.ID]; ok {
+				organizations[i].License = &held
+			}
+		}
 	}
-
-	for i, org := range organizations {
-		if held, ok := licenses[org.ID]; ok {
-			organizations[i].License = &held
+	if slices.Contains(includes, organization.IncludeWorkspace) {
+		linked, err := s.workspaces.ListByOrganizations(ctx, workspace.ListByOrganizationsInput{
+			ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			organizations[i].Workspaces = linked[org.ID]
 		}
 	}
 	return organizations, nil
@@ -318,6 +326,16 @@ func (s *organizationService) Create(
 			return licenseErr
 		}
 		created.License = instantiated
+		if input.Workspace != nil {
+			if _, workspaceErr := s.workspaces.Create(
+				txCtx,
+				workspace.CreateWorkspaceInput{Name: input.Workspace.Name, Description: input.Workspace.Description,
+					ProductID: input.ProductID, OrganizationID: created.ID,
+				},
+			); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		return s.emitOrganization(txCtx, events.OrganizationCreated, created.ProductID, created.ID)
 	}); txErr != nil {
@@ -444,6 +462,19 @@ func (s *organizationService) CreateWithMember(
 			return licenseErr
 		}
 		createdOrg.License = createdLicense
+		if input.Workspace != nil {
+			if _, workspaceErr := s.workspaces.Create(
+				lockCtx,
+				workspace.CreateWorkspaceInput{
+					Name:           input.Workspace.Name,
+					Description:    input.Workspace.Description,
+					ProductID:      input.ProductID,
+					OrganizationID: createdOrg.ID,
+				},
+			); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		if emitErr := s.emitOrganization(
 			lockCtx,

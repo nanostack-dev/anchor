@@ -91,7 +91,7 @@ components:
       required: false
       description: >-
         Related resources to read alongside each organization, comma separated —
-        `?include=license`. A resource not named is left out of the response
+        `?include=workspace,license`. A resource not named is left out of the response
         entirely, which says nothing about whether the organization has it. Each
         named resource is read for the whole response at once, so including one
         costs one more statement, not one per organization.
@@ -2101,6 +2101,14 @@ components:
     ProductOrganizationRequest:
       type: object
       properties:
+        workspace:
+          allOf:
+            - $ref: "#/components/schemas/ProductWorkspaceRequest"
+          description: >-
+            Optionally create this ordinary workspace atomically with a new
+            organization. Omitted leaves the organization without workspaces.
+            Ignored on update and on a founding-member retry that returns an
+            existing organization; such a retry never recreates deleted workspaces.
         name:
           type: string
           minLength: 2
@@ -2138,8 +2146,8 @@ components:
     OrganizationInclude:
       type: string
       description: A related resource an organization read can ask for.
-      enum: [license]
-      x-enum-varnames: [OrganizationIncludeLicense]
+      enum: [license, workspace]
+      x-enum-varnames: [OrganizationIncludeLicense, OrganizationIncludeWorkspace]
       x-go-type: organization.Include
       x-go-type-import:
         path: anchor/internal/domain/organization
@@ -2180,6 +2188,15 @@ components:
         metadata:
           $ref: "#/components/schemas/Metadata"
           description: Key-value metadata for the organization.
+        workspaces:
+          type: array
+          readOnly: true
+          description: >-
+            The organization's ordinary workspaces.
+            Present only when a read requests include=workspace. An included
+            organization with no workspaces returns an empty array.
+          items:
+            $ref: "#/components/schemas/ProductWorkspaceResponse"
         license:
           $ref: "#/components/schemas/OrganizationLicenseResponse"
           description: >-
