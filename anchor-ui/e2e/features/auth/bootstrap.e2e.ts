@@ -26,7 +26,7 @@ test(
 			.getByLabel("Confirm Password", { exact: true })
 			.fill(account.password);
 		await page.getByRole("button", { name: "Launch Anchor" }).click();
-		await expect(page).toHaveURL("http://127.0.0.1:3015/");
+		await expect(page).toHaveURL(`${runtime().frontendURL}/`);
 		await expect(
 			page.getByRole("heading", { name: "Dashboard", exact: true }),
 		).toBeVisible();

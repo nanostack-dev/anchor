@@ -21,6 +21,7 @@ console.log(JSON.stringify(loaded.config));
 function environment(extra = {}) {
 	return {
 		...process.env,
+		E2E_FRONTEND_PORT: undefined,
 		E2E_WORKERS: "",
 		E2E_SLOW_MO: "",
 		E2E_REVIEW_SLOW_MO: "",
@@ -241,4 +242,21 @@ test("a real mobile context produces a viewport PNG attachment and finalized rev
 	assert.ok(recording);
 	await context.close();
 	assert.ok((await stat(await recording.path())).size > 0);
+});
+
+test("custom headless ports stay aligned through app and responsive configurations", () => {
+	for (const file of [
+		"playwright.app.config.ts",
+		"playwright.review.config.ts",
+	]) {
+		const loaded = configuration(file, { E2E_FRONTEND_PORT: "13015" });
+		assert.equal(loaded.webServer.url, "http://127.0.0.1:13015/__e2e/ready");
+		assert.equal(
+			loaded.webServer.env.VITE_API_BASE_URL,
+			"http://127.0.0.1:13015",
+		);
+		assert.equal(loaded.webServer.reuseExistingServer, false);
+		for (const project of loaded.projects)
+			assert.equal(project.use.baseURL, "http://127.0.0.1:13015");
+	}
 });

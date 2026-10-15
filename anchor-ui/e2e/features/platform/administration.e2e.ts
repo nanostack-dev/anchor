@@ -83,7 +83,7 @@ test(
 			const registeredAPI = await createAPI(runtime().apiURL, auth.accessToken);
 			registeredID = (await registeredAPI.get<UserResponse>("/v1/me")).id;
 			await registeredAPI.context.dispose();
-			await expect(guest).toHaveURL("http://127.0.0.1:3015/");
+			await expect(guest).toHaveURL(`${runtime().frontendURL}/`);
 			await expect(
 				guest.getByRole("heading", { name: "Dashboard", exact: true }),
 			).toBeVisible();

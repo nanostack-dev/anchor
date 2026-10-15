@@ -66,6 +66,23 @@ The [selective testing guide](selective-testing.md) describes changed-file
 selection, dependency-map maintenance and the complete CI gate. Its
 [research](selective-testing-research.md) records the sources and tradeoffs.
 
+## Headless frontend port
+
+App, responsive review and complete verification runs accept `E2E_FRONTEND_PORT`
+when another worktree owns the default port 3015. Use a whole port from 1 through
+65535; invalid values fail before startup. For example:
+
+```sh
+E2E_FRONTEND_PORT=13015 ANCHOR_E2E_RUNTIME_NAMESPACE=fraud-verification pnpm test:e2e:verify --base origin/main
+```
+
+The readiness URL, browser origin, build API origin and owned runtime frontend
+origin use the same port. A listener already on the selected port is still
+refused. The override applies to headless app/review/complete runs. Set it on that
+command only; Playwright UI, doctor and benchmark commands require port 3015
+and do not support the override. The runtime namespace isolates
+managed metadata and services; it does not reserve or change a port itself.
+
 ## Parallel agent ownership
 
 Assign independent domains: `auth/platform`, `access`, `licensing`, and
