@@ -1,0 +1,230 @@
+{
+  "title": "Concurrent API key creates with one name answered 500: the insert's unique violation was not mapped to the 409",
+  "short": "API key name race",
+  "service": "anchor",
+  "date": "2026-10-16",
+  "severity": "SEV4",
+  "status": "in review",
+  "authors": [
+    "Nanostack routine (posthog-error-watch)"
+  ],
+  "summary": "On dev at 01:02:04Z two `POST .../organizations/<org>/api-keys` requests with the same name, sent in the same millisecond by a flow-suite run, both answered 500 `Unexpected error`. The service checks the name before the insert, so both requests passed the check and the second insert hit `organization_api_keys_organization_id_name_key` (23505), which the service mapped to `fault.ErrUnexpected`. A new concurrency test found the same 500 on 13 of 14 public create or rename routes. anchor#237 maps each unique violation to the 409 the pre-check already returns; it is live on dev. Prod carries the same latent race until the next anchor prod deploy.",
+  "impact": {
+    "text": "Dev only: two API key creates from the CI flow suite answered 500 instead of 201 and 409. The same race existed on 13 of 14 create or rename routes in prod; no prod occurrence was logged.",
+    "numbers": [
+      {
+        "value": "2",
+        "label": "creates answered 500 (dev)"
+      },
+      {
+        "value": "13 of 14",
+        "label": "routes failing the new race test"
+      },
+      {
+        "value": "0",
+        "label": "prod occurrences logged"
+      }
+    ]
+  },
+  "trigger": "Two same-name API key creates for one organization reached anchor dev in the same millisecond.",
+  "detection": "The 500s and the 23505 error rows were in PostHog logs at once. A parallel session opened the fix (anchor#237) 40 minutes later; the daily `posthog-error-watch` routine triaged the rows at about 11:15Z. No alert fired for two isolated dev 500s, which is fine at this volume.",
+  "resolution": "anchor#237 maps the unique violation on every create or rename with a name pre-check to the existing 409, with a concurrency test per route; merged 11:21Z and live on dev.",
+  "timeline": {
+    "events": [
+      {
+        "t": "2026-05-11T21:16:14Z",
+        "approx": true,
+        "kind": "change",
+        "label": "Check-then-insert name rule in the initial anchor snapshot",
+        "detail": "`organization_api_key_service.go` `Create`: `nameUniqueValidation`, then the insert inside a transaction; any insert error becomes `fault.ErrUnexpected`."
+      },
+      {
+        "t": "2026-10-16T01:02:04Z",
+        "kind": "trigger",
+        "label": "Two same-name creates answer 500 on dev",
+        "detail": "`jet: pq: duplicate key value violates unique constraint \"organization_api_keys_organization_id_name_key\" (23505)` logged by the repository and the service, then `Internal server error: Unexpected error`.",
+        "link": "https://us.posthog.com/project/471972/logs"
+      },
+      {
+        "t": "2026-10-16T01:02:05Z",
+        "approx": true,
+        "kind": "resolve",
+        "label": "No further 500s: the suite run moved on"
+      },
+      {
+        "t": "2026-10-16T01:42:36Z",
+        "kind": "detect",
+        "label": "anchor#237 opened with the fix and the race test",
+        "link": "https://github.com/nanostack-dev/anchor/pull/237"
+      },
+      {
+        "t": "2026-10-16T11:21:20Z",
+        "kind": "followup",
+        "label": "anchor#237 merged, live on dev",
+        "link": "https://github.com/nanostack-dev/anchor/pull/237"
+      }
+    ]
+  },
+  "whys": {
+    "problem": "Two concurrent creates of an API key with the same name answered 500 instead of one 201 and one 409",
+    "because": [
+      {
+        "text": "The second insert hit the unique constraint, and the service turned every insert error into `fault.ErrUnexpected`",
+        "evidence": "Log rows at 01:02:04Z (23505 on `organization_api_keys_organization_id_name_key`); `organization_api_key_service.go` `Create` returns `fault.ErrUnexpected` on any transaction error.",
+        "because": [
+          {
+            "text": "The 409 came only from a name check run before the insert, so two requests could both pass it",
+            "evidence": "`nameUniqueValidation` runs outside the insert transaction; a concurrent writer's row is invisible until it commits.",
+            "because": [
+              {
+                "text": "The service treated the database constraint as unreachable once the pre-check passed",
+                "evidence": "Only the license services matched 23505 (`pgerr.IsUniqueViolation`), added after their own incidents.",
+                "because": [
+                  {
+                    "id": "R1",
+                    "root": true,
+                    "text": "No rule or shared helper required a pre-check's insert to map its unique violation to the same 409"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "The same 500 waited on 13 of 14 public create or rename routes, in prod as well as dev",
+        "evidence": "`TestConcurrentSameNameWritesReturnConflict` failed 13 of 14 cases on the old code (anchor#237).",
+        "because": [
+          {
+            "text": "No test ever sent concurrent writes of one name; every test created names one at a time",
+            "evidence": "The race tests in anchor#237 are the first concurrent-write tests for named resources.",
+            "because": [
+              {
+                "id": "R2",
+                "root": true,
+                "text": "The test suite had no concurrency case for unique names, so the class stayed hidden until a flow suite raced it"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "contributing": [
+    "The same class caused the 2026-10-07 duplicate Clerk reconcile incident (anchor#211); that fix stayed local to the reconcile path.",
+    "Two leftovers need a different fix than a 409: concurrent inbound webhook deliveries on `integration_events_..._external_event_id_key` and concurrent email template draft/publish version numbers (listed in anchor#237)."
+  ],
+  "lessons": {
+    "well": [
+      "Both the repository and the service logged the constraint name, so the cause read from one row.",
+      "The fix swept the class with a concurrency test per route instead of patching one endpoint."
+    ],
+    "wrong": [
+      "A check-then-act pattern sat in the codebase since the first snapshot, and the earlier 23505 incident did not trigger a class-wide look."
+    ],
+    "lucky": [
+      "A CI flow suite raced the route on dev before any customer did on prod.",
+      "The endpoints already declared 409, so the fix needed no contract change."
+    ]
+  },
+  "actions": [
+    {
+      "id": "A1",
+      "what": "Map every pre-checked unique violation to the existing 409 with `OnUnique`, 12 resources (create and rename)",
+      "type": "prevent",
+      "owner": "anchor backend",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#237",
+        "url": "https://github.com/nanostack-dev/anchor/pull/237"
+      },
+      "fixes": [
+        "R1"
+      ]
+    },
+    {
+      "id": "A2",
+      "what": "Concurrency tests per route: `TestConcurrentSameNameWritesReturnConflict`, `TestConcurrentUniqueInsertsReturnSentinel`",
+      "type": "detect",
+      "owner": "anchor backend",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#237",
+        "url": "https://github.com/nanostack-dev/anchor/pull/237"
+      },
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A3",
+      "what": "Rule in `docs/development/agent-rules.md`: a pre-check's write maps the unique violation and adds a race-test case",
+      "type": "process",
+      "owner": "anchor backend",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#237",
+        "url": "https://github.com/nanostack-dev/anchor/pull/237"
+      },
+      "fixes": [
+        "R1",
+        "R2"
+      ]
+    },
+    {
+      "id": "A4",
+      "what": "Fix the two leftovers: idempotent inbound webhook event insert, email template version race",
+      "type": "prevent",
+      "owner": "anchor backend (human)",
+      "due": "2026-10-30",
+      "status": "open",
+      "fixes": [
+        "R1"
+      ]
+    },
+    {
+      "id": "A5",
+      "what": "Deploy anchor#237 to prod (prod still on 48bdb77)",
+      "type": "mitigate",
+      "owner": "anchor backend (human)",
+      "due": "2026-10-23",
+      "status": "open",
+      "fixes": [
+        "R1"
+      ]
+    }
+  ],
+  "responders": [
+    {
+      "role": "Fix",
+      "name": "Claude Code session (anchor name race)"
+    },
+    {
+      "role": "Detection and write-up",
+      "name": "Nanostack routine (posthog-error-watch)"
+    }
+  ],
+  "messaging": {
+    "internal": "Two same-millisecond API key creates on anchor dev answered 500 (unique violation after the name pre-check). anchor#237 maps it to 409 on 12 resources with race tests; live on dev, prod pending deploy.",
+    "external": "None needed: dev only."
+  },
+  "links": [
+    {
+      "label": "Postmortem report (artifact)",
+      "url": "https://claude.ai/artifact/6VvGbBnpGRfy2ssVs8jCsF"
+    },
+    {
+      "label": "anchor#237 (fix and race tests)",
+      "url": "https://github.com/nanostack-dev/anchor/pull/237"
+    },
+    {
+      "label": "2026-10-07 duplicate Clerk reconcile postmortem",
+      "url": "https://github.com/nanostack-dev/anchor/blob/main/docs/postmortems/2026-10-07-duplicate-clerk-reconcile.md"
+    },
+    {
+      "label": "PostHog logs project",
+      "url": "https://us.posthog.com/project/471972/logs"
+    }
+  ]
+}
