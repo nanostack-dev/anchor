@@ -32,6 +32,27 @@ The database enforces structural integrity only. Every business rule — input s
 - Wiring via Uber FX modules; DB access via go-jet generated models; schema changes via migrations only, never hot DB edits.
 - Spec-first API work: update `openapi.yaml`, regenerate through the repo command, never hand-edit generated files. Enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
 
+## Database migrations and rollout
+
+A rolling deploy runs the old and the new application against the new schema at the same time, and a production table is never empty. Each rule below prevents a change that passes on a fresh database and fails on a loaded one or mid-rollout.
+
+**Migrations are append-only once on `main`.** Dev and prod may already have run them, so a change is always a new migration. Both repos follow this; Echopoint's `AGENTS.md` links its `migrations-verify` CI job and the postmortem of the deleted migration.
+
+**Build an index on an existing table with `CREATE INDEX CONCURRENTLY IF NOT EXISTS`, alone in its migration file.** A plain `CREATE INDEX` blocks writes for the whole build. golang-migrate sends a single-statement file without a transaction. A second statement turns the file into an implicit transaction, and PostgreSQL refuses `CONCURRENTLY` inside one. The down file is `DROP INDEX CONCURRENTLY IF EXISTS`.
+
+- A TimescaleDB hypertable cannot build concurrently. Use `CREATE INDEX IF NOT EXISTS ... WITH (timescaledb.transaction_per_chunk)` and a plain `DROP INDEX IF EXISTS` down file, as Echopoint migration `000066` does.
+- A failed concurrent build leaves an INVALID index and a dirty migration. Drop the index by name, force the migration version back, then rerun. `IF NOT EXISTS` would skip the invalid index by name and record the migration as applied with an index no query can use.
+
+**Never backfill a large table with one `UPDATE` in a migration.** The row locks last until commit and block every writer on the table (echopoint#644 review). Prefer a derived value as a PostgreSQL 18 `GENERATED ALWAYS AS (...) VIRTUAL` column with a concurrent expression index: adding it is metadata-only and it is always consistent, as in Echopoint migration `000084`. When a stored value is unavoidable, backfill in batches from an application job.
+
+**Expand, then contract.** Every migration must work with the previous application version still running.
+
+- Add nullable or defaulted columns.
+- Never rename or drop a column the running version uses in the same release. Do it in a later release, once no running version reads it.
+- Never require application code to maintain a derived column. Old pods do not know about it and keep writing stale values. Compute it in the database (the `VIRTUAL` column above).
+
+**A new config field is optional with a default.** The framework loader treats an untagged field as required, so tag it `optional:"true"` and apply the default in code. A deployment whose config predates the field must still start. echopoint#645 crashed at startup in e2e because of a required `anchor.page_size`. Test the service with the deployed config shape, not only with the file in the repo.
+
 ## API conventions
 
 ### The `?include=` query parameter
@@ -70,6 +91,8 @@ Every persisted resource that the API returns as a collection has a search opera
 - A cursor is opaque. Clients never build, parse or store one beyond the walk that produced it. A cursor issued for another sort, a malformed one, or a cursor sent with a non-zero `offset` answers 400 (`INVALID_CURSOR`).
 - `offset` stays for page-number navigation in a UI table. Machine iteration (syncs, exports, SDK `All` helpers, MCP tools, the CLI, Terraform data sources) always uses the cursor.
 
+**Validate before shortcuts.** A search validates its whole input before any early return, such as an empty scope: the sort field, the filter enum values, and the cursor (`search.Pagination.Validate` and `Order.Seek`). An unknown `sort_by` or filter value answers 400, never a silent fallback to the default. Otherwise the same request answers 400 or 200 depending on how much data the caller has (echopoint#644 and #645 reviews).
+
 **Ordering is total.** Every sortable field maps to a typed key (`StringKey`, `EnumKey`, `TimeKey`, `IntKey`, `Nullable*` for a nullable column), and the ordering ends with the primary key as the tiebreak. A search without a requested sort orders by its documented default, still ending with the id. Never order a page by a non-unique column alone.
 
 **Indexes.** A search on a table that grows without bound has a composite index matching its default ordering behind its scope, for example `(organization_id, created_at, id)`. The seek is then one range scan, at any depth.
@@ -77,6 +100,10 @@ Every persisted resource that the API returns as a collection has a search opera
 **Static catalogs and aggregates are not resources.** A fixed list compiled into the binary (node definitions, permissions), a live in-memory view (connected runners) and an aggregate computed per request (analytics buckets, usage series) return their array directly. Pagination there would be a fiction. State the reason in the operation description.
 
 **GET lists.** A new collection gets a search, never a `GET` list. An existing `GET` list of a persisted resource is deprecated in the spec, with `deprecated: true` and the search named in its description, once the search exists. First-party clients move to the search in the same change.
+
+**Replacing a list or a consumer.** Before moving an endpoint or a consumer to a search, write the parity matrix of the old behavior and pin each row with a test: the limit cap and whether it read everything, the matching semantics (case sensitivity, `LIKE` wildcards), the default order, the fields present in items, and the totals. A difference is deliberate and named in the PR. The cursor-search rollout (anchor#234, echopoint#644, echopoint#645) caught deprecated email lists clamped at 1000, a template search that lost `description` and case-insensitivity, and folder trees truncated at 100.
+
+**Reading every row.** A caller that needs every row walks `next_cursor` to the end. A single page of N rows is a defect, unless the collection is bounded by design and the bound is stated where the call is made.
 
 **SDK.** A search builder exposes `Cursor(string)` and the result exposes `NextCursor`. Offer an iterator (`All(ctx)` / `Pages(ctx)`) that follows `next_cursor`, so callers never write the loop themselves.
 
