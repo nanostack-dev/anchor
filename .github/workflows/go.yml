@@ -175,6 +175,25 @@ jobs:
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
+  # Fails a pull request that adds or modifies an unsafe Postgres migration: a
+  # plain CREATE INDEX that blocks writes, CONCURRENTLY sharing a file with
+  # another statement, a one-statement backfill, a hypertable index built
+  # without transaction_per_chunk. Only the files the PR touches are linted;
+  # migrations are append-only. Rules, exclusions and opt-out comments:
+  # nanostack-dev/ci-workflows docs/technical/migration-lint.md.
+  #
+  # Gated on backend_changed, whose patterns include apps/anchor/migrations/**,
+  # and on pull_request: a push to main has nothing left to review.
+  migration-lint:
+    needs: detect_changes
+    if: github.event_name == 'pull_request' && needs.detect_changes.outputs.backend_changed == 'true'
+    uses: nanostack-dev/ci-workflows/.github/workflows/migration-lint.yml@79f1572b15634e1b2f5b0cbdf8f4dfb4fbb1a971
+    permissions:
+      contents: read
+    with:
+      migrations_dir: apps/anchor/migrations
+      pg_version: '18'
+
   # One status summarizing the run. A context that lives under a skipped job
   # never materializes, so reading "frontend-verify / ..." directly would say
   # nothing on a backend-only PR. This passes when each verification job either
@@ -187,7 +206,7 @@ jobs:
   # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
-    needs: [detect_changes, frontend-verify, go-build-test]
+    needs: [detect_changes, frontend-verify, go-build-test, migration-lint]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -226,10 +245,11 @@ jobs:
           DETECT_RESULT: ${{ needs.detect_changes.result }}
           FRONTEND_RESULT: ${{ needs.frontend-verify.result }}
           GO_RESULT: ${{ needs.go-build-test.result }}
+          MIGRATION_LINT_RESULT: ${{ needs.migration-lint.result }}
         run: |
           set -euo pipefail
-          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT"
-          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT"; do
+          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT" "$MIGRATION_LINT_RESULT"; do
             [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
           done
 

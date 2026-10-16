@@ -34,7 +34,7 @@ The database enforces structural integrity only. Every business rule — input s
 
 ## Database migrations and rollout
 
-A rolling deploy runs the old and the new application against the new schema at the same time, and a production table is never empty. Each rule below prevents a change that passes on a fresh database and fails on a loaded one or mid-rollout.
+A rolling deploy runs the old and the new application against the new schema at the same time, and a production table is never empty. Each rule below prevents a change that passes on a fresh database and fails on a loaded one or mid-rollout. The `migration-lint` job of `go.yml` enforces the index and backfill rules on every migration a pull request adds ([how it works](https://github.com/nanostack-dev/ci-workflows/blob/main/docs/technical/migration-lint.md)); `-- lint: allow-backfill <reason>` and `-- squawk-ignore <rule>` record a reviewed exception in the diff.
 
 **Migrations are append-only once on `main`.** Dev and prod may already have run them, so a change is always a new migration. Both repos follow this; Echopoint's `AGENTS.md` links its `migrations-verify` CI job and the postmortem of the deleted migration.
 
