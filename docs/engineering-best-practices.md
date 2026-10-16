@@ -148,29 +148,23 @@ Put the unresolved value in `Metadata`, so a form can point at the offending fie
 
 **A broken server invariant answers 500.** RFC 9110 §15.5.1 makes 400 conditional on "something that is perceived to be a client error". When the server cannot read back a row it wrote itself, there is no client error to perceive. The caller named nothing, so there is nothing for the caller to correct, and a 400 tells them to correct it. A 404 is equally wrong: it reports the resource as absent when the transaction that created it committed.
 
-`PublishTemplate` in `internal/email/service/service.go` holds both cases in one method. The first guard is a 404, because the caller named `in.TemplateID` in the path:
+`PublishTemplate` in `internal/email/service/service.go` holds both cases in one method. The first guard, in `lockTemplate`, is a 404, because the caller named `in.TemplateID` in the path:
 
 ```go
-tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-if err != nil {
-    return email.TemplateVersion{}, err
-}
-if tpl == nil {
-    return email.TemplateVersion{}, ErrEmailTemplateNotFound
+if found.IsAbsent() {
+    return nil, ErrEmailTemplateNotFound
 }
 ```
 
-The second guard re-reads the version the transaction just published. The caller never named it:
+The second guard re-reads the version the transaction just marked published. The caller never named it:
 
 ```go
-published, err := s.versionRepo.FindByID(ctx, publishedID)
+foundPublished, err := s.versionRepo.FindByID(txCtx, draft.ID)
 if err != nil {
-    return email.TemplateVersion{}, err
+    return err
 }
-if published == nil {
-    return email.TemplateVersion{}, fmt.Errorf(
-        "publish: version %s missing after commit", publishedID,
-    )
+if foundPublished.IsAbsent() {
+    return fmt.Errorf("publish: version %s missing after its status update", draft.ID)
 }
 ```
 

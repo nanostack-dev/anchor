@@ -15,6 +15,7 @@ import (
 	"anchor/internal/integration/provider"
 	intrepo "anchor/internal/repository"
 
+	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -336,10 +337,13 @@ func (s *emailService) UpdateTemplate(
 
 // lockTemplate serializes writes to the version pointers. Unlocked, a publish
 // that read stale pointers cleared the draft pointer another publish just set.
+// NO KEY UPDATE leaves send-record inserts, which key-share the template, unblocked.
 func (s *emailService) lockTemplate(
 	txCtx context.Context, tenantID string, productID string, templateID string,
 ) (*email.Template, error) {
-	found, err := s.templateRepo.FindByID(transactor.ForUpdate(txCtx), tenantID, productID, templateID)
+	found, err := s.templateRepo.FindByID(
+		transactor.WithRowLock(txCtx, postgres.NO_KEY_UPDATE()), tenantID, productID, templateID,
+	)
 	if err != nil {
 		return nil, err
 	}
