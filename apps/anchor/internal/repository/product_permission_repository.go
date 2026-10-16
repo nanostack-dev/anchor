@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -103,6 +104,18 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 	)
 }
 
+// The name is the second half of the primary key, so the primary key guards a
+// byte-identical name and the 000019 index a name differing only in case.
+const (
+	productPermissionPrimaryKey           = "product_permissions_pkey"
+	productPermissionNameLowerUniqueIndex = "idx_product_permissions_product_lower_name_unique"
+)
+
+// ErrProductPermissionExists is returned by Create when the product already has
+// a permission with that name: the unique guards settle the race the service
+// pre-check cannot.
+var ErrProductPermissionExists = errors.New("product permission already exists in product")
+
 func (r *productPermissionRepositoryImpl) Create(
 	ctx context.Context, perm permission.ProductPermission,
 ) (permission.ProductPermission, error) {
@@ -114,7 +127,7 @@ func (r *productPermissionRepositoryImpl) Create(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrProductPermissionExists, productPermissionPrimaryKey, productPermissionNameLowerUniqueIndex).Value()
 }
 
 func (r *productPermissionRepositoryImpl) Update(

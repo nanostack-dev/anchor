@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -140,6 +141,13 @@ func (r *templateRepositoryImpl) Search(
 		Value()
 }
 
+const emailTemplateSlugUniqueConstraint = "email_templates_product_id_slug_key"
+
+// ErrTemplateSlugExists is returned by Create when the product already has a
+// template with that slug: the unique constraint settles the race the service
+// pre-check cannot.
+var ErrTemplateSlugExists = errors.New("email template slug already exists in product")
+
 func (r *templateRepositoryImpl) Create(
 	ctx context.Context, t email.Template,
 ) (email.Template, error) {
@@ -155,7 +163,7 @@ func (r *templateRepositoryImpl) Create(
 		RETURNING(table.EmailTemplates.AllColumns)
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	).OnUnique(ErrTemplateSlugExists, emailTemplateSlugUniqueConstraint).Value()
 }
 
 func (r *templateRepositoryImpl) Update(

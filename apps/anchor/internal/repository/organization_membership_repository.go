@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -294,6 +295,13 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 	)
 }
 
+const organizationMembershipPrimaryKey = "organization_memberships_pkey"
+
+// ErrOrganizationMembershipExists is returned by Create when the product user
+// is already a member: the (organization, product user) primary key settles the
+// race the service pre-check cannot.
+var ErrOrganizationMembershipExists = errors.New("organization membership already exists")
+
 func (r *organizationMembershipRepositoryImpl) Create(
 	ctx context.Context,
 	productID string,
@@ -313,7 +321,9 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		table.OrganizationMemberships.AllColumns,
 	).MODEL(entity)
 
-	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt).
+		OnUnique(ErrOrganizationMembershipExists, organizationMembershipPrimaryKey).
+		Err(); err != nil {
 		return organization.Membership{}, err
 	}
 

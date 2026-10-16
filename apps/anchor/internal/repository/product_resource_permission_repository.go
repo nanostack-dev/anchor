@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -85,6 +86,18 @@ func NewProductResourcePermissionRepository(
 	}
 }
 
+// The name is the second half of the primary key, so the primary key guards a
+// byte-identical name and the 000019 index a name differing only in case.
+const (
+	productResourcePermissionPrimaryKey           = "product_resource_permissions_pkey"
+	productResourcePermissionNameLowerUniqueIndex = "idx_product_resource_permissions_product_lower_name_unique"
+)
+
+// ErrProductResourcePermissionExists is returned by Create when the product
+// already has a resource permission with that name: the unique guards settle
+// the race the service pre-check cannot.
+var ErrProductResourcePermissionExists = errors.New("product resource permission already exists in product")
+
 func (r *productResourcePermissionRepository) Create(
 	ctx context.Context, perm resourcepermission.ProductResourcePermission,
 ) (resourcepermission.ProductResourcePermission, error) {
@@ -96,6 +109,10 @@ func (r *productResourcePermissionRepository) Create(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
+	).OnUnique(
+		ErrProductResourcePermissionExists,
+		productResourcePermissionPrimaryKey,
+		productResourcePermissionNameLowerUniqueIndex,
 	).Value()
 }
 

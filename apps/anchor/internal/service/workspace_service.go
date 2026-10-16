@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -147,6 +148,9 @@ func (s *workspaceService) Create(
 
 		var createErr error
 		created, createErr = s.workspaceRepo.Create(txCtx, newWorkspace)
+		if errors.Is(createErr, repository.ErrWorkspaceNameExists) {
+			return workspace.NewNameExistsError(input.Name, input.OrganizationID)
+		}
 		if createErr != nil {
 			return createErr
 		}
@@ -222,6 +226,9 @@ func (s *workspaceService) Update(
 			input.OrganizationID,
 			updatedWorkspace,
 		)
+		if errors.Is(updateErr, repository.ErrWorkspaceNameExists) {
+			return workspace.NewNameExistsError(updatedWorkspace.Name, input.OrganizationID)
+		}
 		if updateErr != nil {
 			return updateErr
 		}

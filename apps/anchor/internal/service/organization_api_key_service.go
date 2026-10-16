@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"anchor/internal/searchx"
@@ -209,6 +210,10 @@ func (s *organizationAPIKeyService) Create(
 			txCtx, events.OrganizationAPIKeyCreated, org.ProductID, input.OrganizationID, created.ID,
 		)
 	})
+	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{}, "",
+			NewOrganizationAPIKeyNameExistsError(input.Name, input.OrganizationID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("organization_api_key_id", organizationAPIKey.ID).
@@ -309,6 +314,10 @@ func (s *organizationAPIKeyService) Update(
 			txCtx, events.OrganizationAPIKeyUpdated, input.ProductID, input.OrganizationID, updated.ID,
 		)
 	})
+	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{},
+			NewOrganizationAPIKeyNameExistsError(updatedAPIKey.Name, input.OrganizationID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).

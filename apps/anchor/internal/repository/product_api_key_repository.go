@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"anchor/internal/mapper"
@@ -108,6 +109,13 @@ func NewProductAPIKeyRepository(
 	}
 }
 
+const productAPIKeyNameUniqueConstraint = "product_api_keys_product_id_name_key"
+
+// ErrProductAPIKeyNameExists is returned by Create and Update when the product
+// already has a key with that name: the unique constraint settles the race the
+// service pre-check cannot.
+var ErrProductAPIKeyNameExists = errors.New("product API key name already exists in product")
+
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
 func (r *productAPIKeyRepository) Create(
 	ctx context.Context, apiKey apikey.ProductAPIKey,
@@ -120,7 +128,12 @@ func (r *productAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.ProductAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrProductAPIKeyNameExists, productAPIKeyNameUniqueConstraint).
+		Value()
+	if errors.Is(err, ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, err
+	}
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -180,7 +193,7 @@ func (r *productAPIKeyRepository) Update(
 	)
 	updated, err := transactor.Query[model.ProductAPIKeys](
 		ctx, r.db, stmt,
-	).Value()
+	).OnUnique(ErrProductAPIKeyNameExists, productAPIKeyNameUniqueConstraint).Value()
 	if err != nil {
 		return apikey.ProductAPIKey{}, err
 	}

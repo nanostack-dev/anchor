@@ -147,6 +147,13 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	)
 }
 
+const productUserEmailUniqueConstraint = "product_users_product_id_email_key"
+
+// ErrProductUserEmailExists is returned by Create when the product already has
+// a user with that email: the unique constraint settles the race the service
+// pre-check cannot.
+var ErrProductUserEmailExists = errors.New("product user email already exists in product")
+
 func (r *productUserRepositoryImpl) Create(
 	ctx context.Context,
 	newUser user.ProductUser,
@@ -162,7 +169,7 @@ func (r *productUserRepositoryImpl) Create(
 		r.db,
 		stmt,
 		r.productUserMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrProductUserEmailExists, productUserEmailUniqueConstraint).Value()
 }
 
 func (r *productUserRepositoryImpl) Update(

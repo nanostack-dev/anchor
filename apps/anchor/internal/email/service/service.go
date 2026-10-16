@@ -290,6 +290,9 @@ func (s *emailService) CreateTemplate(
 	}
 	tpl.GenerateID()
 	created, err := s.templateRepo.Create(ctx, tpl)
+	if errors.Is(err, emailrepo.ErrTemplateSlugExists) {
+		return email.Template{}, ErrEmailTemplateSlugTaken
+	}
 	if err != nil {
 		return email.Template{}, err
 	}

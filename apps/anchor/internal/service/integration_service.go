@@ -288,6 +288,9 @@ func (s *integrationService) createInstanceTx(
 	instance.GenerateID()
 
 	created, createErr := s.instanceRepo.Create(ctx, instance)
+	if errors.Is(createErr, repository.ErrIntegrationInstanceExists) {
+		return integration.Instance{}, ErrIntegrationInstanceAlreadyExists
+	}
 	if createErr != nil {
 		logger.Error().Err(createErr).
 			Msg("failed to create integration instance")

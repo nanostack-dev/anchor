@@ -252,7 +252,9 @@ func (r *productRepositoryImpl) Update(
 		),
 	).RETURNING(table.Products.AllColumns)
 
-	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt).Value()
+	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt).
+		OnUnique(ErrProductExists, productNameUniqueConstraint, productNameLowerUniqueIndex).
+		Value()
 	if err != nil {
 		return product.Product{}, err
 	}

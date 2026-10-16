@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -161,6 +162,13 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	)
 }
 
+const workspaceNameUniqueConstraint = "workspaces_organization_id_name_key"
+
+// ErrWorkspaceNameExists is returned by Create and Update when the organization
+// already has a workspace with that name. Create serializes on the organization
+// row, but a rename does not, so the constraint is the final arbiter.
+var ErrWorkspaceNameExists = errors.New("workspace name already exists in organization")
+
 func (r *workspaceRepositoryImpl) Create(
 	ctx context.Context,
 	newWorkspace workspace.Workspace,
@@ -176,7 +184,7 @@ func (r *workspaceRepositoryImpl) Create(
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrWorkspaceNameExists, workspaceNameUniqueConstraint).Value()
 	if err != nil {
 		return workspace.Workspace{}, err
 	}
@@ -209,7 +217,9 @@ func (r *workspaceRepositoryImpl) Update(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, updateStmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt).
+		OnUnique(ErrWorkspaceNameExists, workspaceNameUniqueConstraint).
+		Err(); err != nil {
 		return workspace.Workspace{}, err
 	}
 

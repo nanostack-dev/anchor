@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -195,6 +196,13 @@ func (r *integrationInstanceRepositoryImpl) ListByProviderInternal(
 	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
+const integrationInstanceProviderUniqueConstraint = "integration_instances_product_id_provider_type_key"
+
+// ErrIntegrationInstanceExists is returned by Create when the product already
+// has an instance of that provider: the unique constraint settles the race the
+// service pre-check cannot.
+var ErrIntegrationInstanceExists = errors.New("integration instance already exists for product and provider")
+
 func (r *integrationInstanceRepositoryImpl) Create(
 	ctx context.Context, instance integration.Instance,
 ) (integration.Instance, error) {
@@ -206,7 +214,7 @@ func (r *integrationInstanceRepositoryImpl) Create(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	).OnUnique(ErrIntegrationInstanceExists, integrationInstanceProviderUniqueConstraint).Value()
 }
 
 func (r *integrationInstanceRepositoryImpl) Update(

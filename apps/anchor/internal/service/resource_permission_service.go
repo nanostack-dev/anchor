@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -115,6 +116,9 @@ func (s *resourcePermissionService) Create(
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var createErr error
 		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)
+		if errors.Is(createErr, repository.ErrProductResourcePermissionExists) {
+			return NewResourcePermissionAlreadyExistsError(input.Name)
+		}
 		if createErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).

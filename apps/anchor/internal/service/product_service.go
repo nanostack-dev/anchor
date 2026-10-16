@@ -252,6 +252,9 @@ func (s *productService) updateProductInTransaction(
 	}
 
 	result, err := s.productRepo.Update(ctx, input.TenantID, updatedProduct)
+	if errors.Is(err, repository.ErrProductExists) {
+		return product.Product{}, ErrProductAlreadyExists
+	}
 	if err != nil {
 		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to update product")
 		return result, err

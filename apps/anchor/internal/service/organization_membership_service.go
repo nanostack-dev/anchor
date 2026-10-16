@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/events"
@@ -240,6 +241,9 @@ func (s *organizationMembershipService) applyMembership(
 		}
 		return s.emitMembership(txCtx, eventType, productID, organizationID, productUserID)
 	}); txErr != nil {
+		if errors.Is(txErr, repository.ErrOrganizationMembershipExists) {
+			return organization.Membership{}, NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
+		}
 		logger.Error().Err(txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -109,6 +110,14 @@ func NewOrganizationAPIKeyRepository(
 	}
 }
 
+const organizationAPIKeyNameUniqueConstraint = "organization_api_keys_organization_id_name_key"
+
+// ErrOrganizationAPIKeyNameExists is returned by Create and Update when the
+// organization already has a key with that name. The service pre-check is not
+// race-free: a concurrent writer's row stays invisible until it commits, so the
+// unique constraint is the only race-free arbiter.
+var ErrOrganizationAPIKeyNameExists = errors.New("organization API key name already exists in organization")
+
 //nolint:dupl // mirrors product API key persistence flow with organization-scoped tables
 func (r *organizationAPIKeyRepository) Create(
 	ctx context.Context,
@@ -122,7 +131,12 @@ func (r *organizationAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.OrganizationAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrOrganizationAPIKeyNameExists, organizationAPIKeyNameUniqueConstraint).
+		Value()
+	if errors.Is(err, ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{}, err
+	}
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -241,7 +255,9 @@ func (r *organizationAPIKeyRepository) Update(
 		table.OrganizationAPIKeys.AllColumns,
 	)
 
-	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
+	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrOrganizationAPIKeyNameExists, organizationAPIKeyNameUniqueConstraint).
+		Value()
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
