@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,6 +62,68 @@ func TestClerkWebhookIdempotencyDuplicateSvixIDIgnored(t *testing.T) {
 		searchResp := searchProductUsers(t, productContext)
 		return searchResp.JSON200.Total == 1
 	}, 10*time.Second, 200*time.Millisecond)
+}
+
+func TestClerkWebhookConcurrentDuplicateSvixIDsGetTheSequentialDuplicateResponse(t *testing.T) {
+	t.Parallel()
+	productContext := createTestProductContext(t)
+	instance := createActiveClerkIntegrationInstance(t, productContext)
+
+	payload := clerkUserCreatedPayload(
+		t, "user_clerk_"+itshared.Faker.UUID().V4(), itshared.Faker.Internet().Email(), "Concurrent", "Delivery",
+	)
+	payloadBytes, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	svixID := "msg_test_concurrent_" + itshared.Faker.UUID().V4()
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	headerEditor := fixedSvixHeaderEditor(t, payloadBytes, clerkTestWebhookSecret, svixID, timestamp)
+	deliver := func() (int, string, string) {
+		resp, sendErr := testTenant(t).NoAuthClient.IngestWebhookWithBodyWithResponse(
+			t.Context(),
+			productContext.ProductID,
+			"CLERK",
+			"application/json",
+			io.NopCloser(bytes.NewReader(payloadBytes)),
+			headerEditor,
+		)
+		if sendErr != nil || resp.JSON200 == nil {
+			if sendErr != nil {
+				return 0, "", sendErr.Error()
+			}
+			return resp.StatusCode(), "", string(resp.Body)
+		}
+		return resp.StatusCode(), resp.JSON200.EventId, ""
+	}
+
+	const deliveries = 12
+	statuses := make([]int, deliveries)
+	eventIDs := make([]string, deliveries)
+	bodies := make([]string, deliveries)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for delivery := range deliveries {
+		wg.Go(func() {
+			<-start
+			statuses[delivery], eventIDs[delivery], bodies[delivery] = deliver()
+		})
+	}
+	close(start)
+	wg.Wait()
+
+	sequentialStatus, sequentialEventID, sequentialBody := deliver()
+	require.Equal(t, http.StatusOK, sequentialStatus, sequentialBody)
+	for delivery := range deliveries {
+		assert.Equal(t, http.StatusOK, statuses[delivery], bodies[delivery])
+		assert.Equal(t, sequentialEventID, eventIDs[delivery])
+	}
+
+	var stored int
+	require.NoError(t, testDB.QueryRowContext(t.Context(),
+		`SELECT count(*) FROM integration_events WHERE integration_instance_id = $1 AND external_event_id = $2`,
+		instance.Id, svixID,
+	).Scan(&stored))
+	assert.Equal(t, 1, stored)
 }
 
 func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {

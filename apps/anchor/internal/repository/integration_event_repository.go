@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -72,6 +73,17 @@ func NewIntegrationEventRepository(
 	}
 }
 
+// integrationEventExternalIDUniqueConstraint is the UNIQUE
+// (integration_instance_id, external_event_id) from 000005, the provider
+// idempotency key. Postgres truncated its generated name to 63 bytes.
+const integrationEventExternalIDUniqueConstraint = "integration_events_integration_instance_id_external_event_i_key"
+
+// ErrIntegrationEventExists is returned by CreateInternal when the instance
+// already stored an event with that external event ID. A provider retry that
+// lands while the first delivery is still uncommitted passes the service's
+// duplicate check, so the unique constraint is the race-free arbiter.
+var ErrIntegrationEventExists = errors.New("integration event already exists for instance and external event id")
+
 func (r *integrationEventRepositoryImpl) CreateInternal(
 	ctx context.Context, event integration.Event,
 ) (integration.Event, error) {
@@ -83,7 +95,7 @@ func (r *integrationEventRepositoryImpl) CreateInternal(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
-	).Value()
+	).OnUnique(ErrIntegrationEventExists, integrationEventExternalIDUniqueConstraint).Value()
 }
 
 func (r *integrationEventRepositoryImpl) FindByIDInternal(
