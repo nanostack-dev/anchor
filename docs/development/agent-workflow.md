@@ -14,6 +14,10 @@ This repository owns its setup, validation and review requirements. Installed Na
 
 Documentation-only changes use link, structure and command-provenance checks. Running product E2E is required for changed behavior, not for changes to documentation alone. State which checks executed and what CI legitimately skipped.
 
+## Code review
+
+Every non-trivial change gets an external review before merge, started at the first push in parallel with CI, and a design or spec review first when it touches a migration, an endpoint or consumer replacement, input validation, cursor or value decoding, or frontend async state. When a review finds a defect, audit the whole diff for the same class and fix every occurrence in one commit; ready means a clean pass on the final head plus green current-head CI. The optional [review-loop](https://github.com/nanostack-dev/skills/blob/main/agent-workflow/references/review-loop.md) reference in the shared `agent-workflow` skill supplies reviewer prompts and CLI commands; this procedure stands without it.
+
 ## Cloud runtime exception
 
 A cloud executor can continue with CI when the documented owned local runtime is inaccessible. First demonstrate the exact missing capability through the authorized setup (Docker/container execution or approved development identity). A failing product assertion and a preference for CI do not qualify.
