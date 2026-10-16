@@ -21,6 +21,7 @@ import (
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -713,10 +714,12 @@ func (s *organizationService) Search(
 
 	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search organizations")
+		if !searchx.IsCursorError(err) {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Err(err).
+				Msg("failed to search organizations")
+		}
 		return search.Result[organization.Organization]{}, err
 	}
 

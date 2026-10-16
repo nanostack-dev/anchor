@@ -12,6 +12,7 @@ import (
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 )
 
 type WorkspaceService interface {
@@ -305,10 +306,12 @@ func (s *workspaceService) Search(
 		input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Msg("failed to search workspaces")
+		if !searchx.IsCursorError(err) {
+			logger.Error().Err(err).
+				Str("product_id", input.ProductID).
+				Str("organization_id", input.OrganizationID).
+				Msg("failed to search workspaces")
+		}
 		return search.Result[workspace.Workspace]{}, err
 	}
 

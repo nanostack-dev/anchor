@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/product/role"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -407,9 +408,11 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to search product roles")
+		if !searchx.IsCursorError(err) {
+			r.logger.Error().Err(err).Str(
+				"productID", productID,
+			).Msg("failed to search product roles")
+		}
 		return search.Result[role.ProductRole]{}, err
 	}
 
