@@ -334,90 +334,143 @@ func (s *emailService) UpdateTemplate(
 	return updated.Value(), nil
 }
 
-func (s *emailService) UpdateTemplateDraft(
-	ctx context.Context, in email.UpdateTemplateDraftInput,
-) (email.TemplateVersion, error) {
-	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if findErr != nil {
-		return email.TemplateVersion{}, findErr
+// lockTemplate serializes writes to the version pointers. Unlocked, a publish
+// that read stale pointers cleared the draft pointer another publish just set.
+func (s *emailService) lockTemplate(
+	txCtx context.Context, tenantID string, productID string, templateID string,
+) (*email.Template, error) {
+	found, err := s.templateRepo.FindByID(transactor.ForUpdate(txCtx), tenantID, productID, templateID)
+	if err != nil {
+		return nil, err
 	}
-	if foundTpl.IsAbsent() {
-		return email.TemplateVersion{}, ErrEmailTemplateNotFound
+	if found.IsAbsent() {
+		return nil, ErrEmailTemplateNotFound
 	}
-	tpl := foundTpl.ToPtr()
+	return found.ToPtr(), nil
+}
 
-	var draft *email.TemplateVersion
+// referencedDraft re-points a DRAFT row that the unlocked publish race left
+// unreferenced, so templates already in that state recover.
+func (s *emailService) referencedDraft(
+	txCtx context.Context, tenantID string, tpl *email.Template,
+) (*email.TemplateVersion, error) {
 	if tpl.DraftVersionID != nil {
-		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+		found, err := s.versionRepo.FindByID(txCtx, *tpl.DraftVersionID)
 		if err != nil {
-			return email.TemplateVersion{}, err
+			return nil, err
 		}
 		// The template envelope points at a draft version id the caller never
 		// named. If that row is not there, the envelope and the version table
 		// disagree — a server invariant, not a "no draft" state the caller
 		// could reach by never publishing one.
-		if foundDraft.IsAbsent() {
-			return email.TemplateVersion{}, fmt.Errorf(
-				"update draft: draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
+		if found.IsAbsent() {
+			return nil, fmt.Errorf(
+				"draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
 			)
 		}
-		draft = foundDraft.ToPtr()
-	}
-	//nolint:nestif // template state machine with three branches
-	if draft == nil {
-		if tpl.PublishedVersionID == nil {
-			return email.TemplateVersion{}, ErrEmailTemplateNoDraft
-		}
-		foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
-		if err != nil {
-			return email.TemplateVersion{}, err
-		}
-		if foundPub.IsAbsent() {
-			return email.TemplateVersion{}, fmt.Errorf(
-				"update draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
-			)
-		}
-		pub := foundPub.ToPtr()
-		next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
-		if err != nil {
-			return email.TemplateVersion{}, err
-		}
-		newDraft := email.TemplateVersion{
-			TemplateID:    tpl.ID,
-			VersionNumber: next,
-			Subject:       pub.Subject,
-			BodyHTML:      pub.BodyHTML,
-			BodyText:      pub.BodyText,
-			Variables:     pub.Variables,
-			Status:        email.TemplateVersionStatusDraft,
-		}
-		newDraft.GenerateID()
-		var createdDraft email.TemplateVersion
-		createdDraft, err = s.versionRepo.Create(ctx, newDraft)
-		if err != nil {
-			return email.TemplateVersion{}, err
-		}
-		if err = s.templateRepo.SetVersionPointers(
-			ctx, in.TenantID, tpl.ID, &createdDraft.ID, tpl.PublishedVersionID,
-		); err != nil {
-			return email.TemplateVersion{}, err
-		}
-		draft = &createdDraft
+		return found.ToPtr(), nil
 	}
 
-	if in.Subject != nil {
-		draft.Subject = *in.Subject
+	unreferenced, err := s.versionRepo.FindCurrentDraft(txCtx, tpl.ID)
+	if err != nil {
+		return nil, err
 	}
-	if in.BodyHTML != nil {
-		draft.BodyHTML = *in.BodyHTML
+	if unreferenced.IsAbsent() {
+		return nil, nil
 	}
-	if in.BodyText != nil {
-		draft.BodyText = *in.BodyText
+	draft := unreferenced.Value()
+	if err = s.templateRepo.SetVersionPointers(
+		txCtx, tenantID, tpl.ID, &draft.ID, tpl.PublishedVersionID,
+	); err != nil {
+		return nil, err
 	}
-	if in.Variables != nil {
-		draft.Variables = *in.Variables
+	return &draft, nil
+}
+
+func (s *emailService) lockedDraft(
+	txCtx context.Context, tenantID string, tpl *email.Template,
+) (*email.TemplateVersion, error) {
+	draft, err := s.referencedDraft(txCtx, tenantID, tpl)
+	if err != nil || draft != nil {
+		return draft, err
 	}
-	return s.versionRepo.Update(ctx, *draft)
+	if tpl.PublishedVersionID == nil {
+		return nil, nil
+	}
+	foundPub, err := s.versionRepo.FindByID(txCtx, *tpl.PublishedVersionID)
+	if err != nil {
+		return nil, err
+	}
+	if foundPub.IsAbsent() {
+		return nil, fmt.Errorf(
+			"published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
+		)
+	}
+	return s.openDraftFrom(txCtx, tenantID, foundPub.Value())
+}
+
+func (s *emailService) openDraftFrom(
+	txCtx context.Context, tenantID string, published email.TemplateVersion,
+) (*email.TemplateVersion, error) {
+	next, err := s.versionRepo.NextVersionNumber(txCtx, published.TemplateID)
+	if err != nil {
+		return nil, err
+	}
+	newDraft := email.TemplateVersion{
+		TemplateID:    published.TemplateID,
+		VersionNumber: next,
+		Subject:       published.Subject,
+		BodyHTML:      published.BodyHTML,
+		BodyText:      published.BodyText,
+		Variables:     published.Variables,
+		Status:        email.TemplateVersionStatusDraft,
+	}
+	newDraft.GenerateID()
+	created, err := s.versionRepo.Create(txCtx, newDraft)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.templateRepo.SetVersionPointers(
+		txCtx, tenantID, published.TemplateID, &created.ID, &published.ID,
+	); err != nil {
+		return nil, err
+	}
+	return &created, nil
+}
+
+func (s *emailService) UpdateTemplateDraft(
+	ctx context.Context, in email.UpdateTemplateDraftInput,
+) (email.TemplateVersion, error) {
+	var updated email.TemplateVersion
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tpl, err := s.lockTemplate(txCtx, in.TenantID, in.ProductID, in.TemplateID)
+		if err != nil {
+			return err
+		}
+		draft, err := s.lockedDraft(txCtx, in.TenantID, tpl)
+		if err != nil {
+			return fmt.Errorf("update draft: %w", err)
+		}
+		if draft == nil {
+			return ErrEmailTemplateNoDraft
+		}
+
+		if in.Subject != nil {
+			draft.Subject = *in.Subject
+		}
+		if in.BodyHTML != nil {
+			draft.BodyHTML = *in.BodyHTML
+		}
+		if in.BodyText != nil {
+			draft.BodyText = *in.BodyText
+		}
+		if in.Variables != nil {
+			draft.Variables = *in.Variables
+		}
+		updated, err = s.versionRepo.Update(txCtx, *draft)
+		return err
+	})
+	return updated, err
 }
 
 // GetTemplateDraft returns the current DRAFT version of a template. If no
@@ -427,154 +480,68 @@ func (s *emailService) UpdateTemplateDraft(
 func (s *emailService) GetTemplateDraft(
 	ctx context.Context, in email.GetTemplateDraftInput,
 ) (*email.TemplateVersion, error) {
-	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if findErr != nil {
-		return nil, findErr
-	}
-	if foundTpl.IsAbsent() {
-		return nil, ErrEmailTemplateNotFound
-	}
-	tpl := foundTpl.ToPtr()
-
-	if tpl.DraftVersionID != nil {
-		foundDraft, err := s.versionRepo.FindByID(ctx, *tpl.DraftVersionID)
+	var draft *email.TemplateVersion
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tpl, err := s.lockTemplate(txCtx, in.TenantID, in.ProductID, in.TemplateID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if foundDraft.IsAbsent() {
-			return nil, fmt.Errorf(
-				"get draft: draft version %s missing for template %s", *tpl.DraftVersionID, tpl.ID,
-			)
+		draft, err = s.lockedDraft(txCtx, in.TenantID, tpl)
+		if err != nil {
+			return fmt.Errorf("get draft: %w", err)
 		}
-		return foundDraft.ToPtr(), nil
-	}
-
-	if tpl.PublishedVersionID == nil {
-		return nil, nil
-	}
-
-	foundPub, err := s.versionRepo.FindByID(ctx, *tpl.PublishedVersionID)
-	if err != nil {
-		return nil, err
-	}
-	if foundPub.IsAbsent() {
-		return nil, fmt.Errorf(
-			"get draft: published version %s missing for template %s", *tpl.PublishedVersionID, tpl.ID,
-		)
-	}
-	pub := foundPub.ToPtr()
-
-	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
-	if err != nil {
-		return nil, err
-	}
-	newDraft := email.TemplateVersion{
-		TemplateID:    tpl.ID,
-		VersionNumber: next,
-		Subject:       pub.Subject,
-		BodyHTML:      pub.BodyHTML,
-		BodyText:      pub.BodyText,
-		Variables:     pub.Variables,
-		Status:        email.TemplateVersionStatusDraft,
-	}
-	newDraft.GenerateID()
-	created, err := s.versionRepo.Create(ctx, newDraft)
-	if err != nil {
-		return nil, err
-	}
-	if err = s.templateRepo.SetVersionPointers(
-		ctx, in.TenantID, tpl.ID, &created.ID, tpl.PublishedVersionID,
-	); err != nil {
-		return nil, err
-	}
-	return &created, nil
+		return nil
+	})
+	return draft, err
 }
 
-// PublishTemplate atomically swaps the template's draft into the published
-// slot. Wrapped in a single DB transaction so a partial failure cannot leave
-// the envelope pointing at conflicting versions.
+// PublishTemplate swaps the draft into the published slot and opens the next
+// draft from it in the same transaction.
 func (s *emailService) PublishTemplate(
 	ctx context.Context, in email.PublishTemplateInput,
 ) (email.TemplateVersion, error) {
-	foundTpl, findErr := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-	if findErr != nil {
-		return email.TemplateVersion{}, findErr
-	}
-	if foundTpl.IsAbsent() {
-		return email.TemplateVersion{}, ErrEmailTemplateNotFound
-	}
-	tpl := foundTpl.ToPtr()
-	if tpl.DraftVersionID == nil {
-		return email.TemplateVersion{}, ErrEmailTemplateNoDraft
-	}
+	var published email.TemplateVersion
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tpl, err := s.lockTemplate(txCtx, in.TenantID, in.ProductID, in.TemplateID)
+		if err != nil {
+			return err
+		}
+		draft, err := s.referencedDraft(txCtx, in.TenantID, tpl)
+		if err != nil {
+			return fmt.Errorf("publish: %w", err)
+		}
+		if draft == nil {
+			return ErrEmailTemplateNoDraft
+		}
 
-	publishedID := *tpl.DraftVersionID
-	publishedAt := time.Now()
-	prevPublishedID := tpl.PublishedVersionID
-
-	if err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if prevPublishedID != nil {
-			if err := s.versionRepo.UpdateStatus(
-				txCtx, *prevPublishedID, email.TemplateVersionStatusArchived, nil,
+		if tpl.PublishedVersionID != nil {
+			if err = s.versionRepo.UpdateStatus(
+				txCtx, *tpl.PublishedVersionID, email.TemplateVersionStatusArchived, nil,
 			); err != nil {
 				return err
 			}
 		}
-		if err := s.versionRepo.UpdateStatus(
-			txCtx, publishedID, email.TemplateVersionStatusPublished, &publishedAt,
+		publishedAt := time.Now()
+		if err = s.versionRepo.UpdateStatus(
+			txCtx, draft.ID, email.TemplateVersionStatusPublished, &publishedAt,
 		); err != nil {
 			return err
 		}
-		return s.templateRepo.SetVersionPointers(
-			txCtx, in.TenantID, tpl.ID, nil, &publishedID,
-		)
-	}); err != nil {
-		return email.TemplateVersion{}, err
-	}
 
-	foundPublished, err := s.versionRepo.FindByID(ctx, publishedID)
+		foundPublished, err := s.versionRepo.FindByID(txCtx, draft.ID)
+		if err != nil {
+			return err
+		}
+		if foundPublished.IsAbsent() {
+			return fmt.Errorf("publish: version %s missing after its status update", draft.ID)
+		}
+		published = foundPublished.Value()
+
+		_, err = s.openDraftFrom(txCtx, in.TenantID, published)
+		return err
+	})
 	if err != nil {
 		return email.TemplateVersion{}, err
-	}
-	// The transaction above just committed this row. The caller never named
-	// publishedID, so its absence here is a server invariant break, not a
-	// 404 the caller could act on — a bare wrapped error becomes the
-	// generic 500 the boundary handler logs, instead of a misleading
-	// EMAIL_TEMPLATE_NOT_FOUND on data that was just written successfully.
-	if foundPublished.IsAbsent() {
-		return email.TemplateVersion{}, fmt.Errorf(
-			"publish: version %s missing after commit", publishedID,
-		)
-	}
-	published := foundPublished.Value()
-
-	// Open a fresh DRAFT cloned from the just-published row so further edits
-	// do not mutate the live version. Best-effort post-tx; failure here does
-	// not roll back the publish.
-	next, err := s.versionRepo.NextVersionNumber(ctx, tpl.ID)
-	if err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: next version number")
-		return published, nil
-	}
-	newDraft := email.TemplateVersion{
-		TemplateID:    tpl.ID,
-		VersionNumber: next,
-		Subject:       published.Subject,
-		BodyHTML:      published.BodyHTML,
-		BodyText:      published.BodyText,
-		Variables:     published.Variables,
-		Status:        email.TemplateVersionStatusDraft,
-	}
-	newDraft.GenerateID()
-	createdDraft, err := s.versionRepo.Create(ctx, newDraft)
-	if err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: clone fresh draft")
-		return published, nil
-	}
-	if err = s.templateRepo.SetVersionPointers(
-		ctx, in.TenantID, tpl.ID, &createdDraft.ID, &publishedID,
-	); err != nil {
-		s.logger.Warn().Err(err).Str("template_id", tpl.ID).Msg("publish: re-point draft")
 	}
 	return published, nil
 }
