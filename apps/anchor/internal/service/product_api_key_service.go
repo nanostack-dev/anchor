@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"anchor/internal/searchx"
@@ -135,6 +136,9 @@ func (s *productAPIKeyService) Create(
 	productAPIKey.Permissions = apiKeyPermissions
 
 	created, err := s.apiKeyRepo.Create(ctx, productAPIKey)
+	if errors.Is(err, repository.ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, "", NewProductAPIKeyNameExistsError(input.Name, input.ProductID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_api_key_id", productAPIKey.ID).
@@ -270,6 +274,9 @@ func (s *productAPIKeyService) Update(
 		updatedAPIKeyFromDB = updated
 		return nil
 	})
+	if errors.Is(err, repository.ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, NewProductAPIKeyNameExistsError(updatedAPIKey.Name, input.ProductID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).

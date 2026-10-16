@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -111,6 +112,18 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	))
 }
 
+// A role name trips the byte-identical constraint from 000001_init or the
+// case-insensitive index from 000019_case_insensitive_names.
+const (
+	productRoleNameUniqueConstraint = "product_roles_product_id_name_key"
+	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
+)
+
+// ErrProductRoleNameExists is returned by Create and Update when the product
+// already has a role with that name: the unique guards settle the race the
+// service pre-check cannot.
+var ErrProductRoleNameExists = errors.New("product role name already exists in product")
+
 func (r *productRoleRepositoryImpl) Create(
 	ctx context.Context, productRole role.ProductRole,
 ) (role.ProductRole, error) {
@@ -118,7 +131,9 @@ func (r *productRoleRepositoryImpl) Create(
 	stmt := table.ProductRoles.INSERT(
 		productRolesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
-	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		Value()
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -153,7 +168,9 @@ func (r *productRoleRepositoryImpl) Update(
 		table.ProductRoles.ID.EQ(postgres.String(domainRole.ID)).
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(domainRole.ProductID))),
 	)
-	if err := transactor.Exec(ctx, r.db, updateStmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		Err(); err != nil {
 		return role.ProductRole{}, err
 	}
 	updated, err := r.FindByProductIDAndRoleID(ctx, domainRole.ProductID, domainRole.ID)

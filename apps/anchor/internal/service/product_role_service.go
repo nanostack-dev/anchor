@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -143,6 +144,9 @@ func (s *productRoleService) CreateProductRole(
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
+		if errors.Is(createErr, repository.ErrProductRoleNameExists) {
+			return NewRoleWithAlreadyExistingNameError(input.Name, input.ProductID)
+		}
 		if createErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
@@ -265,6 +269,9 @@ func (s *productRoleService) UpdateProductRole(
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var updateErr error
 		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
+		if errors.Is(updateErr, repository.ErrProductRoleNameExists) {
+			return NewRoleWithAlreadyExistingNameError(updatedRole.Name, input.ProductID)
+		}
 		if updateErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).

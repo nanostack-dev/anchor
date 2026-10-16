@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -90,6 +91,11 @@ func (s *permissionService) Create(
 	}
 
 	createdPerm, err := s.permissionRepo.Create(ctx, perm)
+	if errors.Is(err, repository.ErrProductPermissionExists) {
+		return permission.ProductPermission{}, permission.NewPermissionNameDuplicateError(
+			input.Name, input.ProductID,
+		)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
