@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -24,6 +25,10 @@ type nameRaceOutcome struct {
 }
 
 type nameRaceWrite func(writer int) nameRaceOutcome
+
+func raceOutcome(status int, conflict *ct.ApiErrorResponse, err error) nameRaceOutcome {
+	return nameRaceOutcome{status: status, conflict: conflict, err: err}
+}
 
 // assertOneWinnerPerName runs nameRaceWriters concurrent writes of one name per
 // round. A pre-check cannot see an uncommitted row, so losers regularly reach
@@ -61,9 +66,28 @@ func assertOneWinnerPerName(
 	}
 }
 
-func sameNameCreate(create func(name string) nameRaceOutcome) func(string) nameRaceWrite {
+// mixedCase lower-cases the name for odd writers, so a resource whose names
+// are unique regardless of case also races on its case-insensitive index.
+func mixedCase(name string, writer int) string {
+	if writer%2 == 1 {
+		return strings.ToLower(name)
+	}
+	return name
+}
+
+func raceProductUser(name string) ct.CreateProductUserJSONRequestBody {
+	userName := "Race User"
+	status := ct.Active
+	return ct.CreateProductUserJSONRequestBody{
+		Email:  strings.ToLower(name) + "@example.com",
+		Name:   &userName,
+		Status: &status,
+	}
+}
+
+func sameNameCreate(create func(name string, writer int) nameRaceOutcome) func(string) nameRaceWrite {
 	return func(name string) nameRaceWrite {
-		return func(int) nameRaceOutcome { return create(name) }
+		return func(writer int) nameRaceOutcome { return create(name, writer) }
 	}
 }
 
@@ -72,7 +96,7 @@ func sameNameCreate(create func(name string) nameRaceOutcome) func(string) nameR
 func renameToSameName(
 	t *testing.T,
 	create func(initialName string) string,
-	rename func(id, name string) nameRaceOutcome,
+	rename func(id, name string, writer int) nameRaceOutcome,
 ) func(string) nameRaceWrite {
 	return func(name string) nameRaceWrite {
 		ids := make([]string, nameRaceWriters)
@@ -80,7 +104,7 @@ func renameToSameName(
 			ids[i] = create("Initial-" + uuid.NewString())
 			require.NotEmpty(t, ids[i])
 		}
-		return func(writer int) nameRaceOutcome { return rename(ids[writer], name) }
+		return func(writer int) nameRaceOutcome { return rename(ids[writer], name, writer) }
 	}
 }
 
@@ -94,15 +118,15 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
 		client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization_api_key:create"})
 		assertOneWinnerPerName(t, http.StatusCreated, "ORGANIZATION_API_KEY_NAME_DUPLICATE",
-			sameNameCreate(func(name string) nameRaceOutcome {
+			sameNameCreate(func(name string, _ int) nameRaceOutcome {
 				resp, err := client.CreateOrganizationAPIKeyWithResponse(
 					t.Context(), product.ProductID, org.Id,
 					ct.CreateOrganizationAPIKeyJSONRequestBody{Name: name, Permissions: []string{permissions.FileRead}},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -111,25 +135,30 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-		client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization_api_key:create", "organization_api_key:update"})
+		client, _ := product.CreateAPIKeyClientWithScopes(
+			[]string{"organization_api_key:create", "organization_api_key:update"},
+		)
 		assertOneWinnerPerName(t, http.StatusOK, "ORGANIZATION_API_KEY_NAME_DUPLICATE",
 			renameToSameName(t, func(initialName string) string {
 				resp, err := client.CreateOrganizationAPIKeyWithResponse(
 					t.Context(), product.ProductID, org.Id,
-					ct.CreateOrganizationAPIKeyJSONRequestBody{Name: initialName, Permissions: []string{permissions.FileRead}},
+					ct.CreateOrganizationAPIKeyJSONRequestBody{
+						Name:        initialName,
+						Permissions: []string{permissions.FileRead},
+					},
 				)
 				require.NoError(t, err)
 				require.Equal(t, http.StatusCreated, resp.StatusCode())
 				return resp.JSON201.Id
-			}, func(id, name string) nameRaceOutcome {
+			}, func(id, name string, _ int) nameRaceOutcome {
 				resp, err := client.UpdateOrganizationAPIKeyWithResponse(
 					t.Context(), product.ProductID, org.Id, id,
 					ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: name},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -138,15 +167,15 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
 		assertOneWinnerPerName(t, http.StatusCreated, "PRODUCT_API_KEY_NAME_DUPLICATE",
-			sameNameCreate(func(name string) nameRaceOutcome {
+			sameNameCreate(func(name string, _ int) nameRaceOutcome {
 				resp, err := client.CreateProductAPIKeyWithResponse(
 					t.Context(), product.ProductID,
 					ct.CreateProductAPIKeyJSONRequestBody{Name: name, Permissions: []string{"organization:read"}},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -158,20 +187,23 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 			renameToSameName(t, func(initialName string) string {
 				resp, err := client.CreateProductAPIKeyWithResponse(
 					t.Context(), product.ProductID,
-					ct.CreateProductAPIKeyJSONRequestBody{Name: initialName, Permissions: []string{"organization:read"}},
+					ct.CreateProductAPIKeyJSONRequestBody{
+						Name:        initialName,
+						Permissions: []string{"organization:read"},
+					},
 				)
 				require.NoError(t, err)
 				require.Equal(t, http.StatusCreated, resp.StatusCode())
 				return resp.JSON201.Id
-			}, func(id, name string) nameRaceOutcome {
+			}, func(id, name string, _ int) nameRaceOutcome {
 				resp, err := client.UpdateProductAPIKeyWithResponse(
 					t.Context(), product.ProductID, id,
 					ct.UpdateProductAPIKeyJSONRequestBody{Name: name},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -180,14 +212,14 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
 		assertOneWinnerPerName(t, http.StatusCreated, "ROLE_NAME_DUPLICATE",
-			sameNameCreate(func(name string) nameRaceOutcome {
+			sameNameCreate(func(name string, writer int) nameRaceOutcome {
 				resp, err := client.CreateProductRoleWithResponse(
-					t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{Name: name},
+					t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{Name: mixedCase(name, writer)},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -203,14 +235,15 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, http.StatusCreated, resp.StatusCode())
 				return resp.JSON201.Id
-			}, func(id, name string) nameRaceOutcome {
+			}, func(id, name string, writer int) nameRaceOutcome {
 				resp, err := client.UpdateProductRoleWithResponse(
-					t.Context(), product.ProductID, id, ct.UpdateProductRoleJSONRequestBody{Name: name},
+					t.Context(), product.ProductID, id,
+					ct.UpdateProductRoleJSONRequestBody{Name: mixedCase(name, writer)},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -219,14 +252,15 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
 		assertOneWinnerPerName(t, http.StatusCreated, "RESOURCE_PERMISSION_ALREADY_EXISTS",
-			sameNameCreate(func(name string) nameRaceOutcome {
+			sameNameCreate(func(name string, writer int) nameRaceOutcome {
 				resp, err := client.CreateProductResourcePermissionWithResponse(
-					t.Context(), product.ProductID, ct.CreateProductResourcePermissionRequest{Name: "race:" + name},
+					t.Context(), product.ProductID,
+					ct.CreateProductResourcePermissionRequest{Name: "race:" + mixedCase(name, writer)},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -235,16 +269,37 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		client := createTestProductContext(t).OwnerAuthenticatedClient()
 		assertOneWinnerPerName(t, http.StatusOK, "PRODUCT_ALREADY_EXISTS",
 			renameToSameName(t, func(initialName string) string {
-				resp, err := client.CreateProductWithResponse(t.Context(), ct.CreateProductJSONRequestBody{Name: initialName})
+				resp, err := client.CreateProductWithResponse(
+					t.Context(), ct.CreateProductJSONRequestBody{Name: initialName},
+				)
 				require.NoError(t, err)
 				require.Equal(t, http.StatusCreated, resp.StatusCode())
 				return resp.JSON201.Id
-			}, func(id, name string) nameRaceOutcome {
-				resp, err := client.UpdateProductWithResponse(t.Context(), id, ct.UpdateProductJSONRequestBody{Name: name})
+			}, func(id, name string, writer int) nameRaceOutcome {
+				resp, err := client.UpdateProductWithResponse(
+					t.Context(), id, ct.UpdateProductJSONRequestBody{Name: mixedCase(name, writer)},
+				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+			}))
+	})
+
+	t.Run("Workspace create", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
+		client, _ := product.CreateAPIKeyClientWithScopes([]string{"workspace:create"})
+		assertOneWinnerPerName(t, http.StatusCreated, "WORKSPACE_NAME_DUPLICATE",
+			sameNameCreate(func(name string, _ int) nameRaceOutcome {
+				resp, err := client.CreateOrganizationWorkspaceWithResponse(
+					t.Context(), product.ProductID, org.Id, ct.CreateOrganizationWorkspaceJSONRequestBody{Name: name},
+				)
+				if err != nil {
+					return raceOutcome(0, nil, err)
+				}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
 	})
 
@@ -262,15 +317,111 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, http.StatusCreated, resp.StatusCode())
 				return resp.JSON201.Id
-			}, func(id, name string) nameRaceOutcome {
+			}, func(id, name string, _ int) nameRaceOutcome {
 				resp, err := client.UpdateOrganizationWorkspaceWithResponse(
 					t.Context(), product.ProductID, org.Id, id,
 					ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: name},
 				)
 				if err != nil {
-					return nameRaceOutcome{err: err}
+					return raceOutcome(0, nil, err)
 				}
-				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 			}))
+	})
+
+	t.Run("Product user create", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		client, _ := product.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
+		assertOneWinnerPerName(t, http.StatusCreated, "PRODUCT_USER_EMAIL_ALREADY_EXISTS",
+			sameNameCreate(func(name string, _ int) nameRaceOutcome {
+				resp, err := client.CreateProductUserWithResponse(
+					t.Context(), product.ProductID,
+					raceProductUser(name),
+				)
+				if err != nil {
+					return raceOutcome(0, nil, err)
+				}
+				return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+			}))
+	})
+
+	t.Run("Organization member add", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
+		client := product.AllScopeAPIKeyClient()
+		roleResp, err := product.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+			t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{Name: "Role-" + uuid.NewString()},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, roleResp.StatusCode())
+		assertOneWinnerPerName(t, http.StatusCreated, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS",
+			func(name string) nameRaceWrite {
+				userResp, userErr := client.CreateProductUserWithResponse(
+					t.Context(), product.ProductID,
+					raceProductUser(name),
+				)
+				require.NoError(t, userErr)
+				require.Equal(t, http.StatusCreated, userResp.StatusCode())
+				return func(int) nameRaceOutcome {
+					resp, addErr := client.AddOrganizationMemberWithResponse(
+						t.Context(), product.ProductID, org.Id,
+						ct.AddOrganizationMemberJSONRequestBody{
+							ProductUserId: userResp.JSON201.Id,
+							RoleId:        roleResp.JSON201.Id,
+						},
+					)
+					if addErr != nil {
+						return raceOutcome(0, nil, addErr)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}
+			})
+	})
+
+	t.Run("Email template create", func(t *testing.T) {
+		t.Parallel()
+		tc := newEmailTestCtx(t)
+		client := tc.product.OwnerAuthenticatedClient()
+		assertOneWinnerPerName(t, http.StatusCreated, "EMAIL_TEMPLATE_SLUG_TAKEN",
+			func(string) nameRaceWrite {
+				slug := uniqueSlug()
+				return func(int) nameRaceOutcome {
+					resp, err := client.CreateEmailTemplateWithResponse(
+						t.Context(), tc.product.ProductID,
+						ct.CreateEmailTemplateJSONRequestBody{
+							Slug:     slug,
+							Name:     "Race",
+							Subject:  "S",
+							BodyHtml: "<p>B</p>",
+						},
+					)
+					if err != nil {
+						return raceOutcome(0, nil, err)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}
+			})
+	})
+
+	t.Run("Integration instance create", func(t *testing.T) {
+		t.Parallel()
+		body := ct.CreateIntegrationInstanceJSONRequestBody{}
+		require.NoError(t, body.FromClerkIntegrationInstanceCreateRequest(
+			ct.ClerkIntegrationInstanceCreateRequest{ProviderType: "CLERK"},
+		))
+		assertOneWinnerPerName(t, http.StatusCreated, "INTEGRATION_INSTANCE_ALREADY_EXISTS",
+			func(string) nameRaceWrite {
+				product := createTestProductContext(t)
+				client := product.OwnerAuthenticatedClient()
+				return func(int) nameRaceOutcome {
+					resp, err := client.CreateIntegrationInstanceWithResponse(t.Context(), product.ProductID, body)
+					if err != nil {
+						return raceOutcome(0, nil, err)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}
+			})
 	})
 }

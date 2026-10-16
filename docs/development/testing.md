@@ -37,7 +37,7 @@ Every search has a case in `TestCursorSearches` (`apps/anchor/cmd/it/ct/cursor_s
 
 ## Concurrent same-name writes
 
-`TestConcurrentSameNameWritesReturnConflict` (`apps/anchor/cmd/it/ct/name_unique_race_test.go`) fires eight concurrent creates, or renames of eight resources, to one name for five rounds, and asserts exactly one success and a 409 with the resource's duplicate code for every other write. Before the unique-violation mapping, every case failed with a 500. Add a case for every name-unique create or rename. Run it with `go test ./cmd/it/ct/... -run TestConcurrentSameNameWritesReturnConflict -count=1` from `apps/anchor`.
+`TestConcurrentSameNameWritesReturnConflict` (`apps/anchor/cmd/it/ct/name_unique_race_test.go`) covers every public create or rename that pre-checks a unique name, email, slug or key. Product permissions have no public create, so their mapping has no case. Each case fires eight concurrent writes of one value for five rounds, and asserts exactly one success and a 409 with the resource's duplicate code for every other write. Resources whose names are unique regardless of case lower-case the name for half of the writers, which exercises the case-insensitive index. When the mapping was added (anchor#237), every case except workspace create failed with a 500 against the previous code; workspace create already locks its organization row. Add a case for every new uniqueness pre-check. Run it with `go test ./cmd/it/ct/... -run TestConcurrentSameNameWritesReturnConflict -count=1` from `apps/anchor`.
 
 ## API-key pagination boundaries
 

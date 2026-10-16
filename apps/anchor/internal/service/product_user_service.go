@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"anchor/internal/domain/organization"
@@ -131,6 +132,9 @@ func (s *productUserService) Create(
 		productUser.GenerateID()
 
 		createdUser, err = s.productUserRepo.Create(txCtx, productUser)
+		if errors.Is(err, repository.ErrProductUserEmailExists) {
+			return ErrProductUserEmailAlreadyExists
+		}
 		if err != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).

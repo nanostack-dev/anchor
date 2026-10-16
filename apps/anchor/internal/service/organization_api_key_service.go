@@ -211,7 +211,8 @@ func (s *organizationAPIKeyService) Create(
 		)
 	})
 	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
-		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyNameExistsError(input.Name, input.OrganizationID)
+		return orgapikey.OrganizationAPIKey{}, "",
+			NewOrganizationAPIKeyNameExistsError(input.Name, input.OrganizationID)
 	}
 	if err != nil {
 		logger.Error().
@@ -314,7 +315,8 @@ func (s *organizationAPIKeyService) Update(
 		)
 	})
 	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
-		return orgapikey.OrganizationAPIKey{}, NewOrganizationAPIKeyNameExistsError(updatedAPIKey.Name, input.OrganizationID)
+		return orgapikey.OrganizationAPIKey{},
+			NewOrganizationAPIKeyNameExistsError(updatedAPIKey.Name, input.OrganizationID)
 	}
 	if err != nil {
 		logger.Error().

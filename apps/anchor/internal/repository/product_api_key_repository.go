@@ -109,7 +109,6 @@ func NewProductAPIKeyRepository(
 	}
 }
 
-//nolint:dupl // mirrored by organization API key repository with equivalent flow
 const productAPIKeyNameUniqueConstraint = "product_api_keys_product_id_name_key"
 
 // ErrProductAPIKeyNameExists is returned by Create and Update when the product
@@ -117,6 +116,7 @@ const productAPIKeyNameUniqueConstraint = "product_api_keys_product_id_name_key"
 // service pre-check cannot.
 var ErrProductAPIKeyNameExists = errors.New("product API key name already exists in product")
 
+//nolint:dupl // mirrored by organization API key repository with equivalent flow
 func (r *productAPIKeyRepository) Create(
 	ctx context.Context, apiKey apikey.ProductAPIKey,
 ) (apikey.ProductAPIKey, error) {
