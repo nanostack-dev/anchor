@@ -187,7 +187,7 @@ jobs:
   migration-lint:
     needs: detect_changes
     if: github.event_name == 'pull_request' && needs.detect_changes.outputs.backend_changed == 'true'
-    uses: nanostack-dev/ci-workflows/.github/workflows/migration-lint.yml@79f1572b15634e1b2f5b0cbdf8f4dfb4fbb1a971
+    uses: nanostack-dev/ci-workflows/.github/workflows/migration-lint.yml@main
     permissions:
       contents: read
     with:
