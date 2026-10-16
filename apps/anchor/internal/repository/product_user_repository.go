@@ -327,7 +327,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		)
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		request.Sort,
 		map[user.SortFieldProductUser]transactor.Key[model.ProductUsers]{
 			user.SortFieldProductUserCreatedAt: transactor.TimeKey(
@@ -348,6 +348,9 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		},
 		transactor.StringKey(table.ProductUsers.ID, func(row model.ProductUsers) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[user.ProductUser]{}, err
+	}
 
 	return transactor.Page(r.db, r.productUserMapper.ToDomain, table.ProductUsers.AllColumns).
 		From(table.ProductUsers).

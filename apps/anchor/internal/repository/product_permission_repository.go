@@ -190,7 +190,7 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		table.ProductPermissions.Name,
 		func(row model.ProductPermissions) string { return row.Name },
 	)
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[permission.SortFieldProductPermission]transactor.Key[model.ProductPermissions]{
 			permission.SortFieldProductPermissionCreatedAt: transactor.TimeKey(
@@ -207,6 +207,9 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		},
 		nameKey,
 	)
+	if err != nil {
+		return search.Result[permission.ProductPermission]{}, err
+	}
 
 	return transactor.Page(r.db, r.productPermissionMapper.ToDomain, table.ProductPermissions.AllColumns).
 		From(table.ProductPermissions).

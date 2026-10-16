@@ -283,7 +283,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	idKey := transactor.StringKey(
 		table.OrganizationAPIKeys.ID, func(row model.OrganizationAPIKeys) string { return row.ID },
 	)
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Request.Sort,
 		map[orgapikey.SortFieldOrganizationAPIKey]transactor.Key[model.OrganizationAPIKeys]{
 			orgapikey.SortFieldOrganizationAPIKeyID: idKey,
@@ -308,6 +308,9 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		},
 		idKey,
 	)
+	if err != nil {
+		return search.Result[orgapikey.OrganizationAPIKey]{}, err
+	}
 
 	result, err := transactor.Page(r.db, r.mapper.ToDomain, table.OrganizationAPIKeys.AllColumns).
 		From(table.OrganizationAPIKeys).
@@ -316,7 +319,7 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			r.logger.Error().Err(err).Str(
 				"organization_id", input.OrganizationID,
 			).Msg("failed to search organization API keys")

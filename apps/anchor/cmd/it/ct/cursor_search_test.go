@@ -23,9 +23,12 @@ import (
 const cursorFixtureRows = 7
 
 // Every search pages with an opaque keyset cursor. Each case below builds rows
-// that tie on the sort column, walks them three at a time by cursor, and expects
-// every row exactly once in the documented order, so a search that orders by a
-// non-unique column alone repeats or drops rows at a page boundary.
+// that tie on the sort column and hands the search to the searchtest conformance
+// kit, which walks them three at a time by cursor in the default order and in
+// every sort field both ways, and expects every row exactly once in the order
+// SQL gives. A search that orders by a non-unique column alone repeats or drops
+// rows at a page boundary. The kit also refuses malformed, oversized, forged and
+// foreign cursors and an unknown sort_by in every scope, empty ones included.
 func TestCursorSearches(t *testing.T) {
 	t.Parallel()
 
@@ -56,49 +59,9 @@ func TestCursorSearches(t *testing.T) {
 	for name, build := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			build(t).run(t)
+			build(t).run(t, name)
 		})
 	}
-}
-
-// timeOrdered describes rows listed by a time column and an identity column, the
-// shape of most searches. Its sorts cover the documented default order and the
-// opposite direction named explicitly.
-type timeOrdered struct {
-	from    string
-	idExpr  string
-	timeCol string
-	where   string
-	args    []any
-	// field is the sort_by that names timeCol.
-	field string
-	// defaultDescending is the direction the documented default order runs in.
-	defaultDescending bool
-}
-
-func (o timeOrdered) order(t *testing.T, descending bool) []string {
-	t.Helper()
-	dir := direction(descending)
-	query := fmt.Sprintf(
-		"SELECT %[1]s FROM %[2]s WHERE %[3]s ORDER BY %[4]s %[5]s, %[1]s %[5]s",
-		o.idExpr, o.from, o.where, o.timeCol, dir,
-	)
-	return idsFromSQL(t, query, o.args...)
-}
-
-func (o timeOrdered) sorts() []cursorSort {
-	defaultOrder := cursorSort{
-		name:       "the default order",
-		descending: o.defaultDescending,
-		order:      func(t *testing.T) []string { return o.order(t, o.defaultDescending) },
-	}
-	opposite := cursorSort{
-		name:       "the opposite direction",
-		sortBy:     o.field,
-		descending: !o.defaultDescending,
-		order:      func(t *testing.T) []string { return o.order(t, !o.defaultDescending) },
-	}
-	return []cursorSort{defaultOrder, opposite}
 }
 
 func httpCall[R interface {
@@ -121,27 +84,21 @@ func productsCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE products SET created_at = $1 WHERE platform_tenant_id = $2", tiedAt(), tenant.ID)
 
-	ordered := timeOrdered{
-		from: "products", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "platform_tenant_id = $1", args: []any{tenant.ID},
-	}
-	byName := cursorSort{
-		name: "by name", sortBy: "name",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM products WHERE platform_tenant_id = $1 ORDER BY name ASC, id ASC",
-				tenant.ID,
-			)
-		},
-	}
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "products", where: "platform_tenant_id = $1", args: []any{tenant.ID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "name", expr: "name"},
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := tenant.OwnerClient.SearchProductsWithBodyWithResponse(ctx, "application/json", body)
 			return httpCall(response, err, func(r *ct.SearchProductsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byName),
 	}
 }
 
@@ -155,14 +112,20 @@ func resourcePermissionsCursorCase(t *testing.T) cursorCase {
 	execSQL(t, "UPDATE product_resource_permissions SET created_at = $1 WHERE product_id = $2",
 		tiedAt(), product.ProductID)
 
-	ordered := timeOrdered{
-		from: "product_resource_permissions", idExpr: "name", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
 	client := product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
-		idOf:  func(item map[string]any) string { return fmt.Sprint(item["name"]) },
+		rows: orderedRows{
+			from:  "product_resource_permissions",
+			where: "product_id = $1", args: []any{product.ProductID}, idExpr: "name",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"names": []string{"nothing:read"}}},
+		idField: "name",
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductResourcePermissionsWithBodyWithResponse(
 				ctx, product.ProductID, "application/json", body,
@@ -173,7 +136,6 @@ func resourcePermissionsCursorCase(t *testing.T) cursorCase {
 				func(r *ct.SearchProductResourcePermissionsResponse) []byte { return r.Body },
 			)
 		},
-		sorts: ordered.sorts(),
 	}
 }
 
@@ -181,26 +143,21 @@ func permissionsCursorCase(t *testing.T) cursorCase {
 	product := createTestProductContext(t)
 	execSQL(t, "UPDATE product_permissions SET created_at = $1 WHERE product_id = $2", tiedAt(), product.ProductID)
 
-	ordered := timeOrdered{
-		from: "product_permissions", idExpr: "name", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
-	byName := func(sortBy string) cursorSort {
-		return cursorSort{
-			name: "sorted by " + sortBy, sortBy: sortBy, descending: true,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(
-					t,
-					"SELECT name FROM product_permissions WHERE product_id = $1 ORDER BY name DESC",
-					product.ProductID,
-				)
-			},
-		}
-	}
 	client := product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
-		idOf:  func(item map[string]any) string { return fmt.Sprint(item["name"]) },
+		rows: orderedRows{
+			from: "product_permissions", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "name",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+				{name: "id", expr: "name"},
+				{name: "resource", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"names": []string{"nothing:read"}}},
+		idField: "name",
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductPermissionsWithBodyWithResponse(
 				ctx, product.ProductID, "application/json", body,
@@ -208,7 +165,6 @@ func permissionsCursorCase(t *testing.T) cursorCase {
 			return httpCall(response, err, func(r *ct.SearchProductPermissionsResponse) []byte { return r.Body })
 		},
 		// id and resource are documented sort fields that order by the permission name.
-		sorts: append(ordered.sorts(), byName("id"), byName("resource"), byName("name")),
 	}
 }
 
@@ -223,12 +179,17 @@ func platformInvitationsCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE platform_invitations SET created_at = $1 WHERE platform_tenant_id = $2", tiedAt(), tenant.ID)
 
-	ordered := timeOrdered{
-		from: "platform_invitations", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "platform_tenant_id = $1", args: []any{tenant.ID},
-	}
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "platform_invitations", where: "platform_tenant_id = $1", args: []any{tenant.ID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "email", expr: "email"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := tenant.OwnerClient.SearchPlatformInvitationsWithBodyWithResponse(
 				ctx,
@@ -237,7 +198,6 @@ func platformInvitationsCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchPlatformInvitationsResponse) []byte { return r.Body })
 		},
-		sorts: ordered.sorts(),
 	}
 }
 
@@ -249,27 +209,22 @@ func platformUsersCursorCase(t *testing.T) cursorCase {
 	tenant := builder.Build().Tenant("t")
 	execSQL(t, "UPDATE platform_users SET created_at = $1 WHERE platform_tenant_id = $2", tiedAt(), tenant.ID)
 
-	ordered := timeOrdered{
-		from: "platform_users", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "platform_tenant_id = $1", args: []any{tenant.ID},
-	}
-	tiedRoles := cursorSort{
-		name: "sorted by role", sortBy: "role",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM platform_users WHERE platform_tenant_id = $1 ORDER BY role ASC, id ASC",
-				tenant.ID,
-			)
-		},
-	}
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "platform_users", where: "platform_tenant_id = $1", args: []any{tenant.ID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "email", expr: "email"},
+				{name: "role", expr: "role"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := tenant.OwnerClient.SearchPlatformUsersWithBodyWithResponse(ctx, "application/json", body)
 			return httpCall(response, err, func(r *ct.SearchPlatformUsersResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), tiedRoles),
 	}
 }
 
@@ -280,23 +235,19 @@ func rolesCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE product_roles SET created_at = $1 WHERE product_id = $2", tiedAt(), product.ProductID)
 
-	ordered := timeOrdered{
-		from: "product_roles", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
-	byID := cursorSort{
-		name: "sorted by id", sortBy: "id", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM product_roles WHERE product_id = $1 ORDER BY id DESC",
-				product.ProductID,
-			)
-		},
-	}
 	client := product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "product_roles", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+				{name: "id", expr: "id"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductRolesWithBodyWithResponse(
 				ctx,
@@ -306,7 +257,6 @@ func rolesCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchProductRolesResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byID),
 	}
 }
 
@@ -326,33 +276,21 @@ func productAPIKeysCursorCase(t *testing.T) cursorCase {
 		WHERE id IN (SELECT id FROM product_api_keys WHERE product_id = $2 ORDER BY id LIMIT 4)`,
 		tiedAt(), product.ProductID)
 
-	ordered := timeOrdered{
-		from: "product_api_keys", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
-	lastUsed := func(descending bool) cursorSort {
-		return cursorSort{
-			name: "sorted by last_used_at " + direction(descending), sortBy: "last_used_at", descending: descending,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(t, fmt.Sprintf(
-					"SELECT id FROM product_api_keys WHERE product_id = $1 ORDER BY last_used_at %[1]s, id %[1]s",
-					direction(descending)), product.ProductID)
-			},
-		}
-	}
-	byID := cursorSort{
-		name: "sorted by id", sortBy: "id",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM product_api_keys WHERE product_id = $1 ORDER BY id ASC",
-				product.ProductID,
-			)
-		},
-	}
 	client := product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "product_api_keys", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+				{name: "id", expr: "id"},
+				{name: "status", expr: "status"},
+				{name: "last_used_at", expr: "last_used_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductAPIKeysWithBodyWithResponse(
 				ctx,
@@ -362,7 +300,6 @@ func productAPIKeysCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchProductAPIKeysResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), lastUsed(false), lastUsed(true), byID),
 	}
 }
 
@@ -382,23 +319,20 @@ func productUsersCursorCase(t *testing.T) cursorCase {
 		product.ProductID,
 	)
 
-	ordered := timeOrdered{
-		from: "product_users", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
-	byName := func(descending bool) cursorSort {
-		return cursorSort{
-			name: "sorted by name " + direction(descending), sortBy: "name", descending: descending,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(t, fmt.Sprintf(
-					"SELECT id FROM product_users WHERE product_id = $1 ORDER BY name %[1]s, id %[1]s",
-					direction(descending)), product.ProductID)
-			},
-		}
-	}
 	client := product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "product_users", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "email", expr: "email"},
+				{name: "name", expr: "name"},
+				{name: "status", expr: "status"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductUsersWithBodyWithResponse(
 				ctx,
@@ -408,7 +342,6 @@ func productUsersCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchProductUsersResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byName(false), byName(true)),
 	}
 }
 
@@ -430,29 +363,26 @@ func organizationAPIKeysCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE organization_api_keys SET created_at = $1 WHERE organization_id = $2", tiedAt(), organization.Id)
 
-	ordered := timeOrdered{
-		from: "organization_api_keys", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "organization_id = $1", args: []any{organization.Id},
-	}
-	neverUsed := cursorSort{
-		name: "sorted by last_used_at, which no key has", sortBy: "last_used_at", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM organization_api_keys WHERE organization_id = $1 ORDER BY last_used_at DESC, id DESC",
-				organization.Id,
-			)
-		},
-	}
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "organization_api_keys", where: "organization_id = $1", args: []any{organization.Id}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+				{name: "id", expr: "id"},
+				{name: "status", expr: "status"},
+				{name: "last_used_at", expr: "last_used_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationAPIKeysWithBodyWithResponse(
 				ctx, product.ProductID, organization.Id, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationAPIKeysResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), neverUsed),
 	}
 }
 
@@ -464,30 +394,24 @@ func organizationsCursorCase(t *testing.T) cursorCase {
 	execSQL(t, "UPDATE organizations SET created_at = $1, name = 'Same Name' WHERE product_id = $2",
 		tiedAt(), product.ProductID)
 
-	ordered := timeOrdered{
-		from: "organizations", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{product.ProductID},
-	}
-	tiedNames := cursorSort{
-		name: "sorted by tied names", sortBy: "name",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM organizations WHERE product_id = $1 ORDER BY name ASC, id ASC",
-				product.ProductID,
-			)
-		},
-	}
 	client := product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "organizations", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductOrganizationsWithBodyWithResponse(
 				ctx, product.ProductID, nil, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchProductOrganizationsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), tiedNames),
 	}
 }
 
@@ -500,30 +424,24 @@ func workspacesCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE workspaces SET created_at = $1 WHERE organization_id = $2", tiedAt(), organization.Id)
 
-	ordered := timeOrdered{
-		from: "workspaces", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "organization_id = $1", args: []any{organization.Id},
-	}
-	byName := cursorSort{
-		name: "sorted by name", sortBy: "name", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM workspaces WHERE organization_id = $1 ORDER BY name DESC, id DESC",
-				organization.Id,
-			)
-		},
-	}
 	client := product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "workspaces", where: "organization_id = $1", args: []any{organization.Id}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationWorkspacesWithBodyWithResponse(
 				ctx, product.ProductID, organization.Id, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationWorkspacesResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byName),
 	}
 }
 
@@ -544,32 +462,25 @@ func membersCursorCase(t *testing.T) cursorCase {
 
 	// The default is the newest member first. Before keyset pagination this search
 	// had no ORDER BY at all, so its pages overlapped and dropped members.
-	ordered := timeOrdered{
-		from: "organization_memberships", idExpr: "product_user_id", timeCol: "created_at", field: "joined_at",
-		where: "organization_id = $1", args: []any{organization.Id}, defaultDescending: true,
-	}
-	byEmail := func(descending bool) cursorSort {
-		return cursorSort{
-			name: "sorted by email " + direction(descending), sortBy: "email", descending: descending,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(t, fmt.Sprintf(`SELECT m.product_user_id FROM organization_memberships m
-					JOIN product_users u ON u.id = m.product_user_id
-					WHERE m.organization_id = $1 ORDER BY u.email %[1]s, m.product_user_id %[1]s`,
-					direction(descending)), organization.Id)
-			},
-		}
-	}
 	client := product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "joined_at",
-		idOf:  func(item map[string]any) string { return fmt.Sprint(item["product_user_id"]) },
+		rows: orderedRows{
+			from:  "organization_memberships m JOIN product_users u ON u.id = m.product_user_id",
+			where: "m.organization_id = $1", args: []any{organization.Id}, idExpr: "m.product_user_id",
+			defaultField: "joined_at", defaultDescending: true,
+			fields: []sortField{
+				{name: "joined_at", expr: "m.created_at"},
+				{name: "email", expr: "u.email"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"product_user_ids": []string{"no-such-id"}}},
+		idField: "product_user_id",
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationMembersWithBodyWithResponse(
 				ctx, product.ProductID, organization.Id, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationMembersResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byEmail(false), byEmail(true)),
 	}
 }
 
@@ -585,30 +496,25 @@ func organizationInvitationsCursorCase(t *testing.T) cursorCase {
 		w.organizationID,
 	)
 
-	ordered := timeOrdered{
-		from: "organization_invitations", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "organization_id = $1", args: []any{w.organizationID},
-	}
-	tiedExpiry := cursorSort{
-		name: "sorted by expires_at", sortBy: "expires_at", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM organization_invitations WHERE organization_id = $1 ORDER BY expires_at DESC, id DESC",
-				w.organizationID,
-			)
-		},
-	}
 	client := w.product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from:  "organization_invitations",
+			where: "organization_id = $1", args: []any{w.organizationID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "email", expr: "email"},
+				{name: "expires_at", expr: "expires_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"emails": []string{"nobody@invited.test"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationInvitationsWithBodyWithResponse(
 				ctx, w.product.ProductID, w.organizationID, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationInvitationsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), tiedExpiry),
 	}
 }
 
@@ -632,13 +538,18 @@ func productInvitationsCursorCase(t *testing.T) cursorCase {
 		w.product.ProductID,
 	)
 
-	ordered := timeOrdered{
-		from: "organization_invitations", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{w.product.ProductID},
-	}
 	client := w.product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "organization_invitations", where: "product_id = $1", args: []any{w.product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "email", expr: "email"},
+				{name: "expires_at", expr: "expires_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"emails": []string{"nobody@invited.test"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchProductOrganizationInvitationsWithBodyWithResponse(
 				ctx, w.product.ProductID, "application/json", body,
@@ -649,7 +560,6 @@ func productInvitationsCursorCase(t *testing.T) cursorCase {
 				func(r *ct.SearchProductOrganizationInvitationsResponse) []byte { return r.Body },
 			)
 		},
-		sorts: ordered.sorts(),
 	}
 }
 
@@ -667,45 +577,19 @@ func organizationLicensesCursorCase(t *testing.T) cursorCase {
 	execSQL(t, "UPDATE organizations SET name = 'Same Name' WHERE product_id = $1", w.productID())
 	execSQL(t, "UPDATE organization_licenses SET instantiated_at = $1 WHERE product_id = $2", tiedAt(), w.productID())
 
-	byName := func(descending bool) cursorSort {
-		return cursorSort{
-			name: "sorted by organization_name " + direction(
-				descending,
-			),
-			sortBy:     "organization_name",
-			descending: descending,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(t, fmt.Sprintf(
-					"SELECT id FROM organizations WHERE product_id = $1 ORDER BY name %[1]s, id %[1]s",
-					direction(descending),
-				),
-					w.productID())
-			},
-		}
-	}
-	byInstantiatedAt := func(descending bool) cursorSort {
-		return cursorSort{
-			name: "sorted by instantiated_at " + direction(
-				descending,
-			),
-			sortBy:     "instantiated_at",
-			descending: descending,
-			order: func(t *testing.T) []string {
-				return idsFromSQL(t, fmt.Sprintf(`SELECT o.id FROM organizations o
-					LEFT JOIN organization_licenses l ON l.organization_id = o.id
-					WHERE o.product_id = $1 ORDER BY l.instantiated_at %[1]s NULLS LAST, o.id %[1]s`, direction(descending)),
-					w.productID())
-			},
-		}
-	}
-	defaultOrder := byName(false)
-	defaultOrder.name = "the default order"
-	defaultOrder.sortBy = ""
-
 	client := w.client()
 	return cursorCase{
-		field: "organization_name",
-		idOf:  func(item map[string]any) string { return fmt.Sprint(item["organization_id"]) },
+		rows: orderedRows{
+			from:  "organizations o LEFT JOIN organization_licenses l ON l.organization_id = o.id",
+			where: "o.product_id = $1", args: []any{w.productID()}, idExpr: "o.id",
+			defaultField: "organization_name",
+			fields: []sortField{
+				{name: "organization_name", expr: "o.name"},
+				{name: "instantiated_at", expr: "l.instantiated_at", nulls: "NULLS LAST"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"organization_ids": []string{"no-such-id"}}},
+		idField: "organization_id",
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationLicensesWithBodyWithResponse(
 				ctx,
@@ -715,7 +599,6 @@ func organizationLicensesCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationLicensesResponse) []byte { return r.Body })
 		},
-		sorts: []cursorSort{defaultOrder, byName(true), byInstantiatedAt(false), byInstantiatedAt(true)},
 	}
 }
 
@@ -745,40 +628,28 @@ func auditLogsCursorCase(t *testing.T) cursorCase {
 			ids.MustNew("ial"), created.ID, severity, tiedAt())
 	}
 
-	ordered := timeOrdered{
-		from: "integration_audit_logs", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "integration_instance_id = $1", args: []any{created.ID}, defaultDescending: true,
-	}
-	bySeverity := cursorSort{
-		name: "sorted by severity", sortBy: "severity", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM integration_audit_logs WHERE integration_instance_id = $1 ORDER BY severity DESC, id DESC",
-				created.ID,
-			)
-		},
-	}
-	byTiedAction := cursorSort{
-		name: "sorted by tied action", sortBy: "action",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM integration_audit_logs WHERE integration_instance_id = $1 ORDER BY action ASC, id ASC",
-				created.ID,
-			)
-		},
-	}
 	client := tc.product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from:              "integration_audit_logs",
+			where:             "integration_instance_id = $1",
+			args:              []any{created.ID},
+			idExpr:            "id",
+			defaultField:      "created_at",
+			defaultDescending: true,
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "action", expr: "action"},
+				{name: "severity", expr: "severity"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"created_before": "2000-01-01T00:00:00Z"}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchIntegrationAuditLogsWithBodyWithResponse(
 				ctx, tc.product.ProductID, created.ID, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchIntegrationAuditLogsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), bySeverity, byTiedAction),
 	}
 }
 
@@ -794,32 +665,25 @@ func userOrganizationsCursorCase(t *testing.T) cursorCase {
 	execSQL(t, `UPDATE organizations SET name = 'Same Name'
 		WHERE id IN (SELECT organization_id FROM organization_memberships WHERE product_user_id = $1)`, member.ID)
 
-	ordered := timeOrdered{
-		from: "organization_memberships", idExpr: "organization_id", timeCol: "created_at", field: "joined_at",
-		where: "product_user_id = $1", args: []any{member.ID},
-	}
-	byTiedName := cursorSort{
-		name: "sorted by tied name", sortBy: "name", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(t, `SELECT m.organization_id FROM organization_memberships m
-				JOIN organizations o ON o.id = m.organization_id
-				WHERE m.product_user_id = $1 ORDER BY o.name DESC, m.organization_id DESC`, member.ID)
-		},
-	}
 	client := product.AllScopeAPIKeyClient()
 	return cursorCase{
-		field: "joined_at",
-		idOf: func(item map[string]any) string {
-			organization, _ := item["organization"].(map[string]any)
-			return fmt.Sprint(organization["id"])
+		rows: orderedRows{
+			from:  "organization_memberships m JOIN organizations o ON o.id = m.organization_id",
+			where: "m.product_user_id = $1", args: []any{member.ID}, idExpr: "m.organization_id",
+			defaultField: "joined_at",
+			fields: []sortField{
+				{name: "joined_at", expr: "m.created_at"},
+				{name: "name", expr: "o.name"},
+			},
 		},
+		noMatch: map[string]any{"filter": map[string]any{"organization_ids": []string{"no-such-id"}}},
+		decode:  nestedIDDecoder("organization"),
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchUserOrganizationsWithBodyWithResponse(
 				ctx, product.ProductID, member.ID, nil, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchUserOrganizationsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byTiedName),
 	}
 }
 
@@ -838,22 +702,18 @@ func emailTemplatesCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE email_templates SET created_at = $1 WHERE product_id = $2", tiedAt(), tc.product.ProductID)
 
-	ordered := timeOrdered{
-		from: "email_templates", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{tc.product.ProductID}, defaultDescending: true,
-	}
-	tiedNames := cursorSort{
-		name: "sorted by tied name", sortBy: "name",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM email_templates WHERE product_id = $1 ORDER BY name ASC, id ASC",
-				tc.product.ProductID,
-			)
-		},
-	}
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "email_templates", where: "product_id = $1", args: []any{tc.product.ProductID}, idExpr: "id",
+			defaultField: "created_at", defaultDescending: true,
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "name", expr: "name"},
+				{name: "slug", expr: "slug"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"slugs": []string{"no-such-slug"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchEmailTemplatesWithBodyWithResponse(
 				ctx,
@@ -863,7 +723,6 @@ func emailTemplatesCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchEmailTemplatesResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), tiedNames),
 	}
 }
 
@@ -880,23 +739,17 @@ func emailSendsCursorCase(t *testing.T) cursorCase {
 			ids.MustNew("esnd"), tc.tenantID, tc.product.ProductID, uniqueEmail(), status, tiedAt())
 	}
 
-	ordered := timeOrdered{
-		from: "email_send_records", idExpr: "id", timeCol: "created_at", field: "created_at",
-		where: "product_id = $1", args: []any{tc.product.ProductID}, defaultDescending: true,
-	}
-	byStatus := cursorSort{
-		name: "sorted by status", sortBy: "status",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM email_send_records WHERE product_id = $1 ORDER BY status ASC, id ASC",
-				tc.product.ProductID,
-			)
-		},
-	}
 	client := tc.product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "created_at",
+		rows: orderedRows{
+			from: "email_send_records", where: "product_id = $1", args: []any{tc.product.ProductID}, idExpr: "id",
+			defaultField: "created_at", defaultDescending: true,
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "status", expr: "status"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"template_ids": []string{"no-such-id"}}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchEmailSendsWithBodyWithResponse(
 				ctx,
@@ -906,7 +759,6 @@ func emailSendsCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchEmailSendsResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byStatus),
 	}
 }
 
@@ -922,30 +774,19 @@ func licenseTemplatesCursorCase(t *testing.T) cursorCase {
 	}
 	execSQL(t, "UPDATE license_templates SET created_at = $1 WHERE product_id = $2", tiedAt(), tc.product.ProductID)
 
-	ordered := timeOrdered{
-		from: "license_templates", idExpr: "id", timeCol: "name", field: "name",
-		where: "product_id = $1", args: []any{tc.product.ProductID},
-	}
-	byStatus := cursorSort{
-		name: "sorted by status", sortBy: "status",
-		order: func(t *testing.T) []string {
-			return idsFromSQL(t, "SELECT id FROM license_templates WHERE product_id = $1 ORDER BY status ASC, id ASC",
-				tc.product.ProductID)
-		},
-	}
-	byCreatedAt := cursorSort{
-		name: "sorted by tied created_at", sortBy: "created_at", descending: true,
-		order: func(t *testing.T) []string {
-			return idsFromSQL(
-				t,
-				"SELECT id FROM license_templates WHERE product_id = $1 ORDER BY created_at DESC, id DESC",
-				tc.product.ProductID,
-			)
-		},
-	}
 	client := tc.product.OwnerAuthenticatedClient()
 	return cursorCase{
-		field: "name",
+		rows: orderedRows{
+			from: "license_templates", where: "product_id = $1", args: []any{tc.product.ProductID}, idExpr: "id",
+			defaultField: "name",
+			fields: []sortField{
+				{name: "name", expr: "name"},
+				{name: "status", expr: "status"},
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+			},
+		},
+		noMatch: map[string]any{"full_text_search": "no-such-template-zzz"},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchLicenseTemplatesWithBodyWithResponse(
 				ctx,
@@ -955,7 +796,6 @@ func licenseTemplatesCursorCase(t *testing.T) cursorCase {
 			)
 			return httpCall(response, err, func(r *ct.SearchLicenseTemplatesResponse) []byte { return r.Body })
 		},
-		sorts: append(ordered.sorts(), byStatus, byCreatedAt),
 	}
 }
 
@@ -968,13 +808,20 @@ func licenseHistoryCursorCase(t *testing.T) cursorCase {
 	execSQL(t, "UPDATE organization_license_changes SET changed_at = $1 WHERE organization_id = $2",
 		tiedAt(), w.OrganizationID())
 
-	ordered := timeOrdered{
-		from: "organization_license_changes", idExpr: "id", timeCol: "changed_at", field: "changed_at",
-		where: "organization_id = $1", args: []any{w.OrganizationID()}, defaultDescending: true,
-	}
 	client := w.client()
 	return cursorCase{
-		field: "changed_at",
+		rows: orderedRows{
+			from:              "organization_license_changes",
+			where:             "organization_id = $1",
+			args:              []any{w.OrganizationID()},
+			idExpr:            "id",
+			defaultField:      "changed_at",
+			defaultDescending: true,
+			fields: []sortField{
+				{name: "changed_at", expr: "changed_at"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"changed_before": "2000-01-01T00:00:00Z"}},
 		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
 			response, err := client.SearchOrganizationLicenseHistoryWithBodyWithResponse(
 				ctx, w.productID(), w.OrganizationID(), "application/json", body,
@@ -985,6 +832,5 @@ func licenseHistoryCursorCase(t *testing.T) cursorCase {
 				func(r *ct.SearchOrganizationLicenseHistoryResponse) []byte { return r.Body },
 			)
 		},
-		sorts: ordered.sorts(),
 	}
 }

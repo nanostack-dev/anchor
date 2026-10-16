@@ -181,7 +181,7 @@ func (s *productRoleService) SearchProductRoles(
 
 	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		if searchx.IsCursorError(err) {
+		if searchx.IsClientError(err) {
 			return search.Result[role.ProductRole]{}, err
 		}
 		logger.Error().

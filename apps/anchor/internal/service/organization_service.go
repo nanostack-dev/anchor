@@ -714,7 +714,7 @@ func (s *organizationService) Search(
 
 	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().
 				Str("product_id", input.ProductID).
 				Err(err).

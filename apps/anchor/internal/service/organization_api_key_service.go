@@ -345,7 +345,7 @@ func (s *organizationAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
-		if searchx.IsCursorError(err) {
+		if searchx.IsClientError(err) {
 			return nil, err
 		}
 		logger.Error().

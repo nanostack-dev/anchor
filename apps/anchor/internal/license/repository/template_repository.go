@@ -113,7 +113,7 @@ func (r *templateRepositoryImpl) Search(
 		))
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		in.Request.Sort,
 		map[license.SortFieldTemplate]transactor.Key[model.LicenseTemplates]{
 			license.SortFieldTemplateName: transactor.StringKey(
@@ -131,6 +131,9 @@ func (r *templateRepositoryImpl) Search(
 		},
 		transactor.StringKey(table.LicenseTemplates.ID, func(row model.LicenseTemplates) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[license.Template]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, table.LicenseTemplates.AllColumns).
 		From(table.LicenseTemplates).

@@ -397,7 +397,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	// paged roles with no limit/offset. See product_api_key_repository.go's
 	// SearchByProductID for the same pattern.
 	idKey := transactor.StringKey(table.ProductRoles.ID, func(row model.ProductRoles) string { return row.ID })
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[role.SortFieldProductRole]transactor.Key[model.ProductRoles]{
 			role.SortFieldProductRoleCreatedAt: transactor.TimeKey(
@@ -413,6 +413,9 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		},
 		idKey,
 	)
+	if err != nil {
+		return search.Result[role.ProductRole]{}, err
+	}
 
 	pageResult, err := transactor.Page(
 		r.db,
@@ -425,7 +428,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			r.logger.Error().Err(err).Str(
 				"productID", productID,
 			).Msg("failed to search product roles")

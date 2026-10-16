@@ -290,6 +290,11 @@ func (r *organizationLicenseRepositoryImpl) Search(
 		where = where.AND(postgres.LOWER(table.Organizations.Name).LIKE(lowered))
 	}
 
+	order, err := organizationLicenseOrder(in.Request.Sort)
+	if err != nil {
+		return search.Result[license.OrganizationLicenseSummary]{}, err
+	}
+
 	return transactor.Page(
 		r.db,
 		r.mapper.SummaryToDomain,
@@ -298,7 +303,7 @@ func (r *organizationLicenseRepositoryImpl) Search(
 	).
 		From(organizationLicenseJoin(in.TenantID)).
 		Where(where).
-		Keyset(organizationLicenseOrder(in.Request.Sort)).
+		Keyset(order).
 		Run(ctx, in.Request.Pagination).
 		Value()
 }
@@ -313,8 +318,8 @@ func (r *organizationLicenseRepositoryImpl) Search(
 // tiebreak.
 func organizationLicenseOrder(
 	sorts []search.Sort[license.SortFieldOrganizationLicense],
-) transactor.Order[mapper.OrganizationLicenseSummaryRow] {
-	return transactor.Keys(
+) (transactor.Order[mapper.OrganizationLicenseSummaryRow], error) {
+	return transactor.StrictKeys(
 		sorts,
 		map[license.SortFieldOrganizationLicense]transactor.Key[mapper.OrganizationLicenseSummaryRow]{
 			license.SortFieldOrganizationLicenseOrganizationName: transactor.StringKey(

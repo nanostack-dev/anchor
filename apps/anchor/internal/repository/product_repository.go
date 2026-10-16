@@ -305,7 +305,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		)
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[product.SortFieldProduct]transactor.Key[productWithOrganizationAPIKeyConfig]{
 			product.SortFieldProductCreatedAt: transactor.TimeKey(
@@ -326,6 +326,9 @@ func (r *productRepositoryImpl) SearchByTenantID(
 			func(row productWithOrganizationAPIKeyConfig) string { return row.Products.ID },
 		),
 	)
+	if err != nil {
+		return search.Result[product.Product]{}, err
+	}
 
 	return transactor.Page(
 		r.db,

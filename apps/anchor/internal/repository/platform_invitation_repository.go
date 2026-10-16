@@ -93,7 +93,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 			table.PlatformInvitations.Email.LIKE(postgres.String("%" + *input.FullTextSearch + "%")),
 		)
 	}
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[invitation.SortFieldPlatformInvitation]transactor.Key[model.PlatformInvitations]{
 			invitation.SortFieldPlatformInvitationCreatedAt: transactor.TimeKey(
@@ -114,6 +114,9 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 			func(row model.PlatformInvitations) string { return row.ID },
 		),
 	)
+	if err != nil {
+		return search.Result[invitation.PlatformInvitation]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, table.PlatformInvitations.AllColumns).
 		From(table.PlatformInvitations).

@@ -699,7 +699,7 @@ func (s *integrationService) SearchAuditLogs(
 
 	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, input)
 	if searchErr != nil {
-		if !searchx.IsCursorError(searchErr) {
+		if !searchx.IsClientError(searchErr) {
 			logger.Error().Err(searchErr).
 				Str("integration_instance_id", input.IntegrationInstanceID).
 				Msg("failed to search integration audit logs")

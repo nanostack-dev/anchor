@@ -79,7 +79,7 @@ Give each aggregate its own enum. A value that is valid for one aggregate is not
 
 ### Collections are cursor-paginated searches
 
-Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.Keys` with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
+Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.StrictKeys` (an unmapped sort field fails with `search.ErrUnknownSort`, a 400 `INVALID_SORT`) with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
 
 **Shape.** `POST /<collection>/search`, with `filter`, `sort`, optional full-text and `pagination` in the body. Nest the route under the parent when the parent scopes the collection (`/organizations/{organization_id}/workspaces/search`). The response carries `items`, `total`, `count` and `next_cursor`.
 
@@ -93,7 +93,7 @@ Every persisted resource that the API returns as a collection has a search opera
 
 **Validate before shortcuts.** A search validates its whole input before any early return, such as an empty scope: the sort field, the filter enum values, and the cursor (`search.Pagination.Validate` and `Order.Seek`). An unknown `sort_by` or filter value answers 400, never a silent fallback to the default. Otherwise the same request answers 400 or 200 depending on how much data the caller has (echopoint#644 and #645 reviews).
 
-**Ordering is total.** Every sortable field maps to a typed key (`StringKey`, `EnumKey`, `TimeKey`, `IntKey`, `Nullable*` for a nullable column), and the ordering ends with the primary key as the tiebreak. A search without a requested sort orders by its documented default, still ending with the id. Never order a page by a non-unique column alone.
+**Ordering is total.** Build a search's ordering with `StrictKeys` and return its error through every service layer unchanged. Every sortable field maps to a typed key (`StringKey`, `EnumKey`, `TimeKey`, `IntKey`, `Nullable*` for a nullable column), and the ordering ends with the primary key as the tiebreak. A search without a requested sort orders by its documented default, still ending with the id. Never order a page by a non-unique column alone.
 
 **Indexes.** A search on a table that grows without bound has a composite index matching its default ordering behind its scope, for example `(organization_id, created_at, id)`. The seek is then one range scan, at any depth.
 
@@ -108,6 +108,8 @@ Every persisted resource that the API returns as a collection has a search opera
 **SDK.** A search builder exposes `Cursor(string)` and the result exposes `NextCursor`. Offer an iterator (`All(ctx)` / `Pages(ctx)`) that follows `next_cursor`, so callers never write the loop themselves.
 
 **Tests.** Every search has an integration test that walks more than one page by cursor across rows with tied sort values, and asserts that each row comes back exactly once, in order. An invalid cursor answers 400.
+
+**Conformance.** Every search has a `searchtest` suite in the component tests: walks for its default order and every sort field, refusals in every scope including short-circuit ones, and forged cursors where the service issues them.
 
 ### HTTP error statuses
 

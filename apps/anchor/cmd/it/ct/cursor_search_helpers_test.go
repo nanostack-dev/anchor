@@ -4,269 +4,293 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"slices"
-	"strings"
+	"maps"
 	"testing"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/testkit/searchtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	cursorPageSize     = 3
-	cursorMinimumPages = 3
+	// cursorPageSize is the page size of every walk: seven rows fill three pages
+	// of three, the last one short.
+	cursorPageSize = 3
 	// cursorDefaultPageSize is the page of a request that names no limit.
 	cursorDefaultPageSize = 10
-	invalidCursorCode     = "INVALID_CURSOR"
+	// sortRefusalCode is the code of the 400 an unknown sort_by answers. Every
+	// search validates its input, sort included, before it reads anything, so an
+	// unknown sort is a validation error. The repositories map their sorts
+	// through transactor.StrictKeys as the second line of defence and the
+	// services pass its search.ErrUnknownSort through; the unit tests of those
+	// layers pin that, because validation makes it unreachable over HTTP.
+	sortRefusalCode = "VALIDATION_ERROR"
 )
 
 // searchCall posts one search body to one operation and returns the raw answer.
-// The cursor tests drive every search through it, so one walker covers them all.
+// The cursor tests drive every search through it, so one suite shape covers them
+// all.
 type searchCall func(ctx context.Context, body io.Reader) (status int, raw []byte, err error)
 
-// cursorSort is one ordering a search is walked in: the sort_by it is asked for
-// (empty means the documented default) and the SQL that lists the same ids.
-type cursorSort struct {
-	// name labels the subtest.
+// sortField is one sort_by a search accepts: the SQL that orders by the same
+// column, and the NULL placement the key pins when it pins one.
+type sortField struct {
+	// name is the sort_by value.
 	name string
-	// sortBy is sent as sort_by. Empty leaves the default in force.
-	sortBy string
-	// descending is sent as sort_direction when sortBy is set, and tells the
-	// walker which way the SQL below runs.
-	descending bool
-	// omitDirection leaves sort_direction out, so the documented default
-	// direction applies.
-	omitDirection bool
-	// order lists the ids a full walk must return, in order.
-	order func(t *testing.T) []string
+	// expr is the SQL expression the field orders by.
+	expr string
+	// nulls is "NULLS LAST" or "NULLS FIRST" when the key pins the placement of
+	// NULLs; empty keeps the Postgres default the framework keys follow.
+	nulls string
+}
+
+// orderedRows describes the rows of a search and every ordering it accepts, so
+// the expected order of each walk comes from SQL over the fixture, never from
+// the search under test.
+type orderedRows struct {
+	// from is the FROM clause, with its joins and aliases.
+	from string
+	// where scopes the rows to the fixture.
+	where string
+	args  []any
+	// idExpr is the SQL expression of the identity a page reports, and the
+	// tiebreak of every ordering.
+	idExpr string
+	// defaultField is the sort_by that names the documented default order, and
+	// defaultDescending the direction that order runs in.
+	defaultField      string
+	defaultDescending bool
+	// fields lists every sort_by the search accepts, the default one included.
+	fields []sortField
+}
+
+func (o orderedRows) field(t *testing.T, name string) sortField {
+	t.Helper()
+	for _, candidate := range o.fields {
+		if candidate.name == name {
+			return candidate
+		}
+	}
+	require.FailNow(t, "the fixture does not list the sort field "+name)
+	return sortField{}
+}
+
+// order lists the ids a full walk must return when ordered by field.
+func (o orderedRows) order(t *testing.T, field sortField, descending bool) []string {
+	t.Helper()
+	dir := direction(descending)
+	nulls := ""
+	if field.nulls != "" {
+		nulls = " " + field.nulls
+	}
+	query := fmt.Sprintf(
+		"SELECT %[1]s FROM %[2]s WHERE %[3]s ORDER BY %[4]s %[5]s%[6]s, %[1]s %[5]s",
+		o.idExpr, o.from, o.where, field.expr, dir, nulls,
+	)
+	return idsFromSQL(t, query, o.args...)
+}
+
+// cases walks the documented default order, the default field with its
+// direction left out, and every sort field in both directions.
+func (o orderedRows) cases(t *testing.T) []searchtest.Case {
+	t.Helper()
+	defaultField := o.field(t, o.defaultField)
+	cases := []searchtest.Case{
+		{
+			Name: "default order",
+			Body: map[string]any{},
+			Want: o.order(t, defaultField, o.defaultDescending),
+		},
+		{
+			Name: o.defaultField + " without a direction",
+			Body: map[string]any{"sort_by": o.defaultField},
+			Want: o.order(t, defaultField, false),
+		},
+	}
+	for _, field := range o.fields {
+		for _, descending := range []bool{false, true} {
+			cases = append(cases, searchtest.Case{
+				Name: field.name + " " + direction(descending),
+				Body: sortBody(field.name, descending),
+				Want: o.order(t, field, descending),
+			})
+		}
+	}
+	return cases
+}
+
+func sortBody(field string, descending bool) map[string]any {
+	return map[string]any{"sort_by": field, "sort_direction": direction(descending)}
 }
 
 // cursorCase is one search under test.
 type cursorCase struct {
 	call searchCall
-	// field is the sort_by that names the default sort. The cursor-for-another-sort
-	// check sends it with the opposite direction.
-	field string
-	// idOf reads an item's identity; nil reads "id".
-	idOf func(item map[string]any) string
-	// sorts are walked one after the other. Each is walked over the same rows,
-	// which the case has tied on its sort columns beforehand.
-	sorts []cursorSort
+	// idField names the item property that carries the identity; empty means "id".
+	idField string
+	// decode replaces the default decoder for a response whose identity is not a
+	// plain property of the item.
+	decode searchtest.Decoder
+	rows   orderedRows
+	// noMatch is a body that matches no row, which makes the scope empty: the
+	// search may answer it without reading a page, and must still validate the
+	// whole input.
+	noMatch map[string]any
 }
 
-type searchPage struct {
-	ids        []string
-	total      int64
-	count      int
-	nextCursor string
+func (c cursorCase) decoder() searchtest.Decoder {
+	if c.decode != nil {
+		return c.decode
+	}
+	idField := c.idField
+	if idField == "" {
+		idField = "id"
+	}
+	return searchtest.DecodeItems("items", idField)
 }
 
-type searchPageRequest struct {
-	limit      int
-	offset     int
-	cursor     string
-	sortBy     string
-	descending bool
-	// noDirection omits sort_direction even when sortBy is set.
-	noDirection bool
-}
-
-func (r searchPageRequest) body(t *testing.T) io.Reader {
-	t.Helper()
-	pagination := map[string]any{}
-	if r.limit > 0 {
-		pagination["limit"] = r.limit
-	}
-	if r.offset > 0 {
-		pagination["offset"] = r.offset
-	}
-	if r.cursor != "" {
-		pagination["cursor"] = r.cursor
-	}
-	body := map[string]any{"pagination": pagination}
-	if r.sortBy != "" {
-		body["sort_by"] = r.sortBy
-	}
-	if r.sortBy != "" && !r.noDirection {
-		body["sort_direction"] = "ASC"
-		if r.descending {
-			body["sort_direction"] = "DESC"
+func (c cursorCase) kitCall() searchtest.Call {
+	return func(ctx context.Context, body map[string]any) (int, []byte, error) {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return 0, nil, err
 		}
-	}
-	encoded, err := json.Marshal(body)
-	require.NoError(t, err)
-	return bytes.NewReader(encoded)
-}
-
-func (c cursorCase) fetch(t *testing.T, request searchPageRequest) searchPage {
-	t.Helper()
-	status, raw, err := c.call(context.Background(), request.body(t))
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, status, string(raw))
-
-	var decoded struct {
-		Items      []map[string]any `json:"items"`
-		Total      int64            `json:"total"`
-		Count      int              `json:"count"`
-		NextCursor string           `json:"next_cursor"`
-	}
-	require.NoError(t, json.Unmarshal(raw, &decoded), string(raw))
-
-	idOf := c.idOf
-	if idOf == nil {
-		idOf = func(item map[string]any) string { return fmt.Sprint(item["id"]) }
-	}
-	page := searchPage{total: decoded.Total, count: decoded.Count, nextCursor: decoded.NextCursor}
-	for _, item := range decoded.Items {
-		page.ids = append(page.ids, idOf(item))
-	}
-	return page
-}
-
-// rejected posts a body that must answer 400 INVALID_CURSOR.
-func (c cursorCase) rejected(t *testing.T, request searchPageRequest) {
-	t.Helper()
-	status, raw, err := c.call(context.Background(), request.body(t))
-	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, status, string(raw))
-
-	var decoded struct {
-		Errors []struct {
-			Code string `json:"code"`
-		} `json:"errors"`
-	}
-	require.NoError(t, json.Unmarshal(raw, &decoded), string(raw))
-	require.NotEmpty(t, decoded.Errors, string(raw))
-	assert.Equal(t, invalidCursorCode, decoded.Errors[0].Code, string(raw))
-}
-
-type cursorWalk struct {
-	ids   []string
-	pages int
-	total int64
-}
-
-// walk follows next_cursor from the first page to the last.
-func (c cursorCase) walk(t *testing.T, sort cursorSort, limit int) cursorWalk {
-	t.Helper()
-	var walked cursorWalk
-	request := searchPageRequest{
-		limit: limit, sortBy: sort.sortBy, descending: sort.descending, noDirection: sort.omitDirection,
-	}
-	for {
-		page := c.fetch(t, request)
-		walked.pages++
-		walked.ids = append(walked.ids, page.ids...)
-		walked.total = page.total
-		assert.Equal(t, len(page.ids), page.count, "count is the length of the page")
-		if page.nextCursor == "" {
-			return walked
-		}
-		assert.Len(t, page.ids, limit, "a page with a next_cursor is full")
-		require.LessOrEqual(t, walked.pages, 1000, "a cursor walk must end")
-		request.cursor = page.nextCursor
+		return c.call(ctx, bytes.NewReader(encoded))
 	}
 }
 
-func (c cursorCase) run(t *testing.T) {
-	t.Helper()
-	require.NotEmpty(t, c.sorts)
-	require.NotEmpty(t, c.field)
-
-	for _, sort := range c.sorts {
-		t.Run("walks "+sort.name, func(t *testing.T) {
-			expected := sort.order(t)
-			require.GreaterOrEqual(t, len(expected), cursorPageSize*(cursorMinimumPages-1)+1,
-				"the fixture must fill at least %d pages", cursorMinimumPages)
-			require.Len(t, slices.Compact(slices.Clone(expected)), len(expected), "ids are unique")
-
-			walked := c.walk(t, sort, cursorPageSize)
-			assert.Equal(t, expected, walked.ids, "every row once, in the documented order")
-			assert.GreaterOrEqual(t, walked.pages, cursorMinimumPages)
-			assert.Equal(
-				t,
-				int64(len(expected)),
-				walked.total,
-				"total counts the filter, not the rows after the cursor",
-			)
-
-			all := c.fetch(t, searchPageRequest{
-				limit: len(expected), sortBy: sort.sortBy, descending: sort.descending, noDirection: sort.omitDirection,
-			})
-			assert.Equal(t, expected, all.ids)
-			assert.Empty(t, all.nextCursor, "a last page that fills the limit exactly has no next_cursor")
-
-			offsetPage := c.fetch(t, searchPageRequest{
-				limit: cursorPageSize, offset: cursorPageSize, sortBy: sort.sortBy, descending: sort.descending,
-				noDirection: sort.omitDirection,
-			})
-			assert.Equal(
-				t,
-				expected[cursorPageSize:2*cursorPageSize],
-				offsetPage.ids,
-				"offset pages stay in the same order",
-			)
-			assert.NotEmpty(t, offsetPage.nextCursor, "an offset page hands over a cursor")
+// scopes lists the requests the refusals are sent in. A populated scope per
+// sort field lets the forged cursors reach every key type of the search. The
+// empty scopes cover the short-circuit a search may take when nothing matches.
+func (c cursorCase) scopes() []searchtest.Scope {
+	opposite := sortBody(c.rows.defaultField, !c.rows.defaultDescending)
+	scopes := []searchtest.Scope{{Body: map[string]any{}, Incompatible: opposite}}
+	for _, field := range c.rows.fields {
+		scopes = append(scopes, searchtest.Scope{
+			Body:         sortBody(field.name, false),
+			Incompatible: sortBody(field.name, true),
 		})
 	}
 
-	first := c.sorts[0]
-	t.Run("continues a cursor sent without a limit", func(t *testing.T) {
-		expected := first.order(t)
-		page := c.fetch(t, searchPageRequest{
-			limit: cursorPageSize, sortBy: first.sortBy, descending: first.descending, noDirection: first.omitDirection,
-		})
-		require.NotEmpty(t, page.nextCursor)
+	last := c.rows.fields[len(c.rows.fields)-1].name
+	sorted := sortBody(last, true)
+	scopes = append(scopes,
+		searchtest.Scope{Body: c.noMatch, SameOrder: map[string]any{}, Incompatible: opposite},
+		searchtest.Scope{
+			Body:         withSort(c.noMatch, sorted),
+			SameOrder:    sorted,
+			Incompatible: sortBody(last, false),
+		},
+	)
+	return scopes
+}
 
-		rest := c.fetch(t, searchPageRequest{
-			cursor:      page.nextCursor,
-			sortBy:      first.sortBy,
-			descending:  first.descending,
-			noDirection: first.omitDirection,
-		})
-		assert.Equal(t, expected[cursorPageSize:min(len(expected), cursorPageSize+cursorDefaultPageSize)], rest.ids,
-			"the default page size applies")
-	})
+func withSort(body map[string]any, sort map[string]any) map[string]any {
+	merged := map[string]any{}
+	maps.Copy(merged, body)
+	maps.Copy(merged, sort)
+	return merged
+}
 
-	t.Run("rejects a sort_by outside the contract", func(t *testing.T) {
-		status, raw, err := c.call(context.Background(), strings.NewReader(`{"sort_by":"not_a_sortable_field"}`))
+func (c cursorCase) suite(t *testing.T, name string) searchtest.Suite {
+	t.Helper()
+	require.NotEmpty(t, c.rows.fields)
+	require.NotEmpty(t, c.noMatch)
+	return searchtest.Suite{
+		Name:   name,
+		Call:   c.kitCall(),
+		Decode: c.decoder(),
+		Limit:  cursorPageSize,
+		Cases:  c.rows.cases(t),
+		Refusals: searchtest.Refusals{
+			Scopes:    c.scopes(),
+			SortField: true,
+			SortCode:  sortRefusalCode,
+		},
+		Mutate: searchtest.FrameworkCursorMutations,
+	}
+}
+
+// run applies the conformance kit, then the checks the kit does not make.
+func (c cursorCase) run(t *testing.T, name string) {
+	t.Helper()
+	suite := c.suite(t, name)
+	searchtest.Run(t, suite)
+
+	fetch := func(t *testing.T, body map[string]any) searchtest.Page {
+		t.Helper()
+		status, raw, err := suite.Call(t.Context(), body)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, status, string(raw))
-		assert.Contains(t, string(raw), "sort_by", "the error names the field")
-		assert.Contains(t, string(raw), "VALIDATION_ERROR")
+		require.Equal(t, 200, status, string(raw))
+		page, err := suite.Decode(raw)
+		require.NoError(t, err, string(raw))
+		return page
+	}
+	paginated := func(pagination map[string]any) map[string]any {
+		return map[string]any{"pagination": pagination}
+	}
+
+	expected := suite.Cases[0].Want
+
+	t.Run(name+"/a page that fills the limit exactly has no next_cursor", func(t *testing.T) {
+		page := fetch(t, paginated(map[string]any{"limit": len(expected)}))
+		assert.Equal(t, expected, page.IDs)
+		assert.Empty(t, page.NextCursor)
 	})
 
-	t.Run("rejects a malformed cursor", func(t *testing.T) {
-		c.rejected(t, searchPageRequest{
-			limit: cursorPageSize, cursor: "not-a-cursor", sortBy: first.sortBy, descending: first.descending,
-			noDirection: first.omitDirection,
-		})
+	t.Run(name+"/offset pages keep the order and hand over a cursor", func(t *testing.T) {
+		page := fetch(t, paginated(map[string]any{"limit": cursorPageSize, "offset": cursorPageSize}))
+		assert.Equal(t, expected[cursorPageSize:2*cursorPageSize], page.IDs)
+		assert.NotEmpty(t, page.NextCursor)
 	})
 
-	t.Run("rejects a cursor with an offset", func(t *testing.T) {
-		page := c.fetch(t, searchPageRequest{
-			limit: cursorPageSize, sortBy: first.sortBy, descending: first.descending, noDirection: first.omitDirection,
-		})
-		require.NotEmpty(t, page.nextCursor)
-		c.rejected(t, searchPageRequest{
-			limit: cursorPageSize, offset: 1, cursor: page.nextCursor, sortBy: first.sortBy,
-			descending: first.descending, noDirection: first.omitDirection,
-		})
+	t.Run(name+"/a cursor sent without a limit gets the default page size", func(t *testing.T) {
+		first := fetch(t, paginated(map[string]any{"limit": cursorPageSize}))
+		require.NotEmpty(t, first.NextCursor)
+		rest := fetch(t, paginated(map[string]any{"cursor": first.NextCursor}))
+		assert.Equal(t, expected[cursorPageSize:min(len(expected), cursorPageSize+cursorDefaultPageSize)], rest.IDs)
 	})
+}
 
-	t.Run("rejects a cursor issued for another sort", func(t *testing.T) {
-		page := c.fetch(t, searchPageRequest{
-			limit: cursorPageSize, sortBy: first.sortBy, descending: first.descending, noDirection: first.omitDirection,
-		})
-		require.NotEmpty(t, page.nextCursor)
-		c.rejected(t, searchPageRequest{
-			limit: cursorPageSize, cursor: page.nextCursor, sortBy: c.field, descending: !first.descending,
-		})
-	})
+// nestedIDDecoder reads a page whose items carry their identity under a child
+// object, as the organizations of a product user do.
+func nestedIDDecoder(child string) searchtest.Decoder {
+	return func(response []byte) (searchtest.Page, error) {
+		var body struct {
+			Items      *[]map[string]json.RawMessage `json:"items"`
+			Total      *int64                        `json:"total"`
+			Count      *int                          `json:"count"`
+			NextCursor *string                       `json:"next_cursor"`
+		}
+		if err := json.Unmarshal(response, &body); err != nil {
+			return searchtest.Page{}, fmt.Errorf("not a JSON object: %w", err)
+		}
+		if body.Items == nil || body.Total == nil || body.Count == nil {
+			return searchtest.Page{}, errors.New("missing items, total or count")
+		}
+		page := searchtest.Page{Total: *body.Total, Count: *body.Count}
+		if body.NextCursor != nil {
+			page.NextCursor = *body.NextCursor
+		}
+		for i, item := range *body.Items {
+			var nested struct {
+				ID *string `json:"id"`
+			}
+			raw, ok := item[child]
+			if !ok {
+				return searchtest.Page{}, fmt.Errorf("item %d: missing %q", i, child)
+			}
+			if err := json.Unmarshal(raw, &nested); err != nil || nested.ID == nil {
+				return searchtest.Page{}, fmt.Errorf("item %d: %q has no id", i, child)
+			}
+			page.IDs = append(page.IDs, *nested.ID)
+		}
+		return page, nil
+	}
 }
 
 // idsFromSQL runs a query that lists ids and returns them in query order.

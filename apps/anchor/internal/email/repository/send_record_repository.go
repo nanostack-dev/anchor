@@ -183,7 +183,7 @@ func (r *sendRecordRepositoryImpl) Search(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Request.Sort,
 		map[email.SortFieldSend]transactor.Key[model.EmailSendRecords]{
 			email.SortFieldSendCreatedAt: transactor.TimeKey(
@@ -195,6 +195,9 @@ func (r *sendRecordRepositoryImpl) Search(
 		},
 		transactor.StringKey(table.EmailSendRecords.ID, func(row model.EmailSendRecords) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[email.SendRecord]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailSendRecords.AllColumns).
 		From(table.EmailSendRecords).
