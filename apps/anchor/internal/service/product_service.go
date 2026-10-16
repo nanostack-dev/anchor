@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -466,7 +467,9 @@ func (s *productService) Search(
 
 	result, err := s.productRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
+		if !searchx.IsCursorError(err) {
+			logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
+		}
 		return search.Result[product.Product]{}, err
 	}
 	for i := range result.Items {

@@ -9,6 +9,7 @@ import (
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/rs/zerolog"
@@ -54,10 +55,12 @@ func (s *platformUserService) SearchPlatformUsers(
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Err(err).
-			Msg("failed to search platform users")
+		if !searchx.IsCursorError(err) {
+			logger.Error().
+				Str("tenant_id", input.TenantID).
+				Err(err).
+				Msg("failed to search platform users")
+		}
 		return search.Result[platform.User]{}, err
 	}
 	return result, nil

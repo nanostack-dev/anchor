@@ -14,6 +14,7 @@ import (
 	"anchor/internal/domain/platform"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -180,10 +181,12 @@ func (s *invitationService) SearchInvitation(
 	}
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Err(err).
-			Msg("failed to search invitations")
+		if !searchx.IsCursorError(err) {
+			logger.Error().
+				Str("tenant_id", input.TenantID).
+				Err(err).
+				Msg("failed to search invitations")
+		}
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}
 	return result, nil

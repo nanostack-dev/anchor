@@ -7,6 +7,7 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -372,10 +373,12 @@ func (s *organizationMembershipService) SearchMembers(
 		ctx, input.ProductID, input.OrganizationID, input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Msg("failed to search members")
+		if !searchx.IsCursorError(err) {
+			logger.Error().Err(err).
+				Str("product_id", input.ProductID).
+				Str("organization_id", input.OrganizationID).
+				Msg("failed to search members")
+		}
 		return search.Result[organization.Membership]{}, err
 	}
 

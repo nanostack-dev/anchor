@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -306,9 +307,11 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", input.ProductID,
-		).Msg("failed to search product API keys")
+		if !searchx.IsCursorError(err) {
+			r.logger.Error().Err(err).Str(
+				"productID", input.ProductID,
+			).Msg("failed to search product API keys")
+		}
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
 

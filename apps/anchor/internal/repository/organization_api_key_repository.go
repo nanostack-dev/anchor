@@ -15,6 +15,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -315,9 +316,11 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"organization_id", input.OrganizationID,
-		).Msg("failed to search organization API keys")
+		if !searchx.IsCursorError(err) {
+			r.logger.Error().Err(err).Str(
+				"organization_id", input.OrganizationID,
+			).Msg("failed to search organization API keys")
+		}
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
 

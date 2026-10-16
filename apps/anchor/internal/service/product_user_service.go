@@ -220,10 +220,12 @@ func (s *productUserService) Search(
 
 	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search product users")
+		if !searchx.IsCursorError(err) {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Err(err).
+				Msg("failed to search product users")
+		}
 		return search.Result[user.ProductUser]{}, err
 	}
 
