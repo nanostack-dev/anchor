@@ -35,6 +35,10 @@ Status/error contract changes also update the Echopoint flow assertions of the `
 
 Every search has a case in `TestCursorSearches` (`apps/anchor/cmd/it/ct/cursor_search_test.go`). A case seeds more than two pages of rows, ties their sort column with one `UPDATE` scoped to the case's own ids, and gives the SQL that lists the same ids in the documented order. The shared walker then follows `next_cursor` three rows at a time and asserts the rows, the total, the missing `next_cursor` on the last page, and `400 INVALID_CURSOR` for a malformed cursor, a cursor with an offset and a cursor issued for another sort. Add a case when you add a search; do not write a second walker. Run it with `go test ./cmd/it/ct/... -run TestCursorSearches -count=1` from `apps/anchor`. The repository suite has cursor walks over a composite key, a nullable key and a plain table in `cmd/it/repository/cursor_pagination_repository_test.go`, which runs manually. See [cursor-paginated searches](../technical/cursor-pagination.md).
 
+## Concurrent same-name writes
+
+`TestConcurrentSameNameWritesReturnConflict` (`apps/anchor/cmd/it/ct/name_unique_race_test.go`) fires eight concurrent creates, or renames of eight resources, to one name for five rounds, and asserts exactly one success and a 409 with the resource's duplicate code for every other write. Before the unique-violation mapping, every case failed with a 500. Add a case for every name-unique create or rename. Run it with `go test ./cmd/it/ct/... -run TestConcurrentSameNameWritesReturnConflict -count=1` from `apps/anchor`.
+
 ## API-key pagination boundaries
 
 The product API-key and organization API-key repository tests list their five page boundaries as named local cases: full, first, second, partial and beyond-end without sort. Every case checks total matches separately from the returned count, length and ordered IDs. Preserve the two repository scopes and the existing sequential fixture execution when extending these tables. Those tables page by offset, which a search still accepts.

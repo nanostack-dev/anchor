@@ -92,7 +92,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-		client := product.OwnerAuthenticatedClient()
+		client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization_api_key:create"})
 		assertOneWinnerPerName(t, http.StatusCreated, "ORGANIZATION_API_KEY_NAME_DUPLICATE",
 			sameNameCreate(func(name string) nameRaceOutcome {
 				resp, err := client.CreateOrganizationAPIKeyWithResponse(
@@ -111,7 +111,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 		product := createTestProductContext(t)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-		client := product.OwnerAuthenticatedClient()
+		client, _ := product.CreateAPIKeyClientWithScopes([]string{"organization_api_key:create", "organization_api_key:update"})
 		assertOneWinnerPerName(t, http.StatusOK, "ORGANIZATION_API_KEY_NAME_DUPLICATE",
 			renameToSameName(t, func(initialName string) string {
 				resp, err := client.CreateOrganizationAPIKeyWithResponse(
@@ -230,11 +230,29 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 			}))
 	})
 
+	t.Run("Product rename", func(t *testing.T) {
+		t.Parallel()
+		client := createTestProductContext(t).OwnerAuthenticatedClient()
+		assertOneWinnerPerName(t, http.StatusOK, "PRODUCT_ALREADY_EXISTS",
+			renameToSameName(t, func(initialName string) string {
+				resp, err := client.CreateProductWithResponse(t.Context(), ct.CreateProductJSONRequestBody{Name: initialName})
+				require.NoError(t, err)
+				require.Equal(t, http.StatusCreated, resp.StatusCode())
+				return resp.JSON201.Id
+			}, func(id, name string) nameRaceOutcome {
+				resp, err := client.UpdateProductWithResponse(t.Context(), id, ct.UpdateProductJSONRequestBody{Name: name})
+				if err != nil {
+					return nameRaceOutcome{err: err}
+				}
+				return nameRaceOutcome{status: resp.StatusCode(), conflict: resp.JSON409}
+			}))
+	})
+
 	t.Run("Workspace rename", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-		client := product.OwnerAuthenticatedClient()
+		client, _ := product.CreateAPIKeyClientWithScopes([]string{"workspace:create", "workspace:update"})
 		assertOneWinnerPerName(t, http.StatusOK, "WORKSPACE_NAME_DUPLICATE",
 			renameToSameName(t, func(initialName string) string {
 				resp, err := client.CreateOrganizationWorkspaceWithResponse(
