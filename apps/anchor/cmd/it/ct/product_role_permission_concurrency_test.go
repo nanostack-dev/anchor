@@ -144,7 +144,7 @@ func TestProductRole_ConcurrentRenamesKeepAssignedPermissions(t *testing.T) {
 }
 
 func TestProductRole_UpdateWithPermissionsReplacesTheSet(t *testing.T) {
-	// Updating a product role with permissions replaces the set succeeds.
+	// Updating a role with a permission set replaces its existing assignments.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionNames := createRacePermissions(t, productContext)

@@ -82,7 +82,7 @@ func TestProductOrganizationGet(t *testing.T) {
 
 	t.Run(
 		"SecurityGetOrganizationWithInsufficientPermissions", func(t *testing.T) {
-			// Reading security organization with insufficient permissions succeeds.
+			// Reading an organization requires the organization-read permission.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,

@@ -19,7 +19,7 @@ func TestSearchProductUsers(t *testing.T) {
 
 	t.Run(
 		"SearchProductUsersEmpty", func(t *testing.T) {
-			// Searching product users empty succeeds.
+			// Product-user search returns an empty result set for a product without users.
 			productContext := createTestProductContext(t)
 
 			resp, err := productContext.OwnerAuthenticatedClient().SearchProductUsersWithResponse(
@@ -39,7 +39,7 @@ func TestSearchProductUsers(t *testing.T) {
 
 	t.Run(
 		"SearchProductUsersBasic", func(t *testing.T) {
-			// Searching product users basic succeeds.
+			// Product-user search returns the product's saved users.
 			productContext := createTestProductContext(t)
 
 			user1 := createDSLProductUser(t, productContext)

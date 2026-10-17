@@ -12,7 +12,7 @@ import (
 )
 
 func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
-	// Update invitation with changes role and expiry succeeds.
+	// Updating an invitation persists its new role and expiry.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())

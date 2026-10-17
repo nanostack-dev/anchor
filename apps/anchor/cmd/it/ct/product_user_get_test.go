@@ -61,7 +61,7 @@ func TestGetProductUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetOfExistingProductUser", func(t *testing.T) {
-			// Reading of existing product user succeeds.
+			// Reading an existing product user returns its saved details.
 			// Create test product with API key
 			productContext := createTestProductContext(t)
 

@@ -28,7 +28,7 @@ func TestSearchInvitationsInProduct_FindsThePendingInvitationsOfAnEmailAcrossOrg
 }
 
 func TestSearchInvitationsInProduct_ComparesEmailsWithoutLetterCase(t *testing.T) {
-	// Search invitations in product with compares emails without letter case succeeds.
+	// Product-wide invitation search matches emails regardless of letter case.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()

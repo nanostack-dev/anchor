@@ -305,7 +305,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsEmptyResults", func(t *testing.T) {
-			// Searching organizations empty results succeeds.
+			// Organization search returns an empty result set when nothing matches.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,

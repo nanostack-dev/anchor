@@ -192,7 +192,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesNoResults", func(t *testing.T) {
-			// Searching product roles no results succeeds.
+			// Role search returns an empty result set when nothing matches.
 			searchResp, noResultsErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{
 					Filter: &ct.ProductRoleFilter{
@@ -225,7 +225,7 @@ func TestProductRole_Search(t *testing.T) {
 // limit smaller than a role's permission count must still return ALL of that
 // role's permissions (regression for permission-list truncation).
 func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
-	// Searching product role permissions not truncated by pagination succeeds.
+	// Role search includes every assigned permission even when the role page is small.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)

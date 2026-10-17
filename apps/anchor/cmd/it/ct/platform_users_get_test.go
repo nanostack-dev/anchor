@@ -60,7 +60,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetOfExistingUser", func(t *testing.T) {
-			// Reading of existing user succeeds.
+			// Reading an existing platform user returns its saved details.
 			testUser := state.PlatformUser(platformAdminAlias)
 			assert.NotEmpty(
 				t, testUser.AccessToken, "test productuserservice should have access token",

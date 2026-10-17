@@ -81,7 +81,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"UpdateReplacesMetadataInFull", func(t *testing.T) {
-			// Updating replaces metadata in full succeeds.
+			// Updating organization metadata replaces the previous metadata object in full.
 			initial := ct.Metadata{"billing_ref": "cust_abc123", "region": "us-east-1"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -118,7 +118,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"UpdateWithoutMetadataClearsIt", func(t *testing.T) {
-			// Updating without metadata clears it succeeds.
+			// Updating an organization without metadata clears its previous metadata.
 			initial := ct.Metadata{"billing_ref": "cust_abc123"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(

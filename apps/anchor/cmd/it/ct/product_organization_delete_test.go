@@ -81,7 +81,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 
 	t.Run(
 		"SecurityDeleteOrganizationWithInsufficientPermissions", func(t *testing.T) {
-			// Deleting security organization with insufficient permissions succeeds.
+			// Deleting an organization requires the organization-delete permission.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,

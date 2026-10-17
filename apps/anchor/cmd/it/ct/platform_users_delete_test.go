@@ -33,7 +33,7 @@ func TestDeletePlatformUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulDeleteOfCreatedUser", func(t *testing.T) {
-			// Deleting of created user succeeds.
+			// Deleting a platform user removes the newly created user.
 			// Create a test admin productuserservice first
 			testUser := createPlatformAdmin(t)
 			assert.NotEmpty(

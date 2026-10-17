@@ -41,7 +41,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithEventsConfigGeneratesSigningSecret", func(t *testing.T) {
-			// Creating a product with events config generates signing secret succeeds.
+			// Creating a product with event delivery configured generates its signing secret.
 			receiver := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(http.StatusOK)
 			}))
