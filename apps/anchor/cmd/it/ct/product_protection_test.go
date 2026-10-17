@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductProtection(t *testing.T) {
+	// Protected products refuse deletion until protection has been disabled.
 	t.Parallel()
 	product := createTestProductContext(t)
 	management := product.Management()
@@ -62,6 +63,7 @@ func TestProductProtection(t *testing.T) {
 }
 
 func TestCreateProtectedProduct(t *testing.T) {
+	// A product can be created protected and subsequently refuses deletion.
 	t.Parallel()
 	product := createTestProductContext(t)
 	created := product.Management().Create(client.CreateProductJSONRequestBody{
@@ -78,6 +80,7 @@ func TestCreateProtectedProduct(t *testing.T) {
 }
 
 func TestProtectedProductTenantBoundary(t *testing.T) {
+	// Another tenant cannot bypass a product's protection or reach its resources.
 	t.Parallel()
 	product := createTestProductContext(t)
 	management := product.Management()

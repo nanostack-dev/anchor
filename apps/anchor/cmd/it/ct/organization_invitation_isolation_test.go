@@ -14,6 +14,7 @@ import (
 )
 
 func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testing.T) {
+	// Invitations another product cannot reach an invitation of this product.
 	t.Parallel()
 	state := itdsl.Given(t).
 		Tenant(itdsl.TenantOpts{Alias: "t"}).
@@ -27,14 +28,17 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 	intruderUser := newWorldOn(t, intruderProduct).newProductUser(uniqueEmail())
 
 	t.Run("get", func(t *testing.T) {
+		// The get operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.GetRaw(owner.organizationID, created.Id)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("search", func(t *testing.T) {
+		// The search operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.SearchRaw(owner.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("create", func(t *testing.T) {
+		// The create operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.CreateRaw(owner.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
 			RoleId: owner.roleID,
@@ -42,6 +46,7 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("update", func(t *testing.T) {
+		// The update operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.UpdateRaw(owner.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
 			RoleId:    owner.roleID,
 			ExpiresAt: time.Now().Add(time.Hour),
@@ -49,13 +54,16 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("delete", func(t *testing.T) {
+		// The delete operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.DeleteRaw(owner.organizationID, created.Id)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("search in product", func(t *testing.T) {
+		// The search in product operation cannot reach an invitation belonging to another product or tenant.
 		assert.Empty(t, intruder.PendingFor(string(created.Email)))
 	})
 	t.Run("accept", func(t *testing.T) {
+		// The accept operation cannot reach an invitation belonging to another product or tenant.
 		resp := intruder.AcceptRaw(owner.organizationID, created.Id, intruderUser)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
@@ -69,6 +77,7 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 }
 
 func TestInvitations_APlatformOwnerOfAnotherTenantCannotReachThem(t *testing.T) {
+	// Invitations a platform owner of another tenant cannot reach them.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())

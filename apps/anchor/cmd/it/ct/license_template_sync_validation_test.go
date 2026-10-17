@@ -18,6 +18,7 @@ import (
 )
 
 func TestTemplateSyncValidationFailure(t *testing.T) {
+	// Template synchronization acknowledges invalid license values but retries schema lookup, server, and locking failures.
 	t.Parallel()
 	for _, test := range []struct {
 		name    string
@@ -31,6 +32,7 @@ func TestTemplateSyncValidationFailure(t *testing.T) {
 		{"licensing write in progress", service.ErrLicensingWriteInProgress, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			// Invalid license values finish the sync job while lookup, server, and locking failures remain retryable.
 			sync := service.NewLicenseTemplateSyncService(
 				syncTemplateRepository{}, syncLicenseRepository{}, nil,
 				syncSchemaFailure{err: test.err}, transactor.New(testDB), nil, nil, nil, zerolog.Nop(),

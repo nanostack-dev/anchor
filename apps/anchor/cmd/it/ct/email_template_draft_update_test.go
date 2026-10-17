@@ -12,6 +12,7 @@ import (
 )
 
 func TestEmailTemplateDraftUpdate(t *testing.T) {
+	// Checks email template draft update across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -31,6 +32,7 @@ func TestEmailTemplateDraftUpdate(t *testing.T) {
 	tplID := created.JSON201.Id
 
 	t.Run("updates subject and body", func(t *testing.T) {
+		// The API updates subject and body.
 		resp, updateErr := client.UpdateEmailTemplateDraftWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -48,6 +50,7 @@ func TestEmailTemplateDraftUpdate(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown template", func(t *testing.T) {
+		// The API returns 404 for unknown template.
 		resp, updateErr := client.UpdateEmailTemplateDraftWithResponse(
 			context.Background(),
 			tc.product.ProductID,

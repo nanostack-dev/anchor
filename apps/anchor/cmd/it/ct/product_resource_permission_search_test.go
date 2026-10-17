@@ -16,6 +16,7 @@ import (
 )
 
 func TestProductResourcePermissionSearchSuccess(t *testing.T) {
+	// Searching product resource permission succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -79,6 +80,7 @@ func TestProductResourcePermissionSearchSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchByNames(t *testing.T) {
+	// Searching product resource permission by names succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -146,6 +148,7 @@ func TestProductResourcePermissionSearchByNames(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithNonExistentNames(t *testing.T) {
+	// Searching product resource permission with nonexistent names succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -172,6 +175,7 @@ func TestProductResourcePermissionSearchWithNonExistentNames(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
+	// Searching product resource permission with pagination succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -219,6 +223,7 @@ func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
+	// Searching product resource permission with sorting succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -274,6 +279,7 @@ func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchWithNonExistentProduct(t *testing.T) {
+	// Searching product resource permission with nonexistent product returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -291,6 +297,7 @@ func TestProductResourcePermissionSearchWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
+	// Searching product resource permission empty filter succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -327,6 +334,7 @@ func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
 }
 
 func TestProductResourcePermissionSearchMixedNamesFilter(t *testing.T) {
+	// Searching product resource permission mixed names filter succeeds.
 	t.Parallel()
 	ctx := context.Background()
 

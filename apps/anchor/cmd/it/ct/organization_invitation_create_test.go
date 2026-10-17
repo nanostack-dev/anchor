@@ -17,6 +17,7 @@ import (
 )
 
 func TestCreateInvitation_ReturnsTheInvitation(t *testing.T) {
+	// Returns the invitation during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -32,6 +33,7 @@ func TestCreateInvitation_ReturnsTheInvitation(t *testing.T) {
 }
 
 func TestCreateInvitation_DefaultsExpiryToSevenDays(t *testing.T) {
+	// Defaults expiry to seven days during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -41,6 +43,7 @@ func TestCreateInvitation_DefaultsExpiryToSevenDays(t *testing.T) {
 }
 
 func TestCreateInvitation_AcceptsExplicitExpiry(t *testing.T) {
+	// Accepts explicit expiry during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	expiresAt := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
@@ -55,6 +58,7 @@ func TestCreateInvitation_AcceptsExplicitExpiry(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesExpiryInThePast(t *testing.T) {
+	// Create invitation refuses expiry in the past.
 	t.Parallel()
 	w := newWorld(t)
 	expiresAt := time.Now().Add(-time.Minute)
@@ -70,6 +74,7 @@ func TestCreateInvitation_RefusesExpiryInThePast(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesSecondPendingForSameEmail(t *testing.T) {
+	// Create invitation refuses second pending for same email.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -83,6 +88,7 @@ func TestCreateInvitation_RefusesSecondPendingForSameEmail(t *testing.T) {
 }
 
 func TestCreateInvitation_ComparesEmailWithoutRegardToCase(t *testing.T) {
+	// Invitation creation treats differently cased email addresses as the same pending invite.
 	t.Parallel()
 	w := newWorld(t)
 	local := "Casey.Mixed-" + itshared.Faker.UUID().V4()
@@ -95,6 +101,7 @@ func TestCreateInvitation_ComparesEmailWithoutRegardToCase(t *testing.T) {
 }
 
 func TestCreateInvitation_AllowsNewInvitationAfterFirstExpired(t *testing.T) {
+	// Allows new invitation after first expired during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -109,6 +116,7 @@ func TestCreateInvitation_AllowsNewInvitationAfterFirstExpired(t *testing.T) {
 }
 
 func TestCreateInvitation_AllowsSameEmailInAnotherOrganization(t *testing.T) {
+	// Allows same email in another organization during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -123,6 +131,7 @@ func TestCreateInvitation_AllowsSameEmailInAnotherOrganization(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesEmailOfExistingMember(t *testing.T) {
+	// Create invitation refuses email of existing member.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -135,6 +144,7 @@ func TestCreateInvitation_RefusesEmailOfExistingMember(t *testing.T) {
 }
 
 func TestCreateInvitation_ComparesMemberEmailWithoutRegardToCase(t *testing.T) {
+	// Invitation creation refuses an existing member's email regardless of letter case.
 	t.Parallel()
 	w := newWorld(t)
 	local := "Member.Mixed-" + itshared.Faker.UUID().V4()
@@ -147,6 +157,7 @@ func TestCreateInvitation_ComparesMemberEmailWithoutRegardToCase(t *testing.T) {
 }
 
 func TestCreateInvitation_AllowsEmailOfMemberOfAnotherOrganization(t *testing.T) {
+	// Allows email of member of another organization during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -161,6 +172,7 @@ func TestCreateInvitation_AllowsEmailOfMemberOfAnotherOrganization(t *testing.T)
 }
 
 func TestCreateInvitation_RefusesUnknownRole(t *testing.T) {
+	// Create invitation refuses unknown role.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -174,6 +186,7 @@ func TestCreateInvitation_RefusesUnknownRole(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesRoleOfAnotherProduct(t *testing.T) {
+	// Create invitation refuses role of another product.
 	t.Parallel()
 	w := newWorld(t)
 	foreign := newWorld(t)
@@ -188,6 +201,7 @@ func TestCreateInvitation_RefusesRoleOfAnotherProduct(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
+	// Create invitation refuses unknown organization.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -201,6 +215,7 @@ func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
 }
 
 func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {
+	// Create invitation refuses malformed email.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -213,6 +228,7 @@ func TestCreateInvitation_RefusesMalformedEmail(t *testing.T) {
 }
 
 func TestCreateInvitation_HoldsOnePendingPerEmailUnderConcurrentCreates(t *testing.T) {
+	// Holds one pending per email under concurrent creates during create invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()

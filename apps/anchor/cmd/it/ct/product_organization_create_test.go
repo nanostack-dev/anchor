@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductOrganizationCreate(t *testing.T) {
+	// Checks product organization creation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -20,6 +21,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 	apiKeyClient, _ := testProduct.CreateAPIKeyClientWithAllScopes()
 	t.Run(
 		"SuccessfulCreateOrganization", func(t *testing.T) {
+			// Creating an organization succeeds.
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -52,6 +54,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 
 	t.Run(
 		"CreateOrganizationsWithDuplicateName", func(t *testing.T) {
+			// Creating organizations with duplicate name succeeds.
 			firstResponse, firstErr := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -85,6 +88,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 
 	t.Run(
 		"CreateOrganizationWithEmptyName", func(t *testing.T) {
+			// Creating an organization with empty name returns a bad request.
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -109,6 +113,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 
 	t.Run(
 		"CreateOrganizationWithInvalidNameLength", func(t *testing.T) {
+			// Creating an organization with invalid name length returns a bad request.
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -136,6 +141,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 
 	t.Run(
 		"CreateOrganizationWithInvalidDescriptionLength", func(t *testing.T) {
+			// Creating an organization with invalid description length returns a bad request.
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -163,6 +169,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 
 	t.Run(
 		"CreateOrganizationWithNonExistentProduct", func(t *testing.T) {
+			// Creating an organization with nonexistent product returns not found.
 			nonExistentProductID := "prod_nonexistent123"
 
 			response, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -186,6 +193,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 	t.Run(
 		"Security Create Organization with Invalid Permissions should return a forbidden error",
 		func(t *testing.T) {
+			// Security create organization with invalid permissions should return a forbidden error.
 			apiKeyClientWithBadPermissions, apiKeyIDBadPerm := testProduct.
 				CreateAPIKeyClientWithScopes(
 					[]string{"organization:read"},
@@ -212,6 +220,7 @@ func TestProductOrganizationCreate(t *testing.T) {
 	)
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

@@ -14,11 +14,13 @@ import (
 )
 
 func TestDeleteProductUser(t *testing.T) {
+	// Checks product user deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"SuccessfulDeleteProductUser", func(t *testing.T) {
+			// Deleting a product user succeeds.
 			productContext := createTestProductContext(t)
 
 			testUser := createDSLProductUser(t, productContext)
@@ -54,6 +56,7 @@ func TestDeleteProductUser(t *testing.T) {
 
 	t.Run(
 		"DeleteNonExistentProductUser", func(t *testing.T) {
+			// Deleting nonexistent product user succeeds.
 			productContext := createTestProductContext(t)
 
 			nonExistentUserID := ids.MustNew("puser")
@@ -76,6 +79,7 @@ func TestDeleteProductUser(t *testing.T) {
 
 	t.Run(
 		"DeleteProductUserMultipleTimes", func(t *testing.T) {
+			// Product user multiple deletion times.
 			productContext := createTestProductContext(t)
 
 			testUser := createDSLProductUser(t, productContext)
@@ -98,6 +102,7 @@ func TestDeleteProductUser(t *testing.T) {
 	)
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		productContext := createTestProductContext(t)
 		sink := productContext.CaptureEvents()
 		testUser := createDSLProductUser(t, productContext)
@@ -111,6 +116,7 @@ func TestDeleteProductUser(t *testing.T) {
 	})
 
 	t.Run("EmitsOnlyWhenARowIsDeleted", func(t *testing.T) {
+		// The API emits only when a row is deleted.
 		productContext := createTestProductContext(t)
 		sink := productContext.CaptureEvents()
 		testUser := createDSLProductUser(t, productContext)

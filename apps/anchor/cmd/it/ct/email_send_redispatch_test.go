@@ -25,6 +25,7 @@ import (
 //
 // Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendRedispatchesFailedDedupe(t *testing.T) {
+	// Retrying a failed send with the same dedupe key retries delivery instead of creating a second record.
 	mp := mailpit.Shared(t)
 
 	tc := newEmailTestCtx(t)

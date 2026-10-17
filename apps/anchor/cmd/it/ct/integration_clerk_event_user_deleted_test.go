@@ -13,6 +13,7 @@ import (
 )
 
 func TestClerkWebhookUserDeletedEvent(t *testing.T) {
+	// A signed Clerk user-deleted event deletes the product user and emits its product event.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()

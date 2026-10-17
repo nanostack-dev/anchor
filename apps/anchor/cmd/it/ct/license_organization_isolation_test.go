@@ -13,8 +13,10 @@ import (
 // The license-to-template direction stays isolated. The other direction is
 // deliberately not — see organization_license_template_sync_test.go.
 func TestOrganizationLicenseIsolation(t *testing.T) {
+	// Changing one organization's license leaves other organizations and its source template unchanged.
 	t.Parallel()
 	t.Run("adjusting a license leaves the template unchanged", func(t *testing.T) {
+		// Adjusting a license leaves the template unchanged.
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -24,6 +26,7 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 	})
 
 	t.Run("adjusting one organization leaves another on the same template alone", func(t *testing.T) {
+		// Adjusting one organization leaves another on the same template alone.
 		w := newLicensedWorld(t)
 		neighbour := w.License().For(w.NewOrganization())
 		neighbour.Instantiate(w.TemplateID())
@@ -34,6 +37,7 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 	})
 
 	t.Run("archiving the template leaves the license readable", func(t *testing.T) {
+		// Archiving the template leaves the license readable.
 		w := newLicensedWorld(t)
 		templateID := w.TemplateID()
 
@@ -48,6 +52,7 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 	})
 
 	t.Run("deleting the product takes the template and the license with it", func(t *testing.T) {
+		// Deleting the product takes the template and the license with it.
 		w := newLicensedWorld(t)
 
 		// organization_licenses.template_id is a real foreign key now, and a
@@ -59,6 +64,7 @@ func TestOrganizationLicenseIsolation(t *testing.T) {
 	})
 
 	t.Run("a withdrawn tier cannot be sold to anyone else", func(t *testing.T) {
+		// A withdrawn tier cannot be sold to anyone else.
 		w := newLicensedWorld(t)
 		newcomer := w.License().For(w.NewOrganization())
 

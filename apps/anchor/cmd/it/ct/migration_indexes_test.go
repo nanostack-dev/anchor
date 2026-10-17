@@ -19,6 +19,7 @@ import (
 var cursorSearchIndexMigration = regexp.MustCompile(`^0000(4[3-9]|5[0-3])_.*\.(up|down)\.sql$`)
 
 func TestCursorSearchIndexMigrationsAreSingleConcurrentStatements(t *testing.T) {
+	// Cursor search index migrations are single concurrent statements.
 	t.Parallel()
 
 	files, err := filepath.Glob("../../../migrations/0000[45]*.sql")
@@ -46,6 +47,7 @@ func TestCursorSearchIndexMigrationsAreSingleConcurrentStatements(t *testing.T) 
 }
 
 func TestCursorSearchIndexesAreValid(t *testing.T) {
+	// Cursor search indexes are valid.
 	t.Parallel()
 
 	// A concurrent build that fails leaves an INVALID index behind, and the

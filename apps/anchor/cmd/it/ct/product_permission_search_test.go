@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductPermissions_Search(t *testing.T) {
+	// Checks product permissions search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -26,6 +27,7 @@ func TestProductPermissions_Search(t *testing.T) {
 
 	t.Run(
 		"Search existing permissions", func(t *testing.T) {
+			// Searching existing permissions succeeds.
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
 					Filter: &ct.ProductPermissionFilter{
@@ -45,6 +47,7 @@ func TestProductPermissions_Search(t *testing.T) {
 
 	t.Run(
 		"Search existing permissions with different case", func(t *testing.T) {
+			// Search existing permissions with different case.
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
 					Filter: &ct.ProductPermissionFilter{
@@ -62,6 +65,7 @@ func TestProductPermissions_Search(t *testing.T) {
 
 	t.Run(
 		"Search by multiple permissions", func(t *testing.T) {
+			// Searching by multiple permissions succeeds.
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
 					FullTextSearch: new("organization_m"),
@@ -94,6 +98,7 @@ func TestProductPermissions_Search(t *testing.T) {
 
 	t.Run(
 		"Search non-existent permission", func(t *testing.T) {
+			// Searching non-existent permission succeeds.
 			searchResp, err := testCtx.OwnerAuthenticatedClient().SearchProductPermissionsWithResponse(
 				ctx, productID, ct.SearchProductPermissionsJSONRequestBody{
 					Filter: &ct.ProductPermissionFilter{

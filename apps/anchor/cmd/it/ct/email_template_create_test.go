@@ -11,11 +11,13 @@ import (
 )
 
 func TestEmailTemplateCreate(t *testing.T) {
+	// Checks email template creation across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 
 	t.Run("creates template with draft version", func(t *testing.T) {
+		// The API creates template with draft version.
 		resp, err := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -40,6 +42,7 @@ func TestEmailTemplateCreate(t *testing.T) {
 	})
 
 	t.Run("rejects duplicate slug", func(t *testing.T) {
+		// The API rejects duplicate slug.
 		slug := uniqueSlug()
 		body := ct.CreateEmailTemplateJSONRequestBody{
 			Slug:     slug,
@@ -65,22 +68,27 @@ func TestEmailTemplateCreate(t *testing.T) {
 	})
 
 	t.Run("rejects missing required fields", func(t *testing.T) {
+		// The API rejects missing required fields.
 		cases := []struct {
 			name string
 			body ct.CreateEmailTemplateJSONRequestBody
 		}{
+			// Template creation rejects missing slug.
 			{
 				name: "missing slug",
 				body: ct.CreateEmailTemplateJSONRequestBody{Name: "N", Subject: "S", BodyHtml: "<p>B</p>"},
 			},
+			// Template creation rejects missing name.
 			{
 				name: "missing name",
 				body: ct.CreateEmailTemplateJSONRequestBody{Slug: uniqueSlug(), Subject: "S", BodyHtml: "<p>B</p>"},
 			},
+			// Template creation rejects missing subject.
 			{
 				name: "missing subject",
 				body: ct.CreateEmailTemplateJSONRequestBody{Slug: uniqueSlug(), Name: "N", BodyHtml: "<p>B</p>"},
 			},
+			// Template creation rejects missing body html.
 			{
 				name: "missing body_html",
 				body: ct.CreateEmailTemplateJSONRequestBody{Slug: uniqueSlug(), Name: "N", Subject: "S"},
@@ -88,6 +96,7 @@ func TestEmailTemplateCreate(t *testing.T) {
 		}
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
+				// A template missing this required field is refused.
 				resp, err := client.CreateEmailTemplateWithResponse(context.Background(), tc.product.ProductID, c.body)
 				require.NoError(t, err)
 				assert.Equal(t, http.StatusBadRequest, resp.StatusCode())

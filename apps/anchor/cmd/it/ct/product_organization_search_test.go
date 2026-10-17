@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductOrganizationSearch(t *testing.T) {
+	// Checks product organization search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -55,6 +56,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SuccessfulSearchAllOrganizations", func(t *testing.T) {
+			// Searching all organizations succeeds.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -98,6 +100,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsByIDs", func(t *testing.T) {
+			// Searching organizations by IDs succeeds.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -133,6 +136,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsByNames", func(t *testing.T) {
+			// Searching organizations by names succeeds.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -168,6 +172,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsWithFullTextSearch", func(t *testing.T) {
+			// Searching organizations with full text search succeeds.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -199,6 +204,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsWithSorting", func(t *testing.T) {
+			// Searching organizations with sorting succeeds.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -239,6 +245,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsWithPagination", func(t *testing.T) {
+			// Searching organizations with pagination succeeds.
 			response1, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -298,6 +305,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsEmptyResults", func(t *testing.T) {
+			// Organization search returns an empty result set when nothing matches.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -326,6 +334,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsInvalidPagination", func(t *testing.T) {
+			// Searching organizations invalid pagination returns a bad request.
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -350,6 +359,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SearchOrganizationsNonExistentProduct", func(t *testing.T) {
+			// Searching organizations nonexistent product returns not found.
 			nonExistentProductID := "prod_nonexistent123"
 
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
@@ -376,6 +386,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 
 	t.Run(
 		"SecuritySearchOrganizationsWithInvalidPermissions", func(t *testing.T) {
+			// Organization search refuses an API key without the required scope.
 			apiKeyClientWithBadPermissions, apiKeyIDBadPerm := testProduct.CreateAPIKeyClientWithScopes(
 				[]string{"organization:create"},
 			)

@@ -30,11 +30,13 @@ func createPlatformInvitation(t *testing.T, email string) string {
 }
 
 func TestRegister(t *testing.T) {
+	// Registration validates account details and invitation codes before creating an administrator.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
 		"WeakPassword", func(t *testing.T) {
+			// Registration refuses a password that fails the strength rules.
 			registerReq := ct.RegisterJSONRequestBody{
 				Email:    "register_weakpw@example.com",
 				Password: "123",
@@ -55,6 +57,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run(
 		"MissingFields", func(t *testing.T) {
+			// Registration refuses a request missing required account fields.
 			// Missing password
 			registerReq := ct.RegisterJSONRequestBody{
 				Email: "missingpw@example.com",
@@ -73,12 +76,14 @@ func TestRegister(t *testing.T) {
 
 	t.Run(
 		"WithInvitationCode", func(t *testing.T) {
+			// Registration requires a valid invitation code before creating the account.
 			email := itshared.Faker.Internet().Email()
 			// Setup: Create invitation using platform owner
 			invitationCode := createPlatformInvitation(t, email)
 
 			t.Run(
 				"ValidInvitationCode", func(t *testing.T) {
+					// Registration accepts the invitation code and creates the invited administrator.
 					registerReq := ct.RegisterJSONRequestBody{
 						Email:          email,
 						Password:       "ValidPassword123!",
@@ -99,6 +104,7 @@ func TestRegister(t *testing.T) {
 
 			t.Run(
 				"MissingInvitationCode", func(t *testing.T) {
+					// Registration refuses a request without its required invitation code.
 					registerReq := ct.RegisterJSONRequestBody{
 						Email:    itshared.Faker.Internet().Email(),
 						Password: "ValidPassword123!",
@@ -119,6 +125,7 @@ func TestRegister(t *testing.T) {
 
 			t.Run(
 				"InvalidInvitationCode", func(t *testing.T) {
+					// Registration refuses an invalid invitation code.
 					email = itshared.Faker.Internet().Email()
 					invitationCode = createPlatformInvitation(t, email)
 					invalidCode := "invalid-code-123"

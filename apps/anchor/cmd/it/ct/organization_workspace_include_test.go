@@ -12,6 +12,7 @@ import (
 )
 
 func TestOrganizationReadIncludesWorkspaces(t *testing.T) {
+	// Organization read includes workspaces.
 	t.Parallel()
 	product := createTestProductContext(t)
 	org := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{Name: ids.MustNew("org")})
@@ -38,6 +39,7 @@ func TestOrganizationReadIncludesWorkspaces(t *testing.T) {
 }
 
 func TestOrganizationReadIncludesWorkspaceAndLicense(t *testing.T) {
+	// Organization read includes workspace and license.
 	t.Parallel()
 	w := newLicenseWorld(t)
 	name := itdsl.UniqueOrganizationName()
@@ -67,6 +69,7 @@ func TestOrganizationReadIncludesWorkspaceAndLicense(t *testing.T) {
 }
 
 func TestOrganizationWorkspaceIncludeIsProductScoped(t *testing.T) {
+	// Organization workspace include is product scoped.
 	t.Parallel()
 	owner := createTestProductContext(t)
 	foreign := createTestProductContext(t)
@@ -87,6 +90,7 @@ func TestOrganizationWorkspaceIncludeIsProductScoped(t *testing.T) {
 }
 
 func TestOrganizationWorkspacesHaveNoSpecialIdentity(t *testing.T) {
+	// Organization workspaces have no special identity.
 	t.Parallel()
 	product := createTestProductContext(t)
 	org := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{Name: ids.MustNew("org")})

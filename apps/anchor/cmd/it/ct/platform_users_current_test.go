@@ -13,11 +13,13 @@ import (
 )
 
 func TestGetCurrentUserPlatformUser(t *testing.T) {
+	// Checks current user platform user lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"SuccessfulGetCurrentUserAsOwner", func(t *testing.T) {
+			// Reading current user as owner succeeds.
 			resp, err := testOwnerClient(t).GetCurrentUserWithResponse(ctx)
 			require.NoError(t, err, "get current productuserservice request should not error")
 			assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -29,6 +31,7 @@ func TestGetCurrentUserPlatformUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetCurrentUserAsAdmin", func(t *testing.T) {
+			// Reading current user as admin succeeds.
 			testUser := createPlatformAdmin(t)
 			assert.NotEmpty(
 				t, testUser.AccessToken, "test productuserservice should have access token",
@@ -45,6 +48,7 @@ func TestGetCurrentUserPlatformUser(t *testing.T) {
 
 	t.Run(
 		"GetCurrentUserAfterUserDeletion", func(t *testing.T) {
+			// Reading current user after user deletion succeeds.
 			testUser := createPlatformAdmin(t)
 			assert.NotEmpty(
 				t, testUser.AccessToken, "test productuserservice should have access token",

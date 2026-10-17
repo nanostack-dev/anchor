@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductSearch(t *testing.T) {
+	// Checks product search across the scenarios below.
 	t.Parallel()
 	ctx := t.Context()
 	productsCreated := make([]ct.ProductResponse, 0)
@@ -36,6 +37,7 @@ func TestProductSearch(t *testing.T) {
 
 	t.Run(
 		"Search with multiple search param", func(t *testing.T) {
+			// Search with multiple search param.
 			response, err := testOwnerClient(t).SearchProductsWithResponse(
 				ctx,
 				ct.SearchProductsJSONRequestBody{

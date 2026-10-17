@@ -13,6 +13,7 @@ import (
 )
 
 func TestClerkWebhookUserUpdatedEvent(t *testing.T) {
+	// A signed Clerk user-updated event updates the product user and emits its product event.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
@@ -62,6 +63,7 @@ func TestClerkWebhookUserUpdatedEvent(t *testing.T) {
 }
 
 func TestClerkWebhookUnchangedUserDoesNotEmit(t *testing.T) {
+	// Clerk webhook unchanged user does not emit.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()

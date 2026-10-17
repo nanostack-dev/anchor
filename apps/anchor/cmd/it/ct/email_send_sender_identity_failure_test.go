@@ -25,6 +25,7 @@ import (
 // error never reaches the dispatch-error classifier; this guards that the
 // pre-dispatch path is classified the same way.
 func TestEmailSendSenderIdentityFailure(t *testing.T) {
+	// An invalid sender identity prevents delivery and records the send failure.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	seedUndecryptableSMTPInstance(t, tc)

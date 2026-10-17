@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductAPIKeyDelete(t *testing.T) {
+	// Checks product API key deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -21,6 +22,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 
 	t.Run(
 		"Delete existing API key successfully", func(t *testing.T) {
+			// Delete existing API key successfully.
 			apiKeyName := "DeleteKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -57,6 +59,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 
 	t.Run(
 		"Delete API key table driven scenarios", func(t *testing.T) {
+			// Delete API key table driven scenarios.
 			validAPIKeyName := "ValidDeleteKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -79,18 +82,21 @@ func TestProductAPIKeyDelete(t *testing.T) {
 				apiKeyID       string
 				expectedStatus int
 			}{
+				// The product-key operation accepts valid product and API key IDs.
 				{
 					name:           "Valid product and API key IDs",
 					productID:      product.ProductID,
 					apiKeyID:       createResp.JSON201.Id,
 					expectedStatus: 204,
 				},
+				// The product-key operation refuses invalid product ID.
 				{
 					name:           "Invalid product ID",
 					productID:      ids.MustNew("prd"),
 					apiKeyID:       createResp.JSON201.Id,
 					expectedStatus: 404,
 				},
+				// The product-key operation refuses invalid API key ID.
 				{
 					name:           "Invalid API key ID",
 					productID:      product.ProductID,
@@ -102,6 +108,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 			for _, tc := range testCases {
 				t.Run(
 					tc.name, func(t *testing.T) {
+						// Product-key deletion returns the expected result for this product and key identifier pair.
 						deleteResp, deleteErr := product.OwnerAuthenticatedClient().DeleteProductAPIKeyWithResponse(
 							ctx, tc.productID, tc.apiKeyID,
 						)
@@ -115,6 +122,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 
 	t.Run(
 		"Delete API key and verify it cannot be retrieved", func(t *testing.T) {
+			// Delete API key and verify it cannot be retrieved.
 			apiKeyName := "VerifyDeleteKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -172,6 +180,7 @@ func TestProductAPIKeyDelete(t *testing.T) {
 	t.Run(
 		"If multiple api keys are created, deleting one should not affect others",
 		func(t *testing.T) {
+			// If multiple API keys are created, deleting one should not affect others.
 			apiKeyName1 := "MultiDeleteKey1_" + uuid.NewString()
 			apiKeyName2 := "MultiDeleteKey2_" + uuid.NewString()
 

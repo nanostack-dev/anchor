@@ -31,8 +31,10 @@ func seedSchema(t *testing.T, tc licenseTestCtx) *ct.ClientWithResponses {
 }
 
 func TestLicenseSchemaUpdate(t *testing.T) {
+	// Checks license schema update across the scenarios below.
 	t.Parallel()
 	t.Run("replaces the field declaration wholesale", func(t *testing.T) {
+		// The API replaces the field declaration wholesale.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 
@@ -66,6 +68,7 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 	})
 
 	t.Run("leaves fields alone when the request omits them", func(t *testing.T) {
+		// The API leaves fields alone when the request omits them.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 
@@ -86,6 +89,7 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 	})
 
 	t.Run("clears the declaration when handed an empty list", func(t *testing.T) {
+		// Clears the declaration when handed an empty list.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 
@@ -101,6 +105,7 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 	})
 
 	t.Run("404 when the product has declared no schema", func(t *testing.T) {
+		// The API returns 404 when the product has declared no schema.
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().UpdateLicenseSchemaWithResponse(
@@ -113,6 +118,7 @@ func TestLicenseSchemaUpdate(t *testing.T) {
 	})
 
 	t.Run("a rejected update leaves the stored declaration untouched", func(t *testing.T) {
+		// A rejected update leaves the stored declaration untouched.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 

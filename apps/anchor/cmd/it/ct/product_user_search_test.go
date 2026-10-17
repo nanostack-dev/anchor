@@ -13,11 +13,13 @@ import (
 )
 
 func TestSearchProductUsers(t *testing.T) {
+	// Checks product users search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"SearchProductUsersEmpty", func(t *testing.T) {
+			// Product-user search returns an empty result set for a product without users.
 			productContext := createTestProductContext(t)
 
 			resp, err := productContext.OwnerAuthenticatedClient().SearchProductUsersWithResponse(
@@ -37,6 +39,7 @@ func TestSearchProductUsers(t *testing.T) {
 
 	t.Run(
 		"SearchProductUsersBasic", func(t *testing.T) {
+			// Product-user search returns the product's saved users.
 			productContext := createTestProductContext(t)
 
 			user1 := createDSLProductUser(t, productContext)
@@ -66,6 +69,7 @@ func TestSearchProductUsers(t *testing.T) {
 
 	t.Run(
 		"SearchProductUsersWithPagination", func(t *testing.T) {
+			// Searching product users with pagination succeeds.
 			productContext := createTestProductContext(t)
 
 			for range 5 {
@@ -129,6 +133,7 @@ func TestSearchProductUsers(t *testing.T) {
 
 	t.Run(
 		"SearchProductUsersByFilter", func(t *testing.T) {
+			// Searching product users by filter succeeds.
 			productContext := createTestProductContext(t)
 
 			email1 := "test1@example.com"

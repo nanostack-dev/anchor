@@ -57,6 +57,7 @@ func seedAuditLogs(t *testing.T) (emailTestCtx, string, map[string]string) {
 }
 
 func TestSearchIntegrationAuditLogs(t *testing.T) {
+	// Checks integration audit logs search across the scenarios below.
 	t.Parallel()
 
 	search := func(t *testing.T, tc emailTestCtx, instanceID string, body ct.SearchIntegrationAuditLogsJSONRequestBody) *ct.SearchIntegrationAuditLogsResponse {
@@ -77,6 +78,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 	}
 
 	t.Run("lists the newest entry first without a sort", func(t *testing.T) {
+		// The API lists the newest entry first without a sort.
 		t.Parallel()
 		tc, instanceID, entries := seedAuditLogs(t)
 
@@ -91,6 +93,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 	})
 
 	t.Run("filters by action", func(t *testing.T) {
+		// The API filters by action.
 		t.Parallel()
 		tc, instanceID, entries := seedAuditLogs(t)
 
@@ -102,6 +105,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 	})
 
 	t.Run("filters by severity", func(t *testing.T) {
+		// The API filters by severity.
 		t.Parallel()
 		tc, instanceID, entries := seedAuditLogs(t)
 
@@ -113,6 +117,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 	})
 
 	t.Run("filters by date range, the start included and the end excluded", func(t *testing.T) {
+		// The API filters by date range, the start included and the end excluded.
 		t.Parallel()
 		tc, instanceID, entries := seedAuditLogs(t)
 		start := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
@@ -128,6 +133,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 	})
 
 	t.Run("an instance of another product is not found", func(t *testing.T) {
+		// An instance of another product is not found.
 		t.Parallel()
 		_, instanceID, _ := seedAuditLogs(t)
 		other := newEmailTestCtx(t)
@@ -139,6 +145,7 @@ func TestSearchIntegrationAuditLogs(t *testing.T) {
 }
 
 func TestSearchUserOrganizations(t *testing.T) {
+	// Checks user organizations search across the scenarios below.
 	t.Parallel()
 
 	type fixture struct {
@@ -197,6 +204,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	}
 
 	t.Run("lists the earliest joined organization first", func(t *testing.T) {
+		// The API lists the earliest joined organization first.
 		t.Parallel()
 		f := build(t)
 
@@ -210,6 +218,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	})
 
 	t.Run("filters by role", func(t *testing.T) {
+		// The API filters by role.
 		t.Parallel()
 		f := build(t)
 
@@ -221,6 +230,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	})
 
 	t.Run("filters by organization", func(t *testing.T) {
+		// The API filters by organization.
 		t.Parallel()
 		f := build(t)
 
@@ -232,6 +242,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	})
 
 	t.Run("reads the role permissions of every organization in the page on request", func(t *testing.T) {
+		// The API reads the role permissions of every organization in the page on request.
 		t.Parallel()
 		f := build(t)
 		include := []ct.UserOrganizationInclude{ct.UserOrganizationIncludeRolePermissions}
@@ -254,6 +265,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	})
 
 	t.Run("an unknown user is not found", func(t *testing.T) {
+		// An unknown user is not found.
 		t.Parallel()
 		f := build(t)
 		f.userID = ids.MustNew("pusr")
@@ -266,6 +278,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 	})
 
 	t.Run("a key without product_user:read is refused", func(t *testing.T) {
+		// A key without product user:read is refused.
 		t.Parallel()
 		f := build(t)
 		client, _ := f.product.CreateAPIKeyClientWithScopes([]string{"organization:read"})
@@ -279,6 +292,7 @@ func TestSearchUserOrganizations(t *testing.T) {
 }
 
 func TestSearchEmailTemplates(t *testing.T) {
+	// Checks email templates search across the scenarios below.
 	t.Parallel()
 
 	create := func(t *testing.T, tc emailTestCtx, slug, name string) string {
@@ -307,6 +321,7 @@ func TestSearchEmailTemplates(t *testing.T) {
 	}
 
 	t.Run("filters by slug, id and full text, and reports the total of the filter", func(t *testing.T) {
+		// The API filters by slug, id and full text, and reports the total of the filter.
 		t.Parallel()
 		tc := newEmailTestCtx(t)
 		welcome := create(t, tc, "welcome-"+ids.MustNew("ct"), "Welcome mail")
@@ -330,6 +345,7 @@ func TestSearchEmailTemplates(t *testing.T) {
 	})
 
 	t.Run("filters by active state", func(t *testing.T) {
+		// The API filters by active state.
 		t.Parallel()
 		tc := newEmailTestCtx(t)
 		active := create(t, tc, uniqueSlug(), "Active")
@@ -346,6 +362,7 @@ func TestSearchEmailTemplates(t *testing.T) {
 }
 
 func TestSearchEmailSends(t *testing.T) {
+	// Email search sends.
 	t.Parallel()
 
 	tc := newEmailTestCtx(t)
@@ -393,29 +410,35 @@ func TestSearchEmailSends(t *testing.T) {
 	}
 
 	t.Run("lists the newest send first", func(t *testing.T) {
+		// The API lists the newest send first.
 		assert.Equal(t, []string{sentWithoutTemplate, failedFromTemplate, sentFromTemplate}, search(t, nil))
 	})
 
 	t.Run("filters by template", func(t *testing.T) {
+		// The API filters by template.
 		assert.Equal(t, []string{failedFromTemplate, sentFromTemplate},
 			search(t, &ct.EmailSendFilter{TemplateIds: []string{templateID}}))
 	})
 
 	t.Run("filters by status", func(t *testing.T) {
+		// The API filters by status.
 		assert.Equal(t, []string{sentWithoutTemplate, sentFromTemplate},
 			search(t, &ct.EmailSendFilter{Statuses: []ct.EmailSendStatus{"SENT"}}))
 	})
 
 	t.Run("filters by template and status together", func(t *testing.T) {
+		// The API filters by template and status together.
 		assert.Equal(t, []string{sentFromTemplate},
 			search(t, &ct.EmailSendFilter{TemplateIds: []string{templateID}, Statuses: []ct.EmailSendStatus{"SENT"}}))
 	})
 }
 
 func TestSearchLicenseTemplates(t *testing.T) {
+	// Search license templates.
 	t.Parallel()
 
 	t.Run("filters by status and keeps every template without one", func(t *testing.T) {
+		// The API filters by status and keeps every template without one.
 		t.Parallel()
 		tc := newTemplateCtx(t)
 		free := createTemplate(t, tc, "Free", validTemplateValues())
@@ -451,6 +474,7 @@ func TestSearchLicenseTemplates(t *testing.T) {
 	})
 
 	t.Run("full text search matches the description as well as the name", func(t *testing.T) {
+		// Full text search matches the description as well as the name.
 		t.Parallel()
 		tc := newTemplateCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
@@ -491,6 +515,7 @@ func TestSearchLicenseTemplates(t *testing.T) {
 	})
 
 	t.Run("full text search matches LIKE metacharacters literally", func(t *testing.T) {
+		// Full text search matches like metacharacters literally.
 		t.Parallel()
 		tc := newTemplateCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
@@ -525,6 +550,7 @@ func TestSearchLicenseTemplates(t *testing.T) {
 	})
 
 	t.Run("a key without license_template:read is refused", func(t *testing.T) {
+		// A key without license template:read is refused.
 		t.Parallel()
 		tc := newTemplateCtx(t)
 		client, _ := tc.product.CreateAPIKeyClientWithScopes([]string{"license_template:create"})
@@ -538,6 +564,7 @@ func TestSearchLicenseTemplates(t *testing.T) {
 }
 
 func TestSearchOrganizationLicenseHistory(t *testing.T) {
+	// Organization search license history.
 	t.Parallel()
 
 	search := func(t *testing.T, w *licenseWorld, organizationID string, body ct.SearchOrganizationLicenseHistoryJSONRequestBody) *ct.SearchOrganizationLicenseHistoryResponse {
@@ -550,6 +577,7 @@ func TestSearchOrganizationLicenseHistory(t *testing.T) {
 	}
 
 	t.Run("filters by change type and returns the newest entry first", func(t *testing.T) {
+		// The API filters by change type and returns the newest entry first.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 1, "sso": false})
@@ -568,6 +596,7 @@ func TestSearchOrganizationLicenseHistory(t *testing.T) {
 	})
 
 	t.Run("filters by date range", func(t *testing.T) {
+		// The API filters by date range.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 1})
@@ -596,6 +625,7 @@ func TestSearchOrganizationLicenseHistory(t *testing.T) {
 	})
 
 	t.Run("an organization never licensed has an empty history, and an unknown one is not found", func(t *testing.T) {
+		// An organization never licensed has an empty history, and an unknown one is not found.
 		t.Parallel()
 		w := newLicenseWorld(t)
 

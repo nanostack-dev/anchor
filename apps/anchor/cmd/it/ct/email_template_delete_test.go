@@ -12,11 +12,13 @@ import (
 )
 
 func TestEmailTemplateDelete(t *testing.T) {
+	// Checks email template deletion across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 
 	t.Run("deletes existing template", func(t *testing.T) {
+		// The API deletes existing template.
 		created, err := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -41,6 +43,7 @@ func TestEmailTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown ID", func(t *testing.T) {
+		// The API returns 404 for unknown ID.
 		resp, err := client.DeleteEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -51,6 +54,7 @@ func TestEmailTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("deleting one template does not affect others", func(t *testing.T) {
+		// Deleting one template does not affect others.
 		a, err := client.CreateEmailTemplateWithResponse(
 			context.Background(), tc.product.ProductID,
 			ct.CreateEmailTemplateJSONRequestBody{Slug: uniqueSlug(), Name: "A", Subject: "S", BodyHtml: "<p>B</p>"},

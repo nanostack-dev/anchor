@@ -11,6 +11,7 @@ import (
 )
 
 func TestSearchInvitationsInProduct_FindsThePendingInvitationsOfAnEmailAcrossOrganizations(t *testing.T) {
+	// Finds the pending invitations of an email across organizations during search invitations in product.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -27,6 +28,7 @@ func TestSearchInvitationsInProduct_FindsThePendingInvitationsOfAnEmailAcrossOrg
 }
 
 func TestSearchInvitationsInProduct_ComparesEmailsWithoutLetterCase(t *testing.T) {
+	// Product-wide invitation search matches emails regardless of letter case.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -38,6 +40,7 @@ func TestSearchInvitationsInProduct_ComparesEmailsWithoutLetterCase(t *testing.T
 }
 
 func TestSearchInvitationsInProduct_MatchesAnyOfTheEmails(t *testing.T) {
+	// Matches any of the emails during search invitations in product.
 	t.Parallel()
 	w := newWorld(t)
 	primary := w.invite(uniqueEmail())
@@ -50,6 +53,7 @@ func TestSearchInvitationsInProduct_MatchesAnyOfTheEmails(t *testing.T) {
 }
 
 func TestSearchInvitationsInProduct_LeavesOutAcceptedAndExpiredInvitationsWhenAskedForPending(t *testing.T) {
+	// Leaves out accepted and expired invitations when asked for pending during search invitations in product.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -73,6 +77,7 @@ func TestSearchInvitationsInProduct_LeavesOutAcceptedAndExpiredInvitationsWhenAs
 }
 
 func TestSearchInvitationsInProduct_ReadsEveryStatusWithoutAStatusFilter(t *testing.T) {
+	// Reads every status without a status filter during search invitations in product.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -88,6 +93,7 @@ func TestSearchInvitationsInProduct_ReadsEveryStatusWithoutAStatusFilter(t *test
 }
 
 func TestSearchInvitationsInProduct_ReturnsTheOrganizationOfEachInvitation(t *testing.T) {
+	// Returns the organization of each invitation during search invitations in product.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -99,6 +105,7 @@ func TestSearchInvitationsInProduct_ReturnsTheOrganizationOfEachInvitation(t *te
 }
 
 func TestSearchInvitations_FiltersByEmail(t *testing.T) {
+	// Filters by email during search invitations.
 	t.Parallel()
 	w := newWorld(t)
 	wanted := w.invite(uniqueEmail())

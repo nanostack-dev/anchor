@@ -10,8 +10,10 @@ import (
 )
 
 func TestGetOrganizationLicense(t *testing.T) {
+	// Organization lookup license.
 	t.Parallel()
 	t.Run("reads the effective license in one call", func(t *testing.T) {
+		// The API reads the effective license in one call.
 		w := newLicensedWorld(t)
 
 		organizationLicense := w.License().Get()
@@ -32,6 +34,7 @@ func TestGetOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("404 when the organization has no license", func(t *testing.T) {
+		// The API returns 404 when the organization has no license.
 		w := newLicenseWorld(t)
 
 		resp := w.License().GetRaw()
@@ -39,6 +42,7 @@ func TestGetOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {
+		// The API returns 404 when the product has no organization with that identifier.
 		w := newLicensedWorld(t)
 
 		resp := w.License().For(missingOrganizationID()).GetRaw()
@@ -46,6 +50,7 @@ func TestGetOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("does not read another product's license", func(t *testing.T) {
+		// The API does not read another product's license.
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 

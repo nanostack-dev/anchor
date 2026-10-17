@@ -21,12 +21,14 @@ func decodeAPIError(t *testing.T, body []byte) ct.ApiErrorResponse {
 }
 
 func TestLogin(t *testing.T) {
+	// Login accepts valid credentials and refuses missing or incorrect credentials.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).Email)
 	assert.NotEmpty(t, testOwnerUser(t).Password)
 
 	t.Run(
 		"ValidCredentials", func(t *testing.T) {
+			// Valid login credentials return access and refresh tokens.
 			loginReq := ct.LoginJSONRequestBody{
 				Email:    testOwnerUser(t).Email,
 				Password: testOwnerUser(t).Password,
@@ -44,6 +46,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run(
 		"InvalidPassword", func(t *testing.T) {
+			// Login refuses an incorrect password without authenticating the caller.
 			loginReq := ct.LoginJSONRequestBody{
 				Email:    testOwnerUser(t).Email,
 				Password: "WrongPassword!",
@@ -61,6 +64,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run(
 		"NonexistentUser", func(t *testing.T) {
+			// Login refuses an email address with no registered user.
 			loginReq := ct.LoginJSONRequestBody{
 				Email:    "doesnotexist@example.com",
 				Password: "AnyPassword123!",
@@ -78,6 +82,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run(
 		"MissingPassword", func(t *testing.T) {
+			// Login refuses a request without a password.
 			loginReq := ct.LoginJSONRequestBody{
 				Email:    testOwnerUser(t).Email,
 				Password: "",

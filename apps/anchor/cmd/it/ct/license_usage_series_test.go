@@ -12,7 +12,9 @@ import (
 
 // Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageSeries(t *testing.T) {
+	// Usage series return filtered, bucketed observations and validate the requested time range and granularity.
 	t.Run("an empty series reads back as zero items, not an error", func(t *testing.T) {
+		// An empty series reads back as zero items, not an error.
 		w := newLicenseWorld(t)
 
 		series := w.Usage().Series(seriesQuery(
@@ -25,6 +27,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("a reported gauge is readable back through the series", func(t *testing.T) {
+		// A reported gauge is readable back through the series.
 		w := newLicenseWorld(t)
 		before := time.Now().Add(-time.Minute)
 
@@ -42,6 +45,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("a windowed counter's window rides along with its bucket", func(t *testing.T) {
+		// A windowed counter's window rides along with its bucket.
 		w := newWindowedCounterWorld(t)
 		before := time.Now().Add(-time.Minute)
 		from, to := billingPeriod()
@@ -60,6 +64,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("filters by key: another field's usage does not leak in", func(t *testing.T) {
+		// The API filters by key: another field's usage does not leak in.
 		w := newLicenseWorld(t)
 		before := time.Now().Add(-time.Minute)
 		w.Usage().Report(gauge("flows", 37))
@@ -70,6 +75,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("filters by time range: a point outside the window is excluded", func(t *testing.T) {
+		// The API filters by time range: a point outside the window is excluded.
 		w := newLicenseWorld(t)
 		w.Usage().Report(gauge("flows", 37))
 		longAgo := time.Now().Add(-48 * time.Hour)
@@ -82,6 +88,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("repeated reports within one bucket still read back as one point", func(t *testing.T) {
+		// Repeated reports within one bucket still read back as one point.
 		w := newLicenseWorld(t)
 		before := time.Now().Add(-time.Minute)
 
@@ -102,6 +109,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("needs no license, same as reporting", func(t *testing.T) {
+		// The API needs no license, same as reporting.
 		w := newLicenseWorld(t)
 		require.Equal(t, http.StatusNotFound, w.License().GetRaw().StatusCode())
 		w.Usage().Report(gauge("flows", 37))
@@ -115,6 +123,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("refuses a granularity outside minute, hour or day", func(t *testing.T) {
+		// The API refuses a granularity outside minute, hour or day.
 		w := newLicenseWorld(t)
 
 		// Rejected by the OpenAPI request validator against the contract's own
@@ -134,6 +143,7 @@ func TestUsageSeries(t *testing.T) {
 	// enforced by the same OpenAPI request validator proved above.
 
 	t.Run("refuses an end at or before the start", func(t *testing.T) {
+		// The API refuses an end at or before the start.
 		w := newLicenseWorld(t)
 		from := time.Now()
 
@@ -144,6 +154,7 @@ func TestUsageSeries(t *testing.T) {
 	})
 
 	t.Run("refuses an organization the product does not have", func(t *testing.T) {
+		// The API refuses an organization the product does not have.
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().For(missingOrganizationID()).SeriesRaw(
@@ -155,8 +166,10 @@ func TestUsageSeries(t *testing.T) {
 }
 
 func TestUsageSeriesIsolation(t *testing.T) {
+	// Usage recorded for one organization is absent from another organization's series.
 	t.Parallel()
 	t.Run("an organization of another product is not addressable", func(t *testing.T) {
+		// An organization of another product is not addressable.
 		w := newLicenseWorld(t)
 		other := newLicenseWorld(t)
 		other.Usage().Report(gauge("flows", 37))
@@ -169,6 +182,7 @@ func TestUsageSeriesIsolation(t *testing.T) {
 	})
 
 	t.Run("usage reported for one organization does not appear under another", func(t *testing.T) {
+		// Usage reported for one organization does not appear under another.
 		w := newLicenseWorld(t)
 		second := w.NewOrganization()
 		w.Usage().Report(gauge("flows", 37))
@@ -182,8 +196,10 @@ func TestUsageSeriesIsolation(t *testing.T) {
 }
 
 func TestUsageSeriesScopes(t *testing.T) {
+	// Reading a usage series requires the usage-read scope and grants no write access.
 	t.Parallel()
 	t.Run("a usage-write-only scope cannot read the series", func(t *testing.T) {
+		// A usage-write-only scope cannot read the series.
 		w := newLicenseWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"license_usage:create"})
 
@@ -195,6 +211,7 @@ func TestUsageSeriesScopes(t *testing.T) {
 	})
 
 	t.Run("a license scope cannot read usage", func(t *testing.T) {
+		// A license scope cannot read usage.
 		w := newLicensedWorld(t)
 		licenseOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization_license:read"})
 
@@ -206,6 +223,7 @@ func TestUsageSeriesScopes(t *testing.T) {
 	})
 
 	t.Run("the read scope cannot report usage", func(t *testing.T) {
+		// The read scope cannot report usage.
 		w := newLicenseWorld(t)
 		readOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"license_usage:read"})
 

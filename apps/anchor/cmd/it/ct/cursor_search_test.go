@@ -30,34 +30,57 @@ const cursorFixtureRows = 7
 // rows at a page boundary. The kit also refuses malformed, oversized, forged and
 // foreign cursors and an unknown sort_by in every scope, empty ones included.
 func TestCursorSearches(t *testing.T) {
+	// Every resource search walks tied rows exactly once in each sort order and refuses invalid cursors.
 	t.Parallel()
 
 	cases := map[string]func(t *testing.T) cursorCase{
-		"searchProducts":                       productsCursorCase,
-		"searchProductResourcePermissions":     resourcePermissionsCursorCase,
-		"searchProductPermissions":             permissionsCursorCase,
-		"searchPlatformInvitations":            platformInvitationsCursorCase,
-		"searchPlatformUsers":                  platformUsersCursorCase,
-		"searchProductRoles":                   rolesCursorCase,
-		"searchProductAPIKeys":                 productAPIKeysCursorCase,
-		"searchProductUsers":                   productUsersCursorCase,
-		"searchOrganizationAPIKeys":            organizationAPIKeysCursorCase,
-		"searchProductOrganizations":           organizationsCursorCase,
-		"searchOrganizationWorkspaces":         workspacesCursorCase,
-		"searchOrganizationMembers":            membersCursorCase,
-		"searchOrganizationInvitations":        organizationInvitationsCursorCase,
+		// The products search obeys the shared ordering and cursor-refusal contract.
+		"searchProducts": productsCursorCase,
+		// The product resource permissions search obeys the shared ordering and cursor-refusal contract.
+		"searchProductResourcePermissions": resourcePermissionsCursorCase,
+		// The product permissions search obeys the shared ordering and cursor-refusal contract.
+		"searchProductPermissions": permissionsCursorCase,
+		// The platform invitations search obeys the shared ordering and cursor-refusal contract.
+		"searchPlatformInvitations": platformInvitationsCursorCase,
+		// The platform users search obeys the shared ordering and cursor-refusal contract.
+		"searchPlatformUsers": platformUsersCursorCase,
+		// The product roles search obeys the shared ordering and cursor-refusal contract.
+		"searchProductRoles": rolesCursorCase,
+		// The product API keys search obeys the shared ordering and cursor-refusal contract.
+		"searchProductAPIKeys": productAPIKeysCursorCase,
+		// The product users search obeys the shared ordering and cursor-refusal contract.
+		"searchProductUsers": productUsersCursorCase,
+		// The organization API keys search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationAPIKeys": organizationAPIKeysCursorCase,
+		// The product organizations search obeys the shared ordering and cursor-refusal contract.
+		"searchProductOrganizations": organizationsCursorCase,
+		// The organization workspaces search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationWorkspaces": workspacesCursorCase,
+		// The organization members search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationMembers": membersCursorCase,
+		// The organization invitations search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationInvitations": organizationInvitationsCursorCase,
+		// The product organization invitations search obeys the shared ordering and cursor-refusal contract.
 		"searchProductOrganizationInvitations": productInvitationsCursorCase,
-		"searchOrganizationLicenses":           organizationLicensesCursorCase,
-		"searchIntegrationAuditLogs":           auditLogsCursorCase,
-		"searchUserOrganizations":              userOrganizationsCursorCase,
-		"searchEmailTemplates":                 emailTemplatesCursorCase,
-		"searchEmailSends":                     emailSendsCursorCase,
-		"searchLicenseTemplates":               licenseTemplatesCursorCase,
-		"searchOrganizationLicenseHistory":     licenseHistoryCursorCase,
+		// The organization licenses search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationLicenses": organizationLicensesCursorCase,
+		// The integration audit logs search obeys the shared ordering and cursor-refusal contract.
+		"searchIntegrationAuditLogs": auditLogsCursorCase,
+		// The user organizations search obeys the shared ordering and cursor-refusal contract.
+		"searchUserOrganizations": userOrganizationsCursorCase,
+		// The email templates search obeys the shared ordering and cursor-refusal contract.
+		"searchEmailTemplates": emailTemplatesCursorCase,
+		// The email sends search obeys the shared ordering and cursor-refusal contract.
+		"searchEmailSends": emailSendsCursorCase,
+		// The license templates search obeys the shared ordering and cursor-refusal contract.
+		"searchLicenseTemplates": licenseTemplatesCursorCase,
+		// The organization license history search obeys the shared ordering and cursor-refusal contract.
+		"searchOrganizationLicenseHistory": licenseHistoryCursorCase,
 	}
 
 	for name, build := range cases {
 		t.Run(name, func(t *testing.T) {
+			// Each resource search walks every tied row once and enforces the cursor contract.
 			t.Parallel()
 			build(t).run(t, name)
 		})

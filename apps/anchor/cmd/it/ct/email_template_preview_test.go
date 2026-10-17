@@ -12,6 +12,7 @@ import (
 )
 
 func TestEmailTemplatePreview(t *testing.T) {
+	// Checks email template preview across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -32,6 +33,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	tplID := created.JSON201.Id
 
 	t.Run("renders draft with variables", func(t *testing.T) {
+		// The API renders draft with variables.
 		vars := map[string]any{"name": "Alice"}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
@@ -48,6 +50,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	})
 
 	t.Run("renders without variables (empty substitution)", func(t *testing.T) {
+		// The API renders without variables (empty substitution).
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -59,6 +62,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown template", func(t *testing.T) {
+		// The API returns 404 for unknown template.
 		vars := map[string]any{}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),

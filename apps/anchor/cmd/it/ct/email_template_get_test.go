@@ -12,6 +12,7 @@ import (
 )
 
 func TestEmailTemplateGet(t *testing.T) {
+	// Checks email template lookup across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -32,6 +33,7 @@ func TestEmailTemplateGet(t *testing.T) {
 	tplID := created.JSON201.Id
 
 	t.Run("returns existing template", func(t *testing.T) {
+		// The API returns existing template.
 		resp, getErr := client.GetEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
 		require.NoError(t, getErr)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -42,6 +44,7 @@ func TestEmailTemplateGet(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown ID", func(t *testing.T) {
+		// The API returns 404 for unknown ID.
 		resp, getErr := client.GetEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -52,6 +55,7 @@ func TestEmailTemplateGet(t *testing.T) {
 	})
 
 	t.Run("returns 404 when accessing template from another product", func(t *testing.T) {
+		// The API returns 404 when accessing template from another product.
 		other := newEmailTestCtx(t)
 		resp, getErr := other.product.OwnerAuthenticatedClient().GetEmailTemplateWithResponse(
 			context.Background(),

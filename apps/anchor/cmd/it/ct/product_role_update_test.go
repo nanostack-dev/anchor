@@ -16,9 +16,11 @@ import (
 )
 
 func TestProductRole_UpdatePermissionReplacementStates(t *testing.T) {
+	// Updating role permissions handles omitted, empty, and replacement permission sets distinctly.
 	t.Parallel()
 	for _, state := range []string{"omitted", "empty", "replacement"} {
 		t.Run(state, func(t *testing.T) {
+			// An omitted permission set is preserved, an empty set clears it, and a supplied set replaces it.
 			t.Parallel()
 			product := createTestProductContext(t)
 			product.CreateDefaultProductResourcePermissions(t)
@@ -56,6 +58,7 @@ func TestProductRole_UpdatePermissionReplacementStates(t *testing.T) {
 }
 
 func TestProductRole_Update(t *testing.T) {
+	// Checks product role update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -63,6 +66,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleName", func(t *testing.T) {
+			// Updating a product role name succeeds.
 			originalName := "OriginalRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -94,6 +98,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleDescription", func(t *testing.T) {
+			// Updating a product role description succeeds.
 			originalDesc := "Original description"
 			roleName := "TestRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -129,6 +134,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleNameAndDescription", func(t *testing.T) {
+			// Updating a product role name and description succeeds.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -160,6 +166,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithEmptyName", func(t *testing.T) {
+			// Renaming a role to an empty name is refused.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -188,6 +195,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithInvalidNameLength", func(t *testing.T) {
+			// Renaming a role outside the name-length bounds is refused.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -216,6 +224,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithInvalidDescriptionLength", func(t *testing.T) {
+			// Updating a role with an overlong description is refused.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -250,6 +259,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithDuplicateName", func(t *testing.T) {
+			// Renaming a role to another role's name returns a conflict.
 			role1Name := "Role1_" + ids.MustNew("test")
 			role2Name := "Role2_" + ids.MustNew("test")
 
@@ -294,6 +304,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithDuplicateNameDifferentCase", func(t *testing.T) {
+			// Renaming a role cannot bypass name uniqueness by changing letter case.
 			role1Name := "Role1Case_" + ids.MustNew("test")
 			role2Name := "Role2Case_" + ids.MustNew("test")
 
@@ -324,6 +335,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateNonexistentProductRole", func(t *testing.T) {
+			// Updating nonexistent product role returns not found.
 			nonExistentRoleID := ids.MustNew("productroleservice")
 			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
@@ -338,6 +350,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleWithInvalidID", func(t *testing.T) {
+			// Updating a product role with invalid ID returns a bad request.
 			invalidRoleID := "invalid-role-id"
 			updatedName := "UpdatedName_" + ids.MustNew("test")
 			updateResp, err := testCtx.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
@@ -352,6 +365,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"UpdateProductRoleForNonexistentProduct", func(t *testing.T) {
+			// Updating a product role for nonexistent product returns a bad request.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -378,6 +392,7 @@ func TestProductRole_Update(t *testing.T) {
 
 	t.Run(
 		"EmitsWebhook", func(t *testing.T) {
+			// A successful change emits the corresponding signed product event.
 			productContext := createTestProductContext(t)
 			sink := productContext.CaptureEvents()
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(

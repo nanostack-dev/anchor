@@ -20,6 +20,7 @@ const (
 )
 
 func TestGetPlatformUser(t *testing.T) {
+	// Checks platform user lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	state := itdsl.Given(t).
@@ -31,6 +32,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"GetNonExistentUser", func(t *testing.T) {
+			// Reading nonexistent user returns not found.
 			nonExistentUserID := ids.MustNew("puser")
 
 			resp, err := ownerClient.GetPlatformUserWithResponse(
@@ -43,6 +45,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"GetWithInvalidUserID", func(t *testing.T) {
+			// Reading with invalid user ID returns a bad request.
 			invalidUserID := "invalid-productuserservice-id"
 
 			resp, err := ownerClient.GetPlatformUserWithResponse(
@@ -57,6 +60,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetOfExistingUser", func(t *testing.T) {
+			// Reading an existing platform user returns its saved details.
 			testUser := state.PlatformUser(platformAdminAlias)
 			assert.NotEmpty(
 				t, testUser.AccessToken, "test productuserservice should have access token",
@@ -107,6 +111,7 @@ func TestGetPlatformUser(t *testing.T) {
 
 	t.Run(
 		"GetOwnerUser", func(t *testing.T) {
+			// Reading owner user succeeds.
 			email := state.Tenant(tenantMainAlias).OwnerUser.Email
 			filter := ct.PlatformUserFilter{
 				Roles: []ct.PlatformUserRole{ct.OWNER},

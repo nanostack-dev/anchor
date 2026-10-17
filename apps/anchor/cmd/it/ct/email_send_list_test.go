@@ -16,7 +16,9 @@ import (
 
 // Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendList(t *testing.T) {
+	// Checks email send listing across the scenarios below.
 	t.Run("returns empty list for new product", func(t *testing.T) {
+		// The API returns empty list for new product.
 		tc := newEmailTestCtx(t)
 		resp, err := tc.product.OwnerAuthenticatedClient().SearchEmailSendsWithResponse(
 			context.Background(),
@@ -30,6 +32,7 @@ func TestEmailSendList(t *testing.T) {
 	})
 
 	t.Run("returns send records after successful send", func(t *testing.T) {
+		// The API returns send records after successful send.
 		mp := mailpit.Shared(t)
 
 		tc := newEmailTestCtx(t)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestOrganizationCreateWithInitialWorkspace(t *testing.T) {
+	// Creating an organization with initial workspace succeeds.
 	t.Parallel()
 	product := createTestProductContext(t)
 	sink := product.CaptureEvents()
@@ -34,6 +35,7 @@ func TestOrganizationCreateWithInitialWorkspace(t *testing.T) {
 }
 
 func TestInitialWorkspaceSharesOrganizationTransaction(t *testing.T) {
+	// Initial workspace shares organization transaction.
 	t.Parallel()
 	product := createTestProductContext(t)
 	aborted := errors.New("abort caller transaction")
@@ -58,6 +60,7 @@ func TestInitialWorkspaceSharesOrganizationTransaction(t *testing.T) {
 }
 
 func TestOrganizationCreateWithoutWorkspace(t *testing.T) {
+	// Creating an organization without workspace succeeds.
 	t.Parallel()
 	product := createTestProductContext(t)
 	created := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{Name: ids.MustNew("org")})
@@ -66,6 +69,7 @@ func TestOrganizationCreateWithoutWorkspace(t *testing.T) {
 }
 
 func TestOrganizationFoundingMemberRetryDoesNotRecreateWorkspaces(t *testing.T) {
+	// Organization founding member retry does not recreate workspaces.
 	t.Parallel()
 	product := createTestProductContext(t)
 	state := itdsl.Given(t).

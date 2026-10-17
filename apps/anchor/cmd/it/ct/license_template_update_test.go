@@ -11,8 +11,10 @@ import (
 )
 
 func TestLicenseTemplateUpdate(t *testing.T) {
+	// Checks license template update across the scenarios below.
 	t.Parallel()
 	t.Run("renames without touching the values", func(t *testing.T) {
+		// The API renames without touching the values.
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -32,6 +34,7 @@ func TestLicenseTemplateUpdate(t *testing.T) {
 	})
 
 	t.Run("replaces the values wholesale", func(t *testing.T) {
+		// The API replaces the values wholesale.
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -62,6 +65,7 @@ func TestLicenseTemplateUpdate(t *testing.T) {
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
+		// The API returns 404 when the product has no template with that identifier.
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().UpdateLicenseTemplateWithResponse(

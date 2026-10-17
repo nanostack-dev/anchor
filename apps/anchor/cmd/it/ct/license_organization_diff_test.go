@@ -10,8 +10,10 @@ import (
 )
 
 func TestGetOrganizationLicenseDiff(t *testing.T) {
+	// Organization lookup license diff.
 	t.Parallel()
 	t.Run("a fresh copy differs in nothing", func(t *testing.T) {
+		// A fresh copy differs in nothing.
 		w := newLicensedWorld(t)
 
 		diff := w.License().Diff()
@@ -25,6 +27,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("an adjusted license field is reported with both sides", func(t *testing.T) {
+		// An adjusted license field is reported with both sides.
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -41,6 +44,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("a template edited after instantiation stops differing once followed", func(t *testing.T) {
+		// A template edited after instantiation stops differing once followed.
 		w := newLicensedWorld(t)
 
 		w.Template().ReplaceValues(templateValuesWith("flows", 2000))
@@ -52,6 +56,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("a license field the template gained lands on the license", func(t *testing.T) {
+		// A license field the template gained lands on the license.
 		w := newLicensedWorld(t)
 		widenSchema(t, w)
 
@@ -60,6 +65,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("a license field the template dropped leaves the license", func(t *testing.T) {
+		// A license field the template dropped leaves the license.
 		w := newLicensedWorld(t)
 		narrowSchema(t, w)
 
@@ -68,6 +74,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("differences are ordered by license field name", func(t *testing.T) {
+		// Differences are ordered by license field name.
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{
 			"flows": 800, "sso": false, "region": "eu-west",
@@ -83,12 +90,14 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("404 when the organization has no license", func(t *testing.T) {
+		// The API returns 404 when the organization has no license.
 		w := newLicenseWorld(t)
 
 		assert.Equal(t, http.StatusNotFound, w.License().DiffRaw().StatusCode())
 	})
 
 	t.Run("still answers after the template is archived", func(t *testing.T) {
+		// Still answers after the template is archived.
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -104,6 +113,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 	})
 
 	t.Run("does not diff another product's license", func(t *testing.T) {
+		// The API does not diff another product's license.
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 

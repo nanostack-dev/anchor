@@ -15,10 +15,12 @@ import (
 )
 
 func TestGetUserOrganization(t *testing.T) {
+	// Checks user organization lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("SuccessfulGetUserOrganization", func(t *testing.T) {
+		// Reading user organization succeeds.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -69,6 +71,7 @@ func TestGetUserOrganization(t *testing.T) {
 	})
 
 	t.Run("IncludeRolePermissions", func(t *testing.T) {
+		// Requesting role permissions includes the member's assigned role permissions in the response.
 		productCtx := createTestProductContext(t)
 		productCtx.CreateDefaultProductResourcePermissions(t)
 		productUser := createDSLProductUser(t, productCtx)
@@ -125,6 +128,7 @@ func TestGetUserOrganization(t *testing.T) {
 	})
 
 	t.Run("RoleWithNoPermissionsReturnsEmptyArray", func(t *testing.T) {
+		// Role with no permissions returns empty array.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -169,6 +173,7 @@ func TestGetUserOrganization(t *testing.T) {
 	})
 
 	t.Run("NonExistentMembershipReturns404", func(t *testing.T) {
+		// Nonexistent membership returns 404.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -199,6 +204,7 @@ func TestGetUserOrganization(t *testing.T) {
 	})
 
 	t.Run("NonExistentUserReturns404", func(t *testing.T) {
+		// Nonexistent user returns 404.
 		productCtx := createTestProductContext(t)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
@@ -217,6 +223,7 @@ func TestGetUserOrganization(t *testing.T) {
 	})
 
 	t.Run("InsufficientPermissionsReturns403", func(t *testing.T) {
+		// Insufficient permissions returns 403.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 

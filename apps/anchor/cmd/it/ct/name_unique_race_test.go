@@ -109,9 +109,11 @@ func renameToSameName(
 }
 
 func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
+	// Concurrent writes of the same unique value produce one success and conflicts for every other writer.
 	t.Parallel()
 
 	t.Run("Organization API key create", func(t *testing.T) {
+		// Concurrent organization API key create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
@@ -131,6 +133,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Organization API key rename", func(t *testing.T) {
+		// Concurrent organization API key rename requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
@@ -163,6 +166,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product API key create", func(t *testing.T) {
+		// Concurrent product API key create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
@@ -180,6 +184,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product API key rename", func(t *testing.T) {
+		// Concurrent product API key rename requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
@@ -208,6 +213,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product role create", func(t *testing.T) {
+		// Concurrent product role create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
@@ -224,6 +230,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product role rename", func(t *testing.T) {
+		// Concurrent product role rename requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
@@ -248,6 +255,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product resource permission create", func(t *testing.T) {
+		// Concurrent product resource permission create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client := product.OwnerAuthenticatedClient()
@@ -265,6 +273,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product rename", func(t *testing.T) {
+		// Concurrent product rename requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		client := createTestProductContext(t).OwnerAuthenticatedClient()
 		assertOneWinnerPerName(t, http.StatusOK, "PRODUCT_ALREADY_EXISTS",
@@ -287,6 +296,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Workspace create", func(t *testing.T) {
+		// Concurrent workspace create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
@@ -304,6 +314,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Workspace rename", func(t *testing.T) {
+		// Concurrent workspace rename requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
@@ -330,6 +341,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Product user create", func(t *testing.T) {
+		// Concurrent product user create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		client, _ := product.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
@@ -347,6 +359,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Organization member add", func(t *testing.T) {
+		// Concurrent organization member add requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		product := createTestProductContext(t)
 		org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
@@ -381,6 +394,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Email template create", func(t *testing.T) {
+		// Concurrent email template create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		tc := newEmailTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
@@ -406,6 +420,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	})
 
 	t.Run("Integration instance create", func(t *testing.T) {
+		// Concurrent integration instance create requests produce one success and conflicts for all other writers.
 		t.Parallel()
 		body := ct.CreateIntegrationInstanceJSONRequestBody{}
 		require.NoError(t, body.FromClerkIntegrationInstanceCreateRequest(

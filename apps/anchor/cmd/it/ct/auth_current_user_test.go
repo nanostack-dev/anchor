@@ -9,11 +9,13 @@ import (
 )
 
 func TestGetCurrentUser(t *testing.T) {
+	// Checks current user lookup across the scenarios below.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
 		"ValidAuthentication", func(t *testing.T) {
+			// An authenticated caller can read the current user's identity.
 			resp, err := testOwnerClient(t).GetCurrentUserWithResponse(
 				t.Context(),
 			)

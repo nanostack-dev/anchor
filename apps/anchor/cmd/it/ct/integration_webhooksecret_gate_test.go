@@ -19,6 +19,7 @@ import (
 //
 // Not parallel: it resets the shared mailpit inbox.
 func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
+	// SMTP active instance update does not require webhook secret.
 	mp := mailpit.Shared(t)
 
 	tc := newWebhookSecretTestCtx(t)
@@ -49,6 +50,7 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 // disabled wholesale: a webhook-ingesting provider (CLERK) that loses its
 // secret while active is still rejected.
 func TestClerkActiveInstanceStillRequiresWebhookSecret(t *testing.T) {
+	// Clerk active instance still requires webhook secret.
 	t.Parallel()
 	tc := newWebhookSecretTestCtx(t)
 	instance := seedActiveClerkInstance(t, tc)

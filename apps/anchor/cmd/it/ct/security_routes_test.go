@@ -8,6 +8,7 @@ import (
 )
 
 func TestRouteSecurityMatrix(t *testing.T) {
+	// Every protected route refuses unauthenticated or underprivileged callers and accepts the required permissions.
 	t.Parallel()
 	routes, components := loadSecurityRouteCases(t)
 	require.NotEmpty(t, routes)
@@ -15,7 +16,9 @@ func TestRouteSecurityMatrix(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.OperationID, func(t *testing.T) {
+			// The route enforces the authentication and permission policy declared for this operation.
 			t.Run("no_auth", func(t *testing.T) {
+				// The protected route refuses a caller without credentials.
 				resp := securitySendRequest(t, route, components, nil, fx)
 				defer resp.Body.Close()
 
@@ -33,6 +36,7 @@ func TestRouteSecurityMatrix(t *testing.T) {
 			})
 
 			t.Run("valid_auth_with_required_permissions", func(t *testing.T) {
+				// The protected route accepts an authenticated caller with its required permissions.
 				headers := validHeadersForRoute(t, route, fx)
 				resp := securitySendRequest(t, route, components, headers, fx)
 				defer resp.Body.Close()
@@ -46,6 +50,7 @@ func TestRouteSecurityMatrix(t *testing.T) {
 			})
 
 			t.Run("auth_without_required_permissions", func(t *testing.T) {
+				// The protected route refuses an authenticated caller missing its required permissions.
 				if route.IsPublic {
 					t.Skip("public route has no required auth scope")
 				}
@@ -61,6 +66,7 @@ func TestRouteSecurityMatrix(t *testing.T) {
 }
 
 func TestSecurityCoverageAllRoutesExplicitAndCovered(t *testing.T) {
+	// Every API route has an explicit security policy and a matching route-security test.
 	t.Parallel()
 	routes, _ := loadSecurityRouteCases(t)
 	require.NotEmpty(t, routes)

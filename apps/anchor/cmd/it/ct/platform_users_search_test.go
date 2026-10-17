@@ -12,11 +12,13 @@ import (
 )
 
 func TestSearchPlatformUsers(t *testing.T) {
+	// Checks platform users search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"SuccessfulSearch", func(t *testing.T) {
+			// Platform-user search returns the requested users and pagination metadata.
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{}
 
 			resp, err := testOwnerClient(t).SearchPlatformUsersWithResponse(
@@ -37,6 +39,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithPagination", func(t *testing.T) {
+			// Searching with pagination succeeds.
 			limit := int32(1)
 			offset := int32(0)
 			pagination := ct.PaginationRequest{
@@ -59,6 +62,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithEmailFilter", func(t *testing.T) {
+			// Searching with email filter succeeds.
 			email := testOwnerUser(t).Email
 			filter := ct.PlatformUserFilter{
 				Emails: []string{
@@ -83,6 +87,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithRoleFilter", func(t *testing.T) {
+			// Searching with role filter succeeds.
 			roles := []ct.PlatformUserRole{ct.OWNER}
 			filter := ct.PlatformUserFilter{
 				Roles: roles,
@@ -105,6 +110,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithRoleFilterDifferentCase", func(t *testing.T) {
+			// Searching with role filter different case succeeds.
 			filter := ct.PlatformUserFilter{
 				Roles: []ct.PlatformUserRole{ct.PlatformUserRole("owner")},
 			}
@@ -126,6 +132,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithSorting", func(t *testing.T) {
+			// Searching with sorting succeeds.
 			sortBy := ct.PlatformUserSearchRequestSortByEmail
 			sortDirection := ct.ASC
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{
@@ -144,6 +151,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 
 	t.Run(
 		"SearchWithFullTextSearch", func(t *testing.T) {
+			// Searching with full text search succeeds.
 			fullTextSearch := "platform"
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{
 				FullTextSearch: &fullTextSearch,

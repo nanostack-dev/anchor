@@ -17,6 +17,7 @@ import (
 )
 
 func TestOrganizationAPIKeyCreate(t *testing.T) {
+	// Checks organization API key creation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -30,6 +31,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Create organization API key", func(t *testing.T) {
+			// Creating an organization API key succeeds.
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 			apiKeyName := "OrgKey-" + uuid.NewString()
@@ -70,6 +72,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Create organization API key uses product organization API key prefix", func(t *testing.T) {
+			// Create organization API key uses product organization API key prefix.
 			prefix := "acmeorg"
 			getProductResp, err := product.OwnerAuthenticatedClient().GetProductWithResponse(
 				ctx,
@@ -114,6 +117,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Create organization API key without permissions returns bad request", func(t *testing.T) {
+			// Create organization API key without permissions returns bad request.
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 
@@ -137,6 +141,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Duplicate name in same organization returns bad request", func(t *testing.T) {
+			// Creating an organization API key with an existing name returns a conflict.
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 			name := "DupKey-" + uuid.NewString()
@@ -180,6 +185,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Create organization API key with past expiration returns bad request", func(t *testing.T) {
+			// Create organization API key with past expiration returns bad request.
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 			expiresAt := time.Now().UTC().Add(-1 * time.Minute).Truncate(time.Second)
@@ -211,6 +217,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Same name in different organizations is allowed", func(t *testing.T) {
+			// Same name in different organizations is allowed.
 			description1 := itshared.Faker.Lorem().Sentence(4)
 			description2 := itshared.Faker.Lorem().Sentence(4)
 			org1 := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description1)
@@ -245,6 +252,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Cross product access is denied", func(t *testing.T) {
+			// Cross product access is denied.
 			otherProduct := createTestProductContext(t)
 			description := itshared.Faker.Lorem().Sentence(4)
 			otherOrg := otherProduct.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
@@ -265,6 +273,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 
 	t.Run(
 		"Create organization API key with Near expiration", func(t *testing.T) {
+			// Create organization API key with near expiration.
 			description := itshared.Faker.Lorem().Sentence(4)
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), &description)
 			apiKeyName := "OrgKey-" + uuid.NewString()
@@ -299,6 +308,7 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 	)
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		webhookProduct := createTestProductContext(t)
 		sink := webhookProduct.CaptureEvents()
 		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()

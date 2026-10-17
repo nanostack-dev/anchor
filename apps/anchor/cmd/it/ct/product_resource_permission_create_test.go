@@ -16,6 +16,7 @@ import (
 )
 
 func TestProductResourcePermissionCreateSuccess(t *testing.T) {
+	// Creating a product resource permission succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -44,6 +45,7 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
+	// Product resource permission create emits webhook.
 	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
@@ -61,6 +63,7 @@ func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
+	// Checks product resource permission creation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -71,6 +74,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 		input       ct.CreateProductResourcePermissionRequest
 		expectedErr string
 	}{
+		// The permission operation rejects empty name.
 		{
 			name: "empty name",
 			input: ct.CreateProductResourcePermissionRequest{
@@ -79,6 +83,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			},
 			expectedErr: "name is required",
 		},
+		// The permission operation rejects name too short.
 		{
 			name: "name too short",
 			input: ct.CreateProductResourcePermissionRequest{
@@ -87,6 +92,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			},
 			expectedErr: "name must be at least 2 characters",
 		},
+		// The permission operation rejects name too long.
 		{
 			name: "name too long",
 			input: ct.CreateProductResourcePermissionRequest{
@@ -95,6 +101,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			},
 			expectedErr: "name must be at most 200 characters",
 		},
+		// The permission operation rejects description too long.
 		{
 			name: "description too long",
 			input: ct.CreateProductResourcePermissionRequest{
@@ -103,6 +110,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 			},
 			expectedErr: "description must be at most 500 characters",
 		},
+		// The permission operation rejects scope modifier too long.
 		{
 			name: "scope modifier too long",
 			input: ct.CreateProductResourcePermissionRequest{
@@ -117,6 +125,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(
 			tc.name, func(t *testing.T) {
+				// Permission creation refuses this invalid field value.
 				resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -130,6 +139,7 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
+	// Product resource permission creation rejects a duplicate name.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -159,6 +169,7 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
+	// Product resource permission creation rejects a duplicate name regardless of letter case.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -193,6 +204,7 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
+	// Creating a product resource permission nonexistent product returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -211,6 +223,7 @@ func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionCreateWithMinimalData(t *testing.T) {
+	// Creating a product resource permission with minimal data succeeds.
 	t.Parallel()
 	ctx := context.Background()
 

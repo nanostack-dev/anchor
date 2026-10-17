@@ -10,6 +10,7 @@ import (
 )
 
 func TestClerkWebhookBackToBackCreatedThenUpdatedEmitsOneOfEach(t *testing.T) {
+	// Clerk webhook back to back created then updated emits one of each.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()

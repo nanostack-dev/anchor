@@ -19,6 +19,7 @@ import (
 )
 
 func TestProductEventsConfigAndDelivery(t *testing.T) {
+	// Configured product-event subscriptions deliver signed events for matching resource changes.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -27,6 +28,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	client, _ := product.CreateAPIKeyClientWithAllScopes()
 
 	t.Run("GetReturnsObfuscatedSecretNotPlaintext", func(t *testing.T) {
+		// Get returns obfuscated secret not plaintext.
 		got, err := owner.GetProductWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, got.StatusCode())
@@ -37,6 +39,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("OrganizationCreatedUpdatedDeleted", func(t *testing.T) {
+		// Organization creation, updates, and deletion each emit the matching product event.
 		created, err := client.CreateProductOrganizationWithResponse(
 			ctx,
 			product.ProductID,
@@ -64,6 +67,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("MembershipCreatedUpdatedDeleted", func(t *testing.T) {
+		// Membership creation, role updates, and removal each emit the matching product event.
 		org, err := client.CreateProductOrganizationWithResponse(
 			ctx,
 			product.ProductID,
@@ -114,6 +118,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("WorkspaceCreatedUpdatedDeleted", func(t *testing.T) {
+		// Workspace creation, updates, and deletion each emit the matching product event.
 		org := product.CreateOrganization(t, "Events Workspace Org "+ids.MustNew("org"), nil)
 		created := createWorkspace(t, client, product.ProductID, org.Id, "events-ws-"+ids.MustNew("ws"))
 		sink.WaitFor("workspace.created", map[string]string{
@@ -147,6 +152,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("OrganizationAPIKeyCreatedUpdatedDeleted", func(t *testing.T) {
+		// Organization API-key creation, updates, and deletion each emit the matching product event.
 		org := product.CreateOrganization(t, "Events API Key Org "+ids.MustNew("org"), nil)
 		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
 		created, err := client.CreateOrganizationAPIKeyWithResponse(
@@ -192,6 +198,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("ProductUserCreatedDeleted", func(t *testing.T) {
+		// Product-user creation and deletion each emit the matching product event.
 		email := itshared.Faker.Internet().Email()
 		name := itshared.Faker.Person().Name()
 		created, err := client.CreateProductUserWithResponse(
@@ -211,6 +218,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("RoleAndResourcePermissionCreatedUpdatedDeleted", func(t *testing.T) {
+		// Role and resource-permission changes emit their corresponding product events.
 		createdPerm, err := owner.CreateProductResourcePermissionWithResponse(
 			ctx,
 			product.ProductID,
@@ -296,6 +304,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("GetProductEventsCatalog", func(t *testing.T) {
+		// Reading a product events catalog succeeds.
 		catalogResp, err := owner.GetProductEventsCatalogWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, catalogResp.StatusCode())
@@ -328,6 +337,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("UnknownSubscriptionIsRejected", func(t *testing.T) {
+		// Unknown subscription is rejected.
 		before, err := owner.GetProductWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.NotNil(t, before.JSON200)
@@ -360,6 +370,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	})
 
 	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
+		// Only event types selected by the subscription are delivered to its endpoint.
 		filterProduct := createTestProductContext(t)
 		filterClient, _ := filterProduct.CreateAPIKeyClientWithAllScopes()
 		filterOwner := filterProduct.OwnerAuthenticatedClient()
@@ -457,6 +468,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 }
 
 func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
+	// Reading product-event configuration includes the endpoint's latest delivery status.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)

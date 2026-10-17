@@ -23,8 +23,10 @@ func requireFieldUsage(t *testing.T, license ct.OrganizationLicenseResponse) ct.
 // compliant organization to exceeded, and the two cache-consistency
 // guarantees the read makes.
 func TestOrganizationLicenseUsageStatus(t *testing.T) {
+	// License status reflects the latest reported usage, the limit, and whether any usage has been reported.
 	t.Parallel()
 	t.Run("within_limit: latest usage under the limit", func(t *testing.T) {
+		// Within limit: latest usage under the limit.
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 400))
 
@@ -38,6 +40,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("at_limit: latest usage equal to the limit", func(t *testing.T) {
+		// At limit: latest usage equal to the limit.
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 500))
 
@@ -47,6 +50,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("exceeded: latest usage past the limit", func(t *testing.T) {
+		// Exceeded: latest usage past the limit.
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 9000))
 
@@ -58,6 +62,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("stale: nothing has ever been reported", func(t *testing.T) {
+		// Stale: nothing has ever been reported.
 		w := newLicensedWorld(t)
 
 		usage := requireFieldUsage(t, w.License().Get())
@@ -68,6 +73,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("a limit adjusted so a previously-compliant organization becomes exceeded", func(t *testing.T) {
+		// A limit adjusted so a previously-compliant organization becomes exceeded.
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 400))
 		before := requireFieldUsage(t, w.License().Get())
@@ -81,6 +87,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("usage arriving is visible on the next read without a license write", func(t *testing.T) {
+		// Usage arriving is visible on the next read without a license write.
 		w := newLicensedWorld(t)
 		// Populate the license cache first, mirroring a consumer's hot-path
 		// call landing before any usage exists.
@@ -94,6 +101,7 @@ func TestOrganizationLicenseUsageStatus(t *testing.T) {
 	})
 
 	t.Run("the cache is evicted when the license is adjusted", func(t *testing.T) {
+		// The cache is evicted when the license is adjusted.
 		w := newLicensedWorld(t)
 		first := w.License().Get()
 		assertValues(t, first.Values, validTemplateValues())

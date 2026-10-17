@@ -14,6 +14,7 @@ import (
 )
 
 func TestEmailTemplateUpdate(t *testing.T) {
+	// Checks email template update across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -33,6 +34,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 	tplID := created.JSON201.Id
 
 	t.Run("updates name", func(t *testing.T) {
+		// The API updates name.
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -46,6 +48,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 	})
 
 	t.Run("updates description", func(t *testing.T) {
+		// The API updates description.
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -57,6 +60,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 	})
 
 	t.Run("deactivates template", func(t *testing.T) {
+		// Updating the active flag deactivates the email template.
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -70,6 +74,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown ID", func(t *testing.T) {
+		// The API returns 404 for unknown ID.
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -83,6 +88,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 
 // Not parallel: it holds a row lock and waits for the rename to queue behind it.
 func TestEmailTemplateRenameKeepsExamplesSavedConcurrently(t *testing.T) {
+	// Email template rename keeps examples saved concurrently.
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 	created, err := client.CreateEmailTemplateWithResponse(
