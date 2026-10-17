@@ -2,7 +2,7 @@
 
 | Symptom | Verified cause and repair | Verify |
 | --- | --- | --- |
-| Lint reports `0 issues` from root | Root has no Go module; run lint in `apps/anchor` with `../../.golangci.yml`. | Inspect the actual module invocation and exit status. |
+| Lint invoked from the wrong directory | Use `./scripts/lint.sh backend`; it resolves `apps/anchor` and the root configuration itself. | Check the reported module, coverage, exit code and full log; a `0 issues` line alone is insufficient. |
 | Local UI cannot call shared dev API | Shared dev CORS does not allow the local origin; use the managed disposable app or documented read-only smoke proxy. | Browser guide's health/source checks and affected journey. |
 | Current manual app asks for a missing secret file | `application.yaml` uses `${file:...}` inputs; legacy inline-password samples do not supply required file paths. Use managed runtime or approved local file-backed config. | Local `/health` after startup; no secret contents in evidence. |
 | Product API key still refuses a newly granted scope | Out-of-band edits do not evict the permission cache. Change scopes through the management API. | Read back key permissions and retry the authorized request; see [cache guide](../api-key-permission-cache.md). |

@@ -13,6 +13,10 @@ on:
       - 'apps/anchor/**/application.yaml'
       - 'apps/anchor/*codegen*.yaml'
       - '.golangci.yml'
+      - '.golangci-lint-version'
+      - 'scripts/lint.sh'
+      - 'scripts/test_lint.py'
+      - 'lint-fix.sh'
       - 'anchor-ui/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -75,6 +79,10 @@ jobs:
         apps/anchor/**/application.yaml
         apps/anchor/*codegen*.yaml
         .golangci.yml
+        .golangci-lint-version
+        scripts/lint.sh
+        scripts/test_lint.py
+        lint-fix.sh
         apps/anchor/cmd/http/openapi.yaml
         .github/workflows/go.yml
       frontend_patterns: |
@@ -143,7 +151,7 @@ jobs:
         needs.detect_changes.outputs.backend_changed == 'true' ||
         (needs.preview-flag.outputs.enabled == 'true' && needs.detect_changes.outputs.frontend_changed == 'true')
       )
-    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
+    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@a9fca312a423fe7bd7202949e52396ce5ef3ac9f
     permissions:
       contents: read
       packages: write
@@ -161,7 +169,8 @@ jobs:
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
       lint_working_directory: ./apps/anchor
-      lint_args: --timeout 5m --path-mode=abs
+      lint_version_file: ../../.golangci-lint-version
+      lint_args: --config ../../.golangci.yml --timeout 5m --path-mode=abs ./...
       lint_skip_cache: true
       lint_skip_save_cache: true
       test_suites_json: >-
@@ -218,7 +227,12 @@ jobs:
       # Catch the collision on the pull request, where the fix is a rename.
       - uses: actions/checkout@v6.0.2
         with:
-          sparse-checkout: apps/anchor/migrations
+          sparse-checkout: |
+            apps/anchor/migrations
+            scripts
+      - name: Verify lint command behavior
+        if: needs.detect_changes.outputs.backend_changed == 'true'
+        run: python3 scripts/test_lint.py
       - name: Reject duplicate migration versions
         shell: bash
         run: |

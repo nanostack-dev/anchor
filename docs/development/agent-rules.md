@@ -8,7 +8,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 ## Layout and commands
 
-- Go module: `apps/anchor`. The repo root is not a Go module; run every `go` and `golangci-lint` command from `apps/anchor`.
+- Backend Go module: `apps/anchor`. Run backend `go` commands there; the repository lint script resolves that module and the root configuration from any working directory.
 - UI: `anchor-ui/` (pnpm workspace member; the lockfile is the root `pnpm-lock.yaml`). Go SDK: `clients/go/`.
 - Contract: `apps/anchor/cmd/http/openapi.yaml`.
 - Regenerate the oapi server, go-jet models, and the `anchor-ui/src/client` client: `cd apps/anchor && ./generate_anchor.sh`.
@@ -19,7 +19,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - Component tests (CTs): `cd apps/anchor && go test ./cmd/it/ct/... -count=1`. Needs Docker (testcontainers). Add `-run <TestName>` to narrow.
 - CI runs `gotestsum --format github-actions -- ./...` in `apps/anchor/cmd/it/ct`, `apps/anchor/cmd/it/service`, and `apps/anchor/internal`. A new or changed CT also needs the shuffle and race commands under Invariants.
 - Route security golden: `cd apps/anchor && UPDATE_ROUTE_SECURITY=1 go test ./internal/security/ -run TestContractSecurityIsUnchanged`. Run it only for a deliberate route-security change, and review the diff in `internal/security/testdata`.
-- Lint: `cd apps/anchor && golangci-lint run --config ../../.golangci.yml --timeout 5m`. From the repo root it prints a false `0 issues` because the root has no Go module. `./lint-fix.sh` at the root is the `--fix` variant.
+- Lint: follow [Go lint](testing.md#go-lint) for iteration modes and required full lint before submission. Use `./scripts/lint.sh backend`, inspect its coverage/result/full log, and rerun after correcting the cause. `./lint-fix.sh` remains an explicit-fix compatibility command.
 - UI checks, from `anchor-ui`: `pnpm check`, `pnpm typecheck`, `pnpm test`.
 - Raw SQL in a CT: `testDB` (`*sql.DB`), declared in `apps/anchor/cmd/it/ct/license_shared_test.go` and wired in `shared_test.go`. Scope every statement to your own IDs.
 

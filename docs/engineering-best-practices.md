@@ -216,7 +216,7 @@ Each repo keeps a test SDK for its component tests — `apps/anchor/cmd/it/share
 
 ## Verification
 
-- After Go edits: `golangci-lint run --path-mode=abs --timeout 5m --fix`. No `//nolint` or other suppressions without prior approval.
+- After Go edits, follow the [Go lint procedure](development/testing.md#go-lint). No `//nolint` or other suppressions without prior approval.
 - Run the narrowest relevant tests per the repo's test guide.
 
 ## Git

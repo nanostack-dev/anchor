@@ -7,14 +7,38 @@ Use [agent workflow](agent-workflow.md) for affected-area local E2E before pushi
 | Focused component test (Docker/testcontainers) | `apps/anchor`: `go test ./cmd/it/ct/... -run '<TestName>' -count=1` |
 | New/changed CT parallelism | `apps/anchor`: `go test ./cmd/it/ct/... -count=1 -shuffle=on`, then `go test ./cmd/it/ct/... -count=1 -race -parallel 32` |
 | Service/package selection | `apps/anchor`: `go test ./cmd/it/service/... -count=1` or the affected `./internal/<package>/...` |
-| Backend lint | `apps/anchor`: `golangci-lint run --config ../../.golangci.yml --timeout 5m`; root `lint-fix.sh` applies fixes |
+| Backend lint | Repository root: `./scripts/lint.sh backend` |
 | Backend build | `apps/anchor`: `go build ./...` |
 | UI gates | `anchor-ui`: `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test-storybook` |
 | Affected ordinary browser journey | `anchor-ui`: `pnpm test:e2e:app <spec>`; inspect `test:e2e:affected`/selection guidance before using its planner |
 | Complete app verification | `anchor-ui`: `pnpm test:e2e:verify --base <actual-PR-base-ref>` |
 | Responsive browser review | `anchor-ui`: `pnpm test:e2e:review <spec>`; bootstrap + mobile/tablet/desktop, per local adapter |
 
-Read [implementation rules](agent-rules.md) for parallel CT isolation and [engineering practices](../engineering-best-practices.md) for test SDK ownership. A root-directory lint that prints `0 issues` is not a module check. UI `build` does not check types.
+Read [implementation rules](agent-rules.md) for parallel CT isolation and [engineering practices](../engineering-best-practices.md) for test SDK ownership. UI `build` does not check types.
+
+## Go lint
+
+The repository lint script owns backend lint: it runs in `apps/anchor` with the repository-root `.golangci.yml`, even when invoked by absolute path from another directory. Local commands and backend CI use the exact version in [`.golangci-lint-version`](../../.golangci-lint-version). Installation is in [setup](setup.md#go-linter).
+
+| Stage | Command from the repository root |
+| --- | --- |
+| Iteration: formatting of changed Go files | `./scripts/lint.sh backend --format-changed` |
+| Iteration: all configured checks on changed Go packages | `./scripts/lint.sh backend --changed` |
+| Before submission: full backend lint | `./scripts/lint.sh backend` |
+
+Run full backend lint before committing/pushing Go or lint-tooling changes or reporting work ready. CI retains full analysis over `./...`. Iteration is partial: package lint includes its test files and required dependency analysis, but defers checks of importing packages to the full gate. Package lint already includes the configured formatters; a separate formatting pass is optional for faster feedback.
+
+Changed modes compare the current branch with its merge base against the locally available `origin/main`, including committed branch changes, staged/unstaged paths and non-ignored untracked files. They check current working-tree contents. Use `--base REF` for another base; `--base HEAD` selects only local edits. Fetch the intended base before relying on its branch comparison; the script never fetches automatically. NUL-delimited paths preserve spaces/newlines, package targets are deduplicated and nested Go modules are respected. Go or dependency-manifest changes in `clients/go` trigger full backend lint because it uses that local SDK replacement.
+
+Missing comparison history or failed Git discovery falls back to the whole backend module. Linter/module/workflow/generator inputs, generated Go files, API-generation inputs, migrations, deleted or renamed Go files and Go symlinks also trigger full-scope fallback. The result records the actual scope and fallback. Formatting fallback still performs formatting only. No selected Go changes returns `reason: no_changes`; that result and formatting-only results retain `coverage: iteration_only`.
+
+The default checks without modifying files. Add `--fix` explicitly to apply supported fixes, inspect the diff and check again. The legacy `./lint-fix.sh` delegates to `./scripts/lint.sh backend --fix` and forwards iteration/base flags. It resolves the checkout from its own path and no longer attempts removed shared modules.
+
+Each invocation verifies the installed tool version and configuration schema. The existing rules, custom-rule loading and five-minute analysis timeout are retained. Results include module, action, mode, scope, coverage, target count, comparison commit, fallback, version, reason, exit code, elapsed seconds and private full-log path. Selected paths and complete diagnostics stay in the log. Formatting check mode records a diff and fails on formatting changes even if the formatter itself exits zero. A final `0 issues` line does not override a failed process exit.
+
+Inspect the log after failure: `findings` requires source fixes, `config_error`/`analysis_error` requires configuration or dependency diagnosis, `timeout` requires diagnosis, and `already_running` requires waiting on the existing process handle. Retain that handle; interrupting the wrapper stops its owned process. Ask before adding `//nolint` or other suppressions.
+
+Change the pin deliberately and validate full backend lint before upgrading. `python3 scripts/test_lint.py` exercises selection, module/configuration ownership, fallbacks, explicit fixes, formatting diffs, failure statuses and termination in disposable Git fixtures without starting the application; CI runs it in `ci-ok` for backend changes.
 
 The Go verification workflow runs for pull requests against any base branch, including stacked parent branches, so every layer receives `ci-ok` on its own head. Change detection still selects backend/frontend jobs. Preview flag/upsert, preview toggle and preview teardown remain limited to a `main` PR base; main push deployment conditions are unchanged.
 
