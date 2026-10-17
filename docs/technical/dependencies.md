@@ -8,8 +8,10 @@ A standalone clone contains Anchor's source, agent guides, contract, generators 
 | [pgkit](https://github.com/nanostack-dev/pgkit) | Persisted queue/lock primitives | Before changing durable jobs, lock or retry behavior; app event semantics remain in Anchor. |
 | [nanostack-design-system](https://github.com/nanostack-dev/nanostack-design-system) | Shared React components, layout and tokens | Before UI work; use source and `src/styles.css` on `origin/main`, reconciling the app's package pin. |
 | [echopoint-cli](https://github.com/nanostack-dev/echopoint-cli) | Runs deployed API flow suites selected by `anchor` tag | Before updating flow definitions/assertions or diagnosing post-deploy coverage. |
-| [ci-workflows](https://github.com/nanostack-dev/ci-workflows) | Reusable verification jobs at the refs declared by the caller; backend lint uses a pinned workflow revision supporting the shared tool-version file | Read the workflow currently referenced by [.github/workflows/go.yml](../../.github/workflows/go.yml). |
+| [ci-workflows](https://github.com/nanostack-dev/ci-workflows) | Reusable verification jobs tracking the latest `main`; backend lint reads the committed tool-version file | Read the workflow currently referenced by [.github/workflows/go.yml](../../.github/workflows/go.yml). |
 | [infra](https://github.com/nanostack-dev/infra) | Stack/environment rendering, deployment, post-deploy suites and promotion | Before adding runtime environment inputs, releasing or rollback. |
+
+Owner-managed reusable workflows under `nanostack-dev/ci-workflows/.github/workflows/` use `@main` to consume the latest merged revision. This is an explicit exception to dependency pinning. Merge a required companion workflow change first, then validate the caller against `@main`; a temporary PR-head reference can become unavailable after a squash merge and branch deletion. Keep the golangci-lint version pinned in `.golangci-lint-version` for both local runs and CI. This exception does not change third-party action or tool version policy.
 
 Frameworks outside Nanostack include Uber FX wiring, go-jet generated SQL, OpenAPI/oapi-codegen and React/TanStack/Vite/Playwright. Exact versions belong in module/package lockfiles, not a second version list in prose.
 
