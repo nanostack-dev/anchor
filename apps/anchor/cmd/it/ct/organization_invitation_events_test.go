@@ -34,83 +34,107 @@ func invitationFields(w world, invitationID string) map[string]string {
 }
 
 func TestCreateInvitation_EmitsTheCreatedEvent(t *testing.T) {
-	// Emits the created event during create invitation.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
 
-	created := w.invite(uniqueEmail())
+	t.Run("Emits the created event during create invitation", func(t *testing.T) {
+		t.Parallel()
 
-	sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
+		w, sink := newWorldCapturingEvents(t)
+
+		created := w.invite(uniqueEmail())
+
+		sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
+	})
 }
 
 func TestInvitationEvents_CarryIdentifiersOnly(t *testing.T) {
-	// Invitation events carry identifiers only.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
 
-	event := sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
+	t.Run("Invitation events carry identifiers only", func(t *testing.T) {
+		t.Parallel()
 
-	var data map[string]string
-	require.NoError(t, json.Unmarshal(event.Data, &data))
-	assert.Equal(t, invitationFields(w, created.Id), data)
-	assert.NotContains(t, string(event.Data), string(created.Email))
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+
+		event := sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
+
+		var data map[string]string
+		require.NoError(t, json.Unmarshal(event.Data, &data))
+		assert.Equal(t, invitationFields(w, created.Id), data)
+		assert.NotContains(t, string(event.Data), string(created.Email))
+	})
 }
 
 func TestUpdateInvitation_EmitsTheUpdatedEvent(t *testing.T) {
-	// Emits the updated event during update invitation.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
 
-	w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    w.roleID,
-		ExpiresAt: time.Now().Add(time.Hour),
+	t.Run("Emits the updated event during update invitation", func(t *testing.T) {
+		t.Parallel()
+
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+
+		w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    w.roleID,
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+
+		sink.WaitFor(eventInvitationUpdated, invitationFields(w, created.Id))
 	})
-
-	sink.WaitFor(eventInvitationUpdated, invitationFields(w, created.Id))
 }
 
 func TestDeleteInvitation_EmitsTheDeletedEvent(t *testing.T) {
-	// Emits the deleted event during delete invitation.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
 
-	w.invitations.Delete(w.organizationID, created.Id)
+	t.Run("Emits the deleted event during delete invitation", func(t *testing.T) {
+		t.Parallel()
 
-	sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+
+		w.invitations.Delete(w.organizationID, created.Id)
+
+		sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+	})
 }
 
 func TestAcceptInvitation_EmitsTheAcceptedEventAndTheMembershipCreatedEvent(t *testing.T) {
-	// Emits the accepted event and the membership created event during accept invitation.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
-	userID := w.newProductUser(uniqueEmail())
 
-	w.accept(created.Id, userID)
+	t.Run("Emits the accepted event and the membership created event during accept invitation", func(t *testing.T) {
+		t.Parallel()
 
-	accepted := sink.WaitFor(eventInvitationAccepted, invitationFields(w, created.Id))
-	assert.Equal(t, userID, accepted.Field("product_user_id"))
-	sink.WaitFor(eventMembershipCreated, map[string]string{
-		"organization_id": w.organizationID,
-		"product_user_id": userID,
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+		userID := w.newProductUser(uniqueEmail())
+
+		w.accept(created.Id, userID)
+
+		accepted := sink.WaitFor(eventInvitationAccepted, invitationFields(w, created.Id))
+		assert.Equal(t, userID, accepted.Field("product_user_id"))
+		sink.WaitFor(eventMembershipCreated, map[string]string{
+			"organization_id": w.organizationID,
+			"product_user_id": userID,
+		})
 	})
 }
 
 func TestAcceptInvitation_EmitsNoEventWhenTheAcceptIsRefused(t *testing.T) {
-	// Emits no event when the accept is refused during accept invitation.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
-	sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
-	w.expire(created.Id)
 
-	w.acceptRaw(created.Id, w.newProductUser(uniqueEmail()))
-	marker := w.invite(uniqueEmail())
-	sink.WaitFor(eventInvitationCreated, invitationFields(w, marker.Id))
+	t.Run("Emits no event when the accept is refused during accept invitation", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Zero(t, sink.Count(eventInvitationAccepted))
-	assert.Zero(t, sink.Count(eventMembershipCreated))
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+		sink.WaitFor(eventInvitationCreated, invitationFields(w, created.Id))
+		w.expire(created.Id)
+
+		w.acceptRaw(created.Id, w.newProductUser(uniqueEmail()))
+		marker := w.invite(uniqueEmail())
+		sink.WaitFor(eventInvitationCreated, invitationFields(w, marker.Id))
+
+		assert.Zero(t, sink.Count(eventInvitationAccepted))
+		assert.Zero(t, sink.Count(eventMembershipCreated))
+	})
 }

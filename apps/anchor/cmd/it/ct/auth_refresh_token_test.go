@@ -12,13 +12,11 @@ import (
 )
 
 func TestRefreshToken(t *testing.T) {
-	// Refreshing accepts a valid refresh token and refuses missing or invalid tokens.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).RefreshToken)
 
 	t.Run(
-		"ValidRefreshToken", func(t *testing.T) {
-			// A valid refresh token returns a new access token.
+		"A valid refresh token returns a new access token", func(t *testing.T) {
 			refreshParams := &ct.RefreshTokenParams{
 				RefreshToken: &createPlatformAdmin(t).RefreshToken,
 			}
@@ -33,8 +31,7 @@ func TestRefreshToken(t *testing.T) {
 	)
 
 	t.Run(
-		"MissingRefreshToken", func(t *testing.T) {
-			// Refreshing without a refresh token is refused.
+		"Refreshing without a refresh token is refused", func(t *testing.T) {
 			refreshParams := &ct.RefreshTokenParams{
 				RefreshToken: nil,
 			}
@@ -47,8 +44,7 @@ func TestRefreshToken(t *testing.T) {
 	)
 
 	t.Run(
-		"InvalidRefreshToken", func(t *testing.T) {
-			// Refreshing with an invalid token is refused.
+		"Refreshing with an invalid token is refused", func(t *testing.T) {
 			invalidToken := "invalid-refresh-token-123"
 			refreshParams := &ct.RefreshTokenParams{
 				RefreshToken: &invalidToken,

@@ -12,10 +12,8 @@ import (
 )
 
 func TestReportUsage(t *testing.T) {
-	// Checks usage reporting across the scenarios below.
 	t.Parallel()
-	t.Run("stores a gauge against a declared limit", func(t *testing.T) {
-		// The API stores a gauge against a declared limit.
+	t.Run("The API stores a gauge against a declared limit", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		observation := w.Usage().Report(gauge("flows", 37))
@@ -29,8 +27,7 @@ func TestReportUsage(t *testing.T) {
 		assert.Nil(t, observation.To)
 	})
 
-	t.Run("stores a windowed counter over the period it names", func(t *testing.T) {
-		// The API stores a windowed counter over the period it names.
+	t.Run("The API stores a windowed counter over the period it names", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		from, to := billingPeriod()
 
@@ -46,8 +43,7 @@ func TestReportUsage(t *testing.T) {
 		assert.WithinDuration(t, to, *observation.To, time.Microsecond)
 	})
 
-	t.Run("a window left open runs to now", func(t *testing.T) {
-		// A window left open runs to now.
+	t.Run("A window left open runs to now", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		from := time.Now().Add(-24 * time.Hour)
 
@@ -62,8 +58,7 @@ func TestReportUsage(t *testing.T) {
 		assert.Equal(t, observation.ObservedAt, *observation.To)
 	})
 
-	t.Run("zero is a real observation", func(t *testing.T) {
-		// Zero is a real observation.
+	t.Run("Zero is a real observation", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		observation := w.Usage().Report(gauge("flows", 0))
@@ -73,8 +68,7 @@ func TestReportUsage(t *testing.T) {
 
 	// The two cases this whole subsystem turns on. Refusing either would make
 	// the "exceeded" status unreachable.
-	t.Run("accepts a value past the limit the organization holds", func(t *testing.T) {
-		// The API accepts a value past the limit the organization holds.
+	t.Run("The API accepts a value past the limit the organization holds", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		require.InDelta(t, 500.0, w.License().Get().Values["flows"], 0)
 
@@ -83,8 +77,7 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, 9000.0, observation.Value, 0)
 	})
 
-	t.Run("accepts a value past the rule the license field declares", func(t *testing.T) {
-		// The API accepts a value past the rule the license field declares.
+	t.Run("The API accepts a value past the rule the license field declares", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		observation := w.Usage().Report(gauge("flows", 250_000))
@@ -92,8 +85,7 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, 250_000.0, observation.Value, 0)
 	})
 
-	t.Run("reporting the same value twice drifts nothing", func(t *testing.T) {
-		// Reporting the same value twice drifts nothing.
+	t.Run("Reporting the same value twice drifts nothing", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		first := w.Usage().Report(gauge("flows", 37))
@@ -103,8 +95,7 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, first.Value, second.Value, 0)
 	})
 
-	t.Run("refuses a key the license schema does not declare", func(t *testing.T) {
-		// The API refuses a key the license schema does not declare.
+	t.Run("The API refuses a key the license schema does not declare", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().ReportRaw(gauge("flowz", 37))
@@ -113,8 +104,7 @@ func TestReportUsage(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_UNKNOWN", "flowz", "")
 	})
 
-	t.Run("refuses a license field that is not a limit", func(t *testing.T) {
-		// The API refuses a license field that is not a limit.
+	t.Run("The API refuses a license field that is not a limit", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().ReportRaw(gauge("sso", 1))
@@ -125,8 +115,7 @@ func TestReportUsage(t *testing.T) {
 		assert.Equal(t, "BOOLEAN", (*resp.JSON400.Errors[0].Metadata)["type"])
 	})
 
-	t.Run("refuses a negative value", func(t *testing.T) {
-		// The API refuses a negative value.
+	t.Run("The API refuses a negative value", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().ReportRaw(gauge("flows", -1))
@@ -135,8 +124,7 @@ func TestReportUsage(t *testing.T) {
 		assertValidationRule(t, resp.JSON400.Errors, "gte")
 	})
 
-	t.Run("refuses a value that is not a number", func(t *testing.T) {
-		// The API refuses a value that is not a number.
+	t.Run("The API refuses a value that is not a number", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().ReportBodyRaw(`{"key":"flows","value":"many"}`)
@@ -147,8 +135,7 @@ func TestReportUsage(t *testing.T) {
 	// A report that carries no value must not be read as a report of zero.
 	// Zero is a real observation, so the omission cannot be caught by a bound
 	// on the number, and the request validator does not check the body.
-	t.Run("refuses a report that carries no value", func(t *testing.T) {
-		// The API refuses a report that carries no value.
+	t.Run("The API refuses a report that carries no value", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		omitted := w.Usage().ReportBodyRaw(`{"key":"flows"}`)
@@ -162,8 +149,7 @@ func TestReportUsage(t *testing.T) {
 
 	// The counterpart to the case above: the guard rejects an absent value, not
 	// a zero one, so an organization that genuinely uses nothing still reports.
-	t.Run("a report of zero is stored, not mistaken for an omission", func(t *testing.T) {
-		// A report of zero is stored, not mistaken for an omission.
+	t.Run("A report of zero is stored, not mistaken for an omission", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		observation := w.Usage().Report(gauge("flows", 0))
@@ -171,8 +157,7 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, 0.0, observation.Value, 0)
 	})
 
-	t.Run("refuses an end with no start", func(t *testing.T) {
-		// The API refuses an end with no start.
+	t.Run("The API refuses an end with no start", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		_, to := billingPeriod()
 
@@ -182,8 +167,7 @@ func TestReportUsage(t *testing.T) {
 		assertValidationRule(t, resp.JSON400.Errors, "required_with")
 	})
 
-	t.Run("refuses a window that holds no time", func(t *testing.T) {
-		// The API refuses a window that holds no time.
+	t.Run("The API refuses a window that holds no time", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		from, to := billingPeriod()
 
@@ -196,8 +180,7 @@ func TestReportUsage(t *testing.T) {
 		assertValidationRule(t, reversed.JSON400.Errors, "gtfield")
 	})
 
-	t.Run("refuses a window longer than a year", func(t *testing.T) {
-		// The API refuses a window longer than a year.
+	t.Run("The API refuses a window longer than a year", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		_, to := billingPeriod()
 
@@ -207,8 +190,7 @@ func TestReportUsage(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
 	})
 
-	t.Run("accepts a window of exactly a year", func(t *testing.T) {
-		// The API accepts a window of exactly a year.
+	t.Run("The API accepts a window of exactly a year", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		_, to := billingPeriod()
 
@@ -217,8 +199,7 @@ func TestReportUsage(t *testing.T) {
 		assert.InDelta(t, 8_640.0, observation.Value, 0)
 	})
 
-	t.Run("a window left open cannot outrun the year bound", func(t *testing.T) {
-		// A window left open cannot outrun the year bound.
+	t.Run("A window left open cannot outrun the year bound", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 
 		resp := w.Usage().ReportRaw(
@@ -229,8 +210,7 @@ func TestReportUsage(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "USAGE_WINDOW_TOO_LONG")
 	})
 
-	t.Run("refuses an organization the product does not have", func(t *testing.T) {
-		// The API refuses an organization the product does not have.
+	t.Run("The API refuses an organization the product does not have", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().For(missingOrganizationID()).ReportRaw(gauge("flows", 37))
@@ -238,8 +218,7 @@ func TestReportUsage(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("refuses a product that has declared no license schema", func(t *testing.T) {
-		// The API refuses a product that has declared no license schema.
+	t.Run("The API refuses a product that has declared no license schema", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		organizationID := createOrganization(t, tc.product)
 
@@ -255,10 +234,8 @@ func TestReportUsage(t *testing.T) {
 // declaration: a report's window presence must agree with the field's
 // declared usage_shape. See docs/adr/0013-usage-shape-is-declared-not-inferred.md.
 func TestReportUsageShape(t *testing.T) {
-	// Usage reporting enforces the declared gauge or windowed-counter shape.
 	t.Parallel()
-	t.Run("refuses a windowed report against a gauge field", func(t *testing.T) {
-		// The API refuses a windowed report against a gauge field.
+	t.Run("The API refuses a windowed report against a gauge field", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		from, to := billingPeriod()
 
@@ -270,8 +247,7 @@ func TestReportUsageShape(t *testing.T) {
 		assert.Equal(t, "GAUGE", (*resp.JSON400.Errors[0].Metadata)["usage_shape"])
 	})
 
-	t.Run("refuses an open-ended report against a gauge field", func(t *testing.T) {
-		// The API refuses an open-ended report against a gauge field.
+	t.Run("The API refuses an open-ended report against a gauge field", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.Usage().ReportRaw(openEnded(worldLimitKey, 412, time.Now().Add(-time.Hour)))
@@ -280,8 +256,7 @@ func TestReportUsageShape(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "USAGE_SHAPE_MISMATCH", worldLimitKey, "")
 	})
 
-	t.Run("refuses a windowless report against a windowed counter field", func(t *testing.T) {
-		// The API refuses a windowless report against a windowed counter field.
+	t.Run("The API refuses a windowless report against a windowed counter field", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 
 		resp := w.Usage().ReportRaw(gauge(worldWindowedCounterKey, 37))
@@ -296,8 +271,7 @@ func TestReportUsageShape(t *testing.T) {
 	// the column has no backfill. resolveLimit refuses to guess one rather
 	// than defaulting to gauge or counter, either of which would be a silent
 	// answer to a question only the field's owner can settle.
-	t.Run("refuses usage against a limit with no usage_shape declared", func(t *testing.T) {
-		// The API refuses usage against a limit with no usage shape declared.
+	t.Run("The API refuses usage against a limit with no usage shape declared", func(t *testing.T) {
 		w := newWindowedCounterWorld(t)
 		// Scoped to this world's own schema: a field name is unique only within
 		// its schema, and every newWindowedCounterWorld declares a
@@ -319,10 +293,8 @@ func TestReportUsageShape(t *testing.T) {
 }
 
 func TestReportUsageIsolation(t *testing.T) {
-	// Usage reports cannot reach an organization belonging to another product.
 	t.Parallel()
-	t.Run("an organization of another product is not addressable", func(t *testing.T) {
-		// An organization of another product is not addressable.
+	t.Run("An organization of another product is not addressable", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		other := newLicenseWorld(t)
 
@@ -331,8 +303,7 @@ func TestReportUsageIsolation(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("usage is reported against the organization in the path", func(t *testing.T) {
-		// Usage is reported against the organization in the path.
+	t.Run("Usage is reported against the organization in the path", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		second := w.NewOrganization()
 
@@ -345,10 +316,8 @@ func TestReportUsageIsolation(t *testing.T) {
 }
 
 func TestReportUsageNeedsNoLicense(t *testing.T) {
-	// Usage reporting needs no license.
 	t.Parallel()
-	t.Run("an organization on no tier can report", func(t *testing.T) {
-		// An organization on no tier can report.
+	t.Run("An organization on no tier can report", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		require.Equal(t, http.StatusNotFound, w.License().GetRaw().StatusCode())
 
@@ -357,8 +326,7 @@ func TestReportUsageNeedsNoLicense(t *testing.T) {
 		assert.InDelta(t, 37.0, observation.Value, 0)
 	})
 
-	t.Run("an organization whose tier was withdrawn keeps reporting", func(t *testing.T) {
-		// An organization whose tier was withdrawn keeps reporting.
+	t.Run("An organization whose tier was withdrawn keeps reporting", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.Template().Archive()
 

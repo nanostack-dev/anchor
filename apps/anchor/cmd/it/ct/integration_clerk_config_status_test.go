@@ -14,10 +14,8 @@ import (
 )
 
 func TestClerkIntegrationConfigAndStatus(t *testing.T) {
-	// Clerk configuration updates enforce the webhook-secret gate and persist integration status transitions.
 	t.Parallel()
-	t.Run("RejectsWebhookWhenSecretIsNotConfigured", func(t *testing.T) {
-		// The API rejects webhook when secret is not configured.
+	t.Run("The API rejects webhook when secret is not configured", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		createClerkIntegrationInstance(t, productContext)
 
@@ -31,8 +29,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		assert.Equal(t, "INTEGRATION_INSTANCE_CONFIGURING", resp.JSON409.Errors[0].Code)
 	})
 
-	t.Run("ConfiguredSecretAndActiveStatusProcessWebhook", func(t *testing.T) {
-		// An active Clerk integration with a configured secret processes a signed webhook.
+	t.Run("An active Clerk integration with a configured secret processes a signed webhook", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -58,8 +55,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		}, 5*time.Second, 200*time.Millisecond)
 	})
 
-	t.Run("InactiveInstanceRejectsWebhook", func(t *testing.T) {
-		// Inactive instance rejects webhook.
+	t.Run("Inactive instance rejects webhook", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -81,8 +77,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		assert.Equal(t, "INTEGRATION_INSTANCE_DISABLED", resp.JSON409.Errors[0].Code)
 	})
 
-	t.Run("EnableFlagPromotesInactiveToActive", func(t *testing.T) {
-		// Enabling an inactive Clerk integration makes it active when its secret is configured.
+	t.Run("Enabling an inactive Clerk integration makes it active when its secret is configured", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -108,8 +103,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		assert.True(t, fetched.IsEnabled)
 	})
 
-	t.Run("EnableFlagDoesNotPromoteConfiguringToActive", func(t *testing.T) {
-		// Enable flag does not promote configuring to active.
+	t.Run("Enable flag does not promote configuring to active", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 
@@ -131,8 +125,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		assert.True(t, fetched.IsEnabled)
 	})
 
-	t.Run("NoopUpdateDoesNotPromoteConfiguringWithoutSecret", func(t *testing.T) {
-		// Noop update does not promote configuring without secret.
+	t.Run("Noop update does not promote configuring without secret", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 
@@ -148,8 +141,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 		assert.Equal(t, ct.IntegrationInstanceStatusCONFIGURING, resp.JSON200.Status)
 	})
 
-	t.Run("LifecycleTransitionsArePersisted", func(t *testing.T) {
-		// Lifecycle transitions are persisted.
+	t.Run("Lifecycle transitions are persisted", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 

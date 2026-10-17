@@ -12,10 +12,8 @@ import (
 )
 
 func TestLicenseTemplateCreate(t *testing.T) {
-	// Checks license template creation across the scenarios below.
 	t.Parallel()
-	t.Run("stores a named set of values", func(t *testing.T) {
-		// The API stores a named set of values.
+	t.Run("The API stores a named set of values", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseTemplateWithResponse(
@@ -46,8 +44,7 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		assert.Equal(t, "ca-central", template.Values["region"])
 	})
 
-	t.Run("carries a value for every declared field", func(t *testing.T) {
-		// The API carries a value for every declared field.
+	t.Run("The API carries a value for every declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		template := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
@@ -61,8 +58,7 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("carries no version and no publication workflow", func(t *testing.T) {
-		// The API carries no version and no publication workflow.
+	t.Run("The API carries no version and no publication workflow", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseTemplateWithResponse(
@@ -92,8 +88,7 @@ func TestLicenseTemplateCreate(t *testing.T) {
 		assert.Equal(t, string(ct.LicenseTemplateStatusACTIVE), body["status"])
 	})
 
-	t.Run("templates are scoped to their own product", func(t *testing.T) {
-		// Templates are scoped to their own product.
+	t.Run("Templates are scoped to their own product", func(t *testing.T) {
 		first := newTemplateCtx(t)
 		second := newTemplateCtx(t)
 

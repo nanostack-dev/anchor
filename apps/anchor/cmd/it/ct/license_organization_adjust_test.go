@@ -10,10 +10,8 @@ import (
 )
 
 func TestAdjustOrganizationLicense(t *testing.T) {
-	// Organization adjustment license.
 	t.Parallel()
-	t.Run("adjusts one license field and leaves the rest alone", func(t *testing.T) {
-		// Adjusts one license field and leaves the rest alone.
+	t.Run("Adjusts one license field and leaves the rest alone", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		adjusted := w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -25,8 +23,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		})
 	})
 
-	t.Run("adjusts several license fields at once", func(t *testing.T) {
-		// Adjusts several license fields at once.
+	t.Run("Adjusts several license fields at once", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		adjusted := w.License().Adjust(ct.LicenseTemplateValues{"flows": 900, "sso": false})
@@ -36,8 +33,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		})
 	})
 
-	t.Run("an omitted license field is left alone rather than unset", func(t *testing.T) {
-		// An omitted license field is left alone rather than unset.
+	t.Run("An omitted license field is left alone rather than unset", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		// The opposite of a template write, where an omitted license field is a
@@ -47,8 +43,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assert.Len(t, adjusted.Values, len(templateSchemaFields()))
 	})
 
-	t.Run("leaves the provenance alone", func(t *testing.T) {
-		// The API leaves the provenance alone.
+	t.Run("The API leaves the provenance alone", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		before := w.License().Get()
 
@@ -60,8 +55,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assert.Equal(t, before.InstantiatedAt, adjusted.InstantiatedAt)
 	})
 
-	t.Run("an empty adjustment changes nothing", func(t *testing.T) {
-		// An empty adjustment changes nothing.
+	t.Run("An empty adjustment changes nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		adjusted := w.License().Adjust(ct.LicenseTemplateValues{})
@@ -69,8 +63,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assertValues(t, adjusted.Values, validTemplateValues())
 	})
 
-	t.Run("refuses a value outside its license field's rules", func(t *testing.T) {
-		// The API refuses a value outside its license field's rules.
+	t.Run("The API refuses a value outside its license field's rules", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		// Validated against the schema exactly as a template write is, and by the
@@ -81,8 +74,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "flows", "max")
 	})
 
-	t.Run("refuses a value of the wrong type", func(t *testing.T) {
-		// The API refuses a value of the wrong type.
+	t.Run("The API refuses a value of the wrong type", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().AdjustRaw(ct.LicenseTemplateValues{"sso": "yes"})
@@ -91,8 +83,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "sso", "type")
 	})
 
-	t.Run("refuses a license field the schema does not declare", func(t *testing.T) {
-		// The API refuses a license field the schema does not declare.
+	t.Run("The API refuses a license field the schema does not declare", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().AdjustRaw(ct.LicenseTemplateValues{"seats": 12})
@@ -101,16 +92,14 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_UNKNOWN", "seats", "")
 	})
 
-	t.Run("404 when the organization has no license", func(t *testing.T) {
-		// The API returns 404 when the organization has no license.
+	t.Run("The API returns 404 when the organization has no license", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().AdjustRaw(ct.LicenseTemplateValues{"flows": 800})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("does not adjust another product's license", func(t *testing.T) {
-		// The API does not adjust another product's license.
+	t.Run("The API does not adjust another product's license", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 
@@ -119,8 +108,7 @@ func TestAdjustOrganizationLicense(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		sink := w.product.CaptureEvents()
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})

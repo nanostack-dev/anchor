@@ -16,7 +16,6 @@ import (
 )
 
 func TestProductAPIKeyUpdate(t *testing.T) {
-	// Checks product API key update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -25,7 +24,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Update API key name and description successfully", func(t *testing.T) {
-			// Update API key name and description successfully.
 			apiKeyName := "OriginalKey_" + uuid.NewString()
 			originalDescription := "Original description"
 
@@ -72,7 +70,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Update API key name only", func(t *testing.T) {
-			// Update API key name only.
 			apiKeyName := "NameOnlyKey_" + uuid.NewString()
 			description := "Keep this description"
 
@@ -111,7 +108,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Update API key description only", func(t *testing.T) {
-			// Update API key description only.
 			apiKeyName := "DescOnlyKey_" + uuid.NewString()
 			originalDescription := "Original description"
 
@@ -152,7 +148,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Immutable API key can update name but cannot update permissions", func(t *testing.T) {
-			// Immutable API key can update name but cannot update permissions.
 			apiKeyName := "ImmutableKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -203,7 +198,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Mutable API key can update permissions", func(t *testing.T) {
-			// Mutable API key can update permissions.
 			apiKeyName := "MutableKey_" + uuid.NewString()
 			mutable := true
 
@@ -239,7 +233,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 	t.Run(
 		"Update non-existent API key returns 404", func(t *testing.T) {
-			// Update non-existent API key returns 404.
 			nonExistentID := ids.MustNew("product_apikey")
 			newName := "NewName"
 
@@ -256,8 +249,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"Update API key with duplicate name returns 400", func(t *testing.T) {
-			// Renaming a product API key to another key's name returns a conflict.
+		"Renaming a product API key to another key's name returns a conflict", func(t *testing.T) {
 			key1Name := "FirstKey_" + uuid.NewString()
 			key2Name := "SecondKey_" + uuid.NewString()
 
@@ -301,8 +293,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"Name validation cases should trigger 400 Bad Request", func(t *testing.T) {
-			// Name validation cases should trigger 400 bad request.
+		"Name validation cases should trigger 400 bad request", func(t *testing.T) {
 			apiKeyName := "ValidationKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -324,13 +315,11 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 				inputName   string
 				expectedMsg string
 			}{
-				// The product-key request rejects name is blank.
 				{
 					name:        "Name is blank",
 					inputName:   "   ",
 					expectedMsg: "Name cannot be blank",
 				},
-				// The product-key request rejects name exceeds 100 characters.
 				{
 					name:        "Name exceeds 100 characters",
 					inputName:   strings.Repeat("a", 101),
@@ -340,8 +329,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 			for _, tc := range testCases {
 				t.Run(
-					tc.name, func(t *testing.T) {
-						// The product-key update returns the expected validation result for this field value.
+					"Updating a product API key validates "+tc.name, func(t *testing.T) {
 						updateResp, nameValidationErr := product.OwnerAuthenticatedClient().
 							UpdateProductAPIKeyWithResponse(
 								ctx,
@@ -368,8 +356,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"Description validation cases should trigger 400 Bad Request", func(t *testing.T) {
-			// Description validation cases should trigger 400 bad request.
+		"Description validation cases should trigger 400 bad request", func(t *testing.T) {
 			apiKeyName := "DescValidationKey_" + uuid.NewString()
 
 			createResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -391,19 +378,16 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 				inputDesc   *string
 				expectedMsg string
 			}{
-				// The product-key request accepts description is null.
 				{
 					name:        "Description is null should be allowed",
 					inputDesc:   nil,
 					expectedMsg: "",
 				},
-				// The product-key request accepts description is blank.
 				{
 					name:        "Description is blank should be allowed",
 					inputDesc:   new("   "),
 					expectedMsg: "",
 				},
-				// The product-key request rejects description exceeds 500 characters.
 				{
 					name:        "Description exceeds 500 characters",
 					inputDesc:   new(strings.Repeat("a", 501)),
@@ -413,8 +397,7 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 
 			for _, tc := range testCases {
 				t.Run(
-					tc.name, func(t *testing.T) {
-						// The product-key update returns the expected validation result for this field value.
+					"Updating a product API key validates "+tc.name, func(t *testing.T) {
 						updateResp, descValidationErr := product.OwnerAuthenticatedClient().
 							UpdateProductAPIKeyWithResponse(
 								ctx,
@@ -449,7 +432,6 @@ func TestProductAPIKeyUpdate(t *testing.T) {
 }
 
 func TestProductAPIKeyUpdateNameConflict(t *testing.T) {
-	// Checks product API key update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -465,7 +447,6 @@ func TestProductAPIKeyUpdateNameConflict(t *testing.T) {
 	}
 
 	t.Run("Concurrent identical renames of one key all succeed", func(t *testing.T) {
-		// Concurrent identical renames of one key all succeed.
 		keyID := createKey("RaceKey_" + uuid.NewString())
 		const rounds, renamesPerRound = 20, 8
 		for range rounds {
@@ -491,7 +472,6 @@ func TestProductAPIKeyUpdateNameConflict(t *testing.T) {
 	})
 
 	t.Run("Rename to the name of another key returns conflict", func(t *testing.T) {
-		// Rename to the name of another key returns conflict.
 		takenName := "TakenKey_" + uuid.NewString()
 		createKey(takenName)
 		keyID := createKey("OtherKey_" + uuid.NewString())

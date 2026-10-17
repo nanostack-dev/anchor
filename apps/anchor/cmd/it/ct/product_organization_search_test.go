@@ -14,7 +14,6 @@ import (
 )
 
 func TestProductOrganizationSearch(t *testing.T) {
-	// Checks product organization search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -55,8 +54,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	require.NotNil(t, org3.JSON201)
 
 	t.Run(
-		"SuccessfulSearchAllOrganizations", func(t *testing.T) {
-			// Searching all organizations succeeds.
+		"Searching all organizations succeeds", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -99,8 +97,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsByIDs", func(t *testing.T) {
-			// Searching organizations by IDs succeeds.
+		"Searching organizations by IDs succeeds", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -135,8 +132,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsByNames", func(t *testing.T) {
-			// Searching organizations by names succeeds.
+		"Searching organizations by names succeeds", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -171,8 +167,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsWithFullTextSearch", func(t *testing.T) {
-			// Searching organizations with full text search succeeds.
+		"Searching organizations with full text search succeeds", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -203,8 +198,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsWithSorting", func(t *testing.T) {
-			// Searching organizations with sorting succeeds.
+		"Searching organizations with sorting succeeds", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -244,8 +238,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsWithPagination", func(t *testing.T) {
-			// Searching organizations with pagination succeeds.
+		"Searching organizations with pagination succeeds", func(t *testing.T) {
 			response1, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -304,8 +297,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsEmptyResults", func(t *testing.T) {
-			// Organization search returns an empty result set when nothing matches.
+		"Organization search returns an empty result set when nothing matches", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -333,8 +325,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsInvalidPagination", func(t *testing.T) {
-			// Searching organizations invalid pagination returns a bad request.
+		"Searching organizations invalid pagination returns a bad request", func(t *testing.T) {
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -358,8 +349,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchOrganizationsNonExistentProduct", func(t *testing.T) {
-			// Searching organizations nonexistent product returns not found.
+		"Searching organizations nonexistent product returns not found", func(t *testing.T) {
 			nonExistentProductID := "prod_nonexistent123"
 
 			response, err := apiKeyClient.SearchProductOrganizationsWithResponse(
@@ -385,8 +375,7 @@ func TestProductOrganizationSearch(t *testing.T) {
 	)
 
 	t.Run(
-		"SecuritySearchOrganizationsWithInvalidPermissions", func(t *testing.T) {
-			// Organization search refuses an API key without the required scope.
+		"Organization search refuses an API key without the required scope", func(t *testing.T) {
 			apiKeyClientWithBadPermissions, apiKeyIDBadPerm := testProduct.CreateAPIKeyClientWithScopes(
 				[]string{"organization:create"},
 			)

@@ -14,13 +14,11 @@ import (
 )
 
 func TestDeleteProductUser(t *testing.T) {
-	// Checks product user deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
-		"SuccessfulDeleteProductUser", func(t *testing.T) {
-			// Deleting a product user succeeds.
+		"Deleting a product user succeeds", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			testUser := createDSLProductUser(t, productContext)
@@ -55,8 +53,7 @@ func TestDeleteProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"DeleteNonExistentProductUser", func(t *testing.T) {
-			// Deleting nonexistent product user succeeds.
+		"Deleting nonexistent product user succeeds", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			nonExistentUserID := ids.MustNew("puser")
@@ -78,8 +75,7 @@ func TestDeleteProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"DeleteProductUserMultipleTimes", func(t *testing.T) {
-			// Product user multiple deletion times.
+		"Product user multiple deletion times", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			testUser := createDSLProductUser(t, productContext)
@@ -101,8 +97,7 @@ func TestDeleteProductUser(t *testing.T) {
 		},
 	)
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		sink := productContext.CaptureEvents()
 		testUser := createDSLProductUser(t, productContext)
@@ -115,8 +110,7 @@ func TestDeleteProductUser(t *testing.T) {
 		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": testUser.ID})
 	})
 
-	t.Run("EmitsOnlyWhenARowIsDeleted", func(t *testing.T) {
-		// The API emits only when a row is deleted.
+	t.Run("The API emits only when a row is deleted", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		sink := productContext.CaptureEvents()
 		testUser := createDSLProductUser(t, productContext)

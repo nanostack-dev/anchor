@@ -25,51 +25,55 @@ import (
 // error never reaches the dispatch-error classifier; this guards that the
 // pre-dispatch path is classified the same way.
 func TestEmailSendSenderIdentityFailure(t *testing.T) {
-	// An invalid sender identity prevents delivery and records the send failure.
 	t.Parallel()
-	tc := newEmailTestCtx(t)
-	seedUndecryptableSMTPInstance(t, tc)
-	client := tc.product.OwnerAuthenticatedClient()
 
-	created, err := client.CreateEmailTemplateWithResponse(
-		context.Background(),
-		tc.product.ProductID,
-		ct.CreateEmailTemplateJSONRequestBody{
-			Slug:     uniqueSlug(),
-			Name:     "Transactional",
-			Subject:  "Hello {{ .name }}",
-			BodyHtml: "<p>Hi {{ .name }}</p>",
-		},
-	)
-	require.NoError(t, err)
-	tplID := created.JSON201.Id
+	t.Run("An invalid sender identity prevents delivery and records the send failure", func(t *testing.T) {
+		t.Parallel()
 
-	_, err = client.PublishEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
-	require.NoError(t, err)
+		tc := newEmailTestCtx(t)
+		seedUndecryptableSMTPInstance(t, tc)
+		client := tc.product.OwnerAuthenticatedClient()
 
-	vars := map[string]any{"name": "Bob"}
-	resp, sendErr := client.SendEmailWithResponse(
-		context.Background(),
-		tc.product.ProductID,
-		ct.SendEmailJSONRequestBody{
-			TemplateId: &tplID,
-			ToAddress:  openapi_types.Email("bob@example.com"),
-			Variables:  &vars,
-		},
-	)
-	require.NoError(t, sendErr)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode())
+		created, err := client.CreateEmailTemplateWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.CreateEmailTemplateJSONRequestBody{
+				Slug:     uniqueSlug(),
+				Name:     "Transactional",
+				Subject:  "Hello {{ .name }}",
+				BodyHtml: "<p>Hi {{ .name }}</p>",
+			},
+		)
+		require.NoError(t, err)
+		tplID := created.JSON201.Id
 
-	// The generated client does not model a 500 body, so decode the standard
-	// error envelope directly. The failure must carry the stable delivery code,
-	// not the generic UNEXPECTED produced by the unhandled-error safety net.
-	var env ct.ApiErrorResponse
-	require.NoError(t, json.Unmarshal(resp.Body, &env))
-	require.Len(t, env.Errors, 1)
-	assert.Equal(t, "EMAIL_DELIVERY_FAILED", env.Errors[0].Code)
-	// The underlying decryption detail must never leak to the client.
-	assert.NotContains(t, env.Errors[0].Message, "decrypt")
-	assert.NotContains(t, env.Errors[0].Message, "cipher")
+		_, err = client.PublishEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
+		require.NoError(t, err)
+
+		vars := map[string]any{"name": "Bob"}
+		resp, sendErr := client.SendEmailWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.SendEmailJSONRequestBody{
+				TemplateId: &tplID,
+				ToAddress:  openapi_types.Email("bob@example.com"),
+				Variables:  &vars,
+			},
+		)
+		require.NoError(t, sendErr)
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode())
+
+		// The generated client does not model a 500 body, so decode the standard
+		// error envelope directly. The failure must carry the stable delivery code,
+		// not the generic UNEXPECTED produced by the unhandled-error safety net.
+		var env ct.ApiErrorResponse
+		require.NoError(t, json.Unmarshal(resp.Body, &env))
+		require.Len(t, env.Errors, 1)
+		assert.Equal(t, "EMAIL_DELIVERY_FAILED", env.Errors[0].Code)
+		// The underlying decryption detail must never leak to the client.
+		assert.NotContains(t, env.Errors[0].Message, "decrypt")
+		assert.NotContains(t, env.Errors[0].Message, "cipher")
+	})
 }
 
 // seedUndecryptableSMTPInstance configures the product's SMTP integration with a

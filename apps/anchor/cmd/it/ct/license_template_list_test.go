@@ -11,10 +11,8 @@ import (
 )
 
 func TestLicenseTemplateList(t *testing.T) {
-	// Checks license template listing across the scenarios below.
 	t.Parallel()
-	t.Run("lists the product's templates by name", func(t *testing.T) {
-		// The API lists the product's templates by name.
+	t.Run("The API lists the product's templates by name", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Pro", validTemplateValues())
 		createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
@@ -31,8 +29,7 @@ func TestLicenseTemplateList(t *testing.T) {
 		assert.Equal(t, []string{"Free", "Pro"}, templateNames(resp.JSON200.Items))
 	})
 
-	t.Run("lists nothing for a product with no templates", func(t *testing.T) {
-		// The API lists nothing for a product with no templates.
+	t.Run("The API lists nothing for a product with no templates", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().SearchLicenseTemplatesWithResponse(
@@ -45,8 +42,7 @@ func TestLicenseTemplateList(t *testing.T) {
 		assert.Equal(t, 0, resp.JSON200.Count)
 	})
 
-	t.Run("does not list another product's templates", func(t *testing.T) {
-		// The API does not list another product's templates.
+	t.Run("The API does not list another product's templates", func(t *testing.T) {
 		first := newTemplateCtx(t)
 		second := newTemplateCtx(t)
 		createTemplate(t, first, "Pro", validTemplateValues())

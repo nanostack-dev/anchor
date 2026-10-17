@@ -14,7 +14,6 @@ import (
 )
 
 func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testing.T) {
-	// Invitations another product cannot reach an invitation of this product.
 	t.Parallel()
 	state := itdsl.Given(t).
 		Tenant(itdsl.TenantOpts{Alias: "t"}).
@@ -27,43 +26,39 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 	created := owner.invite(uniqueEmail())
 	intruderUser := newWorldOn(t, intruderProduct).newProductUser(uniqueEmail())
 
-	t.Run("get", func(t *testing.T) {
-		// The get operation cannot reach an invitation belonging to another product or tenant.
+	t.Run("The get operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.GetRaw(owner.organizationID, created.Id)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("search", func(t *testing.T) {
-		// The search operation cannot reach an invitation belonging to another product or tenant.
+	t.Run("The search operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.SearchRaw(owner.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("create", func(t *testing.T) {
-		// The create operation cannot reach an invitation belonging to another product or tenant.
+	t.Run("The create operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.CreateRaw(owner.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
 			RoleId: owner.roleID,
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("update", func(t *testing.T) {
-		// The update operation cannot reach an invitation belonging to another product or tenant.
+	t.Run("The update operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.UpdateRaw(owner.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
 			RoleId:    owner.roleID,
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("delete", func(t *testing.T) {
-		// The delete operation cannot reach an invitation belonging to another product or tenant.
+	t.Run("The delete operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.DeleteRaw(owner.organizationID, created.Id)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
-	t.Run("search in product", func(t *testing.T) {
-		// The search in product operation cannot reach an invitation belonging to another product or tenant.
-		assert.Empty(t, intruder.PendingFor(string(created.Email)))
-	})
-	t.Run("accept", func(t *testing.T) {
-		// The accept operation cannot reach an invitation belonging to another product or tenant.
+	t.Run(
+		"The search in product operation cannot reach an invitation belonging to another product or tenant",
+		func(t *testing.T) {
+			assert.Empty(t, intruder.PendingFor(string(created.Email)))
+		},
+	)
+	t.Run("The accept operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.AcceptRaw(owner.organizationID, created.Id, intruderUser)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
@@ -77,18 +72,22 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 }
 
 func TestInvitations_APlatformOwnerOfAnotherTenantCannotReachThem(t *testing.T) {
-	// Invitations a platform owner of another tenant cannot reach them.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	otherTenant := itdsl.Given(t).
-		Tenant(itdsl.TenantOpts{Alias: "other", Isolated: true}).
-		Build().Tenant("other")
 
-	resp, err := otherTenant.OwnerClient.GetOrganizationInvitationWithResponse(
-		t.Context(), w.product.ProductID, w.organizationID, created.Id,
-	)
+	t.Run("Invitations a platform owner of another tenant cannot reach them", func(t *testing.T) {
+		t.Parallel()
 
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		otherTenant := itdsl.Given(t).
+			Tenant(itdsl.TenantOpts{Alias: "other", Isolated: true}).
+			Build().Tenant("other")
+
+		resp, err := otherTenant.OwnerClient.GetOrganizationInvitationWithResponse(
+			t.Context(), w.product.ProductID, w.organizationID, created.Id,
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
 }

@@ -18,7 +18,6 @@ import (
 
 // Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendCreate(t *testing.T) {
-	// Checks email send creation across the scenarios below.
 	mp := mailpit.Shared(t)
 
 	tc := newEmailTestCtx(t)
@@ -43,8 +42,7 @@ func TestEmailSendCreate(t *testing.T) {
 	_, err = client.PublishEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
 	require.NoError(t, err)
 
-	t.Run("delivers email and returns SENT record", func(t *testing.T) {
-		// Delivers email and returns sent record.
+	t.Run("Delivers email and returns sent record", func(t *testing.T) {
 		vars := map[string]any{"name": "Bob"}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),
@@ -70,8 +68,7 @@ func TestEmailSendCreate(t *testing.T) {
 		assert.Contains(t, body.HTML, "Bob")
 	})
 
-	t.Run("same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
-		// Same dedupe key returns identical record and single SMTP message.
+	t.Run("Same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
 		dedupeKey := ids.MustNew("dkey")
 		vars := map[string]any{}
 		body := ct.SendEmailJSONRequestBody{
@@ -99,8 +96,7 @@ func TestEmailSendCreate(t *testing.T) {
 		assert.Len(t, mp.Messages(t), countBefore+1, "only one SMTP message despite two sends")
 	})
 
-	t.Run("concurrent same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
-		// Concurrent same dedupe key returns identical record and single SMTP message.
+	t.Run("Concurrent same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
 		mp.Reset(t)
 
 		dedupeKey := ids.MustNew("dkey")
@@ -160,8 +156,7 @@ func TestEmailSendCreate(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 	})
 
-	t.Run("rejects send to unpublished template", func(t *testing.T) {
-		// The API rejects send to unpublished template.
+	t.Run("The API rejects send to unpublished template", func(t *testing.T) {
 		draft, createErr := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,

@@ -14,7 +14,6 @@ import (
 )
 
 func TestOrganizationWorkspaceRoutes(t *testing.T) {
-	// Organization workspaces support creation, reading, updates, searches, and deletion through the API.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -25,8 +24,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 		new("Workspace route test organization"),
 	)
 
-	t.Run("CreateGetSearchUpdateAndDeleteWorkspace", func(t *testing.T) {
-		// Creating get search update and delete workspace succeeds.
+	t.Run("Creating get search update and delete workspace succeeds", func(t *testing.T) {
 		workspaceName := "workspace-" + itshared.Faker.UUID().V4()
 		created := createWorkspace(t, apiKeyClient, productCtx.ProductID, organization.Id, workspaceName)
 
@@ -110,44 +108,45 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, getDeletedResp.StatusCode())
 	})
 
-	t.Run("DuplicateNameRejectedWithinOrganizationButAllowedAcrossOrganizations", func(t *testing.T) {
-		// Workspace names must be unique within an organization and may be reused in another organization.
-		workspaceName := "duplicate-workspace-" + itshared.Faker.UUID().V4()
-		created := createWorkspace(t, apiKeyClient, productCtx.ProductID, organization.Id, workspaceName)
+	t.Run(
+		"Workspace names must be unique within an organization and may be reused in another organization",
+		func(t *testing.T) {
+			workspaceName := "duplicate-workspace-" + itshared.Faker.UUID().V4()
+			created := createWorkspace(t, apiKeyClient, productCtx.ProductID, organization.Id, workspaceName)
 
-		duplicateResp, err := apiKeyClient.CreateOrganizationWorkspaceWithResponse(
-			ctx,
-			productCtx.ProductID,
-			organization.Id,
-			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: workspaceName},
-		)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusConflict, duplicateResp.StatusCode())
-		require.NotNil(t, duplicateResp.JSON409)
+			duplicateResp, err := apiKeyClient.CreateOrganizationWorkspaceWithResponse(
+				ctx,
+				productCtx.ProductID,
+				organization.Id,
+				ct.CreateOrganizationWorkspaceJSONRequestBody{Name: workspaceName},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusConflict, duplicateResp.StatusCode())
+			require.NotNil(t, duplicateResp.JSON409)
 
-		var duplicateErr ct.ApiErrorResponse
-		require.NoError(t, json.Unmarshal(duplicateResp.Body, &duplicateErr))
-		require.NotEmpty(t, duplicateResp.JSON409.Errors)
-		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateResp.JSON409.Errors[0].Code)
+			var duplicateErr ct.ApiErrorResponse
+			require.NoError(t, json.Unmarshal(duplicateResp.Body, &duplicateErr))
+			require.NotEmpty(t, duplicateResp.JSON409.Errors)
+			assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", duplicateResp.JSON409.Errors[0].Code)
 
-		otherOrganization := productCtx.CreateOrganization(
-			t,
-			"workspace-org-"+itshared.Faker.UUID().V4(),
-			nil,
-		)
-		sameNameOtherOrg := createWorkspace(
-			t,
-			apiKeyClient,
-			productCtx.ProductID,
-			otherOrganization.Id,
-			workspaceName,
-		)
-		assert.Equal(t, workspaceName, sameNameOtherOrg.Name)
-		assert.NotEqual(t, created.Id, sameNameOtherOrg.Id)
-	})
+			otherOrganization := productCtx.CreateOrganization(
+				t,
+				"workspace-org-"+itshared.Faker.UUID().V4(),
+				nil,
+			)
+			sameNameOtherOrg := createWorkspace(
+				t,
+				apiKeyClient,
+				productCtx.ProductID,
+				otherOrganization.Id,
+				workspaceName,
+			)
+			assert.Equal(t, workspaceName, sameNameOtherOrg.Name)
+			assert.NotEqual(t, created.Id, sameNameOtherOrg.Id)
+		},
+	)
 
-	t.Run("UpdateDuplicateNameRejected", func(t *testing.T) {
-		// Updating duplicate name rejected returns a conflict.
+	t.Run("Updating duplicate name rejected returns a conflict", func(t *testing.T) {
 		first := createWorkspace(
 			t,
 			apiKeyClient,
@@ -180,8 +179,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 		assert.Equal(t, "WORKSPACE_NAME_DUPLICATE", updateResp.JSON409.Errors[0].Code)
 	})
 
-	t.Run("WorkspaceIsolationByOrganizationAndProduct", func(t *testing.T) {
-		// Workspace reads and writes cannot reach another organization's or product's workspace.
+	t.Run("Workspace reads and writes cannot reach another organization's or product's workspace", func(t *testing.T) {
 		workspace := createWorkspace(
 			t,
 			apiKeyClient,
@@ -261,7 +259,6 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 }
 
 func TestOrganizationWorkspaceAuthorization(t *testing.T) {
-	// Workspace routes refuse credentials without the required operation scope.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -279,8 +276,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 		"auth-workspace-"+itshared.Faker.UUID().V4(),
 	)
 
-	t.Run("PlatformAdminCanReadButCannotMutate", func(t *testing.T) {
-		// Platform admin can read but cannot mutate.
+	t.Run("Platform admin can read but cannot mutate", func(t *testing.T) {
 		ownerClient := productCtx.OwnerAuthenticatedClient()
 
 		getResp, err := ownerClient.GetOrganizationWorkspaceWithResponse(
@@ -337,8 +333,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, deleteResp.StatusCode())
 	})
 
-	t.Run("ProductAPIKeyRequiresWorkspaceScopes", func(t *testing.T) {
-		// A product API key needs the matching workspace-operation scope.
+	t.Run("A product API key needs the matching workspace-operation scope", func(t *testing.T) {
 		readOnlyClient, readOnlyKeyID := productCtx.CreateAPIKeyClientWithScopes([]string{"workspace:read"})
 		createResp, err := readOnlyClient.CreateOrganizationWorkspaceWithResponse(
 			ctx,
@@ -403,8 +398,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 		)
 	})
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

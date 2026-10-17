@@ -16,7 +16,6 @@ import (
 )
 
 func TestOrganizationAPIKeySearch(t *testing.T) {
-	// Checks organization API key search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -45,8 +44,7 @@ func TestOrganizationAPIKeySearch(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	t.Run("Search organization API keys", func(t *testing.T) {
-		// Searching organization API keys succeeds.
+	t.Run("Searching organization API keys succeeds", func(t *testing.T) {
 		searchResp, searchErr := apiKeyClient.SearchOrganizationAPIKeysWithResponse(
 			ctx,
 			product.ProductID,
@@ -63,7 +61,6 @@ func TestOrganizationAPIKeySearch(t *testing.T) {
 	})
 
 	t.Run("Search returns inactive status after expiration queue processing", func(t *testing.T) {
-		// Search returns inactive status after expiration queue processing.
 		expiresAt := nearFutureExpiry()
 		expiredName := "SearchExpired-" + uuid.NewString()
 

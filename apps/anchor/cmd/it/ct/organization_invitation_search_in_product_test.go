@@ -11,107 +11,141 @@ import (
 )
 
 func TestSearchInvitationsInProduct_FindsThePendingInvitationsOfAnEmailAcrossOrganizations(t *testing.T) {
-	// Finds the pending invitations of an email across organizations during search invitations in product.
 	t.Parallel()
-	w := newWorld(t)
-	email := uniqueEmail()
-	first := w.invite(email)
-	otherOrganization := w.newOrganization()
-	second := w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
-		Email:  openapi_types.Email(email),
-		RoleId: w.roleID,
-	})
 
-	found := w.invitations.PendingFor(email)
+	t.Run(
+		"Finds the pending invitations of an email across organizations during search invitations in product",
+		func(t *testing.T) {
+			t.Parallel()
 
-	assert.ElementsMatch(t, []string{first.Id, second.Id}, invitationIDs(found))
+			w := newWorld(t)
+			email := uniqueEmail()
+			first := w.invite(email)
+			otherOrganization := w.newOrganization()
+			second := w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
+				Email:  openapi_types.Email(email),
+				RoleId: w.roleID,
+			})
+
+			found := w.invitations.PendingFor(email)
+
+			assert.ElementsMatch(t, []string{first.Id, second.Id}, invitationIDs(found))
+		},
+	)
 }
 
 func TestSearchInvitationsInProduct_ComparesEmailsWithoutLetterCase(t *testing.T) {
-	// Product-wide invitation search matches emails regardless of letter case.
 	t.Parallel()
-	w := newWorld(t)
-	email := uniqueEmail()
-	created := w.invite(strings.ToUpper(email))
 
-	found := w.invitations.PendingFor(email)
+	t.Run("Product-wide invitation search matches emails regardless of letter case", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, []string{created.Id}, invitationIDs(found))
+		w := newWorld(t)
+		email := uniqueEmail()
+		created := w.invite(strings.ToUpper(email))
+
+		found := w.invitations.PendingFor(email)
+
+		assert.Equal(t, []string{created.Id}, invitationIDs(found))
+	})
 }
 
 func TestSearchInvitationsInProduct_MatchesAnyOfTheEmails(t *testing.T) {
-	// Matches any of the emails during search invitations in product.
 	t.Parallel()
-	w := newWorld(t)
-	primary := w.invite(uniqueEmail())
-	secondary := w.invite(uniqueEmail())
-	w.invite(uniqueEmail())
 
-	found := w.invitations.PendingFor(string(primary.Email), string(secondary.Email))
+	t.Run("Matches any of the emails during search invitations in product", func(t *testing.T) {
+		t.Parallel()
 
-	assert.ElementsMatch(t, []string{primary.Id, secondary.Id}, invitationIDs(found))
+		w := newWorld(t)
+		primary := w.invite(uniqueEmail())
+		secondary := w.invite(uniqueEmail())
+		w.invite(uniqueEmail())
+
+		found := w.invitations.PendingFor(string(primary.Email), string(secondary.Email))
+
+		assert.ElementsMatch(t, []string{primary.Id, secondary.Id}, invitationIDs(found))
+	})
 }
 
 func TestSearchInvitationsInProduct_LeavesOutAcceptedAndExpiredInvitationsWhenAskedForPending(t *testing.T) {
-	// Leaves out accepted and expired invitations when asked for pending during search invitations in product.
 	t.Parallel()
-	w := newWorld(t)
-	email := uniqueEmail()
-	accepted := w.invite(email)
-	w.accept(accepted.Id, w.newProductUser(uniqueEmail()))
-	expiredOrganization := w.newOrganization()
-	expired := w.invitations.Create(expiredOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
-		Email:  openapi_types.Email(email),
-		RoleId: w.roleID,
-	})
-	w.expire(expired.Id)
-	pendingOrganization := w.newOrganization()
-	pending := w.invitations.Create(pendingOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
-		Email:  openapi_types.Email(email),
-		RoleId: w.roleID,
-	})
 
-	found := w.invitations.PendingFor(email)
+	t.Run(
+		"Leaves out accepted and expired invitations when asked for pending during search invitations in product",
+		func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, []string{pending.Id}, invitationIDs(found))
+			w := newWorld(t)
+			email := uniqueEmail()
+			accepted := w.invite(email)
+			w.accept(accepted.Id, w.newProductUser(uniqueEmail()))
+			expiredOrganization := w.newOrganization()
+			expired := w.invitations.Create(expiredOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
+				Email:  openapi_types.Email(email),
+				RoleId: w.roleID,
+			})
+			w.expire(expired.Id)
+			pendingOrganization := w.newOrganization()
+			pending := w.invitations.Create(pendingOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
+				Email:  openapi_types.Email(email),
+				RoleId: w.roleID,
+			})
+
+			found := w.invitations.PendingFor(email)
+
+			assert.Equal(t, []string{pending.Id}, invitationIDs(found))
+		},
+	)
 }
 
 func TestSearchInvitationsInProduct_ReadsEveryStatusWithoutAStatusFilter(t *testing.T) {
-	// Reads every status without a status filter during search invitations in product.
 	t.Parallel()
-	w := newWorld(t)
-	email := uniqueEmail()
-	accepted := w.invite(email)
-	w.accept(accepted.Id, w.newProductUser(uniqueEmail()))
 
-	found := w.invitations.SearchInProduct(ct.SearchProductOrganizationInvitationsJSONRequestBody{
-		Filter: &ct.OrganizationInvitationFilter{Emails: &[]openapi_types.Email{openapi_types.Email(email)}},
+	t.Run("Reads every status without a status filter during search invitations in product", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		email := uniqueEmail()
+		accepted := w.invite(email)
+		w.accept(accepted.Id, w.newProductUser(uniqueEmail()))
+
+		found := w.invitations.SearchInProduct(ct.SearchProductOrganizationInvitationsJSONRequestBody{
+			Filter: &ct.OrganizationInvitationFilter{Emails: &[]openapi_types.Email{openapi_types.Email(email)}},
+		})
+
+		require.Equal(t, []string{accepted.Id}, invitationIDs(found))
+		assert.Equal(t, ct.Accepted, found[0].Status)
 	})
-
-	require.Equal(t, []string{accepted.Id}, invitationIDs(found))
-	assert.Equal(t, ct.Accepted, found[0].Status)
 }
 
 func TestSearchInvitationsInProduct_ReturnsTheOrganizationOfEachInvitation(t *testing.T) {
-	// Returns the organization of each invitation during search invitations in product.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	found := w.invitations.PendingFor(string(created.Email))
+	t.Run("Returns the organization of each invitation during search invitations in product", func(t *testing.T) {
+		t.Parallel()
 
-	require.Len(t, found, 1)
-	assert.Equal(t, w.organizationID, found[0].OrganizationId)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		found := w.invitations.PendingFor(string(created.Email))
+
+		require.Len(t, found, 1)
+		assert.Equal(t, w.organizationID, found[0].OrganizationId)
+	})
 }
 
 func TestSearchInvitations_FiltersByEmail(t *testing.T) {
-	// Filters by email during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	wanted := w.invite(uniqueEmail())
-	w.invite(uniqueEmail())
 
-	found := w.invitations.SearchByEmail(w.organizationID, strings.ToUpper(string(wanted.Email)))
+	t.Run("Filters by email during search invitations", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, []string{wanted.Id}, invitationIDs(found))
+		w := newWorld(t)
+		wanted := w.invite(uniqueEmail())
+		w.invite(uniqueEmail())
+
+		found := w.invitations.SearchByEmail(w.organizationID, strings.ToUpper(string(wanted.Email)))
+
+		assert.Equal(t, []string{wanted.Id}, invitationIDs(found))
+	})
 }

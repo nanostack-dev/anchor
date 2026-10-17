@@ -10,10 +10,8 @@ import (
 )
 
 func TestUsageObservationStorage(t *testing.T) {
-	// Usage observations append to a hypertable and are deleted with their product.
 	t.Parallel()
-	t.Run("observations live in a hypertable", func(t *testing.T) {
-		// Observations live in a hypertable.
+	t.Run("Observations live in a hypertable", func(t *testing.T) {
 		var count int
 		err := testDB.QueryRow(
 			`SELECT count(*) FROM timescaledb_information.hypertables
@@ -23,8 +21,7 @@ func TestUsageObservationStorage(t *testing.T) {
 		assert.Equal(t, 1, count, "usage_observations is not a hypertable")
 	})
 
-	t.Run("deleting the product takes the observations with it", func(t *testing.T) {
-		// Deleting the product takes the observations with it.
+	t.Run("Deleting the product takes the observations with it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge("flows", 37))
 
@@ -41,8 +38,7 @@ func TestUsageObservationStorage(t *testing.T) {
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("a later report appends rather than replacing", func(t *testing.T) {
-		// A later report appends rather than replacing.
+	t.Run("A later report appends rather than replacing", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		w.Usage().Report(gauge("flows", 37))

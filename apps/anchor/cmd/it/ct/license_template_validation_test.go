@@ -20,10 +20,8 @@ import (
 // assembled ad hoc would trip the missing-field check first and the case would
 // pass without ever reaching the rule it names.
 func TestLicenseTemplateValidation(t *testing.T) {
-	// Creating a license template refuses values that violate the product's schema.
 	t.Parallel()
-	t.Run("rejects a template omitting a declared field", func(t *testing.T) {
-		// The API rejects a template omitting a declared field.
+	t.Run("The API rejects a template omitting a declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := createTemplateRaw(t, tc, uniqueTemplateName(), templateValuesExcept("sso"))
@@ -33,8 +31,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_MISSING", "sso", "")
 	})
 
-	t.Run("rejects a value above its field's maximum", func(t *testing.T) {
-		// The API rejects a value above its field's maximum.
+	t.Run("The API rejects a value above its field's maximum", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		// The declared maximum is 100000.
@@ -45,8 +42,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "flows", "max")
 	})
 
-	t.Run("rejects a value below its field's minimum", func(t *testing.T) {
-		// The API rejects a value below its field's minimum.
+	t.Run("The API rejects a value below its field's minimum", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := createTemplateRaw(t, tc, uniqueTemplateName(), templateValuesWith("flows", -1))
@@ -56,8 +52,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "flows", "min")
 	})
 
-	t.Run("rejects a value outside an enum's allowed list", func(t *testing.T) {
-		// The API rejects a value outside an enum's allowed list.
+	t.Run("The API rejects a value outside an enum's allowed list", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := createTemplateRaw(
@@ -69,8 +64,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "support_tier", "values")
 	})
 
-	t.Run("rejects a string that does not match its field's pattern", func(t *testing.T) {
-		// The API rejects a string that does not match its field's pattern.
+	t.Run("The API rejects a string that does not match its field's pattern", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := createTemplateRaw(
@@ -82,8 +76,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "region", "pattern")
 	})
 
-	t.Run("rejects a string that only partially matches its field's pattern", func(t *testing.T) {
-		// The API rejects a string that only partially matches its field's pattern.
+	t.Run("The API rejects a string that only partially matches its field's pattern", func(t *testing.T) {
 		// The "region" fixture's pattern is anchored (^...$), so a value that
 		// merely contains no valid substring at all would fail whether or not
 		// the match is anchored, and would not isolate the bug. This declares
@@ -108,8 +101,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "code", "pattern")
 	})
 
-	t.Run("rejects a value of the wrong type for its field", func(t *testing.T) {
-		// The API rejects a value of the wrong type for its field.
+	t.Run("The API rejects a value of the wrong type for its field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := createTemplateRaw(
@@ -121,8 +113,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "flows", "type")
 	})
 
-	t.Run("rejects a field absent from the schema", func(t *testing.T) {
-		// The API rejects a field absent from the schema.
+	t.Run("The API rejects a field absent from the schema", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		// An undeclared key is refused even though every declared field is set,
@@ -134,8 +125,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_UNKNOWN", "seat_cap", "")
 	})
 
-	t.Run("rejects a second template with the same name", func(t *testing.T) {
-		// The API rejects a second template with the same name.
+	t.Run("The API rejects a second template with the same name", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Pro", validTemplateValues())
 
@@ -146,8 +136,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
-	t.Run("refuses a template for a product with no license schema", func(t *testing.T) {
-		// The API refuses a template for a product with no license schema.
+	t.Run("The API refuses a template for a product with no license schema", func(t *testing.T) {
 		// Deliberately not newTemplateCtx: a template is defined as a set of
 		// values satisfying a schema, so without one there is nothing to satisfy.
 		tc := newLicenseTestCtx(t)
@@ -157,8 +146,7 @@ func TestLicenseTemplateValidation(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("accepts a template setting nothing when the schema declares nothing", func(t *testing.T) {
-		// The API accepts a template setting nothing when the schema declares nothing.
+	t.Run("The API accepts a template setting nothing when the schema declares nothing", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		declareSchema(t, tc, []ct.LicenseFieldDeclaration{})
 
@@ -171,10 +159,8 @@ func TestLicenseTemplateValidation(t *testing.T) {
 // create-time courtesy. An edit that would leave a template violating the
 // declaration is refused the same way the original write would have been.
 func TestLicenseTemplateUpdateValidation(t *testing.T) {
-	// Updating a license template refuses invalid values and conflicting names.
 	t.Parallel()
-	t.Run("rejects an edit that drops a declared field", func(t *testing.T) {
-		// The API rejects an edit that drops a declared field.
+	t.Run("The API rejects an edit that drops a declared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -193,8 +179,7 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_MISSING", "sso", "")
 	})
 
-	t.Run("rejects an edit whose value violates a rule", func(t *testing.T) {
-		// The API rejects an edit whose value violates a rule.
+	t.Run("The API rejects an edit whose value violates a rule", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -211,8 +196,7 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_VALUE_INVALID", "flows", "max")
 	})
 
-	t.Run("rejects an edit introducing an undeclared field", func(t *testing.T) {
-		// The API rejects an edit introducing an undeclared field.
+	t.Run("The API rejects an edit introducing an undeclared field", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -229,8 +213,7 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_UNKNOWN", "seat_cap", "")
 	})
 
-	t.Run("rejects a rename onto a name already taken", func(t *testing.T) {
-		// The API rejects a rename onto a name already taken.
+	t.Run("The API rejects a rename onto a name already taken", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Pro", validTemplateValues())
 		free := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
@@ -247,8 +230,7 @@ func TestLicenseTemplateUpdateValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_NAME_EXISTS", "name", "")
 	})
 
-	t.Run("accepts renaming a template to the name it already has", func(t *testing.T) {
-		// The API accepts renaming a template to the name it already has.
+	t.Run("The API accepts renaming a template to the name it already has", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, "Pro", validTemplateValues())
 

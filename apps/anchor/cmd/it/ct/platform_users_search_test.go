@@ -12,13 +12,11 @@ import (
 )
 
 func TestSearchPlatformUsers(t *testing.T) {
-	// Checks platform users search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
-		"SuccessfulSearch", func(t *testing.T) {
-			// Platform-user search returns the requested users and pagination metadata.
+		"Platform-user search returns the requested users and pagination metadata", func(t *testing.T) {
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{}
 
 			resp, err := testOwnerClient(t).SearchPlatformUsersWithResponse(
@@ -38,8 +36,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithPagination", func(t *testing.T) {
-			// Searching with pagination succeeds.
+		"Searching with pagination succeeds", func(t *testing.T) {
 			limit := int32(1)
 			offset := int32(0)
 			pagination := ct.PaginationRequest{
@@ -61,8 +58,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithEmailFilter", func(t *testing.T) {
-			// Searching with email filter succeeds.
+		"Searching with email filter succeeds", func(t *testing.T) {
 			email := testOwnerUser(t).Email
 			filter := ct.PlatformUserFilter{
 				Emails: []string{
@@ -86,8 +82,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithRoleFilter", func(t *testing.T) {
-			// Searching with role filter succeeds.
+		"Searching with role filter succeeds", func(t *testing.T) {
 			roles := []ct.PlatformUserRole{ct.OWNER}
 			filter := ct.PlatformUserFilter{
 				Roles: roles,
@@ -109,8 +104,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithRoleFilterDifferentCase", func(t *testing.T) {
-			// Searching with role filter different case succeeds.
+		"Searching with role filter different case succeeds", func(t *testing.T) {
 			filter := ct.PlatformUserFilter{
 				Roles: []ct.PlatformUserRole{ct.PlatformUserRole("owner")},
 			}
@@ -131,8 +125,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithSorting", func(t *testing.T) {
-			// Searching with sorting succeeds.
+		"Searching with sorting succeeds", func(t *testing.T) {
 			sortBy := ct.PlatformUserSearchRequestSortByEmail
 			sortDirection := ct.ASC
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{
@@ -150,8 +143,7 @@ func TestSearchPlatformUsers(t *testing.T) {
 	)
 
 	t.Run(
-		"SearchWithFullTextSearch", func(t *testing.T) {
-			// Searching with full text search succeeds.
+		"Searching with full text search succeeds", func(t *testing.T) {
 			fullTextSearch := "platform"
 			searchReq := ct.SearchPlatformUsersJSONRequestBody{
 				FullTextSearch: &fullTextSearch,

@@ -23,10 +23,8 @@ func deleteTemplate(t *testing.T, tc licenseTestCtx, templateID string) *ct.Dele
 // removed: one no Organization license has ever named. See
 // docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
 func TestLicenseTemplateDelete(t *testing.T) {
-	// Checks license template deletion across the scenarios below.
 	t.Parallel()
-	t.Run("removes a template no organization license names", func(t *testing.T) {
-		// Removes a template no organization license names.
+	t.Run("Removes a template no organization license names", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -41,8 +39,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, read.StatusCode(), string(read.Body))
 	})
 
-	t.Run("frees the name for a replacement", func(t *testing.T) {
-		// The API frees the name for a replacement.
+	t.Run("The API frees the name for a replacement", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, "Pro", validTemplateValues())
 
@@ -52,8 +49,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 		assert.NotEqual(t, created.Id, replacement.Id)
 	})
 
-	t.Run("removes an archived template that was never referenced", func(t *testing.T) {
-		// Removes an archived template that was never referenced.
+	t.Run("Removes an archived template that was never referenced", func(t *testing.T) {
 		// Status is not part of the guard: archiving a template by mistake is the
 		// case ADR-0010 named as unrecoverable, and the reference check alone is
 		// what keeps the provenance guarantee, not the status.
@@ -65,8 +61,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("refuses to delete a template an organization license names", func(t *testing.T) {
-		// The API refuses to delete a template an organization license names.
+	t.Run("The API refuses to delete a template an organization license names", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp, err := w.client().DeleteLicenseTemplateWithResponse(
@@ -85,15 +80,13 @@ func TestLicenseTemplateDelete(t *testing.T) {
 		assert.Equal(t, w.TemplateID(), w.License().Get().TemplateId)
 	})
 
-	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
-		// The API returns 404 when the product has no template with that identifier.
+	t.Run("The API returns 404 when the product has no template with that identifier", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		assert.Equal(t, http.StatusNotFound, deleteTemplate(t, tc, missingTemplateID()).StatusCode())
 	})
 
-	t.Run("404 deleting an already-deleted template", func(t *testing.T) {
-		// The API returns 404 deleting an already-deleted template.
+	t.Run("The API returns 404 deleting an already-deleted template", func(t *testing.T) {
 		// Unlike archive, delete is not idempotent: a second delete finds nothing
 		// there, the ordinary answer for a second delete of anything.
 		tc := newTemplateCtx(t)

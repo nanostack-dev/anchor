@@ -30,13 +30,11 @@ func createPlatformInvitation(t *testing.T, email string) string {
 }
 
 func TestRegister(t *testing.T) {
-	// Registration validates account details and invitation codes before creating an administrator.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
-		"WeakPassword", func(t *testing.T) {
-			// Registration refuses a password that fails the strength rules.
+		"Registration refuses a password that fails the strength rules", func(t *testing.T) {
 			registerReq := ct.RegisterJSONRequestBody{
 				Email:    "register_weakpw@example.com",
 				Password: "123",
@@ -56,8 +54,7 @@ func TestRegister(t *testing.T) {
 	)
 
 	t.Run(
-		"MissingFields", func(t *testing.T) {
-			// Registration refuses a request missing required account fields.
+		"Registration refuses a request missing required account fields", func(t *testing.T) {
 			// Missing password
 			registerReq := ct.RegisterJSONRequestBody{
 				Email: "missingpw@example.com",
@@ -75,15 +72,13 @@ func TestRegister(t *testing.T) {
 	)
 
 	t.Run(
-		"WithInvitationCode", func(t *testing.T) {
-			// Registration requires a valid invitation code before creating the account.
+		"Registration requires a valid invitation code before creating the account", func(t *testing.T) {
 			email := itshared.Faker.Internet().Email()
 			// Setup: Create invitation using platform owner
 			invitationCode := createPlatformInvitation(t, email)
 
 			t.Run(
-				"ValidInvitationCode", func(t *testing.T) {
-					// Registration accepts the invitation code and creates the invited administrator.
+				"Registration accepts the invitation code and creates the invited administrator", func(t *testing.T) {
 					registerReq := ct.RegisterJSONRequestBody{
 						Email:          email,
 						Password:       "ValidPassword123!",
@@ -103,8 +98,7 @@ func TestRegister(t *testing.T) {
 			)
 
 			t.Run(
-				"MissingInvitationCode", func(t *testing.T) {
-					// Registration refuses a request without its required invitation code.
+				"Registration refuses a request without its required invitation code", func(t *testing.T) {
 					registerReq := ct.RegisterJSONRequestBody{
 						Email:    itshared.Faker.Internet().Email(),
 						Password: "ValidPassword123!",
@@ -124,8 +118,7 @@ func TestRegister(t *testing.T) {
 			)
 
 			t.Run(
-				"InvalidInvitationCode", func(t *testing.T) {
-					// Registration refuses an invalid invitation code.
+				"Registration refuses an invalid invitation code", func(t *testing.T) {
 					email = itshared.Faker.Internet().Email()
 					invitationCode = createPlatformInvitation(t, email)
 					invalidCode := "invalid-code-123"

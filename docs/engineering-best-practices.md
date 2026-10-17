@@ -200,11 +200,23 @@ Both repos carry `fault.NewWithStatus` call sites that predate this rule — 41 
 
 ## Testing
 
-### Component-test summaries
+### Component-test names
 
-Every component test (CT) starts its body with one single-line `//` comment in plain English describing the scenario and expected observable result. Put the summary before `t.Parallel()` or fixture setup. Apply the same rule to each `t.Run` callback; for a table-driven CT, explain distinct expected outcomes beside the case definitions so reviewers can understand the variants. Keep existing comments that explain a non-obvious invariant or a parallelism exception.
+Describe every component-test scenario and its expected observable result in a plain-English `t.Run` name. Use descriptive names on existing subtests; table-driven tests use their case description or a readable name composed from the scenario and its variant. Keep fixture identifiers and request data separate from display names. Keep case names concise when fixtures derive validated resource names from `t.Name()`.
 
-Describe the behavior the assertions actually prove, including a refusal or ownership boundary when that is the subject. Prefer "Deleting a flow removes its variables" to "Tests DeleteFlow" or a list of setup steps. Update the summary whenever the scenario or expected result changes. This requirement applies to existing and new CTs in both repositories and takes precedence over the general advice to avoid redundant comments.
+Keep top-level `Test…` identifiers stable for existing test filters. For a standalone CT, put its behavior in a named subtest and keep an existing top-level `t.Parallel()` and mirror it as the first statement of the new child, with its fixture setup inside the child. This retains parallel scheduling and satisfies the subtest parallelism checks. Preserve serial exceptions, fixture ownership, assertions, and existing subtest parallelism.
+
+```go
+func TestDeleteFlow(t *testing.T) {
+    t.Parallel()
+    t.Run("Deleting a flow removes its variables", func(t *testing.T) {
+        t.Parallel()
+        // Arrange, act, and assert the scenario here.
+    })
+}
+```
+
+The name is the behavior summary shown by Go's test runner; update it when the scenario or expected result changes. Use comments for non-obvious invariants and parallelism exceptions rather than duplicating the scenario name. This standard applies to existing and new CTs in both repositories.
 
 ### HTTP plumbing belongs in the test SDK
 

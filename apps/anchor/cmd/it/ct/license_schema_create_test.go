@@ -11,10 +11,8 @@ import (
 )
 
 func TestLicenseSchemaCreate(t *testing.T) {
-	// Checks license schema creation across the scenarios below.
 	t.Parallel()
-	t.Run("declares every field type", func(t *testing.T) {
-		// The API declares every field type.
+	t.Run("The API declares every field type", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 
@@ -90,8 +88,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		assert.Equal(t, "^[a-z]{2}-[a-z]+$", *region.Rules.Pattern)
 	})
 
-	t.Run("accepts a schema with no fields", func(t *testing.T) {
-		// The API accepts a schema with no fields.
+	t.Run("The API accepts a schema with no fields", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 
@@ -106,8 +103,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		assert.Empty(t, resp.JSON201.Fields)
 	})
 
-	t.Run("rejects a second schema for the same product", func(t *testing.T) {
-		// The API rejects a second schema for the same product.
+	t.Run("The API rejects a second schema for the same product", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 		body := ct.CreateLicenseSchemaJSONRequestBody{
@@ -127,8 +123,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 		assertLicenseAPIError(t, second.JSON409.Errors, "LICENSE_SCHEMA_EXISTS")
 	})
 
-	t.Run("schemas are scoped to their own product", func(t *testing.T) {
-		// Schemas are scoped to their own product.
+	t.Run("Schemas are scoped to their own product", func(t *testing.T) {
 		first := newLicenseTestCtx(t)
 		second := newLicenseTestCtx(t)
 

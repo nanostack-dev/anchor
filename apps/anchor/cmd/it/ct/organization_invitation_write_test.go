@@ -12,190 +12,242 @@ import (
 )
 
 func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
-	// Updating an invitation persists its new role and expiry.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	otherRole := w.newRole()
-	expiresAt := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	updated := w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    otherRole,
-		ExpiresAt: expiresAt,
+	t.Run("Updating an invitation persists its new role and expiry", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		otherRole := w.newRole()
+		expiresAt := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
+
+		updated := w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    otherRole,
+			ExpiresAt: expiresAt,
+		})
+
+		assert.Equal(t, otherRole, updated.RoleId)
+		assert.WithinDuration(t, expiresAt, updated.ExpiresAt, time.Second)
+		assert.Equal(t, created.Email, updated.Email)
+		assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
-
-	assert.Equal(t, otherRole, updated.RoleId)
-	assert.WithinDuration(t, expiresAt, updated.ExpiresAt, time.Second)
-	assert.Equal(t, created.Email, updated.Email)
-	assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
 }
 
 func TestUpdateInvitation_IgnoresAnEmailInTheBody(t *testing.T) {
-	// Ignores an email in the body during update invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	expiresAt := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 
-	resp := w.invitations.UpdateRawBody(
-		w.organizationID, created.Id,
-		`{"email":"`+uniqueEmail()+`","role_id":"`+w.roleID+`","expires_at":"`+expiresAt+`"}`,
-	)
+	t.Run("Ignores an email in the body during update invitation", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, created.Email, w.invitations.Get(w.organizationID, created.Id).Email)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		expiresAt := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
+
+		resp := w.invitations.UpdateRawBody(
+			w.organizationID, created.Id,
+			`{"email":"`+uniqueEmail()+`","role_id":"`+w.roleID+`","expires_at":"`+expiresAt+`"}`,
+		)
+
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, created.Email, w.invitations.Get(w.organizationID, created.Id).Email)
+	})
 }
 
 func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
-	// Update invitation refuses expiry in the past.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    w.roleID,
-		ExpiresAt: time.Now().Add(-time.Minute),
+	t.Run("Update invitation refuses expiry in the past", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    w.roleID,
+			ExpiresAt: time.Now().Add(-time.Minute),
+		})
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRY_NOT_IN_FUTURE", errorCode(t, resp.JSON400.Errors))
 	})
-
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRY_NOT_IN_FUTURE", errorCode(t, resp.JSON400.Errors))
 }
 
 func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
-	// Update invitation refuses unknown role.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    ids.MustNew("product_role"),
-		ExpiresAt: time.Now().Add(time.Hour),
+	t.Run("Update invitation refuses unknown role", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    ids.MustNew("product_role"),
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ROLE_NOT_FOUND_IN_REQUEST", errorCode(t, resp.JSON400.Errors))
 	})
-
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ROLE_NOT_FOUND_IN_REQUEST", errorCode(t, resp.JSON400.Errors))
 }
 
 func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
-	// Update invitation refuses unknown invitation.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp := w.invitations.UpdateRaw(
-		w.organizationID,
-		ids.MustNew("oinv"),
-		ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    w.roleID,
-			ExpiresAt: time.Now().Add(time.Hour),
-		},
-	)
+	t.Run("Update invitation refuses unknown invitation", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+
+		resp := w.invitations.UpdateRaw(
+			w.organizationID,
+			ids.MustNew("oinv"),
+			ct.UpdateOrganizationInvitationJSONRequestBody{
+				RoleId:    w.roleID,
+				ExpiresAt: time.Now().Add(time.Hour),
+			},
+		)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
-	// Update invitation refuses an expired invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.expire(created.Id)
 
-	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    w.roleID,
-		ExpiresAt: time.Now().Add(time.Hour),
+	t.Run("Update invitation refuses an expired invitation", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		w.expire(created.Id)
+
+		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    w.roleID,
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRED", errorCode(t, resp.JSON409.Errors))
+		assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
 	})
-
-	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_EXPIRED", errorCode(t, resp.JSON409.Errors))
-	assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
 }
 
 func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
-	// Update invitation refuses an accepted invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.accept(created.Id, w.newProductUser(uniqueEmail()))
 
-	resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    w.newRole(),
-		ExpiresAt: time.Now().Add(time.Hour),
+	t.Run("Update invitation refuses an accepted invitation", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		w.accept(created.Id, w.newProductUser(uniqueEmail()))
+
+		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    w.newRole(),
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_ACCEPTED", errorCode(t, resp.JSON409.Errors))
+		assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
-
-	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_ACCEPTED", errorCode(t, resp.JSON409.Errors))
-	assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
 }
 
 func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {
-	// Removes the invitation during delete invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	w.invitations.Delete(w.organizationID, created.Id)
+	t.Run("Removes the invitation during delete invitation", func(t *testing.T) {
+		t.Parallel()
 
-	resp := w.invitations.GetRaw(w.organizationID, created.Id)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Empty(t, w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{}))
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		w.invitations.Delete(w.organizationID, created.Id)
+
+		resp := w.invitations.GetRaw(w.organizationID, created.Id)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Empty(t, w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{}))
+	})
 }
 
 func TestDeleteInvitation_CannotBeAcceptedAfterwards(t *testing.T) {
-	// Cannot be accepted afterwards during delete invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	userID := w.newProductUser(uniqueEmail())
 
-	w.invitations.Delete(w.organizationID, created.Id)
+	t.Run("Cannot be accepted afterwards during delete invitation", func(t *testing.T) {
+		t.Parallel()
 
-	resp := w.acceptRaw(created.Id, userID)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
-	w.assertNotMember(userID)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		userID := w.newProductUser(uniqueEmail())
+
+		w.invitations.Delete(w.organizationID, created.Id)
+
+		resp := w.acceptRaw(created.Id, userID)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_INVITATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+		w.assertNotMember(userID)
+	})
 }
 
 func TestDeleteInvitation_FreesTheEmailForANewInvitation(t *testing.T) {
-	// Frees the email for a new invitation during delete invitation.
 	t.Parallel()
-	w := newWorld(t)
-	email := uniqueEmail()
-	created := w.invite(email)
 
-	w.invitations.Delete(w.organizationID, created.Id)
+	t.Run("Frees the email for a new invitation during delete invitation", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, ct.Pending, w.invite(email).Status)
+		w := newWorld(t)
+		email := uniqueEmail()
+		created := w.invite(email)
+
+		w.invitations.Delete(w.organizationID, created.Id)
+
+		assert.Equal(t, ct.Pending, w.invite(email).Status)
+	})
 }
 
 func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
-	// Delete invitation refuses unknown invitation.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp := w.invitations.DeleteRaw(w.organizationID, ids.MustNew("oinv"))
+	t.Run("Delete invitation refuses unknown invitation", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+
+		resp := w.invitations.DeleteRaw(w.organizationID, ids.MustNew("oinv"))
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestDeleteInvitation_RefusesUnknownOrganization(t *testing.T) {
-	// Delete invitation refuses unknown organization.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp := w.invitations.DeleteRaw(ids.MustNew("org"), ids.MustNew("oinv"))
+	t.Run("Delete invitation refuses unknown organization", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+		w := newWorld(t)
+
+		resp := w.invitations.DeleteRaw(ids.MustNew("org"), ids.MustNew("oinv"))
+
+		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+	})
 }
 
 func TestDeleteInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
-	// Delete invitation refuses invitation of another organization.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	resp := w.invitations.DeleteRaw(w.newOrganization(), created.Id)
+	t.Run("Delete invitation refuses invitation of another organization", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, created.Id, w.invitations.Get(w.organizationID, created.Id).Id)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		resp := w.invitations.DeleteRaw(w.newOrganization(), created.Id)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, created.Id, w.invitations.Get(w.organizationID, created.Id).Id)
+	})
 }

@@ -15,7 +15,6 @@ import (
 )
 
 func TestOrganizationAPIKeyIntrospect(t *testing.T) {
-	// Checks organization API key introspection across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -42,8 +41,7 @@ func TestOrganizationAPIKeyIntrospect(t *testing.T) {
 	require.NotNil(t, createResp.JSON201)
 	clearKey := createResp.JSON201.Value
 
-	t.Run("resolves the key's organization and permissions without an organization id", func(t *testing.T) {
-		// The API resolves the key's organization and permissions without an organization id.
+	t.Run("The API resolves the key's organization and permissions without an organization id", func(t *testing.T) {
 		resp, introErr := adminClient.IntrospectOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -60,8 +58,7 @@ func TestOrganizationAPIKeyIntrospect(t *testing.T) {
 		assert.Empty(t, resp.JSON200.MissingPrivileges)
 	})
 
-	t.Run("returns 200 when optional required scopes are satisfied", func(t *testing.T) {
-		// The API returns 200 when optional required scopes are satisfied.
+	t.Run("The API returns 200 when optional required scopes are satisfied", func(t *testing.T) {
 		scopes := []string{permissions.FileRead}
 		resp, introErr := adminClient.IntrospectOrganizationAPIKeyWithResponse(
 			ctx,
@@ -74,8 +71,7 @@ func TestOrganizationAPIKeyIntrospect(t *testing.T) {
 		assert.Empty(t, resp.JSON200.MissingPrivileges)
 	})
 
-	t.Run("returns typed 403 when optional required scopes are missing", func(t *testing.T) {
-		// The API returns typed 403 when optional required scopes are missing.
+	t.Run("The API returns typed 403 when optional required scopes are missing", func(t *testing.T) {
 		scopes := []string{permissions.FileCreate}
 		resp, introErr := adminClient.IntrospectOrganizationAPIKeyWithResponse(
 			ctx,
@@ -91,8 +87,7 @@ func TestOrganizationAPIKeyIntrospect(t *testing.T) {
 		assert.ElementsMatch(t, []string{permissions.FileCreate}, resp.JSON403.MissingPrivileges)
 	})
 
-	t.Run("returns 404 for an unknown key", func(t *testing.T) {
-		// The API returns 404 for an unknown key.
+	t.Run("The API returns 404 for an unknown key", func(t *testing.T) {
 		// The caller is authenticated; an unknown subject credential is a
 		// not-found, not a caller-authentication failure.
 		resp, introErr := adminClient.IntrospectOrganizationAPIKeyWithResponse(

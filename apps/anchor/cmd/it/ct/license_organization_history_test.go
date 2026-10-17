@@ -11,10 +11,8 @@ import (
 )
 
 func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
-	// Organization license history records instantiation.
 	t.Parallel()
-	t.Run("instantiating records the template it was stamped from", func(t *testing.T) {
-		// Instantiating records the template it was stamped from.
+	t.Run("Instantiating records the template it was stamped from", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		before := time.Now().Add(-time.Second)
@@ -34,8 +32,7 @@ func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 		assert.WithinRange(t, entry.ChangedAt, before, time.Now().Add(time.Second))
 	})
 
-	t.Run("carries the whole set of values copied and names no field", func(t *testing.T) {
-		// The API carries the whole set of values copied and names no field.
+	t.Run("The API carries the whole set of values copied and names no field", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		w.License().Instantiate(w.TemplateID())
@@ -46,8 +43,7 @@ func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 		assertValues(t, newValueSet(t, entry), validTemplateValues())
 	})
 
-	t.Run("an organization with no license has an empty history", func(t *testing.T) {
-		// An organization with no license has an empty history.
+	t.Run("An organization with no license has an empty history", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		// Nothing has happened to this organization yet, which is a fact rather
@@ -60,10 +56,8 @@ func TestOrganizationLicenseHistoryRecordsInstantiation(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
-	// Organization license history records adjustment.
 	t.Parallel()
-	t.Run("names the license field, the old value and the new", func(t *testing.T) {
-		// The API names the license field, the old value and the new.
+	t.Run("The API names the license field, the old value and the new", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -77,8 +71,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		assert.Nil(t, entry.TemplateId)
 	})
 
-	t.Run("records one entry per license field the adjustment moves", func(t *testing.T) {
-		// The API records one entry per license field the adjustment moves.
+	t.Run("The API records one entry per license field the adjustment moves", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 900, "sso": false})
@@ -98,8 +91,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		assert.Equal(t, adjusted["flows"].ChangedAt, adjusted["sso"].ChangedAt)
 	})
 
-	t.Run("a license field restated at the value it held records nothing", func(t *testing.T) {
-		// A license field restated at the value it held records nothing.
+	t.Run("A license field restated at the value it held records nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 500})
@@ -110,8 +102,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		assert.Equal(t, ct.INSTANTIATED, history.Items[0].Type)
 	})
 
-	t.Run("an empty adjustment records nothing", func(t *testing.T) {
-		// An empty adjustment records nothing.
+	t.Run("An empty adjustment records nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{})
@@ -119,8 +110,7 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 		assert.Equal(t, int64(1), w.License().History().Total)
 	})
 
-	t.Run("a refused adjustment records nothing", func(t *testing.T) {
-		// A refused adjustment records nothing.
+	t.Run("A refused adjustment records nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().AdjustRaw(ct.LicenseTemplateValues{"flows": 100001})
@@ -131,10 +121,8 @@ func TestOrganizationLicenseHistoryRecordsAdjustment(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryRead(t *testing.T) {
-	// Organization license history read.
 	t.Parallel()
-	t.Run("reads newest first", func(t *testing.T) {
-		// The API reads newest first.
+	t.Run("The API reads newest first", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -147,8 +135,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		assert.Equal(t, ct.INSTANTIATED, items[2].Type)
 	})
 
-	t.Run("paginates without repeating or dropping an entry", func(t *testing.T) {
-		// Paginates without repeating or dropping an entry.
+	t.Run("Paginates without repeating or dropping an entry", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		for _, value := range []int{600, 700, 800, 900} {
 			w.License().Adjust(ct.LicenseTemplateValues{"flows": value})
@@ -167,8 +154,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		assert.Equal(t, entryIDs(whole[2:4]), entryIDs(secondPage.Items))
 	})
 
-	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {
-		// The API returns 404 when the product has no organization with that identifier.
+	t.Run("The API returns 404 when the product has no organization with that identifier", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().For(missingOrganizationID()).HistoryRaw(
@@ -177,8 +163,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("does not read another product's history", func(t *testing.T) {
-		// The API does not read another product's history.
+	t.Run("The API does not read another product's history", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 
@@ -188,8 +173,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("a write scope cannot read the history", func(t *testing.T) {
-		// A write scope cannot read the history.
+	t.Run("A write scope cannot read the history", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes(
 			[]string{"organization_license:create", "organization_license:update"},
@@ -201,10 +185,8 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 }
 
 func TestOrganizationLicenseHistoryStorage(t *testing.T) {
-	// License history keeps immutable entries and is deleted with its organization.
 	t.Parallel()
-	t.Run("entries carry no update timestamp", func(t *testing.T) {
-		// Entries carry no update timestamp.
+	t.Run("Entries carry no update timestamp", func(t *testing.T) {
 		// Immutability is structural, not a rule the service remembers to keep:
 		// there is no column to move and no update statement anywhere that
 		// names this table.
@@ -217,8 +199,7 @@ func TestOrganizationLicenseHistoryStorage(t *testing.T) {
 		assert.Equal(t, 0, count, "organization_license_changes has an updated_at column")
 	})
 
-	t.Run("deleting the organization takes its history with it", func(t *testing.T) {
-		// Deleting the organization takes its history with it.
+	t.Run("Deleting the organization takes its history with it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		require.Equal(t, 2, historyRowCount(t, w.OrganizationID()))

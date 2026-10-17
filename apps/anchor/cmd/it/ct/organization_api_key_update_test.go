@@ -17,7 +17,6 @@ import (
 )
 
 func TestOrganizationAPIKeyUpdate(t *testing.T) {
-	// Checks organization API key update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -44,7 +43,6 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, createResp.StatusCode())
 
 	t.Run("Update organization API key name and description", func(t *testing.T) {
-		// Update organization API key name and description.
 		newName := "Updated-" + uuid.NewString()
 		newDescription := "Updated description"
 		updateResp, updateErr := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
@@ -68,7 +66,6 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 	})
 
 	t.Run("Update organization API key with blank name returns bad request", func(t *testing.T) {
-		// Update organization API key with blank name returns bad request.
 		updateResp, updateErr := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -83,7 +80,6 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 	})
 
 	t.Run("Update non-existent organization API key returns not found", func(t *testing.T) {
-		// Update non-existent organization API key returns not found.
 		newName := "Missing-" + uuid.NewString()
 		updateResp, updateErr := apiKeyClient.UpdateOrganizationAPIKeyWithResponse(
 			ctx,
@@ -96,8 +92,7 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, updateResp.StatusCode())
 	})
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		webhookProduct := createTestProductContext(t)
 		sink := webhookProduct.CaptureEvents()
 		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()
@@ -131,7 +126,6 @@ func TestOrganizationAPIKeyUpdate(t *testing.T) {
 }
 
 func TestOrganizationAPIKeyUpdateNameConflict(t *testing.T) {
-	// Checks organization API key update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -152,7 +146,6 @@ func TestOrganizationAPIKeyUpdateNameConflict(t *testing.T) {
 	}
 
 	t.Run("Concurrent identical renames of one key all succeed", func(t *testing.T) {
-		// Concurrent identical renames of one key all succeed.
 		keyID := createKey("RaceKey-" + uuid.NewString())
 		const rounds, renamesPerRound = 20, 8
 		for range rounds {
@@ -178,7 +171,6 @@ func TestOrganizationAPIKeyUpdateNameConflict(t *testing.T) {
 	})
 
 	t.Run("Rename to the name of another key returns conflict", func(t *testing.T) {
-		// Rename to the name of another key returns conflict.
 		takenName := "TakenKey-" + uuid.NewString()
 		createKey(takenName)
 		keyID := createKey("OtherKey-" + uuid.NewString())

@@ -19,10 +19,8 @@ func markLegacyLicense(t *testing.T, w *licenseWorld) {
 }
 
 func TestLegacyAdjustmentsSurviveFirstTemplateSync(t *testing.T) {
-	// Legacy adjustments survive first template sync.
 	t.Parallel()
-	t.Run("historical adjustments remain pinned even when equal to the template", func(t *testing.T) {
-		// Historical adjustments remain pinned even when equal to the template.
+	t.Run("Historical adjustments remain pinned even when equal to the template", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800, "sso": false})
 		w.License().Adjust(ct.LicenseTemplateValues{"sso": true})
@@ -39,8 +37,7 @@ func TestLegacyAdjustmentsSurviveFirstTemplateSync(t *testing.T) {
 		assert.Equal(t, 1, countTemplateSyncChanges(t, w.License()))
 	})
 
-	t.Run("historyless differences are preserved while missing fields follow", func(t *testing.T) {
-		// Historyless differences are preserved while missing fields follow.
+	t.Run("Historyless differences are preserved while missing fields follow", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		_, err := testDB.ExecContext(t.Context(),
 			`UPDATE organization_licenses SET values_json = (values_json - 'region') || '{"flows":800}'::jsonb
@@ -55,8 +52,7 @@ func TestLegacyAdjustmentsSurviveFirstTemplateSync(t *testing.T) {
 		assert.Equal(t, []string{"flows"}, synced.AdjustedFields)
 	})
 
-	t.Run("a discarded adjustment is not resurrected", func(t *testing.T) {
-		// A discarded adjustment is not resurrected.
+	t.Run("A discarded adjustment is not resurrected", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		w.Migration().Run(ct.OrganizationLicenseMigrationRequest{

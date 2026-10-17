@@ -12,13 +12,11 @@ import (
 )
 
 func TestEmailTemplateDelete(t *testing.T) {
-	// Checks email template deletion across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 
-	t.Run("deletes existing template", func(t *testing.T) {
-		// The API deletes existing template.
+	t.Run("The API deletes existing template", func(t *testing.T) {
 		created, err := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -42,8 +40,7 @@ func TestEmailTemplateDelete(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, getResp.StatusCode())
 	})
 
-	t.Run("returns 404 for unknown ID", func(t *testing.T) {
-		// The API returns 404 for unknown ID.
+	t.Run("The API returns 404 for unknown ID", func(t *testing.T) {
 		resp, err := client.DeleteEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -53,8 +50,7 @@ func TestEmailTemplateDelete(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 	})
 
-	t.Run("deleting one template does not affect others", func(t *testing.T) {
-		// Deleting one template does not affect others.
+	t.Run("Deleting one template does not affect others", func(t *testing.T) {
 		a, err := client.CreateEmailTemplateWithResponse(
 			context.Background(), tc.product.ProductID,
 			ct.CreateEmailTemplateJSONRequestBody{Slug: uniqueSlug(), Name: "A", Subject: "S", BodyHtml: "<p>B</p>"},

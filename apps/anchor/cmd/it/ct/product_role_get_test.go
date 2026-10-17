@@ -13,7 +13,6 @@ import (
 )
 
 func TestProductRole_Get(t *testing.T) {
-	// Checks product role lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -23,8 +22,7 @@ func TestProductRole_Get(t *testing.T) {
 	perm2 := testCtx.DefaultResourcePermissions[1].Name
 
 	t.Run(
-		"GetExistingProductRole", func(t *testing.T) {
-			// Reading existing product role succeeds.
+		"Reading existing product role succeeds", func(t *testing.T) {
 			roleName := "TestRole_" + ids.MustNew("test")
 			roleDesc := "Test role description"
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -60,8 +58,7 @@ func TestProductRole_Get(t *testing.T) {
 	)
 
 	t.Run(
-		"GetProductRoleWithPermissions", func(t *testing.T) {
-			// Reading a product role with permissions succeeds.
+		"Reading a product role with permissions succeeds", func(t *testing.T) {
 			permissions := []string{perm1, perm2}
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -95,8 +92,7 @@ func TestProductRole_Get(t *testing.T) {
 	)
 
 	t.Run(
-		"GetNonexistentProductRole", func(t *testing.T) {
-			// Reading nonexistent product role returns not found.
+		"Reading nonexistent product role returns not found", func(t *testing.T) {
 			nonExistentRoleID := ids.MustNew("productroleservice")
 			getResp, err := testCtx.OwnerAuthenticatedClient().GetProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID,
@@ -107,8 +103,7 @@ func TestProductRole_Get(t *testing.T) {
 	)
 
 	t.Run(
-		"GetProductRoleWithInvalidID", func(t *testing.T) {
-			// Reading a product role with invalid ID returns a bad request.
+		"Reading a product role with invalid ID returns a bad request", func(t *testing.T) {
 			invalidRoleID := "invalid-role-id"
 			getResp, err := testCtx.OwnerAuthenticatedClient().GetProductRoleWithResponse(
 				ctx, productID, invalidRoleID,
@@ -119,8 +114,7 @@ func TestProductRole_Get(t *testing.T) {
 	)
 
 	t.Run(
-		"GetProductRoleForNonexistentProduct", func(t *testing.T) {
-			// Reading a product role for nonexistent product returns a bad request.
+		"Reading a product role for nonexistent product returns a bad request", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -142,8 +136,7 @@ func TestProductRole_Get(t *testing.T) {
 	)
 
 	t.Run(
-		"GetProductRoleFromDifferentProduct", func(t *testing.T) {
-			// Reading a role through another product returns not found.
+		"Reading a role through another product returns not found", func(t *testing.T) {
 			anotherTestCtx := createTestProductContext(t)
 			anotherProductID := anotherTestCtx.ProductID
 

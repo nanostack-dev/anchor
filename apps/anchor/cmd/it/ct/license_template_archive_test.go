@@ -39,10 +39,8 @@ func listTemplates(
 }
 
 func TestLicenseTemplateArchive(t *testing.T) {
-	// Checks license template archive across the scenarios below.
 	t.Parallel()
-	t.Run("withdraws the tier and keeps the record", func(t *testing.T) {
-		// The API withdraws the tier and keeps the record.
+	t.Run("The API withdraws the tier and keeps the record", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 		require.Equal(t, ct.LicenseTemplateStatusACTIVE, created.Status)
@@ -65,8 +63,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assertValues(t, read.JSON200.Values, validTemplateValues())
 	})
 
-	t.Run("stays in the unfiltered listing", func(t *testing.T) {
-		// The API stays in the unfiltered listing.
+	t.Run("The API stays in the unfiltered listing", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
@@ -78,8 +75,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assert.Equal(t, []string{"Free", "Pro"}, templateNames(listTemplates(t, tc, nil).Items))
 	})
 
-	t.Run("filters by status", func(t *testing.T) {
-		// The API filters by status.
+	t.Run("The API filters by status", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		kept := createTemplate(t, tc, "Free", templateValuesWith("flows", 10))
 		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
@@ -95,8 +91,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assert.Equal(t, []string{withdrawn.Name}, templateNames(retired.Items))
 	})
 
-	t.Run("frees the name for a replacement", func(t *testing.T) {
-		// The API frees the name for a replacement.
+	t.Run("The API frees the name for a replacement", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		withdrawn := createTemplate(t, tc, "Pro", validTemplateValues())
 
@@ -108,8 +103,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assert.NotEqual(t, withdrawn.Id, replacement.Id)
 	})
 
-	t.Run("is idempotent", func(t *testing.T) {
-		// The API is idempotent.
+	t.Run("The API is idempotent", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -121,8 +115,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assert.Equal(t, ct.LicenseTemplateStatusARCHIVED, again.JSON200.Status)
 	})
 
-	t.Run("refuses to edit a withdrawn tier", func(t *testing.T) {
-		// The API refuses to edit a withdrawn tier.
+	t.Run("The API refuses to edit a withdrawn tier", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 		require.Equal(t, http.StatusOK, archiveTemplate(t, tc, created.Id).StatusCode())
@@ -139,8 +132,7 @@ func TestLicenseTemplateArchive(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
-	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
-		// The API returns 404 when the product has no template with that identifier.
+	t.Run("The API returns 404 when the product has no template with that identifier", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		assert.Equal(t, http.StatusNotFound, archiveTemplate(t, tc, missingTemplateID()).StatusCode())

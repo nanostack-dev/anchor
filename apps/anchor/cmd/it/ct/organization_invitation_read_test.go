@@ -14,170 +14,221 @@ import (
 )
 
 func TestGetInvitation_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
-	// Reads expired once the expiry has passed during get invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	require.Equal(t, ct.Pending, w.invitations.Get(w.organizationID, created.Id).Status)
 
-	w.expire(created.Id)
+	t.Run("Reads expired once the expiry has passed during get invitation", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		require.Equal(t, ct.Pending, w.invitations.Get(w.organizationID, created.Id).Status)
+
+		w.expire(created.Id)
+
+		assert.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
+	})
 }
 
 func TestGetInvitation_NeverStoresExpired(t *testing.T) {
-	// Never stores expired during get invitation.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.expire(created.Id)
-	require.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
 
-	var statusColumns int
-	require.NoError(t, testDB.QueryRow(
-		`SELECT COUNT(*) FROM information_schema.columns
+	t.Run("Never stores expired during get invitation", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		w.expire(created.Id)
+		require.Equal(t, ct.Expired, w.invitations.Get(w.organizationID, created.Id).Status)
+
+		var statusColumns int
+		require.NoError(t, testDB.QueryRow(
+			`SELECT COUNT(*) FROM information_schema.columns
 		 WHERE table_name = 'organization_invitations' AND column_name = 'status'`,
-	).Scan(&statusColumns))
-	assert.Zero(t, statusColumns)
-	var acceptedAt *string
-	require.NoError(t, testDB.QueryRow(
-		"SELECT accepted_at::text FROM organization_invitations WHERE id = $1", created.Id,
-	).Scan(&acceptedAt))
-	assert.Nil(t, acceptedAt)
+		).Scan(&statusColumns))
+		assert.Zero(t, statusColumns)
+		var acceptedAt *string
+		require.NoError(t, testDB.QueryRow(
+			"SELECT accepted_at::text FROM organization_invitations WHERE id = $1", created.Id,
+		).Scan(&acceptedAt))
+		assert.Nil(t, acceptedAt)
+	})
 }
 
 func TestGetInvitation_RefusesUnknownInvitation(t *testing.T) {
-	// Get invitation refuses unknown invitation.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp := w.invitations.GetRaw(w.organizationID, ids.MustNew("oinv"))
+	t.Run("Get invitation refuses unknown invitation", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_INVITATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+		w := newWorld(t)
+
+		resp := w.invitations.GetRaw(w.organizationID, ids.MustNew("oinv"))
+
+		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_INVITATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+	})
 }
 
 func TestGetInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
-	// Get invitation refuses invitation of another organization.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	resp := w.invitations.GetRaw(w.newOrganization(), created.Id)
+	t.Run("Get invitation refuses invitation of another organization", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		resp := w.invitations.GetRaw(w.newOrganization(), created.Id)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestSearchInvitations_ListsOnlyTheInvitationsOfTheOrganization(t *testing.T) {
-	// Lists only the invitations of the organization during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	mine := w.invite(uniqueEmail())
-	otherOrganization := w.newOrganization()
-	w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
-		Email:  openapi_types.Email(uniqueEmail()),
-		RoleId: w.roleID,
+
+	t.Run("Lists only the invitations of the organization during search invitations", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		mine := w.invite(uniqueEmail())
+		otherOrganization := w.newOrganization()
+		w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
+			Email:  openapi_types.Email(uniqueEmail()),
+			RoleId: w.roleID,
+		})
+
+		items := w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
+
+		require.Len(t, items, 1)
+		assert.Equal(t, mine.Id, items[0].Id)
 	})
-
-	items := w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
-
-	require.Len(t, items, 1)
-	assert.Equal(t, mine.Id, items[0].Id)
 }
 
 func TestSearchInvitations_ReadsExpiredOnceTheExpiryHasPassed(t *testing.T) {
-	// Reads expired once the expiry has passed during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.expire(created.Id)
 
-	items := w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
+	t.Run("Reads expired once the expiry has passed during search invitations", func(t *testing.T) {
+		t.Parallel()
 
-	require.Len(t, items, 1)
-	assert.Equal(t, ct.Expired, items[0].Status)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		w.expire(created.Id)
+
+		items := w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})
+
+		require.Len(t, items, 1)
+		assert.Equal(t, ct.Expired, items[0].Status)
+	})
 }
 
 func TestSearchInvitations_FilterByPendingKeepsOnlyPendingAndDropsExpired(t *testing.T) {
-	// Filter by pending keeps only pending and drops expired during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	pending := w.invite(uniqueEmail())
-	expired := w.invite(uniqueEmail())
-	w.expire(expired.Id)
 
-	items := w.invitations.SearchByStatus(w.organizationID, ct.Pending)
+	t.Run("Filter by pending keeps only pending and drops expired during search invitations", func(t *testing.T) {
+		t.Parallel()
 
-	require.Len(t, items, 1)
-	assert.Equal(t, pending.Id, items[0].Id)
+		w := newWorld(t)
+		pending := w.invite(uniqueEmail())
+		expired := w.invite(uniqueEmail())
+		w.expire(expired.Id)
+
+		items := w.invitations.SearchByStatus(w.organizationID, ct.Pending)
+
+		require.Len(t, items, 1)
+		assert.Equal(t, pending.Id, items[0].Id)
+	})
 }
 
 func TestSearchInvitations_FilterByExpiredKeepsAPendingInvitationWhoseExpiryPassed(t *testing.T) {
-	// Filter by expired keeps a pending invitation whose expiry passed during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	w.invite(uniqueEmail())
-	expired := w.invite(uniqueEmail())
-	w.expire(expired.Id)
 
-	items := w.invitations.SearchByStatus(w.organizationID, ct.Expired)
+	t.Run(
+		"Filter by expired keeps a pending invitation whose expiry passed during search invitations",
+		func(t *testing.T) {
+			t.Parallel()
 
-	require.Len(t, items, 1)
-	assert.Equal(t, expired.Id, items[0].Id)
-	assert.Equal(t, ct.Expired, items[0].Status)
+			w := newWorld(t)
+			w.invite(uniqueEmail())
+			expired := w.invite(uniqueEmail())
+			w.expire(expired.Id)
+
+			items := w.invitations.SearchByStatus(w.organizationID, ct.Expired)
+
+			require.Len(t, items, 1)
+			assert.Equal(t, expired.Id, items[0].Id)
+			assert.Equal(t, ct.Expired, items[0].Status)
+		},
+	)
 }
 
 func TestSearchInvitations_FilterByAcceptedKeepsOnlyAccepted(t *testing.T) {
-	// Filter by accepted keeps only accepted during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	w.invite(uniqueEmail())
-	accepting := w.invite(uniqueEmail())
-	w.accept(accepting.Id, w.newProductUser(string(accepting.Email)))
 
-	items := w.invitations.SearchByStatus(w.organizationID, ct.Accepted)
+	t.Run("Filter by accepted keeps only accepted during search invitations", func(t *testing.T) {
+		t.Parallel()
 
-	require.Len(t, items, 1)
-	assert.Equal(t, accepting.Id, items[0].Id)
-	assert.NotNil(t, items[0].AcceptedAt)
+		w := newWorld(t)
+		w.invite(uniqueEmail())
+		accepting := w.invite(uniqueEmail())
+		w.accept(accepting.Id, w.newProductUser(string(accepting.Email)))
+
+		items := w.invitations.SearchByStatus(w.organizationID, ct.Accepted)
+
+		require.Len(t, items, 1)
+		assert.Equal(t, accepting.Id, items[0].Id)
+		assert.NotNil(t, items[0].AcceptedAt)
+	})
 }
 
 func TestSearchInvitations_FilterByTwoStatusesKeepsBoth(t *testing.T) {
-	// Filter by two statuses keeps both during search invitations.
 	t.Parallel()
-	w := newWorld(t)
-	pending := w.invite(uniqueEmail())
-	expired := w.invite(uniqueEmail())
-	w.expire(expired.Id)
-	accepting := w.invite(uniqueEmail())
-	w.accept(accepting.Id, w.newProductUser(uniqueEmail()))
 
-	items := w.invitations.SearchByStatus(w.organizationID, ct.Pending, ct.Expired)
+	t.Run("Filter by two statuses keeps both during search invitations", func(t *testing.T) {
+		t.Parallel()
 
-	assert.ElementsMatch(t, []string{pending.Id, expired.Id}, invitationIDs(items))
+		w := newWorld(t)
+		pending := w.invite(uniqueEmail())
+		expired := w.invite(uniqueEmail())
+		w.expire(expired.Id)
+		accepting := w.invite(uniqueEmail())
+		w.accept(accepting.Id, w.newProductUser(uniqueEmail()))
+
+		items := w.invitations.SearchByStatus(w.organizationID, ct.Pending, ct.Expired)
+
+		assert.ElementsMatch(t, []string{pending.Id, expired.Id}, invitationIDs(items))
+	})
 }
 
 func TestSearchInvitations_RefusesUnknownOrganization(t *testing.T) {
-	// Search invitations refuses unknown organization.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp := w.invitations.SearchRaw(ids.MustNew("org"), ct.SearchOrganizationInvitationsJSONRequestBody{})
+	t.Run("Search invitations refuses unknown organization", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+		w := newWorld(t)
+
+		resp := w.invitations.SearchRaw(ids.MustNew("org"), ct.SearchOrganizationInvitationsJSONRequestBody{})
+
+		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ORGANIZATION_NOT_FOUND", errorCode(t, resp.JSON404.Errors))
+	})
 }
 
 func TestSearchInvitations_RefusesUnknownStatus(t *testing.T) {
-	// Search invitations refuses unknown status.
 	t.Parallel()
-	w := newWorld(t)
 
-	resp, err := w.product.AllScopeAPIKeyClient().SearchOrganizationInvitationsWithBodyWithResponse(
-		context.Background(), w.product.ProductID, w.organizationID, "application/json",
-		strings.NewReader(`{"filter":{"statuses":["revoked"]}}`),
-	)
+	t.Run("Search invitations refuses unknown status", func(t *testing.T) {
+		t.Parallel()
 
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+
+		resp, err := w.product.AllScopeAPIKeyClient().SearchOrganizationInvitationsWithBodyWithResponse(
+			context.Background(), w.product.ProductID, w.organizationID, "application/json",
+			strings.NewReader(`{"filter":{"statuses":["revoked"]}}`),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	})
 }

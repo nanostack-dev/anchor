@@ -11,10 +11,8 @@ import (
 )
 
 func TestEmailTemplateList(t *testing.T) {
-	// Checks email template listing across the scenarios below.
 	t.Parallel()
-	t.Run("returns empty list for new product", func(t *testing.T) {
-		// The API returns empty list for new product.
+	t.Run("The API returns empty list for new product", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
 		resp, err := tc.product.OwnerAuthenticatedClient().SearchEmailTemplatesWithResponse(
 			context.Background(),
@@ -28,8 +26,7 @@ func TestEmailTemplateList(t *testing.T) {
 		assert.Empty(t, resp.JSON200.Items)
 	})
 
-	t.Run("returns all created templates", func(t *testing.T) {
-		// The API returns all created templates.
+	t.Run("The API returns all created templates", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 
@@ -58,8 +55,7 @@ func TestEmailTemplateList(t *testing.T) {
 		assert.Len(t, resp.JSON200.Items, 3)
 	})
 
-	t.Run("templates are isolated per product", func(t *testing.T) {
-		// Templates are isolated per product.
+	t.Run("Templates are isolated per product", func(t *testing.T) {
 		tc1 := newEmailTestCtx(t)
 		tc2 := newEmailTestCtx(t)
 

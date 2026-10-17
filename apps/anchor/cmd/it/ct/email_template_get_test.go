@@ -12,7 +12,6 @@ import (
 )
 
 func TestEmailTemplateGet(t *testing.T) {
-	// Checks email template lookup across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -32,8 +31,7 @@ func TestEmailTemplateGet(t *testing.T) {
 	require.Equal(t, http.StatusCreated, created.StatusCode())
 	tplID := created.JSON201.Id
 
-	t.Run("returns existing template", func(t *testing.T) {
-		// The API returns existing template.
+	t.Run("The API returns existing template", func(t *testing.T) {
 		resp, getErr := client.GetEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
 		require.NoError(t, getErr)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -43,8 +41,7 @@ func TestEmailTemplateGet(t *testing.T) {
 		assert.Nil(t, resp.JSON200.PublishedVersionId)
 	})
 
-	t.Run("returns 404 for unknown ID", func(t *testing.T) {
-		// The API returns 404 for unknown ID.
+	t.Run("The API returns 404 for unknown ID", func(t *testing.T) {
 		resp, getErr := client.GetEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -54,8 +51,7 @@ func TestEmailTemplateGet(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 	})
 
-	t.Run("returns 404 when accessing template from another product", func(t *testing.T) {
-		// The API returns 404 when accessing template from another product.
+	t.Run("The API returns 404 when accessing template from another product", func(t *testing.T) {
 		other := newEmailTestCtx(t)
 		resp, getErr := other.product.OwnerAuthenticatedClient().GetEmailTemplateWithResponse(
 			context.Background(),

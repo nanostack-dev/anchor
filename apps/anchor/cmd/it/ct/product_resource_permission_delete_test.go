@@ -14,235 +14,258 @@ import (
 )
 
 func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
-	// Deleting a product resource permission succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Deleting a product resource permission succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:          "file:read",
-		Description:   new("Read file contents"),
-		ScopeModifier: new("own"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:          "file:read",
+			Description:   new("Read file contents"),
+			ScopeModifier: new("own"),
+		}
 
-	getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, getResp.StatusCode())
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
 
-	resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err, "delete product resource permission request should not error")
-	assert.Equal(t, http.StatusNoContent, resp.StatusCode())
+		permissionName := createResp.JSON201.Name
 
-	getAfterDeleteResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		permissionName,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, getAfterDeleteResp.StatusCode())
+		getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, getResp.StatusCode())
+
+		resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err, "delete product resource permission request should not error")
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode())
+
+		getAfterDeleteResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			permissionName,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, getAfterDeleteResp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
-	// Product resource permission delete emits webhook.
 	t.Parallel()
-	ctx := context.Background()
-	productContext := createTestProductContext(t)
-	sink := productContext.CaptureEvents()
-	createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
-		ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
-			Name: "events:delete",
-		},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, createResp.StatusCode())
-	permissionName := createResp.JSON201.Name
-	sink.WaitFor("product.resource_permission.created", map[string]string{
-		"permission_name": permissionName,
-	})
 
-	deleteResp, err := productContext.OwnerAuthenticatedClient().DeleteProductResourcePermissionWithResponse(
-		ctx, productContext.ProductID, permissionName,
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
-	sink.WaitFor("product.resource_permission.deleted", map[string]string{
-		"permission_name": permissionName,
+	t.Run("Product resource permission delete emits webhook", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
+			ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
+				Name: "events:delete",
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, createResp.StatusCode())
+		permissionName := createResp.JSON201.Name
+		sink.WaitFor("product.resource_permission.created", map[string]string{
+			"permission_name": permissionName,
+		})
+
+		deleteResp, err := productContext.OwnerAuthenticatedClient().DeleteProductResourcePermissionWithResponse(
+			ctx, productContext.ProductID, permissionName,
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
+		sink.WaitFor("product.resource_permission.deleted", map[string]string{
+			"permission_name": permissionName,
+		})
 	})
 }
 
 func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
-	// Product resource permission deletion rejects an unknown identifier.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Product resource permission deletion rejects an unknown identifier", func(t *testing.T) {
+		t.Parallel()
 
-	nonExistentPermissionName := "non:existent"
+		ctx := context.Background()
 
-	resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, nonExistentPermissionName,
-	)
-	require.NoError(t, err, "delete non-existent resource permission request should not error")
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		testProduct := createTestProductContext(t)
+
+		nonExistentPermissionName := "non:existent"
+
+		resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, nonExistentPermissionName,
+		)
+		require.NoError(t, err, "delete non-existent resource permission request should not error")
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionDeleteWithNonExistentProduct(t *testing.T) {
-	// Deleting a product resource permission with nonexistent product returns not found.
 	t.Parallel()
-	ctx := context.Background()
 
-	nonExistentProductID := ids.MustNew("prod")
-	permissionName := "file:read"
+	t.Run("Deleting a product resource permission with nonexistent product returns not found", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
-		ctx, nonExistentProductID, permissionName,
-	)
-	require.NoError(
-		t, err, "delete resource permission for non-existent product request should not error",
-	)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		ctx := context.Background()
+
+		nonExistentProductID := ids.MustNew("prod")
+		permissionName := "file:read"
+
+		resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
+			ctx, nonExistentProductID, permissionName,
+		)
+		require.NoError(
+			t, err, "delete resource permission for non-existent product request should not error",
+		)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
-	// Deleting a resource permission removes its role assignments.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
-	sink := testProduct.CaptureEvents()
+	t.Run("Deleting a resource permission removes its role assignments", func(t *testing.T) {
+		t.Parallel()
 
-	createPermissionInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Read file contents"),
-	}
+		ctx := context.Background()
 
-	createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createPermissionInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createPermissionResp.StatusCode())
-	assert.NotNil(t, createPermissionResp.JSON201)
+		testProduct := createTestProductContext(t)
+		sink := testProduct.CaptureEvents()
 
-	permissionName := createPermissionResp.JSON201.Name
+		createPermissionInput := ct.CreateProductResourcePermissionRequest{
+			Name:        "file:read",
+			Description: new("Read file contents"),
+		}
 
-	createRoleInput := ct.ProductRoleCreateRequest{
-		Name:        "Test Role",
-		Description: new("Test role with permission"),
-		Permissions: []string{permissionName},
-	}
+		createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createPermissionInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createPermissionResp.StatusCode())
+		assert.NotNil(t, createPermissionResp.JSON201)
 
-	createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
-		ctx, testProduct.ProductID, createRoleInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createRoleResp.StatusCode())
-	assert.NotNil(t, createRoleResp.JSON201)
+		permissionName := createPermissionResp.JSON201.Name
 
-	resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err, "delete assigned resource permission request should not error")
-	assert.Equal(t, http.StatusNoContent, resp.StatusCode())
+		createRoleInput := ct.ProductRoleCreateRequest{
+			Name:        "Test Role",
+			Description: new("Test role with permission"),
+			Permissions: []string{permissionName},
+		}
 
-	getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, getResp.StatusCode())
+		createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
+			ctx, testProduct.ProductID, createRoleInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createRoleResp.StatusCode())
+		assert.NotNil(t, createRoleResp.JSON201)
 
-	getRoleResp, err := testOwnerClient(t).GetProductRoleWithResponse(
-		ctx, testProduct.ProductID, createRoleResp.JSON201.Id,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, getRoleResp.StatusCode())
-	assert.Empty(t, getRoleResp.JSON200.Permissions)
+		resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err, "delete assigned resource permission request should not error")
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode())
 
-	sink.WaitFor("product.resource_permission.deleted", map[string]string{"permission_name": permissionName})
-	sink.WaitFor("product.role.updated", map[string]string{"role_id": createRoleResp.JSON201.Id})
+		getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, getResp.StatusCode())
+
+		getRoleResp, err := testOwnerClient(t).GetProductRoleWithResponse(
+			ctx, testProduct.ProductID, createRoleResp.JSON201.Id,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, getRoleResp.StatusCode())
+		assert.Empty(t, getRoleResp.JSON200.Permissions)
+
+		sink.WaitFor("product.resource_permission.deleted", map[string]string{"permission_name": permissionName})
+		sink.WaitFor("product.role.updated", map[string]string{"role_id": createRoleResp.JSON201.Id})
+	})
 }
 
 func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
-	// Deleting a product resource permission after unassigning from role succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Deleting a product resource permission after unassigning from role succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createPermissionInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Read file contents"),
-	}
+		ctx := context.Background()
 
-	createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createPermissionInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createPermissionResp.StatusCode())
-	assert.NotNil(t, createPermissionResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createPermissionResp.JSON201.Name
+		createPermissionInput := ct.CreateProductResourcePermissionRequest{
+			Name:        "file:read",
+			Description: new("Read file contents"),
+		}
 
-	createRoleInput := ct.ProductRoleCreateRequest{
-		Name:        "Test Role",
-		Description: new("Test role with permission"),
-		Permissions: []string{permissionName},
-	}
+		createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createPermissionInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createPermissionResp.StatusCode())
+		assert.NotNil(t, createPermissionResp.JSON201)
 
-	createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
-		ctx, testProduct.ProductID, createRoleInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createRoleResp.StatusCode())
-	assert.NotNil(t, createRoleResp.JSON201)
+		permissionName := createPermissionResp.JSON201.Name
 
-	roleID := createRoleResp.JSON201.Id
+		createRoleInput := ct.ProductRoleCreateRequest{
+			Name:        "Test Role",
+			Description: new("Test role with permission"),
+			Permissions: []string{permissionName},
+		}
 
-	unassignResp, err := testOwnerClient(t).UnassignPermissionFromProductRoleWithResponse(
-		ctx,
-		testProduct.ProductID,
-		roleID,
-		permissionName,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusNoContent, unassignResp.StatusCode())
+		createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
+			ctx, testProduct.ProductID, createRoleInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createRoleResp.StatusCode())
+		assert.NotNil(t, createRoleResp.JSON201)
 
-	deleteResp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		permissionName,
-	)
-	require.NoError(t, err, "delete unassigned resource permission request should not error")
-	assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
+		roleID := createRoleResp.JSON201.Id
 
-	getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, getResp.StatusCode())
+		unassignResp, err := testOwnerClient(t).UnassignPermissionFromProductRoleWithResponse(
+			ctx,
+			testProduct.ProductID,
+			roleID,
+			permissionName,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, unassignResp.StatusCode())
+
+		deleteResp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			permissionName,
+		)
+		require.NoError(t, err, "delete unassigned resource permission request should not error")
+		assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
+
+		getResp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, getResp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) {
-	// Checks product resource permission deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -253,13 +276,11 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 		permissionName string
 		expectedStatus int
 	}{
-		// The permission operation rejects empty permission name.
 		{
 			name:           "empty permission name",
 			permissionName: "",
 			expectedStatus: http.StatusBadRequest,
 		},
-		// The permission operation rejects permission name with special characters.
 		{
 			name:           "permission name with special characters",
 			permissionName: "file@read#test",
@@ -269,8 +290,7 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 
 	for _, tc := range testCases {
 		t.Run(
-			tc.name, func(t *testing.T) {
-				// Permission deletion refuses this malformed permission name.
+			"Deleting a resource permission refuses "+tc.name, func(t *testing.T) {
 				resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -288,56 +308,60 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 
 // Not parallel: it holds an uncommitted assignment and waits for the delete to queue behind it.
 func TestProductResourcePermissionDeleteTellsRoleAssignedConcurrently(t *testing.T) {
-	// Deleting a permission emits a role update even when the assignment was created concurrently.
-	ctx := context.Background()
-	testProduct := createTestProductContext(t)
-	sink := testProduct.CaptureEvents()
-	owner := testOwnerClient(t)
+	t.Run(
+		"Deleting a permission emits a role update even when the assignment was created concurrently",
+		func(t *testing.T) {
+			ctx := context.Background()
+			testProduct := createTestProductContext(t)
+			sink := testProduct.CaptureEvents()
+			owner := testOwnerClient(t)
 
-	created, err := owner.CreateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{Name: "doc:share"},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, created.StatusCode())
-	permissionName := created.JSON201.Name
+			created, err := owner.CreateProductResourcePermissionWithResponse(
+				ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{Name: "doc:share"},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, created.StatusCode())
+			permissionName := created.JSON201.Name
 
-	role, err := owner.CreateProductRoleWithResponse(
-		ctx, testProduct.ProductID, ct.ProductRoleCreateRequest{Name: "Reviewer"},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, role.StatusCode())
-	roleID := role.JSON201.Id
+			role, err := owner.CreateProductRoleWithResponse(
+				ctx, testProduct.ProductID, ct.ProductRoleCreateRequest{Name: "Reviewer"},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, role.StatusCode())
+			roleID := role.JSON201.Id
 
-	assignInFlight, err := testDB.BeginTx(t.Context(), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = assignInFlight.Rollback() })
-	_, err = assignInFlight.ExecContext(
-		t.Context(),
-		`INSERT INTO product_role_resource_permissions (id, product_id, product_role_id, permission_name)
+			assignInFlight, err := testDB.BeginTx(t.Context(), nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = assignInFlight.Rollback() })
+			_, err = assignInFlight.ExecContext(
+				t.Context(),
+				`INSERT INTO product_role_resource_permissions (id, product_id, product_role_id, permission_name)
 		 VALUES ($1, $2, $3, $4)`,
-		ids.MustNew("prrp"), testProduct.ProductID, roleID, permissionName,
+				ids.MustNew("prrp"), testProduct.ProductID, roleID, permissionName,
+			)
+			require.NoError(t, err)
+			var assignPID int
+			require.NoError(t, assignInFlight.QueryRowContext(t.Context(), `SELECT pg_backend_pid()`).Scan(&assignPID))
+
+			deleted := make(chan functional.Result[*ct.DeleteProductResourcePermissionResponse], 1)
+			go func() {
+				deleted <- functional.New(owner.DeleteProductResourcePermissionWithResponse(
+					t.Context(), testProduct.ProductID, permissionName,
+				))
+			}()
+			require.Eventually(t, func() bool {
+				var blocked bool
+				scanErr := testDB.QueryRowContext(t.Context(),
+					`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`, assignPID,
+				).Scan(&blocked)
+				return scanErr == nil && blocked
+			}, 5*time.Second, 10*time.Millisecond)
+			require.NoError(t, assignInFlight.Commit())
+
+			resp, err := (<-deleted).Value()
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+			sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
+		},
 	)
-	require.NoError(t, err)
-	var assignPID int
-	require.NoError(t, assignInFlight.QueryRowContext(t.Context(), `SELECT pg_backend_pid()`).Scan(&assignPID))
-
-	deleted := make(chan functional.Result[*ct.DeleteProductResourcePermissionResponse], 1)
-	go func() {
-		deleted <- functional.New(owner.DeleteProductResourcePermissionWithResponse(
-			t.Context(), testProduct.ProductID, permissionName,
-		))
-	}()
-	require.Eventually(t, func() bool {
-		var blocked bool
-		scanErr := testDB.QueryRowContext(t.Context(),
-			`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`, assignPID,
-		).Scan(&blocked)
-		return scanErr == nil && blocked
-	}, 5*time.Second, 10*time.Millisecond)
-	require.NoError(t, assignInFlight.Commit())
-
-	resp, err := (<-deleted).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-	sink.WaitFor("product.role.updated", map[string]string{"role_id": roleID})
 }

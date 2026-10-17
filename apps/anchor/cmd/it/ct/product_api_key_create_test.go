@@ -14,15 +14,13 @@ import (
 )
 
 func TestProductAPIKeyCreate(t *testing.T) {
-	// Checks product API key creation across the scenarios below.
 	t.Parallel()
 	product := createTestProductContext(t)
 	permission1 := "organization:read"
 	permission2 := "organization:create"
 	now := time.Now()
 	t.Run(
-		"Create API Key with Permissions", func(t *testing.T) {
-			// Create API key with permissions.
+		"Create API key with permissions", func(t *testing.T) {
 			apiKeyName := uuid.NewString()
 			description := itshared.Faker.Lorem().Sentence(5)
 			resp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
@@ -72,7 +70,6 @@ func TestProductAPIKeyCreate(t *testing.T) {
 	)
 	t.Run(
 		"Create mutable API key when requested", func(t *testing.T) {
-			// Create mutable API key when requested.
 			apiKeyName := uuid.NewString()
 			mutable := true
 
@@ -94,8 +91,7 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
-		"Create API key keeps fixed Anchor prefix when organization prefix is configured", func(t *testing.T) {
-			// Create API key keeps fixed anchor prefix when organization prefix is configured.
+		"Create API key keeps fixed anchor prefix when organization prefix is configured", func(t *testing.T) {
 			prefix := "acme"
 			createProductResp, err := testOwnerClient(t).CreateProductWithResponse(
 				t.Context(),
@@ -132,26 +128,22 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
-		"Name validation cases should trigger 400 Bad Request", func(t *testing.T) {
-			// Name validation cases should trigger 400 bad request.
+		"Name validation cases should trigger 400 bad request", func(t *testing.T) {
 			testCases := []struct {
 				name        string
 				inputName   string
 				expectedMsg string
 			}{
-				// The product-key request rejects name is null.
 				{
 					name:        "Name is null",
 					inputName:   "",
 					expectedMsg: "Name is a required field",
 				},
-				// The product-key request rejects name is blank.
 				{
 					name:        "Name is blank",
 					inputName:   "   ",
 					expectedMsg: "Name cannot be blank",
 				},
-				// The product-key request rejects name exceeds 100 characters.
 				{
 					name:        "Name exceeds 100 characters",
 					inputName:   strings.Repeat("a", 101),
@@ -160,8 +152,7 @@ func TestProductAPIKeyCreate(t *testing.T) {
 			}
 			for _, tc := range testCases {
 				t.Run(
-					tc.name, func(t *testing.T) {
-						// The product-key request returns the expected validation result for this field value.
+					"Creating a product API key validates "+tc.name, func(t *testing.T) {
 						body := ct.CreateProductAPIKeyJSONRequestBody{
 							Permissions: []string{
 								permission1,
@@ -191,26 +182,22 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
-		"Description validation cases should trigger 400 Bad Request", func(t *testing.T) {
-			// Description validation cases should trigger 400 bad request.
+		"Description validation cases should trigger 400 bad request", func(t *testing.T) {
 			testCases := []struct {
 				name        string
 				inputDesc   *string
 				expectedMsg string
 			}{
-				// The product-key request accepts description is null.
 				{
 					name:        "Description is null (should be allowed)",
 					inputDesc:   nil,
 					expectedMsg: "",
 				},
-				// The product-key request accepts description is blank.
 				{
 					name:        "Description is blank (should be allowed)",
 					inputDesc:   new("   "),
 					expectedMsg: "",
 				},
-				// The product-key request rejects description exceeds 500 characters.
 				{
 					name:        "Description exceeds 500 characters",
 					inputDesc:   new(strings.Repeat("a", 501)),
@@ -219,8 +206,7 @@ func TestProductAPIKeyCreate(t *testing.T) {
 			}
 			for _, tc := range testCases {
 				t.Run(
-					tc.name, func(t *testing.T) {
-						// The product-key request returns the expected validation result for this field value.
+					"Creating a product API key validates "+tc.name, func(t *testing.T) {
 						body := ct.CreateProductAPIKeyJSONRequestBody{
 							Name: uuid.NewString(),
 							Permissions: []string{

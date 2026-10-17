@@ -26,150 +26,156 @@ const fakeAPIKey = "sk_test_scheduler_lifecycle_fake_key_for_testing"
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_NoKeyOnCreate_NoSchedulerJob(t *testing.T) {
-	// Creating a Clerk integration without an API key schedules no reconciliation job.
-	before := countPendingSchedulerJobs(t)
+	t.Run("Creating a Clerk integration without an API key schedules no reconciliation job", func(t *testing.T) {
+		before := countPendingSchedulerJobs(t)
 
-	productContext := createTestProductContext(t)
+		productContext := createTestProductContext(t)
 
-	// Create a Clerk instance WITHOUT an API key.
-	createBody := ct.CreateIntegrationInstanceJSONRequestBody{}
-	require.NoError(
-		t,
-		createBody.FromClerkIntegrationInstanceCreateRequest(
-			ct.ClerkIntegrationInstanceCreateRequest{ProviderType: "CLERK"},
-		),
-	)
+		// Create a Clerk instance WITHOUT an API key.
+		createBody := ct.CreateIntegrationInstanceJSONRequestBody{}
+		require.NoError(
+			t,
+			createBody.FromClerkIntegrationInstanceCreateRequest(
+				ct.ClerkIntegrationInstanceCreateRequest{ProviderType: "CLERK"},
+			),
+		)
 
-	resp, err := productContext.OwnerAuthenticatedClient().CreateIntegrationInstanceWithResponse(
-		context.Background(),
-		productContext.ProductID,
-		createBody,
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode())
+		resp, err := productContext.OwnerAuthenticatedClient().CreateIntegrationInstanceWithResponse(
+			context.Background(),
+			productContext.ProductID,
+			createBody,
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode())
 
-	// Give the server a moment to process any side effects, then assert no
-	// new scheduler job was added.
-	time.Sleep(200 * time.Millisecond)
+		// Give the server a moment to process any side effects, then assert no
+		// new scheduler job was added.
+		time.Sleep(200 * time.Millisecond)
 
-	after := countPendingSchedulerJobs(t)
-	assert.Equal(t, before, after, "no scheduler job should be added when no API key is configured")
+		after := countPendingSchedulerJobs(t)
+		assert.Equal(t, before, after, "no scheduler job should be added when no API key is configured")
+	})
 }
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_FirstKeyAdded_SeedsScheduler(t *testing.T) {
-	// Adding the first Clerk API key schedules reconciliation.
-	// Each sub-test that mutates the queue must run serially to avoid
-	// interference with the RemoveLastKey / DeleteLastInstance tests that
-	// assert queue drains to zero.  These additive tests are safe to run in
-	// any order; the cancel tests are collected in their own group below.
+	t.Run("Adding the first Clerk API key schedules reconciliation", func(t *testing.T) {
+		// Each sub-test that mutates the queue must run serially to avoid
+		// interference with the RemoveLastKey / DeleteLastInstance tests that
+		// assert queue drains to zero.  These additive tests are safe to run in
+		// any order; the cancel tests are collected in their own group below.
 
-	productContext := createTestProductContext(t)
-	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
-	t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })
+		productContext := createTestProductContext(t)
+		instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
+		t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })
 
-	// A scheduler job must appear shortly after the API call returns.
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) >= 1
-	}, schedulerEventualTimeout, schedulerPollInterval,
-		"a scheduler job should be seeded when the first Clerk API key is added")
+		// A scheduler job must appear shortly after the API call returns.
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) >= 1
+		}, schedulerEventualTimeout, schedulerPollInterval,
+			"a scheduler job should be seeded when the first Clerk API key is added")
+	})
 }
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_SecondKeyAdded_DoesNotDuplicate(t *testing.T) {
-	// Adding a second Clerk API key does not duplicate the reconciliation job.
-	// Seed the queue with the first instance.
-	productContextA := createTestProductContext(t)
-	instanceA := createInstanceWithAPIKey(t, productContextA, fakeAPIKey)
-	t.Cleanup(func() { deleteInstance(t, productContextA, instanceA.Id) })
+	t.Run("Adding a second Clerk API key does not duplicate the reconciliation job", func(t *testing.T) {
+		// Seed the queue with the first instance.
+		productContextA := createTestProductContext(t)
+		instanceA := createInstanceWithAPIKey(t, productContextA, fakeAPIKey)
+		t.Cleanup(func() { deleteInstance(t, productContextA, instanceA.Id) })
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) >= 1
-	}, schedulerEventualTimeout, schedulerPollInterval, "first scheduler job should appear")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) >= 1
+		}, schedulerEventualTimeout, schedulerPollInterval, "first scheduler job should appear")
 
-	countAfterFirst := countPendingSchedulerJobs(t)
+		countAfterFirst := countPendingSchedulerJobs(t)
 
-	// Add a second instance with an API key on a different product.
-	productContextB := createTestProductContext(t)
-	instanceB := createInstanceWithAPIKey(t, productContextB, fakeAPIKey)
-	t.Cleanup(func() { deleteInstance(t, productContextB, instanceB.Id) })
+		// Add a second instance with an API key on a different product.
+		productContextB := createTestProductContext(t)
+		instanceB := createInstanceWithAPIKey(t, productContextB, fakeAPIKey)
+		t.Cleanup(func() { deleteInstance(t, productContextB, instanceB.Id) })
 
-	// Wait briefly, then assert the scheduler count did not grow.
-	time.Sleep(300 * time.Millisecond)
-	countAfterSecond := countPendingSchedulerJobs(t)
+		// Wait briefly, then assert the scheduler count did not grow.
+		time.Sleep(300 * time.Millisecond)
+		countAfterSecond := countPendingSchedulerJobs(t)
 
-	assert.Equal(t, countAfterFirst, countAfterSecond,
-		"adding a second Clerk API key should not seed a duplicate scheduler job")
+		assert.Equal(t, countAfterFirst, countAfterSecond,
+			"adding a second Clerk API key should not seed a duplicate scheduler job")
+	})
 }
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_RemoveLastKey_CancelsScheduler(t *testing.T) {
-	// Removing the last Clerk API key cancels reconciliation.
-	// This test must run after all additive tests have already seeded at
-	// least one scheduler job (or with a clean queue) and must be the sole
-	// consumer of that state. Because test isolation within a shared server
-	// is tricky we accept that the assertion is "eventually zero" — meaning
-	// all keys across all products have been removed.
-	//
-	// Strategy: we create the instance, confirm the scheduler job appears, then
-	// remove the key. Because removeAPIKey patches *only* the config field
-	// and passes api_key: nil, the service will call maybeCancelScheduler which
-	// deletes pending scheduler jobs when no instance with a key remains.
+	t.Run("Removing the last Clerk API key cancels reconciliation", func(t *testing.T) {
+		// This test must run after all additive tests have already seeded at
+		// least one scheduler job (or with a clean queue) and must be the sole
+		// consumer of that state. Because test isolation within a shared server
+		// is tricky we accept that the assertion is "eventually zero" — meaning
+		// all keys across all products have been removed.
+		//
+		// Strategy: we create the instance, confirm the scheduler job appears, then
+		// remove the key. Because removeAPIKey patches *only* the config field
+		// and passes api_key: nil, the service will call maybeCancelScheduler which
+		// deletes pending scheduler jobs when no instance with a key remains.
 
-	productContext := createTestProductContext(t)
-	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
+		productContext := createTestProductContext(t)
+		instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) >= 1
-	}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) >= 1
+		}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
 
-	removeAPIKey(t, productContext, instance.Id)
+		removeAPIKey(t, productContext, instance.Id)
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) == 0
-	}, schedulerEventualTimeout, schedulerPollInterval,
-		"scheduler job should be cancelled after the last API key is removed")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) == 0
+		}, schedulerEventualTimeout, schedulerPollInterval,
+			"scheduler job should be cancelled after the last API key is removed")
+	})
 }
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_DeleteLastInstance_CancelsScheduler(t *testing.T) {
-	// Deleting the last Clerk integration cancels reconciliation.
-	productContext := createTestProductContext(t)
-	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
+	t.Run("Deleting the last Clerk integration cancels reconciliation", func(t *testing.T) {
+		productContext := createTestProductContext(t)
+		instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) >= 1
-	}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) >= 1
+		}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
 
-	deleteInstance(t, productContext, instance.Id)
+		deleteInstance(t, productContext, instance.Id)
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) == 0
-	}, schedulerEventualTimeout, schedulerPollInterval,
-		"scheduler job should be cancelled after the instance with the last API key is deleted")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) == 0
+		}, schedulerEventualTimeout, schedulerPollInterval,
+			"scheduler job should be cancelled after the instance with the last API key is deleted")
+	})
 }
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_DuplicateSchedulerJobs_CollapseToOne(t *testing.T) {
-	// A reconciliation pass collapses duplicate pending scheduler jobs into one.
-	productContext := createTestProductContext(t)
-	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
-	t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })
+	t.Run("A reconciliation pass collapses duplicate pending scheduler jobs into one", func(t *testing.T) {
+		productContext := createTestProductContext(t)
+		instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
+		t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) >= 1
-	}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) >= 1
+		}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
 
-	for range 2 {
-		_, err := reconcileQueue.Enqueue(context.Background(), queue.EnqueueParams{
-			QueueName: integrationReconcileQueueName,
-			Payload:   []byte(`{"is_scheduler":true}`),
-		})
-		require.NoError(t, err)
-	}
+		for range 2 {
+			_, err := reconcileQueue.Enqueue(context.Background(), queue.EnqueueParams{
+				QueueName: integrationReconcileQueueName,
+				Payload:   []byte(`{"is_scheduler":true}`),
+			})
+			require.NoError(t, err)
+		}
 
-	require.Eventually(t, func() bool {
-		return countPendingSchedulerJobs(t) == 1
-	}, 15*time.Second, schedulerPollInterval,
-		"duplicate scheduler jobs should collapse to a single pending chain")
+		require.Eventually(t, func() bool {
+			return countPendingSchedulerJobs(t) == 1
+		}, 15*time.Second, schedulerPollInterval,
+			"duplicate scheduler jobs should collapse to a single pending chain")
+	})
 }

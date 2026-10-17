@@ -14,13 +14,11 @@ import (
 )
 
 func TestProductUpdate(t *testing.T) {
-	// Checks product update across the scenarios below.
 	t.Parallel()
 	ctx := t.Context()
 
 	t.Run(
-		"SuccessfulUpdateProduct", func(t *testing.T) {
-			// Updating a product succeeds.
+		"Updating a product succeeds", func(t *testing.T) {
 			productName := "Test Product For Update"
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
@@ -78,8 +76,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithEmptyName", func(t *testing.T) {
-			// Updating a product with an empty name is refused.
+		"Updating a product with an empty name is refused", func(t *testing.T) {
 			productName := "Test Product Empty Name"
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
@@ -117,8 +114,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithOneCharacterName", func(t *testing.T) {
-			// Updating a product with one character name returns a bad request.
+		"Updating a product with one character name returns a bad request", func(t *testing.T) {
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -149,8 +145,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithNameOver100Characters", func(t *testing.T) {
-			// Updating a product with name over 100 characters returns a bad request.
+		"Updating a product with name over 100 characters returns a bad request", func(t *testing.T) {
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -181,8 +176,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithInvalidDescription", func(t *testing.T) {
-			// Updating a product with an overlong description is refused.
+		"Updating a product with an overlong description is refused", func(t *testing.T) {
 			productName := "Test Product Invalid Description"
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
@@ -222,8 +216,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateNonExistentProduct", func(t *testing.T) {
-			// Updating nonexistent product returns not found.
+		"Updating nonexistent product returns not found", func(t *testing.T) {
 			nonExistentProductID := ids.MustNew("prd")
 
 			updateResp, err := testOwnerClient(t).UpdateProductWithResponse(
@@ -243,8 +236,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithDuplicateName", func(t *testing.T) {
-			// Renaming a product to another product's name returns a conflict.
+		"Renaming a product to another product's name returns a conflict", func(t *testing.T) {
 			// Create two test products
 			product1Name := "Product One"
 			createResp1, err := testOwnerClient(t).CreateProductWithResponse(
@@ -292,8 +284,7 @@ func TestProductUpdate(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateProductWithDuplicateNameDifferentCase", func(t *testing.T) {
-			// Renaming a product cannot bypass name uniqueness by changing letter case.
+		"Renaming a product cannot bypass name uniqueness by changing letter case", func(t *testing.T) {
 			product1Name := "Product One Case " + ids.MustNew("test")
 			createResp1, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,

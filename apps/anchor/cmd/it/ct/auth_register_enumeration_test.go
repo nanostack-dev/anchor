@@ -23,45 +23,49 @@ import (
 // credential by reading the status code (409 "user already exists" vs 400
 // "invitation code invalid").
 func TestRegisterDoesNotLeakAccountExistence(t *testing.T) {
-	// Register does not leak account existence.
 	t.Parallel()
-	ctx := context.Background()
 
-	// Arrange: register a real account so this email is known to exist.
-	existingEmail := itshared.Faker.Internet().Email()
-	inviteCode := createPlatformInvitation(t, existingEmail)
+	t.Run("Register does not leak account existence", func(t *testing.T) {
+		t.Parallel()
 
-	seedResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
-		Email:          existingEmail,
-		Password:       "ValidPassword123!",
-		InvitationCode: &inviteCode,
+		ctx := context.Background()
+
+		// Arrange: register a real account so this email is known to exist.
+		existingEmail := itshared.Faker.Internet().Email()
+		inviteCode := createPlatformInvitation(t, existingEmail)
+
+		seedResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
+			Email:          existingEmail,
+			Password:       "ValidPassword123!",
+			InvitationCode: &inviteCode,
+		})
+		require.NoError(t, err, "seed registration should not error")
+		require.Equal(t, http.StatusOK, seedResp.StatusCode(), "seed registration should succeed")
+
+		invalidCode := "invalid-code-123"
+
+		// Act: an unauthenticated caller probes a known and an unknown email with the
+		// same invalid invitation code.
+		knownResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
+			Email:          existingEmail,
+			Password:       "ValidPassword123!",
+			InvitationCode: &invalidCode,
+		})
+		require.NoError(t, err, "probe of existing email should not error")
+
+		unknownResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
+			Email:          itshared.Faker.Internet().Email(),
+			Password:       "ValidPassword123!",
+			InvitationCode: &invalidCode,
+		})
+		require.NoError(t, err, "probe of unknown email should not error")
+
+		// Assert: the two responses are indistinguishable. If the known-email probe
+		// returns 409 while the unknown-email probe returns 400, the status code
+		// leaks account existence.
+		assert.Equal(t, unknownResp.StatusCode(), knownResp.StatusCode(),
+			"registration with an invalid invitation code must not reveal whether the email already exists")
+		assert.Equal(t, http.StatusBadRequest, knownResp.StatusCode(),
+			"an invalid invitation code should be rejected before email existence is checked")
 	})
-	require.NoError(t, err, "seed registration should not error")
-	require.Equal(t, http.StatusOK, seedResp.StatusCode(), "seed registration should succeed")
-
-	invalidCode := "invalid-code-123"
-
-	// Act: an unauthenticated caller probes a known and an unknown email with the
-	// same invalid invitation code.
-	knownResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
-		Email:          existingEmail,
-		Password:       "ValidPassword123!",
-		InvitationCode: &invalidCode,
-	})
-	require.NoError(t, err, "probe of existing email should not error")
-
-	unknownResp, err := testTenant(t).NoAuthClient.RegisterWithResponse(ctx, ct.RegisterJSONRequestBody{
-		Email:          itshared.Faker.Internet().Email(),
-		Password:       "ValidPassword123!",
-		InvitationCode: &invalidCode,
-	})
-	require.NoError(t, err, "probe of unknown email should not error")
-
-	// Assert: the two responses are indistinguishable. If the known-email probe
-	// returns 409 while the unknown-email probe returns 400, the status code
-	// leaks account existence.
-	assert.Equal(t, unknownResp.StatusCode(), knownResp.StatusCode(),
-		"registration with an invalid invitation code must not reveal whether the email already exists")
-	assert.Equal(t, http.StatusBadRequest, knownResp.StatusCode(),
-		"an invalid invitation code should be rejected before email existence is checked")
 }

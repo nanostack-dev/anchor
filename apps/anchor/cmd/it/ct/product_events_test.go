@@ -19,7 +19,6 @@ import (
 )
 
 func TestProductEventsConfigAndDelivery(t *testing.T) {
-	// Configured product-event subscriptions deliver signed events for matching resource changes.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -27,8 +26,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 	sink := product.CaptureEvents()
 	client, _ := product.CreateAPIKeyClientWithAllScopes()
 
-	t.Run("GetReturnsObfuscatedSecretNotPlaintext", func(t *testing.T) {
-		// Get returns obfuscated secret not plaintext.
+	t.Run("Get returns obfuscated secret not plaintext", func(t *testing.T) {
 		got, err := owner.GetProductWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, got.StatusCode())
@@ -38,8 +36,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		assert.Nil(t, got.JSON200.Config.Events.SigningSecret)
 	})
 
-	t.Run("OrganizationCreatedUpdatedDeleted", func(t *testing.T) {
-		// Organization creation, updates, and deletion each emit the matching product event.
+	t.Run("Organization creation, updates, and deletion each emit the matching product event", func(t *testing.T) {
 		created, err := client.CreateProductOrganizationWithResponse(
 			ctx,
 			product.ProductID,
@@ -66,8 +63,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		sink.WaitFor("organization.deleted", map[string]string{"organization_id": orgID})
 	})
 
-	t.Run("MembershipCreatedUpdatedDeleted", func(t *testing.T) {
-		// Membership creation, role updates, and removal each emit the matching product event.
+	t.Run("Membership creation, role updates, and removal each emit the matching product event", func(t *testing.T) {
 		org, err := client.CreateProductOrganizationWithResponse(
 			ctx,
 			product.ProductID,
@@ -117,8 +113,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		})
 	})
 
-	t.Run("WorkspaceCreatedUpdatedDeleted", func(t *testing.T) {
-		// Workspace creation, updates, and deletion each emit the matching product event.
+	t.Run("Workspace creation, updates, and deletion each emit the matching product event", func(t *testing.T) {
 		org := product.CreateOrganization(t, "Events Workspace Org "+ids.MustNew("org"), nil)
 		created := createWorkspace(t, client, product.ProductID, org.Id, "events-ws-"+ids.MustNew("ws"))
 		sink.WaitFor("workspace.created", map[string]string{
@@ -151,54 +146,55 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		})
 	})
 
-	t.Run("OrganizationAPIKeyCreatedUpdatedDeleted", func(t *testing.T) {
-		// Organization API-key creation, updates, and deletion each emit the matching product event.
-		org := product.CreateOrganization(t, "Events API Key Org "+ids.MustNew("org"), nil)
-		permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
-		created, err := client.CreateOrganizationAPIKeyWithResponse(
-			ctx,
-			product.ProductID,
-			org.Id,
-			ct.CreateOrganizationAPIKeyJSONRequestBody{
-				Name:        "events-key-" + ids.MustNew("key"),
-				Permissions: []string{permissions.FileRead},
-			},
-		)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusCreated, created.StatusCode())
-		keyID := created.JSON201.Id
-		sink.WaitFor("organization.api_key.created", map[string]string{
-			"organization_id": org.Id,
-			"api_key_id":      keyID,
-		})
+	t.Run(
+		"Organization API-key creation, updates, and deletion each emit the matching product event",
+		func(t *testing.T) {
+			org := product.CreateOrganization(t, "Events API Key Org "+ids.MustNew("org"), nil)
+			permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
+			created, err := client.CreateOrganizationAPIKeyWithResponse(
+				ctx,
+				product.ProductID,
+				org.Id,
+				ct.CreateOrganizationAPIKeyJSONRequestBody{
+					Name:        "events-key-" + ids.MustNew("key"),
+					Permissions: []string{permissions.FileRead},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, created.StatusCode())
+			keyID := created.JSON201.Id
+			sink.WaitFor("organization.api_key.created", map[string]string{
+				"organization_id": org.Id,
+				"api_key_id":      keyID,
+			})
 
-		updated, updateErr := client.UpdateOrganizationAPIKeyWithResponse(
-			ctx,
-			product.ProductID,
-			org.Id,
-			keyID,
-			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: "events-key-updated"},
-		)
-		require.NoError(t, updateErr)
-		require.Equal(t, http.StatusOK, updated.StatusCode())
-		sink.WaitFor("organization.api_key.updated", map[string]string{
-			"organization_id": org.Id,
-			"api_key_id":      keyID,
-		})
+			updated, updateErr := client.UpdateOrganizationAPIKeyWithResponse(
+				ctx,
+				product.ProductID,
+				org.Id,
+				keyID,
+				ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: "events-key-updated"},
+			)
+			require.NoError(t, updateErr)
+			require.Equal(t, http.StatusOK, updated.StatusCode())
+			sink.WaitFor("organization.api_key.updated", map[string]string{
+				"organization_id": org.Id,
+				"api_key_id":      keyID,
+			})
 
-		deleted, deleteErr := client.DeleteOrganizationAPIKeyWithResponse(
-			ctx, product.ProductID, org.Id, keyID,
-		)
-		require.NoError(t, deleteErr)
-		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
-		sink.WaitFor("organization.api_key.deleted", map[string]string{
-			"organization_id": org.Id,
-			"api_key_id":      keyID,
-		})
-	})
+			deleted, deleteErr := client.DeleteOrganizationAPIKeyWithResponse(
+				ctx, product.ProductID, org.Id, keyID,
+			)
+			require.NoError(t, deleteErr)
+			require.Equal(t, http.StatusNoContent, deleted.StatusCode())
+			sink.WaitFor("organization.api_key.deleted", map[string]string{
+				"organization_id": org.Id,
+				"api_key_id":      keyID,
+			})
+		},
+	)
 
-	t.Run("ProductUserCreatedDeleted", func(t *testing.T) {
-		// Product-user creation and deletion each emit the matching product event.
+	t.Run("Product-user creation and deletion each emit the matching product event", func(t *testing.T) {
 		email := itshared.Faker.Internet().Email()
 		name := itshared.Faker.Person().Name()
 		created, err := client.CreateProductUserWithResponse(
@@ -217,8 +213,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": userID})
 	})
 
-	t.Run("RoleAndResourcePermissionCreatedUpdatedDeleted", func(t *testing.T) {
-		// Role and resource-permission changes emit their corresponding product events.
+	t.Run("Role and resource-permission changes emit their corresponding product events", func(t *testing.T) {
 		createdPerm, err := owner.CreateProductResourcePermissionWithResponse(
 			ctx,
 			product.ProductID,
@@ -303,8 +298,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		})
 	})
 
-	t.Run("GetProductEventsCatalog", func(t *testing.T) {
-		// Reading a product events catalog succeeds.
+	t.Run("Reading a product events catalog succeeds", func(t *testing.T) {
 		catalogResp, err := owner.GetProductEventsCatalogWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, catalogResp.StatusCode())
@@ -336,8 +330,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		)
 	})
 
-	t.Run("UnknownSubscriptionIsRejected", func(t *testing.T) {
-		// Unknown subscription is rejected.
+	t.Run("Unknown subscription is rejected", func(t *testing.T) {
 		before, err := owner.GetProductWithResponse(ctx, product.ProductID)
 		require.NoError(t, err)
 		require.NotNil(t, before.JSON200)
@@ -369,8 +362,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		assert.Equal(t, before.JSON200.Config.Events.Events, after.JSON200.Config.Events.Events)
 	})
 
-	t.Run("EventSubscriptionFiltering", func(t *testing.T) {
-		// Only event types selected by the subscription are delivered to its endpoint.
+	t.Run("Only event types selected by the subscription are delivered to its endpoint", func(t *testing.T) {
 		filterProduct := createTestProductContext(t)
 		filterClient, _ := filterProduct.CreateAPIKeyClientWithAllScopes()
 		filterOwner := filterProduct.OwnerAuthenticatedClient()
@@ -468,68 +460,76 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 }
 
 func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
-	// Reading product-event configuration includes the endpoint's latest delivery status.
 	t.Parallel()
-	ctx := context.Background()
-	product := createTestProductContext(t)
-	owner := product.OwnerAuthenticatedClient()
-	client, _ := product.CreateAPIKeyClientWithAllScopes()
 
-	var attempts atomic.Int32
-	var available atomic.Bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts.Add(1)
-		if !available.Load() {
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}
-	}))
-	t.Cleanup(server.Close)
+	t.Run("Reading product-event configuration includes the endpoint's latest delivery status", func(t *testing.T) {
+		t.Parallel()
 
-	got, err := owner.GetProductWithResponse(ctx, product.ProductID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, got.StatusCode())
-	eventTypes := []string{"organization.created"}
-	configured, err := owner.UpdateProductWithResponse(ctx, product.ProductID, ct.UpdateProductJSONRequestBody{
-		Name: got.JSON200.Name,
-		Config: &ct.ProductConfigRequest{
-			OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
-				Prefix: got.JSON200.Config.OrganizationApiKeys.Prefix,
+		ctx := context.Background()
+		product := createTestProductContext(t)
+		owner := product.OwnerAuthenticatedClient()
+		client, _ := product.CreateAPIKeyClientWithAllScopes()
+
+		var attempts atomic.Int32
+		var available atomic.Bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			attempts.Add(1)
+			if !available.Load() {
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}
+		}))
+		t.Cleanup(server.Close)
+
+		got, err := owner.GetProductWithResponse(ctx, product.ProductID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, got.StatusCode())
+		eventTypes := []string{"organization.created"}
+		configured, err := owner.UpdateProductWithResponse(ctx, product.ProductID, ct.UpdateProductJSONRequestBody{
+			Name: got.JSON200.Name,
+			Config: &ct.ProductConfigRequest{
+				OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+					Prefix: got.JSON200.Config.OrganizationApiKeys.Prefix,
+				},
+				Events: &ct.ProductEventsConfigRequest{EndpointUrl: &server.URL, Events: &eventTypes},
 			},
-			Events: &ct.ProductEventsConfigRequest{EndpointUrl: &server.URL, Events: &eventTypes},
-		},
+		})
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, configured.StatusCode())
+		require.Equal(
+			t,
+			ct.ProductEventDeliveryStatus("never_attempted"),
+			configured.JSON200.Config.Events.DeliveryStatus,
+		)
+		require.Equal(t, 0, configured.JSON200.Config.Events.ConsecutiveFailedCalls)
+
+		created, err := client.CreateProductOrganizationWithResponse(
+			ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+				Name: "Failing Events Org " + ids.MustNew("org"),
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+
+		require.Eventually(t, func() bool {
+			current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+			return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+				current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("failed") &&
+				current.JSON200.Config.Events.ConsecutiveFailedCalls == 6
+		}, 90*time.Second, 100*time.Millisecond)
+		assert.EqualValues(t, 6, attempts.Load())
+
+		available.Store(true)
+		_, err = client.CreateProductOrganizationWithResponse(
+			ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+				Name: "Recovered Events Org " + ids.MustNew("org"),
+			},
+		)
+		require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+			return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
+				current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("succeeded") &&
+				current.JSON200.Config.Events.ConsecutiveFailedCalls == 0
+		}, 30*time.Second, 100*time.Millisecond)
 	})
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, configured.StatusCode())
-	require.Equal(t, ct.ProductEventDeliveryStatus("never_attempted"), configured.JSON200.Config.Events.DeliveryStatus)
-	require.Equal(t, 0, configured.JSON200.Config.Events.ConsecutiveFailedCalls)
-
-	created, err := client.CreateProductOrganizationWithResponse(
-		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
-			Name: "Failing Events Org " + ids.MustNew("org"),
-		},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, created.StatusCode())
-
-	require.Eventually(t, func() bool {
-		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
-		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
-			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("failed") &&
-			current.JSON200.Config.Events.ConsecutiveFailedCalls == 6
-	}, 90*time.Second, 100*time.Millisecond)
-	assert.EqualValues(t, 6, attempts.Load())
-
-	available.Store(true)
-	_, err = client.CreateProductOrganizationWithResponse(
-		ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
-			Name: "Recovered Events Org " + ids.MustNew("org"),
-		},
-	)
-	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
-		return getErr == nil && current.JSON200 != nil && current.JSON200.Config.Events != nil &&
-			current.JSON200.Config.Events.DeliveryStatus == ct.ProductEventDeliveryStatus("succeeded") &&
-			current.JSON200.Config.Events.ConsecutiveFailedCalls == 0
-	}, 30*time.Second, 100*time.Millisecond)
 }
