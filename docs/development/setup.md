@@ -19,7 +19,20 @@ cd anchor-ui
 pnpm exec playwright install chromium
 ```
 
-The root `pnpm-workspace.yaml` and `pnpm-lock.yaml` own frontend resolution. Run Go/lint commands from `apps/anchor`; the repository root is not a Go module. [Dependency ownership](../technical/dependencies.md) explains published library pins and the in-repo Go client replacement.
+The root `pnpm-workspace.yaml` and `pnpm-lock.yaml` own frontend resolution. Run backend Go commands from `apps/anchor`; the repository root is not a Go module. The repository lint script resolves the module automatically. [Dependency ownership](../technical/dependencies.md) explains published library pins and the in-repo Go client replacement.
+
+## Go linter
+
+Install the exact version in [`.golangci-lint-version`](../../.golangci-lint-version) with a Go toolchain compatible with `apps/anchor/go.mod`:
+
+```sh
+# From the repository root:
+(cd apps/anchor && go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat ../../.golangci-lint-version)")
+export PATH="$(go env GOPATH)/bin:$PATH"
+./scripts/lint.sh backend
+```
+
+The lint script uses the installed binary on `PATH` and rejects a missing/mismatched version before analysis. The default checks without editing source; installation and fixes are explicit. [Go lint](testing.md#go-lint) owns full/iteration commands, comparison bases, fallbacks and failure handling.
 
 ## Recommended disposable app
 
