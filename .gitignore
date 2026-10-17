@@ -122,3 +122,6 @@ worktrees/
 
 # Developer-local Claude preferences and permissions
 .claude/settings.local.json
+
+# Local Stripe billing prototype output
+anchor-ui/dist-stripe-prototype/

@@ -23,7 +23,8 @@
 		],
 		"integrations": [
 			"anchor-ui/e2e/features/integrations/email.e2e.ts",
-			"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			"anchor-ui/e2e/features/integrations/integrations.e2e.ts",
+			"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts"
 		]
 	},
 	"always": [
@@ -199,7 +200,8 @@
 			"reason": "Feature-local integrations test helpers and fixtures select their owning suite.",
 			"provenance": [
 				"anchor-ui/e2e/features/integrations/email.e2e.ts",
-				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+				"anchor-ui/e2e/features/integrations/integrations.e2e.ts",
+				"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts"
 			]
 		},
 		{
@@ -381,7 +383,9 @@
 				"anchor-ui/src/routes/platform/$productId.integration-smtp.tsx",
 				"anchor-ui/src/routes/platform/$productId.integrations.tsx",
 				"anchor-ui/src/routes/platform/integration-clerk.tsx",
-				"anchor-ui/src/routes/platform/integrations.tsx"
+				"anchor-ui/src/routes/platform/integrations.tsx",
+				"anchor-ui/src/pages/integration-stripe.tsx",
+				"anchor-ui/src/routes/platform/$productId.integration-stripe.tsx"
 			],
 			"domains": ["integrations", "access"],
 			"reason": "Clerk configuration and integration detail pages include product-user and tenant views.",
@@ -500,6 +504,34 @@
 				"apps/anchor/internal/license/event_registration.go",
 				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
 				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "stripe-billing-ui",
+			"paths": [
+				"anchor-ui/src/features/billing/**",
+				"anchor-ui/src/pages/pricing.tsx",
+				"anchor-ui/src/pages/organization-billing.tsx",
+				"anchor-ui/src/routes/products/pricing.tsx"
+			],
+			"domains": ["integrations", "licensing", "access"],
+			"reason": "Stripe pricing and organization billing use product context, integration configuration, and existing organization license navigation.",
+			"provenance": [
+				"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts"
+			]
+		},
+		{
+			"id": "stripe-billing-backend",
+			"paths": [
+				"apps/anchor/internal/stripebilling/**",
+				"apps/anchor/internal/integration/provider/stripe/**",
+				"apps/anchor/internal/api/stripe_billing_api.go"
+			],
+			"domains": ["integrations", "licensing", "access"],
+			"reason": "Native Stripe billing persists scoped subscriptions and reconciles organization license templates through the existing licensing service.",
+			"provenance": [
+				"anchor-ui/e2e/features/integrations/stripe-billing.e2e.ts",
+				"apps/anchor/internal/stripebilling/manager.go"
 			]
 		}
 	]
