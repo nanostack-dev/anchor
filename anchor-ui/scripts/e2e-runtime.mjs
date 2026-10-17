@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import {
 	access,
 	mkdir,
@@ -23,7 +24,11 @@ const localDirectory = join(runtimeDirectory, ".local");
 const metadataPath = join(localDirectory, "runtime.json");
 const pendingMetadataPath = join(localDirectory, "startup.json");
 const composePath = join(runtimeDirectory, "docker-compose.yaml");
-const projectPrefix = `anchor-e2e-${createHash("sha256").update(repositoryDirectory).digest("hex").slice(0, 10)}-`;
+const worktreeLabel = "dev.nanostack.anchor.e2e.worktree";
+const projectPattern = /^anchor-e2e-([0-9a-f]{10})-([0-9a-f]{8})$/;
+const worktreeHash = (directory) =>
+	createHash("sha256").update(directory).digest("hex").slice(0, 10);
+const projectPrefix = `anchor-e2e-${worktreeHash(repositoryDirectory)}-`;
 
 function run(command, args, options = {}) {
 	return new Promise((resolveResult, reject) => {
@@ -69,6 +74,7 @@ function compose(metadata, args, options = {}) {
 				...process.env,
 				ANCHOR_E2E_RUN_ID: metadata.runId,
 				ANCHOR_E2E_RUN_DIRECTORY: metadata.directory,
+				ANCHOR_E2E_WORKTREE: repositoryDirectory,
 			},
 		},
 	);
@@ -207,6 +213,87 @@ export async function statusRuntime() {
 	};
 }
 
+export function orphanedProjects({
+	projects,
+	ownPrefix,
+	trackedRunIds,
+	liveWorktreeHashes,
+	worktreeExists,
+}) {
+	return [...projects]
+		.filter(([project, worktree]) => {
+			const match = project.match(projectPattern);
+			if (!match) return false;
+			if (project.startsWith(ownPrefix)) return !trackedRunIds.has(match[2]);
+			return worktree
+				? !worktreeExists(worktree)
+				: !liveWorktreeHashes.has(match[1]);
+		})
+		.map(([project]) => project);
+}
+
+async function e2eProjects() {
+	const listing = [
+		"--filter",
+		"label=com.docker.compose.project",
+		"--format",
+		`{{.Label "com.docker.compose.project"}}\t{{.Label "${worktreeLabel}"}}`,
+	];
+	const lines = [
+		await run("docker", ["ps", "--all", ...listing]),
+		await run("docker", ["network", "ls", ...listing]),
+	]
+		.join("\n")
+		.split("\n");
+	const projects = new Map();
+	for (const line of lines) {
+		const [project, worktree = ""] = line.split("\t");
+		if (projectPattern.test(project) && !projects.get(project))
+			projects.set(project, worktree);
+	}
+	return projects;
+}
+
+async function removeProject(project) {
+	const filter = ["--filter", `label=com.docker.compose.project=${project}`];
+	const containers = (
+		await run("docker", ["ps", "--all", "--quiet", ...filter])
+	)
+		.split("\n")
+		.filter(Boolean);
+	if (containers.length)
+		await run("docker", ["rm", "--force", "--volumes", ...containers]);
+	const networks = (
+		await run("docker", ["network", "ls", "--quiet", ...filter])
+	)
+		.split("\n")
+		.filter(Boolean);
+	if (networks.length) await run("docker", ["network", "rm", ...networks]);
+}
+
+// Removes runtimes nobody can stop any more: those of deleted worktrees and
+// this worktree's runs that its metadata no longer tracks after a hard kill.
+export async function pruneRuntimes({ keepTracked = true } = {}) {
+	const tracked = keepTracked
+		? await Promise.all([readMetadata(), readMetadata(pendingMetadataPath)])
+		: [];
+	const worktrees = (await run("git", ["worktree", "list", "--porcelain"]))
+		.split("\n")
+		.filter((line) => line.startsWith("worktree "))
+		.map((line) => line.slice("worktree ".length));
+	const orphans = orphanedProjects({
+		projects: await e2eProjects(),
+		ownPrefix: projectPrefix,
+		trackedRunIds: new Set(
+			tracked.filter(Boolean).map((metadata) => metadata.runId.slice(0, 8)),
+		),
+		liveWorktreeHashes: new Set(worktrees.map(worktreeHash)),
+		worktreeExists: existsSync,
+	});
+	for (const project of orphans) await removeProject(project);
+	return orphans;
+}
+
 export async function stopRuntime(metadata) {
 	const target =
 		metadata ??
@@ -283,6 +370,12 @@ export async function startRuntime({
 	let metadata;
 	try {
 		signal?.throwIfAborted();
+		try {
+			for (const project of await pruneRuntimes())
+				console.error(`Removed orphaned Anchor E2E runtime ${project}.`);
+		} catch (error) {
+			console.error(`Skipped orphaned Anchor E2E cleanup: ${error.message}`);
+		}
 		const pending = await readMetadata(pendingMetadataPath);
 		if (requireFresh && (pending || (await readMetadata())))
 			throw new Error(
@@ -426,7 +519,15 @@ if (
 		const command = process.argv[2] ?? "start";
 		if (command === "stop") {
 			await stopRuntime();
+			await pruneRuntimes({ keepTracked: false });
 			console.log("Stopped this worktree's Anchor E2E runtime.");
+		} else if (command === "prune") {
+			const removed = await pruneRuntimes();
+			console.log(
+				removed.length
+					? `Removed orphaned Anchor E2E runtimes: ${removed.join(", ")}.`
+					: "No orphaned Anchor E2E runtimes.",
+			);
 		} else if (command === "status") {
 			console.log(JSON.stringify(await statusRuntime(), null, 2));
 		} else if (command === "verify-stopped") {
@@ -497,7 +598,7 @@ if (
 			}
 		} else
 			throw new Error(
-				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | stop | status | verify-stopped",
+				"Usage: node scripts/e2e-runtime.mjs start [--fresh] [--detach] | stop | prune | status | verify-stopped",
 			);
 	} catch (error) {
 		console.error(error.message);

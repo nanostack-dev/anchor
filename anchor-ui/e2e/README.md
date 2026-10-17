@@ -38,6 +38,11 @@ disposable services. The runtime refuses foreign
 processes and records ownership under ignored `e2e/runtime/.local/`.
 After a managed run, `node scripts/e2e-runtime.mjs verify-stopped` checks that
 its metadata, startup lock and containers are gone. PR CI enforces this too.
+A hard-killed run, or a worktree removed while its runtime was up, leaves
+containers that no metadata tracks. Every runtime start, `stop`, and
+`pnpm test:e2e:clean` remove them: this worktree's untracked runs, and runs
+whose owning worktree directory no longer exists. Live runtimes of other
+worktrees are left alone.
 
 For a visible demonstration, keep prerequisite setup fast and pace only the
 tests you launch in the UI:
