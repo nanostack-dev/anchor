@@ -151,7 +151,7 @@ jobs:
         needs.detect_changes.outputs.backend_changed == 'true' ||
         (needs.preview-flag.outputs.enabled == 'true' && needs.detect_changes.outputs.frontend_changed == 'true')
       )
-    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@4ea4e73f1d92ee8e08be04517e64d595af912c0b
+    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
     permissions:
       contents: read
       packages: write
