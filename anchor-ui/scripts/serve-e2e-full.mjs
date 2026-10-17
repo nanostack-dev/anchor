@@ -2,9 +2,12 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { preview } from "vite";
-import { frontendFingerprint } from "../e2e/support/fingerprint.ts";
+import { assertPreflight } from "./e2e-preflight.mjs";
 import { startRuntime, stopRuntime } from "./e2e-runtime.mjs";
+
+await assertPreflight({ mode: "fresh" });
+const { preview } = await import("vite");
+const { frontendFingerprint } = await import("../e2e/support/fingerprint.ts");
 
 const frontendURL = "http://127.0.0.1:3015";
 const launchedAt = performance.now();
