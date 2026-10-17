@@ -11,6 +11,8 @@ A standalone clone contains Anchor's source, agent guides, contract, generators 
 | [ci-workflows](https://github.com/nanostack-dev/ci-workflows) | Reusable verification jobs at the refs declared by the caller; backend lint uses a pinned workflow revision supporting the shared tool-version file | Read the workflow currently referenced by [.github/workflows/go.yml](../../.github/workflows/go.yml). |
 | [infra](https://github.com/nanostack-dev/infra) | Stack/environment rendering, deployment, post-deploy suites and promotion | Before adding runtime environment inputs, releasing or rollback. |
 
+After testing a companion workflow PR, pin the caller to the companion's merged commit before merging the caller. A squash merge and branch deletion can leave the tested PR commit unavailable to GitHub Actions, causing `workflow was not found` before any jobs start. Compare the referenced workflow files against the tested commit, then validate the caller using the merged SHA.
+
 Frameworks outside Nanostack include Uber FX wiring, go-jet generated SQL, OpenAPI/oapi-codegen and React/TanStack/Vite/Playwright. Exact versions belong in module/package lockfiles, not a second version list in prose.
 
 A local clone of a dependency is an optional source-inspection shortcut. Without one, read its GitHub guide/source at the relevant ref, or create an isolated checkout wherever convenient; never assume a parent/sibling path. Normal product work uses the published pin. A neutral reusable UI change goes to the design-system repository; Anchor's screens/permissions remain here. Keep each dependency change in its owner's PR and link companion PRs when contracts move together.
